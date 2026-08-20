@@ -16,83 +16,52 @@ namespace Event.Architecture.Tests;
 public sealed class ProviderMigrationOwnershipTests
 {
     [Test]
-    public async Task ProviderCompositionAssignsDedicatedMigrationAssemblies()
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, "Explore.Persistence", "Explore.Persistence")]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, "Explore.Persistence.Migrations.Sqlite", "Explore.Persistence.DataProtection.Migrations.Sqlite")]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, "Explore.Persistence.Migrations.SqlServer", "Explore.Persistence.DataProtection.Migrations.SqlServer")]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, "Explore.Persistence.Migrations.MariaDb", "Explore.Persistence.DataProtection.Migrations.MariaDb")]
+    [Arguments(PrimaryDatabaseProvider.MySql, "Explore.Persistence.Migrations.MySql", "Explore.Persistence.DataProtection.Migrations.MySql")]
+    public async Task ProviderCompositionAssignsExactMigrationOwners(
+        PrimaryDatabaseProvider provider,
+        string expectedApplicationAssembly,
+        string expectedDataProtectionAssembly)
     {
-        var applicationAssemblies = new Dictionary<PrimaryDatabaseProvider, string>();
-        var dataProtectionAssemblies = new Dictionary<PrimaryDatabaseProvider, string>();
+        RelationalOptionsExtension application = Configure(
+            provider,
+            PrimaryDatabaseMigrationTarget.Application);
+        RelationalOptionsExtension dataProtection = Configure(
+            provider,
+            PrimaryDatabaseMigrationTarget.DataProtection);
 
-        foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>())
-        {
-            RelationalOptionsExtension application = Configure(provider, PrimaryDatabaseMigrationTarget.Application);
-            RelationalOptionsExtension dataProtection = Configure(provider, PrimaryDatabaseMigrationTarget.DataProtection);
-
-            applicationAssemblies.Add(provider, application.MigrationsAssembly!);
-            dataProtectionAssemblies.Add(provider, dataProtection.MigrationsAssembly!);
-        }
-
-        await Assert.That(applicationAssemblies.Values).IsEquivalentTo([
-            "Explore.Persistence",
-            "Explore.Persistence.Migrations.Sqlite",
-            "Explore.Persistence.Migrations.SqlServer",
-            "Explore.Persistence.Migrations.MariaDb",
-            "Explore.Persistence.Migrations.MySql",
-        ]);
-        await Assert.That(dataProtectionAssemblies.Values).IsEquivalentTo([
-            "Explore.Persistence",
-            "Explore.Persistence.DataProtection.Migrations.Sqlite",
-            "Explore.Persistence.DataProtection.Migrations.SqlServer",
-            "Explore.Persistence.DataProtection.Migrations.MariaDb",
-            "Explore.Persistence.DataProtection.Migrations.MySql",
-        ]);
-
-        PrimaryDatabaseProvider[] sharedOwners = applicationAssemblies.Keys
-            .Where(provider => applicationAssemblies[provider] == dataProtectionAssemblies[provider])
-            .ToArray();
-        await Assert.That(sharedOwners).IsEquivalentTo([PrimaryDatabaseProvider.PostgreSql]);
+        await Assert.That(application.MigrationsAssembly).IsEqualTo(expectedApplicationAssembly);
+        await Assert.That(dataProtection.MigrationsAssembly).IsEqualTo(expectedDataProtectionAssembly);
     }
 
     [Test]
-    public async Task ProviderCompositionSeparatesHistoryTablesAndAlignsNamespacePolicy()
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, "__EFMigrationsHistory", "__EFDataProtectionMigrationsHistory", "islamu_event")]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, "ie___EFMigrationsHistory", "ie___EFDataProtectionMigrationsHistory", null)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, "__EFMigrationsHistory", "__EFDataProtectionMigrationsHistory", "islamu_event")]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, "ie___EFMigrationsHistory", "ie___EFDataProtectionMigrationsHistory", null)]
+    [Arguments(PrimaryDatabaseProvider.MySql, "ie___EFMigrationsHistory", "ie___EFDataProtectionMigrationsHistory", null)]
+    public async Task ProviderCompositionAssignsExactDistinctHistoryNamespaces(
+        PrimaryDatabaseProvider provider,
+        string expectedApplicationTable,
+        string expectedDataProtectionTable,
+        string? expectedSchema)
     {
-        var schemaProviders = new List<PrimaryDatabaseProvider>();
-        var prefixedProviders = new List<PrimaryDatabaseProvider>();
+        RelationalOptionsExtension application = Configure(
+            provider,
+            PrimaryDatabaseMigrationTarget.Application);
+        RelationalOptionsExtension dataProtection = Configure(
+            provider,
+            PrimaryDatabaseMigrationTarget.DataProtection);
 
-        foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>())
-        {
-            RelationalOptionsExtension application = Configure(provider, PrimaryDatabaseMigrationTarget.Application);
-            RelationalOptionsExtension dataProtection = Configure(provider, PrimaryDatabaseMigrationTarget.DataProtection);
-
-            await Assert.That(application.MigrationsHistoryTableName)
-                .IsNotEqualTo(dataProtection.MigrationsHistoryTableName);
-            await Assert.That(application.MigrationsHistoryTableSchema)
-                .IsEqualTo(dataProtection.MigrationsHistoryTableSchema);
-
-            if (application.MigrationsHistoryTableSchema is { } schema)
-            {
-                await Assert.That(schema).IsEqualTo("islamu_event");
-                await Assert.That(application.MigrationsHistoryTableName).IsEqualTo("__EFMigrationsHistory");
-                await Assert.That(dataProtection.MigrationsHistoryTableName)
-                    .IsEqualTo("__EFDataProtectionMigrationsHistory");
-                schemaProviders.Add(provider);
-            }
-            else
-            {
-                await Assert.That(application.MigrationsHistoryTableName)
-                    .StartsWith("ie_", StringComparison.Ordinal);
-                await Assert.That(dataProtection.MigrationsHistoryTableName)
-                    .StartsWith("ie_", StringComparison.Ordinal);
-                prefixedProviders.Add(provider);
-            }
-        }
-
-        await Assert.That(schemaProviders)
-            .IsEquivalentTo([PrimaryDatabaseProvider.PostgreSql, PrimaryDatabaseProvider.SqlServer]);
-        await Assert.That(prefixedProviders)
-            .IsEquivalentTo([
-                PrimaryDatabaseProvider.Sqlite,
-                PrimaryDatabaseProvider.MariaDb,
-                PrimaryDatabaseProvider.MySql,
-            ]);
+        await Assert.That(application.MigrationsHistoryTableName).IsEqualTo(expectedApplicationTable);
+        await Assert.That(dataProtection.MigrationsHistoryTableName).IsEqualTo(expectedDataProtectionTable);
+        await Assert.That(application.MigrationsHistoryTableSchema).IsEqualTo(expectedSchema);
+        await Assert.That(dataProtection.MigrationsHistoryTableSchema).IsEqualTo(expectedSchema);
+        await Assert.That(application.MigrationsHistoryTableName)
+            .IsNotEqualTo(dataProtection.MigrationsHistoryTableName);
     }
 
     [Test]

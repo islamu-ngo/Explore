@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -236,6 +237,109 @@ public sealed class PrivacyErasureAuthorityModelTests
             .IsNull();
         await Assert.That(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable)
             .IsNotEqualTo("__EFMigrationsHistory");
+    }
+
+    [Test]
+    public async Task AuthorityTopologies_HaveExactMigrationOwnersAndHistoryNamespaces()
+    {
+        var embeddedOptions = new DbContextOptionsBuilder<EmbeddedPrivacyErasureAuthorityDbContext>();
+        EmbeddedPrivacyErasureAuthorityDbContextFactory.Configure(
+            embeddedOptions,
+            new EmbeddedPrivacyErasureAuthorityOptions
+            {
+                Path = Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db")
+            });
+        await using var embedded = new EmbeddedPrivacyErasureAuthorityDbContext(embeddedOptions.Options);
+
+        var coLocatedSqliteOptions =
+            new DbContextOptionsBuilder<EmbeddedPrivacyErasureAuthorityDbContext>();
+        EmbeddedPrivacyErasureAuthorityDbContextFactory.ConfigureCoLocated(
+            coLocatedSqliteOptions,
+            new PrimaryDatabaseConnectionOptions
+            {
+                Role = PrimaryDatabaseRole.Migrator,
+                Provider = PrimaryDatabaseProvider.Sqlite,
+                Database = "model-only.db"
+            });
+
+        var coLocatedOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+            coLocatedOptions,
+            new PrimaryDatabaseConnectionOptions
+            {
+                Role = PrimaryDatabaseRole.Migrator,
+                Provider = PrimaryDatabaseProvider.PostgreSql,
+                Host = "localhost",
+                Database = "model_only",
+                Schema = "custom_event",
+                Username = "unused",
+                Password = "unused",
+                TlsMode = PrimaryDatabaseTlsMode.Disabled
+            });
+        await using var coLocated = new CoLocatedPrivacyErasureAuthorityDbContext(coLocatedOptions.Options);
+
+        await using PrivacyErasureAuthorityDbContext external =
+            new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
+                new ConfigurationBuilder().AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+                        ["PrivacyErasureAuthorityDatabase:Host"] = "localhost",
+                        ["PrivacyErasureAuthorityDatabase:Database"] = "model_only",
+                        ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+                        ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "unused",
+                        ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "unused"
+                    }).Build());
+
+        RelationalOptionsExtension embeddedRelational = embeddedOptions.Options.Extensions
+            .OfType<RelationalOptionsExtension>()
+            .Single();
+        RelationalOptionsExtension coLocatedRelational = coLocatedOptions.Options.Extensions
+            .OfType<RelationalOptionsExtension>()
+            .Single();
+        RelationalOptionsExtension coLocatedSqliteRelational = coLocatedSqliteOptions.Options.Extensions
+            .OfType<RelationalOptionsExtension>()
+            .Single();
+        RelationalOptionsExtension externalRelational = external.GetService<IDbContextOptions>()
+            .Extensions
+            .OfType<RelationalOptionsExtension>()
+            .Single();
+
+        await Assert.That((
+            embeddedRelational.MigrationsAssembly,
+            embeddedRelational.MigrationsHistoryTableName,
+            embeddedRelational.MigrationsHistoryTableSchema)).IsEqualTo((
+                EmbeddedPrivacyErasureAuthorityDbContext.MigrationsAssembly,
+                EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable,
+                (string?)null));
+        await Assert.That((
+            coLocatedSqliteRelational.MigrationsAssembly,
+            coLocatedSqliteRelational.MigrationsHistoryTableName,
+            coLocatedSqliteRelational.MigrationsHistoryTableSchema)).IsEqualTo((
+                EmbeddedPrivacyErasureAuthorityDbContext.MigrationsAssembly,
+                EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable,
+                (string?)null));
+        await Assert.That((
+            coLocatedRelational.MigrationsAssembly,
+            coLocatedRelational.MigrationsHistoryTableName,
+            coLocatedRelational.MigrationsHistoryTableSchema)).IsEqualTo((
+                "Explore.Persistence",
+                PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable,
+                "custom_event"));
+        await Assert.That((
+            externalRelational.MigrationsAssembly,
+            externalRelational.MigrationsHistoryTableName,
+            externalRelational.MigrationsHistoryTableSchema)).IsEqualTo((
+                "Explore.Persistence",
+                PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable,
+                (string?)null));
+
+        await Assert.That(embedded.GetService<IHistoryRepository>().GetCreateIfNotExistsScript())
+            .Contains(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable);
+        await Assert.That(coLocated.GetService<IHistoryRepository>().GetCreateIfNotExistsScript())
+            .Contains("custom_event");
+        await Assert.That(external.GetService<IHistoryRepository>().GetCreateIfNotExistsScript())
+            .Contains(PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable);
     }
 
     private static ExploreDbContext CreateExploreContext()

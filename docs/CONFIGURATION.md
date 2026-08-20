@@ -193,8 +193,10 @@ process role:
 
 `Explore.API` and normal application data access bind the `Runtime` role.
 `Event.MigrationService` binds the `Migrator` role and is the deployed owner of
-application and Data Protection migrations. Do not put migrator credentials in
-the API or Blazor containers.
+application, Data Protection, and exactly one authority migration path selected
+by the configured topology. The standalone process is the documented
+in-process exception: it applies the same responsibilities before binding HTTP.
+Do not put migrator credentials in the API or Blazor containers.
 
 | Provider | Required shape | Default port / namespace | Operational boundary |
 |---|---|---|---|
@@ -327,7 +329,10 @@ not configurable (`DATABASE_PREFIX`, `DATABASE_RUNTIME_PREFIX`,
 `DATABASE_MIGRATOR_PREFIX`, `Database:Prefix`, `Database:Runtime:Prefix`, and
 `Database:Migrator:Prefix` are rejected), so an operator-supplied value cannot
 exceed provider identifier limits when combined with long table names.
-Generated migrations and snapshots are never hand-edited.
+Generated migrations and snapshots are never hand-edited. The selected authority
+migration path remains separate from those provider-native application and Data
+Protection assemblies and their distinct history tables; MigrationService never
+combines authority paths.
 
 SQLite adds three non-negotiable deployment rules: use durable local storage,
 mount the file into both migration and API processes at the same path, and run
@@ -345,22 +350,34 @@ application migration. The primary file must not be named
 `PrivacyErasure:Authority:Topology` accepts `EmbeddedSqlite` (the default),
 `CoLocated`, or `ExternalDatabase`.
 
+| Topology | Supported Primary Providers | Authority Storage Placement |
+|---|---|---|
+| `EmbeddedSqlite` *(default)* | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | Dedicated local `/app/data/privacy_erasure_authority.db` file. |
+| `CoLocated` | **PostgreSQL or SQLite only** | Primary application database (shares application connection). |
+| `ExternalDatabase` | **All 5 providers** | Separate physical PostgreSQL database instance. |
+
 `EmbeddedSqlite` stores authority facts in the dedicated
 `/app/data/privacy_erasure_authority.db` file; it never shares the primary
 database or primary SQLite file. The file uses a private cache, WAL, a bounded
 busy timeout, one writer, restrictive permissions, and a separately mounted
-durable volume.
+durable volume. It works seamlessly with any primary application database provider.
 
 `CoLocated` stores authority facts in the primary application database and uses
 the existing application database credentials. It currently supports primary
-`PostgreSql` and `Sqlite`; other primary providers fail configuration validation.
+`PostgreSql` and `Sqlite` (due to provider-native locking and WAL single-writer semantics). Configuring `CoLocated` with `SqlServer`, `MariaDb`, or `MySql` fails closed during DI composition before adapter/database I/O, with safe diagnostics that never expose credentials or connection strings.
 
 `ExternalDatabase` uses a dedicated authority migration against a different
-physical PostgreSQL database; startup rejects an authority target that resolves to
+physical PostgreSQL database with function-only (`SECURITY DEFINER`) runtime access; startup rejects an authority target that resolves to
 the application database even when endpoint identity is obscured by different
 credentials. The primary database keeps only the replay checkpoint in
 `EmbeddedSqlite` and `ExternalDatabase`. `CoLocated` additionally keeps the
 retained authority rows there because the primary database is its sole sink.
+
+| Topology | Operator backup units | `restoreReplayProtection` |
+|---|---|---:|
+| `EmbeddedSqlite` | Primary database backup plus the dedicated authority-file backup | `true` when the authority file is excluded from the primary restore |
+| `CoLocated` | One primary database backup containing authority rows | `false` |
+| `ExternalDatabase` | Primary database backup plus an independently managed external PostgreSQL authority backup | `true` when the external authority has an independent restore lifecycle |
 
 | Key | Default | Description |
 |---|---:|---|
@@ -371,19 +388,18 @@ retained authority rows there because the primary database is its sole sink.
 | `PrivacyErasureAuthorityEmbedded:Path` | `/app/data/privacy_erasure_authority.db` | Absolute local authority file used only by `EmbeddedSqlite`; URI and network paths are rejected. |
 | `PrivacyErasureAuthorityEmbedded:WriterReplicaCount` | `1` | Must be exactly `1`; startup rejects multi-writer embedded deployments. |
 | `PrivacyErasureAuthorityEmbedded:BusyTimeoutSeconds` | `30` | SQLite busy timeout; valid range `1..300`. |
-| `PrivacyErasureAuthorityDatabase:Provider` | none | Must be `PostgreSql` for `ExternalDatabase`. Other providers fail validation. |
-| `PrivacyErasureAuthorityDatabase:Host`, `Port`, `Database`, `TlsMode`, `TrustServerCertificate` | none | Structured external authority endpoint and TLS policy. |
-| `PrivacyErasureAuthorityDatabase:Runtime:Username`, `Password` | none | API-only function-execution credential for `ExternalDatabase`. |
-| `PrivacyErasureAuthorityDatabase:Migrator:Username`, `Password` | none | MigrationService-only schema/grant credential for `ExternalDatabase`. |
+| `Database:Erasure:Provider` / `PrivacyErasureAuthorityDatabase:Provider` | none | Must be `PostgreSql` for `ExternalDatabase`. Other providers fail validation. |
+| `Database:Erasure:Host`, `Port`, `Database`, `TlsMode`, `TrustServerCertificate` | none | Structured external authority endpoint and TLS policy under `/database/erasure`. |
+| `Database:Erasure:Runtime:Username`, `Password` | none | API-only function-execution credential for `ExternalDatabase`. |
+| `Database:Erasure:Migrator:Username`, `Password` | none | MigrationService-only schema/grant credential for `ExternalDatabase`. |
 
-Compose maps `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`,
-`PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH`,
-`PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT`, and
-`PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS` to the embedded .NET keys.
-For the external topology it maps `PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`,
-`DATABASE`, `TLS_MODE`, `TRUST_SERVER_CERTIFICATE`, and the `RUNTIME_*` /
-`MIGRATOR_*` credential families. External fields are ignored by
-`EmbeddedSqlite` and `CoLocated`. Back up the embedded file/volume independently;
+Compose and Infisical map `ERASURE_TOPOLOGY` (or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`),
+`ERASURE_EMBEDDED_PATH`, `ERASURE_WRITER_REPLICA_COUNT`, and
+`ERASURE_BUSY_TIMEOUT_SECONDS` to the embedded .NET keys.
+For the external topology they map `DATABASE_ERASURE_HOST` (or Infisical `/database/erasure/DATABASE_HOST`),
+`PORT`, `NAME` / `DATABASE`, `TLS_MODE`, `TRUST_SERVER_CERTIFICATE`, and the `RUNTIME_*` /
+`MIGRATOR_*` credential families to `Database:Erasure:*` and `PrivacyErasureAuthorityDatabase:*`.
+External fields are ignored by `EmbeddedSqlite` and `CoLocated`. Back up the embedded file/volume independently;
 include co-located authority rows in the primary database backup.
 Aspire creates a distinct local authority PostgreSQL resource whenever
 `ExternalDatabase` is selected in a profile that uses local data. Profiles
@@ -393,9 +409,9 @@ without local data use operator-provided external infrastructure.
 strings are removed and are never translated. This repository is pre-v1 and in
 development mode: reset affected development data after taking any required
 export, then select `EmbeddedSqlite`, `CoLocated`, or `ExternalDatabase`.
-There is no legacy compatibility cutover for removed contracts. Application code
-and
-implementation agents never delete databases, containers, volumes, or backups.
+There is no fallback, translation, dual write, or compatibility shim for removed
+or unsupported authority contracts. Application code and implementation agents
+never delete databases, containers, volumes, or backups.
 
 ### Localization Configuration
 

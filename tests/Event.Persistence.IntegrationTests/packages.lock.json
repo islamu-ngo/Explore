@@ -944,6 +944,13 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       },
+      "explore.persistence.dataprotection.migrations.sqlite": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Persistence": "[1.0.0, )",
+          "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.10, )"
+        }
+      },
       "explore.persistence.migrations.mariadb": {
         "type": "Project",
         "dependencies": {

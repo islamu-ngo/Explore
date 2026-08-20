@@ -29,6 +29,17 @@ public static class ExploreDatabaseMigrator
         ArgumentNullException.ThrowIfNull(migrationDatabaseOptions);
         ArgumentNullException.ThrowIfNull(logger);
 
+        PrivacyErasureAuthorityTopology topology =
+            PrivacyErasureDurabilityOptions.GetTopology(configuration);
+        if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
+        {
+            PrimaryDatabaseConnectionOptions authorityDatabaseOptions =
+                PrivacyErasureAuthorityDatabaseConfiguration.BindMigrator(configuration);
+            PrivacyErasureAuthorityDatabaseConfiguration.EnsureDistinctPhysicalDatabase(
+                migrationDatabaseOptions,
+                authorityDatabaseOptions);
+        }
+
         logger.LogInformation("Applying database migrations...");
         var migrationOptions = new DbContextOptionsBuilder<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(
@@ -38,12 +49,14 @@ public static class ExploreDatabaseMigrator
         {
             await MigrateAsync(migrationDatabase, configuration, cancellationToken);
         }
+        logger.LogInformation("Database migration operation {Operation} completed.", "Application");
 
         await SqliteDatabaseInitializer.InitializeAsync(runtimeDatabase, cancellationToken);
         if (runtimeDatabase.Database.IsNpgsql())
         {
             await PostgresModelConstraintApplier.ApplyAsync(runtimeDatabase, cancellationToken);
         }
+        logger.LogInformation("Database migration operation {Operation} completed.", "ProviderAdjustments");
 
         var dataProtectionOptions = new DbContextOptionsBuilder<DataProtectionKeyContext>();
         PrimaryDatabaseProviderComposition.ConfigureDataProtection(
@@ -53,10 +66,13 @@ public static class ExploreDatabaseMigrator
         {
             await dataProtectionDatabase.Database.MigrateAsync(cancellationToken);
         }
+        logger.LogInformation("Database migration operation {Operation} completed.", "DataProtection");
 
         await MigratePrivacyErasureAuthorityAsync(
             configuration,
             migrationDatabaseOptions,
+            topology,
+            logger,
             cancellationToken);
 
         await DatabaseSeeder.SeedAsync(
@@ -64,6 +80,7 @@ public static class ExploreDatabaseMigrator
             environment,
             configuration: configuration,
             cancellationToken: cancellationToken);
+        logger.LogInformation("Database migration operation {Operation} completed.", "Seed");
         logger.LogInformation("Database migrations and seeding completed successfully.");
     }
 
@@ -81,10 +98,10 @@ public static class ExploreDatabaseMigrator
     private static async Task MigratePrivacyErasureAuthorityAsync(
         IConfiguration configuration,
         PrimaryDatabaseConnectionOptions migrationDatabaseOptions,
+        PrivacyErasureAuthorityTopology topology,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
-        PrivacyErasureAuthorityTopology topology =
-            PrivacyErasureDurabilityOptions.GetTopology(configuration);
         if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration
@@ -97,6 +114,9 @@ public static class ExploreDatabaseMigrator
                 .UseSnakeCaseNamingConvention();
             await using var externalAuthorityDb = new PrivacyErasureAuthorityDbContext(externalAuthorityOptions.Options);
             await externalAuthorityDb.Database.MigrateAsync(cancellationToken);
+            logger.LogInformation(
+                "Database migration operation {Operation} completed.",
+                "AuthorityExternalDatabasePostgreSql");
             return;
         }
 
@@ -110,13 +130,16 @@ public static class ExploreDatabaseMigrator
                     migrationDatabaseOptions);
                 await using var sqliteAuthorityDb = new EmbeddedPrivacyErasureAuthorityDbContext(sqliteAuthorityOptions.Options);
                 await sqliteAuthorityDb.Database.MigrateAsync(cancellationToken);
+                logger.LogInformation(
+                    "Database migration operation {Operation} completed.",
+                    "AuthorityCoLocatedSqlite");
                 return;
             }
 
             if (migrationDatabaseOptions.Provider != PrimaryDatabaseProvider.PostgreSql)
             {
                 throw new InvalidOperationException(
-                    "CoLocated currently supports primary PostgreSql or Sqlite databases.");
+                    PrimaryDatabaseProviderComposition.UnsupportedCoLocatedPrivacyErasureAuthorityMessage);
             }
 
             var postgresAuthorityOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
@@ -125,6 +148,9 @@ public static class ExploreDatabaseMigrator
                 migrationDatabaseOptions);
             await using var postgresAuthorityDb = new CoLocatedPrivacyErasureAuthorityDbContext(postgresAuthorityOptions.Options);
             await postgresAuthorityDb.Database.MigrateAsync(cancellationToken);
+            logger.LogInformation(
+                "Database migration operation {Operation} completed.",
+                "AuthorityCoLocatedPostgreSql");
             return;
         }
 
@@ -138,5 +164,8 @@ public static class ExploreDatabaseMigrator
         await embeddedDb.Database.MigrateAsync(cancellationToken);
         storage.HardenCompanionFiles();
         await storage.VerifyIntegrityAsync(cancellationToken);
+        logger.LogInformation(
+            "Database migration operation {Operation} completed.",
+            "AuthorityEmbeddedSqlite");
     }
 }

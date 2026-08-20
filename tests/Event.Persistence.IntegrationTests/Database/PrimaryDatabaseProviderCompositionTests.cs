@@ -60,6 +60,29 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     }
 
     [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, "NpgsqlOptionsExtension")]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, "SqliteOptionsExtension")]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, "SqlServerOptionsExtension")]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, "MySqlOptionsExtension")]
+    [Arguments(PrimaryDatabaseProvider.MySql, "MySqlOptionsExtension")]
+    public async Task PrimaryProviderMatrix_SupportsApplicationAndDataProtection(
+        PrimaryDatabaseProvider provider,
+        string expectedOptionsExtension)
+    {
+        var application = new DbContextOptionsBuilder<ExploreDbContext>();
+        var dataProtection = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        PrimaryDatabaseConnectionOptions options = CreateOptions(provider);
+
+        PrimaryDatabaseProviderComposition.ConfigureApplication(application, options);
+        PrimaryDatabaseProviderComposition.ConfigureDataProtection(dataProtection, options);
+
+        await Assert.That(application.Options.Extensions.Select(extension => extension.GetType().Name))
+            .Contains(expectedOptionsExtension);
+        await Assert.That(dataProtection.Options.Extensions.Select(extension => extension.GetType().Name))
+            .Contains(expectedOptionsExtension);
+    }
+
+    [Test]
     public async Task ConfigurePersistenceServices_DoesNotEnablePostgresRlsForOtherProviders()
     {
         var values = BuildConfigurationValues(PrimaryDatabaseProvider.Sqlite);

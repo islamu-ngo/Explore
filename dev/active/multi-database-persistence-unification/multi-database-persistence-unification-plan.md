@@ -1,344 +1,337 @@
-<!-- ABOUTME: Implementation plan for Multi-Database Persistence Unification and API-First Architecture. -->
-<!-- ABOUTME: Eliminates SQL dialect lock-in, unifies migration ownership per provider, and enables multi-provider co-located privacy authority. -->
+<!-- ABOUTME: Senior CTO-reviewed implementation plan for hardening the multi-database persistence contract. -->
+<!-- ABOUTME: Preserves provider-native migration and authority boundaries while aligning composition, tests, and operator guidance. -->
 
-# Multi-Database Persistence Unification & API-First Architecture — Implementation Plan
+# Multi-Database Persistence Contract Hardening — Implementation Plan
 
-Last Updated: 2026-08-19 Europe/Brussels
+Last Updated: 2026-08-20 Europe/Brussels
 
-## 0. Planning Metadata
+## Planning Metadata
 
-- **Original Request:** Unify persistence behavior across PostgreSQL, SQL Server, MySQL, MariaDB, and SQLite; remove provider lock-in and normalize repository/migration ownership for an enterprise-grade self-hostable platform.
-- **Task Directory:** `dev/active/multi-database-persistence-unification/`
-- **Planning Status:** Rewritten and CTO-reviewed
-- **Matched Intents:**
-  - `add-ef-migration`
-  - `update-repository-query`
-  - `update-repository-query` for high-risk raw SQL refactors
-- **Relevant Skills:**
-  - `dotnet-efcore-guidelines`
-  - `clean-architecture-rules`
-  - `implementation-plan`
-  - `senior-cto-feedback`
-- **Relevant Rules:**
-  - `.agents/rules/efcore-persistence.md`
-  - `.agents/rules/efcore-migrations.md`
-  - `.agents/rules/domain.md`
-  - `docs/QUICK_REFERENCE.md`
-- **Primary Layers Touched:** `Persistence`, `Migration orchestration`, `Architecture Tests`, `Integration Tests`, `Host Packaging/CI Docs`
-- **Complexity:** XL — includes cross-provider persistence behavior, migration ownership, and operational documentation for self-hosting.
+- **Workstream:** `dev/active/multi-database-persistence-unification/`
+- **Status:** Complete — Phase 1/2 implementation, architecture and quality remediation, isolated verification, independent architecture/quality approval, and final audit passed
+- **Decision:** The prior HIGH same-target architecture finding is resolved. The test-contract remediation passed independent quality review, and the final architecture, quality, and completion audits all passed.
+- **Canonical implementation intent:** `platform-privacy-erasure`
+- **Primary layers:** Persistence composition, migration orchestration, architecture/integration tests, CI contract, and operator documentation
+- **Breaking-change policy:** Pre-v1 breaking changes are allowed. No compatibility shim is required for a removed or rejected configuration contract.
+- **External influence:** Official Microsoft EF Core and ASP.NET Core Data Protection documentation only, retrieved through Anysearch and Context7 and reduced to source-free functional constraints. No external source code or dependency change was used.
 
-## 1. Senior CTO Feedback (Immediate Decision)
+## Senior CTO Verdict
 
-## Executive Verdict
+The original workstream was not implementation-ready. It combined four materially different changes:
 
-This workstream is strategically correct and important, but the previous version was **not implementation-ready** because it contained stale implementation assumptions and incomplete risk control across tests/docs. I approve it **only with required changes** below.
+1. collapsing migration projects;
+2. expanding co-located privacy-erasure authority to every primary provider;
+3. replacing provider-specific repositories and SQL with one generic implementation; and
+4. adding Quartz runtime validation.
 
-**Decision:** Approve with required changes
+That combination increased migration, restore, concurrency, and release risk without a demonstrated operator benefit. It also contradicted the canonical `platform-privacy-erasure` contract and implemented documentation, which currently support:
 
-### Hard CTO Constraints Applied
-- No compatibility shims for already-accepted breaking-change directions.
-- Clearly delete old contracts when they block simplification.
-- Enforce operator recovery and failure-path clarity before touching migration ownership.
+- all five providers for the primary application and Data Protection stores;
+- `EmbeddedSqlite` authority independently of the selected primary provider;
+- `CoLocated` authority on PostgreSQL or SQLite; and
+- `ExternalDatabase` authority on PostgreSQL.
 
-## 2. Executive Summary
+The approved direction is contract hardening, not universal storage unification. Keep provider-native implementations where database semantics differ, make the supported matrix explicit and fail closed, preserve generated migration ownership, and prove that runtime, migrator, tests, CI, and operator docs agree.
 
-### What changes this workstream enforces
-1. **Collapse migration ownership** so each non-PostgreSQL provider has exactly one persistence migration assembly for both application + data-protection + co-located authority ownership.
-2. **Enable co-located privacy-erasure authority across all supported providers** via provider-neutral repository/persistence patterns.
-3. **Eliminate high-risk provider-specific raw SQL in persistence hotspots** (adapters and lock-heavy repositories) in favor of provider-neutral patterns where correct and practical.
-4. **Re-baseline dev-doc and verification contracts** so implementation agents can continue without re-investigating assumptions.
+## Verified Current State
 
-### Why this is enterprise-grade relevant
-- Self-hosted operators need predictable assembly ownership per provider and deterministic migration contracts.
-- Deployment failure modes must be explicit for authority migration, data-protection readiness, and rollback behavior.
-- Multi-provider topology must fail closed for unsupported topologies and validate composition decisions at startup.
-
-## 3. Source-Grounded Current-State Report
-
-### 3.1 Evidence Log (Verified)
-
-| Claim | Evidence | Impact on Plan |
+| Verified fact | Source anchor | Planning consequence |
 |---|---|---|
-| Solution is `Explore.slnx`, not `Event.sln` | `Explore.slnx:23-28` includes migration projects explicitly | All solution-edit tasks must target `Explore.slnx` |
-| Migration assemblies are split across 10 projects | `rg --files src | rg 'Explore.Persistence.*\.csproj'` → 10 projects | Plan now uses this exact baseline |
-| Co-located authority currently supports only PostgreSQL + SQLite topologies | `src/Explore.Persistence/PersistenceServicesRegistration.cs` + `src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs` | Requires explicit widening plan + tests |
-| `GetMigrationsAssemblyName` currently throws for non-PG co-located authority | `PrimaryDatabaseProviderComposition.cs` + integration composition assertions | Requires plan change + contract tests update |
-| `ProviderMigrationOwnershipTests` currently expects separate DP assemblies for non-PG providers | `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs` | Requires deliberate rewrite or replacement |
-| `PrimaryDatabaseProviderCompositionTests` currently encodes old migration contract | same as above in integration project | Must be updated before refactor acceptance |
-| Privacy erasure DB contexts point at legacy sqlite migration assembly |
-`EmbeddedPrivacyErasureAuthorityDbContext.cs` const `Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite` | If legacy project is removed, compose/migrations must be rerouted |
-| Raw SQL lock/update usage still exists in many persistence files | repository scan shows broad `ExecuteSqlRaw/Interpolated` usage |
-Need tight scope boundary before declaring "eliminated raw SQL" |
+| Primary application persistence supports PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL | `PrimaryDatabaseProviderComposition.cs`; `PrimaryDatabaseProviderCompositionTests.cs` | Keep the five-provider primary matrix |
+| PostgreSQL application and Data Protection migrations live in `Explore.Persistence` | `PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName` | Preserve the current PostgreSQL owner |
+| Each non-PostgreSQL provider has separate application and Data Protection migration assemblies and history tables | `ProviderMigrationOwnershipTests.cs`; provider `.csproj` files | Do not collapse projects without a separately approved migration-ownership change |
+| Embedded authority migrations are owned by `Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite` | `EmbeddedPrivacyErasureAuthorityDbContext.cs` | Keep embedded authority isolated from primary SQLite migrations |
+| Co-located PostgreSQL uses `CoLocatedPrivacyErasureAuthorityDbContext` and a PostgreSQL-specific repository | `PersistenceServicesRegistration.cs`; `CoLocatedPostgresPrivacyErasureAuthorityRepository.cs` | Preserve transaction/locking semantics |
+| Co-located SQLite reuses the primary file through the embedded SQLite context/repository | `PersistenceServicesRegistration.cs`; `EmbeddedPrivacyErasureAuthorityRepository.cs` | Preserve SQLite writer and file semantics |
+| SQL Server, MariaDB, and MySQL co-located authority fail closed | `PersistenceServicesRegistration.cs`; composition tests | Treat these combinations as unsupported, not unfinished |
+| External authority is a distinct PostgreSQL database with function-only runtime access | `EfCorePrivacyErasureAuthorityRepository.cs`; `docs/PRIVACY_ERASURE.md` | Do not generalize the external adapter |
+| The CI provider matrix already runs MigrationService twice for each primary provider | `.github/workflows/_build-test.yml`; `docs/TESTING.md` | Reuse the existing enterprise evidence lane |
+| The Release build passes but emits pre-existing NU1903 and analyzer warnings | Baseline build on 2026-08-20 | Track outside this workstream; do not claim warning-clean enterprise readiness |
 
-### 3.2 Current Implementation Snapshot
-- `Explore.Persistence` still contains PostgreSQL-only co-located raw SQL lock/insert patterns.
-- `PersistenceServicesRegistration` and composition switch still treat non-PG co-located authority as unsupported.
-- Migration ownership contract is partially split by architecture and includes legacy project assumptions.
-- Dockerfiles and host project references still include legacy migration assemblies.
+## Target Support Contract
 
-### 3.3 Existing Verification Evidence
-- `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs`
-- `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs`
-- `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs`
-- `tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs`
-- Host/build references in `Explore.slnx`, `Dockerfiles`, and project refs.
+### Primary persistence and Data Protection
 
-### 3.4 Current Pain Areas
-- Plan and code are currently out-of-sync on co-located topology, migration ownership, and project references.
-- Raw SQL elimination scope is underspecified (some SQL is still intentional in domain-specific queries and PostgreSQL-only constraint support).
-- Migration ownership and packaging changes are missing in deployment artifacts.
+| Provider | Application | Data Protection | Namespace |
+|---|---:|---:|---|
+| PostgreSQL | Supported | Supported | configured schema |
+| SQLite | Supported | Supported | fixed `ie_` prefix |
+| SQL Server | Supported | Supported | configured schema |
+| MariaDB | Supported | Supported | fixed `ie_` prefix |
+| MySQL | Supported | Supported | fixed `ie_` prefix |
 
-### 3.5 Unknowns After Investigation
-- Whether co-located authority should use application schema name semantics for every provider or follow provider-specific defaults consistently; this must be decided and fixed once in the composition layer.
-- Whether to keep any PostgreSQL-only authority function/trigger code in legacy external authority path after consolidating co-located support.
+### Privacy-erasure authority
 
-## 4. Proposed Future State
+| Topology | Supported provider/placement | Restore contract |
+|---|---|---|
+| `EmbeddedSqlite` | Dedicated SQLite authority file with any supported primary provider | Restore-isolated only when its file/volume is protected from primary restore |
+| `CoLocated` | Primary PostgreSQL or primary SQLite | Restored atomically with the primary; `restoreReplayProtection=false` |
+| `ExternalDatabase` | Separate PostgreSQL database | Restore-isolated only when restored independently |
+| `CoLocated` on SQL Server, MariaDB, or MySQL | Unsupported | Startup/configuration fails before adapter use and without leaking secrets |
 
-1. **Migration ownership model:**
-   - `Explore.Persistence` keeps all PostgreSQL application/data-protection/co-located authority ownership.
-   - SQLite/SQL Server/MySQL/MariaDB ownership moves to exactly their provider migration assembly:
-     - `Explore.Persistence.Migrations.Sqlite`
-     - `Explore.Persistence.Migrations.SqlServer`
-     - `Explore.Persistence.Migrations.MySql`
-     - `Explore.Persistence.Migrations.MariaDb`
-   - Remove these legacy projects:
-     - `Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite`
-     - `Explore.Persistence.DataProtection.Migrations.Sqlite`
-     - `Explore.Persistence.DataProtection.Migrations.SqlServer`
-     - `Explore.Persistence.DataProtection.Migrations.MySql`
-     - `Explore.Persistence.DataProtection.Migrations.MariaDb`
+This matrix is the release contract for this workstream. Expanding it requires an explicit update to the canonical intent, privacy-erasure docs, threat/recovery model, migration ownership, and real-engine test evidence.
 
-2. **Privacy erasure authority model:**
-   - Single repository strategy for co-located authority writes/replays across all providers.
-   - No DB-side function/trigger enforcement for immutable rules in co-located mode where possible; enforce in repository/application layer with provider-agnostic locking.
+## Architecture Decisions
 
-3. **Raw SQL boundary and lock strategy:**
-   - Replace only raw SQL that is now maintainability/risk-heavy and migration-blocking.
-   - Keep PG-only SQL where semantically required and isolated to clearly identified boundaries.
+### 1. Keep migration ownership separated by DbContext and provider
 
-4. **Deployment correctness:**
-   - Align Dockerfiles, csproj references, and solution manifest with the unified migration assembly model.
-   - Update operator docs for new migration ownership before any release.
+Separate generated snapshots and histories are operational boundaries, not accidental project sprawl. The plan keeps:
 
-## 5. Non-Negotiable Constraints
+- `Explore.Persistence` for PostgreSQL application, Data Protection, and current co-located PostgreSQL authority migrations;
+- `Explore.Persistence.Migrations.{Provider}` for non-PostgreSQL application migrations;
+- `Explore.Persistence.DataProtection.Migrations.{Provider}` for non-PostgreSQL Data Protection migrations; and
+- `Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite` for embedded/co-located SQLite authority migrations.
 
-- Repositories return entities, never DTOs. Mappers remain in handlers.
-- No BFF/UI authority truth; permissions remain server-side.
-- `I``Option Validation must fail closed for unsupported topology/provider combinations.
-- Zero manual edits to generated migration/snapshot code.
-- `PrimaryDatabaseProviderComposition` is the single switch for provider composition, including migration assembly and history table policy.
-- For this workstream, removing broken legacy compatibility paths is allowed and required.
+Generated migrations and snapshots remain untouched unless a source model change requires regeneration through `dotnet ef`.
 
-## 6. Architecture and Design Decisions
+### 2. Keep topology-specific authority adapters
 
-### Decision 1 — **One-provider migration assembly per non-PG provider**
-**Decision:** Consolidate application and data-protection migrations into existing provider assemblies and remove dedicated DP/erasure sqlite projects.  
-**Reason:** Reduces project count, removes duplicated project maintenance, and makes operator topology easier to reason about.  
-**Trade-off:** One-time migration re-homing and broader test/document updates.
+There will be no universal `CoLocatedPrivacyErasureAuthorityRepository`. PostgreSQL row locking, SQLite single-writer serialization, and external PostgreSQL function ACLs are materially different safety contracts. A shared interface already exists at the Application boundary: `IPrivacyErasureAuthority`.
 
-### Decision 2 — **Raise co-located support scope to all primary providers**
-**Decision:** Do not keep PostgreSQL/SQLite-only co-located support.
-**Reason:** Enterprise self-hosters need predictable behavior across providers.
-**Constraint:** Locking strategy must remain safe and transparent per provider.
+### 3. Standardize capability and diagnostics, not database semantics
 
-### Decision 3 — **Keep PostgreSQL-only authority constructs only for external database path unless actively replaced**
-**Decision:** Do not expand PostgreSQL function/trigger elimination outside the co-located path without explicit migration proof.
-**Reason:** Avoid unnecessary behavior drift while de-risking core external authority contracts.
+`PrimaryDatabaseProviderComposition` and `PersistenceServicesRegistration` remain closed switches. Implementation should remove wording drift and make unsupported topology/provider combinations fail before repository use. Do not add a plugin system, provider factory hierarchy, or new dependency.
 
-### Decision 4 — **Plan for PR splits, not one giant PR**
-**Decision:** Split by architecture boundary and rollback isolation: foundation, lock/raw SQL, composition/migrations, artifacts/docs.
+### 4. Preserve authority-first and tenant-isolation boundaries
 
-## 7. Implementation Strategy and PR Split
+This workstream does not change the privacy-erasure workflow, replay checkpoint, specialized outboxes, receipt authorization, or tenant predicates. Authority facts are instance-level recovery data accessed only through the dedicated privacy-erasure adapter; normal repositories must not bypass tenant filters.
 
-### PR A — Foundation & Contract Hardening (Recommended first)
-- Define final composition contract in tests.
-- Update all tests that currently encode legacy project layout and co-located restrictions.
+### 5. Keep provider-specific SQL when it owns provider-specific behavior
 
-### PR B — Co-located Authority + Invariant Unification
-- Implement one co-located repository strategy and invariant enforcement.
-- Remove old repository topology classes that are no longer valid.
+Raw SQL is not a defect by itself. Keep parameterized, bounded SQL where it implements PostgreSQL locks/functions, SQLite conflict semantics, provider DDL, or migration invariants. Replace SQL only when a concrete correctness or portability failure is proven and a provider-neutral EF operation preserves identical transaction semantics.
 
-### PR C — Persistence Standardization
-- Replace non-PG lock/raw SQL hotspots with provider-neutral mechanisms.
-- Keep isolated PG-only SQL boundaries where justified.
+### 6. Enforce external-authority physical exclusivity at every composition boundary
 
-### PR D — Migration Ownership + Deployment Surface
-- Remove deprecated migration projects and references.
-- Update runtime host packaging and docs.
-- Regenerate migrations where assembly ownership has changed.
+**Decision:** `PrivacyErasureAuthorityDatabaseConfiguration.EnsureDistinctPhysicalDatabase` is the single preflight for `ExternalDatabase` topology. It compares structured PostgreSQL host identity (including loopback normalization), port, and database identity and raises a bounded, secret-safe `OptionsValidationException` for a same-target configuration.
 
-## 8. Implementation Phases
+**Why:** The first bounded architecture review returned **ARCHITECTURE FAIL** with one HIGH finding: `MigrationService` and the external migrator could target the same physical PostgreSQL database because only runtime DI enforced distinct targets. The runtime test did not cover `MigrationService`/migrator pre-I/O behavior.
 
-### Phase 1 — Contract Baseline & Compatibility Breakpoint
-- Goal: Reconcile all assumptions before code deletion.
-- Files:
-  - `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs`
-  - `tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs`
-  - `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs`
-  - `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs`
-  - `dev/active/multi-database-persistence-unification-plan.md`
-  - `dev/active/multi-database-persistence-unification-context.md`
-  - `dev/active/multi-database-persistence-unification-tasks.md`
-- Acceptance:
-  - Composition tests explicitly encode the target ownership contract for all providers.
-  - No legacy exception path assumptions remain in tests that are now being removed.
+**Consequences:** Runtime persistence, `Event.MigrationService` `Program` composition, and `ExploreDatabaseMigrator` invoke the shared guard. The migrator guard executes before Application, ProviderAdjustments, DataProtection, authority, Seed, or migration-completion log I/O. No generated migration edit, fallback, compatibility shim, dual write, or duplicate sink is introduced.
 
-### Phase 2 — Co-Located Authority Unification + Invariant Enforcement
-- Goal: unify co-located erasure behavior and remove lock-in while preserving tenant/session safety.
-- Files:
-  - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/CoLocatedPostgresPrivacyErasureAuthorityRepository.cs` (delete)
-  - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EmbeddedPrivacyErasureAuthorityRepository.cs` (retain for `EmbeddedSqlite`, rewire only if design changes)
-  - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/CoLocatedPrivacyErasureAuthorityRepository.cs` (new)
-  - `src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityDbContext.cs` (if migration assembly target changes)
-  - `src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityDbContextFactory.cs`
-  - `src/Explore.Persistence/PersistenceServicesRegistration.cs`
-  - `src/Explore.Persistence/Schema/PostgresModelConstraintApplier.cs` (no-op unless still needed)
-- Acceptance:
-  - Co-located mode works for all supported providers.
-  - Invariant checks are enforced in persistence/application boundary, not PostgreSQL-only stored logic.
+**Files/layers affected:** `src/Explore.Secrets/Database/PrivacyErasureAuthorityDatabaseConfiguration.cs`; runtime persistence composition; `src/Event.MigrationService/Program.cs`; `src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs`; focused configuration, composition, and migrator tests.
 
-### Phase 3 — Provider-Scoped Locking and Raw SQL Escape
-- Goal: remove high-risk raw SQL usage in repositories where provider-neutral alternatives exist.
-- Files:
-  - `src/Explore.Persistence/Database/RelationalNamedLock.cs` (use/extend if required)
-  - `src/Explore.Persistence/Repositories/EventAgendaItemRepository.cs`
-  - `src/Explore.Persistence/Repositories/RegistrationInventoryRepository.cs`
-  - `src/Explore.Persistence/Repositories/RegistrationFinalizationRepository.cs`
-  - `src/Explore.Persistence/Repositories/IncomingWebhookEffectOutboxRepository.cs`
-  - `src/Explore.Persistence/Repositories/IncomingWebhookMessageRepository.cs`
-  - `src/Explore.Persistence/Repositories/RegistrationProviderSubscriptionStateRepository.cs`
-  - `src/Explore.Persistence/Repositories/RegistrationProviderSubmissionWriteEffectRepository.cs`
-  - `src/Explore.Persistence/Repositories/PdsSyncOutboxRepository.cs`
-  - `src/Explore.Persistence/Repositories/WebhookLocalTargetRepository.cs`
-  - `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`
-  - `src/Explore.Persistence/Repositories/NotificationFanoutOccurrenceRepository.cs`
-- Acceptance:
-  - Zero `pg_advisory_xact_lock`-style raw lock strings.
-  - `ExecuteUpdateAsync/ExecuteDeleteAsync` used where write-set updates are simple and provider-agnostic.
-  - Raw SQL that remains is intentionally PG-only and documented.
+## Scope
 
-### Phase 4 — Composition Wiring + Migration Ownership Rehome
-- Goal: route all migration ownership to target assemblies and remove obsolete assemblies.
-- Files:
-  - `src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs`
-  - `src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs`
-  - `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs`
-  - `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs`
-  - `tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs`
-  - `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs`
-  - `src/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj` (or host references)
-  - `Explore.slnx`
-  - `src/Event.MigrationService/Event.MigrationService.csproj`
-  - `src/Event.Standalone/Event.Standalone.csproj`
-  - `src/Event.Standalone/Dockerfile`
-  - `src/Event.MigrationService/Dockerfile`
-- Acceptance:
-  - Non-PG provider migrations map to exactly one provider assembly.
-  - No references remain to removed migration projects.
-  - Migrate command path and migration history names are explicit and consistent.
+### In scope
 
-### Phase 5 — Migration Regeneration, Runbook, and Final Verification
-- Goal: produce final migration state and close operator docs.
-- Files:
-  - `src/Explore.Persistence.Migrations.Sqlite/*`
-  - `src/Explore.Persistence.Migrations.SqlServer/*`
-  - `src/Explore.Persistence.Migrations.MySql/*`
-  - `src/Explore.Persistence.Migrations.MariaDb/*`
-  - `docs/OPERATIONS.md`
-  - `docs/CONFIGURATION.md`
-  - `docs/SELF_HOSTING.md`
-- Acceptance:
-  - Legacy migration assemblies are deleted.
-  - Required migrations are regenerated in correct owning assemblies.
-  - Docs reflect exact config + recovery behavior before release.
+- exact provider/topology support assertions;
+- secret-safe, actionable fail-fast composition errors;
+- exact migration assembly/history ownership assertions;
+- MigrationService selection of application, Data Protection, and one authority sink;
+- operator documentation for topology choice, migration ownership, backup/restore, and unsupported combinations;
+- CI/documentation alignment with the existing five-provider primary matrix.
 
-## 9. Verification Strategy
+### Out of scope
 
-### Phase 1
-- `dotnet build --configuration Release --verbosity quiet`
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- five-provider co-located privacy authority;
+- migration-project deletion or assembly merging;
+- blanket raw-SQL removal;
+- a generic provider plugin/factory layer;
+- privacy workflow, API, HAL, BFF, receipt, outbox, or authorization redesign;
+- generated migration edits without a model change;
+- Quartz DDL/runtime validation.
 
-### Phase 2
-- `dotnet build --configuration Release --verbosity quiet`
-- `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+## Implementation Phases
 
-### Phase 3
-- `dotnet build --configuration Release --verbosity quiet`
-- `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --filter FullyQualifiedName~Repository --configuration Release --verbosity quiet`
+## Phase 1 — Capability Contract and Fail-Closed Composition
 
-### Phase 4
-- `dotnet build --configuration Release --verbosity quiet`
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+**Goal:** Make source, DI composition, and focused tests state the same supported matrix.
 
-### Phase 5
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --filter "FullyQualifiedName~PrimaryDatabaseProviderCompositionTests|FullyQualifiedName~Migration|FullyQualifiedName~PrivacyErasure" --configuration Release --verbosity quiet`
+### Task 1.1 — Lock the provider/topology matrix in tests
 
-## 10. Documentation, Configuration, and Operations Impact
+- **Files:**
+  - `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs` (existing)
+  - `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs` (existing)
+- **Work:**
+  - Assert all five primary application/Data Protection providers.
+  - Assert `CoLocated` succeeds only for PostgreSQL and SQLite.
+  - Assert SQL Server, MariaDB, and MySQL `CoLocated` settings fail before adapter resolution.
+  - Assert exactly one authority adapter is registered for every supported topology.
+- **Acceptance:** Tests encode the target matrix and verify that failure text contains no credentials or connection details.
+- **Effort:** M
+- **Dependencies:** None
 
-- Update migration ownership matrix in `docs/OPERATIONS.md` and `docs/SELF_HOSTING.md`.
-- Update provider override matrix in `docs/CONFIGURATION.md` (co-located topology support scope and migration behavior).
-- Add migration rollback/preflight guidance for removing legacy assemblies:
-  - verify no un-applied migration contract mismatch before upgrade;
-  - enforce `dotnet ef migrations remove` only on unapplied development migrations;
-  - run `event-migrationservice` twice post-upgrade before API cutover.
+### Task 1.2 — Normalize composition validation and diagnostics
 
-## 11. Security, Authorization, and Multi-Tenancy
+- **Files:**
+  - `src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs` (existing)
+  - `src/Explore.Persistence/PersistenceServicesRegistration.cs` (existing)
+  - `src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityDbContextFactory.cs` (existing, only if needed to remove message drift)
+- **Work:**
+  - Keep the existing closed switches and provider-specific adapters.
+  - Reject unsupported combinations during composition with the topology, supported providers, and operator remediation.
+  - Do not expose structured database values, credentials, or generated connection strings.
+- **Acceptance:** Every unsupported combination fails deterministically before authority I/O; supported topology registrations remain singular and unchanged.
+- **Effort:** S
+- **Dependencies:** 1.1
 
-- Keep authority topologies server-side validated and fail-closed.
-- Preserve tenant filtering in all read/write repository paths.
-- Keep HAL affordance model untouched (no client-side permission checks).
-- Ensure topology extension does not alter tenant trust boundaries (single-tenant/co-located/shared DB semantics remain explicit).
+### Task 1.3 — Pin migration ownership and history boundaries
 
-## 12. Migration and Compatibility Plan
+- **Files:**
+  - `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs` (existing)
+  - `tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs` (existing)
+  - `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityModelTests.cs` (existing)
+- **Work:**
+  - Preserve exact application/Data Protection owners and distinct history tables.
+  - Add the embedded SQLite authority migration owner/history to the contract.
+  - Confirm no test expects one assembly per database engine.
+- **Acceptance:** An accidental project merge, history collision, or authority migration reroute fails a deterministic test.
+- **Effort:** S
+- **Dependencies:** 1.1
 
-- Breaking changes are acceptable (pre-v1 rule), but not silent.
-- Compatibility artifacts to delete:
-  - `Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite`
-  - `Explore.Persistence.DataProtection.Migrations.SqlServer`
-  - `Explore.Persistence.DataProtection.Migrations.MySql`
-  - `Explore.Persistence.DataProtection.Migrations.Sqlite`
-  - `Explore.Persistence.DataProtection.Migrations.MariaDb`
-- Before implementation:
-  - Archive and communicate old migration assembly expectations in docs and release note.
-- During migration:
-  - Run migration ownership tests and integration migration composition checks.
+### Phase 1 Verification — run once after all Phase 1 tasks
 
-## 13. Risk Register
+1. `dotnet build --configuration Release --verbosity quiet`
+2. `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/PrimaryDatabaseProviderCompositionTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Existing tests encode outdated contracts and block clean rollout | High | High | Rewrite tests in Phase 1 before behavior changes |
-| Cross-provider co-located semantics differ due locking/transaction semantics | Medium | High | Add integration smoke assertions for each provider and use lock abstractions |
-| Migration history fragmentation after assembly merge | Medium | High | Keep history table names deterministic and verify with tests |
-| Raw SQL replacement causes translation regressions | Medium | Medium | Restrict replacements to audited repos and verify with provider-specific integration tests |
-| Package/docs drift after deleting projects | Medium | Medium | Final doc verification phase with explicit doc checklist |
+## Phase 2 — Migrator, CI, and Operator Contract
 
-## 14. Success Metrics
+**Goal:** Make deployment and recovery behavior match the source-level capability contract.
 
-1. `dotnet build --configuration Release --verbosity quiet` passes at phase end.
-2. Primary provider composition tests assert correct assembly ownership for all providers and targets.
-3. Co-located authority works for all supported providers with identical payload semantics.
-4. Deleted migration assemblies are not referenced from csproj, solution, Dockerfiles, or tests.
-5. Operator docs include migration and recovery instructions for all provider profiles.
+### Task 2.1 — Prove one migration path per selected topology
 
-## 15. Implementation-Agent Contract — KEEP DEV DOCS CURRENT
+- **Files:**
+  - `src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs` (existing)
+  - `src/Event.MigrationService/Worker.cs` (existing, verified unchanged delegation boundary)
+  - `tests/Event.Persistence.IntegrationTests/Migrations/ExploreDatabaseMigratorTests.cs` (existing)
+  - `tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj` (existing; references the existing SQLite Data Protection migration project for executable tests)
+- **Work:**
+  - Emit structured completion events from the real migrator only after application, provider-adjustment, Data Protection, selected authority, and seed stages succeed.
+  - Execute production-faithful EF scenarios for embedded SQLite, co-located SQLite, co-located PostgreSQL, and external PostgreSQL.
+  - Assert exact ordered operations plus physical migration histories and destination exclusivity so skipped, duplicate, reordered, and cross-topology authority writes fail the suite.
+  - Preserve the API/runtime rule that deployed schema migration belongs to MigrationService.
+- **Acceptance:** Tests prove no skipped authority migration, duplicate sink, cross-topology write, or provider fallback.
+- **Effort:** M
+- **Dependencies:** Phase 1
 
-1. `tasks.md` is the hot execution ledger and must update after substantial completion.
-2. Every phase boundary must include one build and one targeted test command exactly.
-3. Any contract-changing evidence in architecture/integration tests must be updated before code touches in the next phase.
-4. If composition assertions change, update context and plan before implementation handoff.
+**Completion evidence (2026-08-20):** Independent verification passed all 16 aggregate verifier tests. The migrator order is `Application` -> `ProviderAdjustments` -> `DataProtection` -> exactly one topology-selected authority -> `Seed`; physical histories prove authority-destination exclusivity. The embedded-authority-migration deletion mutation failed, and the duplicate authority-completion mutation failed 5-vs-6. `Worker` remained unchanged, and verifier cleanup completed.
 
-## 16. Progress Reporting Contract
+### Task 2.2 — Synchronize self-hosting and recovery documentation
 
-After each phase:
-- Completed: what was changed
-- Verified: exact command output and test names
-- Remaining: blocked and open risks
-- Next: immediate follow-up slice
-- Docs updated: list of docs touched and why
+- **Files:**
+  - `docs/PRIVACY_ERASURE.md` (existing, changed)
+  - `docs/CONFIGURATION.md` (existing, changed)
+  - `docs/SELF_HOSTING.md` (existing, changed)
+  - `docs/TROUBLESHOOTING.md` (existing, changed)
+- **Work:**
+  - Published the exact support matrix, topology-selection guidance, migration owners, backup/restore boundaries, `restoreReplayProtection`, and fail-closed recovery behavior in the four bounded operator documents.
+  - Stated that pre-v1 unsupported combinations require configuration correction, not a compatibility shim.
+- **Acceptance:** Passed. Scoped documentation diff check exited 0. `docs/BACKUP_RESTORE_UPGRADE.md` required no edit because its existing backup-unit and restore guarantees already matched the contract.
+- **Effort:** M
+- **Dependencies:** 2.1
 
-## 17. Potential Risks & Unknowns
+### Task 2.3 — Align CI and test documentation with the contract
 
-- Whether embedded authority schema evolution should remain in sqlite-specific migration assembly or move to provider assembly first requires one explicit design decision before PR D.
-- Whether co-located authority should reuse identical table naming conventions across providers (including schema/prefix behavior for SQLite and MySQL-family) must be captured in one migration design note before migrations are regenerated.
+- **Files:**
+  - `.github/workflows/_build-test.yml` (existing; change only if current assertions are insufficient)
+  - `docs/TESTING.md` (existing)
+  - `dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md` (existing)
+  - `dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md` (existing)
+  - `dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md` (existing)
+- **Work:**
+  - Confirmed the five-provider primary matrix and twice-run MigrationService evidence remain aligned.
+  - Confirmed authority coverage is embedded SQLite, co-located PostgreSQL/SQLite, and external PostgreSQL, not five-provider co-location.
+  - Recorded exact green evidence; it did not close the workstream at that point. Final architecture approval and quality-failure test hardening are now complete; only final independent quality approval and final audit remain pending.
+- **Acceptance:** Passed. `.github/workflows/_build-test.yml` and `docs/TESTING.md` required no edit; they make no broader provider claim than the implementation.
+- **Effort:** S
+- **Dependencies:** 2.2
+
+### Phase 2 Verification — PASSED ONCE AFTER ALL PHASE 2 TASKS
+
+1. `dotnet build --configuration Release --verbosity quiet` — exited 0 with 0 errors and 14,154 existing warnings, including `NU1903` for `SSH.NET` 2025.1.0.
+2. Focused isolated suites exited 0 with 0 failed and 0 skipped: `ProviderMigrationOwnershipTests` 13; `PrimaryDatabaseMigrationCompositionTests` 5; `PrimaryDatabaseProviderCompositionTests` 37; unsupported `CoLocated` providers 3; singular adapter 1; authority model 9; migrator topology 2; real PostgreSQL migrator 3.
+
+The existing real-engine provider matrix remains a merge/release gate in CI. This plan does not ask implementation agents to start Docker, Aspire, the application, browsers, or live services as phase-end verification.
+
+### Post-Review Architecture Remediation — COMPLETE (2026-08-20)
+
+The initial bounded architecture review returned **ARCHITECTURE FAIL** with one HIGH finding: runtime DI alone kept `ExternalDatabase` authority distinct, so `MigrationService` and the external migrator could still target the same physical PostgreSQL database. The missing coverage was migrator pre-I/O behavior.
+
+TDD red evidence: `MigrateAndSeedAsync_ExternalAuthoritySameTarget_FailsBeforeMigrationIo` ran alone in a disposable detached worktree: 1 executed, 1 failed, exit 2, because no `OptionsValidationException` was thrown.
+
+The completed remediation centralizes PostgreSQL host/loopback/port/database identity and bounded secret-safe failure in `PrivacyErasureAuthorityDatabaseConfiguration.EnsureDistinctPhysicalDatabase`. Runtime persistence, `Event.MigrationService` `Program` composition, and `ExploreDatabaseMigrator` invoke it. The migrator preflight runs before Application, ProviderAdjustments, DataProtection, authority, Seed, or migration-completion log I/O. There were no generated migration edits, fallback, shim, or dual write.
+
+Green remediation verification: `dotnet build --configuration Release --verbosity quiet` exited 0 with 0 errors and 14,154 warnings after removing the change-caused `CS8604` without suppression. Relevant selectors passed 77/77 with 0 failed/skipped: same-target 1; `ExploreDatabaseMigratorTests` 4; topology 2; composition validation 11; authority database configuration 4; provider ownership 13; primary migration composition 5; primary provider composition 37. Same-target histories and log operations remained empty; supported topology five-stage behavior and physical exclusivity remained exact.
+
+Final recheck: the full Release build again exited 0 with 0 errors and 14,154 warnings; the single regression passed 1/1 with 0 failed/skipped; scoped diff check exited 0; containers, worktrees, and artifacts were cleaned.
+
+### Final Architecture Approval and Quality-Failure Remediation — COMPLETE (2026-08-20)
+
+The fresh final architecture review **passed**: the prior HIGH same-target finding is resolved. Residual DNS/CNAME alias behavior and the disclosed legacy SQLite migration-catalog and `SSH.NET` advisory risks remain non-blocking and unchanged.
+
+The first replacement quality review returned **QUALITY FAIL** with two MEDIUM test-contract findings in `ExploreDatabaseMigratorTests.cs`: nullable suppression through `exception!`, and incomplete diagnostic-secrecy coverage (no length bound and no exclusions for host, database, username, or the complete connection string). The test-only fix converts a null exception and every structured target value explicitly into setup failures; uses an explicitly typed `string[]` (avoiding CS9176) to assert a diagnostic length of at most 512, the required remediation fragment, and exclusions for host, database, username, password, and the complete connection string. It retains the empty operation log and all three physical histories, and contains no suppression.
+
+Verification record: the initial one-shot caught CS9176 and was then fixed. One verifier selected zero tests and another accidentally included unrelated payment hunks; both are discarded as verifier-construction failures, not green evidence. The trusted verifier used the established exact 12-path reconstruction and passed without retry: full Release build exit 0, 0 errors, exactly 14,154 accepted warnings, and no assertion-hardening diagnostic; the proven `ExploreDatabaseMigratorTests` class selector ran 4 passed, 0 failed, 0 skipped, including the same-target regression; scoped diff check exited 0. Worktree, metadata, containers, reports, logs, patches, and temporary artifacts were cleaned; the shared worktree was untouched.
+
+The decisive final independent quality review returned **QUALITY PASS** with no findings. It confirmed the corrected null contracts, bounded and complete secret-safety assertions, physical pre-I/O evidence, trusted 12-path verification, clean scope, cleanup, and unchanged architecture/documentation conclusions. The final audit reconciled every requested implementation, documentation, verification, evidence, review, exclusion, and delivery-mode requirement.
+
+### Current Resume Point
+
+1. The workstream is complete. Reopen it only if contradictory production or migration evidence appears.
+2. Preserve the isolated implementation inventory: `src/Event.MigrationService/Program.cs`; `src/Explore.Secrets/Database/PrivacyErasureAuthorityDatabaseConfiguration.cs`; `src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs`; `src/Explore.Persistence/PersistenceServicesRegistration.cs`; `src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs`; `tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs`; `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs`; `tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj`; `tests/Event.Persistence.IntegrationTests/Migrations/ExploreDatabaseMigratorTests.cs`; `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs`; `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityModelTests.cs`; and `tests/Event.Persistence.IntegrationTests/packages.lock.json` only for its SQLite Data Protection project entry.
+3. Retain exclusions: no generated migration/designer/snapshot edits; no fallback, shim, dual write, duplicate sink, or API ownership drift; no operator documentation, CI, testing, or backup edit was required because their distinct-external-target and fail-before-I/O contract is now correctly implemented; containers, worktrees, and artifacts were cleaned.
+
+## Security, Privacy, and Multi-Tenancy
+
+- **Authentication/authorization:** No HTTP contract changes. Existing receipt authorization and server-side policy remain authoritative.
+- **HAL/BFF:** Not applicable; no client affordance or token flow changes.
+- **Tenant isolation:** No normal repository may disable the Tenant filter. Instance-level authority access remains confined to the dedicated privacy-erasure adapter with exact subject predicates.
+- **Secrets:** Configuration failures must use bounded field/provider names only. Never log credentials, DSNs, identifiers, provider payloads, or exception text containing them.
+- **Data lifecycle:** `EmbeddedSqlite` and independently restored external PostgreSQL can protect against stale primary restores; `CoLocated` cannot make that claim.
+- **Outbox:** Existing transactional and specialized outbox behavior remains unchanged. Provider work stays post-commit, idempotent, fenced, retryable, and observable without PII.
+
+## Documentation and Operational Impact
+
+| Artifact | Required outcome |
+|---|---|
+| `docs/PRIVACY_ERASURE.md` | canonical topology/provider matrix (changed) |
+| `docs/CONFIGURATION.md` | exact accepted values and fail-fast combinations (changed) |
+| `docs/SELF_HOSTING.md` | topology selection and deployment implications (changed) |
+| `docs/BACKUP_RESTORE_UPGRADE.md` | no edit required; existing backup unit and restore guarantees remain correct |
+| `docs/TROUBLESHOOTING.md` | secret-safe diagnosis and remediation (changed) |
+| `docs/TESTING.md` | no edit required; existing provider and authority evidence lanes remain exact |
+| `.github/workflows/_build-test.yml` | no edit required; existing five-provider/twice-run evidence remains aligned |
+| Operator docs, CI, testing, and backup material after remediation | no edit required; their existing distinct-external-target and fail-before-I/O contract is now correctly implemented |
+| Release notes/checklist | required only if implementation changes a shipped configuration or migration contract |
+
+## Risk Register
+
+| Severity | Risk | Mitigation / owner |
+|---|---|---|
+| Critical | A generic authority repository weakens PostgreSQL/SQLite concurrency or restore semantics | Prohibited by this plan; retain topology-specific adapters |
+| Critical | Migration assembly/history consolidation makes existing databases unrecoverable or ambiguous | Preserve current owners and histories; no generated migration edits |
+| Medium | Future planning could reintroduce unsupported co-located providers | The optional-retained-authority workstream now cancels OREA-1010–1018 and pins the same PostgreSQL/SQLite matrix |
+| High | Runtime, MigrationService, CI, and docs advertise different matrices | Tasks 1.1–2.3 pin one contract |
+| High | Release build reports a known high-severity `SSH.NET` package advisory | Route to dependency/security ownership; no dependency change is authorized here |
+| Medium | Blanket raw-SQL removal changes transaction or lock behavior | Defer; require a concrete failing provider scenario before replacement |
+| Medium | Build warning volume hides actionable warnings | Track as repository quality debt outside this workstream |
+| High | The legacy SQLite application migration catalog cannot replay from an empty database because an older generated migration recreates `ie_account_authority_kinds` | Do not hand-edit generated artifacts; the Task 2.1 SQLite fixture establishes the current model and canonical history, while PostgreSQL supplies fresh replay evidence. Route catalog regeneration through separately approved migration work. |
+| High | Concurrent unrelated dirty changes make shared-worktree build results unreliable | Verify workstream diffs in disposable detached worktrees and never revert or absorb unrelated payment, event-lifecycle, or generated-migration changes. |
+
+## Deferred and Split Work
+
+- **Five-provider co-located authority:** Not planned. The optional-retained-authority workstream cancels OREA-1010–1018; reconsider only through a new explicit product decision and canonical intent/recovery/security update.
+- **Migration-project consolidation:** Rejected for this workstream. Reconsider only with measured build/packaging cost and a deployed-database migration-history plan.
+- **Raw-SQL cleanup:** Split into repository-specific fixes driven by a failing provider test.
+- **Quartz DDL validation:** Preserve as a separate scheduling/runtime concern involving `QuartzMultiDatabaseSchemaTests.cs`, `QuartzSchema.{SqlServer,MySql}.sql`, and `QuartzSchemaInitializer.cs`; it does not belong to persistence migration ownership.
+
+## Definition of Done
+
+1. **Passed:** Source and tests enforce the target support matrix.
+2. **Passed:** Unsupported topology/provider combinations fail before I/O with secret-safe remediation.
+3. **Passed:** Existing application, Data Protection, and authority migration owners and histories remain explicit and collision-free.
+4. **Passed:** MigrationService selects exactly the required contexts for the configured topology.
+5. **Passed:** Scoped operator docs describe truthful backup/restore guarantees and do not imply universal co-located support.
+6. **Passed:** Each phase ended with its single Release build and selected focused test.
+7. **Passed:** No migration/designer/snapshot was edited, no fallback/shim/dual write/duplicate sink/API ownership drift was introduced, no new dependency was added, and no unrelated repository SQL was refactored.
+8. **Passed:** Post-review remediation rejects same-target external PostgreSQL authority before migrator I/O and completion logging; final architecture review passed with the prior HIGH finding resolved. DNS/CNAME alias behavior and disclosed legacy SQLite/`SSH.NET` risks remain non-blocking.
+9. **Passed:** The replacement quality FAIL's two MEDIUM test-contract findings were corrected in `ExploreDatabaseMigratorTests.cs` without suppression; the trusted exact-12-path verifier passed the full Release build and all 4 class-selected tests without retry.
+10. **Passed:** Final independent quality review returned `QUALITY PASS` with no findings, and the final audit reconciled the complete request, all evidence, exclusions, direct-delivery mode, and the terminal workstream artifacts.
+
+## Implementation-Agent Contract
+
+1. Start with Task 1.1 and use failing contract assertions before changing composition behavior.
+2. Keep `tasks.md` as the hot ledger; update context after a phase, blocker, material discovery, or handoff.
+3. Update this plan only when scope, architecture, sequencing, acceptance, risk, or verification changes.
+4. Run phase verification once after all phase tasks, not after every edit.
+5. If implementation requires SQL Server/MariaDB/MySQL co-located authority, stop: that is a product-contract expansion outside this plan.

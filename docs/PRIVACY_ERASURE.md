@@ -55,12 +55,42 @@ The platform workflow code is **100% identical** regardless of deployment choice
 | Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode |
 |---|---|---|---|
 | **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance |
+| **Supported Primary DBs** | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | **PostgreSQL or SQLite only** | **All 5 providers** (Authority DB itself is separate PostgreSQL) |
 | **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles |
 | **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle |
 | **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction |
 | **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB |
 | **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs |
+| **Operator Backup Units** | Primary database backup **plus** the dedicated authority-file backup | One primary database backup containing authority rows | Primary database backup **plus** an independently managed external PostgreSQL authority backup |
 | **Target Use Case** | Local development, CI, and single-replica self-hosting | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage |
+
+### Primary Database vs. Privacy Authority Compatibility Matrix
+
+The primary application persistence (users, events, registrations, ASP.NET Data Protection keys) fully supports all five database engines. The Privacy Erasure Authority topology compatibility is as follows:
+
+| Primary Database Provider | `EmbeddedSqlite` (Default) | `CoLocated` | `ExternalDatabase` |
+|---|:---:|:---:|:---:|
+| **PostgreSQL** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
+| **SQLite** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
+| **SQL Server** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+| **MariaDB** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+| **MySQL** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+
+#### Why does `CoLocated` only support PostgreSQL and SQLite?
+The Privacy Erasure Authority is not a generic CRUD table; it requires strict engine-level concurrency and writer serialization guarantees:
+- **PostgreSQL**: Implements engine-native row-level locking (`SELECT ... FOR UPDATE`), atomic monotonic sequence generators, and isolated schema migration histories (`CoLocatedPostgresPrivacyErasureAuthorityRepository`) to ensure the erasure fact commits before the application transaction.
+- **SQLite**: Leverages SQLite's native single-writer, private cache, and WAL lock guarantees on the shared local database file (`EmbeddedPrivacyErasureAuthorityRepository`).
+- **SQL Server, MariaDB, and MySQL**: Engine-native authority repositories with verified locking semantics, sequence generators, and atomic fences have not been implemented. Rather than allowing unverified concurrency abstractions that could risk race conditions during GDPR erasures, the platform **fails closed**. Operators using SQL Server, MariaDB, or MySQL should use `EmbeddedSqlite` (the default) or `ExternalDatabase`.
+
+#### Why does `ExternalDatabase` require a separate PostgreSQL database?
+`ExternalDatabase` is the high-compliance, multi-replica/HA deployment mode. It is architected around PostgreSQL-specific security controls:
+1. **Zero-Table-Access Runtime Role**: The runtime application role has no direct table permissions (no `SELECT`, `INSERT`, `UPDATE`, or `DELETE` on raw ledger tables).
+2. **`SECURITY DEFINER` Stored Functions**: All reads and appends execute through hardened PostgreSQL functions (`AppendFunctionSql`) with strict parameter validation and fixed ACLs.
+3. **Role Separation**: Migration DDL runs under a dedicated `migrator` role, while runtime traffic uses the restricted `runtime` role.
+4. Standardizing the external compliance server on PostgreSQL provides an enterprise-hardened, audit-ready compliance sink without maintaining parallel function-level security definitions for other engines.
+
+#### Fail-Closed and Secret-Safe Startup Guarantee
+If an unsupported combination is configured (e.g. `Database:Provider=SqlServer` with `PrivacyErasure:Authority:Topology=CoLocated`), the application **fails closed immediately in-memory during Dependency Injection composition** before opening any sockets or performing adapter/database I/O. The resulting error message clearly indicates the configuration problem and bounded remediation options, and **never exposes passwords, connection strings, host credentials, or usernames in exception traces or logs**. Unsupported or removed authority contracts have no fallback, translation, dual write, or compatibility shim.
 
 ---
 
@@ -101,51 +131,64 @@ single-database operating simplicity is preferred.
 
 Use this decision matrix to select the right topology for your environment:
 
-- **EmbeddedSqlite** when local one-writer, file-backed isolation is acceptable.
-- **CoLocated** when you want single-database operation and do not require independent authority backup-restore.
-- **ExternalDatabase** when you need isolated compliance storage and independent authority recovery.
+- **EmbeddedSqlite** when local one-writer, file-backed isolation is acceptable (works with all 5 primary databases).
+- **CoLocated** when you want single-database operation with PostgreSQL or SQLite and do not require independent authority backup-restore.
+- **ExternalDatabase** when you need isolated compliance storage and independent authority recovery on a dedicated PostgreSQL instance.
 
 ### Guidance Summary
 
 - **Choose `EmbeddedSqlite` if**:
   - You are running local development, automated CI test suites, or single-container self-hosting (`docker-compose.yml`).
   - You run exactly one writer/API replica and can provide local durable storage.
+  - You use any primary database (PostgreSQL, SQLite, SQL Server, MySQL, MariaDB).
   - You can back up and restore the authority file independently from the primary database.
 
 - **Choose `ExternalDatabase` if**:
-  - You operate enterprise multi-tenant or production SaaS environments.
+  - You operate enterprise multi-tenant or production SaaS environments with multiple API replicas.
   - You maintain independent backup/restore schedules for primary vs compliance databases.
   - You require absolute guarantees that restoring an application database backup from 30 days ago will automatically re-erase all accounts deleted during those 30 days upon service startup.
+
 - **Choose `CoLocated` if**:
+  - You are using **PostgreSQL** or **SQLite** as your primary database.
   - You want a single primary database with fewer components.
   - Your topology or platform operations already treat app and authority recovery together.
   - You do not require independently operated compliance database recovery.
 
 ---
 
-## 5. Configuration Reference
+## 5. Migration Ownership and History Separation
 
-Set the following environment variables in `.env`:
+For deployed installations, `Event.MigrationService` owns application, Data
+Protection, and **exactly one** authority migration path selected by the
+topology. Provider-native application and Data Protection migration assemblies
+and their distinct history tables remain separate; they are not combined with
+each other or with the selected authority path. The documented standalone
+image is the in-process exception: it applies those same three migration
+responsibilities before binding HTTP.
+
+## 6. Configuration Reference
+
+Set the following environment variables in `.env` (or in Infisical under `/database/erasure`):
 
 ```dotenv
 # Topology Selection: EmbeddedSqlite (default) | CoLocated | ExternalDatabase
-PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=EmbeddedSqlite
+ERASURE_TOPOLOGY=EmbeddedSqlite
 
-PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db
-PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT=1
-PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS=30
+ERASURE_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db
+ERASURE_WRITER_REPLICA_COUNT=1
+ERASURE_BUSY_TIMEOUT_SECONDS=30
 
 # CoLocated reuses primary application credentials. External-only values are required
-# ONLY when PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase.
-PRIVACY_ERASURE_AUTHORITY_HOST=privacy-erasure-db
-PRIVACY_ERASURE_AUTHORITY_PORT=5432
-PRIVACY_ERASURE_AUTHORITY_DATABASE=privacy_erasure
-PRIVACY_ERASURE_AUTHORITY_TLS_MODE=Required
-PRIVACY_ERASURE_AUTHORITY_TRUST_SERVER_CERTIFICATE=false
-PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME=erasure_app
-PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD=...
-PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME=erasure_admin
-PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD=...
+# ONLY when ERASURE_TOPOLOGY=ExternalDatabase.
+DATABASE_ERASURE_HOST=privacy-erasure-db
+DATABASE_ERASURE_PORT=5432
+DATABASE_ERASURE_NAME=privacy_erasure
+DATABASE_ERASURE_TLS_MODE=Required
+DATABASE_ERASURE_TRUST_SERVER_CERTIFICATE=false
+DATABASE_ERASURE_RUNTIME_USERNAME=erasure_app
+DATABASE_ERASURE_RUNTIME_PASSWORD=...
+DATABASE_ERASURE_MIGRATOR_USERNAME=erasure_admin
+DATABASE_ERASURE_MIGRATOR_PASSWORD=...
 ```
 
 The embedded path must be absolute and local; URI/network paths are rejected,
@@ -159,7 +202,7 @@ unsupported and block startup.
 
 ---
 
-## 6. Related Documentation
+## 7. Related Documentation
 
 - [Backup, Restore, and Upgrade Runbook](BACKUP_RESTORE_UPGRADE.md)
 - [Self-Hosting Guide](SELF_HOSTING.md)

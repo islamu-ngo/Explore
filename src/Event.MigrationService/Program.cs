@@ -40,8 +40,13 @@ public class Program
             .Configure(options => options.Topology = erasureTopology);
         if (erasureTopology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
-            var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration
-                .ResolveMigratorConnectionString(builder.Configuration);
+            PrimaryDatabaseConnectionOptions authorityDatabaseOptions =
+                PrivacyErasureAuthorityDatabaseConfiguration.BindMigrator(builder.Configuration);
+            PrivacyErasureAuthorityDatabaseConfiguration.EnsureDistinctPhysicalDatabase(
+                databaseOptions,
+                authorityDatabaseOptions);
+            PrimaryDatabaseConnectionResult authorityDatabase =
+                PrimaryDatabaseConfiguration.BuildConnectionString(authorityDatabaseOptions);
             builder.Services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
                 options.UseNpgsql(authorityDatabase.ConnectionString, npgsql => npgsql
                         .MigrationsAssembly(typeof(PrivacyErasureAuthorityDbContext).Assembly.FullName)
@@ -68,7 +73,7 @@ public class Program
             else
             {
                 throw new InvalidOperationException(
-                    "CoLocated currently supports primary PostgreSql or Sqlite databases.");
+                    PrimaryDatabaseProviderComposition.UnsupportedCoLocatedPrivacyErasureAuthorityMessage);
             }
         }
         else

@@ -278,6 +278,51 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     }
 
     [Test]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, 1433)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, 3306)]
+    [Arguments(PrimaryDatabaseProvider.MySql, 3306)]
+    public async Task CoLocatedUnsupportedPrimaryProvider_FailsClosedBeforeAuthorityAdapterRegistration(
+        PrimaryDatabaseProvider provider,
+        int port)
+    {
+        const string host = "sentinel-host.example.test";
+        const string database = "sentinel_event_database";
+        const string username = "sentinel_event_user";
+        const string password = "sentinel-password-Task11";
+        var services = new ServiceCollection();
+        var settings = PrimaryDatabaseSettings(provider, host, port, database, username, password);
+        settings["PrivacyErasure:Authority:Topology"] = "CoLocated";
+        settings["PrivacyErasureAuthorityEmbedded:Path"] =
+            Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db");
+        string connectionString = PrimaryDatabaseConfiguration.BuildConnectionString(
+                CreatePrimaryOptions(provider, host, port, database, username, password))
+            .ConnectionString;
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+        OptionsValidationException? exception = await Assert.That(() =>
+                services.ConfigurePersistenceServices(
+                    configuration,
+                    skipDbContextRegistration: true,
+                    skipLookupCacheInitializer: true))
+            .Throws<OptionsValidationException>();
+
+        await Assert.That(exception!.Message)
+            .Contains("PostgreSql or Sqlite", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Message).Contains("CoLocated", StringComparison.Ordinal);
+        await Assert.That(exception.Message).Contains("EmbeddedSqlite", StringComparison.Ordinal);
+        await Assert.That(exception.Message).Contains("ExternalDatabase", StringComparison.Ordinal);
+        await AssertSecretSafe(exception, [password, connectionString, host, database, username]);
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(CoLocatedPrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+    }
+
+    [Test]
     public async Task PersistenceComposition_RegistersExactlyOneTopologyAdapter()
     {
         ServiceCollection embedded = Compose(
@@ -289,12 +334,18 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         ServiceCollection coLocated = Compose(
             "CoLocated",
             "event");
+        ServiceCollection coLocatedSqlite = Compose(
+            "CoLocated",
+            "event",
+            PrimaryDatabaseProvider.Sqlite);
 
         await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(external.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(coLocated.Count(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
+        await Assert.That(coLocatedSqlite.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(embedded.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
@@ -305,29 +356,46 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         await Assert.That(coLocated.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
             .IsEqualTo(typeof(CoLocatedPostgresPrivacyErasureAuthorityRepository));
+        await Assert.That(coLocatedSqlite.Single(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
+            .IsEqualTo(typeof(EmbeddedPrivacyErasureAuthorityRepository));
         await Assert.That(embedded.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(coLocated.Any(descriptor =>
             descriptor.ServiceType == typeof(CoLocatedPrivacyErasureAuthorityDbContext))).IsTrue();
         await Assert.That(coLocated.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(coLocatedSqlite.Any(descriptor =>
+            descriptor.ServiceType == typeof(CoLocatedPrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(coLocatedSqlite.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
             .IsEqualTo(1);
         await Assert.That(external.Count(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsEqualTo(1);
+        await Assert.That(coLocatedSqlite.Count(descriptor =>
+            descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
+            .IsEqualTo(1);
     }
 
-    private static ServiceCollection Compose(string topology, string authorityDatabase)
+    private static ServiceCollection Compose(
+        string topology,
+        string authorityDatabase,
+        PrimaryDatabaseProvider primaryProvider = PrimaryDatabaseProvider.PostgreSql)
     {
         var services = new ServiceCollection();
-        var settings = PrimaryDatabaseSettings(new NpgsqlConnectionStringBuilder
-        {
-            Host = "localhost",
-            Database = "event",
-            Username = "application",
-            Password = "application-canary"
-        });
+        var settings = primaryProvider == PrimaryDatabaseProvider.PostgreSql
+            ? PrimaryDatabaseSettings(new NpgsqlConnectionStringBuilder
+            {
+                Host = "localhost",
+                Database = "event",
+                Username = "application",
+                Password = "application-canary"
+            })
+            : PrimaryDatabaseSettings(primaryProvider, database: Path.Combine(
+                Path.GetTempPath(),
+                $"event-primary-{Guid.CreateVersion7():N}.db"));
         settings["PrivacyErasure:Authority:Topology"] = topology;
         settings["PrivacyErasureAuthorityEmbedded:Path"] =
             Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db");
@@ -359,6 +427,49 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         ["Database:Migrator:Password"] = target.Password
     };
 
+    private static Dictionary<string, string?> PrimaryDatabaseSettings(
+        PrimaryDatabaseProvider provider,
+        string host = "localhost",
+        int? port = null,
+        string database = "event",
+        string username = "application",
+        string password = "application-canary")
+    {
+        if (provider == PrimaryDatabaseProvider.Sqlite)
+        {
+            return new Dictionary<string, string?>
+            {
+                ["Database:Provider"] = provider.ToString(),
+                ["Database:Database"] = database
+            };
+        }
+
+        var settings = new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = provider.ToString(),
+            ["Database:Host"] = host,
+            ["Database:Port"] = port?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["Database:Database"] = database,
+            ["Database:Runtime:Username"] = username,
+            ["Database:Runtime:Password"] = password,
+            ["Database:Runtime:TlsMode"] = "Required",
+            ["Database:Migrator:Username"] = username,
+            ["Database:Migrator:Password"] = password
+        };
+
+        if (provider is PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql)
+        {
+            settings["Database:Runtime:ServerFlavor"] = provider == PrimaryDatabaseProvider.MariaDb
+                ? "MariaDb"
+                : "MySql";
+            settings["Database:Runtime:ServerVersion"] = provider == PrimaryDatabaseProvider.MariaDb
+                ? "11.4"
+                : "8.4";
+        }
+
+        return settings;
+    }
+
     private static Dictionary<string, string?> AuthorityDatabaseSettings(
         string host,
         string database,
@@ -376,6 +487,50 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
         ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-canary",
     };
+
+    private static PrimaryDatabaseConnectionOptions CreatePrimaryOptions(
+        PrimaryDatabaseProvider provider,
+        string host,
+        int port,
+        string database,
+        string username,
+        string password) => new()
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = provider,
+            Host = host,
+            Port = port,
+            Database = database,
+            Username = username,
+            Password = password,
+            TlsMode = PrimaryDatabaseTlsMode.Required,
+            ServerFlavor = provider switch
+            {
+                PrimaryDatabaseProvider.MariaDb => PrimaryDatabaseServerFlavor.MariaDb,
+                PrimaryDatabaseProvider.MySql => PrimaryDatabaseServerFlavor.MySql,
+                _ => null,
+            },
+            ServerVersion = provider switch
+            {
+                PrimaryDatabaseProvider.MariaDb => new Version(11, 4),
+                PrimaryDatabaseProvider.MySql => new Version(8, 4),
+                _ => null,
+            },
+        };
+
+    private static async Task AssertSecretSafe(Exception exception, string[] secretMarkers)
+    {
+        foreach (string marker in secretMarkers.Where(value => !string.IsNullOrWhiteSpace(value)))
+        {
+            await Assert.That(exception.Message).DoesNotContain(marker, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (exception.InnerException is not null)
+        {
+            await Assert.That(exception.Message)
+                .DoesNotContain(exception.InnerException.Message, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     private static PrimaryDatabaseConnectionOptions CreatePostgresOptions(
         string connectionString,

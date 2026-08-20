@@ -38,11 +38,13 @@ Self-hosting ISLAMU Event delivers a superior alternative:
 * **Full White-Label Independence:** Customize tenant domains, logos, navigation, and governance without third-party vendor watermarks.
 
 > [!IMPORTANT]
-> **Split deployments run `Event.MigrationService` before the API.** The
-> standalone image applies the same application, Data Protection, and authority
-> migrations in-process before its HTTP listener starts. The API separately owns
-> the Quartz scheduler schema, which is idempotent DDL rather than an EF Core
-> migration and is supported on every primary provider, including SQLite.
+> **Split deployments run `Event.MigrationService` before the API.** It applies
+> application, Data Protection, and exactly one authority migration path selected
+> by the configured topology. The standalone image is the documented in-process
+> exception and applies the same responsibilities before its HTTP listener starts.
+> The API separately owns the Quartz scheduler schema, which is idempotent DDL
+> rather than an EF Core migration and is supported on every primary provider,
+> including SQLite.
 
 Everything outside `Event.Standalone` and its SQLite persistence — including
 server databases, Redis or Valkey, Keycloak, Cerbos, MinIO/S3, SMTP or Mailpit,
@@ -352,13 +354,13 @@ The following diagram describes the separate split topology:
 - **Browsers talk only to the Blazor BFF.** The BFF proxies API calls via YARP; clients should not need direct API access.
 - **The API is the API-host composition root** for Domain, Application, Persistence, and Infrastructure layers; `Event.Standalone` reuses that host module when Aspire selects the optional one-process topology.
 - **The primary datastore is selected explicitly.** PostgreSQL, SQLite, SQL
-  Server, MariaDB, and MySQL share the application model but use separate
-  generated migration sets.
+  Server, MariaDB, and MySQL support the application and Data Protection models
+  but use separate generated migration sets.
 - **Privacy-erasure authority storage is configurable.**
-  `EmbeddedSqlite` uses a dedicated local file. Standalone Compose mounts it at
-  `/app/privacy-erasure-authority/privacy_erasure_authority.db` on its own durable
-  volume; `CoLocated` stores authority tables in the primary application
-  database; `ExternalDatabase` uses a separate PostgreSQL database.
+  `EmbeddedSqlite` uses the dedicated local
+  `/app/data/privacy_erasure_authority.db` file; `CoLocated` stores authority
+  tables in the primary application database; `ExternalDatabase` uses a separate
+  PostgreSQL database.
 
 ---
 
@@ -505,14 +507,14 @@ For the Split `docker-compose.yml`, these are Compose `.env` interpolation
 inputs. The application receives the mapped native `Database__*` keys, not
 `DATABASE_*` compatibility aliases. The standalone descriptor uses the native
 key contract in [Configuration](CONFIGURATION.md#persistence-configuration)
-and calls its database-name interpolation input `DATABASE_DATABASE`.
+and calls its database-name interpolation input `DATABASE_NAME`.
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_PROVIDER` | `PostgreSql` | `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, or `MySql` |
 | `DATABASE_HOST` | `postgres` | Required for server providers; omit for SQLite |
 | `DATABASE_PORT` | provider default | Optional server port (`5432`, `1433`, or `3306`) |
-| `DATABASE_DATABASE` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
+| `DATABASE_NAME` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
 | `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server namespace; tables remain clean, for example `islamu_event.users`. SQLite, MariaDB, and MySQL always use  prefix ie_ like `ie_users` regardless of this value. No prefix override is supported. |
 | `DATABASE_TLS_MODE` | `Prefer` in local Compose | `Prefer`, `Required`, or `Disabled`; production server deployments should use `Required` |
 | `DATABASE_TRUST_SERVER_CERTIFICATE` | `false` | Certificate bypass accepted only with required TLS; development only |
@@ -532,10 +534,10 @@ The namespace rule is automatic; operators do not select a prefix:
 
 | Provider | Application boundary | Example | Recommended instance layout |
 |---|---|---|---|
-| PostgreSQL | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Different schemas may share one database; give each instance a distinct `Scheduler:Quartz:SchedulerName` so the co-located `QRTZ_` scheduler tables are not contended. |
-| SQL Server | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Assign a distinct schema to each instance sharing a database. |
-| SQLite | Durable local `DATABASE_DATABASE` file + forced `ie_` prefix | `ie_users` | One file and one application replica per instance. |
-| MariaDB / MySQL | `DATABASE_DATABASE` + forced `ie_` prefix | `ie_users` | Create a separate database per instance on the same server; the prefix is an additional collision guard. |
+| PostgreSQL | `DATABASE_NAME` + `DATABASE_SCHEMA` | `islamu_event.users` | Different schemas may share one database; give each instance a distinct `Scheduler:Quartz:SchedulerName` so the co-located `QRTZ_` scheduler tables are not contended. |
+| SQL Server | `DATABASE_NAME` + `DATABASE_SCHEMA` | `islamu_event.users` | Assign a distinct schema to each instance sharing a database. |
+| SQLite | Durable local `DATABASE_NAME` file + forced `ie_` prefix | `ie_users` | One file and one application replica per instance. |
+| MariaDB / MySQL | `DATABASE_NAME` + forced `ie_` prefix | `ie_users` | Create a separate database per instance on the same server; the prefix is an additional collision guard. |
 
 For PostgreSQL or SQL Server, changing `DATABASE_SCHEMA` changes the target
 namespace and removes the need for prefixed table names. MigrationService
@@ -809,6 +811,17 @@ For full details, see [FEDERATION.md](FEDERATION.md) and [CONFIGURATION.md](CONF
 
 ### Privacy Erasure Authority Topology
 
+The Privacy Erasure Authority orchestrates GDPR erasures and anti-resurrection replay protection. It supports three topologies:
+
+| Topology | Supported Primary Databases | Placement, operator backup units, and `restoreReplayProtection` |
+|---|---|---|
+| **`EmbeddedSqlite`** *(Default)* | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | Dedicated local file (`/app/data/privacy_erasure_authority.db`); back up it and the primary database separately. Independent restore boundary with single-writer WAL mode; `true` when the authority file is excluded from the primary restore. |
+| **`CoLocated`** | **PostgreSQL or SQLite only** | Primary application database; one primary backup includes authority rows and `restoreReplayProtection` is `false`. |
+| **`ExternalDatabase`** | **All 5 providers** (Authority DB itself is separate PostgreSQL) | Separate dedicated PostgreSQL database with function-only runtime role (`SECURITY DEFINER`) and distinct migrator role; back up it separately from the primary database, with `restoreReplayProtection` `true` when independently restored. |
+
+> [!IMPORTANT]
+> **CoLocated Provider Restrictions:** `CoLocated` authority requires provider-native row-locking or WAL writer serialization semantics implemented only for PostgreSQL and SQLite. If `CoLocated` is configured with `SqlServer`, `MariaDb`, or `MySql`, the application **fails closed during composition before opening network connections or performing adapter/database I/O**. Diagnostic errors contain bounded safe remediation instructions and **never expose database credentials, connection strings, or host details**. Unsupported or removed authority contracts have no fallback, translation, dual write, or compatibility shim.
+
 **Standalone image behavior:** `EmbeddedSqlite` stores the authority ledger at
 `/app/data/privacy_erasure_authority.db` beside the primary file in the single
 `event_standalone_data` volume. Restrict filesystem access to the application
@@ -823,15 +836,13 @@ PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
 docker compose --profile privacy-erasure-external up -d
 ```
 
-This starts a separate authority PostgreSQL. Supply structured endpoint fields
+This starts a separate authority PostgreSQL container. Supply structured endpoint fields
 and separate runtime/migrator roles, then run `event-migrationservice` before
 the API.
 
 For `CoLocated`, no separate authority target is configured and it shares the
-primary `PostgreSql` or `Sqlite` database. Other primary providers are rejected
-for this topology. Raw authority connection strings are not supported.
-See
-[PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
+primary `PostgreSql` or `Sqlite` database. Other primary providers fail closed. Raw authority connection strings are not supported.
+See [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for full architectural guidance.
 
 ---
 
@@ -1032,7 +1043,7 @@ Admin support access is off by default (`support_access.enabled=false`). Enable 
 Before every upgrade:
 
 1. ✅ Back up the selected primary database with its provider-native tool
-2. ✅ Back up `/app/privacy-erasure-authority/privacy_erasure_authority.db` from its dedicated volume, or the independently managed external authority PostgreSQL database
+2. ✅ Back up the authority according to topology: the dedicated `EmbeddedSqlite` file separately, `CoLocated` rows in the primary backup, or the independently managed external PostgreSQL authority database separately
 3. ✅ Back up Keycloak PostgreSQL data (if using local Keycloak)
 4. ✅ Back up object storage — `local_storage_data` volume, `minio_data`, or S3 bucket
 5. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
@@ -1046,13 +1057,14 @@ bootstrap-only and is removed automatically when onboarding completes.
 | Path | When Used | Behavior |
 |---|---|---|
 | API startup in Development | Contributor convenience | Applies the application migration and seed; not a deployment contract |
-| `Event.MigrationService` | Every deployed provider | Applies application, Data Protection, and configured authority migrations, enables SQLite WAL, seeds, then exits before API/Blazor start |
+| `Event.MigrationService` | Every deployed provider | Applies application, Data Protection, and exactly one selected authority migration path, enables SQLite WAL, seeds, then exits before API/Blazor start |
 
 > [!NOTE]
 > Run `Event.MigrationService` for every deployed provider and require exit code
-> zero before starting API replicas. Running it again is the supported
-> idempotency check: EF applies only pending migrations and seeding repairs only
-> missing rows.
+> zero before starting API replicas. The standalone image is the documented
+> in-process exception and performs the same work before binding HTTP. Running it
+> again is the supported idempotency check: EF applies only pending migrations and
+> seeding repairs only missing rows.
 
 ### Creating Migrations from Scratch
 
@@ -1062,7 +1074,10 @@ matching `Explore.Persistence.Migrations.{Provider}` and
 `Explore.Persistence.DataProtection.Migrations.{Provider}` projects. Generate
 or remove an unapplied migration only with `dotnet ef`; never edit its C# or
 snapshot output. See [OPERATIONS.md](OPERATIONS.md#api-startup-behavior) for the
-provider-specific ownership contract.
+provider-specific ownership contract. Application and Data Protection
+provider-native assemblies and their migration history tables remain distinct,
+as does the one authority path selected for a deployment; do not merge histories
+or run more than one authority path.
 
 For the full backup and restore runbook, see [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).  
 For the release checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).

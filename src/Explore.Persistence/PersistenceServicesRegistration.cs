@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Text;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Infrastructure;
@@ -29,7 +28,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace Explore.Persistence;
 
@@ -297,19 +295,13 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IUserPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
-            var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration
-                .ResolveRuntimeConnectionString(configuration);
-
-            if (!string.IsNullOrWhiteSpace(applicationConnectionString)
-                && TargetsSamePhysicalDatabase(
-                    applicationConnectionString,
-                    authorityDatabase.ConnectionString))
-            {
-                throw new OptionsValidationException(
-                    nameof(PrivacyErasureDurabilityOptions),
-                    typeof(PrivacyErasureDurabilityOptions),
-                    ["ExternalDatabase requires the privacy-erasure authority and application migrations to target a different physical PostgreSQL database."]);
-            }
+            PrimaryDatabaseConnectionOptions authorityDatabaseOptions =
+                PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
+            PrivacyErasureAuthorityDatabaseConfiguration.EnsureDistinctPhysicalDatabase(
+                applicationRuntimeOptions,
+                authorityDatabaseOptions);
+            PrimaryDatabaseConnectionResult authorityDatabase =
+                PrimaryDatabaseConfiguration.BuildConnectionString(authorityDatabaseOptions);
 
             services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
                 options.UseNpgsql(
@@ -355,7 +347,7 @@ public static class PersistenceServicesRegistration
                 throw new OptionsValidationException(
                     nameof(PrivacyErasureDurabilityOptions),
                     typeof(PrivacyErasureDurabilityOptions),
-                    ["CoLocated currently supports primary PostgreSql or Sqlite databases."]);
+                    [PrimaryDatabaseProviderComposition.UnsupportedCoLocatedPrivacyErasureAuthorityMessage]);
             }
         }
         else
@@ -502,42 +494,5 @@ public static class PersistenceServicesRegistration
     private static bool IsEnabled(string? value)
     {
         return bool.TryParse(value, out var enabled) && enabled;
-    }
-
-    private static bool TargetsSamePhysicalDatabase(
-        string applicationConnectionString,
-        string authorityConnectionString)
-    {
-        try
-        {
-            var application = new NpgsqlConnectionStringBuilder(applicationConnectionString);
-            var authority = new NpgsqlConnectionStringBuilder(authorityConnectionString);
-            return application.Port == authority.Port
-                && string.Equals(
-                    NormalizeHost(application.Host ?? string.Empty),
-                    NormalizeHost(authority.Host ?? string.Empty),
-                    StringComparison.OrdinalIgnoreCase)
-                && string.Equals(
-                    application.Database,
-                    authority.Database,
-                    StringComparison.Ordinal);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
-
-    private static string NormalizeHost(string host)
-    {
-        string normalized = host.Trim().TrimEnd('.');
-        if (string.Equals(normalized, "localhost", StringComparison.OrdinalIgnoreCase)
-            || (IPAddress.TryParse(normalized, out IPAddress? address)
-                && IPAddress.IsLoopback(address)))
-        {
-            return "loopback";
-        }
-
-        return normalized;
     }
 }

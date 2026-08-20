@@ -27,7 +27,7 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 1. Run the read-only doctor when diagnosing local or self-hosting setup drift:
    `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .`
 2. Check the selected topology endpoint: Split API `https://localhost:7039/health` and `/alive`, or Standalone `https://localhost:7180/health` and `/alive`.
-3. Check MigrationService logs for application, Data Protection, authority, and seed failures; check API logs separately for runtime-provider validation.
+3. Check MigrationService logs for application, Data Protection, the exactly one selected authority migration path, and seed failures; check API logs separately for runtime-provider validation. The standalone image is the documented in-process exception and reports the same migration responsibilities in its own log.
 4. Verify deployment mode and tenant resolution behavior.
 5. Verify auth session (`/auth/status`) and token forwarding through BFF.
 6. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
@@ -64,7 +64,7 @@ exception text into support artifacts.
 
 | Symptom | Cause | Safe correction |
 |---|---|---|
-| Missing `Database` section or invalid/numeric provider | Raw connection string or unrecognized provider input | Configure named `Database:Provider` plus structured fields; accepted names are `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, and `MySql`. |
+| Missing `Database` section or invalid/numeric provider | Raw connection string or unrecognized provider input | Configure named `Database:Provider` plus structured fields; application and Data Protection support `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, and `MySql`. |
 | Runtime works but MigrationService fails authentication | Runtime credentials were reused or migrator role is missing | Supply `Database:Migrator:Username/Password` only to MigrationService; keep `Database:Runtime:*` in API/runtime. |
 | TLS validation fails | Certificate hostname/chain mismatch or unsafe trust combination | Use `TlsMode=Required` with a trusted CA and matching host. `TrustServerCertificate=true` is a controlled-development bypass and is invalid unless TLS is required. |
 | MariaDB/MySQL fails before connecting | Missing or mismatched dialect metadata | Set the exact `ServerFlavor` and positive `ServerVersion` matching the engine. |
@@ -73,9 +73,10 @@ exception text into support artifacts.
 | Two instances sharing one database run each other's scheduled jobs | Both schedulers use the same `Scheduler:Quartz:SchedulerName`, so they contend for the same `QRTZ_` rows | Give each instance a distinct `Scheduler:Quartz:SchedulerName`, use separate databases, or set `Scheduler:Quartz:ClusteringEnabled=true` if they are meant to cooperate as one cluster. |
 | SQLite configuration is rejected | In-memory, URI, network, or reserved authority path | Use a persisted absolute/local file, mount it into MigrationService and API, and keep it separate from `/app/data/privacy_erasure_authority.db`. |
 | SQLite reports busy/readonly/not-a-database | Multiple writers, wrong mount permissions, inconsistent file copy, or network filesystem | Stop traffic, verify one replica, local durable storage, writable ownership, and WAL-aware restore, then rerun MigrationService. Do not delete the file as a repair. |
-| MigrationService succeeds once but fails on repeat | Generated migration ownership/history drift or non-idempotent seed/model SQL | Stop rollout. Verify provider-specific application/Data Protection assemblies and history tables; fix the EF model/generator and regenerate only unapplied migrations. Never patch generated files. |
+| MigrationService succeeds once but fails on repeat | Generated migration ownership/history drift or non-idempotent seed/model SQL | Stop rollout. Verify provider-specific application/Data Protection assemblies and distinct history tables, plus exactly one selected authority path; fix the EF model/generator and regenerate only unapplied migrations. Never patch generated files. |
 | Startup fails reporting missing `QRTZ_` tables | `Scheduler:Quartz:ApplySchemaOnStartup` is `false` and no migration job created the scheduler schema | Set `ApplySchemaOnStartup=true`, or apply the scheduler DDL out of band. The scripts are idempotent and never drop existing scheduler state. |
 | Embedded authority rejects startup | Non-local/symlink path, unsafe permissions, writer count not one, busy timeout outside `1..300`, or failed SQLite integrity/WAL check | Restore the dedicated authority file/volume and permissions; keep `WriterReplicaCount=1`. Never replace it with a primary backup. |
+| `CoLocated` authority fails validation (`UnsupportedCoLocatedPrivacyErasureAuthorityMessage`) | `PrivacyErasure:Authority:Topology=CoLocated` configured with `SqlServer`, `MariaDb`, or `MySql` primary database | `CoLocated` supports only `PostgreSql` or `Sqlite`. Composition fails before adapter/database I/O; for SQL Server, MariaDB, or MySQL, select `PrivacyErasure:Authority:Topology=EmbeddedSqlite` (the default) or `ExternalDatabase`; no fallback, translation, dual write, or compatibility shim is applied. |
 | External authority fails validation | Non-PostgreSQL provider, same physical target as primary, or incomplete structured role fields | Configure a distinct PostgreSQL target under `PrivacyErasureAuthorityDatabase:*` with separate runtime/migrator roles. |
 
 For a clean install or upgrade, run `Event.MigrationService` before API start
@@ -443,6 +444,13 @@ Checks:
 5. If `cacheConvergenceIncomplete` or `cacheConvergenceDeadLettered` is non-zero, the erased user may still be visible through stale cache until the outbox-backed cache invalidation work catches up; do not republish subject data to force it.
 6. For the default `EmbeddedSqlite` topology, verify the absolute local `PrivacyErasureAuthorityEmbedded:Path`, its dedicated volume, `WriterReplicaCount=1`, and `BusyTimeoutSeconds` in `1..300`. A network filesystem, symlink, missing WAL companion during restore, failed `quick_check`, or permissions broader than directory `0700` / files `0600` is an authority-storage incident; stop the writer and restore the authority backup independently of the primary database.
 7. For `ExternalDatabase`, verify the distinct structured PostgreSQL endpoint and runtime/migrator roles under `PrivacyErasureAuthorityDatabase:*`. Do not substitute a raw connection string or point it at the primary physical database.
+8. Verify the topology's operator backup units and reported `restoreReplayProtection` value:
+
+   | Topology | Backup units | Expected `restoreReplayProtection` |
+   |---|---|---:|
+   | `EmbeddedSqlite` | Primary database and dedicated authority-file backups | `true` when the authority file is excluded from the primary restore |
+   | `CoLocated` | One primary database backup containing authority rows | `false` |
+   | `ExternalDatabase` | Primary database and independently managed external PostgreSQL authority backups | `true` when the external authority has an independent restore lifecycle |
 
 ## Email Dispatch Issues
 

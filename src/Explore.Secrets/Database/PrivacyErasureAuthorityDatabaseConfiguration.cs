@@ -1,6 +1,7 @@
 // ABOUTME: Binds the external privacy-erasure authority from structured PostgreSQL settings.
 // ABOUTME: Reuses primary database validation and native Npgsql construction without raw-string inputs.
 
+using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -51,6 +52,34 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
     public static PrimaryDatabaseConnectionResult ResolveMigratorConnectionString(
         IConfiguration configuration) =>
         PrimaryDatabaseConfiguration.BuildConnectionString(BindMigrator(configuration));
+
+    public static void EnsureDistinctPhysicalDatabase(
+        PrimaryDatabaseConnectionOptions application,
+        PrimaryDatabaseConnectionOptions authority)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(authority);
+
+        if (application.Provider != PrimaryDatabaseProvider.PostgreSql
+            || authority.Provider != PrimaryDatabaseProvider.PostgreSql)
+        {
+            return;
+        }
+
+        if (application.Port == authority.Port
+            && string.Equals(
+                NormalizeHost(application.Host ?? string.Empty),
+                NormalizeHost(authority.Host ?? string.Empty),
+                StringComparison.OrdinalIgnoreCase)
+            && string.Equals(
+                application.Database,
+                authority.Database,
+                StringComparison.Ordinal))
+        {
+            throw InvalidConfiguration(
+                "ExternalDatabase requires the privacy-erasure authority and application migrations to target a different physical PostgreSQL database.");
+        }
+    }
 
     public static void ProjectDiscreteConfiguration(IConfigurationBuilder configurationBuilder)
     {
@@ -106,9 +135,16 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         ProjectRole(projected, configuration, "Migrator", "Username", "MIGRATOR_USERNAME");
         ProjectRole(projected, configuration, "Migrator", "Password", "MIGRATOR_PASSWORD");
 
-        if (projected.Count > 0 && string.IsNullOrWhiteSpace(configuration[$"{SectionName}:Provider"]))
+        if (projected.Count > 0)
         {
-            projected[$"{SectionName}:Provider"] = nameof(PrimaryDatabaseProvider.PostgreSql);
+            if (string.IsNullOrWhiteSpace(configuration["Database:Erasure:Provider"]))
+            {
+                projected["Database:Erasure:Provider"] = nameof(PrimaryDatabaseProvider.PostgreSql);
+            }
+            if (string.IsNullOrWhiteSpace(configuration[$"{SectionName}:Provider"]))
+            {
+                projected[$"{SectionName}:Provider"] = nameof(PrimaryDatabaseProvider.PostgreSql);
+            }
         }
 
         return projected;
@@ -120,15 +156,26 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         string? discreteSuffix,
         string? defaultValue = null)
     {
-        string? explicitValue = configuration[$"{SectionName}:{field}"];
+        string? explicitValue = configuration[$"Database:Erasure:{field}"]
+            ?? configuration[$"DatabaseErasure:{field}"]
+            ?? configuration[$"{SectionName}:{field}"];
         if (!string.IsNullOrWhiteSpace(explicitValue))
         {
             return explicitValue;
         }
 
-        return discreteSuffix is null
-            ? defaultValue
-            : configuration[$"{EnvironmentPrefix}{discreteSuffix}"] ?? defaultValue;
+        if (discreteSuffix is null)
+        {
+            return defaultValue;
+        }
+
+        return configuration[$"DATABASE_ERASURE_{discreteSuffix}"]
+            ?? configuration[$"DATABASE_ERASURE_DATABASE_{discreteSuffix}"]
+            ?? configuration[$"ERASURE_DATABASE_{discreteSuffix}"]
+            ?? configuration[$"ERASURE_{discreteSuffix}"]
+            ?? configuration[$"{EnvironmentPrefix}{discreteSuffix}"]
+            ?? (discreteSuffix == "DATABASE" ? (configuration["DATABASE_ERASURE_NAME"] ?? configuration["ERASURE_DATABASE_NAME"] ?? configuration["ERASURE_NAME"]) : null)
+            ?? defaultValue;
     }
 
     private static string? ReadRole(
@@ -137,10 +184,19 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         string field,
         string discreteSuffix)
     {
-        string? explicitValue = configuration[$"{SectionName}:{role}:{field}"];
-        return !string.IsNullOrWhiteSpace(explicitValue)
-            ? explicitValue
-            : configuration[$"{EnvironmentPrefix}{discreteSuffix}"];
+        string? explicitValue = configuration[$"Database:Erasure:{role}:{field}"]
+            ?? configuration[$"DatabaseErasure:{role}:{field}"]
+            ?? configuration[$"{SectionName}:{role}:{field}"];
+        if (!string.IsNullOrWhiteSpace(explicitValue))
+        {
+            return explicitValue;
+        }
+
+        return configuration[$"DATABASE_ERASURE_{role.ToUpperInvariant()}_{field.ToUpperInvariant()}"]
+            ?? configuration[$"DATABASE_ERASURE_{discreteSuffix}"]
+            ?? configuration[$"ERASURE_DATABASE_{discreteSuffix}"]
+            ?? configuration[$"ERASURE_{discreteSuffix}"]
+            ?? configuration[$"{EnvironmentPrefix}{discreteSuffix}"];
     }
 
     private static void Project(
@@ -150,10 +206,18 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         string discreteSuffix)
     {
         string target = $"{SectionName}:{field}";
-        string? value = configuration[$"{EnvironmentPrefix}{discreteSuffix}"];
-        if (string.IsNullOrWhiteSpace(configuration[target]) && !string.IsNullOrWhiteSpace(value))
+        string aliasTarget = $"Database:Erasure:{field}";
+        string? value = Read(configuration, field, discreteSuffix);
+        if (!string.IsNullOrWhiteSpace(value))
         {
-            projected[target] = value;
+            if (string.IsNullOrWhiteSpace(configuration[target]))
+            {
+                projected[target] = value;
+            }
+            if (string.IsNullOrWhiteSpace(configuration[aliasTarget]))
+            {
+                projected[aliasTarget] = value;
+            }
         }
     }
 
@@ -165,11 +229,32 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         string discreteSuffix)
     {
         string target = $"{SectionName}:{role}:{field}";
-        string? value = configuration[$"{EnvironmentPrefix}{discreteSuffix}"];
-        if (string.IsNullOrWhiteSpace(configuration[target]) && !string.IsNullOrWhiteSpace(value))
+        string aliasTarget = $"Database:Erasure:{role}:{field}";
+        string? value = ReadRole(configuration, role, field, discreteSuffix);
+        if (!string.IsNullOrWhiteSpace(value))
         {
-            projected[target] = value;
+            if (string.IsNullOrWhiteSpace(configuration[target]))
+            {
+                projected[target] = value;
+            }
+            if (string.IsNullOrWhiteSpace(configuration[aliasTarget]))
+            {
+                projected[aliasTarget] = value;
+            }
         }
+    }
+
+    private static string NormalizeHost(string host)
+    {
+        string normalized = host.Trim().TrimEnd('.');
+        if (string.Equals(normalized, "localhost", StringComparison.OrdinalIgnoreCase)
+            || (IPAddress.TryParse(normalized, out IPAddress? address)
+                && IPAddress.IsLoopback(address)))
+        {
+            return "loopback";
+        }
+
+        return normalized;
     }
 
     private static OptionsValidationException InvalidConfiguration(string failure) =>

@@ -18,6 +18,9 @@ public enum PrimaryDatabaseMigrationTarget
 
 public static class PrimaryDatabaseProviderComposition
 {
+    public const string UnsupportedCoLocatedPrivacyErasureAuthorityMessage =
+        "PrivacyErasure:Authority:Topology=CoLocated supports only primary PostgreSql or Sqlite databases. " +
+        "Choose EmbeddedSqlite with any primary provider, or choose ExternalDatabase with a separate PostgreSql database.";
     public const string PostgreSqlApplicationMigrationsAssembly = "Explore.Persistence";
     public const string PostgreSqlDataProtectionMigrationsAssembly = "Explore.Persistence";
     internal const string ApplicationMigrationsHistoryTable = "__EFMigrationsHistory";
@@ -41,8 +44,7 @@ public static class PrimaryDatabaseProviderComposition
     {
         if (options.Provider != PrimaryDatabaseProvider.PostgreSql)
         {
-            throw new InvalidOperationException(
-                "Co-located PostgreSQL authority composition requires Database:Provider=PostgreSql.");
+            throw new InvalidOperationException(UnsupportedCoLocatedPrivacyErasureAuthorityMessage);
         }
 
         return Configure(
