@@ -24,7 +24,7 @@ public sealed class SupportAccessClientServiceTests
         };
 
         _service = new SupportAccessClientService(
-            new BffClient(httpClient),
+            new BffClient(httpClient, Substitute.For<Microsoft.JSInterop.IJSRuntime>()),
             Substitute.For<ILogger<SupportAccessClientService>>());
     }
 

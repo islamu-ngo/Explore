@@ -21,6 +21,12 @@ internal sealed record IdempotencyRequestIdentity(
 
 internal static class IdempotencyRequestIdentityFactory
 {
+    private static readonly string[] CapabilityHeaders =
+    [
+        "X-Registration-Order-Capability",
+        "X-Registration-Attempt-Capability"
+    ];
+
     public static async Task<IdempotencyRequestIdentity> CreateAsync(
         HttpContext context,
         RecyclableMemoryStreamManager streamManager,
@@ -30,7 +36,8 @@ internal static class IdempotencyRequestIdentityFactory
         var requestTarget = ResolveRequestTarget(context);
         var contentType = NormalizeContentType(context.Request.ContentType);
         var userId = ResolveUserId(context);
-        var principalFingerprint = ComputeSha256Hex(userId is null ? "anonymous" : $"authenticated:{userId}");
+        var principalFingerprint = ComputeSha256Hex(
+            $"{(userId is null ? "anonymous" : $"authenticated:{userId}")}|capabilities:{CapabilityScope(context.Request)}");
         var bodyHash = await ComputeBodyHashAsync(context.Request, streamManager, cancellationToken);
 
         return new IdempotencyRequestIdentity(
@@ -155,14 +162,33 @@ internal static class IdempotencyRequestIdentityFactory
         var endpointPattern = context.GetEndpoint() is RouteEndpoint endpoint
             ? endpoint.RoutePattern.RawText
             : null;
+        string actualPath = context.Request.PathBase.Add(context.Request.Path).ToUriComponent().ToLowerInvariant();
+        string routeValues = string.Join(
+            '&',
+            context.Request.RouteValues
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"{Uri.EscapeDataString(pair.Key.ToLowerInvariant())}={Uri.EscapeDataString(Convert.ToString(pair.Value, System.Globalization.CultureInfo.InvariantCulture)?.ToLowerInvariant() ?? string.Empty)}"));
+        string target = $"{endpointPattern?.ToLowerInvariant() ?? actualPath}|path:{actualPath}|route:{routeValues}";
+        return context.Request.QueryString.HasValue ? $"{target}{context.Request.QueryString.Value}" : target;
+    }
 
-        var path = string.IsNullOrWhiteSpace(endpointPattern)
-            ? context.Request.Path.Value ?? "/"
-            : endpointPattern;
+    private static string CapabilityScope(HttpRequest request)
+    {
+        var canonical = new StringBuilder();
+        foreach (string headerName in CapabilityHeaders)
+        {
+            string[] values = request.Headers[headerName]
+                .Select(value => value ?? string.Empty)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            canonical.Append(headerName).Append(':').Append(values.Length).Append(':');
+            foreach (string value in values)
+            {
+                canonical.Append(value.Length).Append(':').Append(value).Append('|');
+            }
+        }
 
-        return context.Request.QueryString.HasValue
-            ? $"{path}{context.Request.QueryString.Value}"
-            : path;
+        return ComputeSha256Hex(canonical.ToString());
     }
 
     private static string? NormalizeContentType(string? contentType)

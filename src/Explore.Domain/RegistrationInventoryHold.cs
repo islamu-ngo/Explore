@@ -172,6 +172,20 @@ public sealed class RegistrationInventoryHold : ITenantEntity, IAuditableEntity,
         return true;
     }
 
+    public bool ExtendPaymentCutoff(DateTime cutoff, DateTime changedAt)
+    {
+        DateTime utcCutoff = EnsureUtc(cutoff, nameof(cutoff));
+        DateTime utcChangedAt = EnsureUtc(changedAt, nameof(changedAt));
+        if (RegistrationInventoryHoldStatusId != (int)RegistrationInventoryHoldStatusEnum.Active || utcCutoff <= ExpiresAt)
+        {
+            return false;
+        }
+
+        ExpiresAt = utcCutoff;
+        UpdateConcurrency(utcChangedAt);
+        return true;
+    }
+
     private void UpdateConcurrency(DateTime timestamp)
     {
         UpdatedAt = timestamp;

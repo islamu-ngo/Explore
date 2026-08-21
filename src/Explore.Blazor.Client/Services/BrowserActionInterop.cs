@@ -153,6 +153,21 @@ public sealed class BrowserActionInterop : IBrowserActionInterop, IAsyncDisposab
         }
     }
 
+    public async Task<bool> FocusOpenerAndCloseAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var module = await GetModuleAsync(cancellationToken);
+            return await module.InvokeAsync<bool>("focusOpenerAndClose", cancellationToken);
+        }
+        catch (Exception ex) when (IsExpectedBrowserInteropFailure(ex))
+        {
+            _logger.LogDebug(ex, "Original registration tab could not be focused.");
+            return false;
+        }
+    }
+
+
     public async ValueTask DisposeAsync()
     {
         if (_module is null)

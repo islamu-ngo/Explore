@@ -18,12 +18,14 @@ public sealed class StudioOrdersTests : IDisposable
     private readonly BlazorTestContext _ctx = new();
     private readonly IEventService _eventService;
     private readonly IStudioContextService _studioContextService;
+    private readonly IRegistrationOrderService _registrationOrderService;
     private readonly UiShellState _shellState;
 
     public StudioOrdersTests()
     {
         _eventService = _ctx.AddMockService<IEventService>();
         _studioContextService = _ctx.AddMockService<IStudioContextService>();
+        _registrationOrderService = _ctx.AddMockService<IRegistrationOrderService>();
         _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
         _ctx.Services.AddScoped<UiShellState>();
@@ -145,6 +147,145 @@ public sealed class StudioOrdersTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='studio-orders-empty']")).IsEmpty();
         await Assert.That(cut.Markup).Contains("Registration orders are currently unavailable.");
     }
+
+    [Test]
+    public async Task EventOrderList_EventNavigationCancelsAndRejectsLatePriorEventOrders()
+    {
+        var firstEventId = Guid.CreateVersion7();
+        var secondEventId = Guid.CreateVersion7();
+        var staleOrder = CreateOrder();
+        staleOrder.StatusName = "Stale prior event";
+        var currentOrder = CreateOrder();
+        currentOrder.StatusName = "Current event";
+        var pending = new TaskCompletionSource<IReadOnlyList<HalResourceOfRegistrationOrderDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken firstToken = default;
+        _studioContextService.GetEventOrdersAsync(firstEventId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            firstToken = call.ArgAt<CancellationToken>(1);
+            return pending.Task;
+        });
+        _studioContextService.GetEventOrdersAsync(secondEventId, Arg.Any<CancellationToken>()).Returns([currentOrder]);
+
+        var cut = _ctx.RenderMudComponent<StudioOrderList>(parameters => parameters.Add(component => component.EventId, firstEventId));
+        cut.Render(parameters => parameters.Add(component => component.EventId, secondEventId));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Current event", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Current event orders have not rendered.");
+            }
+        });
+        pending.SetResult([staleOrder]);
+        await Task.Yield();
+
+        await Assert.That(firstToken.IsCancellationRequested).IsTrue();
+        await Assert.That(cut.Markup).Contains("Current event");
+        await Assert.That(cut.Markup).DoesNotContain("Stale prior event");
+    }
+
+    [Test]
+    public async Task EventOrderList_LoadsBoundedPaymentOnlyFromExactStudioRelation()
+    {
+        var eventId = Guid.CreateVersion7();
+        var linkedOrder = CreateOrder("studio-payment-status");
+        var unlinkedOrder = CreateOrder();
+        _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>()).Returns([linkedOrder, unlinkedOrder]);
+        _registrationOrderService.GetStudioPaymentAsync(eventId, linkedOrder.Id!.Value, linkedOrder, Arg.Any<CancellationToken>()).Returns(
+            new HalResourceOfRegistrationPaymentDto
+            {
+                StatusCode = "NeedsReconciliation",
+                StatusName = "Needs reconciliation",
+                LastUpdatedAt = DateTimeOffset.UtcNow,
+                FailureCode = "PAYMENT_RETRY_NOT_AVAILABLE"
+            });
+
+        var cut = _ctx.RenderMudComponent<StudioOrderList>(parameters => parameters.Add(component => component.EventId, eventId));
+
+        cut.WaitForElement("[data-testid='studio-payment-status']");
+        await Assert.That(cut.Markup).Contains("Needs reconciliation");
+        await Assert.That(cut.Markup).Contains("Retry is not available");
+        await Assert.That(cut.Markup).DoesNotContain("Provider");
+        await _registrationOrderService.Received(1).GetStudioPaymentAsync(
+            eventId, linkedOrder.Id.Value, linkedOrder, Arg.Any<CancellationToken>());
+        await _registrationOrderService.DidNotReceive().GetStudioPaymentAsync(
+            eventId, unlinkedOrder.Id!.Value, unlinkedOrder, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task StudioPaymentStatus_EventOrderChangeCancelsAndIgnoresLateResponse()
+    {
+        var firstEventId = Guid.CreateVersion7();
+        var secondEventId = Guid.CreateVersion7();
+        var firstOrder = CreateOrder("studio-payment-status");
+        var secondOrder = CreateOrder("studio-payment-status");
+        var pending = new TaskCompletionSource<HalResourceOfRegistrationPaymentDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken firstToken = default;
+        _registrationOrderService.GetStudioPaymentAsync(firstEventId, firstOrder.Id!.Value, firstOrder, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                firstToken = call.ArgAt<CancellationToken>(3);
+                return pending.Task;
+            });
+        _registrationOrderService.GetStudioPaymentAsync(secondEventId, secondOrder.Id!.Value, secondOrder, Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfRegistrationPaymentDto { StatusCode = "Succeeded", StatusName = "Current payment" });
+
+        var cut = _ctx.RenderMudComponent<StudioPaymentStatus>(parameters => parameters
+            .Add(component => component.EventId, firstEventId)
+            .Add(component => component.Order, firstOrder));
+        cut.Render(parameters => parameters
+            .Add(component => component.EventId, secondEventId)
+            .Add(component => component.Order, secondOrder));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Current payment", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Current payment has not rendered.");
+            }
+        });
+        pending.SetResult(new HalResourceOfRegistrationPaymentDto { StatusCode = "Failed", StatusName = "Stale payment" });
+        await Task.Yield();
+
+        await Assert.That(firstToken.IsCancellationRequested).IsTrue();
+        await Assert.That(cut.Markup).Contains("Current payment");
+        await Assert.That(cut.Markup).DoesNotContain("Stale payment");
+    }
+
+    [Test]
+    public async Task StudioPaymentStatus_UsesContractReconciliationAlertAndUniqueHeadingIds()
+    {
+        var eventId = Guid.CreateVersion7();
+        var first = CreateOrder("studio-payment-status");
+        var second = CreateOrder("studio-payment-status");
+        _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>()).Returns([first, second]);
+        _registrationOrderService.GetStudioPaymentAsync(eventId, Arg.Any<Guid>(), Arg.Any<HalResourceOfRegistrationOrderDto>(), Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfRegistrationPaymentDto { StatusCode = "NeedsReconciliation", StatusName = "Needs reconciliation" });
+
+        var cut = _ctx.RenderMudComponent<StudioOrderList>(parameters => parameters.Add(component => component.EventId, eventId));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='studio-payment-status']").Count != 2)
+            {
+                throw new InvalidOperationException("Both Studio payment projections have not rendered.");
+            }
+        });
+        string[] labelledBy = cut.FindAll("[data-testid='studio-payment-status']")
+            .Select(element => element.GetAttribute("aria-labelledby")!)
+            .ToArray();
+        await Assert.That(labelledBy.Distinct(StringComparer.Ordinal).Count()).IsEqualTo(2);
+        await Assert.That(cut.FindAll("[data-testid='studio-payment-status'][role='alert']").Count).IsEqualTo(2);
+    }
+
+    private static HalResourceOfRegistrationOrderDto CreateOrder(params string[] relations) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        StatusCode = "AWAITING_PAYMENT",
+        StatusName = "Awaiting payment",
+        CurrencyCode = "EUR",
+        _links = relations.ToDictionary(
+            relation => relation,
+            relation => new HalLink { Href = $"/api/orders/payment/{relation}", Method = "GET" })
+    };
 
     private static EventListDto CreateEvent(Guid eventId, bool hasOrderLink = false)
     {

@@ -84,6 +84,14 @@ public sealed class ScheduledJobRegistry : IScheduledJobRegistry
             "Drains durable registration-finalization effects under the shared fenced claim.",
             "*/10 * * * * ?"),
         new(
+            ScheduledJobNames.PaymentReconciliationDrain,
+            "Registration",
+            ScheduledJobScheduleKind.Cron,
+            ScheduledJobPayloadKind.None,
+            ScheduledJobOperationalStatus.Implemented,
+            "Drains durable Checkout dispatch and retrieves authoritative provider payment state.",
+            "*/30 * * * * ?"),
+        new(
             ScheduledJobNames.TenantMaintenanceScan,
             "Operations",
             ScheduledJobScheduleKind.Cron,

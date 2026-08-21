@@ -173,6 +173,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         await _apiClient.Received(1).LaunchAuthenticatedRegistrationProviderAttemptAsync(
             EventId,
             OrderId,
+            Arg.Any<string>(),
             Arg.Is<LaunchRegistrationProviderAttemptRequest>(request =>
                 request.RequirementId == RequirementId && request.ChannelId == ChannelId &&
                 request.BindingId == BindingId && request.FormId == FormId && request.FormVersionId == FormVersionId),
@@ -186,7 +187,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     {
         const string capability = "guest-secret-capability";
         _apiClient.LaunchGuestRegistrationProviderAttemptAsync(
-                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<LaunchRegistrationProviderAttemptRequest>(),
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<LaunchRegistrationProviderAttemptRequest>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Descriptor()));
         string token = await IssueAntiforgeryCookieAsync(null);
@@ -202,7 +203,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         await Assert.That(launch!.EmbedUrl).StartsWith("/bff/registration-provider-embed/launches/");
         await Assert.That(launch.EmbedUrl).DoesNotContain(capability);
         await _apiClient.Received(1).LaunchGuestRegistrationProviderAttemptAsync(
-            EventId, OrderId, Arg.Any<LaunchRegistrationProviderAttemptRequest>(), capability,
+            EventId, OrderId, Arg.Any<string>(), Arg.Any<LaunchRegistrationProviderAttemptRequest>(), capability,
             null, null, Arg.Any<CancellationToken>());
     }
 
@@ -238,6 +239,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         _apiClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
+                Arg.Any<string>(),
                 Arg.Any<LaunchRegistrationProviderAttemptRequest>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),

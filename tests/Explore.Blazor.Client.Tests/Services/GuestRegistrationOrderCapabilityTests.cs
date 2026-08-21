@@ -61,9 +61,9 @@ public sealed class GuestRegistrationOrderCapabilityTests
         await client.ApplyGuestRegistrationOrderPromotionAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
+            Guid.CreateVersion7().ToString("N"),
             new PromotionCodeRequest { Code = "GUEST10" },
-            "opaque-capability",
-            Guid.CreateVersion7().ToString("N"));
+            "opaque-capability");
 
         await Assert.That(handler.IdempotencyKeyCount).IsEqualTo(1);
     }

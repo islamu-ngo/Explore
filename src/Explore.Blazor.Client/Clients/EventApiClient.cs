@@ -78,7 +78,11 @@ public partial class EventApiClient
 
         try
         {
-            var response = await StartGuestRegistrationOrderAsync(eventId, body: body, cancellationToken: cancellationToken);
+            var response = await StartGuestRegistrationOrderAsync(
+                eventId,
+                GuestRegistrationOrderIdempotencyKey.Value!,
+                body: body,
+                cancellationToken: cancellationToken);
             if (string.IsNullOrWhiteSpace(capture.Value))
             {
                 throw new InvalidOperationException("Guest registration capability was not returned.");

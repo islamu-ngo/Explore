@@ -126,6 +126,21 @@ export function openSameOriginNewTab(url) {
     }
 }
 
+export function focusOpenerAndClose() {
+    try {
+        if (!window.opener || window.opener.closed) {
+            return false;
+        }
+
+        window.opener.focus();
+        window.close();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+
 function normalizeContentType(contentType) {
     return typeof contentType === 'string' && contentType.trim().length > 0
         ? contentType

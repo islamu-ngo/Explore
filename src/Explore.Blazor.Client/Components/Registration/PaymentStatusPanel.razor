@@ -1,0 +1,436 @@
+@* ABOUTME: Shared attendee payment status and action panel driven only by payment HAL relations. *@
+@* ABOUTME: Polls authoritative nonterminal state and navigates only to same-origin BFF checkout actions. *@
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@implements IAsyncDisposable
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
+@inject NavigationManager Navigation
+
+<section class="payment-status" aria-labelledby="payment-status-heading" data-testid="payment-status">
+    <MudText Id="payment-status-heading" Typo="Typo.h5" HtmlTag="h2">Payment</MudText>
+
+    @if (_actionError is not null)
+    {
+        <div id="payment-action-error"
+             class="payment-status__message payment-status__message--attention"
+             tabindex="-1"
+             data-testid="payment-action-error">@_actionError</div>
+    }
+
+    @if (_payment is null)
+    {
+        @if (Start is not null)
+        {
+            <MudText Typo="Typo.body1">Your order is ready for secure payment.</MudText>
+            <AppButton Disabled="_isBusy" OnClick="StartAsync" data-testid="start-payment">Start payment</AppButton>
+        }
+    }
+    else
+    {
+        <div id="payment-actionable-status"
+             class="payment-status__message @StatusClass"
+             tabindex="-1">
+            <MudIcon Icon="@StatusIcon" aria-hidden="true" />
+            <div dir="auto">
+                <MudText Typo="Typo.subtitle1">@StatusTitle</MudText>
+                <MudText Typo="Typo.body2">@StatusCopy</MudText>
+                @if (_payment.LastUpdatedAt is { } updated)
+                {
+                    <MudText Typo="Typo.caption" dir="auto">Last updated @updated.ToLocalTime().ToString("g")</MudText>
+                }
+            </div>
+        </div>
+
+        @if (!_isExpired)
+        {
+        <div class="payment-status__actions">
+            @if (TryGetCheckoutUri(out var checkoutUri) && IssueCheckoutTicket is not null)
+            {
+                @if (_preparedCheckoutPath is null)
+                {
+                    <AppButton Disabled="_isBusy" OnClick="@(() => PrepareCheckoutAsync(checkoutUri))" data-testid="prepare-checkout">Prepare secure checkout</AppButton>
+                }
+                else
+                {
+                    <AppButton Href="@_preparedCheckoutPath" target="_blank" rel="opener" data-testid="checkout-redirect">Continue to secure checkout</AppButton>
+                }
+            }
+            @if (CanRetry)
+            {
+                <AppButton Disabled="_isBusy" Variant="Variant.Outlined" OnClick="RetryAsync" data-testid="retry-payment">Retry payment</AppButton>
+            }
+        </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Start { get; set; }
+    [Parameter] public Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Load { get; set; }
+    [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Refresh { get; set; }
+    [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Retry { get; set; }
+    [Parameter] public Func<string, CancellationToken, Task<string?>>? IssueCheckoutTicket { get; set; }
+    [Parameter] public EventCallback Succeeded { get; set; }
+    [Parameter] public EventCallback Expired { get; set; }
+    [Parameter] public DateTimeOffset? OrderExpiresAt { get; set; }
+    [Parameter] public TimeProvider Clock { get; set; } = TimeProvider.System;
+    [Parameter] public Func<TimeSpan, CancellationToken, Task>? PollDelay { get; set; }
+
+    private static readonly TimeSpan[] PollingBackoff =
+        [TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15)];
+    private readonly CancellationTokenSource _disposeCancellation = new();
+    private HalResourceOfRegistrationPaymentDto? _payment;
+    private string? _actionError;
+    private bool _isBusy;
+    private bool _initialized;
+    private bool _isExpired;
+    private bool _expiryReloaded;
+    private int _pollAttempt;
+    private Task? _pollingTask;
+    private string? _preparedCheckoutPath;
+
+    private string StatusCode => _payment?.StatusCode ?? "Unknown";
+    private bool CanRetry => !_isExpired && _payment?._links?.ContainsKey("retry-payment") == true && Retry is not null;
+    private bool ShouldPoll => !_isExpired && _payment?._links?.ContainsKey("payment-status") == true &&
+        StatusCode is "Created" or "Processing" or "RequiresAction" or "Unknown";
+    private bool IsAttention => _isExpired || StatusCode is "Failed" or "Cancelled" or "NeedsReconciliation";
+    private bool IsActionableError => StatusCode == "Failed" && CanRetry;
+    private string StatusClass => IsAttention ? "payment-status__message--attention" : "payment-status__message--progress";
+    private string StatusIcon => _isExpired ? Icons.Material.Filled.Schedule : StatusCode switch
+    {
+        "Succeeded" => Icons.Material.Filled.CheckCircle,
+        "Failed" or "Cancelled" => Icons.Material.Filled.ErrorOutline,
+        "NeedsReconciliation" => Icons.Material.Filled.SupportAgent,
+        "RequiresAction" => Icons.Material.Filled.OpenInNew,
+        _ => Icons.Material.Filled.HourglassTop
+    };
+    private string StatusTitle => _isExpired ? "Payment window expired" : StatusCode switch
+    {
+        "Created" => "Payment created",
+        "Processing" => "Payment processing",
+        "RequiresAction" => "Payment action required",
+        "Failed" => "Payment failed",
+        "Cancelled" => "Payment cancelled",
+        "Succeeded" => "Payment succeeded",
+        "NeedsReconciliation" => "Payment needs review",
+        _ => "Payment outcome unknown"
+    };
+    private string StatusCopy => _isExpired
+        ? "Automatic payment checks stopped at the server-provided expiry. Your order is being reloaded for current options."
+        : StatusCode switch
+    {
+        "Created" => "Your payment has been created and is waiting to continue.",
+        "Processing" => "The payment is still processing. This page will check again automatically.",
+        "RequiresAction" => "Continue to secure checkout when the action is available.",
+        "Failed" => "The payment failed. Retry is available only when the server confirms it is safe.",
+        "Cancelled" => "The payment was cancelled. Any next action must be offered by the server.",
+        "Succeeded" => "Payment is confirmed by the server. Your order is being refreshed.",
+        "NeedsReconciliation" => "The payment needs organizer review. Do not submit another payment.",
+        _ => "The payment outcome is not known yet. Do not retry unless the server offers that action."
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_initialized)
+        {
+            return;
+        }
+
+        _initialized = true;
+        if (Load is not null)
+        {
+            try
+            {
+                _payment = await Load(_disposeCancellation.Token);
+                if (_payment is not null)
+                {
+                    if (await ExpireIfNeededAsync())
+                    {
+                        return;
+                    }
+                    await AnnounceAndFocusAsync();
+                    if (StatusCode == "Succeeded")
+                    {
+                        await Succeeded.InvokeAsync();
+                    }
+                    else
+                    {
+                        StartPolling();
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+            {
+            }
+            catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
+            {
+                await ShowActionErrorAsync("Payment status could not be loaded.", focus: false);
+            }
+        }
+    }
+
+    private Task StartAsync() => ExecuteAsync(Start);
+
+    private Task RetryAsync() => Retry is null || _payment is null
+        ? Task.CompletedTask
+        : ExecuteAsync(cancellationToken => Retry(_payment, cancellationToken));
+
+    private async Task ExecuteAsync(Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? operation)
+    {
+        if (_isBusy || operation is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _actionError = null;
+        try
+        {
+            _payment = await operation(_disposeCancellation.Token);
+            if (_payment is null || _disposeCancellation.IsCancellationRequested)
+            {
+                await ShowActionErrorAsync("The payment action could not be completed.", focus: true);
+                return;
+            }
+
+            if (await ExpireIfNeededAsync())
+            {
+                return;
+            }
+
+            await AnnounceAndFocusAsync();
+            if (StatusCode == "Succeeded")
+            {
+                await Succeeded.InvokeAsync();
+            }
+            else
+            {
+                StartPolling();
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
+        {
+            await ShowActionErrorAsync("The payment action could not be completed.", focus: true);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task PollAsync()
+    {
+        try
+        {
+            while (ShouldPoll && Refresh is not null && _payment is not null && !_disposeCancellation.IsCancellationRequested)
+            {
+                if (await ExpireIfNeededAsync())
+                {
+                    return;
+                }
+
+                TimeSpan delay = PollingBackoff[Math.Min(_pollAttempt, PollingBackoff.Length - 1)];
+                _pollAttempt++;
+                await DelayForPollAsync(delay, _disposeCancellation.Token);
+                if (await ExpireIfNeededAsync())
+                {
+                    return;
+                }
+
+                var payment = await Refresh(_payment, _disposeCancellation.Token);
+                if (payment is null || _disposeCancellation.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                string previousStatus = StatusCode;
+                _payment = payment;
+                if (!string.Equals(previousStatus, StatusCode, StringComparison.Ordinal))
+                {
+                    await AnnounceAndFocusAsync();
+                }
+                await InvokeAsync(StateHasChanged);
+                if (!string.Equals(previousStatus, StatusCode, StringComparison.Ordinal))
+                {
+                    if (StatusCode == "Succeeded")
+                    {
+                        await Succeeded.InvokeAsync();
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
+        {
+            await ShowActionErrorAsync("Payment status could not be refreshed.", focus: false);
+        }
+    }
+
+    private void StartPolling()
+    {
+        if (_pollingTask is { IsCompleted: false } || !ShouldPoll || Refresh is null)
+        {
+            return;
+        }
+
+        _pollAttempt = 0;
+        _pollingTask = PollAsync();
+    }
+
+    private Task DelayForPollAsync(TimeSpan delay, CancellationToken cancellationToken) =>
+        PollDelay is null
+            ? Task.Delay(delay, Clock, cancellationToken)
+            : PollDelay(delay, cancellationToken);
+
+    private async Task<bool> ExpireIfNeededAsync()
+    {
+        DateTimeOffset? cutoff = EffectiveExpiry();
+        if (_isExpired || cutoff is null || Clock.GetUtcNow() < cutoff.Value)
+        {
+            return _isExpired;
+        }
+
+        _isExpired = true;
+        _actionError = null;
+        await Announcer.AnnouncePoliteAsync(StatusCopy);
+        await InvokeAsync(StateHasChanged);
+        if (!_expiryReloaded)
+        {
+            _expiryReloaded = true;
+            await Expired.InvokeAsync();
+        }
+        return true;
+    }
+
+    private DateTimeOffset? EffectiveExpiry()
+    {
+        DateTimeOffset? paymentExpiry = _payment?.ExpiresAt;
+        if (paymentExpiry is null)
+        {
+            return OrderExpiresAt;
+        }
+        if (OrderExpiresAt is null)
+        {
+            return paymentExpiry;
+        }
+        return paymentExpiry < OrderExpiresAt ? paymentExpiry : OrderExpiresAt;
+    }
+
+    private Task AnnounceAsync() => IsAttention
+        ? Announcer.AnnounceAssertiveAsync(StatusCopy)
+        : Announcer.AnnouncePoliteAsync(StatusCopy);
+
+    private async Task AnnounceAndFocusAsync()
+    {
+        if (IsActionableError && !_disposeCancellation.IsCancellationRequested)
+        {
+            await Focus.FocusAsync("#payment-actionable-status");
+            return;
+        }
+
+        await AnnounceAsync();
+    }
+
+    private async Task ShowActionErrorAsync(string message, bool focus)
+    {
+        _actionError = message;
+        await InvokeAsync(StateHasChanged);
+        if (focus && !_disposeCancellation.IsCancellationRequested)
+        {
+            await Focus.FocusAsync("#payment-action-error");
+            return;
+        }
+
+
+        await Announcer.AnnounceAssertiveAsync(message);
+    }
+
+    private bool TryGetCheckoutUri(out Uri checkoutUri)
+    {
+        checkoutUri = null!;
+        var baseUri = new Uri(Navigation.BaseUri);
+        string expectedPrefix = baseUri.AbsolutePath.TrimEnd('/') + "/bff/registration-payments/";
+        if (_payment?._links is not { } links ||
+            !links.TryGetValue("checkout-redirect", out var link) ||
+            !string.Equals(link.Method, "POST", StringComparison.OrdinalIgnoreCase) ||
+            !Uri.TryCreate(baseUri, link.Href, out var candidate) ||
+            !string.Equals(candidate.Scheme, baseUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(candidate.Authority, baseUri.Authority, StringComparison.OrdinalIgnoreCase) ||
+            candidate.Query.Length != 0 ||
+            !candidate.AbsolutePath.StartsWith(expectedPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        checkoutUri = candidate;
+        return true;
+    }
+
+    private async Task PrepareCheckoutAsync(Uri checkoutUri)
+    {
+        if (_isBusy || IssueCheckoutTicket is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _actionError = null;
+        HalResourceOfRegistrationPaymentDto? payment = _payment;
+        try
+        {
+            string? checkoutPath = await IssueCheckoutTicket(checkoutUri.AbsolutePath, _disposeCancellation.Token);
+            if (_disposeCancellation.IsCancellationRequested || !ReferenceEquals(payment, _payment) ||
+                !TryGetCheckoutUri(out Uri currentCheckoutUri) || currentCheckoutUri != checkoutUri)
+            {
+                return;
+            }
+
+            var baseUri = new Uri(Navigation.BaseUri);
+            string expectedPath = baseUri.AbsolutePath.TrimEnd('/') + "/bff/registration-payments/checkout";
+            if (checkoutPath is null || !Uri.TryCreate(baseUri, checkoutPath, out Uri? navigation) ||
+                !string.Equals(navigation.Scheme, baseUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(navigation.Authority, baseUri.Authority, StringComparison.OrdinalIgnoreCase) ||
+                navigation.Query.Length != 0 ||
+                !string.Equals(navigation.AbsolutePath, expectedPath, StringComparison.Ordinal))
+            {
+                await ShowActionErrorAsync("Secure checkout could not be opened.", focus: true);
+                return;
+            }
+
+            _preparedCheckoutPath = navigation.AbsolutePath;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
+        {
+            await ShowActionErrorAsync("Secure checkout could not be opened.", focus: true);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposeCancellation.Cancel();
+        if (_pollingTask is not null)
+        {
+            try
+            {
+                await _pollingTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+        _disposeCancellation.Dispose();
+    }
+}

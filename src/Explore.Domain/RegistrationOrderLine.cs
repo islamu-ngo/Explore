@@ -155,7 +155,7 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
             policyVersionSnapshot);
     }
 
-    public void ApplyPromotionDiscount(PromotionLineDiscountAllocation allocation)
+    internal void ApplyPromotionDiscount(PromotionLineDiscountAllocation allocation)
     {
         if (allocation.LineId != Id || allocation.PreDiscountLineSubtotalMinor != LineSubtotalSnapshot ||
             allocation.DiscountMinor < 0 || allocation.PostDiscountLineSubtotalMinor < 0 ||
@@ -169,7 +169,7 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
         PostDiscountLineSubtotalMinorSnapshot = allocation.PostDiscountLineSubtotalMinor;
     }
 
-    public void ClearPromotionDiscount()
+    internal void ClearPromotionDiscount()
     {
         PreDiscountLineSubtotalMinorSnapshot = LineSubtotalSnapshot;
         PromotionDiscountAmountMinorSnapshot = 0;

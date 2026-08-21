@@ -28,6 +28,12 @@ public interface IIncomingWebhookMessageRepository
         string providerMessageId,
         CancellationToken cancellationToken);
 
+    Task<IncomingWebhookMessage?> GetByIdempotencyKeyForUpdateAsync(
+        Guid tenantId,
+        string provider,
+        string idempotencyKey,
+        CancellationToken cancellationToken) => Task.FromResult<IncomingWebhookMessage?>(null);
+
     Task<IncomingWebhookMessage?> GetByTenantAndIdForUpdateAsync(
         Guid tenantId,
         Guid incomingWebhookMessageId,

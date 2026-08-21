@@ -36,6 +36,8 @@ public static class BlazorHostServiceCollectionExtensions
         }
 
         builder.Services.AddSingleton(new BlazorHostProfileRegistration(profile));
+        builder.Services.AddSingleton(new RegistrationPaymentCheckoutTicketStoreOptions(
+            RequiresRedis: profile == BlazorHostProfile.Split));
 
         if (profile == BlazorHostProfile.Split)
         {

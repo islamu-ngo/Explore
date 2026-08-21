@@ -400,6 +400,10 @@ public static class ApiHostServiceCollectionExtensions
                 "webhook-coop-effects",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready", "webhooks", "coop", "infrastructure", "webhook-coop-effect-readiness"])
+            .AddCheck<PaymentReconciliationHealthCheck>(
+                "payment-reconciliation",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "payments", "reconciliation", "infrastructure"])
             .AddCheck<SvixWebhookProviderHealthCheck>(
                 "webhook-svix-provider",
                 failureStatus: HealthStatus.Unhealthy,

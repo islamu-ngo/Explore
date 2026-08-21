@@ -1,0 +1,66 @@
+@* ABOUTME: Truthful landing page for hosted-checkout success and cancellation callbacks. *@
+@* ABOUTME: Never infers payment outcome and directs attendees back to authoritative order status. *@
+@page "/registration/payment-recovery"
+@using Explore.Blazor.Client.Contracts.Interop
+@inject IBrowserActionInterop BrowserActions
+
+<PageTitle>Check payment status</PageTitle>
+
+<div class="payment-recovery-return">
+<MudContainer MaxWidth="MaxWidth.Small" Class="payment-recovery-return__container">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Check your payment status</MudText>
+    <section class="payment-recovery-return__status"
+             aria-labelledby="payment-return-heading"
+             role="status"
+             data-testid="payment-return-status">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" aria-hidden="true" />
+        <div dir="auto">
+            <MudText Id="payment-return-heading" Typo="Typo.h5" HtmlTag="h2">Return to your original registration tab</MudText>
+            <MudText Typo="Typo.body1">Returning from secure checkout does not confirm that payment succeeded.</MudText>
+            <MudText Typo="Typo.body2">Secure checkout opened in a separate tab. Return to the original registration tab to load its authoritative payment status. If payment is still processing, that order page will continue checking automatically.</MudText>
+        </div>
+    </section>
+    <div class="payment-recovery-return__actions">
+        <AppButton Disabled="_isReturning"
+                   OnClick="ReturnToRegistrationTabAsync"
+                   data-testid="return-to-registration-tab">Return to registration tab</AppButton>
+        <AppButton Href="/events" Variant="Variant.Outlined">Browse events</AppButton>
+    </div>
+    @if (_returnUnavailable)
+    {
+        <div role="status" data-testid="return-tab-unavailable">
+            The original registration tab could not be focused. It may have been closed; use Browse events or reopen the order from the same session.
+        </div>
+    }
+    <span class="sr-only" data-testid="return-interactive-ready">@_interactiveReady</span>
+</MudContainer>
+</div>
+
+@code {
+    private bool _isReturning;
+    private bool _returnUnavailable;
+    private bool _interactiveReady;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _interactiveReady = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReturnToRegistrationTabAsync()
+    {
+        if (_isReturning)
+        {
+            return;
+        }
+
+        _isReturning = true;
+        _returnUnavailable = false;
+        bool returned = await BrowserActions.FocusOpenerAndCloseAsync();
+        _returnUnavailable = !returned;
+        _isReturning = false;
+    }
+}

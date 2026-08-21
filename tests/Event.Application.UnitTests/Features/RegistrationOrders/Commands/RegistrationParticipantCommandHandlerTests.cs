@@ -315,6 +315,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
             BulkDefer = new BulkDeferRegistrationTicketsCommandHandler(commandService);
             Lifecycle = new RegistrationOrderLifecycleService(
                 _inventory, Substitute.For<IPromotionRedemptionRepository>(), _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
+                Substitute.For<IRegistrationPaymentAttemptRepository>(),
                 new NoOpScheduledDeadlineDispatcher(),
                 new FixedTimeProvider(UtcNow));
         }

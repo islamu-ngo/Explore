@@ -113,9 +113,16 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
             {
                 var result = await lifecycle.ReadyForCheckoutAsync(
                     claim.RegistrationOrderId, claim.TenantId, cancellationToken);
+                if (result.Success && result.Order?.StatusId is
+                    (int)RegistrationOrderStatusEnum.AwaitingPayment or
+                    (int)RegistrationOrderStatusEnum.NeedsReconciliation)
+                {
+                    result = await lifecycle.FinalizePaidAsync(
+                        claim.RegistrationOrderId, claim.TenantId, cancellationToken);
+                }
+
                 DateTime settledAt = timeProvider.GetUtcNow().UtcDateTime;
-                if (result.Success && result.Order is not null &&
-                    result.Order.StatusId != (int)RegistrationOrderStatusEnum.AwaitingRequirements)
+                if (result.Success && result.Order is not null && IsSettled(result.Order.StatusId))
                 {
                     completed += await finalization.CompleteAsync(claim, settledAt, cancellationToken) ? 1 : 0;
                 }
@@ -132,4 +139,12 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
 
         return completed;
     }
+
+    private static bool IsSettled(int statusId) => (RegistrationOrderStatusEnum)statusId is
+        RegistrationOrderStatusEnum.ReadyForCheckout or
+        RegistrationOrderStatusEnum.Confirmed or
+        RegistrationOrderStatusEnum.Rejected or
+        RegistrationOrderStatusEnum.Expired or
+        RegistrationOrderStatusEnum.Cancelled or
+        RegistrationOrderStatusEnum.NeedsReconciliation;
 }

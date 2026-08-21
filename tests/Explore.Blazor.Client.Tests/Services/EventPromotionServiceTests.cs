@@ -91,22 +91,22 @@ public sealed class EventPromotionServiceTests
         var revoke = new RevokePromotionRequest();
         var issued = new PromotionCodeIssuedCommandResponseDto { Success = true };
         var managed = new PromotionManagementCommandResponseDto { Success = true };
-        api.CreateEventPromotionDraftAsync(eventId, create, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token).Returns(issued);
-        api.ReviseEventPromotionAsync(eventId, definitionId, revise, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token).Returns(managed);
-        api.PublishEventPromotionAsync(eventId, definitionId, code, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token).Returns(managed);
-        api.RevokeEventPromotionAsync(eventId, definitionId, revoke, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token).Returns(managed);
-        api.RotateEventPromotionCodeAsync(eventId, definitionId, code, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token).Returns(issued);
+        api.CreateEventPromotionDraftAsync(eventId, Arg.Is<string>(value => IsUuid7(value)), create, cancellationToken: source.Token).Returns(issued);
+        api.ReviseEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), revise, cancellationToken: source.Token).Returns(managed);
+        api.PublishEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), code, cancellationToken: source.Token).Returns(managed);
+        api.RevokeEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), revoke, cancellationToken: source.Token).Returns(managed);
+        api.RotateEventPromotionCodeAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), code, cancellationToken: source.Token).Returns(issued);
 
         await Assert.That(await service.CreateDraftAsync(eventId, create, source.Token)).IsSameReferenceAs(issued);
         await Assert.That(await service.ReviseAsync(eventId, definitionId, revise, source.Token)).IsSameReferenceAs(managed);
         await Assert.That(await service.PublishAsync(eventId, definitionId, code, source.Token)).IsSameReferenceAs(managed);
         await Assert.That(await service.RevokeAsync(eventId, definitionId, revoke, source.Token)).IsSameReferenceAs(managed);
         await Assert.That(await service.RotateCodeAsync(eventId, definitionId, code, source.Token)).IsSameReferenceAs(issued);
-        await api.Received(1).CreateEventPromotionDraftAsync(eventId, create, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token);
-        await api.Received(1).ReviseEventPromotionAsync(eventId, definitionId, revise, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token);
-        await api.Received(1).PublishEventPromotionAsync(eventId, definitionId, code, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token);
-        await api.Received(1).RevokeEventPromotionAsync(eventId, definitionId, revoke, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token);
-        await api.Received(1).RotateEventPromotionCodeAsync(eventId, definitionId, code, Arg.Is<string?>(value => IsUuid7(value)), cancellationToken: source.Token);
+        await api.Received(1).CreateEventPromotionDraftAsync(eventId, Arg.Is<string>(value => IsUuid7(value)), create, cancellationToken: source.Token);
+        await api.Received(1).ReviseEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), revise, cancellationToken: source.Token);
+        await api.Received(1).PublishEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), code, cancellationToken: source.Token);
+        await api.Received(1).RevokeEventPromotionAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), revoke, cancellationToken: source.Token);
+        await api.Received(1).RotateEventPromotionCodeAsync(eventId, definitionId, Arg.Is<string>(value => IsUuid7(value)), code, cancellationToken: source.Token);
     }
 
     private static bool IsUuid7(string? value) =>

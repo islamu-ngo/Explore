@@ -306,6 +306,12 @@ public static class QuartzSchedulerExtensions
             QuartzSchedulerKeys.RegistrationFinalizationDrainCron,
             "Drains durable registration-finalization effects under the shared fenced claim.");
 
+        AddCronJob<PaymentReconciliationDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.PaymentReconciliationDrain,
+            QuartzSchedulerKeys.PaymentReconciliationDrainCron,
+            "Drains durable Checkout dispatch and retrieves authoritative provider payment state.");
+
         _ = settings;
     }
 

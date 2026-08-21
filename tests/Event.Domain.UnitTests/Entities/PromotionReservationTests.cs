@@ -68,6 +68,30 @@ public sealed class PromotionReservationTests
     }
 
     [Test]
+    public async Task NeedsReconciliationRejectsPromotionApplyAndRemove()
+    {
+        OrderFixture applyFixture = CreatePricedOrder(linePrices: [1_000], contributionBasisPoints: null);
+        PromotionDefinition applyDefinition = CreateDefinition(applyFixture.Catalog, PromotionDiscountRule.FixedMinor("USD", 100, null));
+        PromotionCode applyCode = PromotionCode.Create(applyDefinition, "LATE", applyDefinition.ScopeMetadata);
+        PromotionReservation applyReservation = PromotionReservation.Reserve(applyFixture.Order, applyDefinition, applyCode, Now);
+        MoveToNeedsReconciliation(applyFixture.Order);
+
+        await Assert.That(() => applyFixture.Order.ApplyPromotion(
+                applyReservation, applyDefinition, applyCode, Now, 0, 0, null))
+            .Throws<InvalidOperationException>();
+
+        OrderFixture removeFixture = CreatePricedOrder(linePrices: [1_000], contributionBasisPoints: null);
+        PromotionDefinition removeDefinition = CreateDefinition(removeFixture.Catalog, PromotionDiscountRule.FixedMinor("USD", 100, null));
+        PromotionCode removeCode = PromotionCode.Create(removeDefinition, "EARLY", removeDefinition.ScopeMetadata);
+        PromotionReservation removeReservation = PromotionReservation.Reserve(removeFixture.Order, removeDefinition, removeCode, Now);
+        removeFixture.Order.ApplyPromotion(removeReservation, removeDefinition, removeCode, Now, 0, 0, null);
+        MoveToNeedsReconciliation(removeFixture.Order);
+
+        await Assert.That(() => removeFixture.Order.RemovePromotion(removeReservation, Now.AddMinutes(1), null))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task Reserve_WhenPromotionTargetsAnotherEventOrCatalog_RejectsSameTenantScopeMismatch()
     {
         OrderFixture fixture = CreatePricedOrder(linePrices: [1_000], contributionBasisPoints: null);
@@ -312,6 +336,15 @@ public sealed class PromotionReservationTests
         return CreateDefinitionForScope(
             PromotionScopeMetadata.Create(catalog.TenantId, catalog.EventId, catalog.Id, catalog.VersionNumber, catalog.CurrencyCode),
             discountRule);
+    }
+
+    private static void MoveToNeedsReconciliation(RegistrationOrder order)
+    {
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, Now);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, Now);
+        order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, Now);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, Now);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, Now);
     }
 
     private static PromotionDefinition CreateDefinitionForScope(PromotionScopeMetadata scopeMetadata) =>

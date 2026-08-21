@@ -9,7 +9,7 @@ namespace Explore.Infrastructure.Services;
 
 /// <summary>
 /// Builds absolute, canonical public URLs using the current HTTP request context.
-/// Handles reverse proxy headers (X-Forwarded-Host, X-Forwarded-Proto) and path base.
+/// Uses request values normalized by trusted forwarded-header middleware and applies path base.
 /// </summary>
 public class PublicUrlBuilder : IPublicUrlBuilder
 {
@@ -67,8 +67,7 @@ public class PublicUrlBuilder : IPublicUrlBuilder
 
         var request = httpContext.Request;
 
-        // Respect reverse proxy forwarded headers (set by nginx, Traefik, etc.)
-        var scheme = ResolveScheme(request);
+        var scheme = request.Scheme;
         var host = ResolveHost(request);
         var pathBase = request.PathBase.HasValue
             ? request.PathBase.Value!.TrimEnd('/')
@@ -83,27 +82,8 @@ public class PublicUrlBuilder : IPublicUrlBuilder
         return $"{GetBaseUrl()}/api/storageobject/{storageObjectId}/public";
     }
 
-    private static string ResolveScheme(HttpRequest request)
-    {
-        // X-Forwarded-Proto takes precedence (set by reverse proxy)
-        var forwardedProto = request.Headers["X-Forwarded-Proto"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedProto))
-        {
-            return forwardedProto.Split(',')[0].Trim();
-        }
-
-        return request.Scheme;
-    }
-
     private static string ResolveHost(HttpRequest request)
     {
-        // X-Forwarded-Host takes precedence (set by reverse proxy)
-        var forwardedHost = request.Headers["X-Forwarded-Host"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedHost))
-        {
-            return forwardedHost.Split(',')[0].Trim();
-        }
-
         return request.Host.ToString();
     }
 }

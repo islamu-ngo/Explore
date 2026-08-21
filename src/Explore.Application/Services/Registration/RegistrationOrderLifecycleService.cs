@@ -11,7 +11,7 @@ using Explore.Domain.Services.Registration;
 
 namespace Explore.Application.Services.Registration;
 
-public sealed class RegistrationOrderLifecycleService(
+public sealed partial class RegistrationOrderLifecycleService(
     IRegistrationInventoryRepository inventory,
     IPromotionRedemptionRepository promotions,
     IRegistrationParticipantRepository participants,
@@ -21,6 +21,7 @@ public sealed class RegistrationOrderLifecycleService(
     IOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     IRegistrationFinalizationRepository finalization,
+    IRegistrationPaymentAttemptRepository paymentAttempts,
     IScheduledDeadlineDispatcher deadlines,
     TimeProvider timeProvider) : IRegistrationOrderLifecycleService
 {
@@ -74,8 +75,9 @@ public sealed class RegistrationOrderLifecycleService(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
-            FinalizeFreeCoreAsync(orderId, tenantId, cancellationToken),
+            FinalizeCoreAsync(orderId, tenantId, paid: false, cancellationToken),
             cancellationToken);
+
 
     public Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
         Guid orderId,
@@ -84,29 +86,12 @@ public sealed class RegistrationOrderLifecycleService(
             RecoverExpiredHoldCoreAsync(orderId, tenantId, cancellationToken),
             cancellationToken);
 
+
     /// <summary>
     /// Removes an order's pending hold-expiry deadline once the order reaches a state that can never need
     /// it again. Failing to withdraw one is not a correctness problem — an orphaned deadline fires once,
     /// finds no due hold, and stops — so this never disturbs the transition it follows.
     /// </summary>
-    private async Task<RegistrationOrderLifecycleResponseDto> WithdrawHoldDeadlineWhenTerminalAsync(
-        Task<RegistrationOrderLifecycleResponseDto> transition,
-        CancellationToken cancellationToken)
-    {
-        RegistrationOrderLifecycleResponseDto response = await transition;
-
-        if (response.Success &&
-            response.Order is not null &&
-            RegistrationOrderRules.IsTerminal((RegistrationOrderStatusEnum)response.Order.StatusId))
-        {
-            await deadlines.CancelAsync(
-                ScheduledJobNames.InventoryHoldExpiry,
-                InventoryHoldDeadline.KeyFor(response.Id),
-                cancellationToken);
-        }
-
-        return response;
-    }
 
     private async Task<RegistrationOrderLifecycleResponseDto> SubmitCoreAsync(
         Guid orderId,
@@ -416,50 +401,12 @@ public sealed class RegistrationOrderLifecycleService(
             "Registration order rejected.",
             cancellationToken);
 
-    private async Task<RegistrationOrderLifecycleResponseDto> CancelCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
-    {
-        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
-        Guid outboxMessageId = Guid.CreateVersion7();
-        return await unitOfWork.ExecuteSerializableAsync(async token =>
-        {
-            RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
-            if (order is null)
-            {
-                return Missing(orderId);
-            }
 
-            RegistrationOrderStatusEnum status = (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId;
-            if (status == RegistrationOrderStatusEnum.Cancelled)
-            {
-                return Success(order, status, "Registration order is already cancelled.");
-            }
-
-            if (!RegistrationOrderRules.CanTransition(status, RegistrationOrderStatusEnum.Cancelled))
-            {
-                return Failure(order.Id, order, "Registration order cannot be cancelled from its current state.");
-            }
-
-            if (!await inventory.TryTransitionOrderAsync(order.Id, tenantId, status, RegistrationOrderStatusEnum.Cancelled, now, token))
-            {
-                return await CurrentOrConflictAsync(orderId, tenantId, "Registration order changed while it was cancelled.", token);
-            }
-
-            await ReleaseActivePromotionAsync(order, now, token);
-            await LockActiveHoldCapacityPoolsAsync(order, token);
-            await inventory.TryReleaseActiveHoldsForOrderAsync(
-                order.Id,
-                tenantId,
-                RegistrationInventoryHoldStatusEnum.Cancelled,
-                now,
-                token);
-            await outbox.Create(RegistrationOrderOutboxMessageFactory.Create(
-                outboxMessageId, order, RegistrationOrderStatusEnum.Cancelled, now));
-            await inventory.SaveChangesAsync(token);
-            return Success(order, RegistrationOrderStatusEnum.Cancelled, "Registration order cancelled.");
-        }, cancellationToken);
-    }
-
-    private async Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    private async Task<RegistrationOrderLifecycleResponseDto> FinalizeCoreAsync(
+        Guid orderId,
+        Guid tenantId,
+        bool paid,
+        CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -471,12 +418,51 @@ public sealed class RegistrationOrderLifecycleService(
         RegistrationOrderStatusEnum initialStatus = (RegistrationOrderStatusEnum)initialOrder.RegistrationOrderStatusId;
         if (initialStatus == RegistrationOrderStatusEnum.Confirmed)
         {
+            if (paid && await GetPaymentEvidenceStateAsync(initialOrder, cancellationToken) == PaymentEvidenceState.Duplicate)
+            {
+                return Success(initialOrder, initialStatus, SucceededPaymentLookupResult.DuplicateCode);
+            }
+
             return Success(initialOrder, initialStatus, "Registration order is already confirmed.");
         }
 
-        if (initialStatus != RegistrationOrderStatusEnum.ReadyForCheckout || initialOrder.TotalDueMinorSnapshot != 0)
+        if (RegistrationOrderRules.IsTerminal(initialStatus))
         {
-            return Failure(orderId, initialOrder, "Registration order is not eligible for free finalization.");
+            return Success(initialOrder, initialStatus, "Registration order is terminal and cannot be finalized.");
+        }
+
+        bool eligibleStatus = paid
+            ? initialStatus is RegistrationOrderStatusEnum.AwaitingPayment or RegistrationOrderStatusEnum.NeedsReconciliation
+            : initialStatus == RegistrationOrderStatusEnum.ReadyForCheckout;
+        if (!eligibleStatus || paid == (initialOrder.TotalDueMinorSnapshot == 0))
+        {
+            return Failure(orderId, initialOrder, paid
+                ? "Registration order is not eligible for paid finalization."
+                : "Registration order is not eligible for free finalization.");
+        }
+
+        PaymentEvidenceState initialPayment = paid
+            ? await GetPaymentEvidenceStateAsync(initialOrder, cancellationToken)
+            : PaymentEvidenceState.Missing;
+        if (paid && initialPayment == PaymentEvidenceState.Missing)
+        {
+            return Failure(orderId, initialOrder, "Registration order has no exact reconciled successful payment.");
+        }
+
+        if (paid && initialPayment is PaymentEvidenceState.Mismatch or PaymentEvidenceState.Duplicate)
+        {
+            string code = initialPayment == PaymentEvidenceState.Duplicate
+                ? SucceededPaymentLookupResult.DuplicateCode
+                : "payment_composition_mismatch";
+            return await ParkPaidIssueAsync(initialOrder, now, code, cancellationToken);
+        }
+
+        RegistrationOrderStatusEnum expectedStatus = initialStatus;
+
+        if (initialOrder.RegistrationWorkflowVersionId.HasValue &&
+            !await finalization.AreMandatoryRequirementsFulfilledAsync(tenantId, orderId, cancellationToken))
+        {
+            return Failure(orderId, initialOrder, "Registration order still has mandatory requirements.");
         }
 
         FinalizationPlan plan;
@@ -502,12 +488,52 @@ public sealed class RegistrationOrderLifecycleService(
                 RegistrationOrderStatusEnum status = (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId;
                 if (status == RegistrationOrderStatusEnum.Confirmed)
                 {
+                    if (paid && await GetPaymentEvidenceStateAsync(order, token) == PaymentEvidenceState.Duplicate)
+                    {
+                        return Success(order, status, SucceededPaymentLookupResult.DuplicateCode);
+                    }
+
                     return Success(order, status, "Registration order is already confirmed.");
                 }
 
-                if (status != RegistrationOrderStatusEnum.ReadyForCheckout || order.ConcurrencyStamp != plan.ConcurrencyStamp)
+                if (status != expectedStatus || order.ConcurrencyStamp != plan.ConcurrencyStamp)
                 {
                     throw new LifecycleRaceException();
+                }
+
+                PaymentEvidenceState payment = paid
+                    ? await GetPaymentEvidenceStateAsync(order, token)
+                    : PaymentEvidenceState.Missing;
+                if (paid && payment == PaymentEvidenceState.Missing)
+                {
+                    return Failure(orderId, order, "Registration order has no exact reconciled successful payment.");
+                }
+
+                if (paid && payment is PaymentEvidenceState.Mismatch or PaymentEvidenceState.Duplicate)
+                {
+                    if (status == RegistrationOrderStatusEnum.AwaitingPayment &&
+                        !await inventory.TryTransitionOrderAsync(
+                            order.Id,
+                            tenantId,
+                            RegistrationOrderStatusEnum.AwaitingPayment,
+                            RegistrationOrderStatusEnum.NeedsReconciliation,
+                            now,
+                            token))
+                    {
+                        throw new LifecycleRaceException();
+                    }
+
+                    await inventory.SaveChangesAsync(token);
+                    string code = payment == PaymentEvidenceState.Duplicate
+                        ? SucceededPaymentLookupResult.DuplicateCode
+                        : "payment_composition_mismatch";
+                    return Success(order, RegistrationOrderStatusEnum.NeedsReconciliation, code);
+                }
+
+                if (order.RegistrationWorkflowVersionId.HasValue &&
+                    !await finalization.AreMandatoryRequirementsFulfilledAsync(tenantId, orderId, token))
+                {
+                    return Failure(orderId, order, "Registration order still has mandatory requirements.");
                 }
 
                 if (order.PurchaserActorId.HasValue)
@@ -529,10 +555,47 @@ public sealed class RegistrationOrderLifecycleService(
                     }
                 }
 
+                PromotionReservation? activePromotion = await LoadActivePromotionForUpdateAsync(order, token);
+                IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(order.Id, tenantId, token);
+                RegistrationInventoryHold[] activeHolds = holds
+                    .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+                    .ToArray();
+                if (paid && !HasValidActiveHolds(activeHolds, plan.CapacityReservations, now))
+                {
+                    RegistrationInventoryReservationResult reservation = await inventory.ReserveRecoveredHoldsAsync(
+                        order.EventId,
+                        tenantId,
+                        plan.CapacityReservations.Reservations,
+                        now,
+                        token);
+                    if (!reservation.Reserved)
+                    {
+                        if (!await inventory.TryTransitionOrderAsync(
+                                order.Id,
+                                tenantId,
+                                expectedStatus,
+                                RegistrationOrderStatusEnum.NeedsReconciliation,
+                                now,
+                                token))
+                        {
+                            throw new LifecycleRaceException();
+                        }
+
+                        await inventory.SaveChangesAsync(token);
+                        return Success(order, RegistrationOrderStatusEnum.NeedsReconciliation,
+                            "Captured payment needs operator reconciliation because capacity is unavailable.");
+                    }
+
+                    holds = await inventory.GetHoldsByOrderAsync(order.Id, tenantId, token);
+                    activeHolds = holds
+                        .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+                        .ToArray();
+                }
+
                 if (!await inventory.TryTransitionOrderAsync(
                         order.Id,
                         tenantId,
-                        RegistrationOrderStatusEnum.ReadyForCheckout,
+                        expectedStatus,
                         RegistrationOrderStatusEnum.NeedsReconciliation,
                         now,
                         token))
@@ -540,11 +603,7 @@ public sealed class RegistrationOrderLifecycleService(
                     throw new LifecycleRaceException();
                 }
 
-                await ConsumeActivePromotionAsync(order, now, token);
-                IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(order.Id, tenantId, token);
-                RegistrationInventoryHold[] activeHolds = holds
-                    .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
-                    .ToArray();
+                ConsumeActivePromotion(activePromotion, now);
                 await LockCapacityPoolsAsync(order, activeHolds, token);
                 if (!HasValidActiveHolds(activeHolds, plan.CapacityReservations, now)
                     || await inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, tenantId, now, token) != activeHolds.Length)
@@ -574,11 +633,18 @@ public sealed class RegistrationOrderLifecycleService(
         catch (LifecycleRaceException)
         {
             RegistrationOrder? current = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
-            return current is not null && (RegistrationOrderStatusEnum)current.RegistrationOrderStatusId == RegistrationOrderStatusEnum.Confirmed
-                ? Success(current, RegistrationOrderStatusEnum.Confirmed, "Registration order is already confirmed.")
-                : Failure(orderId, current, "Registration order finalization could not reserve its held inventory.");
+            if (current is not null &&
+                (RegistrationOrderStatusEnum)current.RegistrationOrderStatusId == RegistrationOrderStatusEnum.Confirmed)
+            {
+                return paid && await GetPaymentEvidenceStateAsync(current, cancellationToken) == PaymentEvidenceState.Duplicate
+                    ? Success(current, RegistrationOrderStatusEnum.Confirmed, SucceededPaymentLookupResult.DuplicateCode)
+                    : Success(current, RegistrationOrderStatusEnum.Confirmed, "Registration order is already confirmed.");
+            }
+
+            return Failure(orderId, current, "Registration order finalization could not reserve its held inventory.");
         }
     }
+
 
     private async Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldCoreAsync(
         Guid orderId,
@@ -612,6 +678,44 @@ public sealed class RegistrationOrderLifecycleService(
                 if (status != RegistrationOrderStatusEnum.NeedsReconciliation)
                 {
                     return Success(order, status, "Registration order hold recovery was already resolved.");
+                }
+
+                PaymentEvidenceState payment = await GetPaymentEvidenceStateAsync(order, token);
+                if (payment != PaymentEvidenceState.Missing)
+                {
+                    await LoadActivePromotionForUpdateAsync(order, token);
+                    if (payment is PaymentEvidenceState.Mismatch or PaymentEvidenceState.Duplicate)
+                    {
+                        string code = payment == PaymentEvidenceState.Duplicate
+                            ? SucceededPaymentLookupResult.DuplicateCode
+                            : "payment_composition_mismatch";
+                        return Success(order, RegistrationOrderStatusEnum.NeedsReconciliation, code);
+                    }
+
+                    IReadOnlyList<RegistrationInventoryHold> paidHolds = await inventory.GetHoldsByOrderAsync(
+                        order.Id, order.TenantId, token);
+                    RegistrationInventoryHold[] paidActiveHolds = paidHolds
+                        .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+                        .ToArray();
+                    if (!HasValidActiveHolds(paidActiveHolds, plan, now))
+                    {
+                        RegistrationInventoryReservationResult paidReservation = await inventory.ReserveRecoveredHoldsAsync(
+                            order.EventId,
+                            order.TenantId,
+                            plan.Reservations,
+                            now,
+                            token);
+                        if (!paidReservation.Reserved || paidReservation.RequiresApproval)
+                        {
+                            return Success(order, RegistrationOrderStatusEnum.NeedsReconciliation,
+                                "Captured payment remains parked while capacity or approval is unavailable.");
+                        }
+                    }
+
+                    await finalization.RequestAsync(order, now, token);
+                    await inventory.SaveChangesAsync(token);
+                    return Success(order, RegistrationOrderStatusEnum.NeedsReconciliation,
+                        "Captured payment capacity was recovered and paid finalization was requeued.");
                 }
 
                 await ReleaseActivePromotionAsync(order, now, token);
@@ -725,10 +829,10 @@ public sealed class RegistrationOrderLifecycleService(
         }, cancellationToken);
     }
 
-    private async Task LoadActivePromotionForUpdateAsync(
+    private Task<PromotionReservation?> LoadActivePromotionForUpdateAsync(
         RegistrationOrder order,
         CancellationToken cancellationToken) =>
-        _ = await promotions.GetActiveReservationForUpdateAsync(order.TenantId, order.Id, cancellationToken);
+        promotions.GetActiveReservationForUpdateAsync(order.TenantId, order.Id, cancellationToken);
 
     private async Task<CapacityReservationPlan> PrepareCapacityReservationPlanAsync(
         RegistrationOrder order,
@@ -865,15 +969,8 @@ public sealed class RegistrationOrderLifecycleService(
         await inventory.GetPoolsForUpdateAsync(capacityPoolIds, order.EventId, order.TenantId, cancellationToken);
     }
 
-    private async Task ConsumeActivePromotionAsync(
-        RegistrationOrder order,
-        DateTime now,
-        CancellationToken cancellationToken)
+    private static void ConsumeActivePromotion(PromotionReservation? reservation, DateTime now)
     {
-        PromotionReservation? reservation = await promotions.GetActiveReservationForUpdateAsync(
-            order.TenantId,
-            order.Id,
-            cancellationToken);
         if (reservation is not null && !reservation.TryConsume(now))
         {
             throw new LifecycleRaceException();
@@ -1193,6 +1290,7 @@ public sealed class RegistrationOrderLifecycleService(
             Order = order is null ? null : RegistrationOrderDto.From(order)
         };
 
+
     private sealed record FinalizationPlan(
         Guid ConcurrencyStamp,
         IReadOnlyList<RegistrationParticipant> Placeholders,
@@ -1203,6 +1301,7 @@ public sealed class RegistrationOrderLifecycleService(
     private sealed record CapacityReservationPlan(
         IReadOnlyCollection<EventTicketType> TicketTypes,
         IReadOnlyList<RegistrationInventoryReservation> Reservations);
+
 
     private sealed class LifecycleRaceException : Exception;
 

@@ -7,10 +7,11 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Hateoas;
+using Explore.Application.Services.Registration;
 
 namespace Explore.API.Hateoas.Policies;
 
-public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderDto>
+public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILinkPolicy<RegistrationOrderDto>
 {
     public IEnumerable<LinkDefinition> GetLinks(RegistrationOrderDto dto, ClaimsPrincipal? user)
     {
@@ -118,18 +119,70 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     facts: Facts(dto));
         }
 
-        yield return new LinkDefinition(
-                LinkRelations.Cancel,
-                RouteNames.CancelAuthenticatedRegistrationOrder,
-                new { eventId = dto.EventId, orderId = dto.Id },
-                HttpMethods.Delete,
-                "Cancel registration order",
-                RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.RegistrationOrders.Cancel,
-                resourceKind: ResourceKinds.RegistrationOrder,
-                resourceId: dto.Id.ToString("D"),
-                facts: Facts(dto));
+        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+                dto.StatusId,
+                dto.TotalDueMinor,
+                dto.ExpiresAt,
+                timeProvider.GetUtcNow().UtcDateTime))
+        {
+            yield return new LinkDefinition(
+                    LinkRelations.StartPayment,
+                    RouteNames.StartAuthenticatedRegistrationPayment,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Post,
+                    "Start payment",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Continue,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    facts: Facts(dto));
+        }
+
+        if (dto.TotalDueMinor > 0 && dto.StatusCode is "AWAITING_PAYMENT" or "NEEDS_RECONCILIATION" or "CONFIRMED")
+        {
+            yield return new LinkDefinition(
+                    LinkRelations.PaymentStatus,
+                    RouteNames.GetAuthenticatedRegistrationPayment,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Get,
+                    "Payment status",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.View,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    facts: Facts(dto));
+
+            yield return new LinkDefinition(
+                    LinkRelations.StudioPaymentStatus,
+                    RouteNames.GetStudioRegistrationPayment,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Get,
+                    "Studio payment status",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.Events.ManagePaidEventCommerce,
+                    resourceKind: ResourceKinds.Event,
+                    resourceId: dto.EventId.ToString("D"),
+                    facts: new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
+        }
+
+        if (dto.StatusCode is not ("AWAITING_PAYMENT" or "NEEDS_RECONCILIATION" or "CONFIRMED"))
+        {
+            yield return new LinkDefinition(
+                    LinkRelations.Cancel,
+                    RouteNames.CancelAuthenticatedRegistrationOrder,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Delete,
+                    "Cancel registration order",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Cancel,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    facts: Facts(dto));
+        }
     }
 
     private static IAuthorizationFacts Facts(RegistrationOrderDto dto) =>

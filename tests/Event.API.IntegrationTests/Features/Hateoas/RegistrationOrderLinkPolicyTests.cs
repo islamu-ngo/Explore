@@ -11,6 +11,8 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 public sealed class RegistrationOrderLinkPolicyTests
 {
+    private static readonly DateTime UtcNow = new(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+
     [Test]
     public async Task GetLinks_UsesOrderScopedViewAndCancelCandidates()
     {
@@ -21,7 +23,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             AccountUserId = Guid.CreateVersion7()
         };
 
-        var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
+        var links = CreatePolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
             [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Cancel]);
@@ -45,7 +47,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             StatusCode = "READY_FOR_CHECKOUT"
         };
 
-        var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
+        var links = CreatePolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
             [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.ApplyPromotion, LinkRelations.Finalize, LinkRelations.Cancel]);
@@ -74,7 +76,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             AppliedPromotionDisplayLabel = "Launch discount"
         };
 
-        var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
+        var links = CreatePolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.RemovePromotion);
         await Assert.That(links.Select(link => link.Rel)).DoesNotContain(LinkRelations.ApplyPromotion);
@@ -93,7 +95,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             StatusCode = "AWAITING_REQUIREMENTS"
         };
 
-        var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
+        var links = CreatePolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
             [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.RequirementProgress, LinkRelations.Cancel]);
@@ -102,4 +104,60 @@ public sealed class RegistrationOrderLinkPolicyTests
             .IsEqualTo(RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress);
         await Assert.That(progress.Method).IsEqualTo("GET");
     }
+
+    [Test]
+    public async Task GetLinks_WhenAwaitingPaidCheckout_UsesPurchaserAndExactCommercePermissions()
+    {
+        var order = new RegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.AwaitingPayment,
+            StatusCode = "AWAITING_PAYMENT",
+            TotalDueMinor = 1_000,
+            ExpiresAt = UtcNow.AddMinutes(30)
+        };
+
+        var links = CreatePolicy().GetLinks(order, null).ToList();
+
+        await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.StartPayment);
+        await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.PaymentStatus);
+        await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.StudioPaymentStatus);
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.StartPayment).PermissionAction)
+            .IsEqualTo(AuthorizationActions.RegistrationOrders.Continue);
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.StudioPaymentStatus).PermissionAction)
+            .IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.StudioPaymentStatus).PermissionResourceKind)
+            .IsEqualTo(ResourceKinds.Event);
+    }
+
+    [Test]
+    public async Task GetLinks_WhenAwaitingPaymentIsExpired_OmitsStartPayment()
+    {
+        var order = new RegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.AwaitingPayment,
+            StatusCode = "AWAITING_PAYMENT",
+            TotalDueMinor = 1_000,
+            ExpiresAt = UtcNow.AddSeconds(-1)
+        };
+
+        var links = new RegistrationOrderLinkPolicy(new FixedTimeProvider(UtcNow)).GetLinks(order, null).ToList();
+
+        await Assert.That(links.Select(link => link.Rel)).DoesNotContain(LinkRelations.StartPayment);
+        await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.PaymentStatus);
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
+
+    private static RegistrationOrderLinkPolicy CreatePolicy() => new(new FixedTimeProvider(UtcNow));
 }

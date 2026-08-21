@@ -362,6 +362,7 @@ Readiness interpretation:
 | `ai-retention-cleanup` | API | AI retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `storage` | API | Selected storage provider is available. Local mode verifies the API-owned data root is writable; S3-compatible mode verifies bucket reachability only when selected. | Not used | Selected provider cannot be resolved, selected local root is not writable, or selected S3-compatible storage is missing/unreachable |
 | `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
+| `payment-reconciliation` | API | Payment due/parked/configuration-blocked/duplicate-success counts are below attention thresholds | Due work reaches 100, or any parked, configuration-blocked, or duplicate-succeeded-order condition exists | The bounded payment readiness query fails |
 | `ai-provider` | API | AI provider integration is disabled, the deterministic fake provider is enabled in `Development`/`Testing`, or OpenAI Responses/OpenAI-compatible/Anthropic/Anthropic-compatible/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, a production-like host selects the forbidden fake provider, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus public/curated exact-collection subscription is ready | Not used | Capability readiness cannot be resolved |
@@ -374,6 +375,7 @@ Operational rules:
 - Privacy-erasure readiness exposes only topology, restore capability, replay-caught-up state, and aggregate due/unknown/dead-letter counts. It never exposes intent IDs, subject IDs, provider targets, endpoints, payloads, credentials, connection details, or exception text.
 - Privacy-erasure cleanup is finite and bounded: receipt hashes and provider locators expire, and the cleanup worker can run in dry-run mode before mutation. Do not describe compaction or legal hold as shipped; those remain gaps.
 - Unknown provider work is not self-healing. Explicit reconciliation may move it to completed or retry-scheduled state, and dead-lettered work stays operator attention.
+- Payment readiness exposes only aggregate `due`, `unknown`, `parked`, `configurationBlocked`, `duplicateSucceededOrders`, bounded `code`, and `oldestDueAtUtc` fields. It never exposes tenant/order/attempt/provider object IDs, account IDs, request IDs, URLs, PII, or secrets.
 
 - Point load balancer readiness checks at `/health` and liveness checks at `/alive`.
 - Treat `Degraded` as deployable only when the affected dependency is optional for the deployment mode and the response body clearly identifies the dependency.
@@ -580,6 +582,8 @@ AI provider tracing uses the `Explore.Ai.Provider` activity source. Provider spa
 
 Current counters include:
 
+Payment reconciliation currently uses the bounded `/health` projection and structured aggregate job log rather than dedicated `Explore.Business` counters. Alert on `payment-reconciliation` Degraded/Unhealthy and the scheduler's bounded claimed/succeeded/nonterminal/unknown/parked/stale counts; do not derive labels from order, account, provider object, or request identifiers.
+
 - `explore.events.created` (`tenant_id`, `event_type`)
 - `explore.events.published` (`tenant_id`)
 - `explore.registrations.created` (`tenant_id`)
@@ -683,7 +687,16 @@ Organizer code rotation and definition revocation are different controls. `rotat
 
 Failure behavior is intentionally bounded. An invalid attendee code, ineligible/expired/revoked definition, exhausted limit, or conflicting reservation produces the same generic unavailable outcome. A missing qualified key, invalid Base64, or fewer than 32 decoded bytes prevents the keyed operation rather than falling back or exposing comparison detail. Restore the exact qualified binding or roll the configured active version back to a still-provisioned key; do not regenerate a value under an existing qualifier.
 
-Checkout displays the server snapshots for pre-discount organizer amount, promotion discount, post-discount organizer amount, platform fee, voluntary contribution, and final total separately. When the final total is zero and the order resource emits `finalize`, authenticated or capability-scoped guest checkout finalizes through the registration-order lifecycle without a payment-provider call. Nonzero payment checkout/capture remains a Phase 18 boundary.
+Checkout displays the server snapshots for pre-discount organizer amount, promotion discount, post-discount organizer amount, platform fee, voluntary contribution, and final total separately. When the final total is zero and the order resource emits `finalize`, authenticated or capability-scoped guest checkout finalizes through the registration-order lifecycle without a payment-provider call. A positive total uses the durable Phase 18 start/status/Checkout/reconciliation contract and never treats browser return as success.
+
+### Payment Checkout And Reconciliation Runbook
+
+1. Check `/health` for `payment-reconciliation`. `configurationBlocked` normally means `PublicBaseUrl`, Stripe mode/secrets, provider identity, or organizer connection state is incomplete; correct configuration before retrying user checkout.
+2. Confirm `payment-reconciliation-drain` is scheduled every 30 seconds and inspect its aggregate claimed/succeeded/nonterminal/unknown/parked/stale log fields. Do not query or publish provider/account/order identifiers in general diagnostics.
+3. For Split topology, verify Redis independently. General cache degradation may fall back to memory, but payment checkout-ticket issue/consume deliberately fails closed. Existing provider attempts still reconcile in the API.
+4. For `Unknown`, preserve the attempt and exact persisted idempotency identity. Restore provider/API connectivity and let the drain retrieve authoritative Checkout and PaymentIntent state; never create a replacement blindly or mark success from a browser return.
+5. For `parked`, `duplicateSucceededOrders`, or money/identity mismatch codes, stop new paid sales for the affected scope and investigate authoritative database plus Stripe Dashboard evidence under controlled access. Do not edit payment rows or emit raw provider payloads into support artifacts.
+6. To roll back new sales, disable paid publication/Checkout creation while leaving signed webhook intake and the reconciliation job running until retained attempts settle. Free-event finalization remains provider-free.
 
 ### Support Access Operations
 
@@ -854,11 +867,14 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `storage-reconciliation` | Interval, `StorageReconciliation:PollingIntervalMinutes` | None | Storage object state vs. provider |
 | `privacy-erasure-credential-cleanup` | Interval, `PrivacyErasure:ProviderPollingInterval` | None | Expired provider credentials/locators |
 | `organizer-payment-readiness-reconciliation` | Interval, `OrganizerPaymentReadinessReconciliation:PollingIntervalSeconds` | None | Stale organizer payment connections |
+| `payment-reconciliation-drain` | Cron `*/30 * * * * ?` (every 30 seconds) | None | Durable Checkout dispatch and payment-reconciliation effects |
 | `inventory-hold-expiry` | One-off time trigger, per order | Pointer-only IDs | The order's earliest `RegistrationInventoryHold.ExpiresAt` |
 | `inventory-hold-expiry-reconciliation` | Cron `0 */5 * * * ?` (every 5 minutes) | None | Expired active holds and hold-expiry recovery targets |
 | `registration-finalization-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | Durable registration-finalization effect claims |
 
 Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to Quartz until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
+
+`payment-reconciliation-drain` performs a dispatch/reconcile/dispatch pass. Missing or invalid `PublicBaseUrl` defers only new Checkout handoff; provider reconciliation still runs. Keep the scheduler enabled after disabling paid sales so retained attempts and late signed evidence can settle.
 
 #### Upgrade note — maintenance sweeps moved to the scheduler
 

@@ -202,6 +202,73 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
             timestamp);
     }
 
+    public OrganizerPaymentRecipientSnapshotResult TryCreateRecipientSnapshot(
+        string currencyCode,
+        Guid instancePolicyVersionId,
+        Guid? tenantPolicyVersionId,
+        DateTime snapshottedAt,
+        TimeSpan maximumEvidenceAge)
+    {
+        DateTime timestamp = EnsureUtc(snapshottedAt, nameof(snapshottedAt));
+        if (maximumEvidenceAge <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumEvidenceAge));
+        }
+
+        OrganizerPaymentProviderConnectionStatusEnum status = (OrganizerPaymentProviderConnectionStatusEnum)StatusId;
+        string? statusFailure = status switch
+        {
+            OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding => "payment_connection_pending",
+            OrganizerPaymentProviderConnectionStatusEnum.Restricted => "payment_connection_restricted",
+            OrganizerPaymentProviderConnectionStatusEnum.Disabled => "payment_connection_disabled",
+            OrganizerPaymentProviderConnectionStatusEnum.Replaced => "payment_connection_replaced",
+            OrganizerPaymentProviderConnectionStatusEnum.Ready => null,
+            _ => "payment_connection_unavailable"
+        };
+        if (statusFailure is not null)
+        {
+            return OrganizerPaymentRecipientSnapshotResult.Failure(statusFailure);
+        }
+
+        string normalizedCurrency;
+        try
+        {
+            normalizedCurrency = NormalizeCurrencyCode(currencyCode);
+        }
+        catch (ArgumentException)
+        {
+            return OrganizerPaymentRecipientSnapshotResult.Failure("payment_currency_unsupported");
+        }
+
+        if (!_supportedCurrencyCodes.Any(row => row.CurrencyCode == normalizedCurrency))
+        {
+            return OrganizerPaymentRecipientSnapshotResult.Failure("payment_currency_unsupported");
+        }
+
+        if (LastReadinessObservedAt is not { } observedAt || timestamp - observedAt > maximumEvidenceAge)
+        {
+            return OrganizerPaymentRecipientSnapshotResult.Failure("payment_readiness_stale");
+        }
+
+        if (instancePolicyVersionId == Guid.Empty || tenantPolicyVersionId == Guid.Empty || MerchantCountryCode is null)
+        {
+            return OrganizerPaymentRecipientSnapshotResult.Failure("payment_policy_unavailable");
+        }
+
+        return OrganizerPaymentRecipientSnapshotResult.Succeeded(OrganizerPaymentRecipientSnapshot.Create(
+            TenantId,
+            OrganizerActorId,
+            Id,
+            ProviderCode,
+            ConnectPlatformId,
+            ExternalAccountId,
+            MerchantCountryCode,
+            normalizedCurrency,
+            instancePolicyVersionId,
+            tenantPolicyVersionId,
+            timestamp));
+    }
+
     internal static string NormalizeProviderCode(string providerCode)
     {
         string normalized = NormalizeRequiredText(providerCode, nameof(providerCode), 40, preserveCase: false).ToLowerInvariant();
@@ -329,6 +396,18 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
 
         return preserveCase ? normalized : normalized.ToLowerInvariant();
     }
+}
+
+public sealed record OrganizerPaymentRecipientSnapshotResult(
+    bool Success,
+    OrganizerPaymentRecipientSnapshot? Snapshot,
+    string? FailureCode)
+{
+    public static OrganizerPaymentRecipientSnapshotResult Succeeded(OrganizerPaymentRecipientSnapshot snapshot) =>
+        new(true, snapshot, null);
+
+    public static OrganizerPaymentRecipientSnapshotResult Failure(string failureCode) =>
+        new(false, null, failureCode);
 }
 
 public sealed class OrganizerPaymentProviderReadinessObservation

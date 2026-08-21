@@ -1,0 +1,29 @@
+/* ABOUTME: Scoped visual states for attendee payment progress, recovery, and confirmation. */
+/* ABOUTME: Uses semantic tokens, logical layout, and motion-safe feedback across directions. */
+
+.payment-status {
+    display: grid;
+    gap: var(--isl-space-4);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.payment-status__message {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-3);
+    border-inline-start: var(--isl-space-1) solid var(--isl-color-info);
+    background: var(--isl-color-surface);
+}
+
+.payment-status__message--attention {
+    border-inline-start-color: var(--isl-color-error);
+}
+
+.payment-status__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}

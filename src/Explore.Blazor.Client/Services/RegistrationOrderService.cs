@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Services.Http;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -12,6 +13,7 @@ public sealed class RegistrationOrderService(
     IEventService eventService,
     Explore.Blazor.Client.Services.Shell.UiShellState shellState,
     IGuestRegistrationOrderCapabilityStore capabilityStore,
+    IBffClient bffClient,
     ILogger<RegistrationOrderService> logger) : IRegistrationOrderService
 {
     public Task<RegistrationCheckoutCompositionDto?> GetCheckoutAsync(Guid eventId, CancellationToken cancellationToken = default) =>
@@ -94,8 +96,8 @@ public sealed class RegistrationOrderService(
         return await ExecuteAsync(() => apiClient.ApplyAuthenticatedRegistrationOrderPromotionAsync(
             eventId,
             orderId,
-            new PromotionCodeRequest { Code = code.Trim() },
             idempotency_Key: NewIdempotencyKey(),
+            body: new PromotionCodeRequest { Code = code.Trim() },
             cancellationToken: cancellationToken)) is null
             ? null
             : await GetCurrentAsync(eventId, orderId, cancellationToken);
@@ -121,6 +123,37 @@ public sealed class RegistrationOrderService(
             : await GetCurrentAsync(eventId, orderId, cancellationToken);
     }
 
+    public Task<HalResourceOfRegistrationPaymentDto?> StartCurrentPaymentAsync(
+        Guid eventId, Guid orderId, HalResourceOfRegistrationOrderDto order, CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "start-payment")
+            ? ExecuteAsync(() => apiClient.StartAuthenticatedRegistrationPaymentAsync(
+                eventId, orderId, NewIdempotencyKey(), cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> GetCurrentPaymentAsync(
+        Guid eventId, Guid orderId, HalResourceOfRegistrationOrderDto order, CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "payment-status")
+            ? ExecuteAsync(() => apiClient.GetAuthenticatedRegistrationPaymentAsync(eventId, orderId, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> RefreshCurrentPaymentAsync(
+        Guid eventId, Guid orderId, HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken = default) =>
+        HasLink(payment._links, "payment-status")
+            ? ExecuteAsync(() => apiClient.GetAuthenticatedRegistrationPaymentAsync(eventId, orderId, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> RetryCurrentPaymentAsync(
+        Guid eventId, Guid orderId, HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken = default) =>
+        HasLink(payment._links, "retry-payment")
+            ? ExecuteAsync(() => apiClient.RetryAuthenticatedRegistrationPaymentAsync(
+                eventId, orderId, NewIdempotencyKey(), cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public async Task<string?> IssueCurrentPaymentCheckoutTicketAsync(
+        string path,
+        CancellationToken cancellationToken = default) =>
+        (await bffClient.IssueRegistrationPaymentCheckoutTicketAsync(path, null, cancellationToken))?.CheckoutPath;
+
     public Task<HalResourceOfRegistrationOrderParticipantsDto?> GetCurrentParticipantsAsync(
         Guid eventId,
         Guid orderId,
@@ -139,9 +172,9 @@ public sealed class RegistrationOrderService(
     {
         BaseCommandResponseOfGuid? response = participantId is { } existingId
             ? await ExecuteAsync(() => apiClient.UpdateAuthenticatedRegistrationOrderParticipantAsync(
-                eventId, orderId, existingId, request, cancellationToken: cancellationToken))
+                eventId, orderId, existingId, NewIdempotencyKey(), request, cancellationToken: cancellationToken))
             : await ExecuteAsync(() => apiClient.AddAuthenticatedRegistrationOrderParticipantAsync(
-                eventId, orderId, request, cancellationToken: cancellationToken));
+                eventId, orderId, NewIdempotencyKey(), request, cancellationToken: cancellationToken));
         Guid? savedId = participantId ?? response?.Id;
         if (response?.Success != true || savedId is null)
         {
@@ -161,7 +194,7 @@ public sealed class RegistrationOrderService(
             };
             BaseCommandResponseOfGuid? assignment = await ExecuteAsync(() =>
                 apiClient.AssignAuthenticatedRegistrationOrderTicketsAsync(
-                    eventId, orderId, assignmentRequest, cancellationToken: cancellationToken));
+                    eventId, orderId, NewIdempotencyKey(), assignmentRequest, cancellationToken: cancellationToken));
             if (assignment?.Success != true)
             {
                 return null;
@@ -182,6 +215,7 @@ public sealed class RegistrationOrderService(
             apiClient.DeferAuthenticatedRegistrationOrderTicketsAsync(
                 eventId,
                 orderId,
+                NewIdempotencyKey(),
                 new RegistrationTicketDeferralsRequest { Assignments = assignments.ToArray(), AssignmentDeadline = deadline },
                 cancellationToken: cancellationToken));
         return response?.Success == true
@@ -232,9 +266,9 @@ public sealed class RegistrationOrderService(
     {
         BaseCommandResponseOfGuid? response = participantId is { } existingId
             ? await ExecuteAsync(() => apiClient.UpdateGuestRegistrationOrderParticipantAsync(
-                eventId, orderId, existingId, request, capability.Value, cancellationToken: cancellationToken))
+                eventId, orderId, existingId, NewIdempotencyKey(), request, capability.Value, cancellationToken: cancellationToken))
             : await ExecuteAsync(() => apiClient.AddGuestRegistrationOrderParticipantAsync(
-                eventId, orderId, request, capability.Value, cancellationToken: cancellationToken));
+                eventId, orderId, NewIdempotencyKey(), request, capability.Value, cancellationToken: cancellationToken));
         Guid? savedId = participantId ?? response?.Id;
         if (response?.Success != true || savedId is null)
         {
@@ -247,6 +281,7 @@ public sealed class RegistrationOrderService(
                 apiClient.AssignGuestRegistrationOrderTicketsAsync(
                     eventId,
                     orderId,
+                    NewIdempotencyKey(),
                     new RegistrationTicketAssignmentsRequest
                     {
                         Assignments = [new TicketParticipantAssignmentInputDto
@@ -279,6 +314,7 @@ public sealed class RegistrationOrderService(
             apiClient.DeferGuestRegistrationOrderTicketsAsync(
                 eventId,
                 orderId,
+                NewIdempotencyKey(),
                 new RegistrationTicketDeferralsRequest { Assignments = assignments.ToArray(), AssignmentDeadline = deadline },
                 capability.Value,
                 cancellationToken: cancellationToken));
@@ -317,9 +353,9 @@ public sealed class RegistrationOrderService(
         return await ExecuteAsync(() => apiClient.ApplyGuestRegistrationOrderPromotionAsync(
             eventId,
             orderId,
+            NewIdempotencyKey(),
             new PromotionCodeRequest { Code = code.Trim() },
             capability.Value,
-            NewIdempotencyKey(),
             cancellationToken: cancellationToken)) is null
             ? null
             : await GetGuestAsync(eventId, orderId, capability, cancellationToken);
@@ -347,6 +383,65 @@ public sealed class RegistrationOrderService(
             : await GetGuestAsync(eventId, orderId, capability, cancellationToken);
     }
 
+    public Task<HalResourceOfRegistrationPaymentDto?> StartGuestPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfGuestRegistrationOrderDto order,
+        CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "start-payment")
+            ? ExecuteAsync(() => apiClient.StartGuestRegistrationPaymentAsync(
+                eventId, orderId, NewIdempotencyKey(), capability.Value, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> GetGuestPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfGuestRegistrationOrderDto order,
+        CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "payment-status")
+            ? ExecuteAsync(() => apiClient.GetGuestRegistrationPaymentAsync(
+                eventId, orderId, capability.Value, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> RefreshGuestPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfRegistrationPaymentDto payment,
+        CancellationToken cancellationToken = default) =>
+        HasLink(payment._links, "payment-status")
+            ? ExecuteAsync(() => apiClient.GetGuestRegistrationPaymentAsync(
+                eventId, orderId, capability.Value, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> RetryGuestPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfRegistrationPaymentDto payment,
+        CancellationToken cancellationToken = default) =>
+        HasLink(payment._links, "retry-payment")
+            ? ExecuteAsync(() => apiClient.RetryGuestRegistrationPaymentAsync(
+                eventId, orderId, NewIdempotencyKey(), capability.Value, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
+    public async Task<string?> IssueGuestPaymentCheckoutTicketAsync(
+        string path,
+        GuestRegistrationOrderCapability capability,
+        CancellationToken cancellationToken = default) =>
+        (await bffClient.IssueRegistrationPaymentCheckoutTicketAsync(path, capability.Value, cancellationToken))?.CheckoutPath;
+
+    public Task<HalResourceOfRegistrationPaymentDto?> GetStudioPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationOrderDto order,
+        CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "studio-payment-status")
+            ? ExecuteAsync(() => apiClient.GetStudioRegistrationPaymentAsync(eventId, orderId, cancellationToken: cancellationToken))
+            : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
+
     private async Task<T?> ExecuteAsync<T>(Func<Task<T>> execute)
         where T : class
     {
@@ -362,4 +457,7 @@ public sealed class RegistrationOrderService(
     }
 
     private static string NewIdempotencyKey() => Guid.CreateVersion7().ToString("D");
+
+    private static bool HasLink(IDictionary<string, HalLink>? links, string relation) =>
+        links?.ContainsKey(relation) == true;
 }

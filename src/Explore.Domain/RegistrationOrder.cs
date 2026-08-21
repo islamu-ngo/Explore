@@ -448,6 +448,22 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         return true;
     }
 
+    public bool ExtendPaymentCutoff(DateTime cutoff, DateTime changedAt)
+    {
+        DateTime utcCutoff = EnsureUtc(cutoff, nameof(cutoff));
+        DateTime utcChangedAt = EnsureUtc(changedAt, nameof(changedAt));
+        if ((RegistrationOrderStatusEnum)RegistrationOrderStatusId != RegistrationOrderStatusEnum.AwaitingPayment ||
+            ExpiresAt is not { } current || utcCutoff <= current)
+        {
+            return false;
+        }
+
+        ExpiresAt = utcCutoff;
+        UpdatedAt = utcChangedAt;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return true;
+    }
+
     public bool TryResolveHoldExpiryRecovery(bool capacityReReserved, DateTime timestamp)
     {
         if ((RegistrationOrderStatusEnum)RegistrationOrderStatusId != RegistrationOrderStatusEnum.NeedsReconciliation)

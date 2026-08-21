@@ -33,6 +33,7 @@ public static class QuartzSchedulerKeys
 
     /// <summary>Matches the ten-second cadence of the polling worker this job replaced.</summary>
     public const string RegistrationFinalizationDrainCron = "*/10 * * * * ?";
+    public const string PaymentReconciliationDrainCron = "*/30 * * * * ?";
 
     public static readonly JobKey EmailDispatchDrain =
         new(ScheduledJobNames.EmailDispatchDrain, RecurringGroup);
@@ -75,6 +76,9 @@ public static class QuartzSchedulerKeys
 
     public static readonly JobKey RegistrationFinalizationDrain =
         new(ScheduledJobNames.RegistrationFinalizationDrain, RecurringGroup);
+
+    public static readonly JobKey PaymentReconciliationDrain =
+        new(ScheduledJobNames.PaymentReconciliationDrain, RecurringGroup);
 
     public static TriggerKey RecurringTriggerFor(JobKey jobKey)
     {

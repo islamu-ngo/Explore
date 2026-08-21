@@ -12,6 +12,33 @@ public sealed record RegistrationFinalizationClaim(
     Guid LeaseToken,
     long ProcessingFence);
 
+public enum SucceededPaymentLookupStatus
+{
+    Missing,
+    Found,
+    Conflict
+}
+
+public sealed record SucceededPaymentLookupResult(
+    SucceededPaymentLookupStatus Status,
+    PaymentAttempt? Attempt,
+    PaymentSucceededObservation? Observation,
+    string? Code)
+{
+    public const string DuplicateCode = "payment_duplicate_succeeded_observations";
+
+    public static SucceededPaymentLookupResult Missing() =>
+        new(SucceededPaymentLookupStatus.Missing, null, null, null);
+
+    public static SucceededPaymentLookupResult Found(
+        PaymentAttempt attempt,
+        PaymentSucceededObservation observation) =>
+        new(SucceededPaymentLookupStatus.Found, attempt, observation, null);
+
+    public static SucceededPaymentLookupResult Conflict() =>
+        new(SucceededPaymentLookupStatus.Conflict, null, null, DuplicateCode);
+}
+
 public interface IRegistrationFinalizationRepository
 {
     Task<bool> RecordFulfillmentAsync(
@@ -29,6 +56,16 @@ public interface IRegistrationFinalizationRepository
     Task<bool> AreMandatoryRequirementsFulfilledAsync(
         Guid tenantId,
         Guid registrationOrderId,
+        CancellationToken cancellationToken);
+
+    Task<SucceededPaymentLookupResult> GetSucceededPaymentAsync(
+        Guid tenantId,
+        Guid registrationOrderId,
+        CancellationToken cancellationToken);
+
+    Task RequestAsync(
+        RegistrationOrder order,
+        DateTime requestedAt,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<RegistrationRequirementFulfillment>> GetFulfillmentsAsync(

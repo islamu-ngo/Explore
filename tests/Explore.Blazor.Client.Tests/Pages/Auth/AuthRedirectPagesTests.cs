@@ -451,7 +451,7 @@ public class AuthRedirectPagesTests : IDisposable
         {
             BaseAddress = new Uri("https://localhost/")
         };
-        _ctx.Services.AddSingleton<IBffClient>(new BffClient(client));
+        _ctx.Services.AddSingleton<IBffClient>(new BffClient(client, Substitute.For<Microsoft.JSInterop.IJSRuntime>()));
     }
 
     private static async Task WaitForNavigationAsync(BunitNavigationManager navigationManager, Func<string, bool> predicate, int timeoutMs = 5000)

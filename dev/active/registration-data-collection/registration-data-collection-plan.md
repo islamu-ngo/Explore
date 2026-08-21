@@ -3,9 +3,23 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-21 Europe/Brussels
 
 ---
+
+## Handoff - 2026-08-21 Europe/Brussels: Phase 18 COMPLETE
+
+### Current State
+- The user approved the full Phase 18 implementation and closeout. Tasks 18.1-18.6 are implemented: provider-neutral payment attempts, durable dispatch/reconciliation, Stripe Connect direct-charge Checkout, signed payment intake, paid finalization, generated API/HAL/client contracts, one-time BFF navigation, and attendee/Studio UI. Refunds, disputes, admission, transfer, waitlist, add-ons, payout, tax, accounting, and invoicing remain outside Phase 18.
+- Generated migrations are PostgreSQL `20260820102139` and `20260820165157`; SQLite `20260820102256` and `20260820165305`; SQL Server `20260820102259` and `20260820165423`; MariaDB `20260820102259` and `20260820165510`; MySQL `20260820102301` and `20260820165608`. `schemas/islamu-event.md` remains the maintained DBML reference alongside EF-generated migrations/snapshots.
+- Runtime mappings now expose canonical `PUBLIC_BASE_URL`, Stripe Test/Live mode, exact Checkout hosts, `OrganizerDirect` provider/platform identity, server-only platform/webhook secrets, BFF checkout issue limits, Split Redis requirements, and explicit API/BFF proxy trust. Blank payment identity/secrets keep paid dispatch unavailable without affecting free events.
+
+### Validation
+- Phase-end verification is complete: Release build exited with 0 errors; full `Explore.Infrastructure.Tests` passed `1424/1424`; full Application passed `3893/3893`; full BFF passed `451/451`; focused HTTP/EF verification passed `2/2`; and the dependency-license validator passed.
+- Broad API/Persistence failures remain unrelated shared-worktree baseline findings where already recorded; they are not attributed to Phase 18.
+
+### Next Action
+1. Phase 18 is complete. Do not start Phase 19 without a new explicit implementation request.
 
 ## Handoff - 2026-08-15 Europe/Brussels: Phase 17 Verification Approved / User Acceptance Pending
 
@@ -21,8 +35,7 @@ Last Updated: 2026-08-15 Europe/Brussels
 - Deterministic UI artifacts are `.omo/evidence/phase17-ui/studio.html` and `.omo/evidence/phase17-ui/checkout.html`; F4 approved their visual/accessibility structure with explicit no-browser/no-pixel limitations. No browser, Aspire, Docker, live database, or live provider execution is claimed. The full Persistence environment gap remains precisely attributed and focused Phase 17 persistence passes 16/16.
 
 ### Next Action
-1. Surface the five unconditional PASS receipts and wait for user acceptance before making the final Phase 17 completion declaration.
-2. Keep Phase 18 and every later payment/refund/admission/payout task unchecked until a separate implementation request starts that slice.
+Historical Phase 17 acceptance is complete. The 2026-08-21 full-Phase approval and Phase 18 handoff above supersede the former start prohibition.
 
 ## Handoff - 2026-08-14 Europe/Brussels: Phase 16.4 Complete
 
@@ -1996,7 +2009,7 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 ---
 
 ### Phase 17: Promotion Codes And Immutable Checkout Pricing
-- **Status:** Tasks 17.1-17.5, canonical documentation, phase-end verification, and F1-F5 are approved. User acceptance remains the final declaration boundary; Phase 18 has not started.
+- **Status:** Tasks 17.1-17.5, canonical documentation, phase-end verification, F1-F5, and user acceptance are complete. Phase 18 is implementation-complete under the later 2026-08-21 handoff above.
 - **Goal:** Add provider-neutral, reservation-aware discounts before any paid Checkout session is created.
 - **Depends on:** Phase 16 and existing order/hold/catalog core.
 - **Relevant files:** new `EventPromotion`, `EventPromotionCode`, `PromotionRedemptionReservation`, promotion/status/discount lookups/rules; order/line commercial snapshots; CQRS/API/Cerbos/HAL; Studio promotion and attendee checkout surfaces.
@@ -2055,14 +2068,15 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 ---
 
 ### Phase 18: Payment Attempts, Stripe Direct-Charge Checkout, And Reconciliation
+- **Status:** Tasks 18.1-18.6 and both Phase 18 verification gates are complete under the user's 2026-08-21 full-Phase approval.
 - **Goal:** Move positive orders from `AwaitingPayment` to confirmed only through durable, reconciled Stripe Connect direct-charge evidence.
 - **Depends on:** Phases 16–17.
 - **Relevant files:** new `PaymentAttempt` + lookups/rules/repository; small Application Checkout/payment-retrieval contracts; `Explore.Infrastructure/Payments/Stripe/Checkout/**` adapter and shared Stripe composition; exact-byte webhook verifier/normalized inbox translator; outbox/effect/reconciliation worker; checkout API/BFF/Blazor; order lifecycle integration.
 - **Related skills/rules:** `outbox-pattern`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `error-tracking`, all layer rules and IP/dependency gate.
 - **Acceptance criteria:** one provider-neutral aggregate and capability-focused Stripe adapters with no SDK leakage; direct charge on snapshotted organizer account; final amount/currency immutable; disclosed platform fee/contribution separate; hosted Checkout; no card data; return navigation not completion; signed duplicate-safe webhooks; reconciliation for timeout/delay/orphans; payment and order states independent. SDK retry, request timeout, `StripeException`, request-ID telemetry, connected-account header, API version, and webhook version behavior are explicit and tested.
 - **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` *(repeat justified: Phase 16 covers account onboarding; Phase 18 adds the separate money-moving Checkout/webhook adapter contract)*
+  - [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors
+  - [x] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` — `1424/1424` passed; repeat justified because Phase 18 adds the separate money-moving Checkout/webhook adapter contract
 - **Rollback / failure handling:** Disable new Checkout creation; preserve attempts and continue webhook/reconciliation processing. Never delete or recreate an ambiguous accepted attempt.
 
 #### Task 18.1: `PaymentAttempt` aggregate, snapshots, and monotonic rules

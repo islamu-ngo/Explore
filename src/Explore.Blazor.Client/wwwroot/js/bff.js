@@ -69,6 +69,49 @@ export async function deleteSetupSecret() {
     return await _bffMutate('DELETE', '/bff/setup-secret');
 }
 
+const checkoutIssueControllers = new Map();
+
+export async function issueRegistrationPaymentCheckoutTicket(url, guestCapability, operationId) {
+    const headers = { 'Accept': 'application/json' };
+    const xsrf = getCookie('XSRF-TOKEN');
+    if (xsrf) {
+        headers['X-CSRF-TOKEN'] = xsrf;
+    }
+    if (guestCapability) {
+        headers['X-Registration-Order-Capability'] = guestCapability;
+    }
+
+    const controller = new AbortController();
+    checkoutIssueControllers.set(operationId, controller);
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            mode: 'same-origin',
+            headers,
+            signal: controller.signal
+        });
+        return response.ok ? await response.json() : null;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return null;
+        }
+        throw error;
+    } finally {
+        if (checkoutIssueControllers.get(operationId) === controller) {
+            checkoutIssueControllers.delete(operationId);
+        }
+    }
+}
+
+export function abortRegistrationPaymentCheckoutTicket(operationId) {
+    const controller = checkoutIssueControllers.get(operationId);
+    if (controller) {
+        controller.abort();
+        checkoutIssueControllers.delete(operationId);
+    }
+}
+
 /**
  * Get the current setup secret status (persisted? valid?).
  * @returns {Promise<{hasPersistedSecret: boolean, isValid: boolean, error: string|null}>}

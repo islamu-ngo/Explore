@@ -143,6 +143,7 @@ Commonly consumed sections in code:
 - `AiRetentionCleanup:*` (tenant-scoped AI conversation retention; `ai-retention-cleanup` Quartz job)
 - `WebhookRetention:*` (webhook message/attempt retention; `webhook-retention-cleanup` Quartz job)
 - `OrganizerPaymentReadinessReconciliation:*` (`organizer-payment-readiness-reconciliation` Quartz job)
+- `Payments:Stripe:*` and `Payments:OrganizerDirect:*` (Stripe mode, exact Checkout hosts, and non-secret commerce identity)
 - `PrivacyErasure:ProviderPollingInterval` and `PrivacyErasure:RetentionCleanupEnabled` (`privacy-erasure-credential-cleanup` Quartz job)
 
 > **Maintenance sweeps run on the scheduler.** The keys above are unchanged from when these ran as in-process
@@ -463,9 +464,11 @@ volume.
 
 ### Public URL Configuration
 
-`PublicBaseUrl` is the preferred static key for the instance's externally reachable HTTPS origin. The fallback lookup order is `PublicBaseUrl`, then `App:PublicBaseUrl`, then `Application:PublicBaseUrl`.
+`PublicBaseUrl` is the preferred static key for the instance's externally reachable HTTPS base URL. The fallback lookup order is `PublicBaseUrl`, then `App:PublicBaseUrl`, then `Application:PublicBaseUrl`.
 
 The value must be an absolute `http` or `https` URL. Public deployments should use `https`. It is used by public URL builders and by the email dispatch drain when creating absolute unsubscribe URLs for `List-Unsubscribe` headers and visible unsubscribe footers. If no valid public base URL is configured, categorized email can still send when preferences allow it, but the dispatch path omits unsubscribe URLs because relative links are not valid in email headers.
+
+Payment Checkout requires HTTPS with no user info, query, or fragment. A normalized application subpath is supported, for example `https://events.example.org/events`; runtime normalization adds one trailing slash and preserves `/events` in Stripe callbacks and BFF navigation. Missing or invalid configuration defers new Checkout dispatch with `checkout_return_origin_invalid`; it does not block free-order finalization or payment reconciliation.
 
 ### Keycloak Identity Lifecycle Email Configuration
 
@@ -1559,9 +1562,23 @@ Delivery policy is server-owned. Account-security refreshes retain for 5 minutes
 
 `Payments:Stripe:Mode` accepts only `Test` or `Live` and defaults to `Test`; the platform secret must use the matching `sk_test_` or `sk_live_` prefix, and Stripe account/webhook livemode evidence must match before readiness is trusted. Task 16.5 also binds non-secret commerce identity from `Payments:OrganizerDirect`: `ProviderCode` and `ConnectPlatformId`. Both must be configured for paid publication and hosted onboarding; neither belongs in browser DTOs.
 
+| Deployment input | .NET key / secret binding | Default | Purpose |
+|---|---|---|---|
+| `PublicBaseUrl` | `PublicBaseUrl` | blank | Canonical public HTTPS base URL used for Checkout return URLs |
+| `Payments__Stripe__Mode` | `Payments:Stripe:Mode` | `Test` | Isolates Test and Live evidence and key prefixes |
+| `Payments__Stripe__AllowedCheckoutHosts__0` | `Payments:Stripe:AllowedCheckoutHosts:0` | `checkout.stripe.com` | Built-in HTTPS Checkout destination host; no wildcard syntax |
+| `Payments__OrganizerDirect__ProviderCode` | `Payments:OrganizerDirect:ProviderCode` | blank | Non-secret provider identity required for paid publication |
+| `Payments__OrganizerDirect__ConnectPlatformId` | `Payments:OrganizerDirect:ConnectPlatformId` | blank | Non-secret self-hoster platform identity |
+| `STRIPE_PLATFORM_SECRET_KEY` | `payments.stripe.platform_secret_key` | blank | Instance/server-only provider credential |
+| `STRIPE_WEBHOOK_SECRET` | `payments.stripe.webhook_secret` | blank | Instance/server-only Connect endpoint signing secret |
+| `RateLimiting__RegistrationPaymentCheckoutIssue__PermitLimit` | `RateLimiting:RegistrationPaymentCheckoutIssue:PermitLimit` | `10` | Node-local checkout-ticket issue permits, clamped to `1..100` |
+| `RateLimiting__RegistrationPaymentCheckoutIssue__WindowSeconds` | `RateLimiting:RegistrationPaymentCheckoutIssue:WindowSeconds` | `60` | Node-local fixed window, clamped to `1..3600` seconds |
+
+Split `Explore.Blazor` requires `ConnectionStrings:cache` to reach Redis for one-time Checkout tickets and fails closed for issue/consume when Redis is absent or unavailable. This is stricter than the general distributed-cache fallback. Combined `Event.Standalone` uses a bounded, expiring in-memory ticket store and does not require Redis.
+
 `OrganizerPaymentReadinessReconciliation` controls the hosted readiness worker. `Enabled` defaults to `true`; `BatchSize` defaults to `25` and is `1..100`; `StaleIntervalMinutes` defaults to `5` and is `1..1440`; `PollingIntervalSeconds` defaults to `60` and is `5..3600`; `InitialDelaySeconds` defaults to `5` and is `0..300`. The worker is not registered in `Testing` and is not registered when disabled.
 
-Instance and tenant paid-event policies are database-governed versioned settings rather than deployment configuration. The instance policy is the ceiling; tenant policy can only narrow allowed organizer kinds and currencies, risk ceilings, review thresholds, and cannot weaken mandatory refund protections or verification/review floors. Runtime checkout, refunds, and dispute handling remain deferred. Organizers connect only their own eligible actor merchant account; no administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless its separate approvals are current.
+Instance and tenant paid-event policies are database-governed versioned settings rather than deployment configuration. The instance policy is the ceiling; tenant policy can only narrow allowed organizer kinds and currencies, risk ceilings, review thresholds, and cannot weaken mandatory refund protections or verification/review floors. Direct-charge Checkout and reconciliation are implemented; refunds and disputes remain deferred. Organizers connect only their own eligible actor merchant account; no administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless its separate approvals are current.
 
 ## Related
 

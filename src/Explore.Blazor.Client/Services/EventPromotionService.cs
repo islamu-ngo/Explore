@@ -16,19 +16,19 @@ public sealed class EventPromotionService(IEventApiClient apiClient) : IEventPro
     }
 
     public Task<PromotionCodeIssuedCommandResponseDto> CreateDraftAsync(Guid eventId, CreatePromotionDraftRequest request, CancellationToken cancellationToken = default) =>
-        apiClient.CreateEventPromotionDraftAsync(eventId, request, NewIdempotencyKey(), cancellationToken: cancellationToken);
+        apiClient.CreateEventPromotionDraftAsync(eventId, NewIdempotencyKey(), request, cancellationToken: cancellationToken);
 
     public Task<PromotionManagementCommandResponseDto> ReviseAsync(Guid eventId, Guid definitionId, RevisePromotionRequest request, CancellationToken cancellationToken = default) =>
-        apiClient.ReviseEventPromotionAsync(eventId, definitionId, request, NewIdempotencyKey(), cancellationToken: cancellationToken);
+        apiClient.ReviseEventPromotionAsync(eventId, definitionId, NewIdempotencyKey(), request, cancellationToken: cancellationToken);
 
     public Task<PromotionManagementCommandResponseDto> PublishAsync(Guid eventId, Guid definitionId, PromotionCodeRequest request, CancellationToken cancellationToken = default) =>
-        apiClient.PublishEventPromotionAsync(eventId, definitionId, request, NewIdempotencyKey(), cancellationToken: cancellationToken);
+        apiClient.PublishEventPromotionAsync(eventId, definitionId, NewIdempotencyKey(), request, cancellationToken: cancellationToken);
 
     public Task<PromotionManagementCommandResponseDto> RevokeAsync(Guid eventId, Guid definitionId, RevokePromotionRequest request, CancellationToken cancellationToken = default) =>
-        apiClient.RevokeEventPromotionAsync(eventId, definitionId, request, NewIdempotencyKey(), cancellationToken: cancellationToken);
+        apiClient.RevokeEventPromotionAsync(eventId, definitionId, NewIdempotencyKey(), request, cancellationToken: cancellationToken);
 
     public Task<PromotionCodeIssuedCommandResponseDto> RotateCodeAsync(Guid eventId, Guid definitionId, PromotionCodeRequest request, CancellationToken cancellationToken = default) =>
-        apiClient.RotateEventPromotionCodeAsync(eventId, definitionId, request, NewIdempotencyKey(), cancellationToken: cancellationToken);
+        apiClient.RotateEventPromotionCodeAsync(eventId, definitionId, NewIdempotencyKey(), request, cancellationToken: cancellationToken);
 
     private static string NewIdempotencyKey() => Guid.CreateVersion7().ToString("D");
 }

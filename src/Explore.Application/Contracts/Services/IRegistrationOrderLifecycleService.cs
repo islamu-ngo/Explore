@@ -2,6 +2,7 @@
 // ABOUTME: Lets background workers invoke lifecycle recovery without referencing persistence implementations.
 
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Contracts.Persistence;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -33,6 +34,11 @@ public interface IRegistrationOrderLifecycleService
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<RegistrationOrderLifecycleResponseDto> FinalizePaidAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<RegistrationOrderLifecycleResponseDto> CancelAsync(
         Guid orderId,
         Guid tenantId,
@@ -41,5 +47,10 @@ public interface IRegistrationOrderLifecycleService
     Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
         Guid orderId,
         Guid tenantId,
+        CancellationToken cancellationToken);
+
+    Task<CheckoutDispatchConfigurationDisposition> CancelExpiredConfigurationBlockedPaymentAsync(
+        CheckoutDispatchClaim claim,
+        DateTime observedAt,
         CancellationToken cancellationToken);
 }

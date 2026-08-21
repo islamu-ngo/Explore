@@ -1,5 +1,5 @@
 // ABOUTME: Tests registration-order lifecycle orchestration at its transaction-bound persistence edges.
-// ABOUTME: Verifies free admission materialization, hold release, and approval routing without API exposure.
+// ABOUTME: Verifies free and reconciled-paid admission materialization, hold recovery, and approval routing.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Scheduling;
@@ -27,7 +27,345 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+    private readonly IRegistrationPaymentAttemptRepository _paymentAttempts = Substitute.For<IRegistrationPaymentAttemptRepository>();
     private readonly IScheduledDeadlineDispatcher _deadlines = Substitute.For<IScheduledDeadlineDispatcher>();
+
+    public RegistrationOrderLifecycleServiceTests()
+    {
+        _finalization.GetSucceededPaymentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Missing());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWhenSucceededAndEligibleConfirmsOnceWithAdmissionIssuanceIntent()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold hold = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        ConfigureOrder(order, [hold]);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>()).Returns(1);
+        OutboxMessage? message = null;
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call =>
+        {
+            message = call.ArgAt<OutboxMessage>(0);
+            return Task.FromResult(message);
+        });
+
+        RegistrationOrderLifecycleResponseDto first = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+        RegistrationOrderLifecycleResponseDto duplicate = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(first.Success).IsTrue();
+        await Assert.That(first.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+        await Assert.That(duplicate.Success).IsTrue();
+        await _outbox.Received(1).Create(Arg.Any<OutboxMessage>());
+        await Assert.That(message!.Payload).Contains("\"AdmissionIssuanceRequested\":true", StringComparison.Ordinal);
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWithMissingRequirementsDoesNotConfirm()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100, registrationWorkflowId: Guid.CreateVersion7());
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+        _finalization.AreMandatoryRequirementsFulfilledAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(false);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncAfterRequirementsCompleteResumesTheSamePaidOrder()
+    {
+        Guid workflowId = Guid.CreateVersion7();
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(unitPriceMinor: 100, registrationWorkflowId: workflowId);
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _finalization.AreMandatoryRequirementsFulfilledAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(false, true, true);
+
+        RegistrationOrderLifecycleResponseDto blocked = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+        RegistrationOrderLifecycleResponseDto resumed = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(blocked.Success).IsFalse();
+        await Assert.That(resumed.Success).IsTrue();
+        await Assert.That(resumed.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWhileApprovalIsPendingDoesNotConfirm()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingApproval);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingApproval);
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncAfterApprovalResumesWithoutAnotherCheckout()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(unitPriceMinor: 100);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingApproval);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+
+        RegistrationOrderLifecycleResponseDto blocked = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+        order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, UtcNow);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, UtcNow);
+        RegistrationOrderLifecycleResponseDto resumed = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(blocked.Success).IsFalse();
+        await Assert.That(resumed.Success).IsTrue();
+        await Assert.That(resumed.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncAfterHoldExpiryReacquiresCapacityBeforeConfirming()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold expired = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow.AddMinutes(-15), UtcNow.AddMinutes(-1));
+        expired.TryExpire(UtcNow);
+        RegistrationInventoryHold recovered = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        ConfigureOrder(order, [expired]);
+        _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([expired], [recovered]);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.ReserveRecoveredHoldsAsync(_eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(true, false, false));
+        _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>()).Returns(1);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+        await _inventory.Received(1).ReserveRecoveredHoldsAsync(
+            _eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWhenExpiredCapacityCannotBeRecoveredParksWithoutReleasingPaidEvidence()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold expired = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow.AddMinutes(-15), UtcNow.AddMinutes(-1));
+        expired.TryExpire(UtcNow);
+        ConfigureOrder(order, [expired]);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.ReserveRecoveredHoldsAsync(_eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(false, false, false));
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await _inventory.DidNotReceive().TryReleaseActiveHoldsForOrderAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<RegistrationInventoryHoldStatusEnum>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWhenCapacityLaterBecomesAvailableResumesFromNeedsReconciliation()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold expired = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow.AddMinutes(-15), UtcNow.AddMinutes(-1));
+        expired.TryExpire(UtcNow);
+        RegistrationInventoryHold recovered = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        ConfigureOrder(order, [expired]);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.ReserveRecoveredHoldsAsync(_eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(false, false, false), new RegistrationInventoryReservationResult(true, false, false));
+        _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([expired], [expired], [recovered]);
+        _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>()).Returns(1);
+
+        RegistrationOrderLifecycleResponseDto parked = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+        RegistrationOrderLifecycleResponseDto resumed = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(parked.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await Assert.That(resumed.Success).IsTrue();
+        await Assert.That(resumed.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+    }
+
+    [Test]
+    [Arguments("currency")]
+    [Arguments("organizer")]
+    [Arguments("fee")]
+    [Arguments("contribution")]
+    public async Task FinalizePaidAsyncWhenCommercialCompositionDiffersParksWithoutAdmissionsOrOutbox(string mismatch)
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(
+            order,
+            currencyCode: mismatch == "currency" ? "EUR" : null,
+            organizerAmountMinor: mismatch == "organizer" ? 99 : null,
+            platformFeeMinor: mismatch == "fee" ? 1 : null,
+            platformContributionMinor: mismatch == "contribution" ? 1 : null);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await _inventory.DidNotReceive().AddEventRegistrationsAsync(
+            Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncLocksPromotionBeforeRecoveredCapacity()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold expired = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow.AddMinutes(-15), UtcNow.AddMinutes(-1));
+        expired.TryExpire(UtcNow);
+        ConfigureOrder(order, [expired]);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.ReserveRecoveredHoldsAsync(_eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(false, false, false));
+
+        _ = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        Received.InOrder(() =>
+        {
+            _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+            _inventory.ReserveRecoveredHoldsAsync(
+                _eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Test]
+    public async Task RecoverExpiredHoldAsyncForSucceededPaidOrderKeepsNeedsReconciliationAndRequeuesPaidFinalization()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, UtcNow);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.ReserveRecoveredHoldsAsync(_eventId, _tenantId, Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(true, false, false));
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().RecoverExpiredHoldAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await _finalization.Received(1).RequestAsync(order, UtcNow, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(RegistrationOrderStatusEnum.Rejected)]
+    [Arguments(RegistrationOrderStatusEnum.Cancelled)]
+    [Arguments(RegistrationOrderStatusEnum.Expired)]
+    public async Task FinalizePaidAsyncCannotResurrectTerminalOrders(RegistrationOrderStatusEnum terminalStatus)
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveTo(order, terminalStatus == RegistrationOrderStatusEnum.Rejected
+            ? RegistrationOrderStatusEnum.AwaitingApproval
+            : RegistrationOrderStatusEnum.ReadyForCheckout);
+        order.TransitionTo(terminalStatus, UtcNow);
+        ConfigureOrder(order, []);
+        ConfigurePaidEvidence(order);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)terminalStatus);
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWithoutExactSucceededObservationDoesNotMutateOrderOrHolds()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        _finalization.GetSucceededPaymentAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Missing());
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
+        await _inventory.DidNotReceive().TryConsumeActiveHoldsForOrderAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWithMultipleSucceededObservationsParksWithBoundedDuplicateCode()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        _finalization.GetSucceededPaymentAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Conflict());
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(
+            order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await Assert.That(result.Message).IsEqualTo("payment_duplicate_succeeded_observations");
+        await _inventory.DidNotReceive().AddEventRegistrationsAsync(
+            Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizePaidAsyncWhenConfirmedAndLateSecondSuccessExistsSurfacesConflictWithoutUndoingAdmission()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, UtcNow);
+        order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, UtcNow);
+        ConfigureOrder(order, []);
+        _finalization.GetSucceededPaymentAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Conflict());
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(
+            order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+        await Assert.That(result.Message).IsEqualTo("payment_duplicate_succeeded_observations");
+        await _finalization.Received(1).GetSucceededPaymentAsync(
+            _tenantId, order.Id, Arg.Any<CancellationToken>());
+        await _inventory.DidNotReceive().AddEventRegistrationsAsync(
+            Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
 
     [Test]
     public async Task FinalizeFreeAsyncWhenPromotionReservationIsActiveConsumesItBeforeConfirming()
@@ -1380,6 +1718,74 @@ public sealed class RegistrationOrderLifecycleServiceTests
         await Assert.That(messages.Select(message => message.Id).Distinct()).HasSingleItem();
     }
 
+    [Test]
+    public async Task ConfigurationExpiryCancellationReleasesPromotionHoldsOutboxAndDeadlineOnceOnDuplicate()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(
+            unitPriceMinor: 100,
+            capacityBacked: true);
+        MoveToAwaitingPayment(order);
+        RegistrationInventoryHold hold = RegistrationInventoryHold.Create(
+            order.Id,
+            ticket.CapacityPoolId!.Value,
+            ticket.Id,
+            _tenantId,
+            1,
+            UtcNow.AddMinutes(-15),
+            UtcNow.AddMinutes(-1));
+        ConfigureOrder(order, [hold]);
+        PromotionReservation reservation = CreateActivePromotionReservation(order, catalog);
+        _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(reservation, (PromotionReservation?)null);
+        _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Cancelled,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+        var claim = new CheckoutDispatchClaim(
+            Guid.CreateVersion7(),
+            _tenantId,
+            order.Id,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            AttemptCount: 1);
+        _paymentAttempts.CancelExpiredConfigurationBlockedAsync(claim, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => call.Arg<OutboxMessage>());
+
+        CheckoutDispatchConfigurationDisposition first = await CreateService().CancelExpiredConfigurationBlockedPaymentAsync(
+            claim,
+            UtcNow,
+            CancellationToken.None);
+        CheckoutDispatchConfigurationDisposition duplicate = await CreateService().CancelExpiredConfigurationBlockedPaymentAsync(
+            claim,
+            UtcNow.AddSeconds(1),
+            CancellationToken.None);
+
+        await Assert.That(first).IsEqualTo(CheckoutDispatchConfigurationDisposition.CancelledExpired);
+        await Assert.That(duplicate).IsEqualTo(CheckoutDispatchConfigurationDisposition.CancelledExpired);
+        await Assert.That(reservation.PromotionReservationStatusId).IsEqualTo((int)PromotionReservationStatusEnum.Released);
+        await _paymentAttempts.Received(2).CancelExpiredConfigurationBlockedAsync(
+            claim,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await _inventory.Received(1).TryReleaseActiveHoldsForOrderAsync(
+            order.Id,
+            _tenantId,
+            RegistrationInventoryHoldStatusEnum.Cancelled,
+            UtcNow,
+            Arg.Any<CancellationToken>());
+        await _outbox.Received(1).Create(Arg.Is<OutboxMessage>(message =>
+            message.AggregateId == order.Id && message.EventType == RegistrationOrderOutboxMessageFactory.CancelledEventType));
+        await _deadlines.Received(1).CancelAsync(
+            ScheduledJobNames.InventoryHoldExpiry,
+            InventoryHoldDeadline.KeyFor(order.Id),
+            Arg.Any<CancellationToken>());
+    }
+
     private RegistrationOrderLifecycleService CreateService(IUnitOfWork? unitOfWork = null) => new(
         _inventory,
         _promotions,
@@ -1390,6 +1796,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _outbox,
         unitOfWork ?? new InlineUnitOfWork(),
         _finalization,
+        _paymentAttempts,
         _deadlines,
         new FixedTimeProvider(UtcNow));
 
@@ -1441,6 +1848,46 @@ public sealed class RegistrationOrderLifecycleServiceTests
                 order.TransitionTo(desired, UtcNow);
                 return true;
             });
+    }
+
+    private void ConfigurePaidEvidence(
+        RegistrationOrder order,
+        string? currencyCode = null,
+        long? organizerAmountMinor = null,
+        long? platformFeeMinor = null,
+        long? platformContributionMinor = null)
+    {
+        OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
+            _tenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "stripe",
+            "platform-eu",
+            "acct_paid",
+            "BE",
+            currencyCode ?? order.CurrencyCode,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            UtcNow.AddMinutes(-2));
+        PaymentAttempt attempt = PaymentAttempt.Create(
+            Guid.CreateVersion7(),
+            _tenantId,
+            order.Id,
+            recipient,
+            "OrganizerDirect",
+            "2026-08-20.acacia",
+            "paid-composition",
+            organizerAmountMinor ?? order.OrganizerDirectedTotalMinorSnapshot,
+            platformFeeMinor ?? order.PlatformFeeTotalMinorSnapshot,
+            platformContributionMinor ?? order.PlatformContributionTotalMinorSnapshot,
+            "checkout:paid",
+            UtcNow.AddMinutes(-2),
+            UtcNow.AddMinutes(30));
+        attempt.MarkSucceededFromCheckout("cs_paid", "pi_paid", UtcNow.AddMinutes(-1), "req_paid");
+        PaymentSucceededObservation observation = PaymentSucceededObservation.Create(
+            attempt, null, "cs_paid", "pi_paid", "req_paid", UtcNow.AddMinutes(-1));
+        _finalization.GetSucceededPaymentAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Found(attempt, observation));
     }
 
     private void ConfigureFinalization(
@@ -1640,6 +2087,12 @@ public sealed class RegistrationOrderLifecycleServiceTests
                 return;
             }
         }
+    }
+
+    private static void MoveToAwaitingPayment(RegistrationOrder order)
+    {
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, UtcNow);
     }
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider

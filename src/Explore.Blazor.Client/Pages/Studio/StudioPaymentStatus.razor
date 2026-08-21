@@ -1,0 +1,107 @@
+@* ABOUTME: Bounded read-only Studio payment projection for one registration order. *@
+@* ABOUTME: Loads and renders payment state only when the order advertises the exact Studio HAL relation. *@
+@inject IRegistrationOrderService RegistrationOrderService
+@implements IDisposable
+
+@if (_payment is not null)
+{
+    <section class="studio-payment-status @(IsAttention ? "studio-payment-status--attention" : null)"
+             aria-labelledby="@HeadingId"
+             role="@(IsAttention ? "alert" : null)"
+             data-testid="studio-payment-status">
+        <MudText Id="@HeadingId" Typo="Typo.subtitle2" HtmlTag="h4">Payment</MudText>
+        <dl class="studio-payment-status__facts" dir="auto">
+            <div>
+                <dt>Status</dt>
+                <dd class="studio-payment-status__status">
+                    @if (IsAttention)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.SupportAgent" aria-hidden="true" />
+                    }
+                    <span>@(_payment.StatusName ?? _payment.StatusCode ?? "Unknown")</span>
+                </dd>
+            </div>
+            @if (_payment.LastUpdatedAt is { } updated)
+            {
+                <div><dt>Last updated</dt><dd>@updated.ToLocalTime().ToString("g")</dd></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_payment.FailureCode))
+            {
+                <div><dt>Reconciliation outcome</dt><dd>@BoundedOutcome(_payment.FailureCode)</dd></div>
+            }
+        </dl>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter, EditorRequired] public HalResourceOfRegistrationOrderDto Order { get; set; } = default!;
+
+    private CancellationTokenSource? _requestCancellation;
+    private HalResourceOfRegistrationPaymentDto? _payment;
+    private long _loadGeneration;
+    private bool _disposed;
+    private string HeadingId => $"studio-payment-status-heading-{Order.Id:N}";
+    private bool IsAttention => string.Equals(_payment?.StatusCode, "NeedsReconciliation", StringComparison.Ordinal);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        CancelPendingRequest();
+        long generation = ++_loadGeneration;
+        Guid eventId = EventId;
+        Guid? orderId = Order.Id;
+        bool hasRelation = Order._links?.ContainsKey("studio-payment-status") == true;
+        _payment = null;
+        if (orderId is null || !hasRelation)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _requestCancellation = cancellation;
+        try
+        {
+            HalResourceOfRegistrationPaymentDto? payment = await RegistrationOrderService.GetStudioPaymentAsync(
+                eventId, orderId.Value, Order, cancellation.Token);
+            if (_disposed || cancellation.IsCancellationRequested || generation != _loadGeneration ||
+                EventId != eventId || Order.Id != orderId || Order._links?.ContainsKey("studio-payment-status") != true)
+            {
+                return;
+            }
+
+            _payment = payment;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_requestCancellation, cancellation))
+            {
+                _requestCancellation = null;
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private static string BoundedOutcome(string failureCode) => failureCode.ToUpperInvariant() switch
+    {
+        "PAYMENT_RETRY_NOT_AVAILABLE" => "Retry is not available",
+        "PAYMENT_START_FAILED" => "Payment could not be started",
+        _ => "Review required"
+    };
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ++_loadGeneration;
+        CancelPendingRequest();
+    }
+
+    private void CancelPendingRequest()
+    {
+        _requestCancellation?.Cancel();
+        _requestCancellation?.Dispose();
+        _requestCancellation = null;
+    }
+}

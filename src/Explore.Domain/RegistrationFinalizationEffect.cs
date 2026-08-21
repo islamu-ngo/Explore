@@ -45,6 +45,21 @@ public sealed class RegistrationFinalizationEffect : ITenantEntity, IAuditableEn
         };
     }
 
+    public void Request(DateTime requestedAt)
+    {
+        EnsureUtc(requestedAt, nameof(requestedAt));
+        if (Status == OutboxMessageStatus.Pending && (NextAttemptAt is null || NextAttemptAt <= requestedAt))
+        {
+            return;
+        }
+
+        Status = OutboxMessageStatus.Pending;
+        NextAttemptAt = requestedAt;
+        CompletedAt = null;
+        ClearLease();
+        UpdatedAt = requestedAt;
+    }
+
     public void Claim(string leaseOwner, Guid leaseToken, DateTime leaseExpiresAt, DateTime claimedAt)
     {
         EnsureUtc(claimedAt, nameof(claimedAt));

@@ -1,5 +1,5 @@
 // ABOUTME: Covers the shared native/provider requirement-fulfillment Application command boundary.
-// ABOUTME: Verifies optional skips persist without submission evidence and enqueue finalization evaluation.
+// ABOUTME: Verifies optional skips and reconciled payment success share one fenced finalization drain.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -132,6 +132,122 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
         await finalization.DidNotReceive().CompleteAsync(
             Arg.Any<RegistrationFinalizationClaim>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task DrainWhenCheckoutRoutesToPaymentFinalizesPaidBeforeSettlingClaim()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim claim = new(
+            Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 11);
+        IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
+        ITenantContextAccessor tenantAccessor = Substitute.For<ITenantContextAccessor>();
+        finalization.ClaimDueAsync("worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([claim]);
+        lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.AwaitingPayment));
+        lifecycle.FinalizePaidAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.Confirmed));
+        finalization.CompleteAsync(claim, UtcNow, CancellationToken.None).Returns(true);
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(1);
+        await lifecycle.Received(1).FinalizePaidAsync(orderId, tenantId, CancellationToken.None);
+        await finalization.Received(1).CompleteAsync(claim, UtcNow, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DrainWhenPaidOrderIsParkedRetriesPaidFinalizationBeforeSettling()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim claim = new(
+            Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 12);
+        IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
+        ITenantContextAccessor tenantAccessor = Substitute.For<ITenantContextAccessor>();
+        finalization.ClaimDueAsync("worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([claim]);
+        lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.NeedsReconciliation));
+        lifecycle.FinalizePaidAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.Confirmed));
+        finalization.CompleteAsync(claim, UtcNow, CancellationToken.None).Returns(true);
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(1);
+        await lifecycle.Received(1).FinalizePaidAsync(orderId, tenantId, CancellationToken.None);
+        await finalization.Received(1).CompleteAsync(claim, UtcNow, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DrainDuplicatePaidOrderParksAndContinuesToConfirmNextValidClaim()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid duplicateOrderId = Guid.CreateVersion7();
+        Guid validOrderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim duplicateClaim = new(
+            Guid.CreateVersion7(), tenantId, duplicateOrderId, Guid.CreateVersion7(), 20);
+        RegistrationFinalizationClaim validClaim = new(
+            Guid.CreateVersion7(), tenantId, validOrderId, Guid.CreateVersion7(), 21);
+        IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
+        ITenantContextAccessor tenantAccessor = Substitute.For<ITenantContextAccessor>();
+        finalization.ClaimDueAsync("worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([duplicateClaim, validClaim]);
+        lifecycle.ReadyForCheckoutAsync(duplicateOrderId, tenantId, CancellationToken.None)
+            .Returns(Response(duplicateOrderId, tenantId, RegistrationOrderStatusEnum.NeedsReconciliation));
+        lifecycle.FinalizePaidAsync(duplicateOrderId, tenantId, CancellationToken.None)
+            .Returns(new RegistrationOrderLifecycleResponseDto
+            {
+                Success = true,
+                Message = "payment_duplicate_succeeded_observations",
+                Order = new RegistrationOrderDto
+                {
+                    Id = duplicateOrderId,
+                    TenantId = tenantId,
+                    StatusId = (int)RegistrationOrderStatusEnum.NeedsReconciliation
+                }
+            });
+        lifecycle.ReadyForCheckoutAsync(validOrderId, tenantId, CancellationToken.None)
+            .Returns(Response(validOrderId, tenantId, RegistrationOrderStatusEnum.AwaitingPayment));
+        lifecycle.FinalizePaidAsync(validOrderId, tenantId, CancellationToken.None)
+            .Returns(Response(validOrderId, tenantId, RegistrationOrderStatusEnum.Confirmed));
+        finalization.CompleteAsync(Arg.Any<RegistrationFinalizationClaim>(), UtcNow, CancellationToken.None)
+            .Returns(true);
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(2);
+        await lifecycle.Received(1).FinalizePaidAsync(duplicateOrderId, tenantId, CancellationToken.None);
+        await lifecycle.Received(1).FinalizePaidAsync(validOrderId, tenantId, CancellationToken.None);
+        await finalization.Received(1).CompleteAsync(duplicateClaim, UtcNow, CancellationToken.None);
+        await finalization.Received(1).CompleteAsync(validClaim, UtcNow, CancellationToken.None);
+        tenantAccessor.Received(2).Clear();
+    }
+
+    private static RegistrationOrderLifecycleResponseDto Response(
+        Guid orderId,
+        Guid tenantId,
+        RegistrationOrderStatusEnum status) => new()
+        {
+            Success = true,
+            Order = new RegistrationOrderDto
+            {
+                Id = orderId,
+                TenantId = tenantId,
+                StatusId = (int)status
+            }
+        };
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {

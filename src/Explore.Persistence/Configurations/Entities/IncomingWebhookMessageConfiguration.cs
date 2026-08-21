@@ -123,7 +123,8 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.IdempotencyKey })
             .HasDatabaseName("ix_incoming_webhook_messages_tenant_provider_idempotency")
-            .HasFilter("idempotency_key IS NOT NULL");
+            .HasFilter("idempotency_key IS NOT NULL")
+            .IsUnique();
 
         builder.HasIndex(e => new { e.TenantId, e.StatusId, e.NextAttemptAt, e.ProcessingLeaseExpiresAt })
             .HasDatabaseName("ix_incoming_webhook_messages_claim_due");

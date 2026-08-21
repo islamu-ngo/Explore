@@ -2,6 +2,7 @@
 @* ABOUTME: Loads one event collection through IStudioContextService and renders honest empty/error states. *@
 @using Explore.Blazor.Client.Contracts.Services
 @inject IStudioContextService StudioContextService
+@implements IDisposable
 
 @if (_isLoading)
 {
@@ -46,6 +47,10 @@ else
                         }
                     </ul>
                 }
+                @if (order._links?.ContainsKey("studio-payment-status") == true)
+                {
+                    <StudioPaymentStatus EventId="EventId" Order="order" />
+                }
             </article>
         }
     </div>
@@ -57,29 +62,60 @@ else
     private IReadOnlyList<HalResourceOfRegistrationOrderDto> _orders = [];
     private string? _error;
     private bool _isLoading;
+    private CancellationTokenSource? _requestCancellation;
+    private long _loadGeneration;
+    private bool _disposed;
 
     protected override async Task OnParametersSetAsync()
     {
+        CancelPendingRequest();
+        long generation = ++_loadGeneration;
+        Guid eventId = EventId;
+        _orders = [];
+        _error = null;
         if (EventId == Guid.Empty)
         {
-            _orders = [];
+            _isLoading = false;
             return;
         }
 
+        var cancellation = new CancellationTokenSource();
+        _requestCancellation = cancellation;
         _isLoading = true;
-        _error = null;
         try
         {
-            _orders = await StudioContextService.GetEventOrdersAsync(EventId);
+            IReadOnlyList<HalResourceOfRegistrationOrderDto> orders =
+                await StudioContextService.GetEventOrdersAsync(eventId, cancellation.Token);
+            if (_disposed || cancellation.IsCancellationRequested || generation != _loadGeneration || EventId != eventId)
+            {
+                return;
+            }
+
+            _orders = orders;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
         }
         catch (Exception)
         {
+            if (_disposed || cancellation.IsCancellationRequested || generation != _loadGeneration || EventId != eventId)
+            {
+                return;
+            }
             _orders = [];
             _error = "Registration orders are currently unavailable.";
         }
         finally
         {
-            _isLoading = false;
+            if (ReferenceEquals(_requestCancellation, cancellation))
+            {
+                _requestCancellation = null;
+                if (!_disposed && generation == _loadGeneration && EventId == eventId)
+                {
+                    _isLoading = false;
+                }
+            }
+            cancellation.Dispose();
         }
     }
 
@@ -87,4 +123,18 @@ else
 
     private static string MinorAmount(long? amountMinor, string? currencyCode) =>
         $"{amountMinor ?? 0:N0} {currencyCode ?? string.Empty} minor units".TrimEnd();
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ++_loadGeneration;
+        CancelPendingRequest();
+    }
+
+    private void CancelPendingRequest()
+    {
+        _requestCancellation?.Cancel();
+        _requestCancellation?.Dispose();
+        _requestCancellation = null;
+    }
 }

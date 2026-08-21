@@ -84,6 +84,20 @@ public sealed class BrowserActionInteropTests
         await Assert.That(jsRuntime.ImportedModulePath).IsNull();
     }
 
+    [Test]
+    public async Task FocusOpenerAndCloseAsync_UsesTypedBrowserModuleAction()
+    {
+        var jsRuntime = new RecordingJsRuntime();
+        jsRuntime.Module.Results["focusOpenerAndClose"] = true;
+        await using var interop = CreateInterop(jsRuntime);
+
+        var result = await interop.FocusOpenerAndCloseAsync();
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(jsRuntime.Module.SingleInvocation("focusOpenerAndClose").Arguments).IsEmpty();
+    }
+
+
     private static BrowserActionInterop CreateInterop(IJSRuntime jsRuntime)
         => new(jsRuntime, Substitute.For<ILogger<BrowserActionInterop>>());
 

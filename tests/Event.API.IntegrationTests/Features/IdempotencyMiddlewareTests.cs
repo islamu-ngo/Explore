@@ -13,6 +13,8 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -474,6 +476,48 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         await Assert.That(nextCallCount).IsEqualTo(2);
     }
 
+    [Test]
+    public async Task Middleware_SameTenantAndClientKey_DifferentResolvedOrderAndCapability_ReturnsConflictNotReplay()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        const string routePattern = "/api/events/{eventId}/registration-orders/guest/{orderId}/payment/retry";
+        const string firstPath = "/api/events/018e4e5c-7f00-7000-8000-000000000101/registration-orders/guest/018e4e5c-7f00-7000-8000-000000000201/payment/retry";
+        const string secondPath = "/api/events/018e4e5c-7f00-7000-8000-000000000102/registration-orders/guest/018e4e5c-7f00-7000-8000-000000000202/payment/retry";
+
+        MiddlewareResult first = await InvokeMiddlewareAsync(
+            repository, "{}", context => context.Response.WriteAsync("first"),
+            path: firstPath, userId: null, capability: "capability-one", routePattern: routePattern);
+        MiddlewareResult second = await InvokeMiddlewareAsync(
+            repository, "{}", _ => throw new InvalidOperationException("Cross-scope collision must not execute."),
+            path: secondPath, userId: null, capability: "capability-two", routePattern: routePattern);
+
+        await Assert.That(first.Body).IsEqualTo("first");
+        await Assert.That(second.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(second.Body).Contains("idempotency_key_reuse");
+        await Assert.That(second.Headers.ContainsKey("X-Idempotency-Replay")).IsFalse();
+        await Assert.That(repository.Records.Count).IsEqualTo(1);
+        await Assert.That(repository.Records.All(record => !record.PrincipalFingerprint.Contains("capability-", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(JsonSerializer.Serialize(repository.Records.Single())).DoesNotContain("capability-one");
+    }
+
+    [Test]
+    public async Task Middleware_SameOrderAndClientKey_DifferentCapability_ReturnsConflictNotReplay()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        const string path = "/api/events/018e4e5c-7f00-7000-8000-000000000101/registration-orders/guest/018e4e5c-7f00-7000-8000-000000000201/payment/retry";
+
+        await InvokeMiddlewareAsync(
+            repository, "{}", context => context.Response.WriteAsync("authorized"),
+            path: path, userId: null, capability: "valid-capability");
+        MiddlewareResult wrongCapability = await InvokeMiddlewareAsync(
+            repository, "{}", _ => throw new InvalidOperationException("Capability collision must not execute."),
+            path: path, userId: null, capability: "wrong-capability");
+
+        await Assert.That(wrongCapability.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(wrongCapability.Body).Contains("idempotency_key_reuse");
+        await Assert.That(wrongCapability.Headers.ContainsKey("X-Idempotency-Replay")).IsFalse();
+    }
+
     private static async Task<MiddlewareResult> InvokeMiddlewareAsync(
         IIdempotencyRepository repository,
         string body,
@@ -485,7 +529,9 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         string? userId = "test-user",
         Guid? tenantId = null,
         IDataProtectionProvider? dataProtectionProvider = null,
-        IReadOnlyList<string>? protectedReplayHeaders = null)
+        IReadOnlyList<string>? protectedReplayHeaders = null,
+        string? capability = null,
+        string? routePattern = null)
     {
         var effectiveTenantId = tenantId ?? Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
         var services = new ServiceCollection()
@@ -504,9 +550,22 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         context.Request.Path = path;
         context.Request.ContentType = contentType;
         context.Request.Headers["Idempotency-Key"] = idempotencyKey;
+        if (capability is not null)
+        {
+            context.Request.Headers["X-Registration-Order-Capability"] = capability;
+        }
         context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
         context.Response.Body = new MemoryStream();
-        if (protectedReplayHeaders is not null)
+        if (routePattern is not null)
+        {
+            context.SetEndpoint(new RouteEndpoint(
+                _ => Task.CompletedTask,
+                RoutePatternFactory.Parse(routePattern),
+                order: 0,
+                new EndpointMetadataCollection(),
+                "route-pattern-idempotency-test"));
+        }
+        else if (protectedReplayHeaders is not null)
         {
             context.SetEndpoint(new Endpoint(
                 _ => Task.CompletedTask,

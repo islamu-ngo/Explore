@@ -1,5 +1,7 @@
 using System.Net.Http;
 using System.Net.Http.Json;
+using Explore.Blazor.Client.Contracts.Services;
+using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services.Http;
 
@@ -18,15 +20,22 @@ public interface IBffClient
     Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default);
     Task<TResponse?> SendAsync<TBody, TResponse>(HttpMethod method, string path, TBody body, CancellationToken ct = default);
     Task<TResponse?> SendAsync<TResponse>(HttpMethod method, string path, CancellationToken ct = default);
+    Task<BffRegistrationPaymentCheckoutTicketResponseDto?> IssueRegistrationPaymentCheckoutTicketAsync(
+        string path, string? guestCapability, CancellationToken ct = default);
 }
 
-public sealed class BffClient : IBffClient
+public sealed class BffClient : IBffClient, IAsyncDisposable
 {
     private readonly HttpClient _http;
+    private readonly IJSRuntime _jsRuntime;
+    private readonly SemaphoreSlim _checkoutIssueLock = new(1, 1);
+    private IJSObjectReference? _module;
+    private string? _activeCheckoutOperationId;
 
-    public BffClient(HttpClient http)
+    public BffClient(HttpClient http, IJSRuntime jsRuntime)
     {
         _http = http;
+        _jsRuntime = jsRuntime;
     }
 
     // ── GET ──────────────────────────────────────────────────────────────
@@ -85,6 +94,61 @@ public sealed class BffClient : IBffClient
         return await response.Content.ReadFromJsonAsync<TResponse>(ct);
     }
 
+    public async Task<BffRegistrationPaymentCheckoutTicketResponseDto?> IssueRegistrationPaymentCheckoutTicketAsync(
+        string path,
+        string? guestCapability,
+        CancellationToken ct = default)
+    {
+        string operationId = Guid.CreateVersion7().ToString("D");
+        string? previousOperationId;
+        await _checkoutIssueLock.WaitAsync(ct);
+        try
+        {
+            _module ??= await _jsRuntime.InvokeAsync<IJSObjectReference>("import", ct, "/js/bff.js");
+            previousOperationId = _activeCheckoutOperationId;
+            _activeCheckoutOperationId = operationId;
+        }
+        finally
+        {
+            _checkoutIssueLock.Release();
+        }
+
+        if (previousOperationId is not null)
+        {
+            await AbortCheckoutIssueAsync(previousOperationId);
+        }
+
+        try
+        {
+            return await _module.InvokeAsync<BffRegistrationPaymentCheckoutTicketResponseDto?>(
+                "issueRegistrationPaymentCheckoutTicket",
+                ct,
+                path,
+                guestCapability,
+                operationId);
+        }
+        catch (OperationCanceledException)
+        {
+            await AbortCheckoutIssueAsync(operationId);
+            throw;
+        }
+        finally
+        {
+            await _checkoutIssueLock.WaitAsync(CancellationToken.None);
+            try
+            {
+                if (string.Equals(_activeCheckoutOperationId, operationId, StringComparison.Ordinal))
+                {
+                    _activeCheckoutOperationId = null;
+                }
+            }
+            finally
+            {
+                _checkoutIssueLock.Release();
+            }
+        }
+    }
+
     // ── Core send ────────────────────────────────────────────────────────
 
     private async Task<HttpResponseMessage> SendMutatingAsync(
@@ -92,5 +156,27 @@ public sealed class BffClient : IBffClient
     {
         using var req = new HttpRequestMessage(method, path) { Content = content };
         return await _http.SendAsync(req, ct);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_activeCheckoutOperationId is not null)
+        {
+            await AbortCheckoutIssueAsync(_activeCheckoutOperationId);
+            _activeCheckoutOperationId = null;
+        }
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+        }
+        _checkoutIssueLock.Dispose();
+    }
+
+    private async Task AbortCheckoutIssueAsync(string operationId)
+    {
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("abortRegistrationPaymentCheckoutTicket", operationId);
+        }
     }
 }

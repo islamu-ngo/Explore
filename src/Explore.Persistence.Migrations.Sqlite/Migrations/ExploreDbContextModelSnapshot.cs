@@ -2184,6 +2184,109 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.ToTable("ie_category_type_categories", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.CheckoutDispatchEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LastFailureCode")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_failure_code");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ParkedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("parked_at");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<long>("ProcessingFence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_expires_at");
+
+                    b.Property<string>("ProcessingLeaseOwner")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_owner");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UnknownAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("unknown_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_checkout_dispatch_effects");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_checkout_dispatch_effects_tenant_id_id");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_checkout_dispatch_effects_tenant_id_payment_attempt_id");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                        .HasDatabaseName("ix_checkout_dispatch_effects_worker_poll");
+
+                    b.ToTable("ie_checkout_dispatch_effects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_checkout_dispatch_effects_attempt_count", "attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_checkout_dispatch_effects_processing_fence", "processing_fence >= 0");
+
+                            t.HasCheckConstraint("ck_checkout_dispatch_effects_state", "(status IN (1, 4) AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NULL AND parked_at IS NULL) OR (status = 2 AND processing_lease_owner IS NOT NULL AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL AND completed_at IS NULL AND parked_at IS NULL) OR (status = 3 AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NOT NULL AND parked_at IS NULL) OR (status = 5 AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NULL AND parked_at IS NOT NULL) OR (status = 6 AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NULL AND parked_at IS NULL AND unknown_at IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11947,6 +12050,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("payload_bytes IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "IdempotencyKey")
+                        .IsUnique()
                         .HasDatabaseName("ix_incoming_webhook_messages_tenant_provider_idempotency")
                         .HasFilter("idempotency_key IS NOT NULL");
 
@@ -16435,6 +16539,437 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             t.HasCheckConstraint("ck_participation_requirement_attachments_questionnaire_form", "(is_standalone_questionnaire = true AND registration_form_id IS NOT NULL AND registration_form_version_id IS NOT NULL) OR (is_standalone_questionnaire = false AND registration_form_id IS NULL AND registration_form_version_id IS NULL)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActiveScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(170)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_scope_key");
+
+                    b.Property<string>("ActiveUniquenessSlot")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<int>("AuthoritativeStatusFloorId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("authoritative_status_floor_id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<string>("CompositionRevision")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("composition_revision");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTime?>("DispatchPendingAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("dispatch_pending_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("LastProviderRequestId")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_provider_request_id");
+
+                    b.Property<DateTime>("LastStatusObservedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_status_observed_at");
+
+                    b.Property<long>("OrganizerAmountMinor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("organizer_amount_minor");
+
+                    b.Property<int>("PaymentAttemptStatusId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("payment_attempt_status_id");
+
+                    b.Property<long>("PlatformContributionMinor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("platform_contribution_minor");
+
+                    b.Property<long>("PlatformFeeMinor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("platform_fee_minor");
+
+                    b.Property<DateTime?>("ProcessingAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_at");
+
+                    b.Property<string>("ProfileCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("profile_code");
+
+                    b.Property<string>("ProviderApiRevision")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_api_revision");
+
+                    b.Property<string>("ProviderCheckoutSessionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_checkout_session_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderIdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_idempotency_key");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_payment_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<DateTime?>("RequiresActionAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requires_action_at");
+
+                    b.Property<DateTime?>("SucceededAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("succeeded_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("TotalMinor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_minor");
+
+                    b.Property<DateTime?>("UnknownAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("unknown_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_payment_attempts");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_payment_attempts_tenant_id_id");
+
+                    b.HasIndex("AuthoritativeStatusFloorId")
+                        .HasDatabaseName("ix_ie_payment_attempts_authoritative_status_floor_id");
+
+                    b.HasIndex("PaymentAttemptStatusId")
+                        .HasDatabaseName("ix_ie_payment_attempts_payment_attempt_status_id");
+
+                    b.HasIndex("ProviderIdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_payment_attempts_provider_idempotency_key");
+
+                    b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_payment_attempts_active_scope_key_active_uniqueness_slot");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "PaymentAttemptStatusId")
+                        .HasDatabaseName("ix_ie_payment_attempts_tenant_id_registration_order_id_payment_attempt_status_id");
+
+                    b.ToTable("ie_payment_attempts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_payment_attempts_active_slot", "(payment_attempt_status_id IN (6, 7) AND active_uniqueness_slot <> 'active') OR active_uniqueness_slot = 'active'");
+
+                            t.HasCheckConstraint("ck_payment_attempts_amounts", "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor");
+
+                            t.HasCheckConstraint("ck_payment_attempts_authoritative_status_floor", "authoritative_status_floor_id BETWEEN 1 AND 8");
+
+                            t.HasCheckConstraint("ck_payment_attempts_status", "payment_attempt_status_id BETWEEN 1 AND 8");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentAttemptStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_payment_attempt_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_payment_attempt_statuses_master_code");
+
+                    b.ToTable("ie_payment_attempt_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentReconciliationEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<int?>("CheckoutDispatchAttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("checkout_dispatch_attempt_count");
+
+                    b.Property<Guid?>("CheckoutDispatchEffectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("checkout_dispatch_effect_id");
+
+                    b.Property<long?>("CheckoutDispatchProcessingFence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("checkout_dispatch_processing_fence");
+
+                    b.Property<DateTime?>("CheckoutDispatchUnknownAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("checkout_dispatch_unknown_at");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LastFailureCode")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_failure_code");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ParkedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("parked_at");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<long>("ProcessingFence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_expires_at");
+
+                    b.Property<string>("ProcessingLeaseOwner")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_owner");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid?>("SourceIncomingWebhookMessageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_incoming_webhook_message_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UnknownAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("unknown_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_payment_reconciliation_effects");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_payment_reconciliation_effects_tenant_id_id");
+
+                    b.HasIndex("TenantId", "CheckoutDispatchEffectId")
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_checkout_dispatch_effect_id");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_payment_attempt_id");
+
+                    b.HasIndex("TenantId", "SourceIncomingWebhookMessageId")
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_source_incoming_webhook_message_id");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_status_next_attempt_at_created_at");
+
+                    b.ToTable("ie_payment_reconciliation_effects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_payment_reconciliation_effects_attempt_count", "attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_payment_reconciliation_effects_dispatch_unknown_epoch", "(checkout_dispatch_effect_id IS NULL AND checkout_dispatch_unknown_at IS NULL AND checkout_dispatch_processing_fence IS NULL AND checkout_dispatch_attempt_count IS NULL) OR (checkout_dispatch_effect_id IS NOT NULL AND checkout_dispatch_unknown_at IS NOT NULL AND checkout_dispatch_processing_fence >= 0 AND checkout_dispatch_attempt_count >= 0)");
+
+                            t.HasCheckConstraint("ck_payment_reconciliation_effects_processing_fence", "processing_fence >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentSucceededObservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("observed_at");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<string>("ProviderCheckoutSessionId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_checkout_session_id");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_payment_id");
+
+                    b.Property<string>("ProviderRequestId")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_request_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid?>("SourceIncomingWebhookMessageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_incoming_webhook_message_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_payment_succeeded_observations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_payment_succeeded_observations_tenant_id_id");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_payment_succeeded_observations_tenant_id_payment_attempt_id");
+
+                    b.HasIndex("TenantId", "SourceIncomingWebhookMessageId")
+                        .HasDatabaseName("ix_ie_payment_succeeded_observations_tenant_id_source_incoming_webhook_message_id");
+
+                    b.ToTable("ie_payment_succeeded_observations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Permission", b =>
@@ -30186,6 +30721,24 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.CheckoutDispatchEffect", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_checkout_dispatch_effects_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_checkout_dispatch_effects_payment_attempts_tenant_id_payment_attempt_id");
+                });
+
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
                 {
                     b.HasOne("Explore.Domain.SettingScopeLookup", "SettingScope")
@@ -34086,6 +34639,176 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("RegistrationFormVersion");
 
                     b.Navigation("RegistrationRequirement");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentAttempt", b =>
+                {
+                    b.HasOne("Explore.Domain.PaymentAttemptStatus", null)
+                        .WithMany()
+                        .HasForeignKey("AuthoritativeStatusFloorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_attempts_payment_attempt_statuses_authoritative_status_floor_id");
+
+                    b.HasOne("Explore.Domain.PaymentAttemptStatus", "PaymentAttemptStatus")
+                        .WithMany()
+                        .HasForeignKey("PaymentAttemptStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_attempts_payment_attempt_statuses_payment_attempt_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_attempts_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_attempts_registration_orders_tenant_id_registration_order_id");
+
+                    b.OwnsOne("Explore.Domain.OrganizerPaymentRecipientSnapshot", "RecipientSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("PaymentAttemptId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("ConnectPlatformId")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_connect_platform_id");
+
+                            b1.Property<string>("CurrencyCode")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_currency_code");
+
+                            b1.Property<string>("ExternalAccountId")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_external_account_id");
+
+                            b1.Property<Guid>("InstancePolicyVersionId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_instance_policy_version_id");
+
+                            b1.Property<string>("MerchantCountryCode")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_merchant_country_code");
+
+                            b1.Property<Guid>("OrganizerActorId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_organizer_actor_id");
+
+                            b1.Property<Guid>("OrganizerPaymentProviderConnectionId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_connection_id");
+
+                            b1.Property<string>("ProfileCode")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_profile_code");
+
+                            b1.Property<string>("ProviderCode")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_provider_code");
+
+                            b1.Property<DateTime>("SnapshottedAt")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_snapshotted_at");
+
+                            b1.Property<Guid>("TenantId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_tenant_id");
+
+                            b1.Property<Guid?>("TenantPolicyVersionId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("recipient_tenant_policy_version_id");
+
+                            b1.HasKey("PaymentAttemptId")
+                                .HasName("pk_ie_payment_attempts");
+
+                            b1.ToTable("ie_payment_attempts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PaymentAttemptId")
+                                .HasConstraintName("fk_ie_payment_attempts_payment_attempts_id");
+                        });
+
+                    b.Navigation("PaymentAttemptStatus");
+
+                    b.Navigation("RecipientSnapshot")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentReconciliationEffect", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.CheckoutDispatchEffect", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CheckoutDispatchEffectId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_checkout_dispatch_effects_tenant_id_checkout_dispatch_effect_id");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_payment_attempts_tenant_id_payment_attempt_id");
+
+                    b.HasOne("Explore.Domain.IncomingWebhookMessage", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceIncomingWebhookMessageId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_incoming_webhook_messages_tenant_id_source_incoming_webhook_message_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentSucceededObservation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_succeeded_observations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_payment_succeeded_observations_ie_payment_attempts_tenant_id_payment_attempt_id");
+
+                    b.HasOne("Explore.Domain.IncomingWebhookMessage", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceIncomingWebhookMessageId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_payment_succeeded_observations_ie_incoming_webhook_messages_tenant_id_source_incoming_webhook_message_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Permission", b =>

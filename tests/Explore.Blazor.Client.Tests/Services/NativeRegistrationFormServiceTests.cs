@@ -31,8 +31,8 @@ public sealed class NativeRegistrationFormServiceTests
             new Dictionary<string, HalLink> { ["submit"] = new() { Href = "/submit", Method = "POST" } });
         string idempotencyKey = Guid.CreateVersion7().ToString("N");
         _api.SubmitAuthenticatedNativeRegistrationAttemptAsync(
-                eventId, orderId, attempt.AttemptId, Arg.Any<SubmitNativeRegistrationAttemptRequest>(),
-                attempt.AttemptCapabilityToken, idempotencyKey, null, null, Arg.Any<CancellationToken>())
+                eventId, orderId, attempt.AttemptId, idempotencyKey, Arg.Any<SubmitNativeRegistrationAttemptRequest>(),
+                attempt.AttemptCapabilityToken, null, null, Arg.Any<CancellationToken>())
             .Returns(new NativeRegistrationSubmissionDto { Accepted = true, SubmissionId = Guid.CreateVersion7() });
 
         NativeRegistrationActionResult result = await _service.SubmitAsync(
@@ -42,13 +42,13 @@ public sealed class NativeRegistrationFormServiceTests
 
         await Assert.That(result.Success).IsTrue();
         await _api.Received(1).SubmitAuthenticatedNativeRegistrationAttemptAsync(
-            eventId, orderId, attempt.AttemptId,
+            eventId, orderId, attempt.AttemptId, idempotencyKey,
             Arg.Is<SubmitNativeRegistrationAttemptRequest>((SubmitNativeRegistrationAttemptRequest request) =>
                 request.RequirementId == attempt.RequirementId &&
                 request.Answers.Count == 1 &&
                 request.Answers.Single().FieldId == fieldId &&
                 request.Answers.Single().SubjectId == subject.SubjectId &&
                 request.Answers.Single().SubjectType == RegistrationAnswerSubjectTypeEnum.Purchaser),
-            attempt.AttemptCapabilityToken, idempotencyKey, null, null, Arg.Any<CancellationToken>());
+            attempt.AttemptCapabilityToken, null, null, Arg.Any<CancellationToken>());
     }
 }

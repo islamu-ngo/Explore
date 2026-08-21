@@ -1,0 +1,220 @@
+// ABOUTME: Verifies payment checkout targets require an exact current open unpaid provider session.
+// ABOUTME: Rejects stale, completed, paid, expired, mismatched-money, and mismatched-session observations.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Payments;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Services.Registration;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using NSubstitute;
+
+namespace Event.Application.UnitTests.Services.Registration;
+
+public sealed class RegistrationPaymentContractServiceTests
+{
+    private static readonly DateTime UtcNow = new(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+    private readonly Guid _tenantId = Guid.CreateVersion7();
+    private readonly Guid _orderId = Guid.CreateVersion7();
+    private readonly IRegistrationPaymentAttemptRepository _attempts = Substitute.For<IRegistrationPaymentAttemptRepository>();
+    private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+    private readonly IHostedCheckoutSessionRetriever _retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
+
+    [Test]
+    public async Task ResolveCheckoutTargetAsync_RequiresExactOpenUnpaidUnexpiredMatchingSession()
+    {
+        _finalization.GetSucceededPaymentAsync(_tenantId, _orderId, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Missing());
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt attempt = CreateRequiresActionAttempt();
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(attempt, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((attempt, effect));
+        RegistrationPaymentContractService service = CreateService();
+
+        HostedCheckoutSession valid = new(
+            "cs_exact",
+            new Uri("https://checkout.stripe.com/c/pay/cs_exact"),
+            HostedCheckoutSessionStatus.Open,
+            HostedCheckoutPaymentStatus.Unpaid,
+            null,
+            UtcNow.AddMinutes(10),
+            1_125,
+            "EUR");
+        _retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutRetrieveResult.Succeeded(valid, null));
+
+        var resolved = await service.ResolveCheckoutTargetAsync(order, CancellationToken.None);
+
+        await Assert.That(resolved?.Url).IsEqualTo(valid.HostedUrl!.AbsoluteUri);
+
+        HostedCheckoutSession[] rejected =
+        [
+            valid with { SessionId = "cs_other" },
+            valid with { Status = HostedCheckoutSessionStatus.Complete },
+            valid with { Status = HostedCheckoutSessionStatus.Expired },
+            valid with { PaymentStatus = HostedCheckoutPaymentStatus.Paid },
+            valid with { ExpiresAt = UtcNow },
+            valid with { ExpiresAt = null },
+            valid with { AmountTotalMinor = 1_201 },
+            valid with { CurrencyCode = "USD" }
+        ];
+
+        foreach (HostedCheckoutSession session in rejected)
+        {
+            _retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
+                .Returns(HostedCheckoutRetrieveResult.Succeeded(session, null));
+            await Assert.That(await service.ResolveCheckoutTargetAsync(order, CancellationToken.None)).IsNull();
+        }
+
+        RegistrationOrder expiredOrder = CreateOrder(UtcNow.AddMinutes(-1));
+        _retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutRetrieveResult.Succeeded(valid, null));
+
+        var expiredStart = await service.StartAsync(expiredOrder, CancellationToken.None);
+        RegistrationPaymentDto? expiredRedirectStatus = await service.GetAsync(expiredOrder, CancellationToken.None);
+
+        await Assert.That(expiredStart.Success).IsFalse();
+        await Assert.That(expiredStart.FailureCode).IsEqualTo("not_payable");
+        await Assert.That(expiredRedirectStatus!.HostedRedirectAvailable).IsFalse();
+        await Assert.That(await service.ResolveCheckoutTargetAsync(expiredOrder, CancellationToken.None)).IsNull();
+
+        PaymentAttempt retryAttempt = CreateRequiresActionAttempt();
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.ProviderCheckoutSessionId))!.SetValue(retryAttempt, null);
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.PaymentAttemptStatusId))!
+            .SetValue(retryAttempt, (int)PaymentAttemptStatusEnum.DispatchPending);
+        CheckoutDispatchEffect retryEffect = CheckoutDispatchEffect.Create(retryAttempt, UtcNow);
+        typeof(CheckoutDispatchEffect).GetProperty(nameof(CheckoutDispatchEffect.Status))!
+            .SetValue(retryEffect, OutboxMessageStatus.DeadLettered);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((retryAttempt, retryEffect));
+
+        RegistrationPaymentDto? expiredRetryStatus = await service.GetAsync(expiredOrder, CancellationToken.None);
+
+        await Assert.That(expiredRetryStatus!.RetryAvailable).IsFalse();
+    }
+
+    [Test]
+    public async Task GetAsync_WhenSucceededObservationsConflictSurfacesNeedsReconciliation()
+    {
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt attempt = CreateRequiresActionAttempt();
+        attempt.MarkSucceededFromCheckout("cs_exact", "pi_second", UtcNow.AddSeconds(3), null);
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(attempt, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((attempt, effect));
+        _finalization.GetSucceededPaymentAsync(_tenantId, _orderId, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Conflict());
+
+        RegistrationPaymentDto? payment = await CreateService().GetAsync(order, CancellationToken.None);
+
+        await Assert.That(payment!.StatusCode).IsEqualTo("NeedsReconciliation");
+        await Assert.That(payment.FailureCode).IsEqualTo("payment_duplicate_succeeded_observations");
+    }
+
+    [Test]
+    public async Task RetryAsync_ReplaysOnlyCreatedPendingReplacement()
+    {
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt replacement = CreateRequiresActionAttempt();
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.ProviderCheckoutSessionId))!.SetValue(replacement, null);
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.PaymentAttemptStatusId))!
+            .SetValue(replacement, (int)PaymentAttemptStatusEnum.Created);
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(replacement, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((replacement, effect));
+
+        RegistrationPaymentCommandResultDto replay = await CreateService().RetryAsync(order, CancellationToken.None);
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.PaymentAttemptStatusId))!
+            .SetValue(replacement, (int)PaymentAttemptStatusEnum.Unknown);
+        RegistrationPaymentCommandResultDto unknown = await CreateService().RetryAsync(order, CancellationToken.None);
+
+        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.Payment!.Id).IsEqualTo(replacement.Id);
+        await Assert.That(unknown.Success).IsFalse();
+        await Assert.That(unknown.FailureCode).IsEqualTo("payment_retry_not_available");
+    }
+
+    [Test]
+    public async Task PublicBaseUrl_NormalizesSubpathAndRejectsAuthorityContamination()
+    {
+        bool valid = HostedCheckoutReturnUrls.TryNormalizePublicBaseUrl("https://events.example.test/events", out Uri normalized);
+        bool query = HostedCheckoutReturnUrls.TryNormalizePublicBaseUrl("https://events.example.test/events?x=1", out _);
+        bool fragment = HostedCheckoutReturnUrls.TryNormalizePublicBaseUrl("https://events.example.test/events#x", out _);
+        bool userInfo = HostedCheckoutReturnUrls.TryNormalizePublicBaseUrl("https://user@events.example.test/events", out _);
+
+        await Assert.That(valid).IsTrue();
+        await Assert.That(normalized.AbsoluteUri).IsEqualTo("https://events.example.test/events/");
+        await Assert.That(query).IsFalse();
+        await Assert.That(fragment).IsFalse();
+        await Assert.That(userInfo).IsFalse();
+    }
+
+    private RegistrationPaymentContractService CreateService()
+    {
+        var claimService = new RegistrationPaymentAttemptClaimService(
+            _attempts,
+            Substitute.For<IRegistrationInventoryRepository>(),
+            Substitute.For<IEventRepository>(),
+            Substitute.For<IOrganizerPaymentProviderConnectionRepository>(),
+            Substitute.For<IPaidEventPolicyRepository>(),
+            Substitute.For<IOrganizerPaymentCommerceConfiguration>(),
+            Substitute.For<IPaymentProviderDescriptor>(),
+            new InlineUnitOfWork());
+        return new(_attempts, _finalization, claimService, _retriever, new FixedTimeProvider(UtcNow));
+    }
+
+    private RegistrationOrder CreateOrder(DateTime? expiresAt = null)
+    {
+        RegistrationOrder order = RegistrationOrder.Create(
+            _orderId,
+            _tenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            BookingPartyTypeEnum.Individual,
+            Guid.CreateVersion7(),
+            RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 1, 1, 1, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+            null,
+            null,
+            "EUR",
+            UtcNow.AddHours(-2),
+            expiresAt ?? UtcNow.AddMinutes(30));
+        typeof(RegistrationOrder).GetProperty(nameof(RegistrationOrder.RegistrationOrderStatusId))!
+            .SetValue(order, (int)RegistrationOrderStatusEnum.AwaitingPayment);
+        typeof(RegistrationOrder).GetProperty(nameof(RegistrationOrder.TotalDueMinorSnapshot))!
+            .SetValue(order, 1_125L);
+        return order;
+    }
+
+    private PaymentAttempt CreateRequiresActionAttempt()
+    {
+        OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
+            _tenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "stripe",
+            "platform-live-eu",
+            "acct_123",
+            "BE",
+            "EUR",
+            Guid.CreateVersion7(),
+            null,
+            UtcNow);
+        PaymentAttempt attempt = PaymentAttempt.Create(
+            Guid.CreateVersion7(), _tenantId, _orderId, recipient, "OrganizerDirect", "2026-08-20.acacia",
+            "composition-a", 1_000, 75, 125, "checkout:key", UtcNow, UtcNow.AddMinutes(30));
+        attempt.MarkDispatchPending(UtcNow.AddSeconds(1), null);
+        attempt.MarkRequiresAction("cs_exact", UtcNow.AddSeconds(2), null);
+        return attempt;
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
+
+    private sealed class InlineUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) => operation(ct);
+        public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
+    }
+}

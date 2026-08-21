@@ -18,6 +18,7 @@ using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Application.Services.Registration;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +39,8 @@ namespace Explore.API.Controllers;
 [ApiController]
 public sealed class GuestRegistrationOrderController(
     IMediator mediator,
-    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : RegistrationOrderControllerBase(mediator, assembler)
+    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler,
+    TimeProvider timeProvider) : RegistrationOrderControllerBase(mediator, assembler)
 {
     private const string CapabilityHeader = "X-Registration-Order-Capability";
     private const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";
@@ -230,7 +232,9 @@ public sealed class GuestRegistrationOrderController(
         GuestRegistrationOrderDto? response = await mediator.Send(
             new GetGuestRegistrationOrderQuery(eventId, orderId, capability),
             cancellationToken);
-        return response is null ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem) : Ok(ToGuestHalResource(response));
+        return response is null
+            ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
+            : Ok(GuestRegistrationOrderHalResourceFactory.Create(response, Url, timeProvider));
     }
 
     [AllowAnonymous]
@@ -470,45 +474,4 @@ public sealed class GuestRegistrationOrderController(
                 : OrderLifecycleFailures.Map(this, response);
 
 
-    private HalResource<GuestRegistrationOrderDto> ToGuestHalResource(GuestRegistrationOrderDto order)
-    {
-        var values = new { eventId = order.EventId, orderId = order.Id };
-        var resource = new HalResource<GuestRegistrationOrderDto>(order)
-            .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(RouteNames.GetGuestRegistrationOrder, values)!));
-
-        resource.WithLink(LinkRelations.ClaimRegistrationOrder, HalLink.CreateAction(
-            Url.Link(RouteNames.ClaimGuestRegistrationOrder, values)!, HttpMethods.Post));
-
-        if (order.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
-        {
-            resource.WithLink(LinkRelations.Continue, HalLink.CreateAction(Url.Link(RouteNames.ContinueGuestRegistrationOrder, values)!, HttpMethods.Post));
-        }
-
-        if (order.StatusCode == "AWAITING_REQUIREMENTS")
-        {
-            resource.WithLink(LinkRelations.RequirementProgress, HalLink.Create(
-                Url.Link(RouteNames.GetGuestNativeRegistrationRequirementProgress, values)!));
-        }
-
-        if (order.StatusCode == "READY_FOR_CHECKOUT")
-        {
-            if (string.IsNullOrWhiteSpace(order.AppliedPromotionDisplayLabel))
-            {
-                resource.WithLink(LinkRelations.ApplyPromotion, HalLink.CreateAction(Url.Link(RouteNames.ApplyGuestRegistrationOrderPromotion, values)!, HttpMethods.Post));
-            }
-            else
-            {
-                resource.WithLink(LinkRelations.RemovePromotion, HalLink.CreateAction(Url.Link(RouteNames.RemoveGuestRegistrationOrderPromotion, values)!, HttpMethods.Delete));
-            }
-
-            resource.WithLink(LinkRelations.Finalize, HalLink.CreateAction(Url.Link(RouteNames.FinalizeGuestRegistrationOrder, values)!, HttpMethods.Post));
-        }
-
-        if (order.StatusCode is "DRAFT" or "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT" or "AWAITING_PAYMENT" or "AWAITING_APPROVAL")
-        {
-            resource.WithLink(LinkRelations.Cancel, HalLink.CreateAction(Url.Link(RouteNames.CancelGuestRegistrationOrder, values)!, HttpMethods.Delete));
-        }
-
-        return resource;
-    }
 }

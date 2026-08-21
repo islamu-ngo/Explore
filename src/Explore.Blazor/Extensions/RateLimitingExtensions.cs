@@ -2,7 +2,12 @@
 // ABOUTME: Keys setup-secret attempts by session context and anonymous ATProto OAuth endpoints by source IP.
 
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
+
+using Explore.Blazor.Services;
+
 
 namespace Explore.Blazor.Extensions;
 
@@ -10,6 +15,7 @@ public static class RateLimitingExtensions
 {
     public const string SetupSecretPolicy = "BffSetupSecret";
     public const string AtprotoAuthenticationPolicy = "BffAtprotoAuthentication";
+    public const string RegistrationPaymentCheckoutIssuePolicy = "BffRegistrationPaymentCheckoutIssue";
 
     public static IServiceCollection AddBffRateLimiting(
         this IServiceCollection services,
@@ -25,6 +31,8 @@ public static class RateLimitingExtensions
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AtprotoAuthenticationPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(RegistrationPaymentCheckoutIssuePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
             });
 
             return services;
@@ -36,6 +44,9 @@ public static class RateLimitingExtensions
         var atprotoSection = configuration.GetSection("RateLimiting:AtprotoAuthentication");
         var atprotoPermitLimit = Math.Clamp(atprotoSection.GetValue("PermitLimit", 10), 1, 1000);
         var atprotoWindowSeconds = Math.Clamp(atprotoSection.GetValue("WindowSeconds", 60), 1, 3600);
+        var checkoutSection = configuration.GetSection("RateLimiting:RegistrationPaymentCheckoutIssue");
+        var checkoutPermitLimit = Math.Clamp(checkoutSection.GetValue("PermitLimit", 10), 1, 100);
+        var checkoutWindowSeconds = Math.Clamp(checkoutSection.GetValue("WindowSeconds", 60), 1, 3600);
 
         services.AddRateLimiter(options =>
         {
@@ -60,7 +71,9 @@ public static class RateLimitingExtensions
                     Status = StatusCodes.Status429TooManyRequests,
                     Detail = isSetupSecret
                         ? "Too many setup-secret attempts. Please retry after the period indicated in the Retry-After header."
-                        : "Too many authentication attempts. Please retry after the period indicated in the Retry-After header."
+                        : context.HttpContext.Request.Path.Value?.Contains("/registration-payments/", StringComparison.Ordinal) == true
+                            ? "Too many checkout attempts. Please retry after the period indicated in the Retry-After header."
+                            : "Too many authentication attempts. Please retry after the period indicated in the Retry-After header."
                 }, cancellationToken);
             };
 
@@ -86,6 +99,17 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = atprotoPermitLimit,
                         Window = TimeSpan.FromSeconds(atprotoWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+            options.AddPolicy(RegistrationPaymentCheckoutIssuePolicy, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    ResolveCheckoutPartitionKey(httpContext),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = checkoutPermitLimit,
+                        Window = TimeSpan.FromSeconds(checkoutWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true
@@ -119,4 +143,24 @@ public static class RateLimitingExtensions
 
         return $"setup:ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
     }
+
+    private static string ResolveCheckoutPartitionKey(HttpContext context)
+    {
+        string? userId = context.User.Identity?.IsAuthenticated == true
+            ? context.User.FindFirst("sub")?.Value
+                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? context.User.FindFirst("sid")?.Value
+            : null;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return $"checkout:user:{Digest(userId)}";
+        }
+
+        string tenant = context.Items[TenantRouteContextAccessor.TenantSlugItemKey]?.ToString() ?? string.Empty;
+        string remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return $"checkout:anonymous:{remoteIp}:{Digest(tenant)}";
+    }
+
+    private static string Digest(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 }

@@ -41,7 +41,7 @@ public static class ServiceRegistrationExtensions
             var navigation = sp.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
             var http = factory.CreateClient("BffSelfClient");
             http.BaseAddress = new Uri(navigation.BaseUri);
-            return new BffClient(http);
+            return new BffClient(http, sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>());
         });
         services.AddScoped<IBffClient>(sp => sp.GetRequiredService<BffClient>());
         services.AddScoped<AuthenticatedRouteGuard>();
@@ -100,6 +100,7 @@ public static class ServiceRegistrationExtensions
         services.AddSingleton<IBffSelfCallTokenService, BffSelfCallTokenService>();
         services.AddSingleton<IBffPreferenceCookieService, BffPreferenceCookieService>();
         services.AddSingleton<IBffPreferenceValidationService, BffPreferenceValidationService>();
+        services.AddSingleton<RegistrationPaymentCheckoutTicketStore>();
         services.AddScoped<IBffPreferenceForwardingService, BffPreferenceForwardingService>();
         services.AddMemoryCache();
         RegisterBffDataProtection(services, configuration);

@@ -404,6 +404,98 @@ public sealed class IncomingWebhookFrameworkTests
     }
 
     [Test]
+    public async Task IncomingWebhookIntakeService_VerifiesExactBodyButPersistsOnlyNormalizedProviderEnvelope()
+    {
+        const string rawPayload = "{\"customer_details\":{\"email\":\"buyer@example.test\"},\"id\":\"evt_1\"}";
+        const string normalizedPayload = "{\"EventId\":\"evt_1\",\"ObjectId\":\"cs_1\"}";
+        var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
+        var verifier = Substitute.For<IIncomingWebhookVerifier>();
+        verifier.Provider.Returns("stripe-connect");
+        verifier.VerifyAsync(Arg.Any<IncomingWebhookContext>(), Arg.Any<CancellationToken>())
+            .Returns(IncomingWebhookVerificationResult.VerifiedTenantCredential(
+                tenantId,
+                "evt_1",
+                "checkout.session.completed",
+                "checkout.session.completed:cs_1",
+                Encoding.UTF8.GetBytes(normalizedPayload)));
+        var repository = Substitute.For<IIncomingWebhookMessageRepository>();
+        repository.TryCreateAsync(Arg.Any<IncomingWebhookMessage>(), Arg.Any<CancellationToken>()).Returns(true);
+        var service = new IncomingWebhookIntakeService(
+            new IncomingWebhookVerifierRegistry([verifier]), repository, CreateRetentionPolicyResolver(), TimeProvider.System,
+            NullLogger<IncomingWebhookIntakeService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(rawPayload));
+
+        IncomingWebhookReadResult read = await service.ReadAndVerifyAsync(
+            httpContext.Request, "stripe-connect", 65_536, CancellationToken.None);
+        IncomingWebhookCaptureResult capture = await service.CaptureAsync(read, CancellationToken.None);
+
+        await Assert.That(capture.Succeeded).IsTrue();
+        await repository.Received(1).TryCreateAsync(
+            Arg.Is<IncomingWebhookMessage>(message =>
+                message.PayloadProvenanceId == (int)WebhookPayloadProvenance.NormalizedProviderEnvelope &&
+                message.PayloadHash == read.PayloadHash &&
+                message.PayloadBytes.ToArray().SequenceEqual(Encoding.UTF8.GetBytes(normalizedPayload)) &&
+                !Encoding.UTF8.GetString(message.PayloadBytes.ToArray()).Contains("buyer@example.test", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task IncomingWebhookIntakeService_NewEventForSameObjectTransitionAcknowledgesDurableOriginal()
+    {
+        var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
+        DateTime now = DateTime.UtcNow;
+        IncomingWebhookMessage existing = IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            "stripe-connect",
+            "evt_original",
+            "checkout.session.completed:cs_1",
+            "checkout.session.completed",
+            Encoding.UTF8.GetBytes("{\"EventId\":\"evt_original\",\"ObjectId\":\"cs_1\"}"),
+            "sha256:" + new string('a', 64),
+            "application/json",
+            "utf-8",
+            null,
+            now.AddSeconds(-2),
+            now.AddSeconds(-1),
+            now.AddDays(14),
+            "test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
+        var verification = IncomingWebhookVerificationResult.VerifiedTenantCredential(
+            tenantId,
+            "evt_duplicate_transition",
+            "checkout.session.completed",
+            "checkout.session.completed:cs_1",
+            Encoding.UTF8.GetBytes("{\"EventId\":\"evt_duplicate_transition\",\"ObjectId\":\"cs_1\"}"));
+        IncomingWebhookReadResult read = IncomingWebhookReadResult.Success(
+            "stripe-connect",
+            "{\"id\":\"evt_duplicate_transition\"}",
+            Encoding.UTF8.GetBytes("{\"id\":\"evt_duplicate_transition\"}"),
+            DateTimeOffset.UtcNow,
+            "sha256:" + new string('b', 64),
+            "application/json",
+            "utf-8",
+            new Dictionary<string, string>(),
+            verification);
+        var repository = Substitute.For<IIncomingWebhookMessageRepository>();
+        repository.TryCreateAsync(Arg.Any<IncomingWebhookMessage>(), Arg.Any<CancellationToken>()).Returns(false);
+        repository.GetByProviderMessageIdForUpdateAsync(tenantId, "stripe-connect", "evt_duplicate_transition", Arg.Any<CancellationToken>()).Returns((IncomingWebhookMessage?)null);
+        repository.GetByIdempotencyKeyForUpdateAsync(tenantId, "stripe-connect", "checkout.session.completed:cs_1", Arg.Any<CancellationToken>()).Returns(existing);
+        var service = new IncomingWebhookIntakeService(
+            new IncomingWebhookVerifierRegistry([]), repository, CreateRetentionPolicyResolver(), TimeProvider.System,
+            NullLogger<IncomingWebhookIntakeService>.Instance);
+
+        IncomingWebhookCaptureResult result = await service.CaptureAsync(read, CancellationToken.None);
+
+        await Assert.That(result.IsDuplicate).IsTrue();
+        await Assert.That(result.MessageId).IsEqualTo(existing.Id);
+        await Assert.That(existing.Status).IsEqualTo(IncomingWebhookMessageStatus.Verified);
+    }
+
+    [Test]
     public async Task IncomingWebhookIntakeService_WhenBodyExceedsLimit_ReturnsPayloadTooLargeBeforeVerification()
     {
         var verifier = Substitute.For<IIncomingWebhookVerifier>();

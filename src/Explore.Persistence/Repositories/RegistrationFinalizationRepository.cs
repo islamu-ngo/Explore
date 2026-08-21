@@ -171,6 +171,62 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
         CancellationToken cancellationToken) =>
         AreMandatoryRequirementsFulfilledCoreAsync(dbContext, tenantId, registrationOrderId, cancellationToken);
 
+    public async Task<SucceededPaymentLookupResult> GetSucceededPaymentAsync(
+        Guid tenantId,
+        Guid registrationOrderId,
+        CancellationToken cancellationToken)
+    {
+        List<PaymentSucceededObservation> observations = await dbContext.PaymentSucceededObservations
+            .AsNoTracking()
+            .Where(value => value.TenantId == tenantId && value.RegistrationOrderId == registrationOrderId)
+            .OrderBy(value => value.Id)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+        if (observations.Count == 0)
+        {
+            return SucceededPaymentLookupResult.Missing();
+        }
+
+        if (observations.Count > 1)
+        {
+            return SucceededPaymentLookupResult.Conflict();
+        }
+
+        PaymentSucceededObservation observation = observations[0];
+        PaymentAttempt? attempt = await dbContext.PaymentAttempts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(value => value.TenantId == tenantId &&
+                                           value.RegistrationOrderId == registrationOrderId &&
+                                           value.Id == observation.PaymentAttemptId,
+                cancellationToken);
+        return attempt is null
+            ? SucceededPaymentLookupResult.Missing()
+            : SucceededPaymentLookupResult.Found(attempt, observation);
+    }
+
+    public async Task RequestAsync(
+        RegistrationOrder order,
+        DateTime requestedAt,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(order);
+        RegistrationFinalizationEffect? effect = await dbContext.RegistrationFinalizationEffects
+            .SingleOrDefaultAsync(value => value.TenantId == order.TenantId &&
+                                           value.RegistrationOrderId == order.Id,
+                cancellationToken);
+        if (effect is null)
+        {
+            await dbContext.RegistrationFinalizationEffects.AddAsync(
+                RegistrationFinalizationEffect.Create(order, requestedAt), cancellationToken);
+        }
+        else
+        {
+            effect.Request(requestedAt);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RegistrationFinalizationClaim>> ClaimDueAsync(
         string leaseOwner,
         int batchSize,

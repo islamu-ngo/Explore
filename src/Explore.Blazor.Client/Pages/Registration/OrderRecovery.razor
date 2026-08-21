@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Components.Registration.FormRenderer
+@using Explore.Blazor.Client.Components.Registration
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -35,6 +36,19 @@
                 <MudText Typo="Typo.body2" role="status">@countdown</MudText>
             }
         </section>
+
+        @if (HasPaymentAction)
+        {
+            <PaymentStatusPanel @key="(EventId, OrderId)"
+                                Start="@(CanStartPayment ? StartPaymentAsync : null)"
+                                Load="@(CanLoadPayment ? LoadPaymentAsync : null)"
+                                 Refresh="RefreshPaymentAsync"
+                                 Retry="RetryPaymentAsync"
+                                 IssueCheckoutTicket="IssueCheckoutTicketAsync"
+                                 Succeeded="ReloadAfterPaymentAsync"
+                                 Expired="ReloadAfterPaymentAsync"
+                                 OrderExpiresAt="_order.ExpiresAt" />
+        }
 
         <section class="registration-order-recovery__details" aria-labelledby="registration-order-details">
             <MudText Id="registration-order-details" Typo="Typo.h5" HtmlTag="h2">Order details</MudText>
@@ -150,6 +164,9 @@
     private bool CanApplyPromotion => _order?._links?.ContainsKey("apply-promotion") == true && !CanRemovePromotion;
     private bool CanRemovePromotion => _order?._links?.ContainsKey("remove-promotion") == true;
     private bool HasPromotionState => CanApplyPromotion || CanRemovePromotion || !string.IsNullOrWhiteSpace(_order?.AppliedPromotionDisplayLabel);
+    private bool CanStartPayment => _order?._links?.ContainsKey("start-payment") == true;
+    private bool CanLoadPayment => _order?._links?.ContainsKey("payment-status") == true;
+    private bool HasPaymentAction => CanStartPayment || CanLoadPayment;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -190,6 +207,17 @@
         _contributionBasisPoints));
 
     private Task FinalizeAsync() => ApplyAsync(() => RegistrationOrderService.FinalizeCurrentAsync(EventId, OrderId));
+    private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(CancellationToken cancellationToken) =>
+        RegistrationOrderService.StartCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> LoadPaymentAsync(CancellationToken cancellationToken) =>
+        RegistrationOrderService.GetCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RefreshPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
+        RegistrationOrderService.RefreshCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RetryPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
+        RegistrationOrderService.RetryCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
+    private Task<string?> IssueCheckoutTicketAsync(string path, CancellationToken cancellationToken) =>
+        RegistrationOrderService.IssueCurrentPaymentCheckoutTicketAsync(path, cancellationToken);
+    private Task ReloadAfterPaymentAsync() => LoadAsync();
 
     private Task ApplyPromotionAsync()
     {

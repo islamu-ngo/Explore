@@ -33,6 +33,11 @@ public interface IRegistrationInventoryRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<RegistrationInventoryHold>> GetActiveHoldsForUpdateAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<RegistrationOrder>> GetOrdersByEventAsync(
         Guid eventId,
         Guid tenantId,

@@ -117,6 +117,15 @@ public sealed class RegistrationUniqueConflictClassifierTests
             new DbUpdateException("SQLite check.", check))).IsFalse();
     }
 
+    [Test]
+    [Arguments("IX_ie_incoming_webhook_messages_tenant_id_provider_idem_236751E3")]
+    [Arguments("ix_ie_incoming_webhook_messages_tenant_provider_idem_236751e3")]
+    public async Task MySqlAndMariaDbDuplicateCode_AcceptsGeneratedShortenedPhysicalKey(string physicalKey)
+    {
+        await Assert.That(RegistrationUniqueConflictClassifier.IsMySqlDuplicate(1062, physicalKey)).IsTrue();
+        await Assert.That(RegistrationUniqueConflictClassifier.IsMySqlDuplicate(1061, physicalKey)).IsFalse();
+    }
+
     private static PostgresException CreatePostgresUniqueViolation(string constraintName) => new(
         "duplicate key value violates unique constraint", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation,
         constraintName: constraintName);

@@ -283,8 +283,12 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventDetailsProjectionService, EventDetailsProjectionService>();
         services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
-        services.AddScoped<RegistrationOrderLifecycleService>();
-        services.AddScoped<RegistrationParticipantCommandService>();
+services.AddScoped<RegistrationOrderLifecycleService>();
+        services.AddScoped<RegistrationPaymentAttemptClaimService>();
+        services.AddScoped<RegistrationPaymentContractService>();
+        services.AddScoped<RegistrationPaymentCheckoutDispatchService>();
+        services.AddScoped<RegistrationPaymentReconciliationService>();
+services.AddScoped<RegistrationParticipantCommandService>();
         services.AddScoped<IRegistrationOrderLifecycleService>(provider => provider.GetRequiredService<RegistrationOrderLifecycleService>());
         services.AddScoped<IRegistrationOrderStarter, CreateOrderWithHoldCommandHandler>();
         services.AddScoped<AtprotoEventGovernanceResolver>();

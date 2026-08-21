@@ -39,6 +39,12 @@ public static class BlazorHostApplicationExtensions
             app.UseForwardedHeadersMiddleware();
         }
 
+        string? publicPathBase = ResolvePublicPathBase(app.Configuration);
+        if (publicPathBase is not null)
+        {
+            app.UsePathBase(publicPathBase);
+        }
+
         app.UseEventBffAdminHostAccessControl();
         if (profile == BlazorHostProfile.Split)
         {
@@ -59,6 +65,21 @@ public static class BlazorHostApplicationExtensions
 
         UseBlazorHostMiddlewareCore(app, app, profile);
         return app;
+    }
+
+    private static string? ResolvePublicPathBase(IConfiguration configuration)
+    {
+        string? value = configuration["PublicBaseUrl"]
+            ?? configuration["App:PublicBaseUrl"]
+            ?? configuration["Application:PublicBaseUrl"];
+        return Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) &&
+               uri.Scheme == Uri.UriSchemeHttps &&
+               string.IsNullOrEmpty(uri.UserInfo) &&
+               string.IsNullOrEmpty(uri.Query) &&
+               string.IsNullOrEmpty(uri.Fragment) &&
+               uri.AbsolutePath != "/"
+            ? uri.AbsolutePath.TrimEnd('/')
+            : null;
     }
 
     private static void UseBlazorHostMiddlewareCore(
@@ -100,6 +121,7 @@ public static class BlazorHostApplicationExtensions
             pipeline.UseEventApiProxyAntiforgery();
         }
 
+        pipeline.UseBffEndpointAntiforgery();
         pipeline.UseRateLimiter();
         pipeline.UseAntiforgery();
     }

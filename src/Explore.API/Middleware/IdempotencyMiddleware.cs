@@ -112,6 +112,8 @@ public sealed class IdempotencyMiddleware
         var repository = context.RequestServices.GetRequiredService<IIdempotencyRepository>();
         var replayProtection = context.GetEndpoint()?.Metadata
             .GetMetadata<ProtectIdempotencyReplayAttribute>();
+        var revalidateReplay = context.GetEndpoint()?.Metadata
+            .GetMetadata<RevalidateIdempotencyReplayAttribute>() is not null;
         var tenantId = tenantContext.TenantId;
         var requestIdentity = await IdempotencyRequestIdentityFactory.CreateAsync(
             context,
@@ -162,6 +164,12 @@ public sealed class IdempotencyMiddleware
             if (claim.Record.StatusCode == IdempotencyRecord.InProgressStatusCode)
             {
                 await WriteInProgressConflictAsync(context);
+                return;
+            }
+
+            if (revalidateReplay)
+            {
+                await _next(context);
                 return;
             }
 

@@ -52,11 +52,35 @@ internal static class RegistrationUniqueConflictClassifier
         ],
     ];
 
+
     internal static bool IsSubmissionIdentityConflict(DbUpdateException exception) =>
         IsExpectedConflict(exception, SubmissionIdentityConstraints, SubmissionIdentitySqliteColumns);
 
     internal static bool IsRevisionIdentityConflict(DbUpdateException exception) =>
         IsExpectedConflict(exception, RevisionIdentityConstraints, RevisionIdentitySqliteColumns);
+
+    internal static bool IsProviderUniqueConflict(DbUpdateException exception)
+    {
+        for (Exception? current = exception.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: UniqueViolationSqlState } ||
+                current is SqliteException
+                {
+                    SqliteErrorCode: SqliteConstraint,
+                    SqliteExtendedErrorCode: SqliteConstraintPrimaryKey or SqliteConstraintUnique
+                } ||
+                current is SqlException { Number: SqlServerUniqueIndexViolation or SqlServerUniqueConstraintViolation } ||
+                current is MySqlException mySql && IsMySqlDuplicate(mySql.Number, mySql.Message))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal static bool IsMySqlDuplicate(int number, string physicalKeyName) =>
+        number == MySqlDuplicateEntry && !string.IsNullOrWhiteSpace(physicalKeyName);
 
     private static bool IsExpectedConflict(
         DbUpdateException exception,

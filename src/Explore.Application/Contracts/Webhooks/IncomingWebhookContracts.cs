@@ -19,28 +19,31 @@ public sealed record IncomingWebhookVerificationResult(
     string? IdempotencyKey,
     string? FailureCategory,
     string? SafeDetail,
-    string? Receipt = null)
+    string? Receipt = null,
+    ReadOnlyMemory<byte> RetainedPayloadBytes = default)
 {
     public static IncomingWebhookVerificationResult VerifiedProviderBinding(
         Guid tenantId,
         Guid webhookConsumerProviderBindingId,
         string providerMessageId,
         string? eventType,
-        string idempotencyKey)
+        string idempotencyKey,
+        ReadOnlyMemory<byte> retainedPayloadBytes = default)
     {
         RequireGuid(tenantId, nameof(tenantId));
         RequireGuid(webhookConsumerProviderBindingId, nameof(webhookConsumerProviderBindingId));
-        return new(true, tenantId, webhookConsumerProviderBindingId, providerMessageId, eventType, idempotencyKey, null, null);
+        return new(true, tenantId, webhookConsumerProviderBindingId, providerMessageId, eventType, idempotencyKey, null, null, null, retainedPayloadBytes);
     }
 
     public static IncomingWebhookVerificationResult VerifiedTenantCredential(
         Guid tenantId,
         string providerMessageId,
         string? eventType,
-        string idempotencyKey)
+        string idempotencyKey,
+        ReadOnlyMemory<byte> retainedPayloadBytes = default)
     {
         RequireGuid(tenantId, nameof(tenantId));
-        return new(true, tenantId, null, providerMessageId, eventType, idempotencyKey, null, null);
+        return new(true, tenantId, null, providerMessageId, eventType, idempotencyKey, null, null, null, retainedPayloadBytes);
     }
 
     public static IncomingWebhookVerificationResult Rejected(

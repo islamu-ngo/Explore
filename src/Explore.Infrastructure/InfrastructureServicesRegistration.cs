@@ -15,6 +15,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Strategies;
@@ -37,6 +38,7 @@ using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Payments.Stripe;
+using Explore.Infrastructure.Payments.Stripe.Checkout;
 using Explore.Infrastructure.Registration;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -109,6 +111,21 @@ public static class InfrastructureServicesRegistration
             ConnectTimeout = TimeSpan.FromSeconds(10)
         });
         services.AddScoped<IOrganizerPaymentOnboardingProvider, StripeConnectAccountAdapter>();
+        services.AddHttpClient(StripeCheckoutAdapter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<StripeCheckoutAdapter>();
+        services.AddScoped<IHostedCheckoutSessionCreator>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
+        services.AddScoped<IHostedCheckoutSessionRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
+        services.AddScoped<IPaymentIntentRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
+        services.AddScoped<IPaymentProviderDescriptor>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
@@ -361,6 +378,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IIncomingWebhookHandler, RegistrationProviderSubmissionIncomingWebhookHandler>();
         services.AddScoped<IIncomingWebhookVerifier, StripeConnectIncomingWebhookVerifier>();
         services.AddScoped<IIncomingWebhookHandler, StripeConnectIncomingWebhookHandler>();
+        services.AddScoped<IIncomingWebhookHandler, StripePaymentIncomingWebhookHandler>();
         services.AddOptions<IncomingWebhookProcessingSettings>()
             .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
             .ValidateDataAnnotations()
@@ -430,7 +448,10 @@ public static class InfrastructureServicesRegistration
 
         // Admin API client for policy package publishing (HTTP-based, separate from gRPC runtime)
         services.AddTransient<CorrelationIdDelegatingHandler>();
-        services.AddHttpClient("CerbosAdminClient");
+        services.AddHttpClient("CerbosAdminClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         services.AddScoped<CerbosPrincipalBuilder>();
         services.AddScoped<CerbosAuthorizationService>();
@@ -440,7 +461,6 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAuthorizationProvider>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
         services.AddScoped<IAuthorizationProviderModeCacheInvalidator>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
         services.AddScoped<IPolicyPackageService, CerbosPolicyPackageService>();
-        services.AddScoped<IAuthorizationRevisionProvider, CerbosStoreRevisionProvider>();
         services.AddScoped<IPolicySyncService, PolicySyncService>();
 
         // Event Strategies

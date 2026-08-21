@@ -3,6 +3,7 @@
 @page "/registration/guest/events/{EventId:guid}/orders/{OrderId:guid}"
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Components.Registration.FormRenderer
+@using Explore.Blazor.Client.Components.Registration
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
@@ -34,6 +35,19 @@
                 <MudText Typo="Typo.body2" role="status">@countdown</MudText>
             }
         </section>
+
+        @if (HasPaymentAction)
+        {
+            <PaymentStatusPanel @key="(EventId, OrderId)"
+                                Start="@(CanStartPayment ? StartPaymentAsync : null)"
+                                Load="@(CanLoadPayment ? LoadPaymentAsync : null)"
+                                 Refresh="RefreshPaymentAsync"
+                                 Retry="RetryPaymentAsync"
+                                 IssueCheckoutTicket="IssueCheckoutTicketAsync"
+                                 Succeeded="ReloadAfterPaymentAsync"
+                                 Expired="ReloadAfterPaymentAsync"
+                                 OrderExpiresAt="_order.ExpiresAt" />
+        }
 
         <section class="guest-order-recovery__details" aria-labelledby="guest-order-details">
             <MudText Id="guest-order-details" Typo="Typo.h5" HtmlTag="h2">Order details</MudText>
@@ -155,6 +169,9 @@
     private bool CanApplyPromotion => _order?._links?.ContainsKey("apply-promotion") == true && !CanRemovePromotion;
     private bool CanRemovePromotion => _order?._links?.ContainsKey("remove-promotion") == true;
     private bool HasPromotionState => CanApplyPromotion || CanRemovePromotion || !string.IsNullOrWhiteSpace(_order?.AppliedPromotionDisplayLabel);
+    private bool CanStartPayment => _order?._links?.ContainsKey("start-payment") == true;
+    private bool CanLoadPayment => _order?._links?.ContainsKey("payment-status") == true;
+    private bool HasPaymentAction => CanStartPayment || CanLoadPayment;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -192,6 +209,17 @@
     private async Task ContinueAsync() => await ApplyAsync(() => RegistrationOrderService.ContinueGuestAsync(EventId, OrderId, _capability!, _contributionBasisPoints));
     private async Task FinalizeAsync() => await ApplyAsync(() => RegistrationOrderService.FinalizeGuestAsync(EventId, OrderId, _capability!));
     private async Task CancelAsync() => await ApplyAsync(() => RegistrationOrderService.CancelGuestAsync(EventId, OrderId, _capability!));
+    private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(CancellationToken cancellationToken) =>
+        RegistrationOrderService.StartGuestPaymentAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> LoadPaymentAsync(CancellationToken cancellationToken) =>
+        RegistrationOrderService.GetGuestPaymentAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RefreshPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
+        RegistrationOrderService.RefreshGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RetryPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
+        RegistrationOrderService.RetryGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
+    private Task<string?> IssueCheckoutTicketAsync(string path, CancellationToken cancellationToken) =>
+        RegistrationOrderService.IssueGuestPaymentCheckoutTicketAsync(path, _capability!, cancellationToken);
+    private Task ReloadAfterPaymentAsync() => LoadAsync();
 
     private Task ApplyPromotionAsync()
     {

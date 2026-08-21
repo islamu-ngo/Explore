@@ -263,6 +263,23 @@ public sealed class RegistrationOrderTests
         await Assert.That(waitlistedOrder.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Waitlisted);
     }
 
+    [Test]
+    public async Task NeedsReconciliationFreezesTicketFeeAndContributionComposition()
+    {
+        DateTime timestamp = new(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc);
+        RegistrationOrder order = CreatePricedOrder();
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, timestamp);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, timestamp);
+        order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, timestamp);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, timestamp);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, timestamp);
+
+        await Assert.That(() => order.AddLine(order.Lines.Single())).Throws<InvalidOperationException>();
+        await Assert.That(() => order.SetPlatformContribution(null)).Throws<InvalidOperationException>();
+        await Assert.That(() => order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("USD", 1_000, 0, 1_000, 0)))
+            .Throws<InvalidOperationException>();
+    }
+
     private static RegistrationOrder CreateOrder(
         RegistrationParticipationSnapshot? participationSnapshot = null,
         Guid? ticketCatalogVersionId = null,

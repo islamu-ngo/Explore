@@ -468,6 +468,31 @@ public sealed class RegistrationOrderControllerTests
     }
 
     [Test]
+    public async Task GuestAwaitingPaymentHal_WhenExpired_OmitsStartPayment()
+    {
+        DateTime utcNow = new(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+        var mediator = Substitute.For<IMediator>();
+        var order = new GuestRegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            StatusId = (int)RegistrationOrderStatusEnum.AwaitingPayment,
+            StatusCode = "AWAITING_PAYMENT",
+            TotalDueMinor = 1_000,
+            ExpiresAt = utcNow.AddSeconds(-1)
+        };
+        mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
+        var controller = CreateGuestController(mediator, new FixedTimeProvider(utcNow));
+
+        ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
+            order.EventId, order.Id, "opaque-capability");
+
+        var resource = (result.Result as OkObjectResult)?.Value as HalResource<GuestRegistrationOrderDto>;
+        await Assert.That(resource?.Links).DoesNotContainKey(LinkRelations.StartPayment);
+        await Assert.That(resource?.Links).ContainsKey(LinkRelations.PaymentStatus);
+    }
+
+    [Test]
     public async Task ClaimGuest_DispatchesCapabilityScopedCommandAndMapsConflict()
     {
         var mediator = Substitute.For<IMediator>();
@@ -500,15 +525,31 @@ public sealed class RegistrationOrderControllerTests
     {
         // The guest, authenticated, and event-management registration controllers share one constructor
         // shape, so one factory serves all three capability surfaces.
-        var controller = (TController)Activator.CreateInstance(
-            typeof(TController),
-            mediator,
-            assembler ?? Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>())!;
+        IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> effectiveAssembler =
+            assembler ?? Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>();
+        object[] arguments = typeof(TController) == typeof(GuestRegistrationOrderController)
+            ? [mediator, effectiveAssembler, TimeProvider.System]
+            : [mediator, effectiveAssembler];
+        var controller = (TController)Activator.CreateInstance(typeof(TController), arguments)!;
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         var url = Substitute.For<IUrlHelper>();
         url.Link(Arg.Any<string>(), Arg.Any<object>()).Returns(call => $"/api/routes/{call.ArgAt<string>(0)}");
         controller.Url = url;
 
+        return controller;
+    }
+
+    private static GuestRegistrationOrderController CreateGuestController(IMediator mediator, TimeProvider timeProvider)
+    {
+        var controller = (GuestRegistrationOrderController)Activator.CreateInstance(
+            typeof(GuestRegistrationOrderController),
+            mediator,
+            Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>(),
+            timeProvider)!;
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+        var url = Substitute.For<IUrlHelper>();
+        url.Link(Arg.Any<string>(), Arg.Any<object>()).Returns(call => $"/api/routes/{call.ArgAt<string>(0)}");
+        controller.Url = url;
         return controller;
     }
 
@@ -532,6 +573,11 @@ public sealed class RegistrationOrderControllerTests
         FailureCode = PromotionRedemptionFailureCodes.Unavailable,
         Message = "Promotion cannot be changed for this order."
     };
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
 
     private static async Task AssertNativeSubmissionRoute(
         string actionName,

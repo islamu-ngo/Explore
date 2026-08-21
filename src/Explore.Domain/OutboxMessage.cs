@@ -95,5 +95,7 @@ public enum OutboxMessageStatus
     Failed = 4,
 
     /// <summary>Quarantined after exhausting all retries.</summary>
-    DeadLettered = 5
+    DeadLettered = 5,
+
+    Unknown = 6
 }

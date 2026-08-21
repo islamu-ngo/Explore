@@ -7,6 +7,7 @@ using System.Text;
 using Explore.API.Attributes;
 using Explore.API.Middleware;
 using Explore.API.OpenApi;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -83,6 +84,31 @@ public class IdempotencyMiddlewareTests
         var extension = operation.Extensions!["x-idempotency-key-required"] as JsonNodeExtension;
         await Assert.That(extension).IsNotNull();
         await Assert.That(extension!.Node.GetValue<bool>()).IsTrue();
+        OpenApiParameter parameter = (OpenApiParameter)operation.Parameters!.Single(candidate =>
+            candidate.In == ParameterLocation.Header && candidate.Name == "Idempotency-Key");
+        await Assert.That(parameter.Required).IsTrue();
+    }
+
+    [Test]
+    public async Task OpenApiMetadata_AuthenticatedPaymentMutation_MarksHeaderRequired()
+    {
+        var parameter = new OpenApiParameter
+        {
+            Name = "Idempotency-Key",
+            In = ParameterLocation.Header,
+            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+        };
+        var operation = new OpenApiOperation
+        {
+            OperationId = RouteNames.StartAuthenticatedRegistrationPayment,
+            Parameters = [parameter]
+        };
+
+        EndpointClassificationTransformer.ApplyIdempotencyKeyRequirement(
+            operation,
+            [new RequireIdempotencyKeyAttribute()]);
+
+        await Assert.That(parameter.Required).IsTrue();
     }
 
     [Test]

@@ -78,6 +78,17 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             .OrderBy(hold => hold.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<RegistrationInventoryHold>> GetActiveHoldsForUpdateAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        await dbContext.RegistrationInventoryHolds
+            .Where(hold => hold.RegistrationOrderId == orderId &&
+                           hold.TenantId == tenantId &&
+                           hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+            .OrderBy(hold => hold.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<RegistrationOrder>> GetOrdersByEventAsync(
         Guid eventId,
         Guid tenantId,
@@ -339,6 +350,33 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             (int)RegistrationOrderStatusEnum.Waitlisted,
             (int)RegistrationOrderStatusEnum.NeedsReconciliation
         ];
+
+        var holdOwner = await dbContext.RegistrationInventoryHolds
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .AsNoTracking()
+            .Where(hold => hold.Id == holdId &&
+                           hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active &&
+                           hold.ExpiresAt <= utcNow &&
+                           !hold.IsDeleted)
+            .Select(hold => new { hold.TenantId, hold.RegistrationOrderId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (holdOwner is null)
+        {
+            return false;
+        }
+
+        bool paymentOutcomeAmbiguous = await dbContext.PaymentAttempts
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .AsNoTracking()
+            .AnyAsync(attempt => attempt.TenantId == holdOwner.TenantId &&
+                                 attempt.RegistrationOrderId == holdOwner.RegistrationOrderId &&
+                                 attempt.PaymentAttemptStatusId != (int)PaymentAttemptStatusEnum.Failed &&
+                                 attempt.PaymentAttemptStatusId != (int)PaymentAttemptStatusEnum.Cancelled,
+                cancellationToken);
+        if (paymentOutcomeAmbiguous)
+        {
+            return false;
+        }
 
         string providerName = dbContext.Database.ProviderName
             ?? throw new InvalidOperationException("Registration inventory requires a relational database provider.");

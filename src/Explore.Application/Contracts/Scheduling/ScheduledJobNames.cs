@@ -35,6 +35,7 @@ public static class ScheduledJobNames
 
     /// <summary>Bounded drain migration: the timer moved to the scheduler, the claim semantics did not.</summary>
     public const string RegistrationFinalizationDrain = "registration-finalization-drain";
+    public const string PaymentReconciliationDrain = "payment-reconciliation-drain";
 
     /// <summary>
     /// Every catalog name, used to bound telemetry label cardinality. Metric labels are exported and
@@ -62,6 +63,7 @@ public static class ScheduledJobNames
         InventoryHoldExpiry,
         InventoryHoldExpiryReconciliation,
         RegistrationFinalizationDrain,
+        PaymentReconciliationDrain,
     }.ToFrozenSet(StringComparer.Ordinal);
 }
 

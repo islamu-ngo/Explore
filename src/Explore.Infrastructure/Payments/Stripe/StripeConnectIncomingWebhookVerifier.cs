@@ -112,6 +112,32 @@ public sealed class StripeConnectIncomingWebhookVerifier(
         }
 
         var connection = matches[0];
+        if (IsPaymentEvent(stripeEvent.Type))
+        {
+            string? objectId = stripeEvent.Data.Object is global::Stripe.Checkout.Session session
+                ? StripeConnectAccountAdapter.BoundedText(session.Id, 200)
+                : null;
+            if (objectId is null)
+            {
+                return IncomingWebhookVerificationResult.Rejected("stripe_connect_object_id_invalid");
+            }
+
+            var envelope = new StripePaymentWebhookEnvelope(
+                eventId!,
+                stripeEvent.Type,
+                objectId,
+                verifiedAccountId,
+                eventLivemode,
+                stripeEvent.ApiVersion,
+                stripeEvent.Created);
+            return IncomingWebhookVerificationResult.VerifiedTenantCredential(
+                connection.TenantId,
+                eventId!,
+                stripeEvent.Type,
+                $"{stripeEvent.Type}:{objectId}",
+                envelope.Serialize());
+        }
+
         return IncomingWebhookVerificationResult.VerifiedTenantCredential(
             connection.TenantId,
             eventId!,
@@ -145,7 +171,14 @@ public sealed class StripeConnectIncomingWebhookVerifier(
 
     private static bool IsSupportedEvent(string? eventType) =>
         string.Equals(eventType, global::Stripe.EventTypes.AccountUpdated, StringComparison.Ordinal)
-        || string.Equals(eventType, global::Stripe.EventTypes.AccountApplicationDeauthorized, StringComparison.Ordinal);
+        || string.Equals(eventType, global::Stripe.EventTypes.AccountApplicationDeauthorized, StringComparison.Ordinal)
+        || IsPaymentEvent(eventType);
+
+    private static bool IsPaymentEvent(string? eventType) =>
+        string.Equals(eventType, global::Stripe.EventTypes.CheckoutSessionCompleted, StringComparison.Ordinal)
+        || string.Equals(eventType, global::Stripe.EventTypes.CheckoutSessionAsyncPaymentSucceeded, StringComparison.Ordinal)
+        || string.Equals(eventType, global::Stripe.EventTypes.CheckoutSessionAsyncPaymentFailed, StringComparison.Ordinal)
+        || string.Equals(eventType, global::Stripe.EventTypes.CheckoutSessionExpired, StringComparison.Ordinal);
 
     private static bool TryGetEventCreatedAt(global::Stripe.Event stripeEvent, out DateTime createdAt)
     {

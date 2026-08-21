@@ -1049,3 +1049,33 @@ not account for this repository having replaced the standard Blazor router.
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-21 Europe/Brussels] — Provider minimum Checkout window must move the local cutoff
+
+**Context**: While closing Phase 18 under the `registration-data-collection` intent, paid registration Checkout had to coordinate the local order and capacity-hold cutoff with Stripe Checkout's 30-minute minimum session window without weakening local capacity authority.
+
+**Symptom / Observation**: A provider session cannot use a shorter expiry than the provider minimum. Extending only the provider session would leave the local order or inventory hold expiring first, so a payment completed within the provider-authorized window could arrive for reconciliation after local capacity had already been released.
+
+**Root Cause**: Provider acceptance and local capacity ownership are separate clocks and separate durable workflows. Payment completion is learned asynchronously, so webhook or retrieval reconciliation can race local expiry even when the buyer completed Checkout before the provider session expired.
+
+**Resolution**: Phase 18 computes the payment cutoff before provider handoff. When the remaining local window is below 30 minutes, the same serializable claim extends the order and active capacity holds to that cutoff; provider completion is then reconciled as durable evidence through the existing conditional finalization path, which rechecks requirements, approval, cancellation, hold, and capacity authority rather than treating payment success as confirmation. The source-free review and QA links are retained in [`phase18-clean-room-evidence.md`](../active/registration-data-collection/phase18-clean-room-evidence.md).
+
+**Why This Matters for Future Work**: Any provider with a minimum hosted-payment lifetime must coordinate that minimum with local reservation ownership before external dispatch. Completion callbacks must still enter reconciliation and conditional local finalization, because extending a clock prevents premature release but does not make provider success authoritative over capacity or order state.
+
+**References**:
+- `src/Explore.Application/Services/Registration/RegistrationPaymentAttemptClaimService.cs:95`
+- `src/Explore.Application/Services/Registration/RegistrationOrderLifecycleService.Payments.cs:187`
+- `src/Explore.Application/Services/Registration/RegistrationPaymentReconciliationService.cs:166`
+- `tests/Event.Application.UnitTests/Services/Registration/RegistrationPaymentAttemptClaimServiceTests.cs:217`
+- `dev/active/registration-data-collection/phase18-clean-room-evidence.md`
+- `tests/Event.API.IntegrationTests/Features/RegistrationPaymentContractTests.cs`
+- PR: pending; commit provenance uses `Change-Id: CHG-2026-0004`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `outbox-pattern`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

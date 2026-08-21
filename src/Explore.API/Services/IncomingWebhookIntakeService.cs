@@ -74,7 +74,20 @@ public sealed class IncomingWebhookIntakeService(
                 $"{normalizedProvider}_webhook_body_empty");
         }
 
-        var rawPayload = Encoding.UTF8.GetString(bodyBytes);
+        string rawPayload;
+        try
+        {
+            rawPayload = new UTF8Encoding(false, true).GetString(bodyBytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            return IncomingWebhookReadResult.Failure(
+                normalizedProvider,
+                StatusCodes.Status400BadRequest,
+                "Incoming webhook encoding is invalid",
+                "The incoming webhook body must be valid UTF-8.",
+                $"{normalizedProvider}_webhook_encoding_invalid");
+        }
         var payloadHash = ComputePayloadHash(bodyBytes);
         var receivedAt = DateTimeOffset.UtcNow;
         IncomingWebhookVerificationResult verification;
@@ -171,13 +184,19 @@ public sealed class IncomingWebhookIntakeService(
         var retention = retentionPolicyResolver.Resolve(
             readResult.ReceivedAt,
             nowOffset);
+        ReadOnlyMemory<byte> retainedPayload = readResult.Verification.RetainedPayloadBytes.IsEmpty
+            ? readResult.RawPayloadBytes
+            : readResult.Verification.RetainedPayloadBytes;
+        WebhookPayloadProvenance payloadProvenance = readResult.Verification.RetainedPayloadBytes.IsEmpty
+            ? WebhookPayloadProvenance.ExactBytes
+            : WebhookPayloadProvenance.NormalizedProviderEnvelope;
         var message = IncomingWebhookMessage.CreateVerified(
             tenantId.Value,
             normalizedProvider,
             normalizedProviderMessageId,
             normalizedIdempotencyKey,
             resolvedEventType,
-            readResult.RawPayloadBytes.Span,
+            retainedPayload.Span,
             readResult.PayloadHash,
             readResult.ContentType,
             readResult.ContentEncoding,
@@ -190,7 +209,8 @@ public sealed class IncomingWebhookIntakeService(
             retention.DeadLetterEvidenceRetentionUntil.UtcDateTime,
             retention.ReplayWindowUntil.UtcDateTime,
             retention.OperationalLogRetentionUntil.UtcDateTime,
-            readResult.Verification.WebhookConsumerProviderBindingId);
+            readResult.Verification.WebhookConsumerProviderBindingId,
+            payloadProvenance);
 
         var created = await incomingWebhookMessageRepository.TryCreateAsync(message, cancellationToken);
         if (created)
@@ -205,6 +225,19 @@ public sealed class IncomingWebhookIntakeService(
             cancellationToken);
         if (existing is null)
         {
+            existing = await incomingWebhookMessageRepository.GetByIdempotencyKeyForUpdateAsync(
+                tenantId.Value,
+                normalizedProvider,
+                normalizedIdempotencyKey,
+                cancellationToken);
+            if (existing is not null)
+            {
+                return IncomingWebhookCaptureResult.Duplicate(
+                    existing.Id,
+                    existing.ProviderMessageId,
+                    normalizedIdempotencyKey);
+            }
+
             return IncomingWebhookCaptureResult.Failure(
                 StatusCodes.Status409Conflict,
                 "Incoming webhook identity conflict",

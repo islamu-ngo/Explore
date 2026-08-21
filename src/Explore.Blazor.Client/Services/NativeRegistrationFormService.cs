@@ -47,9 +47,9 @@ public sealed class NativeRegistrationFormService(
         {
             HalResourceOfNativeRegistrationAttemptDto source = guestCapability is { } guest
                 ? await apiClient.LaunchGuestNativeRegistrationAttemptAsync(
-                    eventId, orderId, request, guest.Value, idempotencyKey, cancellationToken: cancellationToken)
+                    eventId, orderId, idempotencyKey, request, guest.Value, cancellationToken: cancellationToken)
                 : await apiClient.LaunchAuthenticatedNativeRegistrationAttemptAsync(
-                    eventId, orderId, request, idempotencyKey, cancellationToken: cancellationToken);
+                    eventId, orderId, idempotencyKey, request, cancellationToken: cancellationToken);
             return NativeRegistrationAttemptView.From(source);
         }
         catch (ApiException exception)
@@ -81,11 +81,11 @@ public sealed class NativeRegistrationFormService(
         {
             NativeRegistrationSubmissionDto response = guestCapability is { } guest
                 ? await apiClient.SubmitGuestNativeRegistrationAttemptAsync(
-                    eventId, orderId, attempt.AttemptId, request, guest.Value,
-                    attempt.AttemptCapabilityToken, idempotencyKey, cancellationToken: cancellationToken)
+                    eventId, orderId, attempt.AttemptId, idempotencyKey, request, guest.Value,
+                    attempt.AttemptCapabilityToken, cancellationToken: cancellationToken)
                 : await apiClient.SubmitAuthenticatedNativeRegistrationAttemptAsync(
-                    eventId, orderId, attempt.AttemptId, request,
-                    attempt.AttemptCapabilityToken, idempotencyKey, cancellationToken: cancellationToken);
+                    eventId, orderId, attempt.AttemptId, idempotencyKey, request,
+                    attempt.AttemptCapabilityToken, cancellationToken: cancellationToken);
             return response.Accepted ? NativeRegistrationActionResult.Accepted : NativeRegistrationActionResult.Failed;
         }
         catch (ApiException<ValidationProblemDetails> exception)
@@ -109,11 +109,11 @@ public sealed class NativeRegistrationFormService(
         {
             _ = guestCapability is { } guest
                 ? await apiClient.SkipGuestNativeRegistrationRequirementAsync(
-                    eventId, orderId, attempt.AttemptId, request, guest.Value,
-                    attempt.AttemptCapabilityToken, idempotencyKey, cancellationToken: cancellationToken)
+                    eventId, orderId, attempt.AttemptId, idempotencyKey, request, guest.Value,
+                    attempt.AttemptCapabilityToken, cancellationToken: cancellationToken)
                 : await apiClient.SkipAuthenticatedNativeRegistrationRequirementAsync(
-                    eventId, orderId, attempt.AttemptId, request,
-                    attempt.AttemptCapabilityToken, idempotencyKey, cancellationToken: cancellationToken);
+                    eventId, orderId, attempt.AttemptId, idempotencyKey, request,
+                    attempt.AttemptCapabilityToken, cancellationToken: cancellationToken);
             return true;
         }
         catch (ApiException exception)

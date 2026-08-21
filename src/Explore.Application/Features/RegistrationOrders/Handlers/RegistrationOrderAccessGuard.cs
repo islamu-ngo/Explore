@@ -64,6 +64,22 @@ internal static class RegistrationOrderAccessGuard
         return order?.AccountUserId == userId && (!eventId.HasValue || order.EventId == eventId.Value) ? order : null;
     }
 
+    public static async Task<RegistrationOrder?> GetCurrentAccountOrderBeforeExpiryAsync(
+        IRegistrationInventoryRepository inventory,
+        ICurrentUserService currentUser,
+        Guid tenantId,
+        Guid eventId,
+        Guid orderId,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        RegistrationOrder? order = await GetCurrentAccountOrderAsync(
+            inventory, currentUser, tenantId, eventId, orderId, cancellationToken);
+        return order?.ExpiresAt is { } expiresAt && expiresAt > timeProvider.GetUtcNow().UtcDateTime
+            ? order
+            : null;
+    }
+
     public static async Task<RegistrationOrderLifecycleResponseDto> ExecuteGuestAsync<TCommand>(
         TCommand request,
         IRegistrationInventoryRepository inventory,

@@ -300,6 +300,49 @@ public sealed class ExploreDbContextModelProviderTests
     [Arguments("SqlServer")]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
+    public async Task PaymentAttemptModelUsesPortableActiveSlotAndDispatchFenceShape(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        IEntityType attempt = model.FindEntityType(typeof(Explore.Domain.PaymentAttempt))!;
+        await Assert.That(attempt).IsNotNull();
+        await Assert.That(attempt.FindDeclaredQueryFilter(Explore.Persistence.QueryFilters.QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(attempt.FindIndex([
+            attempt.FindProperty(nameof(Explore.Domain.PaymentAttempt.ActiveScopeKey))!,
+            attempt.FindProperty(nameof(Explore.Domain.PaymentAttempt.ActiveUniquenessSlot))!
+        ])?.IsUnique).IsTrue();
+        await Assert.That(attempt.FindIndex([attempt.FindProperty(nameof(Explore.Domain.PaymentAttempt.ProviderIdempotencyKey))!])?.IsUnique).IsTrue();
+        string shadowStatusPropertyName = nameof(Explore.Domain.PaymentAttempt.PaymentAttemptStatusId) + "1";
+        string shadowStatusColumnName = "payment_attempt_status_id" + "1";
+        await Assert.That(attempt.FindProperty(shadowStatusPropertyName)).IsNull();
+        await Assert.That(attempt.GetProperties().Any(property => property.GetColumnName().Equals(shadowStatusColumnName, StringComparison.OrdinalIgnoreCase))).IsFalse();
+        await Assert.That(attempt.GetCheckConstraints().Any(constraint => constraint.Name == "ck_payment_attempts_active_slot")).IsTrue();
+        await Assert.That(attempt.GetCheckConstraints().Any(constraint => constraint.Name == "ck_payment_attempts_amounts")).IsTrue();
+
+        IEntityType effect = model.FindEntityType(typeof(Explore.Domain.CheckoutDispatchEffect))!;
+        await Assert.That(effect).IsNotNull();
+        await Assert.That(effect.FindDeclaredQueryFilter(Explore.Persistence.QueryFilters.QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(effect.FindIndex([
+            effect.FindProperty(nameof(Explore.Domain.CheckoutDispatchEffect.TenantId))!,
+            effect.FindProperty(nameof(Explore.Domain.CheckoutDispatchEffect.PaymentAttemptId))!
+        ])?.IsUnique).IsTrue();
+        await Assert.That(effect.GetCheckConstraints().Any(constraint => constraint.Name == "ck_checkout_dispatch_effects_state")).IsTrue();
+        await Assert.That(effect.GetCheckConstraints().Any(constraint => constraint.Name == "ck_checkout_dispatch_effects_processing_fence")).IsTrue();
+        await Assert.That(effect.GetIndexes().Any(index =>
+            index.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(Explore.Domain.CheckoutDispatchEffect.Status),
+                nameof(Explore.Domain.CheckoutDispatchEffect.NextAttemptAt),
+                nameof(Explore.Domain.CheckoutDispatchEffect.CreatedAt)
+            ]))).IsTrue();
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
     public async Task PromotionModelMapsHistoricalOrderSnapshotsAndVerifiedEmail(string provider)
     {
         using var context = CreateContext(provider);

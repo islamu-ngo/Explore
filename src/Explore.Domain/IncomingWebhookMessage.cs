@@ -118,7 +118,8 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         DateTime deadLetterEvidenceRetentionUntil,
         DateTime replayWindowUntil,
         DateTime operationalLogRetentionUntil,
-        Guid? webhookConsumerProviderBindingId = null)
+        Guid? webhookConsumerProviderBindingId = null,
+        WebhookPayloadProvenance payloadProvenance = WebhookPayloadProvenance.ExactBytes)
     {
         RequireGuid(tenantId, nameof(tenantId));
         if (payloadBytes.IsEmpty)
@@ -164,7 +165,7 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             _payloadBytes = payloadBytes.ToArray(),
             PayloadHash = NormalizePayloadHash(payloadHash),
             PayloadByteLength = payloadBytes.Length,
-            PayloadProvenanceId = (int)WebhookPayloadProvenance.ExactBytes,
+            PayloadProvenanceId = (int)payloadProvenance,
             ContentType = NormalizeRequired(contentType, MaxContentTypeLength, nameof(contentType)).ToLowerInvariant(),
             ContentEncoding = NormalizeRequired(contentEncoding, MaxContentEncodingLength, nameof(contentEncoding)).ToLowerInvariant(),
             PayloadRetentionUntil = payloadRetentionUntil,

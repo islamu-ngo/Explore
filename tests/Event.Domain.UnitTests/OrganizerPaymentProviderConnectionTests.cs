@@ -221,6 +221,39 @@ public sealed class OrganizerPaymentProviderConnectionTests
         await Assert.That(() => ReadyConnection().CreateRecipientSnapshot("USD", Guid.CreateVersion7(), null, Now.AddMinutes(5))).Throws<ArgumentException>();
     }
 
+    [Test]
+    public async Task TryCreateRecipientSnapshot_ReturnsTypedUnavailableForEveryNonReadyBoundary()
+    {
+        OrganizerPaymentProviderConnection pending = Connection();
+        OrganizerPaymentProviderConnection restricted = Connection();
+        restricted.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
+            "BE", ChargeCapabilityState.Pending, ProviderRequirementsState.CurrentlyDue, ["EUR"], Now.AddMinutes(1), "rev-restricted"));
+        OrganizerPaymentProviderConnection disabled = ReadyConnection();
+        disabled.Disable("operator_disabled", Now.AddMinutes(4));
+        OrganizerPaymentProviderConnection replaced = ReadyConnection();
+        _ = replaced.ReplaceWith(Guid.CreateVersion7(), "acct_new", Now.AddMinutes(4));
+        OrganizerPaymentProviderConnection stale = ReadyConnection();
+
+        OrganizerPaymentRecipientSnapshotResult[] results =
+        [
+            pending.TryCreateRecipientSnapshot("EUR", Guid.CreateVersion7(), null, Now.AddMinutes(5), TimeSpan.FromMinutes(5)),
+            restricted.TryCreateRecipientSnapshot("EUR", Guid.CreateVersion7(), null, Now.AddMinutes(5), TimeSpan.FromMinutes(5)),
+            disabled.TryCreateRecipientSnapshot("EUR", Guid.CreateVersion7(), null, Now.AddMinutes(5), TimeSpan.FromMinutes(5)),
+            replaced.TryCreateRecipientSnapshot("EUR", Guid.CreateVersion7(), null, Now.AddMinutes(5), TimeSpan.FromMinutes(5)),
+            ReadyConnection().TryCreateRecipientSnapshot("USD", Guid.CreateVersion7(), null, Now.AddMinutes(5), TimeSpan.FromMinutes(5)),
+            stale.TryCreateRecipientSnapshot("EUR", Guid.CreateVersion7(), null, Now.AddMinutes(7), TimeSpan.FromMinutes(5))
+        ];
+
+        await Assert.That(results.Select(result => result.FailureCode)).IsEquivalentTo([
+            "payment_connection_pending",
+            "payment_connection_restricted",
+            "payment_connection_disabled",
+            "payment_connection_replaced",
+            "payment_currency_unsupported",
+            "payment_readiness_stale"]);
+        await Assert.That(results.All(result => !result.Success && result.Snapshot is null)).IsTrue();
+    }
+
     private static OrganizerPaymentProviderConnection ReadyConnection()
     {
         OrganizerPaymentProviderConnection connection = Connection();

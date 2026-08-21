@@ -38,7 +38,8 @@ public static class RegistrationOrderOutboxMessageFactory
                 order.EventId,
                 order.TenantId,
                 (int)status,
-                admissionCount)),
+                admissionCount,
+                status == RegistrationOrderStatusEnum.Confirmed)),
             Status = OutboxMessageStatus.Pending,
             CreatedAt = createdAt,
             MaxRetries = 5
@@ -59,4 +60,5 @@ public sealed record RegistrationOrderLifecycleOutboxPayload(
     Guid EventId,
     Guid TenantId,
     int StatusId,
-    int AdmissionCount);
+    int AdmissionCount,
+    bool AdmissionIssuanceRequested);

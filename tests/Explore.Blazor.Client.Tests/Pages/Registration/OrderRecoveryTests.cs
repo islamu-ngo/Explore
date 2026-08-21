@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Registration.FormRenderer;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Registration;
 using MudBlazor;
@@ -19,12 +20,14 @@ public sealed class OrderRecoveryTests : IDisposable
     private readonly IGuestRegistrationOrderCapabilityStore _capabilityStore;
     private readonly IAccessibilityAnnouncerService _announcer;
     private readonly IAccessibilityFocusService _focus;
+    private readonly IBrowserActionInterop _browserActions;
 
     public OrderRecoveryTests()
     {
         _service = _ctx.AddMockService<IRegistrationOrderService>();
         _nativeForms = _ctx.AddMockService<INativeRegistrationFormService>();
         _capabilityStore = _ctx.AddMockService<IGuestRegistrationOrderCapabilityStore>();
+        _browserActions = _ctx.AddMockService<IBrowserActionInterop>();
         _announcer = _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>();
         _focus = _ctx.Services.GetRequiredService<IAccessibilityFocusService>();
     }
@@ -296,7 +299,9 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.OrderId, order.Id.Value));
 
         cut.WaitForElement("input[aria-label='Promotion code']").Input("BADCODE");
-        await cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
 
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("We could not apply that promotion to this order."));
         await Assert.That(cut.Markup).DoesNotContain("BADCODE");
@@ -318,6 +323,48 @@ public sealed class OrderRecoveryTests : IDisposable
             Arg.Any<Guid>(),
             Arg.Any<GuestRegistrationOrderCapability>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PaymentReturn_DoesNotInferSuccessFromCallbackNavigation()
+    {
+        var cut = _ctx.RenderMudComponent<PaymentRecoveryReturn>();
+
+        cut.WaitForElement("[data-testid='payment-return-status']");
+        await Assert.That(cut.Markup).Contains("does not confirm that payment succeeded");
+        await Assert.That(cut.Markup).DoesNotContain("Payment confirmed");
+        await Assert.That(cut.Markup).DoesNotContain("Registration confirmed");
+        await _service.DidNotReceiveWithAnyArgs().GetCurrentPaymentAsync(
+            default, default, default!, default);
+        await _service.DidNotReceiveWithAnyArgs().GetGuestPaymentAsync(
+            default, default, default!, default!, default);
+    }
+
+    [Test]
+    public async Task PaymentReturn_ReturnToOriginalTabUsesBrowserInterop()
+    {
+        _browserActions.FocusOpenerAndCloseAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var cut = _ctx.RenderMudComponent<PaymentRecoveryReturn>();
+
+        await cut.Find("[data-testid='return-to-registration-tab']")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await _browserActions.Received(1).FocusOpenerAndCloseAsync(Arg.Any<CancellationToken>());
+        await Assert.That(cut.Markup).DoesNotContain("could not be focused");
+    }
+
+    [Test]
+    public async Task PaymentReturn_MissingOpenerShowsSafeFallbackAndKeepsBrowseEvents()
+    {
+        _browserActions.FocusOpenerAndCloseAsync(Arg.Any<CancellationToken>()).Returns(false);
+        var cut = _ctx.RenderMudComponent<PaymentRecoveryReturn>();
+
+        await cut.Find("[data-testid='return-to-registration-tab']")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        cut.WaitForElement("[data-testid='return-tab-unavailable']");
+        await Assert.That(cut.Markup).Contains("could not be focused");
+        await Assert.That(cut.Markup).Contains("Browse events");
     }
 
     [Test]
@@ -353,6 +400,61 @@ public sealed class OrderRecoveryTests : IDisposable
         cut.WaitForAssertion(() => cut.Markup.Contains("Continue registration", StringComparison.Ordinal));
         await Assert.That(cut.Markup).DoesNotContain("Finalize registration");
         await Assert.That(cut.Markup).DoesNotContain("Cancel registration order");
+    }
+
+    [Test]
+    public async Task AuthenticatedPayment_StartsOnlyFromExactOrderRelationAndRendersAuthoritativeFailureRetry()
+    {
+        var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "start-payment");
+        order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        var failed = CreatePayment("Failed", "Failed", "payment-status", "retry-payment");
+        _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
+        _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(failed);
+
+        var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
+            .Add(component => component.EventId, order.EventId.Value)
+            .Add(component => component.OrderId, order.Id.Value));
+        cut.WaitForElement("[data-testid='start-payment']").Click();
+
+        cut.WaitForElement("[data-testid='retry-payment']");
+        await Assert.That(cut.Markup).Contains("The payment failed");
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
+        await _focus.Received(1).FocusAsync("#payment-actionable-status", Arg.Any<bool>());
+    }
+
+    [Test]
+    public async Task AuthenticatedPayment_UnknownWithoutRetryRelationOffersNoBlindRetry()
+    {
+        var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "payment-status");
+        order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        var payment = CreatePayment("Unknown", "Unknown", "payment-status");
+        _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
+        _service.GetCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(payment);
+
+        var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
+            .Add(component => component.EventId, order.EventId.Value)
+            .Add(component => component.OrderId, order.Id.Value));
+
+        cut.WaitForElement("[data-testid='payment-status']");
+        await Assert.That(cut.Markup).Contains("outcome is not known yet");
+        await Assert.That(cut.FindAll("[data-testid='retry-payment']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task AuthenticatedPayment_NoPaymentRelationsRendersNoPaymentAction()
+    {
+        var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment");
+        _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
+
+        var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
+            .Add(component => component.EventId, order.EventId.Value)
+            .Add(component => component.OrderId, order.Id.Value));
+
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Awaiting payment"));
+        await Assert.That(cut.FindAll("[data-testid='start-payment']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='retry-payment']")).IsEmpty();
+        await _service.DidNotReceive().GetCurrentPaymentAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<HalResourceOfRegistrationOrderDto>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -476,7 +578,9 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.OrderId, orderId));
 
         cut.WaitForElement("input[aria-label='Promotion code']").Input("GUEST10");
-        await cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
 
         await _service.Received(1).ApplyGuestPromotionAsync(eventId, orderId, capability, order, "GUEST10", Arg.Any<CancellationToken>());
         await Assert.That(cut.Markup).DoesNotContain("opaque-capability");
@@ -503,13 +607,34 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.EventId, initialOrder.EventId.Value)
             .Add(component => component.OrderId, initialOrder.Id.Value));
         cut.WaitForElement("input[aria-label='Promotion code']").Input("STALE10");
-        var mutation = cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
-        cut.WaitForAssertion(() => Assert.That(capturedCancellation.CanBeCanceled).IsTrue());
+        var mutation = cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
+        cut.WaitForAssertion(() =>
+        {
+            if (!capturedCancellation.CanBeCanceled)
+            {
+                throw new InvalidOperationException("Promotion mutation has not started.");
+            }
+
+            var currentSubmit = cut.FindAll("button")
+                .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal));
+            if (!currentSubmit.HasAttribute("disabled"))
+            {
+                throw new InvalidOperationException("Promotion mutation has not reached its pending render.");
+            }
+        });
 
         cut.Render(parameters => parameters
             .Add(component => component.EventId, currentOrder.EventId.Value)
             .Add(component => component.OrderId, currentOrder.Id.Value));
-        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Current checkout"));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Current checkout", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Current route has not rendered.");
+            }
+        });
         pending.SetResult(staleOrder);
         await mutation;
 
@@ -547,7 +672,9 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.EventId, initialOrder.EventId.Value)
             .Add(component => component.OrderId, initialOrder.Id.Value));
         cut.WaitForElement("input[aria-label='Promotion code']").Input("STALE10");
-        var mutation = cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
+        var mutation = cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
         cut.WaitForAssertion(() => Assert.That(capturedCancellation.CanBeCanceled).IsTrue());
 
         cut.Render(parameters => parameters
@@ -695,8 +822,23 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.EventId, order.EventId.Value)
             .Add(component => component.OrderId, order.Id.Value));
         cut.WaitForElement("input[aria-label='Promotion code']").Input("CANCEL10");
-        var mutation = cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
-        cut.WaitForAssertion(() => Assert.That(capturedCancellation.CanBeCanceled).IsTrue());
+        var mutation = cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
+        cut.WaitForAssertion(() =>
+        {
+            if (!capturedCancellation.CanBeCanceled)
+            {
+                throw new InvalidOperationException("Promotion mutation has not started.");
+            }
+
+            var currentSubmit = cut.FindAll("button")
+                .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal));
+            if (!currentSubmit.HasAttribute("disabled"))
+            {
+                throw new InvalidOperationException("Promotion mutation has not reached its pending render.");
+            }
+        });
 
         cut.Instance.Dispose();
         pending.SetResult(order);
@@ -732,7 +874,9 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.EventId, order.EventId.Value)
             .Add(component => component.OrderId, order.Id.Value));
         cut.WaitForElement("input[aria-label='Promotion code']").Input("CANCEL10");
-        var mutation = cut.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
+        var mutation = cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
         cut.WaitForAssertion(() => Assert.That(capturedCancellation.CanBeCanceled).IsTrue());
 
         cut.Instance.Dispose();
@@ -774,7 +918,9 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.EventId, authenticatedOrder.EventId.Value)
             .Add(component => component.OrderId, authenticatedOrder.Id.Value));
         authenticated.WaitForElement("input[aria-label='Promotion code']").Input("NEVER-PERSIST");
-        await authenticated.FindAll("button").Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal)).ClickAsync(new());
+        await authenticated.InvokeAsync(() => authenticated.FindAll("button")
+            .Single(button => button.TextContent.Contains("Apply promotion code", StringComparison.Ordinal))
+            .ClickAsync(new()));
         authenticated.WaitForElement("#promotion-status");
         await Assert.That(authenticated.Markup).DoesNotContain("This reservation has expired.");
 
@@ -896,4 +1042,23 @@ public sealed class OrderRecoveryTests : IDisposable
 
         return resource;
     }
+
+    private static HalResourceOfRegistrationPaymentDto CreatePayment(
+        string statusCode,
+        string statusName,
+        params string[] relations) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        RegistrationOrderId = Guid.CreateVersion7(),
+        StatusCode = statusCode,
+        StatusName = statusName,
+        LastUpdatedAt = DateTimeOffset.UtcNow,
+        _links = relations.ToDictionary(
+            relation => relation,
+            relation => new HalLink
+            {
+                Href = relation == "checkout-redirect" ? "bff/registration-payments/events/018e4e5c-7f00-7000-8000-000000000001/orders/018e4e5c-7f00-7000-8000-000000000002/checkout-ticket" : $"/api/payments/{relation}",
+                Method = relation == "payment-status" ? "GET" : "POST"
+            })
+    };
 }

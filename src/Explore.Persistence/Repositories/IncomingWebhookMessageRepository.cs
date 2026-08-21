@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -28,7 +29,8 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
             .AnyAsync(existing =>
                 existing.TenantId == message.TenantId &&
                 existing.Provider == message.Provider &&
-                existing.ProviderMessageId == message.ProviderMessageId,
+                (existing.ProviderMessageId == message.ProviderMessageId ||
+                 existing.IdempotencyKey == message.IdempotencyKey),
                 cancellationToken);
         if (exists)
         {
@@ -41,10 +43,23 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
             await _dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: UniqueViolationSqlState })
+        catch (DbUpdateException ex) when (RegistrationUniqueConflictClassifier.IsProviderUniqueConflict(ex))
         {
             _dbContext.ChangeTracker.Clear();
-            return false;
+            bool duplicate = await _dbContext.IncomingWebhookMessages
+                .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+                .AnyAsync(existing =>
+                    existing.TenantId == message.TenantId &&
+                    existing.Provider == message.Provider &&
+                    (existing.ProviderMessageId == message.ProviderMessageId ||
+                     existing.IdempotencyKey == message.IdempotencyKey),
+                    cancellationToken);
+            if (duplicate)
+            {
+                return false;
+            }
+
+            throw;
         }
     }
 
@@ -62,6 +77,17 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
                     && e.ProviderMessageId == providerMessageId,
                 cancellationToken);
     }
+
+    public Task<IncomingWebhookMessage?> GetByIdempotencyKeyForUpdateAsync(
+        Guid tenantId,
+        string provider,
+        string idempotencyKey,
+        CancellationToken cancellationToken) =>
+        _dbContext.IncomingWebhookMessages
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.Provider == provider && value.IdempotencyKey == idempotencyKey,
+                cancellationToken);
 
     public Task<IncomingWebhookMessage?> GetByTenantAndIdForUpdateAsync(
         Guid tenantId,

@@ -86,7 +86,7 @@ public sealed class IncomingWebhooksController(
 
     [HttpPost("stripe/connect", Name = RouteNames.IntegrationStripeConnectCallback)]
     [EndpointSummary("Record Stripe Connect Webhook")]
-    [EndpointDescription("Accepts signed Stripe Connect account callbacks for organizer payment readiness projection.")]
+    [EndpointDescription("Accepts signed Stripe Connect account and payment callbacks for durable asynchronous reconciliation.")]
     [AllowAnonymous]
     [Consumes(HateoasConstants.JsonMediaType)]
     [ProducesResponseType(StatusCodes.Status202Accepted)]

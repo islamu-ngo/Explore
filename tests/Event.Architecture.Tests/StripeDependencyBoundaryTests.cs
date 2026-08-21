@@ -68,22 +68,155 @@ public sealed class StripeDependencyBoundaryTests
             .Because("Stripe types and package usage must stay inside Explore.Infrastructure.");
     }
 
+    [Test]
+    public async Task StripeReferenceScanner_RejectsUnknownSdkTypesWithoutMatchingCommentsOrStrings()
+    {
+        await Assert.That(ContainsStripeReference("global::Stripe.FutureNamespace.FutureType value = null!;" )).IsTrue();
+        await Assert.That(ContainsStripeReference("using Stripe.FutureNamespace;" )).IsTrue();
+        await Assert.That(ContainsStripeReference("var text = \"Stripe.FutureNamespace.FutureType\"; // Stripe.Other" )).IsFalse();
+    }
+
     private static bool ContainsStripeReference(string source)
     {
-        var withoutBlockComments = Regex.Replace(
-            source,
-            @"/\*.*?\*/",
-            string.Empty,
-            RegexOptions.Singleline | RegexOptions.CultureInvariant);
-        var withoutComments = Regex.Replace(
-            withoutBlockComments,
-            @"//.*$",
-            string.Empty,
-            RegexOptions.Multiline | RegexOptions.CultureInvariant);
-
+        string code = RemoveCommentsAndLiterals(source);
         return Regex.IsMatch(
-            withoutComments,
-            @"\bStripe\.(?:StripeClient|StripeClientOptions|StripeConfiguration|RequestOptions|RawRequestOptions|EventUtility|StripeResponse|StripeStreamedResponse|SystemNetHttpClient|Account(?:Service|CreateOptions|GetOptions|Link(?:Service|CreateOptions)?|Capabilities(?:Options)?|Requirements|Controller(?:Options|FeesOptions|LossesOptions|StripeDashboardOptions)|CapabilitiesCardPaymentsOptions|CapabilitiesTransfersOptions)?)\b|\bStripeClient(?:Options)?\b|using\s+Stripe;",
+            code,
+            @"global::Stripe\.[A-Za-z_]|(?<![A-Za-z0-9_.])Stripe\.[A-Za-z_]|\busing\s+(?:global::)?Stripe(?:\.|;)",
             RegexOptions.CultureInvariant);
+    }
+
+    private static string RemoveCommentsAndLiterals(string source)
+    {
+        var result = new char[source.Length];
+        int index = 0;
+        while (index < source.Length)
+        {
+            if (index + 1 < source.Length && source[index] == '/' && source[index + 1] == '/')
+            {
+                index = SkipUntil(source, index + 2, '\n');
+                continue;
+            }
+
+            if (index + 1 < source.Length && source[index] == '/' && source[index + 1] == '*')
+            {
+                index = SkipBlockComment(source, index + 2);
+                continue;
+            }
+
+            if (source[index] == '@' && index + 1 < source.Length && source[index + 1] == '"')
+            {
+                index = SkipVerbatimString(source, index + 2);
+                continue;
+            }
+
+            if (source[index] == '"')
+            {
+                int quoteCount = CountRun(source, index, '"');
+                index = quoteCount >= 3
+                    ? SkipRawString(source, index + quoteCount, quoteCount)
+                    : SkipEscapedLiteral(source, index + 1, '"');
+                continue;
+            }
+
+            if (source[index] == '\'')
+            {
+                index = SkipEscapedLiteral(source, index + 1, '\'');
+                continue;
+            }
+
+            result[index] = source[index];
+            index++;
+        }
+
+        return new string(result);
+    }
+
+    private static int SkipUntil(string source, int index, char terminator)
+    {
+        while (index < source.Length && source[index] != terminator)
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private static int SkipBlockComment(string source, int index)
+    {
+        while (index + 1 < source.Length && !(source[index] == '*' && source[index + 1] == '/'))
+        {
+            index++;
+        }
+
+        return Math.Min(source.Length, index + 2);
+    }
+
+    private static int SkipVerbatimString(string source, int index)
+    {
+        while (index < source.Length)
+        {
+            if (source[index] != '"')
+            {
+                index++;
+                continue;
+            }
+
+            if (index + 1 < source.Length && source[index + 1] == '"')
+            {
+                index += 2;
+                continue;
+            }
+
+            return index + 1;
+        }
+
+        return source.Length;
+    }
+
+    private static int SkipEscapedLiteral(string source, int index, char terminator)
+    {
+        while (index < source.Length)
+        {
+            if (source[index] == '\\')
+            {
+                index += 2;
+                continue;
+            }
+
+            if (source[index] == terminator)
+            {
+                return index + 1;
+            }
+
+            index++;
+        }
+
+        return source.Length;
+    }
+
+    private static int SkipRawString(string source, int index, int quoteCount)
+    {
+        while (index < source.Length)
+        {
+            if (source[index] == '"' && CountRun(source, index, '"') >= quoteCount)
+            {
+                return index + quoteCount;
+            }
+
+            index++;
+        }
+
+        return source.Length;
+    }
+
+    private static int CountRun(string source, int index, char value)
+    {
+        int start = index;
+        while (index < source.Length && source[index] == value)
+        {
+            index++;
+        }
+
+        return index - start;
     }
 }

@@ -381,7 +381,8 @@ public static class LookupTableSeeder
         await AddMissingLookupRowsAsync(context.WebhookPayloadProvenances,
         [
             new() { Id = (int)WebhookPayloadProvenance.ExactBytes, MasterCode = "EXACT_BYTES", FullName = "Exact bytes", Description = "Persisted bytes are the authoritative received or serialized sequence" },
-            new() { Id = (int)WebhookPayloadProvenance.LegacyJsonCanonicalized, MasterCode = "LEGACY_JSON_CANONICALIZED", FullName = "Legacy JSON canonicalized", Description = "Legacy jsonb was canonicalized because original byte formatting cannot be recovered" }
+            new() { Id = (int)WebhookPayloadProvenance.LegacyJsonCanonicalized, MasterCode = "LEGACY_JSON_CANONICALIZED", FullName = "Legacy JSON canonicalized", Description = "Legacy jsonb was canonicalized because original byte formatting cannot be recovered" },
+            new() { Id = (int)WebhookPayloadProvenance.NormalizedProviderEnvelope, MasterCode = "NORMALIZED_PROVIDER_ENVELOPE", FullName = "Normalized provider envelope", Description = "Provider callback retained only as a minimal normalized envelope after exact-byte signature verification" }
         ], cancellationToken);
 
         if (context.ChangeTracker.HasChanges())
@@ -1818,6 +1819,17 @@ public static class LookupTableSeeder
             new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
             new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" },
             new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.NeedsReconciliation, MasterCode = "NEEDS_RECONCILIATION", FullName = "Needs reconciliation" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Created, MasterCode = "CREATED", FullName = "Created" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.DispatchPending, MasterCode = "DISPATCH_PENDING", FullName = "Dispatch pending" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.RequiresAction, MasterCode = "REQUIRES_ACTION", FullName = "Requires action" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Processing, MasterCode = "PROCESSING", FullName = "Processing" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" },
+            new PaymentAttemptStatus { Id = (int)PaymentAttemptStatusEnum.Unknown, MasterCode = "UNKNOWN", FullName = "Unknown" }
         ], row => row.Id, ct);
         await SeedMissingLookupRowsAsync(context,
         [

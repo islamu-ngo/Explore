@@ -68,7 +68,7 @@ public static class RegistrationOrderRules
         RegistrationOrderStatusEnum.Cancelled;
 
     public static bool IsTerminalForCurrentWorkstream(RegistrationOrderStatusEnum status) =>
-        IsTerminal(status) || status == RegistrationOrderStatusEnum.AwaitingPayment;
+        IsTerminal(status) || status is RegistrationOrderStatusEnum.AwaitingPayment or RegistrationOrderStatusEnum.NeedsReconciliation;
 
     public static RegistrationOrderStatusEnum GetCheckoutDestination(long totalDueMinor)
     {

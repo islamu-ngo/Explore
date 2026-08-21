@@ -134,10 +134,12 @@ public sealed class RegistrationFinalizationEffectPersistenceTests
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO islamu_event.registration_order_lines
                 (id, concurrency_stamp, created_at, currency_code_snapshot, line_subtotal_snapshot,
+                 pre_discount_line_subtotal_minor_snapshot, promotion_discount_amount_minor_snapshot,
+                 post_discount_line_subtotal_minor_snapshot,
                  quantity, registration_order_id, tenant_id, ticket_catalog_version_id,
                  ticket_pricing_mode_snapshot, ticket_type_id, ticket_type_name_snapshot, unit_price_amount_snapshot)
             VALUES
-                ({lineId}, {Guid.CreateVersion7()}, {UtcNow}, {"EUR"}, {0L}, {2}, {order.Id},
+                ({lineId}, {Guid.CreateVersion7()}, {UtcNow}, {"EUR"}, {0L}, {0L}, {0L}, {0L}, {2}, {order.Id},
                  {order.TenantId}, {order.TicketCatalogVersionId}, {1}, {ticketTypeId}, {"Matrix"}, {0L})
             """);
         context.RegistrationTicketAssignments.AddRange(firstAssignment, secondAssignment);

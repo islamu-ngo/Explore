@@ -24,4 +24,7 @@ public interface IBrowserActionInterop
     Task<bool> OpenSameOriginNewTabAsync(
         string url,
         CancellationToken cancellationToken = default);
+
+    Task<bool> FocusOpenerAndCloseAsync(CancellationToken cancellationToken = default);
+
 }

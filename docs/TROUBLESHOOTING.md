@@ -378,7 +378,6 @@ The instance control plane exposes warning codes with operator remediation text.
 
 - Any BYO PDP failure activates provider-instance safe mode and denies non-instance-admin checks.
 - There is no fail-open configuration; the `cerbos.failure_mode` setting was deleted. A BYO PDP outage always fails closed into safe mode.
-- A sudden wave of denials with reason code `revision_uncertain` means the Cerbos policy store revision could not be established, so sensitive actions are failing closed. Check `GET api/instance/settings/authz-provider/package/status` for the observed revision, health, and recovery action.
 - BYO config resolver failures also activate provider-instance safe mode.
 
 ### Blank Custom PDP Endpoint
@@ -391,7 +390,8 @@ The instance control plane exposes warning codes with operator remediation text.
 - Use the safe issue code first: Admin API not configured, auth failure, unavailable/rejected package, reload failure, or package-status unknown.
 - Verify endpoint TLS/safety and credentials without logging or copying raw secrets into support artifacts.
 - For blank/application-managed provider intent, if Admin API sync is unavailable, download the manual ZIP package from setup/admin UI and install it with `cerbosctl put`.
-- With explicit `AUTHORIZATION_PROVIDER=cerbos`, missing or rejected Admin API configuration makes reconciliation fail safely and leaves readiness blocked. Fix the server-side values and use the locked remediation retry; credentials are never entered or returned on that page.
+- With explicit `AUTHORIZATION_PROVIDER=cerbos`, missing or rejected Admin API credentials make reconciliation fail safely and leave readiness blocked. Fix the deployment secrets, or enter a complete one-time username/password pair in the locked remediation page and retry. The pair is not saved and is cleared after the request.
+- If onboarding navigation appears stuck, inspect runtime authorization first: HAL capability planning must call only the Cerbos gRPC PDP. Admin API calls belong only to explicit sync/status operations and time out after 10 seconds; a 100-second `GET /admin/policies` inside `hateoas.capability_planning` indicates an outdated deployment.
 - Troubleshooting scope is endpoint verification, package download/sync, and the configured local fallback only. There is no supported Cerbos resource-inventory or arbitrary policy-decision test API.
 
 ## 429 / 504 Responses
@@ -557,6 +557,23 @@ Checks:
 3. Re-run the heavy-redaction command for the same event after provider readiness is fixed. The command is idempotent for already-heavy-redacted events and retries remaining event-owned `delete_requested` image rows.
 4. If command retry is not possible, use storage reconciliation only after verifying backups and intentionally enabling destructive mutation flags. Reconciliation can delete eligible `delete_requested` metadata through the provider abstraction.
 5. Support tickets may include bounded failure category, provider name, tenant id, event id, and storage object id. Do not include object keys, filenames, filesystem paths, S3 endpoints, bucket names, credentials, raw provider responses, or raw exception text.
+
+## Stripe Checkout Or Payment Reconciliation
+
+Symptoms:
+- Payment remains `Created`, `Processing`, `Unknown`, or `NeedsReconciliation`.
+- Checkout issue returns `429` or a bounded unavailable response.
+- `/health` reports `payment-reconciliation` as Degraded or Unhealthy.
+- Split BFF cannot open the constant Checkout route.
+
+Checks:
+1. Verify `PublicBaseUrl` is the public HTTPS base URL with no query, fragment, or credentials. A normalized application subpath is supported and must match the deployed PathBase. An invalid value defers new Checkout dispatch but does not stop free registration or authoritative reconciliation.
+2. Verify `Payments__Stripe__Mode` matches both the `sk_test_`/`sk_live_` platform secret and signed webhook `livemode`; verify the Connect endpoint uses its dedicated webhook secret and pinned API version.
+3. Verify `Payments__Stripe__AllowedCheckoutHosts__0` is an exact host such as `checkout.stripe.com`, not a wildcard, URL, or suffix pattern.
+4. In Split topology, verify `ConnectionStrings:cache` reaches Redis. Payment tickets do not use the general distributed-cache memory fallback; restore Redis and issue a fresh ticket. Standalone does not require Redis for this flow.
+5. Confirm Quartz contains `payment-reconciliation-drain` and the scheduler is enabled. Inspect bounded aggregate job output and `/health`; do not place order, account, provider object, request, capability, or secret values in tickets or logs.
+6. Leave `Unknown` attempts in place. Restore provider connectivity and allow same-idempotency reconciliation; never recreate blindly and never use `/payments/checkout/success` or `/cancel` navigation as payment evidence.
+7. Treat `parked`, `payment_reconciliation_money_mismatch`, duplicate succeeded attempts, or persistent configuration blocking as operator review conditions. Stop new paid sales for the affected scope while preserving webhook intake and reconciliation.
 
 ## Upgrade Or Restore Regressions
 

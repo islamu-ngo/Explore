@@ -366,6 +366,19 @@ Table "registration_order_statuses" {
   Note: 'Lookup: registration-order workflow lifecycle. Values: DRAFT(1) through NEEDS_RECONCILIATION(13). Runtime-seeded.'
 }
 
+Table "payment_attempt_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_payment_attempt_statuses_master_code']
+  }
+
+  Note: 'Lookup: provider-neutral payment-attempt lifecycle. Values: Created(1), DispatchPending(2), RequiresAction(3), Processing(4), Succeeded(5), Failed(6), Cancelled(7), Unknown(8). Runtime-seeded.'
+}
+
 Table "promotion_definition_statuses" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -6275,6 +6288,217 @@ Table "organizer_payment_provider_connection_supported_currencies" {
   Note: 'Supported currencies for an organizer payment provider connection.'
 }
 
+Table "incoming_webhook_messages" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "webhook_consumer_provider_binding_id" uuid
+  "provider" varchar(100) [not null]
+  "provider_message_id" varchar(256) [not null]
+  "idempotency_key" varchar(256)
+  "event_type" varchar(200)
+  "headers_json" jsonb
+  "payload_bytes" bytea
+  "payload_hash" varchar(71) [not null]
+  "payload_byte_length" bigint [not null]
+  "payload_provenance_id" int [not null]
+  "content_type" varchar(200) [not null]
+  "content_encoding" varchar(50) [not null]
+  "payload_retention_until" timestamptz [not null]
+  "payload_cleared_at" timestamptz
+  "retention_policy_version" varchar(200) [not null]
+  "processing_attempt_retention_until" timestamptz [not null]
+  "dead_letter_evidence_retention_until" timestamptz [not null]
+  "replay_window_until" timestamptz [not null]
+  "operational_log_retention_until" timestamptz [not null]
+  "status_id" int [not null]
+  "processing_generation" int [not null]
+  "processing_fence" bigint [not null]
+  "attempt_count" int [not null]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "processing_started_at" timestamptz
+  "next_attempt_at" timestamptz
+  "received_at" timestamptz [not null]
+  "verified_at" timestamptz [not null]
+  "processed_at" timestamptz
+  "ignored_at" timestamptz
+  "rejected_at" timestamptz
+  "dead_lettered_at" timestamptz
+  "payload_conflict_at" timestamptz
+  "failure_category" varchar(100)
+  "safe_detail" varchar(1024)
+  "settled_by_effect_receipt_id" uuid
+  "settled_effect_kind" varchar(200)
+  "settlement_source_id" int
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_incoming_webhook_messages_tenant_id']
+    (tenant_id, provider, provider_message_id) [unique, name: 'ux_incoming_webhook_messages_tenant_provider_message']
+    (tenant_id, provider, idempotency_key) [unique, name: 'ix_incoming_webhook_messages_tenant_provider_idempotency', note: 'Filtered to non-null idempotency keys']
+    (tenant_id, status_id, next_attempt_at, processing_lease_expires_at) [name: 'ix_incoming_webhook_messages_claim_due']
+    (tenant_id, status_id, received_at) [name: 'ix_incoming_webhook_messages_tenant_status_received']
+    (tenant_id, webhook_consumer_provider_binding_id, received_at) [name: 'ix_incoming_webhook_messages_tenant_binding_received']
+    (tenant_id, payload_retention_until, replay_window_until) [name: 'ix_incoming_webhook_messages_tenant_payload_retention']
+    (tenant_id, processing_attempt_retention_until) [name: 'ix_incoming_webhook_messages_tenant_attempt_retention']
+    (tenant_id, dead_letter_evidence_retention_until) [name: 'ix_incoming_webhook_messages_tenant_dead_letter_retention']
+  }
+
+  Note: 'Exact bytes are verified before capture. Stripe payment callbacks retain only a normalized identifiers envelope while payload_hash remains the exact signed-body SHA-256. Provider event and event-type/object identities are unique at database authority.'
+}
+Table "payment_attempts" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "recipient_tenant_id" uuid [not null]
+  "recipient_organizer_actor_id" uuid [not null]
+  "recipient_connection_id" uuid [not null]
+  "recipient_provider_code" varchar(40) [not null]
+  "recipient_connect_platform_id" varchar(120) [not null]
+  "recipient_external_account_id" varchar(200) [not null]
+  "recipient_merchant_country_code" varchar(2) [not null]
+  "recipient_currency_code" varchar(3) [not null]
+  "recipient_profile_code" varchar(40) [not null]
+  "recipient_instance_policy_version_id" uuid [not null]
+  "recipient_tenant_policy_version_id" uuid
+  "recipient_snapshotted_at" timestamptz [not null]
+  "provider_code" varchar(40) [not null]
+  "profile_code" varchar(40) [not null]
+  "provider_api_revision" varchar(80) [not null]
+  "composition_revision" varchar(80) [not null]
+  "currency_code" varchar(3) [not null]
+  "organizer_amount_minor" bigint [not null]
+  "platform_fee_minor" bigint [not null]
+  "platform_contribution_minor" bigint [not null]
+  "total_minor" bigint [not null]
+  "provider_idempotency_key" varchar(160) [not null]
+  "active_scope_key" varchar(170) [not null]
+  "active_uniqueness_slot" varchar(80) [not null]
+  "provider_checkout_session_id" varchar(200)
+  "provider_payment_id" varchar(200)
+  "payment_attempt_status_id" int [not null]
+  "authoritative_status_floor_id" int [not null]
+  "expires_at" timestamptz
+  "last_status_observed_at" timestamptz [not null]
+  "last_provider_request_id" varchar(120)
+  "dispatch_pending_at" timestamptz
+  "requires_action_at" timestamptz
+  "processing_at" timestamptz
+  "succeeded_at" timestamptz
+  "failed_at" timestamptz
+  "cancelled_at" timestamptz
+  "unknown_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_payment_attempts_tenant_id_id']
+    (active_scope_key, active_uniqueness_slot) [unique, name: 'ix_payment_attempts_active_scope_key_active_uniqueness_slot']
+    provider_idempotency_key [unique, name: 'ix_payment_attempts_provider_idempotency_key']
+    (tenant_id, registration_order_id, payment_attempt_status_id) [name: 'ix_payment_attempts_tenant_id_registration_order_id_payment_attempt_status_id']
+  }
+
+  Note: 'Durable registration checkout attempt. Checks enforce status/floor ranges, nonnegative money composition, and portable one-active-attempt scope-slot uniqueness; recipient and amount facts are snapshotted locally before provider I/O.'
+}
+
+Table "checkout_dispatch_effects" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "payment_attempt_id" uuid [not null]
+  "status" int [not null]
+  "attempt_count" int [not null]
+  "processing_fence" bigint [not null]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "next_attempt_at" timestamptz
+  "completed_at" timestamptz
+  "parked_at" timestamptz
+  "unknown_at" timestamptz
+  "last_failure_code" varchar(120)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_checkout_dispatch_effects_tenant_id_id']
+    (tenant_id, payment_attempt_id) [unique, name: 'ix_checkout_dispatch_effects_tenant_id_payment_attempt_id']
+    (status, next_attempt_at, created_at) [name: 'ix_checkout_dispatch_effects_worker_poll']
+  }
+
+  Note: 'Identifiers-only post-commit checkout dispatch effect. Checks enforce nonnegative attempt/fence counters and lease-token state shape for Pending, Failed, Processing, Completed, DeadLettered, and Unknown parked worker outcomes.'
+}
+
+Table "payment_reconciliation_effects" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "payment_attempt_id" uuid [not null]
+  "source_incoming_webhook_message_id" uuid
+  "checkout_dispatch_effect_id" uuid
+  "checkout_dispatch_unknown_at" timestamptz
+  "checkout_dispatch_processing_fence" bigint
+  "checkout_dispatch_attempt_count" int
+  "status" int [not null]
+  "attempt_count" int [not null]
+  "processing_fence" bigint [not null]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "next_attempt_at" timestamptz
+  "completed_at" timestamptz
+  "parked_at" timestamptz
+  "unknown_at" timestamptz
+  "last_failure_code" varchar(120)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_payment_reconciliation_effects_tenant_id_id']
+    (tenant_id, payment_attempt_id) [unique, name: 'ix_payment_reconciliation_effects_tenant_id_payment_attempt_id']
+    (tenant_id, source_incoming_webhook_message_id) [name: 'ix_payment_reconciliation_effects_tenant_id_source_incoming_webhook_message_id']
+    (tenant_id, checkout_dispatch_effect_id) [name: 'ix_payment_reconciliation_effects_tenant_id_checkout_dispatch_effect_id']
+    (status, next_attempt_at, created_at) [name: 'ix_payment_reconciliation_effects_status_next_attempt_at_created_at']
+  }
+
+  Note: 'Identifiers-only durable due work for authoritative connected-account Checkout and PaymentIntent retrieval. Lease token and monotonic fence protect retry, interruption recovery, completion, and parking.'
+}
+
+Table "payment_succeeded_observations" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "payment_attempt_id" uuid [not null]
+  "source_incoming_webhook_message_id" uuid
+  "provider_checkout_session_id" varchar(200) [not null]
+  "provider_payment_id" varchar(200) [not null]
+  "provider_request_id" varchar(120)
+  "observed_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_payment_succeeded_observations_tenant_id_id']
+    (tenant_id, payment_attempt_id) [unique, name: 'ix_payment_succeeded_observations_tenant_id_payment_attempt_id']
+    (tenant_id, source_incoming_webhook_message_id) [name: 'ix_payment_succeeded_observations_tenant_id_source_incoming_webhook_message_id']
+  }
+
+  Note: 'Identifiers-only duplicate-safe evidence that authoritative provider retrieval proved payment success. This row is downstream input and does not finalize an order.'
+}
+
 Table "event_public_actions" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -7149,6 +7373,18 @@ Ref: "organizer_payment_provider_account_operations"."tenant_id" > "tenants"."id
 Ref: "organizer_payment_provider_account_operations"."organizer_actor_id" > "actors"."id" [delete: restrict]
 Ref: "organizer_payment_provider_account_operations".("tenant_id", "connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: restrict]
 Ref: "organizer_payment_provider_connection_supported_currencies".("tenant_id", "organizer_payment_provider_connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: cascade]
+Ref: "payment_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "payment_attempts".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "payment_attempts"."payment_attempt_status_id" > "payment_attempt_statuses"."id" [delete: restrict]
+Ref: "payment_attempts"."authoritative_status_floor_id" > "payment_attempt_statuses"."id" [delete: restrict]
+Ref: "checkout_dispatch_effects"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "checkout_dispatch_effects".("tenant_id", "payment_attempt_id") > "payment_attempts".("tenant_id", "id") [delete: restrict]
+Ref: "payment_reconciliation_effects"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "payment_reconciliation_effects".("tenant_id", "payment_attempt_id") > "payment_attempts".("tenant_id", "id") [delete: restrict]
+Ref: "payment_reconciliation_effects".("tenant_id", "source_incoming_webhook_message_id") > "incoming_webhook_messages".("tenant_id", "id") [delete: restrict]
+Ref: "payment_succeeded_observations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "payment_succeeded_observations".("tenant_id", "payment_attempt_id") > "payment_attempts".("tenant_id", "id") [delete: restrict]
+Ref: "payment_succeeded_observations".("tenant_id", "source_incoming_webhook_message_id") > "incoming_webhook_messages".("tenant_id", "id") [delete: restrict]
 
 // Organizations & Groups
 Ref: "organization_pii"."organization_id" - "organizations"."id" [delete: cascade]
@@ -7630,3 +7866,4 @@ Ref: "configuration_change_logs"."setting_scope_id" > "setting_scopes"."id" [del
 Ref: "secret_bindings"."setting_scope_id" > "setting_scopes"."id" [delete: restrict]
 Ref: "secret_bindings"."secret_source_type_id" > "secret_source_types"."id" [delete: restrict]
 Ref: "secret_bindings"."secret_validation_status_id" > "secret_validation_statuses"."id" [delete: restrict]
+Ref: "payment_reconciliation_effects".("tenant_id", "checkout_dispatch_effect_id") > "checkout_dispatch_effects".("tenant_id", "id") [delete: restrict]

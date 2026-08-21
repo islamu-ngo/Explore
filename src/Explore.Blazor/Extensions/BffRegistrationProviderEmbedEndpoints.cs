@@ -60,11 +60,12 @@ public static class BffRegistrationProviderEmbedEndpoints
                 FormId = request.FormId,
                 FormVersionId = request.FormVersionId
             };
+            string idempotencyKey = Guid.CreateVersion7().ToString("D");
             HalResourceOfNativeRegistrationProviderLaunchDescriptorDto resource = string.IsNullOrWhiteSpace(request.GuestCapability)
                 ? await apiClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
-                    request.EventId, request.OrderId, body, cancellationToken: cancellationToken)
+                    request.EventId, request.OrderId, idempotencyKey, body, cancellationToken: cancellationToken)
                 : await apiClient.LaunchGuestRegistrationProviderAttemptAsync(
-                    request.EventId, request.OrderId, body, request.GuestCapability, cancellationToken: cancellationToken);
+                    request.EventId, request.OrderId, idempotencyKey, body, request.GuestCapability, cancellationToken: cancellationToken);
             descriptor = RegistrationProviderLaunchDescriptor.From(resource.AdditionalProperties);
         }
         catch (ApiException exception) when (exception.StatusCode is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden or StatusCodes.Status404NotFound)

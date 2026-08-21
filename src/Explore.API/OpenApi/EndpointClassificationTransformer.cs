@@ -82,6 +82,26 @@ public sealed class EndpointClassificationTransformer : IOpenApiOperationTransfo
         operation.Extensions ??= new Dictionary<string, IOpenApiExtension>();
         operation.Extensions["x-idempotency-key-required"] =
             new JsonNodeExtension(JsonValue.Create(true)!);
+        operation.Parameters ??= [];
+        var parameter = operation.Parameters.FirstOrDefault(candidate =>
+            candidate.In == ParameterLocation.Header &&
+            string.Equals(candidate.Name, "Idempotency-Key", StringComparison.OrdinalIgnoreCase));
+        if (parameter is null)
+        {
+            parameter = new OpenApiParameter
+            {
+                Name = "Idempotency-Key",
+                In = ParameterLocation.Header,
+                Description = "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+            };
+            operation.Parameters.Add(parameter);
+        }
+
+        if (parameter is OpenApiParameter concreteParameter)
+        {
+            concreteParameter.Required = true;
+        }
         return true;
     }
 }

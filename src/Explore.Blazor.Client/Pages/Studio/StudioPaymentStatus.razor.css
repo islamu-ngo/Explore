@@ -1,0 +1,40 @@
+/* ABOUTME: Scoped bounded payment facts within a Studio registration-order row. */
+/* ABOUTME: Uses the existing token scale and logical layout without elevated or mutating affordances. */
+
+.studio-payment-status {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding-block-start: var(--isl-space-3);
+    border-block-start: 1px solid var(--isl-color-divider);
+}
+
+.studio-payment-status--attention {
+    padding-inline-start: var(--isl-space-3);
+    border-inline-start: var(--isl-space-1) solid var(--isl-color-error);
+}
+
+.studio-payment-status__facts {
+    display: grid;
+    gap: var(--isl-space-3);
+    margin: 0;
+}
+
+.studio-payment-status__facts div {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.studio-payment-status__facts dt {
+    color: var(--isl-color-text-secondary);
+}
+
+.studio-payment-status__facts dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.studio-payment-status__status {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+}

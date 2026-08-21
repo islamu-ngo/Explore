@@ -359,6 +359,15 @@ public static class RouteNames
     public const string RemoveGuestRegistrationOrderPromotion = "RemoveGuestRegistrationOrderPromotion";
     public const string ApplyAuthenticatedRegistrationOrderPromotion = "ApplyAuthenticatedRegistrationOrderPromotion";
     public const string RemoveAuthenticatedRegistrationOrderPromotion = "RemoveAuthenticatedRegistrationOrderPromotion";
+    public const string StartGuestRegistrationPayment = "StartGuestRegistrationPayment";
+    public const string GetGuestRegistrationPayment = "GetGuestRegistrationPayment";
+    public const string RetryGuestRegistrationPayment = "RetryGuestRegistrationPayment";
+    public const string GetGuestRegistrationPaymentCheckoutTarget = "GetGuestRegistrationPaymentCheckoutTarget";
+    public const string StartAuthenticatedRegistrationPayment = "StartAuthenticatedRegistrationPayment";
+    public const string GetAuthenticatedRegistrationPayment = "GetAuthenticatedRegistrationPayment";
+    public const string RetryAuthenticatedRegistrationPayment = "RetryAuthenticatedRegistrationPayment";
+    public const string GetAuthenticatedRegistrationPaymentCheckoutTarget = "GetAuthenticatedRegistrationPaymentCheckoutTarget";
+    public const string GetStudioRegistrationPayment = "GetStudioRegistrationPayment";
     public const string GetStudioContext = "GetStudioContext";
 
     #endregion
