@@ -5,11 +5,11 @@ using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Authentication;
-using Explore.API.Configuration;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Explore.Persistence;
+using Explore.ServiceDefaults.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -525,7 +525,9 @@ public sealed class ExternalApiPhase0IntegrationTests
         };
         var forwardedHeadersOptions = new ForwardedHeadersOptions();
 
-        trustOptions.ApplyTo(forwardedHeadersOptions);
+        trustOptions.ApplyTo(
+            forwardedHeadersOptions,
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost);
 
         await Assert.That(forwardedHeadersOptions.ForwardedHeaders).IsEqualTo(ForwardedHeaders.None);
     }

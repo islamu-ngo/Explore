@@ -82,6 +82,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
     {
         Scenario scenario = CreateScenario(EventReportDecisionKind.LightModerate);
         EventModerationRecord receipt = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             scenario.TenantId,
             scenario.Report.EventId,
             scenario.ModeratorUserId,
@@ -124,6 +125,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
     {
         Scenario scenario = CreateScenario(EventReportDecisionKind.LightModerate);
         EventModerationRecord receipt = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             scenario.TenantId,
             scenario.Report.EventId,
             scenario.ModeratorUserId,

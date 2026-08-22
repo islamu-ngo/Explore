@@ -14,7 +14,6 @@ public class IdempotencyRecordConfiguration : IEntityTypeConfiguration<Idempoten
         // Primary key with UUID v7 for time-ordering
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
-        // Idempotency key — max 128 characters
         builder.Property(e => e.Key).HasMaxLength(128).IsRequired();
 
         // Tenant isolation

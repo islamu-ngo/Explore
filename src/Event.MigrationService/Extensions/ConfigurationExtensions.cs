@@ -1,7 +1,6 @@
 // ABOUTME: Configuration extensions for the Aspire Migration Service worker.
 // ABOUTME: Resolves structured migrator database settings and publishes process-local connection strings.
 
-using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 
 namespace Event.MigrationService.Extensions;
@@ -17,9 +16,6 @@ public static class ConfigurationExtensions
     /// </remarks>
     public static PrimaryDatabaseConnectionOptions AddPrimaryDatabaseBootstrap(this IConfigurationBuilder configBuilder)
     {
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            configBuilder,
-            PrimaryDatabaseRole.Migrator);
         var existingConfig = configBuilder.Build();
         var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(existingConfig);
         var database = PrimaryDatabaseConfiguration.BuildConnectionString(databaseOptions);

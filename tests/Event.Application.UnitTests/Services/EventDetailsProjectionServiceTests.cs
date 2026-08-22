@@ -69,6 +69,7 @@ public sealed class EventDetailsProjectionServiceTests
             EventFormatMasterCode = string.Empty
         };
         var latestModerationRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenantId,
             eventId,
             Guid.NewGuid(),

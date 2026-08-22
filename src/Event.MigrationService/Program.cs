@@ -76,7 +76,7 @@ public class Program
                     PrimaryDatabaseProviderComposition.UnsupportedCoLocatedPrivacyErasureAuthorityMessage);
             }
         }
-        else
+        else if (erasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite)
         {
             EmbeddedPrivacyErasureAuthorityOptions embedded =
                 EmbeddedPrivacyErasureAuthorityOptions.Bind(builder.Configuration);

@@ -243,7 +243,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task RobotsTxt_WhenProduction_UsesForwardedCanonicalSitemapUrl()
+    public async Task RobotsTxt_WhenProduction_IgnoresDirectForwardedHost()
     {
         await using var factory = new NoKeycloakBlazorBffWebApplicationFactory("Production");
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -261,7 +261,8 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
         await Assert.That(body).Contains("User-agent: *");
         await Assert.That(body).Contains("Allow: /");
-        await Assert.That(body).Contains("Sitemap: https://events.example.test/sitemap.xml");
+        await Assert.That(body).Contains($"Sitemap: https://{client.BaseAddress!.Authority}/sitemap.xml");
+        await Assert.That(body).DoesNotContain("events.example.test");
     }
 
     #endregion

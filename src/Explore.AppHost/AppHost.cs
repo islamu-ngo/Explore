@@ -27,7 +27,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.Configuration.AddInfisical(builder.Configuration, source =>
 {
     source.Paths.Clear();
-    source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
+    source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/stripe", "/integrations/listmonk"]);
     source.ThrowOnFirstLoadFailure = false;
 });
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
@@ -223,6 +223,17 @@ if (hostingTopology == HostingTopology.Split)
         .WithEnvironment("StorageReconciliation__Enabled", "true")
         .WithEnvironment("StorageReconciliation__DryRun", "true")
         .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
+        .WithEnvironment("PublicBaseUrl", ConfiguredValue(builder.Configuration, "PUBLIC_BASE_URL", string.Empty))
+        .WithEnvironment("Payments__Stripe__Mode", ConfiguredValue(builder.Configuration, "PAYMENTS_STRIPE_MODE", "Test"))
+        .WithEnvironment("Payments__Stripe__AllowedCheckoutHosts__0", ConfiguredValue(builder.Configuration, "PAYMENTS_STRIPE_ALLOWED_CHECKOUT_HOST", "checkout.stripe.com"))
+        .WithEnvironment("Payments__OrganizerDirect__ProviderCode", ConfiguredValue(builder.Configuration, "PAYMENTS_ORGANIZER_DIRECT_PROVIDER_CODE", string.Empty))
+        .WithEnvironment("Payments__OrganizerDirect__ConnectPlatformId", ConfiguredValue(builder.Configuration, "PAYMENTS_ORGANIZER_DIRECT_CONNECT_PLATFORM_ID", string.Empty))
+        .WithEnvironment("STRIPE_PLATFORM_SECRET_KEY", ConfiguredValue(builder.Configuration, "STRIPE_PLATFORM_SECRET_KEY", string.Empty))
+        .WithEnvironment("STRIPE_WEBHOOK_SECRET", ConfiguredValue(builder.Configuration, "STRIPE_WEBHOOK_SECRET", string.Empty))
+        .WithEnvironment("ForwardedHeadersTrust__ForwardLimit", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_FORWARD_LIMIT", "1"))
+        .WithEnvironment("ForwardedHeadersTrust__TrustLoopbackProxy", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_TRUST_LOOPBACK", "true"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownProxies__0", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_KNOWN_PROXY", "127.0.0.1"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownNetworks__0", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_KNOWN_NETWORK", "::1/128"))
         .WaitFor(mailpit);
 
     if (usesEmbeddedPrivacyErasureAuthority)
@@ -329,6 +340,34 @@ if (hostingTopology == HostingTopology.Split)
             builder.Configuration,
             "CONTROL_PLANE_PUBLIC_ORIGIN",
             BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
+        .WithEnvironment("ForwardedHeadersTrust__ForwardLimit", ConfiguredValue(
+            builder.Configuration,
+            "BFF_FORWARDED_HEADERS_FORWARD_LIMIT",
+            "1"))
+        .WithEnvironment("ForwardedHeadersTrust__TrustLoopbackProxy", ConfiguredValue(
+            builder.Configuration,
+            "BFF_FORWARDED_HEADERS_TRUST_LOOPBACK",
+            "true"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownProxies__0", ConfiguredValue(
+            builder.Configuration,
+            "BFF_FORWARDED_HEADERS_KNOWN_PROXY",
+            "127.0.0.1"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownNetworks__0", ConfiguredValue(
+            builder.Configuration,
+            "BFF_FORWARDED_HEADERS_KNOWN_NETWORK",
+            "::1/128"))
+        .WithEnvironment("Payments__Stripe__AllowedCheckoutHosts__0", ConfiguredValue(
+            builder.Configuration,
+            "PAYMENTS_STRIPE_ALLOWED_CHECKOUT_HOST",
+            "checkout.stripe.com"))
+        .WithEnvironment("RateLimiting__RegistrationPaymentCheckoutIssue__PermitLimit", ConfiguredValue(
+            builder.Configuration,
+            "BFF_PAYMENT_CHECKOUT_PERMIT_LIMIT",
+            "10"))
+        .WithEnvironment("RateLimiting__RegistrationPaymentCheckoutIssue__WindowSeconds", ConfiguredValue(
+            builder.Configuration,
+            "BFF_PAYMENT_CHECKOUT_WINDOW_SECONDS",
+            "60"))
         .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
 
     if (localPlatformResources is not null)
@@ -390,6 +429,19 @@ else
         .WithEnvironment("StorageReconciliation__Enabled", "true")
         .WithEnvironment("StorageReconciliation__DryRun", "true")
         .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
+        .WithEnvironment("PublicBaseUrl", ConfiguredValue(builder.Configuration, "PUBLIC_BASE_URL", string.Empty))
+        .WithEnvironment("Payments__Stripe__Mode", ConfiguredValue(builder.Configuration, "PAYMENTS_STRIPE_MODE", "Test"))
+        .WithEnvironment("Payments__Stripe__AllowedCheckoutHosts__0", ConfiguredValue(builder.Configuration, "PAYMENTS_STRIPE_ALLOWED_CHECKOUT_HOST", "checkout.stripe.com"))
+        .WithEnvironment("Payments__OrganizerDirect__ProviderCode", ConfiguredValue(builder.Configuration, "PAYMENTS_ORGANIZER_DIRECT_PROVIDER_CODE", string.Empty))
+        .WithEnvironment("Payments__OrganizerDirect__ConnectPlatformId", ConfiguredValue(builder.Configuration, "PAYMENTS_ORGANIZER_DIRECT_CONNECT_PLATFORM_ID", string.Empty))
+        .WithEnvironment("STRIPE_PLATFORM_SECRET_KEY", ConfiguredValue(builder.Configuration, "STRIPE_PLATFORM_SECRET_KEY", string.Empty))
+        .WithEnvironment("STRIPE_WEBHOOK_SECRET", ConfiguredValue(builder.Configuration, "STRIPE_WEBHOOK_SECRET", string.Empty))
+        .WithEnvironment("RateLimiting__RegistrationPaymentCheckoutIssue__PermitLimit", ConfiguredValue(builder.Configuration, "BFF_PAYMENT_CHECKOUT_PERMIT_LIMIT", "10"))
+        .WithEnvironment("RateLimiting__RegistrationPaymentCheckoutIssue__WindowSeconds", ConfiguredValue(builder.Configuration, "BFF_PAYMENT_CHECKOUT_WINDOW_SECONDS", "60"))
+        .WithEnvironment("ForwardedHeadersTrust__ForwardLimit", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_FORWARD_LIMIT", "1"))
+        .WithEnvironment("ForwardedHeadersTrust__TrustLoopbackProxy", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_TRUST_LOOPBACK", "true"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownProxies__0", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_KNOWN_PROXY", "127.0.0.1"))
+        .WithEnvironment("ForwardedHeadersTrust__KnownNetworks__0", ConfiguredValue(builder.Configuration, "API_FORWARDED_HEADERS_KNOWN_NETWORK", "::1/128"))
         .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(
             builder.Configuration,
             "CONTROL_PLANE_PUBLIC_ORIGIN",
@@ -1130,7 +1182,7 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("S3Settings__AccessKeyId", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin")
         .WithEnvironment("S3Settings__SecretAccessKey", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin")
         .WithEnvironment("Reporting__Enabled", configuration["REPORTING_ENABLED"] ?? "true")
-        .WithEnvironment("Reporting__Mode", configuration["REPORTING_MODE"] ?? "Coop")
+        .WithEnvironment("Reporting__Mode", configuration["REPORTING_MODE"] ?? "LocalOnly")
         .WithEnvironment("Reporting__SyncReports", configuration["REPORTING_SYNC_REPORTS"] ?? "true")
         .WithEnvironment("Reporting__EvaluateSignals", configuration["REPORTING_EVALUATE_SIGNALS"] ?? "false")
         .WithEnvironment("Reporting__MirrorReviewQueue", configuration["REPORTING_MIRROR_REVIEW_QUEUE"] ?? "true")
@@ -1475,8 +1527,16 @@ static PrivacyErasureAuthorityTopology ParsePrivacyErasureTopology(string value)
         return PrivacyErasureAuthorityTopology.CoLocated;
     }
 
+    if (string.Equals(
+            value,
+            nameof(PrivacyErasureAuthorityTopology.None),
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return PrivacyErasureAuthorityTopology.None;
+    }
+
     throw new InvalidOperationException(
-        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite, CoLocated, or ExternalDatabase.");
+        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite, CoLocated, ExternalDatabase, or None.");
 }
 
 static HostingTopology ParseHostingTopology(string? rawValue)

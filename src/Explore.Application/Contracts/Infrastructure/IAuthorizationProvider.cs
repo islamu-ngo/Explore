@@ -91,13 +91,6 @@ public static class AuthorizationDecisionReasonCodes
     public const string MissingSubject = "missing_subject";
     public const string ProviderUnavailable = "provider_unavailable";
     public const string ProviderError = "provider_error";
-
-    /// <summary>
-    /// The provider answered, but which policy set it answered from could not be established, and the
-    /// requested action mutates or discloses sensitive state. Denying is the only safe reading: an
-    /// allow here would be an allow from an unknown policy.
-    /// </summary>
-    public const string RevisionUncertain = "revision_uncertain";
 }
 
 public sealed record AuthorizationProviderMetadata(string ProviderId, string? ObservedRevision = null)

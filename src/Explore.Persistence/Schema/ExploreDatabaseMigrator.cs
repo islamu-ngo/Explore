@@ -102,6 +102,14 @@ public static class ExploreDatabaseMigrator
         ILogger logger,
         CancellationToken cancellationToken)
     {
+        if (topology == PrivacyErasureAuthorityTopology.None)
+        {
+            logger.LogInformation(
+                "Database migration operation {Operation} skipped (Topology: None).",
+                "AuthorityNone");
+            return;
+        }
+
         if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration

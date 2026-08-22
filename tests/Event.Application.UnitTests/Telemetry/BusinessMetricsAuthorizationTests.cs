@@ -1,4 +1,4 @@
-// ABOUTME: Verifies authorization decision metrics carry the Phase 3 fields with bounded dimensions only.
+// ABOUTME: Verifies authorization decision metrics carry bounded operational dimensions only.
 // ABOUTME: Guards against resource/tenant/user identifiers or the policy revision becoming metric tags.
 
 using System.Diagnostics.Metrics;
@@ -31,7 +31,7 @@ public sealed class BusinessMetricsAuthorizationTests
             resourceKind: "islamuevent_event",
             action: "update",
             outcome: "denied",
-            reasonCode: "revision_uncertain",
+            reasonCode: "provider_unavailable",
             providerId: "cerbos",
             durationMs: 12.5);
 
@@ -42,7 +42,7 @@ public sealed class BusinessMetricsAuthorizationTests
         await Assert.That(counter.Tags["resource_kind"]?.ToString()).IsEqualTo("islamuevent_event");
         await Assert.That(counter.Tags["action"]?.ToString()).IsEqualTo("update");
         await Assert.That(counter.Tags["outcome"]?.ToString()).IsEqualTo("denied");
-        await Assert.That(counter.Tags["reason_code"]?.ToString()).IsEqualTo("revision_uncertain");
+        await Assert.That(counter.Tags["reason_code"]?.ToString()).IsEqualTo("provider_unavailable");
         await Assert.That(counter.Tags["provider"]?.ToString()).IsEqualTo("cerbos");
     }
 

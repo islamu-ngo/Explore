@@ -29,16 +29,11 @@ public sealed class RobotsController(IWebHostEnvironment environment) : Controll
         string? forwardedProto = request.Headers.TryGetValue("X-Forwarded-Proto", out var proto)
             ? proto.ToString().Split(',')[0].Trim()
             : null;
-        string? forwardedHost = request.Headers.TryGetValue("X-Forwarded-Host", out var host)
-            ? host.ToString().Split(',')[0].Trim()
-            : null;
 
         string scheme = !string.IsNullOrWhiteSpace(forwardedProto)
             ? forwardedProto
             : request.Scheme;
-        string resolvedHost = !string.IsNullOrWhiteSpace(forwardedHost)
-            ? forwardedHost
-            : request.Host.Value ?? string.Empty;
+        string resolvedHost = request.Host.Value ?? string.Empty;
 
         return $"{scheme}://{resolvedHost}{request.PathBase}".TrimEnd('/');
     }

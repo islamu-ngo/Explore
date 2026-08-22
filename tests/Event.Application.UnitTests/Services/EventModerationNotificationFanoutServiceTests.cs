@@ -324,6 +324,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
     private static EventModerationRecord CreateHeavyModerationRecord()
     {
         return EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             Guid.NewGuid(),

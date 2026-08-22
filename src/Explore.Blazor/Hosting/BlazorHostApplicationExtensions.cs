@@ -36,7 +36,7 @@ public static class BlazorHostApplicationExtensions
 
         if (profile == BlazorHostProfile.Split)
         {
-            app.UseForwardedHeadersMiddleware();
+            app.UseEventBffForwardedHeaders();
         }
 
         string? publicPathBase = ResolvePublicPathBase(app.Configuration);

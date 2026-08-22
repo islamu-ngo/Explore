@@ -48,7 +48,7 @@ public sealed class StorageUploadOpenApiContractTests
         {
             var typeStart = generatedClient.IndexOf($"partial class {typeName}", StringComparison.Ordinal);
             var typeEnd = generatedClient.IndexOf("\n    [System.CodeDom.Compiler.GeneratedCode", typeStart + 1, StringComparison.Ordinal);
-            var generatedType = generatedClient[typeStart..typeEnd];
+            var generatedType = typeEnd >= 0 ? generatedClient[typeStart..typeEnd] : generatedClient[typeStart..];
 
             await Assert.That(generatedType).DoesNotContain("ObjectKey");
         }

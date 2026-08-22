@@ -2,7 +2,6 @@
 // ABOUTME: Reuses the same structured migrator resolution as the primary ExploreDbContext factory.
 
 using Explore.Persistence.Database;
-using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -24,9 +23,6 @@ public sealed class DataProtectionKeyContextFactory : IDesignTimeDbContextFactor
     public DataProtectionKeyContext CreateDbContext(IConfigurationBuilder configurationBuilder)
     {
         ArgumentNullException.ThrowIfNull(configurationBuilder);
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            configurationBuilder,
-            PrimaryDatabaseRole.Migrator);
         var configuration = configurationBuilder.Build();
 
         var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(configuration);

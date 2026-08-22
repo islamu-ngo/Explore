@@ -2,7 +2,6 @@
 // ABOUTME: Resolves structured migrator settings through PrimaryDatabaseConfiguration before any provider registration.
 
 using Explore.Persistence.Database;
-using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -15,8 +14,7 @@ namespace Explore.Persistence;
 /// (<c>dotnet ef migrations add</c>, <c>dotnet ef database update</c>, etc.).
 /// </summary>
 /// <remarks>
-/// Explicit structured <c>Database:Migrator</c> settings take priority. Discrete PostgreSQL
-/// or Infisical fields are projected into that same structured contract when needed.
+/// Explicit structured <c>Database:Migrator</c> settings take priority.
 /// </remarks>
 public class ExploreDbContextFactory : IDesignTimeDbContextFactory<ExploreDbContext>
 {
@@ -32,9 +30,6 @@ public class ExploreDbContextFactory : IDesignTimeDbContextFactory<ExploreDbCont
     public ExploreDbContext CreateDbContext(IConfigurationBuilder configurationBuilder)
     {
         ArgumentNullException.ThrowIfNull(configurationBuilder);
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            configurationBuilder,
-            PrimaryDatabaseRole.Migrator);
         var configuration = configurationBuilder.Build();
 
         var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(configuration);
