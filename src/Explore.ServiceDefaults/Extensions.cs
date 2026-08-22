@@ -1,10 +1,12 @@
 // ABOUTME: Provides shared Aspire service defaults, health endpoints, and OpenTelemetry setup.
 // ABOUTME: Registers safe platform meters and activity sources used by API, workers, and infrastructure adapters.
 
+using Explore.ServiceDefaults.Compliance;
 using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,8 @@ public static class Extensions
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        builder.ConfigureRedaction();
+
         builder.ConfigureOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
@@ -47,6 +51,18 @@ public static class Extensions
         // {
         //     options.AllowedSchemes = ["https"];
         // });
+
+        return builder;
+    }
+
+    public static TBuilder ConfigureRedaction<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddRedaction(redaction =>
+        {
+            redaction.SetRedactor<StarRedactor>(DataTaxonomy.PiiData);
+            redaction.SetRedactor<StarRedactor>(DataTaxonomy.SensitiveData);
+            redaction.SetFallbackRedactor<StarRedactor>();
+        });
 
         return builder;
     }

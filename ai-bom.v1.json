@@ -1,0 +1,206 @@
+{
+  "$schema": "https://raw.githubusercontent.com/CycloneDX/specification/master/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:018f9e2b-7341-7921-9988-islamu-ai-bom-v1",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-22T00:00:00Z",
+    "component": {
+      "type": "application",
+      "name": "ISLAMU Event Platform",
+      "version": "1.0.0",
+      "description": "Self-hostable event management software with provider-agnostic runtime AI integration and EU AI Act Article 50 transparency compliance"
+    },
+    "manufacture": {
+      "name": "ISLAMU NGO / Project Steward"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "AGPL-3.0-only",
+          "name": "GNU Affero General Public License v3.0 (with Contributor License Agreement and Commercial Dual-Licensing)",
+          "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
+        }
+      }
+    ],
+    "properties": [
+      {
+        "name": "governance:inbound-agreement",
+        "value": "ISLAMU Event Contributor License Agreement v1.0 (CLA)"
+      },
+      {
+        "name": "governance:dual-licensing",
+        "value": "FOSS AGPL-3.0 default for self-hosters; Commercial dual-license path for enterprise procurement"
+      },
+      {
+        "name": "governance:ai-architecture-model",
+        "value": "Provider-Agnostic AI Integration Layer (No bundled proprietary model weights; operator-configurable foundation models)"
+      },
+      {
+        "name": "compliance:eu-ai-act",
+        "value": "Regulation (EU) 2024/1689 Article 50 Transparency & Article 12 Logging"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "service",
+      "name": "OpenAI & Azure OpenAI Provider Adapter",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "ISLAMU Event Runtime / Microsoft.Extensions.AI.OpenAI"
+      },
+      "description": "Runtime adapter connecting to OpenAI and Azure OpenAI endpoints (e.g. gpt-4o, gpt-4o-mini) for event assistant, description generation, and attendee FAQ",
+      "properties": [
+        {
+          "name": "ai:provider-id",
+          "value": "5 (OpenAi), 6 (AzureOpenAi)"
+        },
+        {
+          "name": "ai:protocol",
+          "value": "REST / Server-Sent Events (SSE) Streaming"
+        },
+        {
+          "name": "ai:endpoint-configuration",
+          "value": "AiProvider:EndpointUrl, AiProvider:ApiKey, AiProvider:ModelId"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "name": "Anthropic Provider Adapter",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "ISLAMU Event Runtime / Microsoft.Extensions.AI"
+      },
+      "description": "Runtime adapter connecting to Anthropic Messages API (e.g. claude-3-5-sonnet, claude-3-5-haiku) for event assistant and translation features",
+      "properties": [
+        {
+          "name": "ai:provider-id",
+          "value": "7 (Anthropic)"
+        },
+        {
+          "name": "ai:protocol",
+          "value": "REST / Messages API"
+        },
+        {
+          "name": "ai:endpoint-configuration",
+          "value": "AiProvider:EndpointUrl, AiProvider:ApiKey, AiProvider:ModelId"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "name": "OpenAI-Compatible Local / Air-Gapped AI Adapter",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "ISLAMU Event Runtime / Open Inference Integration"
+      },
+      "description": "Runtime adapter connecting to local self-hosted inference servers (Ollama, vLLM, LocalAI, TGI) running open weights (Llama 3, Mistral, Qwen, DeepSeek) for 100% air-gapped, zero-telemetry installations",
+      "properties": [
+        {
+          "name": "ai:provider-id",
+          "value": "3 (OpenAiCompatible)"
+        },
+        {
+          "name": "ai:protocol",
+          "value": "OpenAI-compatible HTTP/JSON API"
+        },
+        {
+          "name": "ai:target-environments",
+          "value": "On-premise GPUs, air-gapped data centers, sovereign enterprise clusters"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "name": "Anthropic-Compatible Enterprise Gateway Adapter",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "ISLAMU Event Runtime / Gateway Integration"
+      },
+      "description": "Runtime adapter connecting to enterprise API gateways, Amazon Bedrock, LiteLLM, or Cloudflare AI Gateway supporting the Anthropic Messages protocol",
+      "properties": [
+        {
+          "name": "ai:provider-id",
+          "value": "4 (AnthropicCompatible)"
+        },
+        {
+          "name": "ai:protocol",
+          "value": "Anthropic-compatible HTTP/JSON API"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "AI Context Gateway & Disclosure Registry (IAiContextGateway)",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "ISLAMU Event Application Layer"
+      },
+      "description": "Internal security gate enforcing field-level allowlisting (AiContextDisclosureRegistry), tenant consent verification (AiConsentGrant), and sensitivity ceilings prior to prompt dispatch",
+      "properties": [
+        {
+          "name": "security:pii-protection",
+          "value": "Enforced field-level disclosure filter"
+        },
+        {
+          "name": "compliance:eu-ai-act-article-50",
+          "value": "Mandatory X-AI-Generated header metadata and UI disclosure"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "Microsoft.Extensions.Compliance.Redaction",
+      "version": "10.8.0",
+      "supplier": {
+        "name": "Microsoft Corporation"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "url": "https://licenses.nuget.org/MIT"
+          }
+        }
+      ],
+      "description": "High-performance telemetry and logging sanitization engine implementing StarRedactor and HmacRedactor to guarantee EU AI Act Article 12 compliance and prevent PII leakage"
+    },
+    {
+      "type": "framework",
+      "name": "Microsoft.Extensions.AI.Abstractions",
+      "version": "10.8.3",
+      "supplier": {
+        "name": "Microsoft Corporation"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "url": "https://licenses.nuget.org/MIT"
+          }
+        }
+      ],
+      "description": "Standardized abstractions for AI chat completion, streaming, and tool invocation across multiple foundation model providers"
+    },
+    {
+      "type": "framework",
+      "name": "ModelContextProtocol.AspNetCore",
+      "version": "2.0.0",
+      "supplier": {
+        "name": "Model Context Protocol Project"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "url": "https://licenses.nuget.org/MIT"
+          }
+        }
+      ],
+      "description": "Model Context Protocol (MCP) server adapter exposing governed, read-only event tools to client assistants"
+    }
+  ]
+}

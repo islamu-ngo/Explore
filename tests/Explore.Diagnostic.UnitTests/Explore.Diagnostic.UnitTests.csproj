@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\src\Explore.Diagnostic\Explore.Diagnostic.csproj" />
     <ProjectReference Include="..\..\src\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
