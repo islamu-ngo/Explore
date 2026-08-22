@@ -127,6 +127,14 @@ x-api-runtime-env: &api-runtime-env
   AUTOMAPPER_COMMERCIAL_VERSION: ${AUTOMAPPER_COMMERCIAL_VERSION:-false}
   MEDIATR_COMMERCIAL_VERSION: ${MEDIATR_COMMERCIAL_VERSION:-false}
 
+x-payment-api-env: &payment-api-env
+  PublicBaseUrl: ${PUBLIC_BASE_URL:-}
+  Payments__Stripe__Mode: ${PAYMENTS_STRIPE_MODE:-Test}
+  Payments__OrganizerDirect__ProviderCode: ${PAYMENTS_ORGANIZER_DIRECT_PROVIDER_CODE:-}
+  Payments__OrganizerDirect__ConnectPlatformId: ${PAYMENTS_ORGANIZER_DIRECT_CONNECT_PLATFORM_ID:-}
+  STRIPE_PLATFORM_SECRET_KEY: ${STRIPE_PLATFORM_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+
 x-ai-env: &ai-env
   AI_PROVIDER: ${AI_PROVIDER:-none}
   AI_ENDPOINT: ${AI_ENDPOINT:-}
@@ -188,7 +196,7 @@ x-web-push-env: &web-push-env
 
 x-reporting-env: &reporting-env
   Reporting__Enabled: ${REPORTING_ENABLED:-true}
-  Reporting__Mode: ${REPORTING_MODE:-Coop}
+  Reporting__Mode: ${REPORTING_MODE:-LocalOnly}
   Reporting__SyncReports: ${REPORTING_SYNC_REPORTS:-true}
   Reporting__EvaluateSignals: ${REPORTING_EVALUATE_SIGNALS:-false}
   Reporting__MirrorReviewQueue: ${REPORTING_MIRROR_REVIEW_QUEUE:-true}
@@ -406,7 +414,7 @@ services:
       context: .
       dockerfile: src/Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *payment-api-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration

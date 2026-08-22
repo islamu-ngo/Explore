@@ -385,6 +385,8 @@ Forwarded-host trust for direct API traffic:
 - `Explore.API` only applies `X-Forwarded-Host`, `X-Forwarded-For`, and `X-Forwarded-Proto` when a trusted proxy boundary is configured through `ForwardedHeadersTrust`.
 - Host-derived tenant resolution must use normalized `Request.Host` after trusted forwarded-header processing, not raw `X-Forwarded-Host`.
 - If no trusted proxy boundary is configured, the API ignores forwarded host/IP headers and falls back to the direct request host and remote IP.
+- The Split BFF uses the same validated proxy/IP network trust model for `X-Forwarded-For` and `X-Forwarded-Proto`, defaults to loopback-only trust, and never enables `X-Forwarded-Host`.
+- BFF endpoint antiforgery validation runs after authentication and authorization but before endpoint rate limiting, so invalid checkout CSRF attempts cannot consume guest checkout permits.
 
 ## Authorization Boundary
 

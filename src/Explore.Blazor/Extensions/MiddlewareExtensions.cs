@@ -1,5 +1,5 @@
 // ABOUTME: Centralizes middleware pipeline configuration and graceful shutdown for the Blazor BFF server.
-// ABOUTME: Extracts forwarded headers, XSRF token distribution, startup redirect, and access token capture.
+// ABOUTME: Extracts XSRF token distribution, startup redirect, and access token capture.
 
 using System.Security.Cryptography;
 using Explore.Blazor.Client.Services;
@@ -7,7 +7,6 @@ using Explore.Blazor.Middleware;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Net.Http.Headers;
 
 namespace Explore.Blazor.Extensions;
@@ -33,31 +32,6 @@ public static class MiddlewareExtensions
         "form-action 'self'";
 
     private const string PermissionsPolicy = "camera=(), microphone=(), geolocation=(self), payment=()";
-
-    /// <summary>
-    /// Configures forwarded headers for reverse proxy / SSL termination (Coolify, Nginx).
-    /// Restores the original request scheme and client IP from X-Forwarded-* headers.
-    /// </summary>
-    public static WebApplication UseForwardedHeadersMiddleware(this WebApplication app)
-    {
-        var options = new ForwardedHeadersOptions
-        {
-            ForwardedHeaders = ForwardedHeaders.XForwardedFor
-                | ForwardedHeaders.XForwardedProto
-                | ForwardedHeaders.XForwardedHost
-        };
-
-        // Clear defaults to trust all proxies — required for containerized environments
-        options.KnownIPNetworks.Clear();
-        options.KnownProxies.Clear();
-
-        app.UseForwardedHeaders(options);
-
-        var logger = app.Logger;
-        app.Use((context, next) => LogForwardedHeadersAsync(context, next, logger));
-
-        return app;
-    }
 
     /// <summary>
     /// Adds browser security headers at the BFF boundary before any response is written.
@@ -195,24 +169,6 @@ public static class MiddlewareExtensions
     }
 
     // --- Private middleware handlers -------------------------------------------------
-
-    // Debug-level logging for auth-related paths; extracted from inline lambda to satisfy arch Rule 1.03.
-    private static async Task LogForwardedHeadersAsync(HttpContext context, Func<Task> next, ILogger logger)
-    {
-        if (context.Request.Path.StartsWithSegments("/auth") ||
-            context.Request.Path.StartsWithSegments("/login") ||
-            context.Request.Path.StartsWithSegments("/logout"))
-        {
-            logger.LogDebug(
-                "[ForwardedHeaders] Path: {Path}, Scheme: {Scheme}, Host: {Host}, Proto Header: {Proto}",
-                context.Request.Path,
-                context.Request.Scheme,
-                context.Request.Host,
-                context.Request.Headers["X-Forwarded-Proto"].ToString());
-        }
-
-        await next();
-    }
 
     private static async Task AddBffSecurityHeadersAsync(HttpContext context, Func<Task> next)
     {

@@ -8,6 +8,8 @@ using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
+using Explore.ServiceDefaults.Configuration;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MudBlazor.Services;
 using Serilog;
@@ -41,6 +43,17 @@ public static class BlazorHostServiceCollectionExtensions
 
         if (profile == BlazorHostProfile.Split)
         {
+            ForwardedHeadersTrustOptions forwardedHeadersTrust = builder.Configuration
+                .GetSection(ForwardedHeadersTrustOptions.SectionName)
+                .Get<ForwardedHeadersTrustOptions>() ?? new ForwardedHeadersTrustOptions
+                {
+                    TrustLoopbackProxy = true
+                };
+            forwardedHeadersTrust.Validate();
+            builder.Services.Configure<ForwardedHeadersOptions>(options => forwardedHeadersTrust.ApplyTo(
+                options,
+                ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto));
+
             builder.Host.UseSerilog((context, services, loggerConfiguration) =>
                 loggerConfiguration.ReadFrom.Configuration(context.Configuration)
                     .ReadFrom.Services(services)

@@ -4,7 +4,6 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Net.Http.Headers;
@@ -30,17 +29,7 @@ public static class EventBffApplicationBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        var options = new ForwardedHeadersOptions
-        {
-            ForwardedHeaders = ForwardedHeaders.XForwardedFor
-                | ForwardedHeaders.XForwardedProto
-                | ForwardedHeaders.XForwardedHost
-        };
-
-        options.KnownIPNetworks.Clear();
-        options.KnownProxies.Clear();
-
-        app.UseForwardedHeaders(options);
+        app.UseForwardedHeaders();
         return app;
     }
 

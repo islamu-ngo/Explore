@@ -61,6 +61,7 @@ public class TenantHeaderForwardingHandlerTests
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Host = new HostString("bff.example.com");
+        httpContext.Request.Headers["X-Forwarded-Host"] = "attacker.example";
 
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
         var innerHandler = new CapturingHandler();

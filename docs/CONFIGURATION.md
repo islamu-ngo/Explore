@@ -349,13 +349,14 @@ application migration. The primary file must not be named
 ### Privacy-erasure authority topology
 
 `PrivacyErasure:Authority:Topology` accepts `EmbeddedSqlite` (the default),
-`CoLocated`, or `ExternalDatabase`.
+`CoLocated`, `ExternalDatabase`, or `None`.
 
 | Topology | Supported Primary Providers | Authority Storage Placement |
 |---|---|---|
 | `EmbeddedSqlite` *(default)* | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | Dedicated local `/app/data/privacy_erasure_authority.db` file. |
 | `CoLocated` | **PostgreSQL or SQLite only** | Primary application database (shares application connection). |
 | `ExternalDatabase` | **All 5 providers** | Separate physical PostgreSQL database instance. |
+| `None` | **All 5 providers** | In-memory no-op authority (zero extra database files or tables). |
 
 `EmbeddedSqlite` stores authority facts in the dedicated
 `/app/data/privacy_erasure_authority.db` file; it never shares the primary
@@ -373,6 +374,8 @@ the application database even when endpoint identity is obscured by different
 credentials. The primary database keeps only the replay checkpoint in
 `EmbeddedSqlite` and `ExternalDatabase`. `CoLocated` additionally keeps the
 retained authority rows there because the primary database is its sole sink.
+
+`None` disables the retained privacy erasure authority database entirely. An in-memory no-op authority is registered, and no separate SQLite files, PostgreSQL authority tables, or authority migrations are created or migrated. This is suitable for ephemeral dev environments or operators opting out of independent cryptographic audit logs.
 
 | Topology | Operator backup units | `restoreReplayProtection` |
 |---|---|---:|
@@ -1442,16 +1445,32 @@ Deployment mode and dedicated BFF admin hosts are read-only operator configurati
 
 ## Reverse Proxy Trust Configuration
 
-`Explore.API` binds trusted forwarded-header settings from `ForwardedHeadersTrust`:
+`Explore.API` and the Split `Explore.Blazor` BFF bind trusted forwarded-header settings from `ForwardedHeadersTrust`:
 
-- `ForwardLimit` (default `1`)
-- `TrustLoopbackProxy` (useful for local/test proxy chains)
-- `KnownProxies` (IP list)
-- `KnownNetworks` (CIDR list)
+- `ForwardLimit` (default `1`, valid range `1`-`10`)
+- `TrustLoopbackProxy` (checked-in API/BFF, Compose, and Aspire default `true` for loopback only)
+- `KnownProxies` (exact IPv4/IPv6 address list)
+- `KnownNetworks` (bounded IPv4/IPv6 CIDR list)
+
+The combined proxy/network list is capped at 32 entries. Startup fails for malformed values, wildcard addresses, `/0` trust-all networks, or an out-of-range forward limit. Do not trust a whole Docker bridge range by default; configure the exact ingress proxy address, or the narrowest operator-owned CIDR when that address is not stable.
+
+| Deployment input | .NET configuration key | Default (when omitted) | Purpose |
+|---|---|---|---|
+| `BFF_FORWARDED_HEADERS_FORWARD_LIMIT` | `ForwardedHeadersTrust:ForwardLimit` | `1` | Max trusted upstream proxy hops |
+| `BFF_FORWARDED_HEADERS_TRUST_LOOPBACK` | `ForwardedHeadersTrust:TrustLoopbackProxy` | `true` | Trust localhost/loopback ingress |
+| `BFF_FORWARDED_HEADERS_KNOWN_PROXY` | `ForwardedHeadersTrust:KnownProxies:0` | `127.0.0.1` | Single upstream proxy IP |
+| `BFF_FORWARDED_HEADERS_KNOWN_NETWORK` | `ForwardedHeadersTrust:KnownNetworks:0` | `::1/128` | Upstream proxy CIDR subnet |
+| `API_FORWARDED_HEADERS_FORWARD_LIMIT` | `ForwardedHeadersTrust:ForwardLimit` | `1` | API max trusted upstream proxy hops |
+| `API_FORWARDED_HEADERS_TRUST_LOOPBACK` | `ForwardedHeadersTrust:TrustLoopbackProxy` | `true` | API loopback ingress trust |
+| `API_FORWARDED_HEADERS_KNOWN_PROXY` | `ForwardedHeadersTrust:KnownProxies:0` | `127.0.0.1` | API upstream proxy IP |
+| `API_FORWARDED_HEADERS_KNOWN_NETWORK` | `ForwardedHeadersTrust:KnownNetworks:0` | `::1/128` | API upstream proxy CIDR |
+
+When absent from `.env`, Compose and Aspire use safe loopback defaults (`ForwardLimit=1`, `TrustLoopbackProxy=true`, `KnownProxies=["127.0.0.1"]`, `KnownNetworks=["::1/128"]`), allowing single-server and localhost reverse-proxy setups (e.g. Nginx, Caddy, Traefik) to work out of the box with zero configuration. Operators deploying behind external VPC proxies, ALBs, or Kubernetes ingress subnets can override these variables as needed. Additional entries use normal numbered .NET keys such as `ForwardedHeadersTrust__KnownProxies__1`.
 
 Important behavior:
 
 - if no trusted proxy boundary is configured, forwarded host/IP processing is disabled in the API host;
+- the BFF accepts only `X-Forwarded-For` and `X-Forwarded-Proto` from configured ingress and never accepts `X-Forwarded-Host`;
 - host-derived tenant resolution and proxy-aware rate limiting rely on normalized request values after trusted forwarded-header processing, not on raw `X-Forwarded-*` headers.
 
 Runtime nuance:

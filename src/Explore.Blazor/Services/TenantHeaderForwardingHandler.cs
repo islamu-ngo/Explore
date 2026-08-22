@@ -1,5 +1,5 @@
 // ABOUTME: DelegatingHandler that forwards tenant context headers to outgoing API requests.
-// ABOUTME: Adds X-Tenant-Slug and X-Forwarded-Host so the API can resolve the correct tenant.
+// ABOUTME: Adds trusted tenant and normalized request-host context without reading browser forwarding headers.
 
 using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Contracts.Services;
@@ -34,11 +34,7 @@ public class TenantHeaderForwardingHandler : DelegatingHandler
         }
 
         var httpContext = _httpContextAccessor.HttpContext;
-        var forwardedHost = httpContext?.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(forwardedHost))
-        {
-            forwardedHost = httpContext?.Request.Host.Value;
-        }
+        var forwardedHost = httpContext?.Request.Host.Value;
 
         if (!request.Headers.Contains("X-Forwarded-Host") && !string.IsNullOrWhiteSpace(forwardedHost))
         {
