@@ -8,7 +8,7 @@ namespace Event.Architecture.Tests;
 
 public sealed class AtprotoDependencyBoundaryTests
 {
-    private const string ExpectedVersion = "1.0.2";
+    private const string ExpectedVersion = "1.0.3";
 
     private static readonly string[] CarpaNetPackages =
     [

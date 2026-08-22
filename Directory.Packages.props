@@ -56,9 +56,9 @@
     <PackageVersion Include="Blazouter.WebAssembly" Version="1.0.14" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="bunit" Version="2.8.6" />
-    <PackageVersion Include="CarpaNet" Version="1.0.2" />
-    <PackageVersion Include="CarpaNet.Jetstream" Version="1.0.2" />
-    <PackageVersion Include="CarpaNet.OAuth" Version="1.0.2" />
+    <PackageVersion Include="CarpaNet" Version="1.0.3" />
+    <PackageVersion Include="CarpaNet.Jetstream" Version="1.0.3" />
+    <PackageVersion Include="CarpaNet.OAuth" Version="1.0.3" />
     <PackageVersion Include="Cerbos.Sdk" Version="1.10.2" />
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
     <PackageVersion Include="DotNetEnv" Version="3.2.0" />

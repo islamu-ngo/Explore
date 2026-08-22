@@ -1164,9 +1164,9 @@
           "AWSSDK.S3": "[4.0.101.6, )",
           "Azure.AI.OpenAI": "[2.1.0, )",
           "Azure.Identity": "[1.21.0, )",
-          "CarpaNet": "[1.0.2, )",
-          "CarpaNet.Jetstream": "[1.0.2, )",
-          "CarpaNet.OAuth": "[1.0.2, )",
+          "CarpaNet": "[1.0.3, )",
+          "CarpaNet.Jetstream": "[1.0.3, )",
+          "CarpaNet.OAuth": "[1.0.3, )",
           "Cerbos.Sdk": "[1.10.2, )",
           "Explore.Application": "[1.0.0, )",
           "Explore.Atproto.Transport": "[1.0.0, )",
@@ -1270,27 +1270,27 @@
       },
       "CarpaNet": {
         "type": "CentralTransitive",
-        "requested": "[1.0.2, )",
-        "resolved": "1.0.2",
-        "contentHash": "Nxya4ndGDrTErE+WTcxlM+tzJYiXrklNURcdi34N90EQnaivqXUpSZlqUotUHXWKK7+m/7ysg9QW+CNWc7FAgg=="
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "FDkwZFIm2OM0eIjwFSl8BOwoeBVclqXTH89D8xUjyRu+xoQlKmXh+QWyId5/hvJXtvbJjxTRXRj9UuLlXw6lcA=="
       },
       "CarpaNet.Jetstream": {
         "type": "CentralTransitive",
-        "requested": "[1.0.2, )",
-        "resolved": "1.0.2",
-        "contentHash": "80vhf7LwNU9BRiqumQP6yllhbNjmnBL90UBp5mpJFhfwC39EnPi7x0iPIhHGJ6tA///QADQ3dQkrWCznsu8a3w==",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "f+I02AZOaGaQJj3322Xql3vaXnVe+zubBebSPzr0eGdU/cofBBknvoPRiOlzPEn3MN/VkST1BBckiYdH5PQ1MA==",
         "dependencies": {
-          "CarpaNet": "1.0.2",
+          "CarpaNet": "1.0.3",
           "ZstdSharp.Port": "0.8.7"
         }
       },
       "CarpaNet.OAuth": {
         "type": "CentralTransitive",
-        "requested": "[1.0.2, )",
-        "resolved": "1.0.2",
-        "contentHash": "MQf22dudoh6uou77XzxF6SWpAceCGOfFvpSDeuq3YqlhpTcvdLa2BKiRmJD6V0aKPdHjhwh8D1HuASRnm1SV2A==",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "FJ0WL9aeVR+xaJEFZFmDk1sRMctAaotOsET2ouoSc+Tpnp2xeXmca4C9krTJoslvzcLCin6uGbZ49wbEyX0k3Q==",
         "dependencies": {
-          "CarpaNet": "1.0.2"
+          "CarpaNet": "1.0.3"
         }
       },
       "Cerbos.Sdk": {
