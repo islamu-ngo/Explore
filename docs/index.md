@@ -23,6 +23,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Troubleshoot a failure | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [OPERATIONS.md](OPERATIONS.md), [CONFIGURATION.md](CONFIGURATION.md), [TEST_RELIABILITY.md](TEST_RELIABILITY.md) |
 | Prepare a governed release | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | [RELEASE_POLICY.md](RELEASE_POLICY.md), [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md), [ADR-025](adr/ADR-025-provider-neutral-release-governance.md) |
 | Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
+| Configure payments or add a payment provider | [PAYMENTS.md](PAYMENTS.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [ADR-022](adr/ADR-022-paid-event-commerce-and-stripe-connect.md) |
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
 | Contribute code or docs | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md), [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
@@ -61,6 +62,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) - transactional outbox, retry, dead-letter.
 - [FOOTER_MANAGEMENT.md](FOOTER_MANAGEMENT.md) - footer data model, templates, governance.
 - [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) - Layer 3 custom-property governance, projections, templates, purge, export/moderation boundaries.
+- [PAYMENTS.md](PAYMENTS.md) - provider-neutral payment architecture, OrganizerDirect, and checkout flows.
 - [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) - CSS layers, tokens, wrapper components.
 
 ## Governance And Rules
@@ -100,6 +102,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [NOTIFICATIONS.md](NOTIFICATIONS.md) - in-app notification lifecycle, inbox UI, and API boundaries.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook providers, LocalProvider/SvixProvider setup, signatures, health, and rollout.
 - [WEBHOOK_OPERATIONS_RUNBOOK.md](WEBHOOK_OPERATIONS_RUNBOOK.md) - webhook readiness, bounded metrics, SLOs, alerts, and Local/self-hosted Svix incident recovery.
+- [PAYMENTS.md](PAYMENTS.md) - payment provider configuration, Stripe Connect platform secrets, and readiness reconciliation.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming provider callbacks, Coop/Osprey/Svix operational verification, and idempotency.
 - [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md) - Google Forms OAuth scopes, Pub/Sub OIDC setup, renewal/sweep behavior, and unsupported Drive/file boundaries.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
@@ -138,6 +141,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [ERP_INTEGRATION_GUIDE.md](ERP_INTEGRATION_GUIDE.md) - operator & partner guide for integrating ISLAMU Event as a white-label module in enterprise ERP platforms.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook provider extension point and self-hosted Svix integration.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming integration callback boundary.
+- [PAYMENTS.md](PAYMENTS.md) - payment provider extension guide and adapter contracts.
 - [Microsoft Forms Power Automate Template](integrations/microsoft-forms-flow-template.md) - organizational Forms callback setup, activation gates, and CSV reconciliation.
 - [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md) - Google Forms managed provisioning and Pub/Sub response-sweep setup.
 - [COOP_INTEGRATION.md](COOP_INTEGRATION.md) - multi-tenant human review dashboard integration and escalation flow.

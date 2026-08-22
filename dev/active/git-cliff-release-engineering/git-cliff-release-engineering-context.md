@@ -3,9 +3,9 @@
 
 # Git-Cliff Release Engineering - Context
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-19 Europe/Brussels
 
-## SESSION PROGRESS (2026-08-15 Europe/Brussels)
+## SESSION PROGRESS (2026-08-19 Europe/Brussels)
 
 ### COMPLETED
 
@@ -204,6 +204,9 @@ Last Updated: 2026-08-15 Europe/Brussels
 15. Existing semantic-version documents remain a frozen pre-automation baseline; the signed cutover tag is non-SemVer and ignored by release selection.
 16. Security embargo metadata lives outside the public checkout and normal candidate artifacts until disclosure.
 17. Provider adapters only transport explicit inputs, trusted bundles, artifacts, and protected ref actions. Provider metadata may enrich only a secondary publication.
+18. `v0.1.0` is the designated first governed public release, anchoring 11 months of development (2,164+ commits) via `changelog-baseline-YYYY-MM-DD` and a comprehensive `summary.md` narrative without re-parsing messy historical commits.
+19. `v<major>.<minor>` release-line branches (e.g. `v0.1`) are automatically provisioned on demand via an idempotent `cut-release-line` workflow, preserving release lines for hotfixes without branch proliferation.
+20. Multi-forge release publishing automatically links canonical `release-notes.md`, forge source `.zip`/`.tar.gz` archives, and cryptographic evidence bundles (`release-evidence.v1.json`, `artifacts.sha256`, container image digests) across GitHub, Codeberg, and Tangled.
 
 ## Constraints And Rules To Remember
 
@@ -229,6 +232,7 @@ Last Updated: 2026-08-15 Europe/Brussels
 | 4 | Same Release build | Same release-engine test project, now covering real renderer/preparation fixtures |
 | 5 | Same Release build | Same release-engine test project, now covering tag/main/evidence closure |
 | 6 | Same Release build | `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` |
+| 7 | Same Release build | `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` |
 
 Planning-artifact verification is limited to `git diff --check -- dev/active/git-cliff-release-engineering` plus file/header/link consistency checks. The planned suite runs only during implementation.
 

@@ -3,12 +3,12 @@
 
 # Git-Cliff Release Engineering - Task Checklist
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-19 Europe/Brussels
 
 ## Status Summary
 
 - **Overall status:** Active implementation; Phase 1 and Phase 5 verification remain blocked outside the release-engine slice.
-- **Completed:** 16/18 implementation tasks. Phase verification is tracked separately.
+- **Completed:** 16/21 implementation tasks. Phase verification is tracked separately.
 - **Current priority:** Independently verify the version-agnostic Task 6.2 baseline follow-up.
 - **Next recommended slice:** If confirmed, complete Task 6.2 and execute the Task 6.3 synthetic advisory release flow.
 - **Current handoff:** `git-cliff-release-engineering-handoff.md` records exact current evidence, blockers, and continuation steps.
@@ -178,6 +178,31 @@ Last Updated: 2026-08-15 Europe/Brussels
   - **Dependencies:** 6.1, 6.2.
 
 ### Phase 6 Verification - RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 7: Automated Release-Line Lifecycle, Multi-Forge Publishing, And Asset Orchestration - NOT STARTED
+
+- [ ] **7.1 Automated Release-Line Branch Provisioning (`cut-release-line`)**
+  - **Files:** new `.github/workflows/cut-release-line.yml`, `.ci/providers/forgejo-codeberg/cut-release-line.yml`; existing `docs/RELEASE_RUNBOOK.md`.
+  - **Acceptance:** Workflow accurately computes `v<major>.<minor>` from SemVer input; existing remote branches are detected safely without clobbering or overwriting history; compliant `release.yaml` structure is scaffolded without writing unreviewed notes to `develop`.
+  - **Effort:** M
+  - **Dependencies:** 6.1, 6.3.
+
+- [ ] **7.2 Multi-Forge Automated Release Publishing And Asset Attachment**
+  - **Files:** new `.github/workflows/release-publish.yml`, `.ci/providers/forgejo-codeberg/release-publish.yml`, `.ci/providers/tangled/`; existing `docs/RELEASE_RUNBOOK.md`.
+  - **Acceptance:** Published release bodies match canonical `release-notes.md` across all configured forges; attached assets include `release-evidence.v1.json`, `artifacts.sha256`, and Docker image digests; unprivileged candidate code cannot trigger publication.
+  - **Effort:** L
+  - **Dependencies:** 6.1, 7.1.
+
+- [ ] **7.3 First Governed Milestone (`v0.1.0`) Execution And Verification**
+  - **Files:** new `docs/releases/v0.1.0/release.yaml`, `docs/releases/v0.1.0/summary.md`, `docs/releases/baselines/changelog-baseline-*.v1.json`; existing `docs/RELEASE_RUNBOOK.md`.
+  - **Acceptance:** `changelog-baseline-YYYY-MM-DD` is verified and recorded in baseline evidence; `v0.1.0` release preparation produces deterministic `release-notes.md` with all 3 layers; candidate `B` passes full attestation without errors; release pages display verified notes and assets.
+  - **Effort:** M
+  - **Dependencies:** 6.2, 7.1, 7.2.
+
+### Phase 7 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`

@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="assets/images/adopters/ISLAMU/islamu-logo-text-only-v2.png" alt="ISLAMU logo" width="200" />
+
 # ISLAMU Event
 
 Self-hostable, open-source event discovery and management software for communities, organizations, and platform operators.
@@ -40,6 +42,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📱 PWA & Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components; installable as a Progressive Web App
 - **✅ RSVP & Registration:** Waitlists, approval workflows, per-session registration limits, and capacity management
 - **🎟️ Ticketing:** Discover events with free or paid tickets; view published ticket types, price summaries, and availability directly in event discovery and detail pages
+- **💳 Seamless & Secure Checkout:** Pay for ticketed events with transparent pricing, zero card data stored on-platform, and guaranteed refund protections — see [Payments][payments-doc]
 - **🤖 AI Assistant (when enabled):** Chat with the assistant to discover events, ask questions in natural language, and let it draft registrations or RSVPs as confirmable proposed actions
 
 ### Event Organizers
@@ -52,6 +55,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **🔔 Notifications, Email & Webhooks:** In-app notifications, built-in/Svix-compatible outgoing webhooks, and templated email pipelines — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
 - **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
 - **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing
+- **💳 Direct Ticket Payments (OrganizerDirect):** Connect your own payment account (via Stripe Connect) with no platform intermediary holding your funds. Ticket proceeds flow directly to your linked bank account with transparent fee breakdowns and automated refund handling — see [Payments][payments-doc]
 - **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
 - **🌍 Decentralization / Federation:** Depending on if event federation support is enabled, publish once and have your event appear on all the event platforms that support federation. Depenging on if atproto authentication is enabled, Records are on your pds -> full ownership, no vendor lock-in.
@@ -63,6 +67,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **🐳 Deployment:** Standalone Docker image, split Docker Compose topology, and .NET Aspire for local development
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
+- **💳 Provider-Neutral Payments:** Enable paid ticketing with direct organizer payouts (via Stripe Connect), zero cardholder data liability (PCI DSS), and a hierarchical policy ceiling. Instance admins manage platform keys and global risk limits, while tenant admins govern policy narrowing without access to platform secrets or attendee funds — see [Payments][payments-doc]
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
 - **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Governance][governance-doc] and [Authorization][authorization-doc]
 - **🔌 Model Context Protocol (MCP) Server:** The API hosts a stateless MCP adapter at `/mcp` so AI agents, IDEs (VS Code, Copilot, Inspector), and external integrations can discover public events and *propose* actions through the normal confirmation flow — mutations never bypass authorization. See [MCP Debugging][mcp-debugging-doc]
@@ -114,7 +119,7 @@ We treat security as a first-class citizen, not an afterthought.
 
 ISLAMU Event is used by:
 
-<img src="assets/images/adopters/islamu-text-only.png" alt="ISLAMU" width="200" />
+<img src="assets/images/adopters/ISLAMU/islamu-logo-text-only-v2.png" alt="ISLAMU" width="200" />
 
 ---
 
@@ -188,7 +193,7 @@ The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is 
 | Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md), [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
 | API integrator | [API Cookbook](docs/API_COOKBOOK.md), [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
 | Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
-| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.claude/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
+| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.agents/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
 
 For the complete documentation inventory, use [docs/index.md](docs/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
 
@@ -268,6 +273,7 @@ I am deeply grateful to all our amazing contributors.
 - [Smoke Signals][smoke-signals-link]: An Event & RSVP Management and Discovery Web Application built on top of ATProtocol.
 - [Mangadex][mangadex-link]: A Manga Discovery Platform with advanced filtering and multi-language support.
 - [Plane][plane-link]: An Open Source Project Management Platform that unifies projects, knowledge and agents with all-in-one workspace: projects, wiki, and AI.
+- [Hi.Events][hi.events-link]: An Open Source Event Ticketing and Management Platform
 
 ## ISLAMU Solutions
 
@@ -331,7 +337,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [islamu-platform]: https://event.openislamu.org
 [event-list-image]: assets/event-list-image.png
 [roadmap-link]: https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988
-[roadmap-image]: assets/Roadmap%20Kanban%20View.png
+[roadmap-image]: assets/islamu-event-roadmap-screenshot.png
 [code-of-conduct]: CODE_OF_CONDUCT.md
 [master-reference-doc]: docs/index.md
 [project-doc]: docs/PROJECT.md
@@ -356,6 +362,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [contact-sharing-doc]: docs/CONTACT_SHARING.md
 [authorization-doc]: docs/AUTHORIZATION.md
 [mcp-debugging-doc]: docs/MCP_DEBUGGING.md
+[payments-doc]: docs/PAYMENTS.md
 [federation-doc]: docs/FEDERATION.md
 [ai-rag-doc]: docs/AI_RAG_FOUNDATION.md
 [erp-integration-doc]: docs/ERP_INTEGRATION_GUIDE.md
@@ -402,6 +409,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [luma-link]: https://luma.com/
 [smoke-signals-link]: https://smokesignal.events/
 [mangadex-link]: https://mangadex.org/
+[hi.events-link]: https://hi.events/
 
 [ivsd-github-repo-link]: https://github.com/islamu-ngo/Islamic-Value-Sensitive-Design
 

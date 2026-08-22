@@ -1,426 +1,431 @@
-<!-- ABOUTME: Plan for migrating queue-driven polling workers to Quartz.NET with enterprise-grade readiness gates and operator-safe sequencing. -->
-<!-- ABOUTME: Keeps BackgroundService polling at arm's length and makes recovery/deletion criteria explicit before execution. -->
+<!-- ABOUTME: Repository-grounded plan for moving API-hosted interval drains to Quartz.NET without moving durable processing semantics. -->
+<!-- ABOUTME: Defines enterprise self-hosting gates, phased cutover, multi-node proof, and operator-safe rollback. -->
 
-# Queue-Driven & Outbox-Drain Worker Migration to Quartz.NET — Implementation Plan
+# Periodic Queue-Drain Migration to Quartz.NET — Implementation Plan
 
-Last Updated: 2026-08-19 Europe/Brussels
+Last Updated: 2026-08-20 Europe/Brussels
 
 ## 0. Planning Metadata
 
-- **Original Request:** Add a production-safe implementation plan to migrate polling queue workers to Quartz.NET with explicit multi-node de-duplication and crash-window recovery proof, while keeping self-hosting/operator concerns first.
 - **Task Directory:** `dev/active/queue-driven-worker-migration/`
-- **Planning Status:** Draft — Awaiting User Approval (CTO feedback integrated)
-- **Matched Intents:** `schedule-background-work` (primary), `add-cqrs-handler`, `external-infrastructure-bootstrap`
-- **Relevant Skills:** `implementation-plan`, `senior-cto-feedback`, `outbox-pattern`, `clean-architecture-rules`, `dotnet-efcore-guidelines`
-- **Relevant Rules:** `.agents/rules/api-scheduling.md`, `.agents/rules/application-layer.md`, `.agents/rules/efcore-persistence.md`, `.agents/rules/tests.md`
-- **Primary Layers Touched:** `Explore.API`, `Explore.Application`, `Explore.Persistence`, `Explore.Infrastructure`, `tests/Event.Architecture.Tests`, `tests/Event.API.IntegrationTests`, `tests/Event.Persistence.IntegrationTests`, `docs/OPERATIONS.md`, `docs/CONFIGURATION.md`, `docs/OUTBOX_PATTERN.md`.
-- **Complexity:** **XL (high-risk infrastructure + correctness migration)**
-- **Senior-CTO Position:** Approve with required changes (plan now requires explicit sequencing gates before each migration wave).
+- **Planning Status:** Re-baselined — implementation may start at Phase 1; every cutover phase remains gated.
+- **Senior CTO Verdict:** **Approve with required changes.** The required architecture, evidence, and rollout changes are encoded below.
+- **Primary Intent:** `schedule-background-work`
+- **Required Skills:** `senior-cto-feedback`, `implementation-plan`
+- **Authoritative Rules:** `docs/QUICK_REFERENCE.md` rule 27 and `.agents/rules/api-scheduling.md`
+- **Primary Layers:** `Explore.API`, `Explore.Application`, `Explore.Infrastructure`, tests, and operator documentation.
+- **Estimated Complexity:** Large, but separable into independently shippable waves.
+- **Compatibility Posture:** Pre-v1; breaking changes are allowed. No dual-mode compatibility layer will be added.
 
----
+## 1. Executive Outcome
 
-## 1. Executive Summary
+Move API-hosted **interval-driven** queue drains to Quartz.NET while leaving claim, lease, fencing, retry, tenant-context, and external-side-effect behavior in their existing services.
 
-This workstream migrates polling queue-driven background workers from `BackgroundService` loops to Quartz-powered periodic jobs.
+The durable `OutboxProcessor` remains a `BackgroundService`. It is an explicit repository exception and is not a Quartz migration candidate. The unsupported planned `general-outbox-drain` catalog entry is removed so the operator surface no longer promises a forbidden future state.
 
-This is not just a scheduler swap:
-- It is a correctness migration to remove multi-replica duplicate side effects and stale-lease ambiguity.
-- It is an operations migration with explicit gating so self-hosters can recover from failures safely.
-- It assumes a pre-v1 posture: breaking changes are accepted, and legacy polling worker paths are removed, not shimmed.
+The implementation is intentionally incremental:
 
-**What is changed now:**
-- Introduce gate-first sequencing: prove Quartz multi-node behavior and stale-lease crash recovery before queue-worker conversion.
-- Migrate outbox-related drain workers out of hosted loops in a two-wave approach:
-  1) low-risk queue workers,
-  2) optional/conditional migration of `OutboxProcessor` and `PdsSyncWorker` only after proof gates and operational runbook readiness.
-- Remove deprecated worker classes and compose scheduling only through Quartz job registrations + service contracts.
+1. prove the existing EmailDispatch safety gate end to end;
+2. make Quartz a platform scheduler independent of EmailDispatch mode;
+3. migrate low-risk registration and integration drains;
+4. migrate webhook drains;
+5. extract and migrate the higher-risk PDS drain;
+6. complete operator rehearsal and architecture ratchets.
 
-**What is explicitly out of scope:** API contract shape, BFF rendering, and external queueing topology changes are not in scope. This work is runtime scheduling + persistence semantics only.
+No EF Core migration, Quartz schema change, new scheduler, message broker, or scheduler payload format is required.
 
----
+## 2. Senior CTO Review Findings
 
-## 2. Source-Grounded Current State Report
+### Blocker 1 — The previous plan violated the durable-outbox exception
 
-### 2.1 Evidence Log
+The draft proposed deleting `OutboxProcessor` and creating `GeneralOutboxDrainJob`. That conflicts with both `docs/QUICK_REFERENCE.md` and `.agents/rules/api-scheduling.md`, which explicitly preserve `OutboxProcessor` as the durable side-effect authority.
 
-| Claim | Evidence | Confidence | Source |
+**Required correction:** keep `OutboxProcessor` unchanged and remove the planned-only general-outbox job name, descriptor, test expectation, and operator documentation.
+
+### Blocker 2 — The previous plan was not grounded in the current implementation
+
+It proposed new contracts and services that already exist:
+
+- `IWebhookDeliveryDrainService` / `WebhookDeliveryDrainService`
+- `IIntegrationSyncDrainService` / `IntegrationSyncDrainService`
+- `IIncomingWebhookDrainService` / `IncomingWebhookDrainService`
+- `IIncomingWebhookEffectDrainService` / `IncomingWebhookEffectDrainService`
+- `IWebhookProviderPublicationDrainService` / `WebhookProviderPublicationDrainService`
+- `IWebhookBulkReplayService` / `WebhookBulkReplayService`
+
+**Required correction:** reuse these one-pass boundaries and add only thin API-layer Quartz jobs.
+
+### Blocker 3 — Quartz lifecycle is incorrectly coupled to EmailDispatch mode
+
+`ApiHostServiceCollectionExtensions`, `ApiHostApplicationExtensions`, and `ApiHostStartupExtensions` currently compose, initialize, expose, and map Quartz only when `EmailDispatchProcessor:Mode=Quartz`. A self-hoster using hosted-service email mode therefore cannot reliably run maintenance jobs or the proposed drain jobs. Enabling Quartz for another drain would also register email Quartz jobs unconditionally, risking dual email authorities.
+
+**Required correction:** make `Scheduler:Quartz:Enabled` the scheduler authority, and conditionally register EmailDispatch jobs only when EmailDispatch explicitly selects Quartz mode.
+
+### Blocker 4 — The documented safety gate is not yet proven
+
+`QuartzClusteringTests` proves one trigger is acquired once by two PostgreSQL-backed scheduler nodes. `EmailDispatchQuartzJobsTests` proves wrapper delegation. Neither proves the real crash window where a provider may accept work before local settlement.
+
+**Required correction:** add an EmailDispatch end-to-end clustered drain test proving that an ambiguous stale lease becomes `Unknown` and is not automatically sent twice. No worker cutover starts before this is green.
+
+### Critical 1 — The worker inventory was incomplete
+
+The draft omitted active interval workers `WebhookBulkReplayProcessor`, `RegistrationProviderSubmissionWriteWorker`, and `RegistrationProviderSubscriptionLifecycleWorker`. It also omitted `WebhookProviderPublicationProcessor`, whose settings and runbook exist but which is not registered by the API host.
+
+**Required correction:** include all four. Provider publication moves directly to Quartz; do not introduce a temporary hosted-service registration.
+
+### Critical 2 — Scope had expanded into unrelated lifecycle features
+
+`dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan` are separate product/operations features, not timer-wrapper migrations.
+
+**Required correction:** remove them from this workstream. Their current planned catalog state is untouched and requires separate plans.
+
+### Critical 3 — Mixed-version rollout can create dual authorities
+
+A rolling deployment can run old hosted loops beside new Quartz jobs. Data claims reduce risk but cannot make every external side effect transactionally exactly once.
+
+**Required correction:** use a coordinated stop/start upgrade and rollback, with lease-expiry waiting and no mixed-version window.
+
+## 3. Verified Current State
+
+| Runtime component | Current trigger | Existing one-pass boundary | Plan disposition |
 |---|---|---|---|
-| Email dispatch already runs as Quartz jobs | `email-dispatch-drain` + `email-dispatch-recovery-scan` are registered in `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs`; job docs exist in `docs/OPERATIONS.md` | High | Source files + docs |
-| Queue-driven polling workers still run as hosted services | `AddApiBackgroundProcessing` registers `OutboxProcessor`, `PdsSyncWorker`, `WebhookDeliveryProcessor`, `IntegrationSyncProcessor`, `IncomingWebhookProcessor`, `IncomingWebhookEffectProcessor` | High | `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` |
-| Operational gate is explicit in architecture docs | `docs/OPERATIONS.md` marks general outbox and PDS as planned-only and explicitly says they are not yet migrated before proof | High | `docs/OPERATIONS.md` |
-| Worker job patterns exist in current architecture | Existing tests and jobs already validate Quartz clustering (`QuartzClusteringTests.cs`) and queue-job health paths | Medium | `tests/Event.API.IntegrationTests/Features/QuartzClusteringTests.cs`, scheduling jobs |
-| API architecture requires scheduler-neutral application layer | Scheduling is owned in API, Quartz details must remain in API layer | High | `.agents/rules/api-scheduling.md`, `docs/ARCHITECTURE.md` |
+| `OutboxProcessor` | `Task.Delay` loop | Processing is coupled to the worker | **Keep as hosted-service exception** |
+| `IntegrationSyncProcessor` | `Task.Delay` loop | `IIntegrationSyncDrainService` | Migrate in Phase 3 |
+| `RegistrationProviderSubmissionWriteWorker` | `PeriodicTimer` | `DrainRegistrationProviderSubmissionWriteEffectsCommand` | Migrate in Phase 3 |
+| `RegistrationProviderSubscriptionLifecycleWorker` | `PeriodicTimer` | `RegistrationProviderSubscriptionLifecycleService.DrainOnceAsync` | Migrate in Phase 3 |
+| `WebhookDeliveryProcessor` | `PeriodicTimer` | `IWebhookDeliveryDrainService` | Migrate in Phase 4 |
+| `IncomingWebhookProcessor` | `PeriodicTimer` | `IIncomingWebhookDrainService` | Migrate in Phase 4 |
+| `IncomingWebhookEffectProcessor` | `PeriodicTimer` | `IIncomingWebhookEffectDrainService` | Migrate in Phase 4 |
+| `WebhookBulkReplayProcessor` | `PeriodicTimer` | `IWebhookBulkReplayService.ProcessQueuedAsync` | Migrate in Phase 4 |
+| `WebhookProviderPublicationProcessor` | `PeriodicTimer`, but not host-registered | `IWebhookProviderPublicationDrainService` | Register directly as Quartz in Phase 4 |
+| `PdsSyncWorker` | `Task.Delay` loop | `RunOnceAsync` is still embedded in worker | Extract and migrate in Phase 5 |
 
-### 2.2 Existing Implementation
+Existing evidence that must be preserved:
 
-Current poller implementations are in:
-- `src/Explore.API/BackgroundServices/OutboxProcessor.cs`
-- `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`
-- `src/Explore.API/BackgroundServices/WebhookDeliveryProcessor.cs`
-- `src/Explore.API/BackgroundServices/IntegrationSyncProcessor.cs`
-- `src/Explore.API/BackgroundServices/IncomingWebhookProcessor.cs`
-- `src/Explore.API/BackgroundServices/IncomingWebhookEffectProcessor.cs`
+- PostgreSQL Quartz clustering: `tests/Event.API.IntegrationTests/Features/QuartzClusteringTests.cs`
+- Webhook claim/fence/recovery: persistence and Infrastructure webhook tests
+- Integration-sync claim/fence/retry: `IntegrationSyncDrainServiceTests`
+- PDS lease reclaim and fencing: `AtprotoFederationPersistenceTests` and `AtprotoPdsDeliveryProcessorTests`
+- Architecture timer-loop ratchet: `ApiLiabilityRatchetTests`
+- Scheduler health/status/admin surfaces: `SchedulerHealthCheck` and Quartz scheduler endpoints
 
-Current Quartz registration points include:
-- `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` (`AddCronJob` / `AddSweepJob`)
-- `src/Explore.API/Scheduling` job handlers
-- `src/Explore.API/Configuration/QuartzSchedulerSettings*` for validation/settings.
+## 4. Scope Boundaries
 
-### 2.3 Existing Tests And Verification Coverage
+### In Scope
 
-Validated:
-- API integration clustering proof exists (trigger-level exactly-once under PostgreSQL clustering) in `QuartzClusteringTests`.
-- Architecture baseline ratchet exists in `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs`.
-- Multiple outbox lifecycle tests exist (`OutboxProcessorDeadLetterTests`) but do not yet cover queue-driven worker migration under a Quartz duplicate/ crash scenario.
+- Decouple platform Quartz startup, schema initialization, middleware, and endpoints from EmailDispatch mode.
+- Keep EmailDispatch Quartz jobs conditional on its explicit mode.
+- Remove the misleading `general-outbox-drain` planned contract.
+- Add stable names, keys, catalog descriptors, registrations, and one-pass jobs for the nine migration candidates.
+- Reuse existing settings sections and intervals unless a setting moves layers for PDS.
+- Delete replaced API timer wrappers and their now-unused runners.
+- Strengthen architecture tests to detect both `Task.Delay` and `PeriodicTimer` loops.
+- Update operator docs in the same slice as every operator-visible change.
+- Prove single-node SQLite and clustered PostgreSQL behavior.
 
-Missing for this workstream:
-- Quartz-driven duplicate-proof for outbox/queue worker side effects, not just scheduler trigger execution.
-- Stale-lease recovery proof using real worker drain state for this worker family.
+### Out of Scope
 
-### 2.4 Existing Documentation And Contracts
+- Migrating or refactoring `OutboxProcessor`.
+- Changing EmailDispatch delivery/recovery semantics.
+- Implementing `dead-letter-summary`, `waitlist-promotion-scan`, or `tenant-maintenance-scan`.
+- Replacing Quartz, adding a broker, or introducing a second scheduler.
+- Changing repository claims, leases, fencing, or retry behavior unless a required proof exposes a real defect.
+- EF Core migrations or hand-edited Quartz DDL.
+- UI or public API changes.
 
-Current docs already cover these contracts and constraints:
-- `docs/OPERATIONS.md` (job catalog, clustering guidance, `registration-finalization-drain` migration precedent).
-- `docs/CONFIGURATION.md` (sweep job settings and queue worker settings patterns).
-- `docs/OUTBOX_PATTERN.md` (durable intent, claim semantics, retries, dead-letter semantics).
-- `docs/ARCHITECTURE.md` (layer boundaries and runtime ownership).
+## 5. Target Architecture
 
-### 2.5 Current Pain Points / Improvement Areas
+```text
+Quartz trigger (no payload)
+    -> API IJob (one pass, no retry/lease logic)
+        -> existing scheduler-neutral drain/command/service
+            -> durable repository claim + tenant/fence validation
+                -> bounded external side effect
+                    -> durable settlement/retry/dead-letter state
+```
 
-- No direct "queue-worker conversion + stale recovery" evidence currently gates worker migration.
-- Legacy queue-worker classes increase the risk of duplicate processing under self-hosted multi-node scale-out.
-- Operator change surface is under-documented if conversion removes worker ownership abruptly (new job identifiers, health visibility, alerts, recovery flow).
+### Decision A — Quartz owns cadence only
 
-### 2.6 Unknowns After Investigation
+Every job performs one bounded pass. It does not loop, sleep, drain until empty, create a retry policy, or catch unexpected drain failures. Unexpected failures bubble to Quartz and the existing telemetry listener; per-item failures remain handled by the drain service.
 
-- Max supported tenant scale for queued recovery scans on heavy PDS/outbox rows.
-- Acceptable recovery-time SLOs per worker family (to set explicit deadlines in the runbook).
-- Whether tenants will require a temporary dual-run phase during upgrade; if so, this must be documented as an exception.
+### Decision B — Preserve existing configuration keys
 
----
+Existing `Enabled`, polling interval, initial delay, batch, concurrency, and lease settings remain authoritative. `AddSweepJob<TJob>` uses those values. Registration-provider intervals remain their current fixed 10-second and 30-second values; no speculative settings are added.
 
-## 3. Proposed Future State
+PDS is the only settings move: rename/move `PdsSyncWorkerOptions` to an Infrastructure-owned drain setting while preserving the `Atproto:PdsSync` configuration section.
 
-At completion:
-- All queue-driven background workers execute through Quartz jobs with `[DisallowConcurrentExecution]`.
-- Legacy polling loops for those workers are removed (no compatibility wrappers retained).
-- Lease ownership, tenant binding, and idempotent processing remain in application services, not Quartz jobs.
-- Job identifiers in `ScheduledJobNames` become operator contracts (`registration`, `runbook`, log, alert references).
-- Recovery paths are explicit:
-  - active drain job + periodic recovery scan where required,
-  - no duplicated side effects after lease expiry,
-  - stale rows reconciled into bounded retry/unknown states with operator-led recovery.
+### Decision C — Scheduler authority is global
 
-Non-negotiable keep-out:
-- Keep stream/event-driven workers as hosted services (`AtprotoJetstreamSubscriber`, RabbitMQ consumers).
-- Keep `EmailDispatchProcessor` semantics intact as the fallback transport path where applicable.
+`Scheduler:Quartz:Enabled` controls Quartz. EmailDispatch mode controls only whether the two EmailDispatch recurring jobs are registered. OpenAPI generation and the `Testing` environment continue to suppress runtime scheduling.
 
----
+### Decision D — Durable state remains the correctness authority
 
-## 4. Non-Negotiable Constraints
+Quartz clustering and `[DisallowConcurrentExecution]` prevent overlapping trigger execution for a job key, but they do not replace database claims or idempotency. The existing claim token/fence and tenant-context checks remain mandatory.
 
-1. **Clean Architecture, Scheduling Layering:** Quartz and scheduler registration remain in API; application owns domain contracts and processing semantics.
-2. **Job Contract Discipline:** Jobs are one-pass wrappers. Enablement, cadence, retry policy, DI scope, and exception containment are handled by scheduler/service boundaries.
-3. **Operator Contract Stability:** `ScheduledJobNames` + trigger names are treated as operational schema; no renaming without runbook migration notes.
-4. **Fail-Closed Recovery:** Lease token mismatch, claim expiry mismatch, or tenant-context mismatch must not execute remote side effects.
-5. **Pointer-Only Triggers:** No business payload in `JobDataMap`; durable state lives in persistence tables.
-6. **No compatibility shims:** Pre-v1 breaking-change policy accepts deletion of legacy polling workers after migration verification.
-7. **Self-hosting recovery first:** A worker conversion cannot start without a proven queue-drain duplicate/recovery path on clustered PostgreSQL.
-8. **HAL trust boundary maintained:** Authorization and UI action visibility continue to be HAL-driven; this migration changes backend execution only.
+### Decision E — Stable, bounded operator contracts
 
----
+- Add `ScheduledJobScheduleKind.Interval` for interval-triggered catalog entries.
+- Add stable kebab-case names for each migrated lane.
+- Use empty `JobDataMap` values for recurring drains.
+- Emit bounded completion counts with the template `Scheduled job {JobName} completed.`
+- Never log payloads, destination URLs, tenant IDs, secrets, or PII from the job wrapper.
 
-## 5. Architecture And Design Decisions
+### Decision F — No mixed-version cutover
 
-### Decision 1 — Gate-First Migration (Required)
-Migration moves in waves only after green cluster + crash recovery proof for the queue-worker lane being migrated. This avoids turning correctness debt into deployment incidents.
-
-### Decision 2 — Two-Wave Workstream
-- Wave A (lower coupling): `WebhookDeliveryProcessor`, `IntegrationSyncProcessor`, `IncomingWebhookProcessor`, `IncomingWebhookEffectProcessor` first.
-- Wave B (high coupling): `OutboxProcessor` and `PdsSyncWorker` only after the gate passes and their tenant/lease behavior is observed stable in staging-like integration tests.
-
-### Decision 3 — Delete Old Paths on Completion
-No shadow-mode adapters. Once Quartz conversion is validated, remove `BackgroundService` registrations and worker files for migrated types to prevent dual semantics.
-
-### Decision 4 — Recovery Coverage Is the Exit Criterion
-Every converted worker must have:
-- at-least-once idempotent processing path,
-- stale-lease scan/recovery path,
-- explicit operator recovery evidence before production rollout.
-
-### Decision 5 — PR Split by Risk Boundary
-Plan is split so that data/persistence fixes, service contracts, scheduler integration, and worker deletion do not land in one PR.
-
----
+The supported upgrade is coordinated: stop old replicas, wait at least the longest active lease, deploy the new version, then verify scheduler and queue health. Rollback follows the same sequence in reverse.
 
 ## 6. Implementation Phases
 
-### Phase 1: Quartz Cluster Safety & Crash-Recovery Gate (No worker deletion yet)
-- **Goal:** Establish hard evidence that duplicate execution and stale-lease recovery are proven before modifying worker ownership.
-- **Files:**
-  - `tests/Event.API.IntegrationTests/Features/QuartzClusteringTests.cs` [MODIFY]
-  - `tests/Event.API.IntegrationTests/Features/OutboxProcessorDeadLetterTests.cs` [MODIFY] (or new focused lease-recovery file if ownership is cleaner)
-  - `tests/Event.API.IntegrationTests/Features/QuartzOutboxClusteringTests.cs` [NEW]
-  - `tests/Event.API.IntegrationTests/Fixtures/QuartzPostgreSqlSchedulerFixture.cs` [MODIFY]
-- **Acceptance criteria:**
-  - One test proves one-shot trigger execution under two nodes sharing one PostgreSQL store.
-  - One test simulates mid-flight lease expiry/recovery and proves no duplicate external intent is produced.
-  - Recovery behavior is recorded in test evidence for enterprise operators.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+### Phase 1 — Correct the Contract and Prove the Safety Gate
 
-### Phase 2: Application Drain Contracts & Scheduling Catalog
-- **Goal:** Introduce explicit drain contracts and job name registry for every queue-driven conversion target.
-- **Files:**
-  - `src/Explore.Application/Contracts/Services/IGeneralOutboxDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Services/IPdsSyncDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Services/IWebhookDeliveryDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Services/IIntegrationSyncDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Services/IIncomingWebhookDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Services/IIncomingWebhookEffectDrainService.cs` [NEW]
-  - `src/Explore.Application/Contracts/Scheduling/ScheduledJobNames.cs` [MODIFY]
-- **Acceptance criteria:**
-  - Contracts expose `ProcessBatchAsync` and `RecoverStaleProcessingAsync` with result metadata that drives recovery decisions.
-  - Job names for all six jobs are present in `ScheduledJobNames`.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+**Goal:** establish the evidence required by `docs/OPERATIONS.md` before changing worker ownership.
 
-### Phase 3: Persistence Lease Semantics and Cross-Tenant Safety
-- **Goal:** Make claim/recovery semantics uniform and tenant-safe before conversion.
-- **Files:**
-  - `src/Explore.Application/Contracts/Persistence/IOutboxRepository.cs` [MODIFY]
-  - `src/Explore.Persistence/Repositories/OutboxRepository.cs` [MODIFY]
-  - `src/Explore.Persistence/Repositories/PdsSyncOutboxRepository.cs` [MODIFY]
-  - `src/Explore.Persistence/Repositories/WebhookDeliveryAttemptRepository.cs` [MODIFY]
-  - `src/Explore.Persistence/Repositories/IntegrationSyncOutboxRepository.cs` [MODIFY, if present]
-  - `tests/Event.Persistence.IntegrationTests/Repositories/OutboxRepositoryClaimTests.cs` [MODIFY]
-- **Acceptance criteria:**
-  - Atomic claim, lease-owner, and lease token checks are verified for overlapping workers.
-  - Reclamation path is tenant-safe and never bypasses tenant context.
-  - Stale rows transition into bounded recovery states without side-effect replay.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+**Primary files:**
 
-### Phase 4: Quartz Job Implementation (Wave A)
-- **Goal:** Convert low-risk queue drains to Quartz without touching high-coupling `OutboxProcessor` and `PdsSyncWorker` yet.
-- **Files:**
-  - `src/Explore.API/Scheduling/WebhookDeliveryDrainJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/IntegrationSyncDrainJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/IncomingWebhookDrainJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/IncomingWebhookEffectDrainJob.cs` [NEW]
-  - `src/Explore.Application/Services/WebhookDeliveryDrainService.cs` [NEW]
-  - `src/Explore.Application/Services/IntegrationSyncDrainService.cs` [NEW]
-  - `src/Explore.Application/Services/IncomingWebhookDrainService.cs` [NEW]
-  - `src/Explore.Application/Services/IncomingWebhookEffectDrainService.cs` [NEW]
-  - `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` [MODIFY]
-- **Acceptance criteria:**
-  - All four jobs use `[DisallowConcurrentExecution]`.
-  - Scheduler config and cron settings are loaded through existing settings patterns.
-  - Tenant context is set before service call boundaries.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- `tests/Event.API.IntegrationTests/Features/QuartzClusteringTests.cs` [MODIFY only if shared fixture support is needed]
+- `tests/Event.API.IntegrationTests/Features/EmailDispatchQuartzClusterRecoveryTests.cs` [NEW]
+- `tests/Event.API.IntegrationTests/Fixtures/QuartzPostgreSqlSchedulerFixture.cs` [MODIFY]
+- `src/Explore.Application/Contracts/Scheduling/ScheduledJobNames.cs` [MODIFY]
+- `src/Explore.Application/Services/ScheduledJobRegistry.cs` [MODIFY]
+- `tests/Event.Application.UnitTests/Services/ScheduledJobRegistryTests.cs` [MODIFY]
+- `docs/OPERATIONS.md`, `docs/OUTBOX_PATTERN.md` [MODIFY]
 
-### Phase 5: Wave A Decommission
-- **Goal:** Remove legacy worker registrations and classes only for migrated Wave A workers.
-- **Files:**
-  - `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` [MODIFY]
-  - `src/Explore.API/BackgroundServices/WebhookDeliveryProcessor.cs` [DELETE]
-  - `src/Explore.API/BackgroundServices/IntegrationSyncProcessor.cs` [DELETE]
-  - `src/Explore.API/BackgroundServices/IncomingWebhookProcessor.cs` [DELETE]
-  - `src/Explore.API/BackgroundServices/IncomingWebhookEffectProcessor.cs` [DELETE]
-  - `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs` [MODIFY]
-- **Acceptance criteria:**
-  - `AddApiBackgroundProcessing` no longer registers the deleted workers.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+**Acceptance:**
 
-### Phase 6: Conditional Wave B — `OutboxProcessor` and `PdsSyncWorker`
-- **Goal:** Migrate remaining two workers only when Phase 1 gate and Wave A evidence are green.
-- **Trigger condition:** Phase 1 tests green + Phase 4+5 review sign-off + upgrade runbook ready.
-- **Files:**
-  - `src/Explore.Application/Services/GeneralOutboxDrainService.cs` [NEW]
-  - `src/Explore.Application/Services/PdsSyncDrainService.cs` [NEW]
-  - `src/Explore.API/Scheduling/GeneralOutboxDrainJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/PdsSyncDrainJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/GeneralOutboxRecoveryScanJob.cs` [NEW]
-  - `src/Explore.API/Scheduling/QuartzSchedulerExtensions.cs` [MODIFY]
-  - `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` [MODIFY]
-  - `src/Explore.API/BackgroundServices/OutboxProcessor.cs` [DELETE]
-  - `src/Explore.API/BackgroundServices/PdsSyncWorker.cs` [DELETE]
-  - `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs` [MODIFY]
-- **Acceptance criteria:**
-  - No `BackgroundService` polling remains for these workers.
-  - Recovery scan runs within bounded interval and does not produce duplicate committed side effects after lease expiry.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- Two Quartz nodes share PostgreSQL and execute one EmailDispatch drain trigger once.
+- A simulated crash after transport acceptance but before settlement produces `Unknown`, not an automatic second transport call.
+- Recovery remains operator-controlled and contains no recipient/payload data in Quartz state.
+- `general-outbox-drain` is absent from names, catalog, planned-job output, tests, and docs.
+- `OutboxProcessor` remains registered and unchanged.
 
-### Phase 7: Documentation, Config, and Runbook Convergence
-- **Goal:** Make operator behavior reproducible and observable.
-- **Files:**
-  - `docs/OPERATIONS.md` [MODIFY]
-  - `docs/CONFIGURATION.md` [MODIFY]
-  - `docs/OUTBOX_PATTERN.md` [MODIFY]
-  - `docs/ARCHITECTURE.md` [MODIFY]
-- **Acceptance criteria:**
-  - Every moved worker appears in documented job catalog with exact cron, tenant scope, and recovery contract.
-  - Migration upgrade note covers: stop service loop, run build, run gate test, restart topology, verify no duplicate processing.
-- **Phase-end verification:**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+**Gate:** Phases 2–5 cannot start until this phase is green.
 
----
+### Phase 2 — Make Quartz a Platform Scheduler
 
-## 7. Testing Strategy
+**Goal:** remove the accidental EmailDispatch ownership of scheduler lifecycle without enabling dual email dispatch.
 
-| Phase | Risk |
+**Primary files:**
+
+- `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` [MODIFY]
+- `src/Explore.API/Hosting/ApiHostApplicationExtensions.cs` [MODIFY]
+- `src/Explore.API/Hosting/ApiHostStartupExtensions.cs` [MODIFY]
+- `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` [MODIFY]
+- `tests/Event.API.IntegrationTests/Features/QuartzSchedulerCompositionTests.cs` [NEW]
+- `docs/OPERATIONS.md`, `docs/CONFIGURATION.md` [MODIFY]
+
+**Acceptance:**
+
+- Scheduler composition, schema application, middleware, status endpoint, admin endpoint, and health are controlled by `Scheduler:Quartz:Enabled`, not EmailDispatch mode.
+- EmailDispatch Quartz jobs are present only when EmailDispatch is enabled in Quartz mode.
+- Hosted-service EmailDispatch mode never registers EmailDispatch Quartz jobs.
+- Disabled scheduler behavior stays explicit: jobs do not run and scheduler readiness is degraded.
+- Existing maintenance jobs continue to register under an enabled scheduler even when EmailDispatch uses hosted-service mode.
+
+### Phase 3 — Registration and Integration Drain Cutover
+
+**Goal:** migrate the simplest existing one-pass boundaries first.
+
+**Jobs:**
+
+- `registration-provider-submission-write-drain`
+- `registration-provider-subscription-lifecycle-drain`
+- `integration-sync-drain`
+
+**Primary files:**
+
+- `src/Explore.API/Scheduling/RegistrationProviderDrainJobs.cs` [NEW]
+- `src/Explore.API/Scheduling/IntegrationSyncDrainJob.cs` [NEW]
+- `src/Explore.Application/Contracts/Scheduling/ScheduledJobDescriptor.cs` [MODIFY]
+- `src/Explore.Application/Contracts/Scheduling/ScheduledJobNames.cs` [MODIFY]
+- `src/Explore.Application/Services/ScheduledJobRegistry.cs` [MODIFY]
+- `src/Explore.API/Scheduling/QuartzSchedulerKeys.cs` [MODIFY]
+- `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` [MODIFY]
+- `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` [MODIFY]
+- three replaced worker files and `IntegrationSyncHostedDrainRunner.cs` [DELETE]
+- `tests/Event.API.IntegrationTests/Features/RegistrationAndIntegrationDrainQuartzJobsTests.cs` [NEW]
+- `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs` [MODIFY]
+- operator/config docs [MODIFY]
+
+**Acceptance:**
+
+- Each job invokes exactly one existing command/service pass and uses `[DisallowConcurrentExecution]`.
+- Existing claim owner, tenant bypass justification, fencing, retry, and settlement behavior remains below the API job.
+- Job failures reach Quartz; individual item failures remain bounded by the existing service.
+- Old hosted registrations and wrappers are absent in the same change.
+- Existing intervals and feature enablement semantics are preserved.
+
+### Phase 4 — Webhook Drain Cutover
+
+**Goal:** move all API-hosted webhook interval loops to Quartz while preserving existing delivery and reconciliation services.
+
+**Jobs:**
+
+- `webhook-delivery-drain`
+- `incoming-webhook-drain`
+- `incoming-webhook-effect-drain`
+- `webhook-bulk-replay-drain`
+- `webhook-provider-publication-drain`
+
+**Primary files:**
+
+- `src/Explore.API/Scheduling/WebhookDrainJobs.cs` [NEW]
+- `src/Explore.Application/Contracts/Scheduling/ScheduledJobNames.cs` [MODIFY]
+- `src/Explore.Application/Services/ScheduledJobRegistry.cs` [MODIFY]
+- `src/Explore.API/Scheduling/QuartzSchedulerKeys.cs` [MODIFY]
+- `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` [MODIFY]
+- `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs` [MODIFY]
+- five replaced processor files [DELETE]
+- `tests/Event.API.IntegrationTests/Features/WebhookDrainQuartzJobsTests.cs` [NEW]
+- existing Infrastructure/Persistence webhook tests [MODIFY only if scheduler-boundary coverage exposes a gap]
+- `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs` [MODIFY]
+- `docs/OPERATIONS.md`, `docs/CONFIGURATION.md`, `docs/WEBHOOK_OPERATIONS_RUNBOOK.md` [MODIFY]
+
+**Acceptance:**
+
+- Delivery still runs stale-claim recovery before its normal batch.
+- Provider publication runs both publication and reconciliation batches in the existing order.
+- Provider publication is actually scheduled when enabled; no temporary hosted registration is introduced.
+- Incoming webhook claims still execute with fresh tenant and machine-principal scopes.
+- Bulk replay remains bounded and audited.
+- Existing webhook health checks retain backlog/stale-lease meaning and use scheduler terminology where operator-facing.
+
+### Phase 5 — PDS Drain Extraction and Cutover
+
+**Goal:** move only the timer from `PdsSyncWorker`; keep all PDS claims, fences, parallelism, and external I/O below the Quartz wrapper.
+
+**Primary files:**
+
+- `src/Explore.Application/Contracts/Services/IPdsSyncDrainService.cs` [NEW]
+- `src/Explore.Infrastructure/Services/Federation/PdsSyncDrainService.cs` [NEW]
+- `src/Explore.Infrastructure/Services/Federation/PdsSyncDrainSettings.cs` [NEW, replaces API-owned worker options while retaining `Atproto:PdsSync`]
+- `src/Explore.API/Scheduling/PdsSyncDrainJob.cs` [NEW]
+- `src/Explore.Application/Contracts/Scheduling/ScheduledJobNames.cs` [MODIFY]
+- `src/Explore.Application/Services/ScheduledJobRegistry.cs` [MODIFY]
+- `src/Explore.API/Scheduling/QuartzSchedulerKeys.cs` [MODIFY]
+- `src/Explore.API/Extensions/QuartzSchedulerExtensions.cs` [MODIFY]
+- `src/Explore.API/BackgroundServices/PdsSyncWorker.cs` and `PdsSyncWorkerOptions.cs` [DELETE]
+- `tests/Explore.Infrastructure.Tests/Infrastructure/Federation/PdsSyncDrainServiceTests.cs` [NEW]
+- `tests/Event.API.IntegrationTests/Features/PdsSyncDrainQuartzJobTests.cs` [NEW]
+- existing PDS persistence tests [MODIFY only if a failing proof exposes a gap]
+- architecture and operator docs [MODIFY]
+
+**Acceptance:**
+
+- The drain service owns a stable process-level lease owner, batch size, and bounded parallelism.
+- `AtprotoPdsDeliveryProcessor` and `IPdsSyncOutboxRepository` semantics are unchanged unless a failing proof requires a targeted fix.
+- Two concurrent drain attempts cannot claim the same row.
+- Expired claims are reclaimed with a new token/fence; stale completion cannot settle the row.
+- The API job is one pass, payload-free, and non-overlapping.
+
+### Phase 6 — Architecture Ratchet and Operator Release Gate
+
+**Goal:** prove the final system is supportable by self-hosters and cannot regress to timer loops.
+
+**Primary files:**
+
+- `tests/Event.Architecture.Tests/ApiLiabilityRatchetTests.cs` [MODIFY]
+- `docs/OPERATIONS.md`, `docs/CONFIGURATION.md`, `docs/ARCHITECTURE.md`, `docs/OUTBOX_PATTERN.md` [MODIFY]
+- deployment examples that expose scheduler settings [MODIFY only if currently present]
+
+**Acceptance:**
+
+- Timer-loop detection covers both `Task.Delay` and `PeriodicTimer`.
+- Only documented exceptions remain in the timer-loop baseline.
+- Job catalog/status/admin output includes every enabled migrated job and no removed general-outbox promise.
+- Single-node SQLite and two-node PostgreSQL rehearsals pass.
+- Pause/resume, scheduler-disabled, node-crash, backlog recovery, and coordinated rollback procedures are documented and observed.
+
+## 7. Phase Dependencies
+
+| Phase | Depends on | May ship independently? |
+|---|---|---|
+| 1 | Baseline build | Yes; evidence/docs only |
+| 2 | Phase 1 green | Yes; scheduler ownership correction |
+| 3 | Phase 2 green | Yes; registration/integration wave |
+| 4 | Phase 2 green | Yes; after Phase 3 is preferred for smaller operational change |
+| 5 | Phases 1–4 green | Yes; highest-risk final worker wave |
+| 6 | All cutover phases | Final release gate |
+
+## 8. Verification Strategy
+
+### Build and static architecture
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+```
+
+### Scheduler/API behavior
+
+```bash
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+```
+
+### Durable queue semantics
+
+```bash
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+```
+
+Minimum behavioral matrix:
+
+| Scenario | Required evidence |
 |---|---|
-| 1 | Cluster de-duplication and stale recovery correctness for worker lanes |
-| 2 | Contract drift and compile-time slicing between API/Application |
-| 3 | Lease correctness, tenant-safe persistence, stale reclaim |
-| 4 | Scheduler registration and job-scoped execution boundaries |
-| 5 | Runtime ownership transition from worker loops to Quartz |
-| 6 | High-risk outbox/PDS conversion correctness |
-| 7 | Documentation and operator runbook completeness |
+| Scheduler disabled | No Quartz drain trigger; scheduler readiness degraded; docs explain backlog consequence |
+| Feature disabled | Its job/trigger is absent, not dormant |
+| Email hosted mode | No EmailDispatch Quartz job; no dual email authority |
+| Single-node SQLite | Durable scheduler starts and each enabled job performs one bounded pass |
+| Two-node PostgreSQL | One trigger acquisition per job key; database claims remain exclusive |
+| Long-running pass | Next pass does not overlap due to `[DisallowConcurrentExecution]` |
+| Node crash after claim | Lease/fence recovery follows existing lane policy |
+| Ambiguous external result | No automatic duplicate where lane policy requires `Unknown`/reconciliation |
+| Tenant concurrency | Every claim executes under its persisted tenant context; no tenant data enters Quartz |
 
-Test project ownership is enforced by risk lane:
-- API clustering/recovery proofs: `Event.API.IntegrationTests`
-- Lease/persistence claims: `Event.Persistence.IntegrationTests`
-- Contract and architecture invariants: `Event.Architecture.Tests`
+## 9. Enterprise Self-Hosting Operations Contract
 
----
+- **Topology:** multi-replica deployments require persistent Quartz storage and clustering with unique `AUTO` instance IDs.
+- **Readiness:** scheduler disabled/standby/shutdown/error state must remain visible through existing health checks.
+- **Observability:** stable job names, bounded outcome labels, previous/next fire times, execution count/duration, backlog, and stale-lease signals; no payload or tenant-cardinality labels.
+- **Capacity:** each trigger processes one bounded batch. Operators tune existing interval, batch, concurrency, and lease settings; no unbounded catch-up loop is added.
+- **Misfires:** missed recurring passes collapse into the next normal pass because durable queues already hold backlog.
+- **Pause semantics:** pausing a job stops claims but does not mutate durable queue state.
+- **Upgrade:** all old replicas stop before any new replica starts. Wait at least the longest configured lease before enabling the new release.
+- **Rollback:** stop all new replicas, wait for active leases, deploy the prior release, verify old hosted workers resume. No schema rollback is needed.
 
-## 8. Documentation, Configuration, And Operations Impact
+## 10. Risks and Mitigations
 
-- `docs/OPERATIONS.md`: job catalog updates, runbook checkpoints, expected self-hosting operator actions, alerting signals.
-- `docs/CONFIGURATION.md`: required keys for each job family and deprecation of polling settings once workers are deleted.
-- `docs/OUTBOX_PATTERN.md`: explicit statement that queue-driven workers remain outbox-authored in processing semantics and scheduler is orchestration only.
-- `docs/ARCHITECTURE.md`: update background services matrix to show Quartz ownership for converted workers.
+| Severity | Risk | Mitigation / gate |
+|---|---|---|
+| Blocker | EmailDispatch crash window can duplicate an external side effect | Phase 1 real clustered recovery proof |
+| Blocker | Scheduler remains tied to Email mode | Phase 2 composition matrix |
+| Critical | Mixed old/new replicas run two scheduling authorities | Coordinated stop/start only |
+| Critical | PDS orchestration moves into API job | Extract Infrastructure drain service first |
+| Critical | Cross-tenant drain bypass leaks tenant context | Preserve existing claim executors and tenant-bypass reasons; run tenant-isolation tests |
+| High | Disabled scheduler silently accumulates backlog | Degraded scheduler health, backlog checks, and explicit runbook warning |
+| High | Job catches failures and appears successful | Let unexpected drain exceptions bubble to Quartz telemetry |
+| Moderate | High backlog monopolizes scheduler threads | One bounded batch per trigger; tune existing settings |
+| Moderate | Architecture ratchet misses `PeriodicTimer` | Expand detection after target workers are removed |
 
----
+## 11. Definition of Done
 
-## 9. Security, Authorization, Privacy, And Abuse Considerations
+- Phase 1 safety evidence is green and retained in CI-capable tests.
+- Quartz lifecycle is independent of EmailDispatch mode.
+- The nine targeted interval workers are replaced by one-pass Quartz jobs.
+- `OutboxProcessor` remains the explicit hosted-service exception.
+- No active migration job contains retry, lease, fence, tenant, or transport logic.
+- No old and new authority can be registered together in one host configuration.
+- Stable names, catalog descriptors, health/status behavior, metrics, and runbooks match implementation.
+- Architecture ratchet rejects new `Task.Delay` and `PeriodicTimer` scheduling loops outside documented exceptions.
+- Release build and required test projects are green.
+- Single-node and clustered operator rehearsals are recorded, including rollback.
 
-- No authorization logic moves to workers; enforcement remains in existing service/handler boundaries.
-- Multi-tenant filters and tenant context resets are required in every lease claim/recovery path.
-- Logs and metrics must remain tenant-identity-safe and omit secrets/payloads/PII.
-- Recovery outcomes that imply operator action (`Unknown`, `dead-letter`, `parked`) remain explicit and auditable.
+## 12. Implementation Agent Contract
 
----
-
-## 10. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
-
-- Tenant isolation is preserved by contract-level tenant binding and repository query boundaries.
-- Federation/ATProto flows stay in existing ownership boundaries; only orchestration timing changes.
-- This is backend scheduling infrastructure, so no direct localization/accessibility surface changes.
-
----
-
-## 11. Observability And Operations
-
-Required metrics remain in telemetry layer:
-- `explore.scheduler.job_executions` with bounded labels (`job_name`, `job_group`, `outcome`).
-- `explore.scheduler.job_duration`.
-- Job and recovery errors map to structured logs without payload/PII, enabling self-hosted incident forensics.
-
-Recovery dashboards must show:
-- stale claim counts by worker family,
-- queue length/age by worker family,
-- last duplicate-safe execution timestamp.
-
----
-
-## 12. Migration And Compatibility Plan
-
-### Compatibility Position
-This migration **intentionally removes** legacy polling loop workers:
-- `OutboxProcessor`
-- `PdsSyncWorker`
-- `WebhookDeliveryProcessor`
-- `IntegrationSyncProcessor`
-- `IncomingWebhookProcessor`
-- `IncomingWebhookEffectProcessor`
-
-Reason:
-- This is pre-v1 development; compatibility mode adds confusion and duplicate work paths.
-- Quartz ownership plus explicit recovery contract is cleaner and auditable.
-
-Impact:
-- Legacy worker settings and startup behavior are removed for moved workers.
-- No shimmed dual-path execution is retained.
-
-Migration steps for self-hosters:
-- Deploy with feature-complete DB schema and Quartz PostgreSQL store.
-- Run Phase 1 integration proof tests.
-- Switch queue-worker workers only after phase gates pass.
-- Use docs runbook to recover from `Unknown`/stale states before traffic return.
-
----
-
-## 13. Risk Register
-
-### 1. [Blocker] — Queue-worker conversion starts without proven duplicate/recovery behavior
-**Why:** Multi-replica deployments can produce irreversible side effects.
-**Signal:** New Phase 1 proofs are missing or failing.
-**Fix:** Do not execute worker migration phases until this gate is green.
-
-### 2. [Critical] — Tenant context not reconstructed inside Quartz job execution path
-**Why:** Cross-tenant data leakage or wrong-tenant processing.
-**Signal:** Recovery/retry path works only in single tenant.
-**Fix:** Require tenant-aware claim and service entrypoint in every drain service.
-
-### 3. [Critical] — `JobDataMap` carries payload data
-**Why:** Stale trigger rows can recreate sensitive payloads after restart and increase blast radius.
-**Fix:** Keep triggers pointer-only; always read state from DB.
-
-### 4. [Major] — Recovery timings are left undocumented
-**Why:** Self-hosters cannot predict when rows become safe to replay.
-**Fix:** Add deterministic recovery SLA text in OPERATIONS and runbooks.
-
-### 5. [Moderate] — Docs lag behind actual worker roster
-**Why:** Alerts/operators continue searching for removed workers.
-**Fix:** Update docs + API ratchet entries in same PR as conversion.
-
----
-
-## 14. Success Metrics And Definition Of Done
-
-- Zero duplicate job executions observed for converted workers under 2-node PostgreSQL cluster tests.
-- Zero stale lease duplicates after induced worker termination/crash-window scenarios.
-- `ApiLiabilityRatchetTests` exactly reflects migrated workers only.
-- `docs/OPERATIONS.md` and `docs/CONFIGURATION.md` include explicit operator recovery steps.
-- End-to-end build green and phase verification tests green for the migration slice executed.
-
----
-
-## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
-
-1. Re-read this plan first, then `queue-driven-worker-migration-context.md` and `queue-driven-worker-migration-tasks.md` at task start.
-2. Read only the current phase from the plan for implementation.
-3. Update `tasks.md` immediately after substantial task completion.
-4. Run phase-end verification once per phase.
-5. Update `context.md` immediately on phase gate/blocker changes.
-
----
-
-## 16. Progress Reporting Contract
-
-After each slice, report:
-- **Implemented:** concrete file-level deltas and tests run.
-- **Verified:** evidence artifacts and exit criteria passed.
-- **Remaining:** next phase gate status and blockers.
-- **Docs:** doc changes required before proceeding to next phase.
-
----
-
-## 17. Potential Risks & Unknowns
-
-- PostgreSQL contention under high queue load may require batch-size and scan-interval tuning.
-- Some workloads could need temporary pause windows during tenant maintenance if recovery windows are conservative.
-- Self-hosted operator maturity varies; runbooks and health checks should be stronger than defaults because scheduler semantics are not obvious to most operators.
+1. Read this plan, then the context and task ledger before each phase.
+2. Do not start a cutover phase until its dependencies and gates are green.
+3. Keep durable semantics below the API job; a job only triggers one pass.
+4. Update operator docs in the same change as names, configuration, health, or worker ownership.
+5. Update `queue-driven-worker-migration-tasks.md` and `queue-driven-worker-migration-context.md` after each completed task or changed gate.
+6. Stop and re-baseline if a proof requires repository/schema changes not listed here.

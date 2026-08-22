@@ -562,9 +562,11 @@ Timeout expiry: `504 Gateway Timeout`.
 
 ### Forwarded Header Trust
 
-- `Explore.API` uses ASP.NET Core forwarded-header middleware with explicit `ForwardedHeadersTrust` configuration.
-- Operators must configure trusted reverse-proxy IPs or CIDR networks before relying on `X-Forwarded-Host` for custom-domain or subdomain tenant resolution.
-- Without trusted proxy configuration, forwarded host/IP headers are ignored by the API host.
+- `Explore.API` and the Split BFF use ASP.NET Core forwarded-header middleware with explicit `ForwardedHeadersTrust` configuration.
+- The API and BFF default to loopback-only trust. For non-loopback ingress, set the matching `API_FORWARDED_HEADERS_*` or `BFF_FORWARDED_HEADERS_*` proxy/network value to the exact boundary; Compose and Aspire map these values without trusting a Docker bridge wholesale.
+- The BFF accepts trusted `X-Forwarded-For` and `X-Forwarded-Proto` only. It never consumes `X-Forwarded-Host`.
+- Operators must configure trusted reverse-proxy IPs or CIDR networks before relying on API `X-Forwarded-Host` for custom-domain or subdomain tenant resolution.
+- Malformed, trust-all, overlong, or unbounded configuration fails startup. Headers from untrusted direct clients are ignored.
 
 ### Security Headers
 

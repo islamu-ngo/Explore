@@ -3,7 +3,7 @@
 
 # Git-Cliff Release Engineering - Implementation Plan
 
-Last Updated: 2026-08-13 Europe/Brussels
+Last Updated: 2026-08-19 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -15,8 +15,8 @@ Last Updated: 2026-08-13 Europe/Brussels
 - **Planning skill:** `implementation-plan`.
 - **Future implementation guidance:** `ip-clean-room`, `conventional-commit`, `.agents/rules/ip-clean-room.md`, and the amended `ci-cd-change` contract created by Task 1.1.
 - **Primary layers:** DevOps/build tooling, release governance, documentation, and tests. Product Domain, Application, Persistence, API, and Blazor runtime behavior are out of scope.
-- **Complexity:** XL. The work spans a trusted-tool bootstrap, Git object and signature validation, deterministic cross-platform serialization, SemVer and parallel release-line policy, restricted security-release handling, a third-party renderer, evidence integration, and forge adapters.
-- **Estimated delivery:** Six reviewable phases, approximately 12-18 focused engineering days plus release-key, artifact-store, and forge configuration approvals.
+- **Complexity:** XL. The work spans a trusted-tool bootstrap, Git object and signature validation, deterministic cross-platform serialization, SemVer and parallel release-line policy, restricted security-release handling, a third-party renderer, evidence integration, forge adapters, automated release-line provisioning, and multi-forge asset publishing.
+- **Estimated delivery:** Seven reviewable phases, approximately 14-20 focused engineering days plus release-key, artifact-store, and forge configuration approvals.
 
 ### Contract drift discovered during planning
 
@@ -274,6 +274,27 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 - **Why:** Forge migration must not change release truth.
 - **Alternatives considered:** Provider APIs/labels as the primary source; refuse all enrichment.
 - **Consequences:** Canonical notes use Git identifiers and stable change IDs. A later adapter may add links, handles, and contributor acknowledgements without changing canonical checksums or classifications.
+
+### Decision 10: First governed release as `v0.1.0` via signed prospective baseline
+
+- **Why:** 11 months of development (2,164+ commits) represent an initial pre-release state without historical release tags or established breaking-change constraints. Tagging `v0.1.0` preserves SemVer 0.x breaking change freedom while anchoring the 11-month achievement in a comprehensive milestone summary (`summary.md`).
+- **Alternatives considered:** Naively parsing 2,164 historical commits with git-cliff (rejected: 144 non-conforming commits, internal scope leaks, unreadable 50-page notes); tagging `v1.0.0` immediately (rejected: premature API freeze before real-world self-hosted feedback).
+- **Consequences:** An operator-created `changelog-baseline-YYYY-MM-DD` tag marks the prospective cutover. `v0.1.0` is the first official release, capturing historical scope in `summary.md` and only release-line diffs in `release-notes.md`. Future releases (`v0.2.0`, `v1.0.0`) automate changelog diffs seamlessly.
+- **Files/layers affected:** `docs/releases/v0.1.0/`, `docs/releases/baselines/`, `BaselineCommand.cs`, `docs/RELEASE_POLICY.md`.
+
+### Decision 11: Automated `v<major>.<minor>` release line branch provisioning & preservation
+
+- **Why:** A release line branch (`refs/heads/v<major>.<minor>`) must preserve the state of the release line for maintenance and hotfixes (e.g. `v0.1.1`) while `develop` continues integration.
+- **Alternatives considered:** Manual branch creation; one branch per patch tag (`release/v0.1.0`).
+- **Consequences:** An idempotent `cut-release-line` workflow provisions `v<major>.<minor>` branches from `develop` on demand, validates SemVer patterns, prevents force-push overwrites, and scaffolds `docs/releases/<version>/release.yaml`.
+- **Files/layers affected:** `.github/workflows/cut-release-line.yml`, `.ci/providers/forgejo-codeberg/cut-release-line.yml`, `docs/RELEASE_RUNBOOK.md`.
+
+### Decision 12: Multi-forge release publishing and complete asset orchestration
+
+- **Why:** Self-hosters and open-source contributors across GitHub, Codeberg/Forgejo, and Tangled need consistent release pages, automatic source code archives (`.zip` / `.tar.gz`), and verifiable enterprise evidence bundles.
+- **Alternatives considered:** Single-forge release script; manual release publishing.
+- **Consequences:** The trusted final lane automatically publishes canonical `release-notes.md` to GitHub, Codeberg, and Tangled release pages, attaches `release-evidence.v1.json`, `artifacts.sha256`, Docker container image digests, and SBOM, and links native forge `.zip`/`.tar.gz` source archives.
+- **Files/layers affected:** `.github/workflows/release-publish.yml`, `.ci/providers/**`, `.ci/scripts/generate-release-evidence-bundle.cs`.
 
 ## 6. Implementation Phases
 
@@ -614,6 +635,60 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 - **Effort:** L
 - **Required Skills/Rules:** `conventional-commit`, `ci-cd-change`, `ip-clean-room`.
 
+### Phase 7: Automated Release-Line Lifecycle, Multi-Forge Publishing, And Asset Orchestration
+
+- **Goal:** Automate `v<major>.<minor>` release-line branch provisioning, multi-forge release page publishing (GitHub, Codeberg/Forgejo, Tangled), and the durable asset packaging pipeline (`.zip`, `.tar.gz`, `release-evidence.v1.json`, container digests, checksums).
+- **Depends on:** Phase 6.
+- **Related skills/rules:** `ci-cd-change`, `conventional-commit`, provider adapter contract.
+- **Acceptance criteria:** On-demand release-line branch creation is automated and idempotent; forge release pages ingest canonical Markdown notes; release assets include verified cryptographic evidence and checksum manifests; standard forge source archives (`.zip` / `.tar.gz`) are linked.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** If automated branch provisioning or multi-forge publishing fails, operators retain manual branch-cut and tag-verification capabilities as documented in `docs/RELEASE_RUNBOOK.md`.
+
+#### Task 7.1: Automated Release-Line Branch Provisioning (`cut-release-line`)
+
+- **Type:** create/modify
+- **Layer:** DevOps / CI-CD
+- **Files:** new `.github/workflows/cut-release-line.yml`, `.ci/providers/forgejo-codeberg/cut-release-line.yml`, updates to `docs/RELEASE_RUNBOOK.md`.
+- **Description:** Implement an idempotent workflow to provision `v<major>.<minor>` release-line branches from `develop` on demand. Validate that target versions strictly conform to `LinePattern` (`^v[0-9]+\.[0-9]+$`), reject invalid or existing remote branches without force-pushing, and scaffold the initial release directory metadata (`docs/releases/<version>/release.yaml`).
+- **Acceptance Criteria:**
+  - [ ] Workflow accurately computes `v<major>.<minor>` from SemVer input.
+  - [ ] Existing remote branches are detected safely without clobbering or overwriting history.
+  - [ ] Scaffolding creates compliant `release.yaml` structure without writing unreviewed notes to `develop`.
+- **Dependencies:** 6.1, 6.3.
+- **Effort:** M
+- **Required Skills/Rules:** `ci-cd-change`.
+
+#### Task 7.2: Multi-Forge Automated Release Publishing And Asset Attachment
+
+- **Type:** create/modify
+- **Layer:** DevOps / CI-CD
+- **Files:** new `.github/workflows/release-publish.yml`, `.ci/providers/forgejo-codeberg/release-publish.yml`, `.ci/providers/tangled/`, `docs/RELEASE_RUNBOOK.md`.
+- **Description:** Implement the final release publishing automation across GitHub, Forgejo/Codeberg, and Tangled. Feed generated `release-notes.md` into release descriptions, attach canonical assets (`release-evidence.v1.json`, `artifacts.sha256`, published container image digests, SBOM), and ensure forge-provided source archives (`Source code .zip` / `.tar.gz`) are linked.
+- **Acceptance Criteria:**
+  - [ ] Published release bodies match canonical `release-notes.md` across all configured forges.
+  - [ ] Attached assets include `release-evidence.v1.json`, `artifacts.sha256`, and Docker image digests.
+  - [ ] Publication runs only in the trusted final lane and cannot be triggered by unprivileged candidate code.
+- **Dependencies:** 6.1, 7.1.
+- **Effort:** L
+- **Required Skills/Rules:** `ci-cd-change`, provider adapter contract.
+
+#### Task 7.3: First Governed Milestone (`v0.1.0`) Execution And Verification
+
+- **Type:** operator action / verify
+- **Layer:** Operations / Governance
+- **Files:** `docs/releases/v0.1.0/release.yaml`, `docs/releases/v0.1.0/summary.md`, `docs/releases/baselines/changelog-baseline-*.v1.json`, `docs/RELEASE_RUNBOOK.md`.
+- **Description:** Execute the prospective baseline cutover (`changelog-baseline-YYYY-MM-DD`) on the `v0.1` release line, author the comprehensive 11-month milestone summary for `v0.1.0`, run `prepare`, `verify-candidate`, `verify-tag`, and `verify-main`, and verify published release pages and asset bundles.
+- **Acceptance Criteria:**
+  - [ ] `changelog-baseline-YYYY-MM-DD` is verified and recorded in baseline evidence.
+  - [ ] `v0.1.0` release preparation produces deterministic `release-notes.md` with all 3 layers.
+  - [ ] Release candidate `B` passes full attestation without errors.
+  - [ ] GitHub, Codeberg, and Tangled release pages display verified notes and assets.
+- **Dependencies:** 6.2, 7.1, 7.2.
+- **Effort:** M
+- **Required Skills/Rules:** `conventional-commit`, release policy ADR.
+
 ## 7. Testing Strategy
 
 Each phase runs one Release build and at most one project test command after all phase tasks. The release-engine test project owns deterministic unit tests plus synthetic Git repository fixtures. It may invoke the promoted git-cliff binary only in the rendering fixture category; policy tests remain independent of git-cliff.
@@ -742,7 +817,7 @@ The workstream is complete only when:
 10. Existing evidence bundling consumes one canonical release identity rather than creating another.
 11. `develop` receives no generated Unreleased changelog writes.
 12. The exact git-cliff dependency, license obligations, checksums, notices, and promotion evidence are retained.
-13. All six phase gates pass, task/context ledgers are current, and the final release runbook is usable without GitHub-specific assumptions.
+13. All seven phase gates pass, task/context ledgers are current, and the final release runbook is usable without GitHub-specific assumptions.
 
 ## 15. Implementation Agent Contract - KEEP DEV DOCS CURRENT
 

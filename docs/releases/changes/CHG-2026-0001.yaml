@@ -1,5 +1,5 @@
 # ABOUTME: Public change fragment for the authorization platform redesign.
-# ABOUTME: Records the removed fail-open setting, the fail-closed revision gate, and operator impact.
+# ABOUTME: Records the removed fail-open setting, gRPC-only runtime path, and operator diagnostics.
 Change-Id: CHG-2026-0001
 Title: Single authorization decision path with observable policy state
 Type: feat
@@ -22,8 +22,8 @@ Impacts:
     Disposition: documented
     Detail: >-
       Removes a split decision path that let six capabilities bypass the selected
-      provider, and denies sensitive actions while the Cerbos policy revision is
-      unknown instead of deciding on unverified state.
+      provider, and keeps Cerbos runtime decisions isolated to the configured gRPC
+      PDP instead of coupling them to Admin API availability.
   Migration:
     Reference: docs/RELEASE_RUNBOOK.md
     Disposition: not-applicable
@@ -32,7 +32,8 @@ Impacts:
     Reference: docs/CONFIGURATION.md
     Disposition: documented
     Detail: >-
-      Adds Authorization:DenySensitiveActionsOnUnknownRevision, default true.
+      Cerbos Admin credentials may come from deployment secrets or a complete
+      request-scoped pair supplied for one explicit policy synchronization.
   OpenAPI:
     Reference: docs/API_CHANGELOG.md
     Disposition: documented
@@ -44,5 +45,5 @@ Impacts:
     Disposition: documented
     Detail: >-
       Policy package status reports mode, package identity, observed revision,
-      certainty, health, and a per-issue recovery action. Denials carrying the
-      revision_uncertain reason code indicate the revision could not be read.
+      certainty, health, and a per-issue recovery action without running on the
+      authorization decision path.

@@ -22,7 +22,7 @@ Last Updated: 2026-07-17 Europe/Brussels
 
 | Contract concern | Planning decision |
 |---|---|
-| Must-read docs | The fallback documents named above plus `dev/active/README.md` and `.claude/commands/dev-docs.md`. |
+| Must-read docs | The fallback headings named above plus `.agents/CONTEXT_ENGINEERING.md`; retrieve them once through the context ledger. |
 | Skills/rules | Apply the listed Blazor, CSS isolation, design-system, accessibility, and test guidance. |
 | Paths in scope | Public-experience setting/config models, composite public-home query/controller/cache, generated contract artifacts, `src/Explore.Blazor.Client/**`, matching Domain/Application/API/Blazor tests, `docs/DESIGN.md`, a planned-proximity ADR plus architecture/domain/self-hosting summaries, API contract docs, and these dev docs. |
 | Minimum tests | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Event.Architecture.Tests`; perform focused manual browser QA for responsive behavior. |
