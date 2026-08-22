@@ -219,6 +219,32 @@ Prefer splitting by risk boundary:
    - cleanup obsolete compatibility paths,
    - delete obsolete tests.
 
+## Test-First Invariant Rewrite Pattern
+
+When rewriting a flawed plan that puts tests after implementation (creating post-hoc test tautology risk), convert the tasks into strict **Test-First Invariant Specification order**:
+
+```markdown
+### ❌ Before (Flawed Code-First Sequence):
+- Task 2.1: Implement CreateOrderCommandHandler and Order entity
+- Task 2.2: Add unit tests for CreateOrderCommandHandler
+
+### ✅ After (Test-First Invariant Sequence):
+- Task 2.1 (Red Phase): Author CreateOrder Invariant & Contract Specification Tests
+  - Layer: Application / Tests
+  - Files: tests/Event.Application.UnitTests/Orders/CreateOrderCommandTests.cs (new)
+  - Description: Author failing specification tests asserting domain invariants (positive integer currency, state machine initialization, capacity check) and fail-closed error responses (ProblemDetails RFC 7807) before writing handler logic.
+  - Acceptance Criteria:
+    - [ ] Tests fail on missing command handler with expected missing type/behavior.
+    - [ ] Concurrency and invalid-input invariant test cases covered.
+- Task 2.2 (Green Phase): Implement Order Aggregate & CreateOrderCommandHandler
+  - Layer: Domain / Application
+  - Files: src/Explore.Domain/Entities/Order.cs (new), src/Explore.Application/Features/Orders/Commands/CreateOrderCommandHandler.cs (new)
+  - Description: Author production code strictly to satisfy the invariant test specifications.
+- Task 2.3 (Refactor & Wire Up): Clean Architecture & DI Registration
+  - Layer: Application
+  - Description: Clean up memory allocations, ensure zero-PII logging via StarRedactor, and register handlers.
+```
+
 ## Anti-Patterns To Remove From Plans
 
 Replace these phrases:
@@ -226,6 +252,7 @@ Replace these phrases:
 | Weak phrase | Strong replacement |
 |---|---|
 | “Maintain backward compatibility for now” | “Delete the old path unless a named self-hoster migration requires it.” |
+| “Add tests at the end / after code” | “Author failing Invariant & Contract Specification Tests first (Red Phase), then implement handlers (Green Phase).” |
 | “Add tests” | “Add these specific tests for these risks in these projects.” |
 | “Make tenant-aware” | “Resolve tenant from X, enforce through Y, test wrong-tenant Z.” |
 | “Add config” | “Add env var, default, validation, docs, and failure behavior.” |

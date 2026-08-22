@@ -92,8 +92,6 @@ Use reviewable slices. Every phase includes:
 - **Rollback / failure handling:**
 ```
 
-Every task includes:
-
 ```markdown
 #### Task N.M: <Actionable Task>
 - **Type:** create / modify / delete / investigate
@@ -106,7 +104,19 @@ Every task includes:
 - **Required Skills/Rules:**
 ```
 
-Do not create standalone testing, QA, manual-review, documentation-review, reporting, dev-doc maintenance, or verification tasks. Fold necessary test-code and documentation changes into the task that owns the behavior. Run no build or test command until the phase implementation is complete.
+#### Behavioral Slice Rule: Test-First Invariant Task Sequencing
+To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST sequence tasks in **Test-First Invariant order**:
+
+1. **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests**
+   - Author failing tests against public interfaces, MediatR requests, or API contracts *before* implementing production logic.
+   - Assert domain invariants, checked integer arithmetic, state transitions, fail-closed error responses (RFC 7807), tenant boundary isolation, and concurrency/race conditions.
+   - Run or verify that the test fails for the expected missing capability (red anchor).
+2. **Task N.2 (Green Phase): Implement Handlers, Entities & Domain Logic**
+   - Author production C# code strictly to satisfy the test specifications.
+3. **Task N.3 (Refactor & Wire Up): Clean Architecture & Registration**
+   - Refactor for performance, memory allocation, and zero-PII logging (`StarRedactor`/`HmacRedactor`), and wire DI service registrations.
+
+Do not create standalone manual-QA, documentation-review, reporting, dev-doc maintenance, or redundant verification tasks. Run no build or test command until the phase implementation is complete.
 
 #### Final Phase Closing Rule: Changelog & Commit as the Final Task
 Every implementation plan MUST sequence its **Changelog Contribution & Commit Composition** as the **FINAL task of the FINAL phase** (e.g. `Task N.Last: Changelog Contribution & Final Commit Composition`). This ensures that:
@@ -117,7 +127,10 @@ Every implementation plan MUST sequence its **Changelog Contribution & Commit Co
 
 ## 7. Testing Strategy
 
-Keep this section short. Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
+Keep this section short and high-leverage. Every implementation plan must define:
+1. **Test-First Invariant Anchors**: Detail which test project (e.g., `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Persistence.IntegrationTests`) hosts the Red-phase specification tests.
+2. **High-Leverage Adversarial Scenarios**: Prioritize high-value invariant tests (concurrency races, state machine exhaustiveness, real DB transaction boundaries, zero-PII log sinks, tenant isolation) over shallow mock-heavy boilerplate tests.
+3. **Phase Verification Lane**: Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
 
 Record additional intent-mandated projects as contract requirements, then distribute them across existing phases where possible; do not create artificial test-only phases.
 

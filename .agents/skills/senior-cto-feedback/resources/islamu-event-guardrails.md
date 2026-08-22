@@ -228,9 +228,12 @@ Do not plan external HTTP/email/broker calls inside DB transactions.
 
 For async side effects, prefer transactional outbox and idempotent consumers.
 
-## Testing Rules
+## Testing Rules & Test-First Invariant Mandate
 
-Implementation plans should select the fastest relevant deterministic test project for each phase.
+Implementation plans must enforce **Test-First Invariant Specification**:
+- Every behavioral slice must sequence failing specification/invariant tests (Red Phase) *before* the task implementing production code (Green Phase), preventing post-hoc test tautology ("The Ugly Mirror").
+- Tests must be specified against public contracts (MediatR requests, API endpoints, ProblemDetails RFC 7807, database state invariants) rather than private implementation details.
+- Prioritize high-leverage adversarial tests (concurrency races, state machines, row locking, zero-PII log sinks) over shallow mock-heavy tests.
 
 At each phase end, run one Release build and at most one project-level `dotnet test` command. Do not add per-task checks, test-only phases, E2E/browser projects, Playwright, Chrome DevTools MCP, app startup, Aspire/Docker startup, live-service smoke, or manual runtime walkthroughs.
 

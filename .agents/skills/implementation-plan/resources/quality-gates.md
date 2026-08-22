@@ -27,13 +27,14 @@
 - Clean Architecture ownership and API/HAL/BFF trust boundaries are explicit where applicable.
 - No compatibility shim, enforcement bypass, destructive migration, or scope exception is assumed without approval.
 
-## Executability Gate
+## Executability & Test-First Gate
 
 - The plan reports current state before proposed future state.
 - Every task names exact files or a bounded investigation that will discover them.
 - Every task includes observable acceptance criteria, dependencies, effort, and required guidance.
 - Phases are reviewable slices with rollback or failure-diagnosis guidance.
-- Necessary tests and documentation are folded into their owning implementation tasks instead of becoming standalone process work.
+- **Test-First Invariant Sequencing**: Every behavioral slice sequences task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), preventing post-hoc test tautology.
+- Tests are specified against public contracts (MediatR requests, HTTP routes, ProblemDetails RFC 7807, database states) rather than private implementation details.
 - Every phase ends with exactly one Release build and at most one fastest relevant non-browser project test.
 - The plan contains no app startup, Playwright, browser automation, Chrome DevTools MCP, visual QA, E2E, Docker/Aspire startup, live-service smoke, or manual runtime walkthrough.
 

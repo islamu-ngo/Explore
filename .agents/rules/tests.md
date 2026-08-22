@@ -6,7 +6,10 @@ paths:
   - "**/*UnitTests/*.cs"
   - "**/*IntegrationTests/*.cs"
   - "**/*.Tests/*.cs"
-related_skills: []
+related_skills:
+  - criticality-guardrail
+  - implementation-plan
+  - senior-cto-feedback
 related_docs: [docs/TESTING.md, AGENTS.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.Domain.UnitTests, Event.Application.UnitTests, Event.Architecture.Tests, Event.Persistence.IntegrationTests, Event.API.IntegrationTests, Explore.Blazor.IntegrationTests, Explore.Blazor.Client.Tests, Explore.Secrets.UnitTests]
 related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, blazor-component-affordance, bff-auth-bug, openapi-contract-change]
@@ -18,6 +21,8 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 - All test projects and source files (`**/*Tests/*.cs`).
 
 ## Path-Specific Constraints
+- **Test-First Invariant Specification**: Author failing contract/invariant tests *before* implementing production code (Red Phase). Never write code first and generate post-hoc tests that merely mirror implementation assumptions ("The Ugly Mirror").
+- **High-Leverage Behavioral Assertions**: Assert against public contracts (MediatR requests, HTTP routes, ProblemDetails RFC 7807, database state invariants) rather than private implementation details. Prioritize concurrency races, state transitions, and real DB integration tests over shallow getter/setter mocks.
 - **Suite Integrity**: Failing tests must be fixed or investigated; never deleted to bypass failures.
 - **Pristine Output**: Test runs must have zero stray warnings, stack traces, or noisy logs.
 - **Runtime Realism**: Keep in-process integration tests deterministic; use explicit runtime lanes when real provider infrastructure is the behavior under test.

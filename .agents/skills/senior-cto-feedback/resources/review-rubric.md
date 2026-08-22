@@ -165,23 +165,22 @@ Check:
 - External dependencies are optional or clearly required.
 - Single-server and constrained-resource scenarios are considered.
 
-## 10. Testability and Verification
+## 10. Testability, Test-First Invariants, and Anti-Tautology
 
 | Score | Meaning |
 |---|---|
-| 5 | Tests map to risks and run in the right lanes |
-| 3 | Some tests exist but not enough for the risk profile |
-| 1 | Testing is generic or missing critical integration cases |
+| 5 | Strict Test-First Invariant Specification: Failing contract/invariant tests are sequenced *before* implementation code (Red Phase), preventing post-hoc test tautology; high-leverage concurrency, state transition, and real DB tests are prioritized over shallow mocks |
+| 3 | Tests exist and match the risk profile, but task sequencing leaves code-before-test ambiguity |
+| 1 | Tests are grouped into a post-hoc phase, written after implementation, or rely on shallow mock-heavy tests that mirror bugs ("The Ugly Mirror") |
 
 Check:
 
-- Unit tests cover domain/application logic.
-- Integration tests cover persistence/API behavior.
-- Architecture tests enforce conventions.
-- BFF tests cover cookie/token/header behavior.
-- API contract tests cover OpenAPI/HAL/ProblemDetails.
+- Behavioral tasks follow Test-First Invariant order (Task N.1: Failing Invariant/Contract Tests $\rightarrow$ Task N.2: Implementation).
+- Tests are specified against public contracts (MediatR requests, API endpoints, ProblemDetails RFC 7807, database state invariants) rather than private implementation details.
+- High-leverage tests are prioritized (concurrency races, state machines, row locking, zero-PII log sinks) over low-value getter/setter mocks.
+- Unit tests cover domain/application logic; integration tests cover persistence/API behavior.
+- Architecture tests enforce conventions; BFF tests cover cookie/token/header behavior.
 - Each phase uses one Release build and at most one fastest relevant non-browser project test, with no app-running or manual/browser verification lane.
-- Tests are per-project, not solution-level.
 - Obsolete compatibility tests are deleted when breaking changes are accepted.
 
 ## 11. Sequencing and Delivery Safety

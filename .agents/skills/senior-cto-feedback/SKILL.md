@@ -27,14 +27,14 @@ priority: high
 1. Verify I-VSD compliance across the entire workstream: `plan.md`, `context.md`, and `tasks.md` must agree and link a valid `islamic-value-sensitive-design/i-vsd-*.md` report that addresses provider-controlled moral risks; block approval when the deliverable or traceability is missing.
 2. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
 3. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and edge cases; unresolved material answers block approval.
-4. Favor simpler, more operable, better-tested designs while protecting tenant isolation, authorization boundaries, and self-hosting clarity before convenience or UI polish.
+4. **Test-First Invariant Verification**: Verify that the plan sequences failing contract/invariant tests (Red Phase) *before* production code (Green Phase); block approval for plans with post-hoc test clustering or tautological test risks.
 5. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
 
 ## Top 5 Anti-Patterns
 1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`.
-2. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
-3. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
-4. Preserving duplicate contracts, compatibility shims, or obsolete routes “for now” without a named migration reason.
+2. **Approving Post-Hoc Test Tautology ("The Ugly Mirror")**, which allows agents to write tests after implementation or rely on shallow mock-heavy tests that mirror bugs instead of enforcing invariants.
+3. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
+4. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
 5. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
 
 ## Minimal Examples
