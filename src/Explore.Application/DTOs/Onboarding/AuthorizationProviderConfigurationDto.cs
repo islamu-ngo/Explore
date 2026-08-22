@@ -1,7 +1,6 @@
 // ABOUTME: DTO for instance-level authorization provider configuration managed during setup and admin UI.
-// ABOUTME: Represents the chosen authorization provider plus redacted Cerbos runtime/Admin API endpoints.
+// ABOUTME: Represents provider choice, redacted deployment credential state, and Cerbos endpoints.
 
-using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Secrets;
 
 namespace Explore.Application.DTOs.Onboarding;
@@ -26,24 +25,12 @@ public class AuthorizationProviderConfigurationDto
     public string CerbosAdminEndpoint { get; set; } = string.Empty;
 
     /// <summary>
-    /// Write-only Admin API username. Read models return null and use <see cref="CerbosAdminUsernameConfigured" />.
-    /// </summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? CerbosAdminUsername { get; set; }
-
-    /// <summary>
-    /// Write-only Admin API password. Read models return null and use <see cref="CerbosAdminPasswordConfigured" />.
-    /// </summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? CerbosAdminPassword { get; set; }
-
-    /// <summary>
-    /// Whether an Admin API username is stored. The username itself is not returned on reads.
+    /// Whether a deployment-provided Admin API username is available. The value is never returned.
     /// </summary>
     public bool CerbosAdminUsernameConfigured { get; set; }
 
     /// <summary>
-    /// Whether an Admin API password is stored. The password itself is never returned on reads.
+    /// Whether a deployment-provided Admin API password is available. The value is never returned.
     /// </summary>
     public bool CerbosAdminPasswordConfigured { get; set; }
 

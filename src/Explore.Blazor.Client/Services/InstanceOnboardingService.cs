@@ -64,8 +64,8 @@ public interface IInstanceOnboardingService
     Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync();
     Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync();
     Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config);
-    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync();
-    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync();
+    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync(AuthorizationPolicyPackageSyncRequestDto? request = null);
+    Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync(AuthorizationPolicyPackageSyncRequestDto? request = null);
     Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint);
     Task<bool> IsAuthorizationProviderConfiguredAsync();
     Task<bool?> GetAuthorizationProviderConfiguredStateAsync();
@@ -383,11 +383,11 @@ public sealed class InstanceOnboardingService(
     public Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config) =>
         SendCommandAsync(ct => api.UpdateInstanceAuthorizationProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
 
-    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync() =>
-        SendCommandAsync(ct => api.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(cancellationToken: ct));
+    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync(AuthorizationPolicyPackageSyncRequestDto? request = null) =>
+        SendCommandAsync(ct => api.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
 
-    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync() =>
-        SendCommandAsync(ct => api.SyncInstanceAuthorizationPolicyPackageAsync(cancellationToken: ct));
+    public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync(AuthorizationPolicyPackageSyncRequestDto? request = null) =>
+        SendCommandAsync(ct => api.SyncInstanceAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
         SendCommandAsync(ct => api.VerifyInstanceOnboardingAuthorizationProviderEndpointAsync(
@@ -753,9 +753,7 @@ public sealed class InstanceOnboardingService(
             {
                 Provider = config.Provider,
                 CerbosGrpcEndpoint = config.CerbosGrpcEndpoint,
-                CerbosAdminEndpoint = config.CerbosAdminEndpoint,
-                CerbosAdminUsername = config.CerbosAdminUsername,
-                CerbosAdminPassword = config.CerbosAdminPassword
+                CerbosAdminEndpoint = config.CerbosAdminEndpoint
             }
         }
     };

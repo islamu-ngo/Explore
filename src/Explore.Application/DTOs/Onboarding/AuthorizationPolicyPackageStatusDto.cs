@@ -14,8 +14,7 @@ namespace Explore.Application.DTOs.Onboarding;
 /// Compare against the previously observed value: a change nobody published is drift.
 /// </param>
 /// <param name="RevisionCertain">
-/// Whether <paramref name="ObservedRevision"/> was actually observed. When false, sensitive actions are
-/// denied — this is the field that explains a sudden wave of authorization failures.
+/// Whether <paramref name="ObservedRevision"/> was actually observed for operator drift diagnostics.
 /// </param>
 /// <param name="IsHealthy">Whether the package is verifiably in force.</param>
 /// <param name="IssueCode">Machine-readable classification of the problem, if any.</param>

@@ -48,7 +48,7 @@ public sealed class GetAuthorizationPolicyPackageStatusQueryHandler(
     {
         PolicyPackageIssueCode.None when status.ObservedRevision is null =>
             "Grant the Admin API credentials permission to read policies so the store revision becomes observable. "
-            + "Until then an in-place policy edit is invisible and sensitive actions are denied.",
+            + "Until then an in-place policy edit is invisible to this diagnostic.",
 
         PolicyPackageIssueCode.None =>
             "No action required. Record the observed revision; a change to it that nobody published is drift.",
@@ -57,8 +57,7 @@ public sealed class GetAuthorizationPolicyPackageStatusQueryHandler(
             "Re-publish the policy package (POST authz-provider/sync), then re-check this status.",
 
         PolicyPackageIssueCode.PackageStatusUnknown =>
-            "Restore Cerbos Admin API reachability, then re-check. Sensitive actions are denied while the "
-            + "store cannot be read.",
+            "Restore Cerbos Admin API reachability, then re-check the explicit package status. Runtime decisions continue through the gRPC PDP.",
 
         PolicyPackageIssueCode.AdminApiNotConfigured =>
             "Configure the Cerbos Admin API endpoint and credentials, or publish the package out of band "

@@ -246,28 +246,20 @@ The token is comparable **only** against a previous observation of the same stor
 
 | Observed state | Meaning | Effect on decisions |
 | --- | --- | --- |
-| Revision observed | The store's exact policy set is identified | Decisions carry it in `AuthorizationProviderMetadata.ObservedRevision` |
-| Revision unknown | Admin API unreachable, unlistable, or package unhealthy | Sensitive actions deny with `revision_uncertain`; non-sensitive reads still proceed |
+| Revision observed | The store's exact policy set is identified | Operator status can compare it with a previous observation |
+| Revision unknown | Admin API unreachable, unlistable, or package unhealthy | Runtime decisions are unaffected and continue through the gRPC PDP |
 | Store empty | Package was never published | PDP denies everything; status reports `PackageMismatch` |
 | Store incomplete | Publish was partial | Status reports `PackageMismatch` |
 
-**Fail-closed scope.** `AuthorizationActions.RequiresKnownPolicyRevision` uses a closed opt-in read set. Everything not on it — every write, plus `viewsharedcontacts` and `exportsharedcontacts`, which disclose consented registrant contact details — denies while the revision is unknown. An action nobody classified defaults to sensitive. Reads stay available deliberately: denying navigation on every Admin API blip converts a policy-store outage into a full product outage, whereas denying writes and sensitive disclosures bounds what an unidentified policy can actually do.
-
-BYO Cerbos is out of scope for this gate. A tenant's own PDP is published and versioned by that tenant, so the instance package revision says nothing about it.
-
-**Staleness and convergence bound.** The observed revision is cached per replica for **1 minute**, matching the provider-mode cache. Both the certain and uncertain results are cached, so an unreachable Admin API cannot turn into a per-batch stall on the request path.
-
-- `IAuthorizationRevisionProvider.Invalidate()` clears the observation on **the calling replica only**.
-- It is invoked after a policy package sync (success or failure — a partial publish also moves the store) and whenever the provider mode cache is invalidated.
-- **Other replicas converge within the cache duration.** There is no cross-replica invalidation and no distributed authorization event subsystem; convergence is bounded by expiry, not coordinated. During that window replicas may report different revisions, and a replica that has not yet re-observed may still deny sensitive actions after a successful publish elsewhere.
+**Request-path isolation.** The Cerbos gRPC PDP is the sole runtime decision dependency. Policy-store revision observation uses the Admin HTTP API only when an authorized operator explicitly requests package status. Admin API health, credentials, or latency cannot delay runtime authorization or HAL capability planning.
 
 **Readiness degradation.** An unhealthy package no longer reads as healthy: `PolicyPackageStatusResult.IsHealthy` is true only for `PolicyPackageIssueCode.None`. `PackageStatusUnknown` was previously counted healthy, which was defensible while a local evaluator answered around an unreachable store; nothing answers around it now.
 
-**Operator visibility and recovery.** `GET api/instance/settings/authz-provider/package/status` (instance-administrator gated) reports provider mode, package identity and hash, observed revision, whether it is certain, health, warnings, and a recovery action per issue code. It is deliberately separate from the anonymous `authz-provider/status` readiness probe, which must not disclose whether authorization is currently degraded.
+**Operator visibility and recovery.** `GET api/instance/settings/authz-provider/package/status` (instance-administrator gated) reports provider mode, package identity and hash, observed revision, whether it is certain, health, warnings, and a recovery action per issue code. It is deliberately separate from the anonymous `authz-provider/status` readiness probe, which must not disclose policy-store diagnostic state.
 
-Recovery for the common cases: republish via `POST api/instance/settings/authz-provider/sync`; restore Admin API reachability if the store cannot be listed; grant the Admin API credentials policy-read permission if the listing succeeds but hashes cannot be read. A deployment that manages the store entirely out of band (read-only disk driver under GitOps) can never observe a revision, and should set `Authorization:DenySensitiveActionsOnUnknownRevision` to `false` — an explicit availability-over-integrity trade, not a default.
+Recovery for the common cases: republish via `POST api/instance/settings/authz-provider/sync`; restore Admin API reachability if the store cannot be listed; grant the Admin API credentials policy-read permission if listing succeeds but hashes cannot be read. These are operational diagnostics and do not add an Admin API dependency to runtime decisions.
 
-**Decision telemetry.** Every decision is counted on `explore.authorization.decisions` with duration on `explore.authorization.decision.duration`, dimensioned by resource kind, action, outcome, reason code, and deciding provider. Denials additionally raise an `authorization.denied` span event carrying the observed revision. The revision is deliberately **not** a metric dimension: it is bounded at any instant but changes on every publish, so over a retention window it would multiply every other dimension without bound.
+**Decision telemetry.** Every decision is counted on `explore.authorization.decisions` with duration on `explore.authorization.decision.duration`, dimensioned by resource kind, action, outcome, reason code, and deciding provider. Denials additionally raise an `authorization.denied` span event. Policy-store revision remains limited to the privileged package-status diagnostic.
 
 ## 5. Roles and Permissions
 

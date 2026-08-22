@@ -119,6 +119,4 @@ public sealed class AuthorizationProviderConfigurationWriteDto
     public string Provider { get; set; } = string.Empty;
     public string CerbosGrpcEndpoint { get; set; } = string.Empty;
     public string CerbosAdminEndpoint { get; set; } = string.Empty;
-    public string? CerbosAdminUsername { get; set; }
-    public string? CerbosAdminPassword { get; set; }
 }

@@ -111,11 +111,15 @@ public sealed class InstanceAuthorizationSettingsController : InstanceSettingsCo
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(
+        [FromBody] AuthorizationPolicyPackageSyncRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
 
-        var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
+        var response = await _mediator.Send(
+            new SyncAuthorizationPolicyPackageCommand { Request = request },
+            cancellationToken);
         return HandleCommandResponse(response);
     }
 

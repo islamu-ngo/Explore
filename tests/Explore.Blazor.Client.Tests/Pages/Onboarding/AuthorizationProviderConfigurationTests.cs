@@ -244,7 +244,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     {
         SetupIncompleteOnboardingStatus();
         var service = SetupFetchConfiguration(CreateSyncableCerbosConfiguration());
-        service.SyncAuthorizationPolicyPackageAsync().Returns(new BaseCommandResponseOfGuid
+        service.SyncAuthorizationPolicyPackageAsync(Arg.Any<AuthorizationPolicyPackageSyncRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Authorization policy package sync failed.",
@@ -272,7 +272,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     {
         SetupIncompleteOnboardingStatus();
         var service = SetupFetchConfiguration(CreateSyncableCerbosConfiguration());
-        service.SyncAuthorizationPolicyPackageAsync().Returns(new BaseCommandResponseOfGuid
+        service.SyncAuthorizationPolicyPackageAsync(Arg.Any<AuthorizationPolicyPackageSyncRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Message = "Policies synced. You can continue with Cerbos."
@@ -294,11 +294,75 @@ public class AuthorizationProviderConfigurationTests : IDisposable
                 throw new InvalidOperationException("Expected successful sync to unlock Cerbos continuation.");
             }
         });
+
+        await service.Received(1).SyncAuthorizationPolicyPackageAsync(
+            Arg.Is<AuthorizationPolicyPackageSyncRequestDto>(request =>
+                request.AdminUsername == null && request.AdminPassword == null));
+    }
+
+    [Test]
+    public async Task Load_WithDeploymentCredentials_KeepsOneTimeOverrideCollapsed()
+    {
+        SetupIncompleteOnboardingStatus();
+        SetupFetchConfiguration(CreateSyncableCerbosConfiguration());
+
+        var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var disclosure = cut.Find("details.authz-page__credentials");
+            if (disclosure.HasAttribute("open")
+                || !disclosure.TextContent.Contains("Use one-time credentials instead", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected the one-time override to remain collapsed when deployment credentials are available.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task SyncPolicies_WithoutDeploymentCredentials_UsesOneTimePairAndClearsTheForm()
+    {
+        SetupIncompleteOnboardingStatus();
+        var service = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "cerbosgrpc.openislamu.org:443",
+            CerbosEndpointVerified = true,
+            CerbosEndpointOwnership = ApplicationOwnership()
+        });
+        service.SyncAuthorizationPolicyPackageAsync(Arg.Any<AuthorizationPolicyPackageSyncRequestDto>())
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Policies synced."
+            });
+
+        var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
+        cut.WaitForElement("details.authz-page__credentials[open]");
+        cut.Find("#cerbos-one-time-admin-username").Input("one-time-admin");
+        cut.Find("#cerbos-one-time-admin-password").Input("one-time-password");
+
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Sync policies now", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Policies synced.", StringComparison.OrdinalIgnoreCase)
+                || cut.FindAll("#cerbos-one-time-admin-password").Count != 0)
+            {
+                throw new InvalidOperationException("Expected successful sync to remove the cleared one-time credential form.");
+            }
+        });
+
+        await service.Received(1).SyncAuthorizationPolicyPackageAsync(
+            Arg.Is<AuthorizationPolicyPackageSyncRequestDto>(request =>
+                request.AdminUsername == "one-time-admin"
+                && request.AdminPassword == "one-time-password"));
     }
 
     [Test]
     [Arguments("local", "ready")]
-    [Arguments("cerbos", "pending")]
     [Arguments("cerbos", "ready")]
     public async Task Load_WhenDeploymentOwnsProviderAndNoRemediationIsNeeded_SkipsPage(
         string provider,
@@ -316,6 +380,40 @@ public class AuthorizationProviderConfigurationTests : IDisposable
         _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
 
         await Assert.That(_nav.Uri).EndsWith("/onboarding/instance");
+    }
+
+    [Test]
+    public async Task Load_WhenDeploymentCredentialsAreMissing_ShowsOpenOneTimeRemediation()
+    {
+        SetupIncompleteOnboardingStatus();
+        SetupFetchConfiguration(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "http://cerbos:3593",
+            AuthorizationProviderManagedByDeployment = true,
+            AuthorizationProviderConfigured = false,
+            AuthorizationProviderBootstrapStatus = "pending",
+            CerbosEndpointOwnership = new SecretOwnershipDto
+            {
+                Mode = "deployment-managed",
+                Badge = "Deployment Managed",
+                Description = "Change the endpoint in deployment configuration.",
+                Editable = false
+            }
+        });
+
+        var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Find("details.authz-page__credentials").HasAttribute("open")
+                || !cut.Markup.Contains("Enter one-time Admin API credentials", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Sync policies and continue", StringComparison.OrdinalIgnoreCase)
+                || _nav.Uri.EndsWith("/onboarding/instance", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected immediate one-time credential remediation when deployment secrets are absent.");
+            }
+        });
     }
 
     [Test]
@@ -352,7 +450,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
         ready.CerbosPoliciesSynchronized = true;
 
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsync().Returns(failed, ready);
-        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsync()
+        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsync(Arg.Any<AuthorizationPolicyPackageSyncRequestDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true });
 
         var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
@@ -403,6 +501,8 @@ public class AuthorizationProviderConfigurationTests : IDisposable
         AuthorizationProviderConfigured = false,
         AuthorizationProviderBootstrapStatus = "failed",
         AuthorizationProviderBootstrapMessage = "The deployment-managed Cerbos PDP endpoint could not be reached.",
+        CerbosAdminUsernameConfigured = true,
+        CerbosAdminPasswordConfigured = true,
         CerbosEndpointOwnership = new SecretOwnershipDto
         {
             Mode = "deployment-managed",

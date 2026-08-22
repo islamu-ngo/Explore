@@ -50,7 +50,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     private readonly ICerbosConfigResolver _cerbosConfigResolver;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ISupportAccessSessionService? _supportAccessSessionService;
-    private readonly IAuthorizationRevisionProvider? _revisionProvider;
     private readonly IMemoryCache _cache;
     private readonly ILogger<RuntimeAuthorizationProvider> _logger;
     private readonly AuthorizationProviderDeploymentOptions _deploymentOptions;
@@ -68,10 +67,8 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         ILogger<RuntimeAuthorizationProvider> logger,
         IOptions<AuthorizationProviderDeploymentOptions> deploymentOptions,
         ISupportAccessSessionService? supportAccessSessionService = null,
-        IAuthorizationRevisionProvider? revisionProvider = null,
         BusinessMetrics? metrics = null)
     {
-        _revisionProvider = revisionProvider;
         _cerbosProvider = cerbosProvider;
         _localProvider = localProvider;
         _cerbosConfigResolver = cerbosConfigResolver;
@@ -117,10 +114,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     /// than divided among them: the question an operator asks is "how long does authorizing this
     /// capability take", and a batched check genuinely did wait that long.
     /// </para>
-    /// <para>
-    /// The observed revision goes on the span, never on the metric. See
-    /// <see cref="BusinessMetrics.RecordAuthorizationDecision"/> for why.
-    /// </para>
     /// </summary>
     private void RecordDecisionTelemetry(
         IReadOnlyList<AuthorizationRequest> checks,
@@ -159,8 +152,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                     { "authorization.resource_kind", check.ResourceKind },
                     { "authorization.action", check.Action },
                     { "authorization.reason_code", decision.ReasonCode },
-                    { "authorization.provider", decision.Provider.ProviderId },
-                    { "authorization.observed_revision", decision.Provider.ObservedRevision ?? "unknown" }
+                    { "authorization.provider", decision.Provider.ProviderId }
                 }));
         }
     }
@@ -223,8 +215,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             if (provider != _cerbosProvider)
                 return await provider.AuthorizeBatchAsync(checks, cancellationToken);
 
-            var decisions = await _cerbosProvider.AuthorizeBatchWithUnavailableSignalAsync(checks, cancellationToken);
-            return await ApplyRevisionCertaintyAsync(checks, decisions, cancellationToken);
+            return await _cerbosProvider.AuthorizeBatchWithUnavailableSignalAsync(checks, cancellationToken);
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
@@ -241,76 +232,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 .Select(_ => AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderUnavailable))
                 .ToArray();
         }
-    }
-
-    /// <summary>
-    /// Stamps instance-Cerbos decisions with the policy revision that produced them, and denies sensitive
-    /// actions when that revision cannot be established.
-    /// <para>
-    /// This lives here rather than in <see cref="CerbosAuthorizationService"/> because this is the only
-    /// component that knows which provider actually decided a batch. It applies to the instance PDP only:
-    /// a tenant's BYO PDP is published and versioned by that tenant, so the instance package revision says
-    /// nothing about it, and gating BYO on it would deny for a reason the tenant cannot act on.
-    /// </para>
-    /// <para>
-    /// Reads pass through unstamped-but-allowed on uncertainty. Denying navigation because a revision
-    /// could not be read would take the whole product down for a policy-store outage; denying writes and
-    /// sensitive disclosures bounds the blast radius to what an unknown policy could actually damage.
-    /// </para>
-    /// </summary>
-    private async Task<IReadOnlyList<AuthorizationDecision>> ApplyRevisionCertaintyAsync(
-        IReadOnlyList<AuthorizationRequest> checks,
-        IReadOnlyList<AuthorizationDecision> decisions,
-        CancellationToken cancellationToken)
-    {
-        if (_revisionProvider is null)
-            return decisions;
-
-        var revision = await _revisionProvider.GetCurrentAsync(cancellationToken);
-
-        if (revision.IsCertain)
-        {
-            var stamped = new AuthorizationProviderMetadata(
-                AuthorizationProviderMetadata.Cerbos.ProviderId,
-                revision.Value);
-
-            return decisions.Select(decision => decision with { Provider = stamped }).ToArray();
-        }
-
-        if (!_deploymentOptions.DenySensitiveActionsOnUnknownRevision)
-            return decisions;
-
-        var results = new AuthorizationDecision[decisions.Count];
-        var deniedCount = 0;
-
-        for (var i = 0; i < decisions.Count; i++)
-        {
-            var isSensitive = i < checks.Count
-                && AuthorizationActions.RequiresKnownPolicyRevision(checks[i].Action);
-
-            if (!isSensitive || !decisions[i].IsAllowed)
-            {
-                results[i] = decisions[i];
-                continue;
-            }
-
-            results[i] = AuthorizationDecision.Deny(
-                AuthorizationProviderMetadata.Cerbos,
-                AuthorizationDecisionReasonCodes.RevisionUncertain);
-            deniedCount++;
-        }
-
-        if (deniedCount > 0)
-        {
-            _logger.LogWarning(
-                "Denied {DeniedCount} of {Count} sensitive authorization check(s): the Cerbos policy revision " +
-                "could not be established, so an allow could not be attributed to a known policy. " +
-                "Restore Cerbos Admin API reachability or re-publish the policy package to resolve.",
-                deniedCount,
-                decisions.Count);
-        }
-
-        return results;
     }
 
     private async Task<SupportAccessBoundaryResult> ApplySupportAccessBoundaryAsync(
@@ -498,13 +419,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     public void InvalidateInstanceMode()
     {
         _cache.Remove(InstanceModeCacheKey);
-
-        // A mode change changes which policy store is authoritative, so the revision observed under the
-        // previous mode describes a store that no longer decides anything. Dropping both together keeps
-        // "which provider" and "which policy set" from disagreeing inside one cache window.
-        _revisionProvider?.Invalidate();
-
-        _logger.LogInformation("Authorization provider mode and policy revision caches invalidated");
+        _logger.LogInformation("Authorization provider mode cache invalidated");
     }
 
     /// <summary>

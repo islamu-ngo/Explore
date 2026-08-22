@@ -34,13 +34,6 @@ public class AuthorizationProviderConfigurationDtoValidator : AbstractValidator<
             .MaximumLength(512)
             .WithMessage("Cerbos Admin API endpoint must be 512 characters or fewer.");
 
-        RuleFor(x => x.CerbosAdminUsername)
-            .MaximumLength(256)
-            .WithMessage("Cerbos Admin API username must be 256 characters or fewer.");
-
-        RuleFor(x => x.CerbosAdminPassword)
-            .MaximumLength(1024)
-            .WithMessage("Cerbos Admin API password must be 1024 characters or fewer.");
     }
 
     private static bool BeAValidGrpcEndpoint(string? endpoint)

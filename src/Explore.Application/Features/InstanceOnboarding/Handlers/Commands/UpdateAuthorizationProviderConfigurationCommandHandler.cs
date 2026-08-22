@@ -91,8 +91,6 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
             Provider = patch.Provider,
             CerbosGrpcEndpoint = patch.CerbosGrpcEndpoint,
             CerbosAdminEndpoint = patch.CerbosAdminEndpoint,
-            CerbosAdminUsername = patch.CerbosAdminUsername,
-            CerbosAdminPassword = patch.CerbosAdminPassword,
             CerbosDetectedFromEnvironment = currentConfiguration.CerbosDetectedFromEnvironment,
             AuthorizationProviderConfigured = currentConfiguration.AuthorizationProviderConfigured,
             AuthorizationProviderManagedByDeployment = currentConfiguration.AuthorizationProviderManagedByDeployment,

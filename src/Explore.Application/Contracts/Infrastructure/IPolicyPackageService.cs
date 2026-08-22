@@ -18,12 +18,16 @@ public interface IPolicyPackageService
     /// <summary>
     /// Publishes the current authorization policy package to the configured provider.
     /// </summary>
-    Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default);
+    Task<PolicyPackagePublishResult> PublishAsync(
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null);
 
     /// <summary>
     /// Publishes the current authorization policy package to the instance-managed provider target.
     /// </summary>
-    Task<PolicyPackagePublishResult> PublishInstanceAsync(CancellationToken cancellationToken = default);
+    Task<PolicyPackagePublishResult> PublishInstanceAsync(
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null);
 
     /// <summary>
     /// Gets an operator-safe status summary for the current authorization policy package target.
@@ -34,4 +38,22 @@ public interface IPolicyPackageService
     /// Exports the current authorization policy package as a downloadable archive for manual installation.
     /// </summary>
     Task<PolicyPackageArchive> ExportArchiveAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Request-scoped Cerbos Admin API credentials used only by the current publish operation.
+/// </summary>
+public sealed class PolicyPackageAdminCredentials
+{
+    public PolicyPackageAdminCredentials(string username, string password)
+    {
+        Username = username;
+        Password = password;
+    }
+
+    public string Username { get; }
+
+    public string Password { get; }
+
+    public override string ToString() => nameof(PolicyPackageAdminCredentials);
 }

@@ -1,5 +1,5 @@
-// ABOUTME: Tests Cerbos authorization provider configuration persistence and redaction behavior.
-// ABOUTME: Verifies Admin API endpoint credentials are write-only and unsafe endpoints fail before storage.
+// ABOUTME: Tests Cerbos authorization provider configuration persistence and deployment-secret redaction.
+// ABOUTME: Verifies one-time Admin credentials never enter settings and unsafe endpoints fail before storage.
 
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
@@ -18,7 +18,7 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 public class AuthorizationProviderConfigurationServiceTests
 {
     [Test]
-    public async Task ReadConfigurationAsync_RedactsAdminApiCredentialsAndReturnsConfiguredFlags()
+    public async Task ReadConfigurationAsync_IgnoresLegacyStoredAdminCredentials()
     {
         var repository = Substitute.For<ISystemSettingRepository>();
         repository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
@@ -36,10 +36,8 @@ public class AuthorizationProviderConfigurationServiceTests
         var configuration = await service.ReadConfigurationAsync();
 
         await Assert.That(configuration.CerbosAdminEndpoint).IsEqualTo("https://tenant-cerbos.example.com:3592");
-        await Assert.That(configuration.CerbosAdminUsername).IsNull();
-        await Assert.That(configuration.CerbosAdminPassword).IsNull();
-        await Assert.That(configuration.CerbosAdminUsernameConfigured).IsTrue();
-        await Assert.That(configuration.CerbosAdminPasswordConfigured).IsTrue();
+        await Assert.That(configuration.CerbosAdminUsernameConfigured).IsFalse();
+        await Assert.That(configuration.CerbosAdminPasswordConfigured).IsFalse();
     }
 
     [Test]
@@ -59,8 +57,6 @@ public class AuthorizationProviderConfigurationServiceTests
 
         var result = await service.ReadConfigurationAsync();
 
-        await Assert.That(result.CerbosAdminUsername).IsNull();
-        await Assert.That(result.CerbosAdminPassword).IsNull();
         await Assert.That(result.CerbosAdminUsernameConfigured).IsTrue();
         await Assert.That(result.CerbosAdminPasswordConfigured).IsTrue();
     }
@@ -327,9 +323,7 @@ public class AuthorizationProviderConfigurationServiceTests
         await service.ApplyConfigurationAsync(new AuthorizationProviderConfigurationDto
         {
             Provider = "cerbos",
-            CerbosGrpcEndpoint = "https://edited-cerbos.example.com:443",
-            CerbosAdminUsername = "admin",
-            CerbosAdminPassword = "secret"
+            CerbosGrpcEndpoint = "https://edited-cerbos.example.com:443"
         });
 
         await repository.Received(1).UpsertAsync(
@@ -344,7 +338,7 @@ public class AuthorizationProviderConfigurationServiceTests
     }
 
     [Test]
-    public async Task ApplyConfigurationAsync_WithAdminCredentials_StoresEndpointAndSecrets()
+    public async Task ApplyConfigurationAsync_WithAdminEndpoint_NeverPersistsCredentials()
     {
         var repository = Substitute.For<ISystemSettingRepository>();
         var invalidator = Substitute.For<IAuthorizationProviderModeCacheInvalidator>();
@@ -355,9 +349,7 @@ public class AuthorizationProviderConfigurationServiceTests
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
-            CerbosAdminEndpoint = "https://tenant-cerbos.example.com/base",
-            CerbosAdminUsername = "admin",
-            CerbosAdminPassword = "secret"
+            CerbosAdminEndpoint = "https://tenant-cerbos.example.com/base"
         });
 
         await repository.Received(1).UpsertAsync(
@@ -365,15 +357,10 @@ public class AuthorizationProviderConfigurationServiceTests
                 x.SettingKey == GovernanceSettingKeys.Cerbos.CustomAdminEndpoint
                 && JsonSerializer.Deserialize<string>(x.Value) == "https://tenant-cerbos.example.com/base"),
             Arg.Any<CancellationToken>());
-        await repository.Received(1).UpsertAsync(
+        await repository.DidNotReceive().UpsertAsync(
             Arg.Is<SystemSetting>(x =>
                 x.SettingKey == InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername
-                && JsonSerializer.Deserialize<string>(x.Value) == "admin"),
-            Arg.Any<CancellationToken>());
-        await repository.Received(1).UpsertAsync(
-            Arg.Is<SystemSetting>(x =>
-                x.SettingKey == InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword
-                && JsonSerializer.Deserialize<string>(x.Value) == "secret"),
+                || x.SettingKey == InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword),
             Arg.Any<CancellationToken>());
         cerbosConfigResolver.Received(1).InvalidateCache();
         invalidator.Received(1).InvalidateInstanceMode();

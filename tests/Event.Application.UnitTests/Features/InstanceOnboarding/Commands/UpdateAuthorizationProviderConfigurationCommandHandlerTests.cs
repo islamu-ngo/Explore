@@ -177,9 +177,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
         {
             Provider = "cerbos",
             CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
-            CerbosAdminEndpoint = "https://localhost:3592",
-            CerbosAdminUsername = "admin",
-            CerbosAdminPassword = "secret"
+            CerbosAdminEndpoint = "https://localhost:3592"
         };
 
         _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
@@ -226,9 +224,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
                 {
                     Provider = configuration.Provider,
                     CerbosGrpcEndpoint = configuration.CerbosGrpcEndpoint,
-                    CerbosAdminEndpoint = configuration.CerbosAdminEndpoint,
-                    CerbosAdminUsername = configuration.CerbosAdminUsername,
-                    CerbosAdminPassword = configuration.CerbosAdminPassword
+                    CerbosAdminEndpoint = configuration.CerbosAdminEndpoint
                 })
             }
         };

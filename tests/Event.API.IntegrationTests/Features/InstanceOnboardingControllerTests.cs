@@ -1349,9 +1349,7 @@ public class InstanceOnboardingControllerTests
             {
                 Provider = configuration.Provider,
                 CerbosGrpcEndpoint = configuration.CerbosGrpcEndpoint,
-                CerbosAdminEndpoint = configuration.CerbosAdminEndpoint,
-                CerbosAdminUsername = configuration.CerbosAdminUsername,
-                CerbosAdminPassword = configuration.CerbosAdminPassword
+                CerbosAdminEndpoint = configuration.CerbosAdminEndpoint
             })
         };
     }

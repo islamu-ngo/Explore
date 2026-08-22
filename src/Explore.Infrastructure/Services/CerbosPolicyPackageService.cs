@@ -126,15 +126,20 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     }
 
     /// <inheritdoc />
-    public Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default) =>
-        PublishCoreAsync(instanceTargetOnly: false, cancellationToken);
+    public Task<PolicyPackagePublishResult> PublishAsync(
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null) =>
+        PublishCoreAsync(instanceTargetOnly: false, oneTimeCredentials, cancellationToken);
 
     /// <inheritdoc />
-    public Task<PolicyPackagePublishResult> PublishInstanceAsync(CancellationToken cancellationToken = default) =>
-        PublishCoreAsync(instanceTargetOnly: true, cancellationToken);
+    public Task<PolicyPackagePublishResult> PublishInstanceAsync(
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null) =>
+        PublishCoreAsync(instanceTargetOnly: true, oneTimeCredentials, cancellationToken);
 
     private async Task<PolicyPackagePublishResult> PublishCoreAsync(
         bool instanceTargetOnly,
+        PolicyPackageAdminCredentials? oneTimeCredentials,
         CancellationToken cancellationToken)
     {
         var manifest = CreateUnavailableManifest();
@@ -144,8 +149,8 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
             var packageRoot = ResolvePolicyRoot();
             manifest = await BuildManifestAsync(cancellationToken);
             var targetResolution = instanceTargetOnly
-                ? ResolveInstanceAdminApiTarget()
-                : await ResolveAdminApiTargetAsync(cancellationToken);
+                ? ResolveInstanceAdminApiTarget(oneTimeCredentials)
+                : await ResolveAdminApiTargetAsync(oneTimeCredentials, cancellationToken);
             if (!targetResolution.Succeeded || targetResolution.Target is null)
             {
                 return new PolicyPackagePublishResult(
@@ -290,7 +295,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                 Warnings: [ex.Message]);
         }
 
-        var targetResolution = await ResolveAdminApiTargetAsync(cancellationToken);
+        var targetResolution = await ResolveAdminApiTargetAsync(null, cancellationToken);
 
         if (!targetResolution.Succeeded || targetResolution.Target is null)
         {
@@ -347,7 +352,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                 CheckedAt: DateTimeOffset.UtcNow,
                 IssueCode: PolicyPackageIssueCode.PackageStatusUnknown,
                 Message: "Cerbos Admin API target is configured, but the policy store could not be listed.",
-                Warnings: ["Package freshness is unverified. Treat authorization decisions as revision-uncertain until the store can be listed."]);
+                Warnings: ["Package freshness is unverified until the store can be listed through the explicit status operation."]);
         }
 
         if (storePolicyIds is null || storePolicyIds.Count == 0)
@@ -487,7 +492,9 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
             Manifest: manifest);
     }
 
-    private async Task<AdminApiTargetResolution> ResolveAdminApiTargetAsync(CancellationToken cancellationToken)
+    private async Task<AdminApiTargetResolution> ResolveAdminApiTargetAsync(
+        PolicyPackageAdminCredentials? oneTimeCredentials,
+        CancellationToken cancellationToken)
     {
         var configuration = await _cerbosConfigResolver.ResolveAsync(cancellationToken);
         if (configuration is { IsInstanceDefault: false, Mode: CerbosMode.CustomEndpoint })
@@ -498,7 +505,9 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                     "BYO Cerbos Admin API endpoint must be configured before publishing.");
             }
 
-            if (string.IsNullOrWhiteSpace(configuration.AdminUsername) || string.IsNullOrWhiteSpace(configuration.AdminPassword))
+            var username = oneTimeCredentials?.Username ?? configuration.AdminUsername;
+            var password = oneTimeCredentials?.Password ?? configuration.AdminPassword;
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
                 return AdminApiTargetResolution.Failed(
                     "BYO Cerbos Admin API endpoint requires both admin username and admin password before publishing.");
@@ -509,15 +518,16 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
 
             return AdminApiTargetResolution.Success(new AdminApiTarget(
                 Endpoints: [endpoint],
-                AdminUsername: configuration.AdminUsername,
-                AdminPassword: configuration.AdminPassword,
+                AdminUsername: username,
+                AdminPassword: password,
                 Source: AdminApiTargetSource.Byo));
         }
 
-        return ResolveInstanceAdminApiTarget();
+        return ResolveInstanceAdminApiTarget(oneTimeCredentials);
     }
 
-    private AdminApiTargetResolution ResolveInstanceAdminApiTarget()
+    private AdminApiTargetResolution ResolveInstanceAdminApiTarget(
+        PolicyPackageAdminCredentials? oneTimeCredentials = null)
     {
         if (_adminApiSettings.Endpoints.Count == 0)
             return AdminApiTargetResolution.Failed("Configure Cerbos:AdminApi:Endpoints before publishing the policy package.");
@@ -531,10 +541,18 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
             endpoints.Add(endpoint);
         }
 
+        var username = oneTimeCredentials?.Username ?? _adminApiSettings.AdminUsername;
+        var password = oneTimeCredentials?.Password ?? _adminApiSettings.AdminPassword;
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            return AdminApiTargetResolution.Failed(
+                "Configure Cerbos Admin API credentials or provide a complete one-time credential pair before publishing.");
+        }
+
         return AdminApiTargetResolution.Success(new AdminApiTarget(
             Endpoints: endpoints,
-            AdminUsername: _adminApiSettings.AdminUsername,
-            AdminPassword: _adminApiSettings.AdminPassword,
+            AdminUsername: username,
+            AdminPassword: password,
             Source: AdminApiTargetSource.Instance));
     }
 
@@ -971,6 +989,8 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         AdminApiTargetSource Source)
     {
         public Uri PrimaryEndpoint => Endpoints[0];
+
+        public override string ToString() => $"{nameof(AdminApiTarget)} {{ Source = {Source} }}";
     }
 
     private enum AdminApiTargetSource

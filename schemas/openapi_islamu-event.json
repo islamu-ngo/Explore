@@ -45312,6 +45312,26 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -48438,6 +48458,26 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizationPolicyPackageSyncRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -86988,6 +87028,23 @@
           }
         }
       },
+      "AuthorizationPolicyPackageSyncRequestDto": {
+        "type": "object",
+        "properties": {
+          "adminUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "adminPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AuthorizationProviderConfigurationDto": {
         "type": "object",
         "properties": {
@@ -86999,18 +87056,6 @@
           },
           "cerbosAdminEndpoint": {
             "type": "string"
-          },
-          "cerbosAdminUsername": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "cerbosAdminPassword": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "cerbosAdminUsernameConfigured": {
             "type": "boolean"
@@ -87061,18 +87106,6 @@
           },
           "cerbosAdminEndpoint": {
             "type": "string"
-          },
-          "cerbosAdminUsername": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "cerbosAdminPassword": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },

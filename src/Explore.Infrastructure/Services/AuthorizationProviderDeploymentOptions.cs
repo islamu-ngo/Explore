@@ -11,20 +11,6 @@ public sealed class AuthorizationProviderDeploymentOptions
 
     public string? Provider { get; set; }
 
-    /// <summary>
-    /// Whether a sensitive action must be denied when the Cerbos policy revision behind the decision
-    /// cannot be established. Defaults to <c>true</c>.
-    /// <para>
-    /// Turning this off is a deliberate availability-over-integrity trade and is only defensible for a
-    /// deployment that manages the policy store entirely out of band (a read-only disk driver under
-    /// GitOps, say), where the application never publishes and so can never observe a revision. In that
-    /// posture leaving this on denies every sensitive action permanently, which helps nobody. Any
-    /// deployment where the application publishes the package should leave it on: there, an unreadable
-    /// revision means the store is genuinely unverified.
-    /// </para>
-    /// </summary>
-    public bool DenySensitiveActionsOnUnknownRevision { get; set; } = true;
-
     public string? GetProvider()
     {
         var provider = Provider?.Trim().ToLowerInvariant();

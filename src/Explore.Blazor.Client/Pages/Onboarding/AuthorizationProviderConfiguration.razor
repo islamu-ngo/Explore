@@ -105,7 +105,7 @@
                     <section class="authz-page__section" aria-labelledby="cerbos-connection-heading">
                         <MudText Typo="Typo.h5" HtmlTag="h2" id="cerbos-connection-heading">Cerbos connection</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Runtime checks use the PDP endpoint. Admin API credentials stay on the server and are used only for policy synchronization.
+                            Runtime checks use only the gRPC PDP endpoint. Admin API credentials are used only for an explicit server-side policy synchronization.
                         </MudText>
 
                         <MudAlert Severity="@OwnershipAlertSeverity(EndpointOwnership)" Dense="true">
@@ -157,6 +157,41 @@
                                 <dd><MudChip T="string" Size="Size.Small" Color="@SyncStatusColor" Variant="Variant.Outlined">@SyncStatusLabel</MudChip></dd>
                             </div>
                         </dl>
+
+                        @if (!PolicyPackageReady && CanShowPolicySync)
+                        {
+                            <details class="authz-page__credentials" open="@(!HasServerSideAdminApiCredentials)">
+                                <summary>@CredentialsDisclosureLabel</summary>
+                                <div class="authz-page__credentials-body">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        These credentials are sent only for this policy sync request. They are not saved in application settings, logs, or API responses.
+                                    </MudText>
+                                    <div class="authz-page__credentials-fields">
+                                        <MudTextField T="string"
+                                                      Id="cerbos-one-time-admin-username"
+                                                      Label="Cerbos Admin API username"
+                                                      Variant="Variant.Outlined"
+                                                      @bind-Value="_oneTimeAdminUsername"
+                                                      Immediate="true"
+                                                      autocomplete="off" />
+                                        <MudTextField T="string"
+                                                      Id="cerbos-one-time-admin-password"
+                                                      Label="Cerbos Admin API password"
+                                                      Variant="Variant.Outlined"
+                                                      InputType="InputType.Password"
+                                                      @bind-Value="_oneTimeAdminPassword"
+                                                      Immediate="true"
+                                                      autocomplete="off" />
+                                    </div>
+                                    @if (HasPartialOneTimeCredentials)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Error" role="alert">
+                                            Enter both the username and password to use one-time credentials.
+                                        </MudText>
+                                    }
+                                </div>
+                            </details>
+                        }
 
                         @if (!PolicyPackageReady && !IsDeploymentProvider)
                         {
@@ -234,7 +269,7 @@
         <p>Choose the authorization engine that will enforce permissions after authentication.</p>
     </SummaryContent>
     <HelpContent>
-        <p>Local RBAC needs no external service. Cerbos remains fail-closed and keeps its credentials on the server.</p>
+        <p>Local RBAC needs no external service. Cerbos remains fail-closed, and runtime decisions never call its Admin API.</p>
     </HelpContent>
     <ActionsContent>
         <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" Href="/setup">
@@ -258,6 +293,8 @@
     private bool _isSyncing;
     private bool _manualPolicyPackageInstalled;
     private bool _policyPackageSynced;
+    private string? _oneTimeAdminUsername;
+    private string? _oneTimeAdminPassword;
 
     private IReadOnlyList<OnboardingWorkspace.StepDescriptor> WorkspaceSteps
     {
@@ -319,6 +356,11 @@
     private bool IsDeploymentProvider => _model.AuthorizationProviderManagedByDeployment == true;
     private bool IsDeploymentFailed => IsDeploymentProvider
         && string.Equals(_model.AuthorizationProviderBootstrapStatus, "failed", StringComparison.OrdinalIgnoreCase);
+    private bool NeedsDeploymentRemediation => IsDeploymentFailed
+        || (IsDeploymentProvider
+            && IsSelected(CerbosProvider)
+            && _model.AuthorizationProviderConfigured != true
+            && !HasServerSideAdminApiCredentials);
     private bool ShowCerbosConfiguration => IsSelected(CerbosProvider);
     private bool IsEndpointLocked => EndpointOwnership.Editable != true;
     private bool PolicyPackageReady =>
@@ -334,11 +376,22 @@
         _model.CerbosAdminUsernameConfigured == true && _model.CerbosAdminPasswordConfigured == true;
 
     private bool CanShowPolicySync =>
-        !IsDeploymentProvider && IsSelected(CerbosProvider) && HasServerSideAdminApiCredentials && !PolicyPackageReady;
+        IsSelected(CerbosProvider) && !PolicyPackageReady && (!IsDeploymentProvider || NeedsDeploymentRemediation);
+
+    private bool HasAnyOneTimeCredentials =>
+        !string.IsNullOrWhiteSpace(_oneTimeAdminUsername) || !string.IsNullOrWhiteSpace(_oneTimeAdminPassword);
+
+    private bool HasCompleteOneTimeCredentials =>
+        !string.IsNullOrWhiteSpace(_oneTimeAdminUsername) && !string.IsNullOrWhiteSpace(_oneTimeAdminPassword);
+
+    private bool HasPartialOneTimeCredentials => HasAnyOneTimeCredentials && !HasCompleteOneTimeCredentials;
+
+    private bool CanUseSyncCredentials =>
+        HasCompleteOneTimeCredentials || (HasServerSideAdminApiCredentials && !HasAnyOneTimeCredentials);
 
     private bool CanSyncPolicies =>
         !_isSyncing && !_submitState.IsSubmitting && CanShowPolicySync &&
-        _model.CerbosEndpointVerified == true;
+        _model.CerbosEndpointVerified == true && CanUseSyncCredentials;
 
     private bool CanVerify =>
         !_isVerifying &&
@@ -351,13 +404,15 @@
 
     private bool CanPrimaryAction =>
         IsDeploymentProvider
-            ? IsDeploymentFailed && !_isSyncing
+            ? NeedsDeploymentRemediation && !_isSyncing && CanUseSyncCredentials
             : IsSelected(CerbosProvider) && CanShowPolicySync
             ? CanSyncPolicies
             : CanSave;
 
     private string PrimaryActionLabel => IsDeploymentProvider
-        ? IsSelected(LocalProvider) ? "Continue setup" : "Retry automatic setup"
+        ? IsSelected(LocalProvider)
+            ? "Continue setup"
+            : HasServerSideAdminApiCredentials ? "Retry automatic setup" : "Sync policies and continue"
         : IsSelected(LocalProvider)
         ? "Continue with Local RBAC"
         : _model.CerbosEndpointVerified != true
@@ -380,21 +435,27 @@
 
     private string SyncStatusLabel => PolicyPackageReady
         ? "Synchronized"
-        : HasServerSideAdminApiCredentials ? "Available" : "Not configured";
+        : HasCompleteOneTimeCredentials
+            ? "One-time credentials"
+            : HasServerSideAdminApiCredentials ? "Deployment credentials" : "Credentials required";
 
     private Color SyncStatusColor => PolicyPackageReady
         ? Color.Success
-        : HasServerSideAdminApiCredentials ? Color.Info : Color.Default;
+        : CanUseSyncCredentials ? Color.Info : Color.Warning;
+
+    private string CredentialsDisclosureLabel => HasServerSideAdminApiCredentials
+        ? "Use one-time credentials instead"
+        : "Enter one-time Admin API credentials";
 
     private string SourceLabel => string.Equals(EndpointOwnership.Mode, "deployment-managed", StringComparison.OrdinalIgnoreCase)
         ? "Deployment-managed"
         : EndpointOwnership.BootstrapAvailable == true ? "From deployment" : "Application-managed";
 
     private string PolicySyncGuidance => IsDeploymentProvider
-        ? "Endpoint checks and policy synchronization use deployment-managed server settings. No Cerbos credential is sent to the browser."
+        ? "Endpoint checks use deployment settings. Policy sync uses deployment credentials unless you provide a one-time override."
         : HasServerSideAdminApiCredentials
-            ? $"Sync uses {AdminCredentialsOwnership.Badge?.ToLowerInvariant() ?? "configured"} Admin API credentials held by the server."
-            : "Server-side sync requires Cerbos Admin API credentials. This page never collects the Admin API password.";
+            ? $"Sync uses {AdminCredentialsOwnership.Badge?.ToLowerInvariant() ?? "configured"} credentials by default."
+            : "Enter a one-time credential pair to sync from this page, or use the manual package workflow.";
 
     protected override async Task OnInitializedAsync()
     {
@@ -420,7 +481,7 @@
             _model = await InstanceOnboardingService.GetAuthorizationProviderConfigurationAsync();
             ApplyProviderDefault();
 
-            if (IsDeploymentProvider && !IsDeploymentFailed)
+            if (IsDeploymentProvider && !NeedsDeploymentRemediation)
             {
                 Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
                 return;
@@ -453,6 +514,7 @@
         _successMessage = null;
         _manualPolicyPackageInstalled = false;
         _policyPackageSynced = false;
+        ClearOneTimeCredentials();
     }
 
     private void ApplyProviderDefault()
@@ -573,30 +635,40 @@
         _successMessage = null;
         _manualPolicyPackageInstalled = false;
 
-        var syncResponse = await InstanceOnboardingService.SyncAuthorizationPolicyPackageAsync();
-        _isSyncing = false;
-
-        if (syncResponse.Success != true)
+        try
         {
-            _model.CerbosAdminPassword = null;
-            _policyPackageSynced = false;
-            _errorMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
-                ? "Authorization policy package sync failed."
-                : syncResponse.Message;
-
-            if (syncResponse.Errors?.Count > 0)
+            var syncResponse = await InstanceOnboardingService.SyncAuthorizationPolicyPackageAsync(CreateSyncRequest());
+            if (syncResponse.Success != true)
             {
-                _errorMessage += " " + string.Join(" ", syncResponse.Errors);
+                _policyPackageSynced = false;
+                _errorMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
+                    ? "Authorization policy package sync failed."
+                    : syncResponse.Message;
+
+                if (syncResponse.Errors?.Count > 0)
+                {
+                    _errorMessage += " " + string.Join(" ", syncResponse.Errors);
+                }
+
+                return;
             }
 
-            return;
+            _policyPackageSynced = true;
+            _successMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
+                ? "Policies synced. You can continue with Cerbos."
+                : syncResponse.Message;
         }
-
-        _model.CerbosAdminPassword = null;
-        _policyPackageSynced = true;
-        _successMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
-            ? "Policies synced. You can continue with Cerbos."
-            : syncResponse.Message;
+        catch (Exception ex)
+        {
+            Logger.LogWarning("Cerbos policy sync failed. FailureType={FailureType}", ex.GetType().Name);
+            _policyPackageSynced = false;
+            _errorMessage = "Authorization policy package sync failed.";
+        }
+        finally
+        {
+            ClearOneTimeCredentials();
+            _isSyncing = false;
+        }
     }
 
     private async Task PrimaryActionAsync()
@@ -645,7 +717,6 @@
                 return;
             }
 
-            _model.CerbosAdminPassword = null;
             _successMessage = response.Message;
 
             Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
@@ -669,7 +740,7 @@
 
         try
         {
-            var response = await InstanceOnboardingService.SyncAuthorizationPolicyPackageAsync();
+            var response = await InstanceOnboardingService.SyncAuthorizationPolicyPackageAsync(CreateSyncRequest());
             _model = await InstanceOnboardingService.GetAuthorizationProviderConfigurationAsync();
 
             if (response.Success == true && _model.AuthorizationProviderConfigured == true)
@@ -689,8 +760,24 @@
         }
         finally
         {
+            ClearOneTimeCredentials();
             _isSyncing = false;
         }
+    }
+
+    private AuthorizationPolicyPackageSyncRequestDto CreateSyncRequest() =>
+        HasCompleteOneTimeCredentials
+            ? new AuthorizationPolicyPackageSyncRequestDto
+            {
+                AdminUsername = _oneTimeAdminUsername!.Trim(),
+                AdminPassword = _oneTimeAdminPassword
+            }
+            : new();
+
+    private void ClearOneTimeCredentials()
+    {
+        _oneTimeAdminUsername = null;
+        _oneTimeAdminPassword = null;
     }
 
     private async Task CopyComposeCommandAsync()

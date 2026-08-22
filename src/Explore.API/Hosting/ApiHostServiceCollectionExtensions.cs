@@ -28,6 +28,7 @@ using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
 using Explore.Secrets.Extensions;
+using Explore.ServiceDefaults.Configuration;
 using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -102,7 +103,10 @@ public static class ApiHostServiceCollectionExtensions
             forwardedHeadersTrust.TrustLoopbackProxy = true;
         }
 
-        builder.Services.Configure<ForwardedHeadersOptions>(options => forwardedHeadersTrust.ApplyTo(options));
+        forwardedHeadersTrust.Validate();
+        builder.Services.Configure<ForwardedHeadersOptions>(options => forwardedHeadersTrust.ApplyTo(
+            options,
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost));
         builder.Services.AddResponseCompression(options =>
         {
             options.EnableForHttps = true;

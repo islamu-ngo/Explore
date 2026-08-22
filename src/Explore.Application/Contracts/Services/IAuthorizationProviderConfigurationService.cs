@@ -2,6 +2,7 @@
 // ABOUTME: Handles reading, applying, and verifying authorization provider settings (Cerbos or Local).
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Onboarding;
 
 namespace Explore.Application.Contracts.Services;
@@ -40,5 +41,6 @@ public interface IAuthorizationProviderConfigurationService
     /// Cerbos is ready only after PDP verification and policy publication both succeed.
     /// </summary>
     Task<AuthorizationProviderReconciliationResult> ReconcileDeploymentProviderAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null);
 }

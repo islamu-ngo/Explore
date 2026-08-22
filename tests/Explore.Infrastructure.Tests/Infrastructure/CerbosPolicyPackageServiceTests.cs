@@ -251,6 +251,30 @@ public class CerbosPolicyPackageServiceTests : IDisposable
     }
 
     [Test]
+    public async Task PublishInstanceAsync_WithOneTimeCredentials_OverridesMissingDeploymentCredentialsForOneRequest()
+    {
+        var policiesRoot = CreatePackageRoot();
+        await File.WriteAllTextAsync(Path.Combine(policiesRoot, "islamuevent_event.yaml"), CreatePolicyYaml("islamuevent_event"));
+        await File.WriteAllTextAsync(Path.Combine(policiesRoot, "_schemas", "islamuevent_event.json"), "{\"type\":\"object\"}");
+
+        var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var service = CreateService(
+            policiesRoot,
+            handler: handler,
+            adminUsername: string.Empty,
+            adminPassword: string.Empty);
+
+        var result = await service.PublishInstanceAsync(
+            CancellationToken.None,
+            new PolicyPackageAdminCredentials("one-time-admin", "one-time-password"));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        var credentials = Encoding.UTF8.GetString(
+            Convert.FromBase64String(handler.Requests[0].Authorization?.Parameter ?? string.Empty));
+        await Assert.That(credentials).IsEqualTo("one-time-admin:one-time-password");
+    }
+
+    [Test]
     public async Task PublishAsync_WithByoAdminEndpointMissingCredentials_FailsWithoutHttpRequest()
     {
         var policiesRoot = CreatePackageRoot();
@@ -647,7 +671,7 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         var status = await service.GetStatusAsync();
 
         await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.PackageStatusUnknown);
-        await Assert.That(string.Join(" ", status.Warnings)).Contains("revision-uncertain");
+        await Assert.That(string.Join(" ", status.Warnings)).Contains("explicit status operation");
     }
 
     private async Task<string> CreatePopulatedPackageRootAsync()
@@ -698,7 +722,9 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         int maxPoliciesPerRequest = 100,
         RecordingMessageHandler? handler = null,
         CerbosConfiguration? resolvedConfiguration = null,
-        ICerbosConfigResolver? configResolver = null)
+        ICerbosConfigResolver? configResolver = null,
+        string adminUsername = "admin",
+        string adminPassword = "secret")
     {
         var options = Options.Create(new CerbosPolicyPackageOptions
         {
@@ -710,8 +736,8 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         var adminOptions = Options.Create(new CerbosAdminApiSettings
         {
             Endpoints = ["https://cerbos.example"],
-            AdminUsername = "admin",
-            AdminPassword = "secret"
+            AdminUsername = adminUsername,
+            AdminPassword = adminPassword
         });
 
         handler ??= new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));

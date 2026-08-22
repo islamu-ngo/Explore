@@ -58,6 +58,38 @@
     background: var(--isl-color-surface);
 }
 
+.authz-page__credentials {
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.authz-page__credentials summary {
+    min-block-size: var(--isl-target-min);
+    padding: var(--isl-space-4);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.authz-page__credentials summary:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-space-1);
+}
+
+.authz-page__credentials-body,
+.authz-page__credentials-fields {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.authz-page__credentials-body {
+    padding: 0 var(--isl-space-4) var(--isl-space-4);
+}
+
+.authz-page__credentials-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .authz-page__advanced summary {
     min-block-size: var(--isl-target-min);
     padding: var(--isl-space-4);
@@ -112,6 +144,7 @@
     }
 
     .authz-page__endpoint-row,
+    .authz-page__credentials-fields,
     .authz-page__status-list > div {
         grid-template-columns: minmax(0, 1fr);
     }

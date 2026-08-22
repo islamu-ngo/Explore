@@ -525,22 +525,30 @@ public class InstanceOnboardingServiceTests
         // Arrange
         Uri? requestUri = null;
         HttpMethod? method = null;
+        string? requestBody = null;
         var commandResponse = new BaseCommandResponseOfGuid { Success = true, Message = "Synced" };
-        SetupBffClient(request =>
+        SetupBffClient(async request =>
         {
             requestUri = request.RequestUri;
             method = request.Method;
-            return Task.FromResult(CreateJsonResponse(commandResponse));
+            requestBody = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(commandResponse);
         });
 
         // Act
-        var result = await _service.SyncAuthorizationPolicyPackageAsync();
+        var result = await _service.SyncAuthorizationPolicyPackageAsync(new AuthorizationPolicyPackageSyncRequestDto
+        {
+            AdminUsername = "one-time-admin",
+            AdminPassword = "one-time-password"
+        });
 
         // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(requestUri).IsNotNull();
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/authz-provider-configuration/sync");
         await Assert.That(method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(requestBody).Contains("one-time-admin");
+        await Assert.That(requestBody).Contains("one-time-password");
     }
 
     [Test]

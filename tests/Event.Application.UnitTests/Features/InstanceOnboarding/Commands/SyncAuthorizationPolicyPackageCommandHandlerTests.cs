@@ -28,6 +28,15 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
     }
 
     [Test]
+    public async Task PolicyPackageAdminCredentials_ToStringDoesNotExposeValues()
+    {
+        var credentials = new PolicyPackageAdminCredentials("one-time-admin", "one-time-password");
+
+        await Assert.That(credentials.ToString()).DoesNotContain("one-time-admin");
+        await Assert.That(credentials.ToString()).DoesNotContain("one-time-password");
+    }
+
+    [Test]
     public async Task Handle_WithDeploymentManagedProvider_UsesServerReconciliation()
     {
         _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto
@@ -50,6 +59,43 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithDeploymentManagedProvider_PassesOneTimeCredentialsToReconciliation()
+    {
+        _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            AuthorizationProviderManagedByDeployment = true
+        });
+        _configurationService.ReconcileDeploymentProviderAsync(
+                Arg.Any<CancellationToken>(),
+                Arg.Any<PolicyPackageAdminCredentials>())
+            .Returns(new AuthorizationProviderReconciliationResult(
+                Attempted: true,
+                Succeeded: true,
+                EndpointVerified: true,
+                PoliciesSynchronized: true,
+                Message: "ready"));
+
+        var result = await _handler.Handle(
+            new SyncAuthorizationPolicyPackageCommand
+            {
+                Request = new AuthorizationPolicyPackageSyncRequestDto
+                {
+                    AdminUsername = "one-time-admin",
+                    AdminPassword = "one-time-password"
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _configurationService.Received(1).ReconcileDeploymentProviderAsync(
+            Arg.Any<CancellationToken>(),
+            Arg.Is<PolicyPackageAdminCredentials>(credentials =>
+                credentials.Username == "one-time-admin"
+                && credentials.Password == "one-time-password"));
+    }
+
+    [Test]
     public async Task Handle_WhenPublishSucceeds_ReturnsSuccess()
     {
         _policyPackageService.PublishAsync(Arg.Any<CancellationToken>())
@@ -65,6 +111,59 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).Contains("synced");
+    }
+
+    [Test]
+    public async Task Handle_WithOneTimeCredentials_PassesOnlyTheRequestScopedPairToPublisher()
+    {
+        _policyPackageService.PublishAsync(
+                Arg.Any<CancellationToken>(),
+                Arg.Any<PolicyPackageAdminCredentials>())
+            .Returns(new PolicyPackagePublishResult(
+                Succeeded: true,
+                PackageId: "islamuevent-authorization-policies",
+                ContentHash: "abc123",
+                Message: "Synced.",
+                PublishedAt: DateTimeOffset.UtcNow,
+                Warnings: []));
+
+        var result = await _handler.Handle(
+            new SyncAuthorizationPolicyPackageCommand
+            {
+                Request = new AuthorizationPolicyPackageSyncRequestDto
+                {
+                    AdminUsername = "  one-time-admin  ",
+                    AdminPassword = "one-time-password"
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _policyPackageService.Received(1).PublishAsync(
+            Arg.Any<CancellationToken>(),
+            Arg.Is<PolicyPackageAdminCredentials>(credentials =>
+                credentials.Username == "one-time-admin"
+                && credentials.Password == "one-time-password"));
+    }
+
+    [Test]
+    public async Task Handle_WithPartialOneTimeCredentials_RejectsWithoutPublishing()
+    {
+        var result = await _handler.Handle(
+            new SyncAuthorizationPolicyPackageCommand
+            {
+                Request = new AuthorizationPolicyPackageSyncRequestDto
+                {
+                    AdminUsername = "one-time-admin"
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(string.Join(' ', result.Errors)).Contains("both");
+        await _policyPackageService.DidNotReceive().PublishAsync(
+            Arg.Any<CancellationToken>(),
+            Arg.Any<PolicyPackageAdminCredentials>());
     }
 
     [Test]

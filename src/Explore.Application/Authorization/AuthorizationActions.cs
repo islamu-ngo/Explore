@@ -463,40 +463,4 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>
-    /// Actions that neither mutate state nor disclose sensitive personal data, listed exhaustively.
-    /// <para>
-    /// Membership is opt-in on purpose. An action nobody classified is treated as sensitive, so adding a
-    /// new action fails closed under revision uncertainty instead of silently joining the unguarded set.
-    /// </para>
-    /// <para>
-    /// <see cref="ViewSharedContacts"/> and <see cref="ExportSharedContacts"/> are reads and are still
-    /// excluded: they disclose registrant contact details released under consent, and disclosing those
-    /// from a policy set nobody can identify is the same class of harm as an unauthorized write.
-    /// </para>
-    /// </summary>
-    private static readonly HashSet<string> NonSensitiveReadActions = new(StringComparer.Ordinal)
-    {
-        View,
-        SyncDiff,
-        SupportAccessSessions.List,
-        SupportAccessSessions.ViewAudit,
-        StorageObjects.Download,
-        StorageObjects.PresignedDownload,
-        RegistrationForms.Preflight,
-        Organizations.ViewEvidence,
-        Events.ViewManagement,
-        Events.ViewOrganizerClaims,
-        Events.ViewRegistrationProviderHealth,
-        Webhooks.View,
-        Webhooks.ViewDelivery,
-        Webhooks.ViewPayload
-    };
-
-    /// <summary>
-    /// Whether an allow for <paramref name="action"/> is only safe when the deciding policy set is known.
-    /// Used to fail closed on revision uncertainty without taking read-only navigation down with it.
-    /// </summary>
-    public static bool RequiresKnownPolicyRevision(string action) =>
-        !NonSensitiveReadActions.Contains(action);
 }

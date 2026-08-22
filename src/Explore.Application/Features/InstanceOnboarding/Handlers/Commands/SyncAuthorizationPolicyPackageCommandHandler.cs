@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -14,21 +15,39 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public sealed class SyncAuthorizationPolicyPackageCommandHandler(
     IPolicyPackageService policyPackageService,
     IAuthorizationProviderConfigurationService configurationService,
-    ILogger<SyncAuthorizationPolicyPackageCommandHandler> logger,
-    IAuthorizationRevisionProvider? revisionProvider = null)
+    ILogger<SyncAuthorizationPolicyPackageCommandHandler> logger)
     : IRequestHandler<SyncAuthorizationPolicyPackageCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         SyncAuthorizationPolicyPackageCommand request,
         CancellationToken cancellationToken)
     {
+        var validation = await new AuthorizationPolicyPackageSyncRequestDtoValidator()
+            .ValidateAsync(request.Request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid Cerbos policy synchronization request.",
+                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
+            };
+        }
+
+        PolicyPackageAdminCredentials? oneTimeCredentials =
+            string.IsNullOrWhiteSpace(request.Request.AdminUsername)
+                ? null
+                : new(
+                    request.Request.AdminUsername.Trim(),
+                    request.Request.AdminPassword!);
+
         try
         {
             var configuration = await configurationService.ReadConfigurationAsync();
             if (configuration.AuthorizationProviderManagedByDeployment)
             {
                 var reconciliation = await configurationService
-                    .ReconcileDeploymentProviderAsync(cancellationToken);
+                    .ReconcileDeploymentProviderAsync(cancellationToken, oneTimeCredentials);
                 return new BaseCommandResponse<Guid>
                 {
                     Success = reconciliation.Succeeded,
@@ -37,12 +56,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
                 };
             }
 
-            var result = await policyPackageService.PublishAsync(cancellationToken);
-
-            // The store just changed, so any cached revision now describes the previous policy set.
-            // Invalidate on failure too: a partial publish also moves the store, and leaving a stale
-            // "certain" revision behind would let sensitive actions run against a half-published package.
-            revisionProvider?.Invalidate();
+            var result = await policyPackageService.PublishAsync(cancellationToken, oneTimeCredentials);
 
             if (result.Succeeded)
             {

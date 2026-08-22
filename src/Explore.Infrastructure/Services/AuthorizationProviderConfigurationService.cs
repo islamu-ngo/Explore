@@ -1,5 +1,5 @@
 // ABOUTME: Manages application-owned and deployment-selected instance authorization provider configuration.
-// ABOUTME: Reconciles explicit Cerbos intent by verifying its PDP before publishing to the instance Admin API.
+// ABOUTME: Reconciles Cerbos intent without persisting Admin API credentials supplied for one request.
 
 using System.Text.Json;
 using Explore.Application.Authorization;
@@ -60,8 +60,6 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var providerSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
         var grpcEndpointSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Cerbos.GrpcEndpoint);
         var adminEndpointSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint);
-        var adminUsernameSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername);
-        var adminPasswordSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword);
 
         // Preserve operator's raw bootstrap value end-to-end. Deployment values prefill setup/admin
         // screens, but application-managed saved settings take precedence after an explicit save.
@@ -81,11 +79,6 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var endpointDeploymentManaged = deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider
                                         || IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
                                         || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
-        var credentialsDeploymentManaged = deploymentProvider == AuthorizationProviderDeploymentOptions.CerbosProvider
-                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
-                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword)
-                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminUsername")
-                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminPassword");
 
         var grpcEndpoint = endpointDeploymentManaged
             ? rawEnvEndpoint
@@ -96,28 +89,17 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
             grpcEndpoint = rawEnvEndpoint;
         }
 
-        var storedAdminUsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminUsernameSetting?.Value, string.Empty));
-        var storedAdminPasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminPasswordSetting?.Value, string.Empty));
         var configuredAdminUsernameConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminUsername"]);
         var configuredAdminPasswordConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminPassword"]);
-        var adminCredentialsConfigured = credentialsDeploymentManaged
-            ? configuredAdminUsernameConfigured && configuredAdminPasswordConfigured
-            : (storedAdminUsernameConfigured || configuredAdminUsernameConfigured)
-              && (storedAdminPasswordConfigured || configuredAdminPasswordConfigured);
+        var adminCredentialsConfigured = configuredAdminUsernameConfigured && configuredAdminPasswordConfigured;
 
         return new AuthorizationProviderConfigurationDto
         {
             Provider = provider,
             CerbosGrpcEndpoint = grpcEndpoint,
             CerbosAdminEndpoint = DeserializeString(adminEndpointSetting?.Value, string.Empty),
-            CerbosAdminUsername = null,
-            CerbosAdminPassword = null,
-            CerbosAdminUsernameConfigured = credentialsDeploymentManaged
-                ? configuredAdminUsernameConfigured
-                : storedAdminUsernameConfigured || configuredAdminUsernameConfigured,
-            CerbosAdminPasswordConfigured = credentialsDeploymentManaged
-                ? configuredAdminPasswordConfigured
-                : storedAdminPasswordConfigured || configuredAdminPasswordConfigured,
+            CerbosAdminUsernameConfigured = configuredAdminUsernameConfigured,
+            CerbosAdminPasswordConfigured = configuredAdminPasswordConfigured,
             CerbosDetectedFromEnvironment = detectedFromEnv,
             CerbosEndpointVerified = bootstrap.EndpointVerified,
             CerbosPoliciesSynchronized = bootstrap.PoliciesSynchronized,
@@ -132,14 +114,11 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 applicationManagedDescription: "Saved Cerbos PDP endpoint settings take precedence after onboarding/admin save. Environment values are only bootstrap prefills unless deployment-managed mode is configured.",
                 deploymentManagedDescription: "Cerbos PDP endpoint is managed by deployment configuration. Change it in the environment, secret provider, or appsettings and restart."),
             CerbosAdminCredentialsOwnership = CreateOwnershipMetadata(
-                credentialsDeploymentManaged,
+                deploymentManaged: adminCredentialsConfigured,
                 configured: adminCredentialsConfigured,
-                bootstrapAvailable: !credentialsDeploymentManaged
-                    && !storedAdminUsernameConfigured
-                    && !storedAdminPasswordConfigured
-                    && (configuredAdminUsernameConfigured || configuredAdminPasswordConfigured),
-                applicationManagedDescription: "Cerbos Admin API credentials can be saved by the application for runtime policy sync. Server-side environment values only seed or unlock sync until application credentials are saved.",
-                deploymentManagedDescription: "Cerbos Admin API credentials are deployment-managed. The browser cannot edit them; rotate them in the configured secret provider and restart or refresh the deployment."),
+                bootstrapAvailable: false,
+                applicationManagedDescription: "No deployment credentials are configured. One-time credentials can be supplied for an explicit policy sync and are not saved.",
+                deploymentManagedDescription: "Cerbos Admin API credentials are provided by deployment configuration. One-time credentials can override them for a single explicit policy sync."),
         };
     }
 
@@ -166,10 +145,6 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var rawAdminEndpoint = configuration.CerbosAdminEndpoint?.Trim() ?? string.Empty;
         var endpointDeploymentManaged = IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
                                         || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
-        var credentialsDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
-                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword)
-                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminUsername")
-                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminPassword");
         Uri? normalizedAdminEndpoint = null;
 
         if (isCerbosProvider && !string.IsNullOrWhiteSpace(rawAdminEndpoint))
@@ -218,33 +193,6 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 "Cerbos Admin API endpoint for policy package publishing");
         }
 
-        if (!credentialsDeploymentManaged)
-        {
-            if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminUsername))
-            {
-                await UpsertSettingAsync(
-                    InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-                    JsonSerializer.Serialize(configuration.CerbosAdminUsername.Trim()),
-                    SettingValueType.String,
-                    true,
-                    "Security",
-                    4,
-                    "Cerbos Admin API username");
-            }
-
-            if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminPassword))
-            {
-                await UpsertSettingAsync(
-                    InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
-                    JsonSerializer.Serialize(configuration.CerbosAdminPassword),
-                    SettingValueType.String,
-                    true,
-                    "Security",
-                    5,
-                    "Cerbos Admin API password");
-            }
-        }
-
         _cerbosConfigResolver.InvalidateCache();
         _providerModeCacheInvalidator.InvalidateInstanceMode();
     }
@@ -267,7 +215,8 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     }
 
     public async Task<AuthorizationProviderReconciliationResult> ReconcileDeploymentProviderAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        PolicyPackageAdminCredentials? oneTimeCredentials = null)
     {
         var provider = _deploymentOptions.GetProvider();
         if (provider is null)
@@ -284,12 +233,13 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         }
 
         return await _bootstrapState.RunSingleFlightAsync(
-            token => ReconcileCerbosDeploymentProviderAsync(provider, token),
+            token => ReconcileCerbosDeploymentProviderAsync(provider, oneTimeCredentials, token),
             cancellationToken);
     }
 
     private async Task<AuthorizationProviderReconciliationResult> ReconcileCerbosDeploymentProviderAsync(
         string provider,
+        PolicyPackageAdminCredentials? oneTimeCredentials,
         CancellationToken cancellationToken)
     {
         var endpointVerified = false;
@@ -329,7 +279,9 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
             try
             {
-                var publishResult = await _policyPackageService.PublishInstanceAsync(cancellationToken);
+                var publishResult = await _policyPackageService.PublishInstanceAsync(
+                    cancellationToken,
+                    oneTimeCredentials);
                 if (!publishResult.Succeeded)
                 {
                     return MarkReconciliationFailed(

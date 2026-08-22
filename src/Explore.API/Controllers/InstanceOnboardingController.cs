@@ -312,9 +312,13 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(
+        [FromBody] AuthorizationPolicyPackageSyncRequestDto request,
+        CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
+        var response = await _mediator.Send(
+            new SyncAuthorizationPolicyPackageCommand { Request = request },
+            cancellationToken);
         if (!response.Success)
         {
             return this.ToCommandValidationProblem(response, AuthorizationPolicySyncValidationProblem);

@@ -155,18 +155,22 @@ public class RuntimeAuthorizationProviderTests
             Arg.Any<Metadata>());
     }
 
-    /// <summary>
-    /// An allow is only meaningful if you can say which policy produced it. When the revision is known it
-    /// travels with the decision, so an audit record answers "decided by what?" without a second lookup
-    /// that might observe a different store than the one that actually decided.
-    /// </summary>
     [Test]
-    public async Task AuthorizeBatchAsync_InCerbosMode_StampsDecisionsWithTheObservedRevision()
+    public async Task AuthorizeBatchAsync_InCerbosMode_ReturnsThePdpDecisionWithoutAdminApiRevisionLookup()
     {
-        var fixture = CreateCerbosFixtureWithRevision(
-            AuthorizationRevision.Observed("a1b2c3d4e5f60718", DateTimeOffset.UtcNow),
-            Effect.Allow,
-            AuthorizationActions.Update);
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var cerbosResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        cerbosResponse.Results.Add(CreateResultEntry(
+            ResourceId,
+            ResourceKinds.Event,
+            AuthorizationActions.Update,
+            Effect.Allow));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(new CheckResourcesResponse(cerbosResponse));
 
         var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
             [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, AuthorizationActions.Update)]);
@@ -174,154 +178,7 @@ public class RuntimeAuthorizationProviderTests
         await Assert.That(results[0].Outcome).IsEqualTo(AuthorizationDecisionOutcome.Allow);
         await Assert.That(results[0].Provider.ProviderId)
             .IsEqualTo(AuthorizationProviderMetadata.Cerbos.ProviderId);
-        await Assert.That(results[0].Provider.ObservedRevision).IsEqualTo("a1b2c3d4e5f60718");
-    }
-
-    /// <summary>
-    /// The Phase 3 fail-closed rule. The PDP allowed, but nobody can say which policy set it allowed
-    /// from — the store may hold an in-place edit, or may never have received the package. Letting the
-    /// write through would be an allow attributed to an unknown policy.
-    /// </summary>
-    [Test]
-    [Arguments(AuthorizationActions.Create)]
-    [Arguments(AuthorizationActions.Update)]
-    [Arguments(AuthorizationActions.Delete)]
-    [Arguments(AuthorizationActions.ViewSharedContacts)]
-    [Arguments(AuthorizationActions.ExportSharedContacts)]
-    public async Task AuthorizeBatchAsync_WhenRevisionIsUnknown_DeniesSensitiveActionsThePdpAllowed(
-        string action)
-    {
-        var fixture = CreateCerbosFixtureWithRevision(
-            AuthorizationRevision.Unknown(DateTimeOffset.UtcNow),
-            Effect.Allow,
-            action);
-
-        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
-            [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, action)]);
-
-        await Assert.That(results[0].Outcome).IsEqualTo(AuthorizationDecisionOutcome.Deny);
-        await Assert.That(results[0].ReasonCode)
-            .IsEqualTo(AuthorizationDecisionReasonCodes.RevisionUncertain);
-    }
-
-    /// <summary>
-    /// Reads survive an unknown revision on purpose. Denying navigation whenever the Admin API blinks
-    /// would turn a policy-store outage into a full product outage, which is a worse trade than the
-    /// bounded risk of serving a read from a policy set we cannot name.
-    /// </summary>
-    [Test]
-    [Arguments(AuthorizationActions.View)]
-    [Arguments(AuthorizationActions.SyncDiff)]
-    public async Task AuthorizeBatchAsync_WhenRevisionIsUnknown_StillAllowsNonSensitiveReads(string action)
-    {
-        var fixture = CreateCerbosFixtureWithRevision(
-            AuthorizationRevision.Unknown(DateTimeOffset.UtcNow),
-            Effect.Allow,
-            action);
-
-        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
-            [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, action)]);
-
-        await Assert.That(results[0].Outcome).IsEqualTo(AuthorizationDecisionOutcome.Allow);
-    }
-
-    /// <summary>
-    /// An action nobody classified must be treated as sensitive. Otherwise adding a capability silently
-    /// enrols it in the unguarded set, and the gate quietly stops covering new surface area.
-    /// <para>
-    /// Asserted against the classifier rather than through the provider because
-    /// <c>AuthorizationCapabilityCatalog.Require</c> rejects an uncatalogued action when the request is
-    /// constructed — a new action cannot reach a provider until it is registered there, and registering
-    /// it deliberately does not add it to the read set.
-    /// </para>
-    /// </summary>
-    [Test]
-    [Arguments("some-action-added-later")]
-    [Arguments(AuthorizationActions.Create)]
-    [Arguments(AuthorizationActions.SyncApply)]
-    [Arguments(AuthorizationActions.ViewSharedContacts)]
-    [Arguments(AuthorizationActions.ExportSharedContacts)]
-    public async Task RequiresKnownPolicyRevision_TreatsAnythingOutsideTheReadSetAsSensitive(string action)
-    {
-        await Assert.That(AuthorizationActions.RequiresKnownPolicyRevision(action)).IsTrue();
-    }
-
-    /// <summary>
-    /// The read set exists to keep navigation alive during a policy-store outage. If one of these ever
-    /// starts requiring a known revision, a Cerbos Admin API blip becomes a blank product.
-    /// </summary>
-    [Test]
-    [Arguments(AuthorizationActions.View)]
-    [Arguments(AuthorizationActions.SyncDiff)]
-    [Arguments(AuthorizationActions.StorageObjects.Download)]
-    [Arguments(AuthorizationActions.StorageObjects.PresignedDownload)]
-    [Arguments(AuthorizationActions.SupportAccessSessions.List)]
-    [Arguments(AuthorizationActions.SupportAccessSessions.ViewAudit)]
-    [Arguments(AuthorizationActions.Webhooks.View)]
-    public async Task RequiresKnownPolicyRevision_LeavesNonSensitiveReadsUngated(string action)
-    {
-        await Assert.That(AuthorizationActions.RequiresKnownPolicyRevision(action)).IsFalse();
-    }
-
-    /// <summary>
-    /// A denial is already the safe answer, so revision uncertainty must not rewrite its reason code.
-    /// An operator debugging a denial needs to see why the policy refused, not a gate that fired after.
-    /// </summary>
-    [Test]
-    public async Task AuthorizeBatchAsync_WhenRevisionIsUnknown_LeavesPdpDenialsUnchanged()
-    {
-        var fixture = CreateCerbosFixtureWithRevision(
-            AuthorizationRevision.Unknown(DateTimeOffset.UtcNow),
-            Effect.Deny,
-            AuthorizationActions.Update);
-
-        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
-            [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, AuthorizationActions.Update)]);
-
-        await Assert.That(results[0].Outcome).IsEqualTo(AuthorizationDecisionOutcome.Deny);
-        await Assert.That(results[0].ReasonCode).IsEqualTo(AuthorizationDecisionReasonCodes.Denied);
-    }
-
-    /// <summary>
-    /// The documented escape hatch for deployments whose policy store is managed entirely out of band,
-    /// where the application can never observe a revision and the gate would deny everything forever.
-    /// </summary>
-    [Test]
-    public async Task AuthorizeBatchAsync_WhenGateIsDisabled_AllowsSensitiveActionsDespiteUnknownRevision()
-    {
-        var fixture = CreateCerbosFixtureWithRevision(
-            AuthorizationRevision.Unknown(DateTimeOffset.UtcNow),
-            Effect.Allow,
-            AuthorizationActions.Update,
-            denySensitiveActionsOnUnknownRevision: false);
-
-        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
-            [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, AuthorizationActions.Update)]);
-
-        await Assert.That(results[0].Outcome).IsEqualTo(AuthorizationDecisionOutcome.Allow);
-    }
-
-    /// <summary>
-    /// Local mode must stay self-contained. Its policy ships compiled into the binary and cannot drift
-    /// from a Cerbos store it does not consult, so the gate must never reach for a revision there.
-    /// </summary>
-    [Test]
-    public async Task AuthorizeBatchAsync_InLocalMode_NeverConsultsTheRevisionProvider()
-    {
-        var revisionProvider = Substitute.For<IAuthorizationRevisionProvider>();
-        revisionProvider.GetCurrentAsync(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<AuthorizationRevision>(
-                AuthorizationRevision.Unknown(DateTimeOffset.UtcNow)));
-
-        var fixture = CreateRuntimeProviderFixture(revisionProvider: revisionProvider);
-        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
-        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
-            .Returns(CreateAuthorizationProviderSetting("local"));
-
-        await fixture.RuntimeProvider.AuthorizeBatchAsync(
-            [TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, AuthorizationActions.Update)]);
-
-        await revisionProvider.DidNotReceive().GetCurrentAsync(Arg.Any<CancellationToken>());
+        await Assert.That(results[0].Provider.ObservedRevision).IsNull();
     }
 
     /// <summary>
@@ -337,12 +194,7 @@ public class RuntimeAuthorizationProviderTests
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         using var metrics = new BusinessMetrics(meterFactory);
 
-        var revisionProvider = Substitute.For<IAuthorizationRevisionProvider>();
-        revisionProvider.GetCurrentAsync(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<AuthorizationRevision>(
-                AuthorizationRevision.Unknown(DateTimeOffset.UtcNow)));
-
-        var fixture = CreateRuntimeProviderFixture(revisionProvider: revisionProvider, metrics: metrics);
+        var fixture = CreateRuntimeProviderFixture(metrics: metrics);
         fixture.AdminContext.UserId.Returns(Guid.NewGuid());
         fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
             .Returns(CreateAuthorizationProviderSetting("cerbos"));
@@ -365,10 +217,9 @@ public class RuntimeAuthorizationProviderTests
         await Assert.That(counts.Select(count => count["action"]?.ToString()))
             .IsEquivalentTo(new[] { AuthorizationActions.View, AuthorizationActions.Update });
 
-        // The read was allowed; the write was gated by the unknown revision. Both are counted, and the
-        // reason code distinguishes them.
+        // Both decisions came from the PDP and are counted at the single runtime emission point.
         await Assert.That(counts.Single(count => Equals(count["action"], AuthorizationActions.Update))["reason_code"]?.ToString())
-            .IsEqualTo(AuthorizationDecisionReasonCodes.RevisionUncertain);
+            .IsEqualTo(AuthorizationDecisionReasonCodes.Allowed);
         await Assert.That(counts.Single(count => Equals(count["action"], AuthorizationActions.View))["outcome"]?.ToString())
             .IsEqualTo("allowed");
     }
@@ -431,32 +282,6 @@ public class RuntimeAuthorizationProviderTests
     }
 
     private const string ResourceId = "11111111-1111-1111-1111-111111111111";
-
-    private static RuntimeProviderFixture CreateCerbosFixtureWithRevision(
-        AuthorizationRevision revision,
-        Effect pdpEffect,
-        string action,
-        bool denySensitiveActionsOnUnknownRevision = true)
-    {
-        var revisionProvider = Substitute.For<IAuthorizationRevisionProvider>();
-        revisionProvider.GetCurrentAsync(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<AuthorizationRevision>(revision));
-
-        var fixture = CreateRuntimeProviderFixture(
-            revisionProvider: revisionProvider,
-            denySensitiveActionsOnUnknownRevision: denySensitiveActionsOnUnknownRevision);
-
-        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
-        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
-            .Returns(CreateAuthorizationProviderSetting("cerbos"));
-
-        var cerbosResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
-        cerbosResponse.Results.Add(CreateResultEntry(ResourceId, ResourceKinds.Event, action, pdpEffect));
-        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
-            .Returns(new CheckResourcesResponse(cerbosResponse));
-
-        return fixture;
-    }
 
     /// <summary>
     /// A batch that mixes a previously carved-out capability with an ordinary one must reach the PDP as a
@@ -1149,8 +974,6 @@ public class RuntimeAuthorizationProviderTests
 
     private static RuntimeProviderFixture CreateRuntimeProviderFixture(
         string? deploymentProvider = null,
-        IAuthorizationRevisionProvider? revisionProvider = null,
-        bool denySensitiveActionsOnUnknownRevision = true,
         BusinessMetrics? metrics = null)
     {
         var adminContext = Substitute.For<IAdminContext>();
@@ -1218,11 +1041,9 @@ public class RuntimeAuthorizationProviderTests
             runtimeLogger,
             Options.Create(new AuthorizationProviderDeploymentOptions
             {
-                Provider = deploymentProvider,
-                DenySensitiveActionsOnUnknownRevision = denySensitiveActionsOnUnknownRevision
+                Provider = deploymentProvider
             }),
             supportAccessSessionService,
-            revisionProvider,
             metrics);
 
         return new RuntimeProviderFixture(
