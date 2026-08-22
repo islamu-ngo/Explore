@@ -36,6 +36,21 @@ intents:
       - presentation-engineer-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: standard
+      required_model_tier: economical
+      verification_depth: standard
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: autonomous_defaults
+      exploration_protocol: local_surface_only
+      testing_strategy: behavioral_unit_integration
+      review_protocol: lightweight_self_check
+      safety_gates:
+        - "output_cache_policy_applied"
+        - "hal_self_link_present"
+      mandatory_reviewers:
+        - presentation-engineer-agent
 
   - id: add-write-endpoint
     title: "Add a new POST/PUT/PATCH/DELETE endpoint to the public API"
@@ -75,6 +90,23 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "authorize_attribute_enforced"
+        - "rate_limiting_policy_applied"
+        - "idempotency_considered"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - quality-verifier-agent
 
   - id: add-hal-link
     title: "Add or modify a HAL link/affordance on an existing resource"
@@ -106,6 +138,21 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: standard
+      required_model_tier: economical
+      verification_depth: standard
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: autonomous_defaults
+      exploration_protocol: local_surface_only
+      testing_strategy: affordance_render_only
+      review_protocol: lightweight_self_check
+      safety_gates:
+        - "gated_by_hal_presence_not_role_inspection"
+        - "separate_detail_and_collection_policies"
+      mandatory_reviewers:
+        - presentation-engineer-agent
 
   - id: add-cqrs-handler
     title: "Add a new Command or Query handler in the Application layer"
@@ -134,6 +181,22 @@ intents:
       - backend-engineer-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: domain_state
+      required_model_tier: balanced
+      verification_depth: extended
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: standard_qa
+      exploration_protocol: bounded_caller_callee
+      testing_strategy: behavioral_unit_integration
+      review_protocol: peer_review
+      safety_gates:
+        - "clean_architecture_isolation"
+        - "manual_validator_instantiation"
+      mandatory_reviewers:
+        - backend-engineer-agent
+        - quality-verifier-agent
 
   - id: add-ef-migration
     title: "Generate an Entity Framework Core migration from model changes"
@@ -169,6 +232,23 @@ intents:
       - platform-operations-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: expand_contract
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "never_hand_edit_migrations"
+        - "expand_contract_zero_downtime"
+        - "multi_provider_db_compatibility"
+      mandatory_reviewers:
+        - backend-engineer-agent
+        - quality-verifier-agent
 
   - id: update-repository-query
     title: "Modify an existing repository query or specification"
@@ -198,6 +278,21 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: domain_state
+      required_model_tier: balanced
+      verification_depth: extended
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: standard_qa
+      exploration_protocol: bounded_caller_callee
+      testing_strategy: behavioral_unit_integration
+      review_protocol: peer_review
+      safety_gates:
+        - "repositories_return_entities_only"
+        - "global_query_filters_preserved"
+      mandatory_reviewers:
+        - backend-engineer-agent
 
   - id: blazor-component-affordance
     title: "Toggle a Blazor component's mutation affordance"
@@ -225,6 +320,21 @@ intents:
       - presentation-engineer-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: standard
+      required_model_tier: economical
+      verification_depth: standard
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: autonomous_defaults
+      exploration_protocol: local_surface_only
+      testing_strategy: affordance_render_only
+      review_protocol: lightweight_self_check
+      safety_gates:
+        - "hal_affordance_gated"
+        - "blazor_isolated_from_domain"
+      mandatory_reviewers:
+        - presentation-engineer-agent
 
   - id: bff-auth-bug
     title: "Debug and fix a BFF authentication bug"
@@ -254,6 +364,22 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: cross_tenant_admin
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "fail_closed_auth"
+        - "cookie_session_integrity"
+        - "token_forwarding_sanitized"
+      mandatory_reviewers:
+        - security-privacy-agent
 
   - id: cerbos-policy-change
     title: "Change Cerbos authorization policies"
@@ -283,6 +409,21 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "fail_closed_authorization"
+        - "resource_descriptor_parity"
+      mandatory_reviewers:
+        - security-privacy-agent
 
   - id: openapi-contract-change
     title: "Change the public API contract"
@@ -313,6 +454,21 @@ intents:
       - librarian-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: standard
+      required_model_tier: balanced
+      verification_depth: extended
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: standard_qa
+      exploration_protocol: bounded_caller_callee
+      testing_strategy: behavioral_unit_integration
+      review_protocol: peer_review
+      safety_gates:
+        - "nswag_client_regenerated"
+        - "backward_compatibility_preserved"
+      mandatory_reviewers:
+        - presentation-engineer-agent
 
   - id: ci-cd-change
     title: "Change CI/CD workflows, deployment automation, or release governance"
@@ -397,6 +553,21 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: domain_state
+      required_model_tier: balanced
+      verification_depth: extended
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: standard_qa
+      exploration_protocol: bounded_caller_callee
+      testing_strategy: behavioral_unit_integration
+      review_protocol: peer_review
+      safety_gates:
+        - "release_policy_preservation"
+        - "clean_room_tool_bootstrap"
+      mandatory_reviewers:
+        - platform-operations-agent
 
   - id: external-infrastructure-bootstrap
     title: "Automate external infrastructure bootstrap or onboarding"
@@ -479,6 +650,22 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "offline_air_gapped_fallback"
+        - "zero_plain_credentials_logged"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - platform-operations-agent
 
   - id: schedule-background-work
     title: "Add or change recurring background work (Quartz job or hosted service)"
@@ -555,6 +742,21 @@ intents:
       - platform-operations-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: domain_state
+      required_model_tier: balanced
+      verification_depth: extended
+      tenancy_scope: tenant_isolated
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: standard_qa
+      exploration_protocol: bounded_caller_callee
+      testing_strategy: behavioral_unit_integration
+      review_protocol: peer_review
+      safety_gates:
+        - "quartz_job_bounded_sweep"
+        - "outbox_drain_idempotency"
+      mandatory_reviewers:
+        - backend-engineer-agent
 
   - id: ip-clean-room-governance
     title: "Establish or apply IP clean-room and outbound-license governance"
@@ -624,6 +826,21 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "outbound_licensing_protection"
+        - "clean_room_provenance_recorded"
+      mandatory_reviewers:
+        - security-privacy-agent
 
   - id: create-agent-context-skill
     title: "Create or update an agent-context skill"
@@ -672,6 +889,21 @@ intents:
       - librarian-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: standard
+      required_model_tier: economical
+      verification_depth: standard
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: autonomous_defaults
+      exploration_protocol: local_surface_only
+      testing_strategy: behavioral_unit_integration
+      review_protocol: lightweight_self_check
+      safety_gates:
+        - "skill_schema_conformity"
+        - "context_budget_preserved"
+      mandatory_reviewers:
+        - librarian-agent
 
   - id: update-ai-context-disclosure
     title: "Update or extend the AI Context Disclosure Policy"
@@ -745,6 +977,22 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: privacy
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: atomic_revert
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "eu_ai_act_article_50_transparency"
+        - "zero_pii_in_disclosure_payloads"
+        - "transactional_outbox_pairing"
+      mandatory_reviewers:
+        - security-privacy-agent
 
   - id: registration-data-collection
     title: "Implement registration data collection, participation, ticketing, and provider channels"
@@ -1061,6 +1309,25 @@ intents:
       - "Allowing Stripe SDK types outside Infrastructure, using preview or undocumented Stripe APIs, or introducing a speculative payment-provider factory before a second provider is approved"
       - "Copying code, SQL, migrations, snippets, or assets from Hi.Events; only the approved clean-room behavior report may be used"
       - "Deleting or rewriting migration history, hand-editing generated EF designer/snapshot files, or bypassing the migration-baseline ordering decision"
+    criticality:
+      tier: sovereign
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: tenant_isolated
+      rollback_strategy: expand_contract
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "zero_cardholder_data_pci_dss"
+        - "idempotent_webhook_and_checkout_dispatch"
+        - "integer_minor_unit_checked_arithmetic"
+        - "transactional_outbox_pairing"
+        - "zero_raw_provider_payloads_in_logs"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - quality-verifier-agent
     related_agents:
       - architect-agent
       - backend-engineer-agent
@@ -1114,8 +1381,12 @@ intents:
       - docs/OPERATIONS.md
       - docs/TESTING.md
       - docs/legal/IP_GOVERNANCE.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - docs/adr/ADR-020-inbound-webhook-intake-and-event-sourcing.md
+      - docs/adr/ADR-021-durable-outbound-webhook-delivery.md
+      - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
+      - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
       - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
       - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
     load_skills:
       - clean-architecture-rules
@@ -1139,52 +1410,70 @@ intents:
       - .agents/rules/tests.md
       - .agents/rules/ip-clean-room.md
     paths_in_scope:
-      - "src/Explore.Domain/*Webhook*.cs"
+      - ".agents/contract/intents.yaml"
+      - "Directory.Packages.props"
       - "src/Explore.Domain/**/*Webhook*.cs"
-      - "src/Explore.Domain/Constants/GovernanceSettingKeys.cs"
-      - "src/Explore.Domain/Settings/SettingRegistry.cs"
+      - "src/Explore.Domain/IncomingWebhookMessage.cs"
+      - "src/Explore.Domain/IncomingWebhookDeliveryAttempt.cs"
+      - "src/Explore.Domain/OutboundWebhookSubscription.cs"
+      - "src/Explore.Domain/OutboundWebhookEvent.cs"
+      - "src/Explore.Domain/OutboundWebhookDeliveryAttempt.cs"
+      - "src/Explore.Domain/OutboundWebhookDeadLetter.cs"
+      - "src/Explore.Domain/OutboundWebhookSubscriptionCustomHeader.cs"
+      - "src/Explore.Domain/OutboxMessage.cs"
+      - "src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs"
       - "src/Explore.Application/**/*Webhook*.cs"
-      - "src/Explore.Application/**/Webhooks/**/*.cs"
-      - "src/Explore.Application/Authorization/AuthorizationActions.cs"
-      - "src/Explore.Application/Authorization/MachineScopeMapping.cs"
-      - "src/Explore.Application/Authorization/ResourceDescriptors.cs"
-      - "src/Explore.Application/Hateoas/LinkRelations.cs"
-      - "src/Explore.Application/Telemetry/BusinessMetrics.cs"
+      - "src/Explore.Application/Contracts/Payments/**/*.cs"
       - "src/Explore.Application/ApplicationServicesRegistration.cs"
       - "src/Explore.Persistence/**/*Webhook*.cs"
-      - "src/Explore.Persistence/ExploreDbContext.DbSets.cs"
-      - "src/Explore.Persistence/ExploreDbContext.QueryFilters.cs"
-      - "src/Explore.Persistence/ExploreDbContext.SaveChanges.cs"
-      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
       - "src/Explore.Persistence/Migrations/**/*.cs"
       - "src/Explore.Infrastructure/**/*Webhook*.cs"
+      - "src/Explore.Infrastructure/**/*Svix*.cs"
       - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
-      - "src/Explore.API/Controllers/*Webhook*.cs"
-      - "src/Explore.API/Services/*Webhook*.cs"
-      - "src/Explore.API/BackgroundServices/*Webhook*.cs"
+      - "src/Explore.API/Controllers/**/*Webhook*.cs"
       - "src/Explore.API/Hateoas/**/*Webhook*.cs"
       - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.API/Scheduling/*Webhook*.cs"
+      - "src/Explore.API/Scheduling/QuartzSchedulerKeys.cs"
+      - "src/Explore.API/Extensions/QuartzSchedulerExtensions.cs"
+      - "src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs"
+      - "src/Explore.API/Services/IncomingWebhookIntakeService.cs"
       - "src/Explore.API/Program.cs"
+      - "src/Explore.API/appsettings.json"
       - "src/Explore.Blazor/**/*Webhook*.cs"
+      - "src/Explore.Blazor/Extensions/BffEndpointExtensions.cs"
       - "src/Explore.Blazor/Program.cs"
+      - "src/Explore.Blazor/appsettings.json"
       - "src/Explore.Blazor.Client/**/*Webhook*"
-      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.cs"
       - "src/Explore.AppHost/AppHost.cs"
-      - "src/Explore.AppHost/Properties/launchSettings.json"
-      - "cerbos/policies/islamuevent_webhook.yaml"
+      - "src/Event.Standalone/appsettings.json"
       - "tests/**/*Webhook*.cs"
-      - "tests/**/Webhooks/**/*.cs"
       - "schemas/openapi_islamu-event.json"
       - "schemas/islamu-event.md"
+      - ".env.example"
+      - "docker-compose.yml"
+      - "docs/adr/ADR-020-inbound-webhook-intake-and-event-sourcing.md"
+      - "docs/adr/ADR-021-durable-outbound-webhook-delivery.md"
+      - "docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
+      - "islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md"
       - "docs/API.md"
       - "docs/API_CHANGELOG.md"
+      - "docs/API_CONTRACT_INVENTORY.md"
+      - "docs/AUTHORIZATION.md"
       - "docs/BLAZOR.md"
-      - "docs/WEBHOOKS.md"
-      - "docs/OPERATIONS.md"
       - "docs/CONFIGURATION.md"
+      - "docs/DOMAIN.md"
+      - "docs/INTEGRATIONS.md"
+      - "docs/OPERATIONS.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SECRETS.md"
       - "docs/SELF_HOSTING.md"
       - "docs/BACKUP_RESTORE_UPGRADE.md"
       - "docs/TROUBLESHOOTING.md"
+      - "docs/WEBHOOKS.md"
       - "dev/active/webhook-delivery-redesign/**"
     paths_forbidden:
       - ".claude/settings*.json"
@@ -1205,14 +1494,16 @@ intents:
       - Explore.Blazor.Client.Tests
       - Explore.Secrets.UnitTests
     docs_to_update:
+      - docs/DOMAIN.md
       - docs/API.md
       - docs/API_CHANGELOG.md
-      - docs/BLAZOR.md
       - docs/WEBHOOKS.md
-      - docs/OPERATIONS.md
+      - docs/INTEGRATIONS.md
       - docs/CONFIGURATION.md
+      - docs/SECRETS.md
       - docs/SELF_HOSTING.md
       - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/OPERATIONS.md
       - docs/TROUBLESHOOTING.md
       - schemas/islamu-event.md
       - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
@@ -1251,6 +1542,23 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: sovereign
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: tenant_isolated
+      rollback_strategy: expand_contract
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "transactional_outbox_pairing"
+        - "durable_idempotent_drain"
+        - "monotonic_delivery_states"
+      mandatory_reviewers:
+        - backend-engineer-agent
+        - security-privacy-agent
     related_intents:
       - add-write-endpoint
       - add-hal-link
@@ -1370,6 +1678,24 @@ intents:
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
+    criticality:
+      tier: privacy
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: cross_tenant_admin
+      rollback_strategy: atomic_revert
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "authority_first_committed_fact"
+        - "anti_resurrection_user_fencing"
+        - "zero_pii_in_logs_metrics_problem_details"
+        - "atomic_local_pii_purge_transaction"
+        - "transactional_outbox_pairing"
+      mandatory_reviewers:
+        - security-privacy-agent
     related_intents:
       - add-ef-migration
       - update-repository-query

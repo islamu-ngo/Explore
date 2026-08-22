@@ -40,11 +40,16 @@ Every change must answer these eight questions **before editing any file**:
 
 ## 3. Cold-Start Flow (Zero-Knowledge Agent)
 
-1. **CLASSIFY**: Find matching intent in [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml).
-2. **LOAD**: Read `must_read_docs` and matching [`.agents/rules/*.md`](.agents/rules/).
-3. **EDIT**: Work within `paths_in_scope`. Follow Clean Architecture: Domain → App → Infra → API.
-4. **VERIFY**: Run minimum tests. Build and architecture tests must pass.
-5. **ESCALATE**: If any rule conflicts with the request, stop and ask the user.
+1. **CLASSIFY**: Find matching intent in [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) and resolve its `criticality` block (`tier`, `intake_clarification_mode`, `exploration_protocol`, `testing_strategy`, `review_protocol`).
+2. **DYNAMIC ALIGNMENT & INTAKE**:
+   - **Tiers 0, 1, 2 (Sovereign / Security / Privacy)**: Mandate proactive `/grill-me` alignment on edge cases, threat models, and failure recovery before editing. Conduct exhaustive knowledge-graph blast-radius exploration. Author failing *Invariant-Breaker* tests first.
+   - **Tier 3 (Domain State)**: Perform bounded caller/callee tracing and standard clarification if requirements are ambiguous.
+   - **Tier 4 (Standard UI / Docs)**: Proceed autonomously with economical context budgets, applying established conventions with minimal friction.
+3. **LOAD**: Read `must_read_docs` and matching [`.agents/rules/*.md`](.agents/rules/).
+4. **EDIT**: Work within `paths_in_scope`. Follow Clean Architecture: Domain → App → Infra → API.
+5. **VERIFY & REVIEW**: Run minimum tests. For Tiers 0–2, verify real concurrency/multi-provider engine behavior, run Stryker mutation tests (>85%), and conduct Epistemic Multi-Agent Debate (MAD) review.
+6. **TEACH**: Provide a comprehensive technical teaching summary explaining architectural patterns, state transitions, and rollback mechanisms.
+7. **ESCALATE**: If any rule conflicts with the request, stop and ask the user.
 
 ---
 

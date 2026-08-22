@@ -45,17 +45,20 @@ Review changes like an owner and find defects that materially affect behavior, s
 - Architecture/refactor blast radius: [refactor-safely](../skills/refactor-safely/SKILL.md).
 - Security-sensitive diff: [auth-patterns](../skills/auth-patterns/SKILL.md) and relevant security docs.
 - External influence or dependency: [ip-clean-room](../skills/ip-clean-room/SKILL.md).
+- Criticality verification & guardrails: [criticality-guardrail](../skills/criticality-guardrail/SKILL.md).
+- Epistemic Multi-Agent Debate review: [epistemic-mad-review](../skills/epistemic-mad-review/SKILL.md).
 - Over-engineering review: apply repository YAGNI/KISS governance and identify removable complexity; do not invent replacement abstractions.
 
 ## Operating Workflow
 
-1. Determine the comparison base, enumerate all changed files, preserve unrelated user changes, and classify every affected intent.
+1. Determine the comparison base, enumerate all changed files, preserve unrelated user changes, and classify every affected intent. Check the intent's `criticality` requirements and mandatory reviewers.
 2. Run graph change detection, affected flows, impact radius, and tests-for queries before reading focused diffs and complete changed functions.
 3. Reconstruct intended behavior from request, tests, docs, and contracts; do not infer intent solely from the implementation.
-4. Review highest-risk paths first: security/tenancy/privacy, data loss/migrations, transaction/idempotency/concurrency, public contracts, operations, then maintainability.
-5. Verify each possible finding with a concrete failure path, caller, test gap, command, or source line. Discard speculative style preferences.
-6. Check matched intent scope, forbidden moves, generated artifacts, docs, tests, and evidence. Use Quality Verifier for expensive or runtime checks when needed.
-7. Return findings ordered by severity with file/line anchors, impact, reproduction, and minimum fix; then give a merge verdict.
+4. **Response Anonymization**: In multi-agent reviews, evaluate peer agent findings without model or author attribution to prevent consensus anchoring and sycophantic agreement.
+5. Review highest-risk paths first: security/tenancy/privacy, data loss/migrations, transaction/idempotency/concurrency, public contracts, operations, then maintainability.
+6. Verify each possible finding with a concrete failure path, caller, test gap, command, or source line. Discard speculative style preferences.
+7. Check matched intent scope, forbidden moves, generated artifacts, docs, tests, and evidence. Use Quality Verifier for expensive or runtime checks when needed.
+8. Return findings ordered by severity with file/line anchors, impact, reproduction, and minimum fix; then give a merge verdict based on weighted expert consensus.
 
 Stop when every material changed flow has been assessed, each reported issue is evidence-backed, and the merge verdict follows from unresolved risk.
 

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
+  "stryker-config": {
+    "solution": "Explore.slnx",
+    "test-runner": "dotnet",
+    "thresholds": {
+      "high": 85,
+      "low": 70,
+      "break": 60
+    },
+    "reporters": [
+      "progress",
+      "html",
+      "json"
+    ],
+    "mutate": [
+      "src/Explore.Domain/**/*.cs",
+      "src/Explore.Application/**/*.cs",
+      "!src/**/Migrations/**",
+      "!src/**/bin/**",
+      "!src/**/obj/**",
+      "!src/**/*.Designer.cs",
+      "!src/**/*ModelSnapshot.cs"
+    ],
+    "ignore-mutations": [
+      "string.IsNullOrEmpty",
+      "string.IsNullOrWhiteSpace"
+    ],
+    "coverage-analysis": "perTest",
+    "disable-bail": false,
+    "concurrency": 4
+  }
+}

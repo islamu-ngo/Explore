@@ -46,16 +46,20 @@ Prove what works, what fails, and why using reproducible evidence. Keep verifica
 - Aspire resource startup/logs/traces: [aspire](../skills/aspire/SKILL.md).
 - MCP server verification: [mcp-csharp-debug](../skills/mcp-csharp-debug/SKILL.md) and [mcp-csharp-test](../skills/mcp-csharp-test/SKILL.md).
 - Observability evidence: [error-tracking](../skills/error-tracking/SKILL.md).
+- Criticality verification & guardrails: [criticality-guardrail](../skills/criticality-guardrail/SKILL.md).
+- Multi-agent verification review: [epistemic-mad-review](../skills/epistemic-mad-review/SKILL.md).
 
 ## Operating Workflow
 
-1. Identify the requested behavior, changed files, matched intents, claimed verification, and exact observable stop condition.
+1. Identify the requested behavior, changed files, matched intents, claimed verification, and exact observable stop condition. Check the intent's `criticality.verification_depth`.
 2. Use change/impact graph evidence to select the smallest meaningful checks; read the relevant test and production path before running commands.
-3. Reproduce the failure or baseline with one deterministic command and capture exit code, failing test, assertion, logs, and environment assumptions.
-4. Classify failure as product regression, test defect, generated drift, environment/dependency issue, flake, or unrelated pre-existing failure.
-5. For runtime surfaces, start only required resources, wait for health, execute the real scenario, and collect redacted logs/traces/network/visual evidence.
-6. After the owner changes inputs, rerun only invalidated checks; finish with the intent-required Release build and targeted tests.
-7. Return evidence and a root-cause handoff. Do not patch the failure.
+3. For Tier 0–2 tasks, verify that Invariant-Breaker adversarial tests exist and execute as part of the test suite.
+4. Execute static and dynamic AST log sanitization checks to confirm no sensitive PII fields (`email`, `token`, `secret`, `billing`) are emitted unmasked to log sinks.
+5. Reproduce the failure or baseline with one deterministic command and capture exit code, failing test, assertion, logs, and environment assumptions.
+6. Verify mutation test coverage against Stryker thresholds (>85% Domain/Application, >60% Infrastructure) when verifying high-criticality features.
+7. For runtime surfaces, start only required resources, wait for health, execute the real scenario, and collect redacted logs/traces/network/visual evidence.
+8. After the owner changes inputs, rerun only invalidated checks; finish with the intent-required Release build and targeted tests.
+9. Return evidence and a root-cause handoff. Do not patch the failure.
 
 Stop when the requested outcome is empirically proven or a minimal reproducible blocker is isolated with an owning handoff.
 

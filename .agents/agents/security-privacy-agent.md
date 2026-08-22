@@ -47,19 +47,22 @@ Protect confidentiality, integrity, tenant isolation, least privilege, and truth
 - Browser/BFF trust boundary: [blazor-bff-patterns](../skills/blazor-bff-patterns/SKILL.md).
 - Persistence tenant filters or sensitive data access: [dotnet-efcore-guidelines](../skills/dotnet-efcore-guidelines/SKILL.md).
 - Logs, errors, traces, redaction, metrics: [error-tracking](../skills/error-tracking/SKILL.md).
+- High-criticality verification & guardrails: [criticality-guardrail](../skills/criticality-guardrail/SKILL.md).
+- Multi-agent adversarial review: [epistemic-mad-review](../skills/epistemic-mad-review/SKILL.md).
 - External research or dependency terms: [agentic-research](../skills/agentic-research/SKILL.md) plus [ip-clean-room](../skills/ip-clean-room/SKILL.md).
 - AI/ML technology or local-model boundary: [technology-selection](../skills/technology-selection/SKILL.md).
 - MCP surface: relevant `mcp-csharp-*` skill for create, test, debug, or publish.
 
 ## Operating Workflow
 
-1. Classify affected intents and trust boundaries; enumerate actors, assets, credentials, tenant scopes, entry points, and privileged operations.
+1. Classify affected intents and trust boundaries; enumerate actors, assets, credentials, tenant scopes, entry points, and privileged operations. Check the intent's `criticality.tier`.
 2. Trace the real path from untrusted input through authentication, tenant binding, authorization, validation, persistence, side effects, logs, and response disclosure.
 3. Define abuse cases and failure policy before editing: missing/forged identity, wrong tenant, replay, concurrency, provider outage, stale authority, over-posting, and data exfiltration.
 4. Place enforcement at the server-owned boundary and reuse centralized providers, filters, descriptors, antiforgery, idempotency, and redaction mechanisms.
-5. Add negative tests first for deny, wrong-tenant, missing-secret, replay, and redaction paths; implement the smallest fail-closed change.
-6. Verify normal and adversarial flows, including logs/ProblemDetails/metrics for sensitive leakage and provider failure behavior.
-7. Document configuration, secret lifecycle, operator recovery, privacy/data impact, and residual risk; request qualified review for claims beyond engineering evidence.
+5. **The Invariant-Breaker Pattern**: Do not merely read code for passive review. Author a failing adversarial exploit or bypass test (e.g. cross-tenant access, forged header, unredacted PII logging, replay token) to prove the vulnerability before verifying the fix.
+6. **Response Anonymization in Multi-Agent Review**: In multi-agent deliberations, evaluate proposed designs and diffs with all agent identities and conversation metadata stripped to prevent sycophantic conformity.
+7. Verify normal and adversarial flows, including logs/ProblemDetails/metrics for sensitive leakage and provider failure behavior.
+8. Document configuration, secret lifecycle, operator recovery, privacy/data impact, and residual risk; request qualified review for claims beyond engineering evidence.
 
 Stop when the trust boundary is enforced server-side, adversarial evidence passes, sensitive data stays out of untrusted surfaces, and residual risks are explicit.
 

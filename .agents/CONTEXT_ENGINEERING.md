@@ -46,6 +46,18 @@ The main agent retains goals, constraints, decisions, and synthesis. Economical 
 
 Do not delegate an atomic lookup: each subagent pays its own bootstrap cost. Delegate only when the scout keeps a larger body of discovery out of the main context or when independent lanes can run in parallel.
 
+## Dynamic Exploration Budget & Criticality Matrix
+
+Context budgets dynamically adapt based on the task's criticality tier resolved from [`.agents/contract/intents.yaml`](contract/intents.yaml):
+
+| Criticality Tier | Exploration Protocol | Intake & Inquiry Mode | Test Strategy | Multi-Agent Review |
+|---|---|---|---|---|
+| **Tier 0: Sovereign** | Exhaustive Knowledge Graph (callers, callees, outbox, DB locks, ADRs) | Mandatory `/grill-me` (money flows, hold expiration, refund authority) | Invariant-Breaker concurrency tests + Postgres + Stryker (>85%) | Anonymized Epistemic MAD (Weighted Voting) |
+| **Tier 1: Security** | Exhaustive Graph + Policy (Cerbos, BFF, global filters, tokens) | Mandatory `/grill-me` (threat modeling, fail-closed auth, tenant spoofing) | Invariant-Breakers + multi-provider DB tests + Stryker (>85%) | Anonymized Epistemic MAD (Weighted Voting) |
+| **Tier 2: Privacy** | Exhaustive Data Flow (all `*Pii` fields, `IAiContextGateway`, log sinks) | Mandatory `/grill-me` (erasure authority, anti-resurrection, receipt tokens) | Invariant-Breakers + log sink PII scans + purge tests | Anonymized Epistemic MAD (Weighted Voting) |
+| **Tier 3: Domain State** | Bounded caller/callee tracing of target aggregate/handler | Standard Q&A (only if requirements are ambiguous) | Behavioral CQRS unit and integration tests | Peer Review (`backend-engineer-agent`) |
+| **Tier 4: Standard** | Local surface reading (target razor/css/doc file only) | Autonomous defaults (zero unnecessary interruptions) | Affordance & component render tests | Lightweight Self-Check (`presentation-engineer-agent`) |
+
 ## Research Boundary
 
 Repository research stays local first. Official documentation or external research is loaded only for a named unresolved framework, protocol, dependency, standard, or advisory question. Search results are summarized into repository-relevant facts and source handles; raw external content never enters implementation context.
