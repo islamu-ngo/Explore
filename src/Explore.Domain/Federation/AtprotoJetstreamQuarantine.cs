@@ -7,6 +7,8 @@ public sealed class AtprotoJetstreamQuarantine
 {
     public Guid Id { get; set; }
     public Guid ConsumerStateId { get; set; }
+
+    /// <summary>Jetstream v2 <c>seq</c> of the rejected envelope. See <see cref="AtprotoJetstreamConsumerState.Cursor"/>.</summary>
     public long Cursor { get; set; }
     public required string ReasonCode { get; set; }
     public required string EnvelopeHash { get; set; }

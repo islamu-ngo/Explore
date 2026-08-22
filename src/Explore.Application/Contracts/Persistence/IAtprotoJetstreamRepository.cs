@@ -21,6 +21,16 @@ public sealed record AtprotoEventProjectionInvalidation(
     string RecordKey,
     long SourceVersion);
 
+/// <summary>
+/// An upstream account was deactivated or deleted, so every inbound record federated from that repository
+/// must stop being presented. AT Protocol treats this as the network's purge signal; ignoring it leaves
+/// content visible for an account that no longer exists.
+/// </summary>
+public sealed record AtprotoAccountPurge(
+    string Did,
+    long SourceVersion,
+    string? Status);
+
 public sealed record AtprotoJetstreamApplyRequest(
     AtprotoJetstreamClaim Claim,
     long ExpectedCursor,
@@ -34,6 +44,12 @@ public sealed record AtprotoJetstreamApplyRequest(
     AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null)
 {
     public IReadOnlyList<AtprotoFederatedEventImportPlan> EventImports { get; init; } = [];
+
+    /// <summary>
+    /// Set instead of <see cref="Record"/> or <see cref="Quarantine"/>. Exactly one of the three carries
+    /// the envelope's effect; persistence rejects a request that supplies none or more than one.
+    /// </summary>
+    public AtprotoAccountPurge? AccountPurge { get; init; }
 }
 
 public sealed record AtprotoPersistenceApplyResult(

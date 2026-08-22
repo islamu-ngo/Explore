@@ -23,6 +23,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     private static readonly DateTime SnapshotStartedAt = new(2026, 7, 21, 10, 0, 0, DateTimeKind.Utc);
     private const string Did = "did:plc:recovery-owner";
     private const string SecondDid = "did:plc:second-owner";
+    private const long Cursor = 42;
     private const string ThumbnailCid = "bafkreibm6jg3ux5quca3po4nukm4m6xkfxzq4bgxjucfd4g6yuk3z7q7di";
 
     [Test]
@@ -191,6 +192,91 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
                 && request.Snapshots[0].PresentIdentities.Count == 1
                 && request.Snapshots[0].Items.Count == 1
                 && request.PresentationTenantIds.SequenceEqual(new[] { fixture.TenantId })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_ConclusiveArchiveProbeWithNoChanges_SkipsAllPdsIo()
+    {
+        var fixture = new Fixture();
+        fixture.ArchiveProbe
+            .ResolveChangedDidsAsync(Arg.Any<long>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoArchiveChangeScope.NoChanges);
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command([SecondDid, Did]),
+            CancellationToken.None);
+
+        // The whole point: a restart with no sealed calendar activity must not re-fetch or re-verify.
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Unchanged);
+        await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_ConclusiveArchiveProbe_NarrowsFetchAndAbsenceScopeToChangedDids()
+    {
+        var fixture = new Fixture();
+        fixture.ArchiveProbe
+            .ResolveChangedDidsAsync(Arg.Any<long>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoArchiveChangeScope(true, [Did]));
+        fixture.Gateway.FetchAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(call => CompleteSnapshot(call.ArgAt<string>(0), includeAcceptedItem: true));
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command([SecondDid, Did]),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
+        await Assert.That(result.AppliedDids).IsEqualTo(1);
+        await fixture.Gateway.Received(1).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
+        await fixture.Gateway.DidNotReceive().FetchAsync(SecondDid, Arg.Any<long>(), Arg.Any<CancellationToken>());
+        // ScannedDids must exclude the unfetched DID, otherwise persistence would treat its records as absent.
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
+            Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
+                request.ScannedDids.SequenceEqual(new[] { Did })
+                && request.Snapshots.Count == request.ScannedDids.Count),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_InconclusiveArchiveProbe_KeepsFullConfiguredScope()
+    {
+        var fixture = new Fixture();
+        fixture.ArchiveProbe
+            .ResolveChangedDidsAsync(Arg.Any<long>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoArchiveChangeScope.Inconclusive);
+        fixture.Gateway.FetchAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(call => CompleteSnapshot(call.ArgAt<string>(0), includeAcceptedItem: call.ArgAt<string>(0) == Did));
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command([SecondDid, Did]),
+            CancellationToken.None);
+
+        // An unavailable or unsure archive must never narrow coverage.
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
+        await Assert.That(result.AppliedDids).IsEqualTo(2);
+        await fixture.Gateway.Received(1).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
+        await fixture.Gateway.Received(1).FetchAsync(SecondDid, Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_ArchiveProbeReceivesConsumerCursorAndConfiguredScope()
+    {
+        var fixture = new Fixture();
+        fixture.ArchiveProbe
+            .ResolveChangedDidsAsync(Arg.Any<long>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoArchiveChangeScope.NoChanges);
+
+        await fixture.Handler.Handle(Command([SecondDid, Did, Did]), CancellationToken.None);
+
+        await fixture.ArchiveProbe.Received(1).ResolveChangedDidsAsync(
+            Cursor,
+            Arg.Is<IReadOnlyList<string>>(dids => dids.SequenceEqual(new[] { Did, SecondDid })),
             Arg.Any<CancellationToken>());
     }
 
@@ -607,7 +693,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     private static ReconcileAtprotoPdsSnapshotsCommand Command(
         IReadOnlyCollection<string> allowedDids,
         string? lastCompletedFingerprint = null) => new(
-        new AtprotoJetstreamClaim(Guid.CreateVersion7(), "https://jetstream.example", 42, Guid.CreateVersion7(), 1),
+        new AtprotoJetstreamClaim(Guid.CreateVersion7(), "https://jetstream.example", Cursor, Guid.CreateVersion7(), 1),
         allowedDids,
         SnapshotStartedAt,
         lastCompletedFingerprint);
@@ -634,6 +720,15 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
             Gateway = Substitute.For<IAtprotoPdsSnapshotGateway>();
             ThumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
             Repository = Substitute.For<IAtprotoPdsSnapshotRepository>();
+            ArchiveProbe = Substitute.For<IAtprotoFederationArchiveProbe>();
+            // Default to inconclusive: recovery must behave exactly as it did before the archive probe
+            // existed unless a test opts into a conclusive answer.
+            ArchiveProbe
+                .ResolveChangedDidsAsync(
+                    Arg.Any<long>(),
+                    Arg.Any<IReadOnlyList<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(AtprotoArchiveChangeScope.Inconclusive);
             PolicyResolver = new AtprotoPdsRecoveryPolicyResolver(_tenants, _system, _tenant);
             var presentationResolver = new AtprotoJetstreamTenantPresentationResolver(_tenants, _system, _tenant);
             Handler = new ReconcileAtprotoPdsSnapshotsCommandHandler(
@@ -642,6 +737,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
                 Gateway,
                 ThumbnailGateway,
                 Repository,
+                ArchiveProbe,
                 TimeProvider.System);
         }
 
@@ -649,6 +745,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         public IAtprotoPdsSnapshotGateway Gateway { get; }
         public IAtprotoThumbnailBlobGateway ThumbnailGateway { get; }
         public IAtprotoPdsSnapshotRepository Repository { get; }
+        public IAtprotoFederationArchiveProbe ArchiveProbe { get; }
         public AtprotoPdsRecoveryPolicyResolver PolicyResolver { get; }
         public ReconcileAtprotoPdsSnapshotsCommandHandler Handler { get; }
 

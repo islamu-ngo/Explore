@@ -47,14 +47,15 @@ public sealed class AtprotoJetstreamEnvelopeParserLosslessCharacterizationTests
               }
             }
             """;
-        var envelope = new JetstreamEvent
+        var envelope = new JetstreamV2Event
         {
             Did = "did:plc:remote-owner",
-            TimeUs = 101,
-            Kind = "commit",
-            Commit = new JetstreamCommit
+            Seq = 101,
+            TimeUs = 1_753_351_200_000_000,
+            Kind = JetstreamV2EventKind.Commit,
+            Commit = new JetstreamV2Commit
             {
-                Operation = "create",
+                Operation = JetstreamV2CommitOperation.Create,
                 Collection = AtprotoJetstreamConstants.EventCollection,
                 Rkey = "3m-community-iftar",
                 Cid = ATCid.FromSha256Hash(new byte[32]).Value,

@@ -466,14 +466,18 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
             return null;
         }
 
-        var envelope = new JetstreamEvent
+        // Synthetic envelope so PDS-sourced records go through exactly the same validation as streamed
+        // ones. TimeUs carries the snapshot version because that is the axis SourceVersion is compared
+        // on; Seq only has to clear the parser's cursor floor, and SourceCursor is nulled out below.
+        var envelope = new JetstreamV2Event
         {
             Did = did,
+            Seq = snapshotVersion,
             TimeUs = snapshotVersion,
-            Kind = "commit",
-            Commit = new JetstreamCommit
+            Kind = JetstreamV2EventKind.Commit,
+            Commit = new JetstreamV2Commit
             {
-                Operation = "update",
+                Operation = JetstreamV2CommitOperation.Update,
                 Collection = collection,
                 Rkey = recordKey,
                 Cid = cid.Value,

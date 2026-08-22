@@ -1,210 +1,137 @@
-// ABOUTME: Owns one CarpaNet Jetstream client per active session behind a bounded session contract.
-// ABOUTME: Starts paused, sends the exact community filters after connection, and serializes later updates.
+// ABOUTME: Owns one CarpaNet Jetstream v2 client per active session behind a bounded session contract.
+// ABOUTME: Sends the exact community filters in the subscribe request; v2 filters are immutable per connection.
 
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using CarpaNet.Jetstream;
 
 namespace Explore.Infrastructure.Services.Federation;
 
 public sealed record AtprotoJetstreamSubscription(
     Uri Endpoint,
-    IReadOnlyList<string> WantedCollections,
-    IReadOnlyList<string> WantedDids,
-    long? Cursor,
-    int MaxMessageSizeBytes);
+    IReadOnlyList<string> Collections,
+    IReadOnlyList<string> Dids,
+    long? LiveCursor,
+    int MaxMessageSizeBytes)
+{
+    public bool EnableCompression { get; init; }
+    public TimeSpan ReconnectBackoffMin { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan ReconnectBackoffMax { get; init; } = TimeSpan.FromSeconds(30);
+}
 
 public interface IAtprotoJetstreamSession : IAsyncDisposable
 {
-    IAsyncEnumerable<JetstreamEvent> ReadEventsAsync(CancellationToken cancellationToken);
-
-    Task SendOptionsUpdateAsync(
-        JetstreamOptionsUpdate update,
-        CancellationToken cancellationToken);
+    IAsyncEnumerable<JetstreamV2Event> ReadEventsAsync(CancellationToken cancellationToken);
 }
 
 public interface IAtprotoJetstreamEventSource
 {
     Task<IAtprotoJetstreamSession> OpenSessionAsync(
         AtprotoJetstreamSubscription subscription,
-        TimeSpan readinessTimeout,
         CancellationToken cancellationToken);
 }
 
 internal sealed class CarpaNetJetstreamEventSource : IAtprotoJetstreamEventSource
 {
-    public async Task<IAtprotoJetstreamSession> OpenSessionAsync(
+    public Task<IAtprotoJetstreamSession> OpenSessionAsync(
         AtprotoJetstreamSubscription subscription,
-        TimeSpan readinessTimeout,
         CancellationToken cancellationToken)
     {
-        var client = new JetstreamClient(subscription.Endpoint)
-        {
-            BufferSize = subscription.MaxMessageSizeBytes
-        };
-        var options = new JetstreamSubscribeOptions
-        {
-            Cursor = subscription.Cursor,
-            MaxMessageSizeBytes = subscription.MaxMessageSizeBytes,
-            Compress = false,
-            RequireHello = true
-        };
-        var session = new CarpaNetJetstreamSession(client, options, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var client = new JetstreamV2Client(
+            subscription.Endpoint,
+            new JetstreamV2ClientOptions
+            {
+                EnableCompression = subscription.EnableCompression,
+                ReadLimitBytes = subscription.MaxMessageSizeBytes,
+                ReconnectBackoffMin = subscription.ReconnectBackoffMin,
+                ReconnectBackoffMax = subscription.ReconnectBackoffMax
+            });
         try
         {
-            await session.SendInitialOptionsAsync(
-                CreateOptionsUpdate(subscription),
-                readinessTimeout,
-                cancellationToken);
-            return session;
+            return Task.FromResult<IAtprotoJetstreamSession>(
+                new CarpaNetJetstreamSession(client, CreateSubscribeOptions(subscription), cancellationToken));
         }
         catch
         {
-            await session.DisposeAsync();
+            client.Dispose();
             throw;
         }
     }
 
-    internal static JetstreamOptionsUpdate CreateOptionsUpdate(AtprotoJetstreamSubscription subscription) =>
+    // v2 carries the filter set in the subscribe request itself; there is no options_update frame to
+    // renegotiate it later, so a filter change has to be expressed as a fresh subscription.
+    // Account is requested alongside Commit for the deletion purge signal. It is bounded: the DID filter
+    // does constrain account events, and unfiltered account traffic is only around twenty events a minute
+    // network-wide. Identity and Sync stay unrequested — neither changes what we present.
+    internal static JetstreamV2SubscribeOptions CreateSubscribeOptions(AtprotoJetstreamSubscription subscription) =>
         new()
         {
-            Payload = new JetstreamOptionsPayload
-            {
-                WantedCollections =
-                [
-                    AtprotoJetstreamConstants.EventCollection,
-                    AtprotoJetstreamConstants.RsvpCollection
-                ],
-                WantedDids = [.. subscription.WantedDids],
-                MaxMessageSizeBytes = subscription.MaxMessageSizeBytes
-            }
+            Kinds = [JetstreamV2EventKind.Commit, JetstreamV2EventKind.Account],
+            Collections =
+            [
+                AtprotoJetstreamConstants.EventCollection,
+                AtprotoJetstreamConstants.RsvpCollection
+            ],
+            Dids = [.. subscription.Dids],
+            LiveCursor = subscription.LiveCursor,
+            MaxMessageSizeBytes = subscription.MaxMessageSizeBytes
         };
 
     private sealed class CarpaNetJetstreamSession : IAtprotoJetstreamSession
     {
-        private static readonly TimeSpan ReadinessRetryDelay = TimeSpan.FromMilliseconds(25);
-        private readonly JetstreamClient _client;
+        private readonly JetstreamV2Client _client;
+        private readonly JetstreamV2SubscribeOptions _options;
         private readonly CancellationTokenSource _lifetimeCancellation;
-        private readonly IAsyncEnumerator<JetstreamEvent> _enumerator;
-        private readonly SemaphoreSlim _sendGate = new(1, 1);
-        private Task<bool> _nextEvent;
         private int _readStarted;
         private int _disposed;
 
         public CarpaNetJetstreamSession(
-            JetstreamClient client,
-            JetstreamSubscribeOptions options,
+            JetstreamV2Client client,
+            JetstreamV2SubscribeOptions options,
             CancellationToken cancellationToken)
         {
             _client = client;
+            _options = options;
             _lifetimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _enumerator = client
-                .SubscribeAsync(options, _lifetimeCancellation.Token)
-                .GetAsyncEnumerator(_lifetimeCancellation.Token);
-            _nextEvent = _enumerator.MoveNextAsync().AsTask();
         }
 
-        public async IAsyncEnumerable<JetstreamEvent> ReadEventsAsync(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+        public IAsyncEnumerable<JetstreamV2Event> ReadEventsAsync(CancellationToken cancellationToken)
         {
+            // Guard eagerly rather than from inside the iterator, so a second reader fails at the call
+            // site instead of on its first MoveNext.
             if (Interlocked.Exchange(ref _readStarted, 1) != 0)
             {
                 throw new InvalidOperationException("The Jetstream session event reader has already been started.");
             }
 
-            while (await _nextEvent)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return _enumerator.Current;
-                _nextEvent = _enumerator.MoveNextAsync().AsTask();
-            }
+            return ReadCoreAsync(cancellationToken);
         }
 
-        public async Task SendOptionsUpdateAsync(
-            JetstreamOptionsUpdate update,
-            CancellationToken cancellationToken)
+        private async IAsyncEnumerable<JetstreamV2Event> ReadCoreAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            await _sendGate.WaitAsync(cancellationToken);
-            try
+            using var readCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                _lifetimeCancellation.Token,
+                cancellationToken);
+            await foreach (JetstreamV2Event value in _client
+                .SubscribeAsync(_options, readCancellation.Token)
+                .ConfigureAwait(false))
             {
-                await _client.SendOptionsUpdateAsync(update, cancellationToken);
-            }
-            finally
-            {
-                _sendGate.Release();
-            }
-        }
-
-        public async Task SendInitialOptionsAsync(
-            JetstreamOptionsUpdate update,
-            TimeSpan readinessTimeout,
-            CancellationToken cancellationToken)
-        {
-            using var readinessCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            readinessCancellation.CancelAfter(readinessTimeout);
-            try
-            {
-                while (true)
-                {
-                    if (_nextEvent.IsCompleted && !await _nextEvent)
-                    {
-                        throw new InvalidOperationException("Jetstream closed before accepting its initial options.");
-                    }
-
-                    try
-                    {
-                        await SendOptionsUpdateAsync(update, readinessCancellation.Token);
-                        return;
-                    }
-                    catch (InvalidOperationException exception) when (
-                        string.Equals(exception.Message, "WebSocket is not connected", StringComparison.Ordinal))
-                    {
-                        await Task.Delay(ReadinessRetryDelay, readinessCancellation.Token);
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                throw new TimeoutException("Jetstream did not become ready within the configured connection bound.");
+                yield return value;
             }
         }
 
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
             _lifetimeCancellation.Cancel();
-            Exception? receiveFailure = null;
-            try
-            {
-                await _nextEvent;
-            }
-            catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
-            {
-            }
-            catch (Exception exception)
-            {
-                receiveFailure = exception;
-            }
-
-            try
-            {
-                await _enumerator.DisposeAsync();
-            }
-            finally
-            {
-                _client.Dispose();
-                _sendGate.Dispose();
-                _lifetimeCancellation.Dispose();
-            }
-
-            if (receiveFailure is not null)
-            {
-                ExceptionDispatchInfo.Capture(receiveFailure).Throw();
-            }
+            _client.Dispose();
+            _lifetimeCancellation.Dispose();
+            return ValueTask.CompletedTask;
         }
     }
 }

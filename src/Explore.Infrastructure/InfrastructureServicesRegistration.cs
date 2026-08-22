@@ -82,6 +82,9 @@ public static class InfrastructureServicesRegistration
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<AtprotoJetstreamOptions>, AtprotoJetstreamOptionsValidator>();
         services.AddSingleton<IAtprotoJetstreamEventSource, CarpaNetJetstreamEventSource>();
+        services.AddSingleton<AtprotoJetstreamLiveness>();
+        services.AddSingleton<IAtprotoJetstreamArchiveClient, CarpaNetJetstreamArchiveClient>();
+        services.AddSingleton<IAtprotoFederationArchiveProbe, AtprotoJetstreamArchiveProbe>();
         services.AddSingleton<IAtprotoJetstreamRuntimeStore, AtprotoJetstreamRuntimeStore>();
         services.AddScoped<IAtprotoThumbnailBlobGateway, AtprotoThumbnailBlobGateway>();
         services.AddScoped<AtprotoOAuthClientFactory>();

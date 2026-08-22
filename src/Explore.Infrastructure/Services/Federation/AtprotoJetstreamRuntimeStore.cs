@@ -103,6 +103,8 @@ internal sealed class AtprotoJetstreamRuntimeStore(IServiceScopeFactory scopeFac
     private static bool AffectsEventDiscovery(AtprotoJetstreamApplyRequest request) =>
         request.EventProjection is not null
         || request.EventProjectionInvalidation is not null
+        // A purge removes projections wholesale, so cached discovery results must not survive it.
+        || request.AccountPurge is not null
         || string.Equals(
             request.Record?.Collection,
             AtprotoJetstreamConstants.EventCollection,

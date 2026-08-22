@@ -121,8 +121,12 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
         AtprotoJetstreamApplyRequest request,
         CancellationToken cancellationToken = default)
     {
+        // Exactly one effect per envelope: a materialised record, quarantine evidence, or an account purge.
+        int effects = (request.Record is not null ? 1 : 0)
+            + (request.Quarantine is not null ? 1 : 0)
+            + (request.AccountPurge is not null ? 1 : 0);
         if (request.ObservedAt.Kind != DateTimeKind.Utc || request.NextCursor <= request.ExpectedCursor ||
-            (request.Record is null) == (request.Quarantine is null) ||
+            effects != 1 ||
             (!request.AdvanceCursor && request.Quarantine?.ReasonCode != "invalid_cursor"))
         {
             return AtprotoPersistenceApplyResult.Rejected;
@@ -157,6 +161,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             if (request.EventProjectionInvalidation is not null)
             {
                 await InvalidateEventProjectionAsync(request, cancellationToken);
+            }
+
+            if (request.AccountPurge is not null)
+            {
+                await PurgeAccountAsync(request, cancellationToken);
             }
 
             if (request.Quarantine is not null)
@@ -1487,6 +1496,49 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
         existing.SourceUrl = supplied.SourceUrl;
         existing.SourceVersion = supplied.SourceVersion;
         existing.MaterializedAt = supplied.MaterializedAt;
+    }
+
+    /// <summary>
+    /// Retires every record federated in from a deleted or deactivated upstream account.
+    /// <para>
+    /// Scoped to <see cref="AtprotoRecordDirection.Inbound"/> so locally authored outbound records are
+    /// never touched by a remote account signal. Records are tombstoned rather than deleted, keeping the
+    /// canonical row available for idempotent replay, while projections are removed and presentations
+    /// hidden so nothing stays publicly visible.
+    /// </para>
+    /// </summary>
+    private async Task PurgeAccountAsync(
+        AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken)
+    {
+        AtprotoAccountPurge purge = request.AccountPurge!;
+        List<AtprotoRecord> records = await _dbContext.AtprotoRecords
+            .Where(value => value.Did == purge.Did && value.Direction == AtprotoRecordDirection.Inbound)
+            .ToListAsync(cancellationToken);
+        if (records.Count == 0)
+        {
+            return;
+        }
+
+        Guid[] recordIds = [.. records.Select(value => value.Id)];
+        List<AtprotoEventProjection> projections = await _dbContext.AtprotoEventProjections
+            .Where(value => recordIds.Contains(value.AtprotoRecordId))
+            .ToListAsync(cancellationToken);
+        _dbContext.AtprotoEventProjections.RemoveRange(projections);
+
+        await _dbContext.AtprotoRecordTenantPresentations
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization)
+            .Where(value => recordIds.Contains(value.AtprotoRecordId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.IsVisible, false)
+                .SetProperty(value => value.SourceVersion, purge.SourceVersion)
+                .SetProperty(value => value.EvaluatedAt, request.ObservedAt), cancellationToken);
+
+        foreach (AtprotoRecord record in records)
+        {
+            record.TombstonedAt ??= request.ObservedAt;
+            record.UpdatedAt = request.ObservedAt;
+        }
     }
 
     private async Task InvalidateEventProjectionAsync(

@@ -22,6 +22,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
     IAtprotoPdsSnapshotGateway gateway,
     IAtprotoThumbnailBlobGateway thumbnailGateway,
     IAtprotoPdsSnapshotRepository repository,
+    IAtprotoFederationArchiveProbe archiveProbe,
     TimeProvider timeProvider)
     : IRequestHandler<ReconcileAtprotoPdsSnapshotsCommand, AtprotoPdsRecoveryResult>
 {
@@ -81,10 +82,29 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
             return new(AtprotoPdsRecoveryOutcome.Unchanged, fingerprint);
         }
 
+        // Ask the sealed archive which repositories actually committed calendar records since the consumer
+        // cursor. A conclusive answer lets a restart skip re-fetching and re-verifying quiet repositories
+        // entirely; an inconclusive one leaves the full configured scope untouched. The fingerprint stays
+        // keyed on the configured scope, not the narrowed one, so memoisation does not churn.
+        AtprotoArchiveChangeScope changeScope = await archiveProbe.ResolveChangedDidsAsync(
+            request.Claim.Cursor,
+            normalizedDids,
+            cancellationToken);
+        string[] recoveryDids = normalizedDids;
+        if (changeScope.IsConclusive)
+        {
+            var changed = new HashSet<string>(changeScope.ChangedDids, StringComparer.Ordinal);
+            recoveryDids = [.. normalizedDids.Where(changed.Contains)];
+            if (recoveryDids.Length == 0)
+            {
+                return new(AtprotoPdsRecoveryOutcome.Unchanged, fingerprint);
+            }
+        }
+
         long snapshotVersion = ToUnixMicroseconds(request.SnapshotStartedAt);
-        var snapshots = new List<AtprotoPdsSnapshot>(normalizedDids.Length);
+        var snapshots = new List<AtprotoPdsSnapshot>(recoveryDids.Length);
         int failed = 0;
-        foreach (string did in normalizedDids)
+        foreach (string did in recoveryDids)
         {
             AtprotoPdsSnapshotFetchResult fetched = await gateway.FetchAsync(
                 did,
@@ -125,9 +145,12 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
 
         IReadOnlyList<AtprotoFederatedEventImportPlan> stagedPlans =
             await StageThumbnailsAsync(importPlans, cancellationToken);
+        // Must be the narrowed set, not the configured one: persistence pairs it one-to-one with the
+        // fetched snapshots, and it is the scope over which absent records get tombstoned. Passing DIDs
+        // that were never fetched would make them look emptied.
         var applyRequest = new AtprotoPdsSnapshotApplyRequest(
             request.Claim,
-            normalizedDids,
+            recoveryDids,
             snapshots,
             presentationTenantIds,
             snapshotVersion,
@@ -150,7 +173,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
 
         await CleanupUnconsumedAsync(stagedPlans, result.ConsumedStagedThumbnails);
         return result.Applied
-            ? new(AtprotoPdsRecoveryOutcome.Completed, fingerprint, normalizedDids.Length)
+            ? new(AtprotoPdsRecoveryOutcome.Completed, fingerprint, recoveryDids.Length)
             : new(AtprotoPdsRecoveryOutcome.FenceRejected, fingerprint);
     }
 

@@ -1459,6 +1459,134 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             UpdatedAt = observedAt
         };
 
+    [Test]
+    public async Task JetstreamApply_AccountPurgeTombstonesInboundRecordsAndHidesPresentations()
+    {
+        await fixture.ResetAsync();
+        var scope = await SeedScopeAsync("jetstream-account-purge");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        var now = CurrentUtc();
+        var claim = await repository.TryClaimAsync(
+            "wss://jetstream.example/subscribe",
+            "worker-purge",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+
+        bool seeded = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 0,
+            NextCursor: 1,
+            IncomingRecord(sourceVersion: 1, now),
+            [new AtprotoRecordTenantPresentation { TenantId = scope.TenantId, IsVisible = true }],
+            Quarantine: null,
+            now));
+
+        bool purged = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 1,
+            NextCursor: 2,
+            Record: null,
+            [],
+            Quarantine: null,
+            now.AddSeconds(1))
+        {
+            AccountPurge = new AtprotoAccountPurge("did:plc:remote-owner", SourceVersion: 5, "deleted")
+        });
+
+        context.ChangeTracker.Clear();
+        var persistedRecord = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+        var presentation = await context.AtprotoRecordTenantPresentations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync();
+        var state = await context.AtprotoJetstreamConsumerStates.AsNoTracking().SingleAsync();
+
+        await Assert.That(seeded).IsTrue();
+        await Assert.That(purged).IsTrue();
+        // Tombstoned rather than deleted, so replay of the same seq stays idempotent.
+        await Assert.That(persistedRecord.TombstonedAt).IsEqualTo(now.AddSeconds(1));
+        await Assert.That(presentation.IsVisible).IsFalse();
+        await Assert.That(presentation.SourceVersion).IsEqualTo(5);
+        await Assert.That(state.Cursor).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task JetstreamApply_AccountPurgeLeavesOutboundRecordsUntouched()
+    {
+        await fixture.ResetAsync();
+        await SeedScopeAsync("jetstream-account-purge-outbound");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        var now = CurrentUtc();
+        var claim = await repository.TryClaimAsync(
+            "wss://jetstream.example/subscribe",
+            "worker-purge-outbound",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+
+        AtprotoRecord outbound = IncomingRecord(sourceVersion: 1, now);
+        outbound.Direction = AtprotoRecordDirection.Outbound;
+        outbound.Provenance = AtprotoRecordProvenance.LocalLifecycle;
+        outbound.Id = Guid.CreateVersion7();
+        context.AtprotoRecords.Add(outbound);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        bool purged = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 0,
+            NextCursor: 1,
+            Record: null,
+            [],
+            Quarantine: null,
+            now.AddSeconds(1))
+        {
+            AccountPurge = new AtprotoAccountPurge("did:plc:remote-owner", SourceVersion: 5, "deleted")
+        });
+
+        context.ChangeTracker.Clear();
+        var persisted = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+
+        // A remote account signal must never retire locally authored records we published ourselves.
+        await Assert.That(purged).IsTrue();
+        await Assert.That(persisted.TombstonedAt).IsNull();
+    }
+
+    [Test]
+    public async Task JetstreamApply_RejectsRequestsThatDoNotCarryExactlyOneEffect()
+    {
+        await fixture.ResetAsync();
+        var scope = await SeedScopeAsync("jetstream-effect-guard");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        var now = CurrentUtc();
+        var claim = await repository.TryClaimAsync(
+            "wss://jetstream.example/subscribe",
+            "worker-guard",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        var purge = new AtprotoAccountPurge("did:plc:remote-owner", SourceVersion: 5, "deleted");
+
+        bool none = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim, 0, 1, Record: null, [], Quarantine: null, now));
+        bool recordAndPurge = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            0,
+            1,
+            IncomingRecord(sourceVersion: 1, now),
+            [new AtprotoRecordTenantPresentation { TenantId = scope.TenantId, IsVisible = true }],
+            Quarantine: null,
+            now)
+        {
+            AccountPurge = purge
+        });
+
+        await Assert.That(none).IsFalse();
+        await Assert.That(recordAndPurge).IsFalse();
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(0);
+    }
+
     private static AtprotoRecord IncomingRecord(long sourceVersion, DateTime observedAt) => new()
     {
         Did = "did:plc:remote-owner",

@@ -1,4 +1,4 @@
-// ABOUTME: Converts bounded CarpaNet Jetstream envelopes into canonical records or payload-free quarantine outcomes.
+// ABOUTME: Converts bounded CarpaNet Jetstream v2 envelopes into canonical records or payload-free quarantine outcomes.
 // ABOUTME: Enforces exact collections, operations, DIDs, record types, generated lexicon shape, and encoded sizes.
 
 using System.Security.Cryptography;
@@ -21,13 +21,31 @@ internal static class AtprotoJetstreamConstants
     public static readonly IReadOnlyList<string> Collections = [EventCollection, RsvpCollection];
 }
 
+/// <summary>
+/// Outcome of parsing one v2 envelope. Jetstream v2 separates two axes that v1 conflated in a single
+/// microsecond timestamp: <paramref name="Cursor"/> is the resume token (<c>seq</c>) and
+/// <paramref name="SourceVersion"/> is the ordering key (<c>time_us</c>) compared against PDS snapshot
+/// versions during recovery. They must not be swapped.
+/// </summary>
 internal sealed record AtprotoJetstreamParsedEnvelope(
     long Cursor,
+    long SourceVersion,
     AtprotoRecord? Record,
     AtprotoJetstreamQuarantine? Quarantine,
     bool AdvanceCursor = true,
     AtprotoEventProjection? EventProjection = null,
-    AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null);
+    AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null)
+{
+    /// <summary>
+    /// Set for envelopes that carry no ingestible evidence at all — <c>identity</c> and <c>sync</c> kinds,
+    /// and account events that are not deactivations. v2 collection filters never suppress these kinds, so
+    /// they are skipped locally: never written as quarantine evidence, never round-tripped to the store.
+    /// </summary>
+    public bool Ignored { get; init; }
+
+    /// <summary>Set when an upstream account was deactivated or deleted and its records must be retired.</summary>
+    public AtprotoAccountPurge? AccountPurge { get; init; }
+}
 
 internal static class AtprotoJetstreamEnvelopeParser
 {
@@ -39,7 +57,7 @@ internal static class AtprotoJetstreamEnvelopeParser
     ];
 
     public static AtprotoJetstreamParsedEnvelope Parse(
-        JetstreamEvent envelope,
+        JetstreamV2Event envelope,
         long currentCursor,
         IReadOnlyCollection<string> allowedDids,
         DateTime observedAt)
@@ -53,12 +71,13 @@ internal static class AtprotoJetstreamEnvelopeParser
         string recordJson = envelope.Commit?.Record?.GetRawText() ?? string.Empty;
         string envelopeHash = Hash(BuildEnvelopeFingerprint(envelope, recordJson));
         string? identityHash = BuildIdentityHash(envelope);
-        bool cursorIsInRange = TryFromUnixMicroseconds(envelope.TimeUs, out DateTime parsedAt);
-        DateTime eventAt = cursorIsInRange ? parsedAt : observedAt;
+        bool sourceVersionIsInRange = TryFromUnixMicroseconds(envelope.TimeUs, out DateTime parsedAt);
+        DateTime eventAt = sourceVersionIsInRange ? parsedAt : observedAt;
         AtprotoJetstreamParsedEnvelope Reject(
             string reason,
             bool advanceCursor = true,
             bool invalidateEventProjection = false) => new(
+                envelope.Seq,
                 envelope.TimeUs,
                 null,
                 new AtprotoJetstreamQuarantine
@@ -79,14 +98,51 @@ internal static class AtprotoJetstreamEnvelopeParser
                         envelope.TimeUs)
                     : null);
 
-        if (envelope.TimeUs <= currentCursor || envelope.TimeUs <= 0 || !cursorIsInRange)
+        if (envelope.Seq <= currentCursor || envelope.Seq <= 0)
         {
             return Reject("invalid_cursor", advanceCursor: false);
         }
 
-        if (!string.Equals(envelope.Kind, "commit", StringComparison.Ordinal) || envelope.Commit is null)
+        // Non-commit kinds are never ingestible record evidence, and v2 delivers them regardless of the
+        // collection filter. Skipping them locally keeps the whole network's identity/account/sync
+        // traffic out of the quarantine table — except account deactivations, which are the network's
+        // purge signal and must retire anything already federated in from that repository.
+        if (envelope.Kind != JetstreamV2EventKind.Commit || envelope.Commit is null)
         {
-            return Reject("unsupported_envelope_kind");
+            AtprotoJetstreamParsedEnvelope ignored = new(envelope.Seq, envelope.TimeUs, null, null)
+            {
+                Ignored = true
+            };
+            if (envelope.Kind != JetstreamV2EventKind.Account
+                || envelope.Account is not { Active: false }
+                || envelope.TimeUs <= 0
+                || !sourceVersionIsInRange
+                || !IsValidDid(envelope.Did))
+            {
+                return ignored;
+            }
+
+            // Honour the curated allowlist when one is configured; in public-collection mode any deleted
+            // account may own records we ingested, so all of them are actionable.
+            if (allowedDids.Count > 0 && !allowedDids.Contains(envelope.Did, StringComparer.Ordinal))
+            {
+                return ignored;
+            }
+
+            return new(envelope.Seq, envelope.TimeUs, null, null)
+            {
+                AccountPurge = new AtprotoAccountPurge(
+                    envelope.Did,
+                    envelope.TimeUs,
+                    envelope.Account.Status)
+            };
+        }
+
+        // time_us is the cross-source ordering key: a value outside DateTime range would corrupt
+        // last-writer-wins against PDS snapshot versions, so it is rejected rather than clamped.
+        if (envelope.TimeUs <= 0 || !sourceVersionIsInRange)
+        {
+            return Reject("invalid_source_timestamp");
         }
 
         if (!IsValidDid(envelope.Did))
@@ -99,13 +155,15 @@ internal static class AtprotoJetstreamEnvelopeParser
             return Reject("did_not_allowed");
         }
 
-        JetstreamCommit commit = envelope.Commit;
+        JetstreamV2Commit commit = envelope.Commit;
         if (commit.Collection is not AtprotoJetstreamConstants.EventCollection and not AtprotoJetstreamConstants.RsvpCollection)
         {
             return Reject("collection_not_allowed");
         }
 
-        if (commit.Operation is not ("create" or "update" or "delete"))
+        if (commit.Operation is not (JetstreamV2CommitOperation.Create
+            or JetstreamV2CommitOperation.Update
+            or JetstreamV2CommitOperation.Delete))
         {
             return Reject("operation_not_supported");
         }
@@ -121,7 +179,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return Reject("record_identity_too_large");
         }
 
-        if (commit.Operation == "delete")
+        if (commit.Operation == JetstreamV2CommitOperation.Delete)
         {
             if (commit.Record.HasValue && commit.Record.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
             {
@@ -130,7 +188,11 @@ internal static class AtprotoJetstreamEnvelopeParser
                     invalidateEventProjection: commit.Collection == AtprotoJetstreamConstants.EventCollection);
             }
 
-            return new(envelope.TimeUs, CreateRecord(envelope, commit, uri, null, null, null, observedAt, eventAt), null);
+            return new(
+                envelope.Seq,
+                envelope.TimeUs,
+                CreateRecord(envelope, commit, uri, null, null, null, observedAt, eventAt),
+                null);
         }
 
         if (!commit.Record.HasValue || commit.Record.Value.ValueKind != JsonValueKind.Object)
@@ -186,6 +248,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             observedAt,
             eventAt);
         return new(
+            envelope.Seq,
             envelope.TimeUs,
             canonicalRecord,
             null,
@@ -242,8 +305,8 @@ internal static class AtprotoJetstreamEnvelopeParser
     }
 
     private static AtprotoRecord CreateRecord(
-        JetstreamEvent envelope,
-        JetstreamCommit commit,
+        JetstreamV2Event envelope,
+        JetstreamV2Commit commit,
         string uri,
         string? recordJson,
         string? subjectUri,
@@ -259,15 +322,17 @@ internal static class AtprotoJetstreamEnvelopeParser
             Uri = uri,
             Direction = AtprotoRecordDirection.Inbound,
             Provenance = AtprotoRecordProvenance.Jetstream,
+            // time_us, not seq: this is compared against ToUnixMicroseconds(SnapshotStartedAt) when PDS
+            // recovery reconciles the same record.
             SourceVersion = envelope.TimeUs,
-            SourceCursor = envelope.TimeUs,
+            SourceCursor = envelope.Seq,
             RecordJson = recordJson,
             RecordHash = recordJson is null ? null : Hash(recordJson),
             SubjectUri = subjectUri,
             SubjectCid = subjectCid,
             IndexedAt = eventAt,
             UpdatedAt = observedAt,
-            TombstonedAt = commit.Operation == "delete" ? observedAt : null
+            TombstonedAt = commit.Operation == JetstreamV2CommitOperation.Delete ? observedAt : null
         };
 
     private static bool IsValidDid(string did)
@@ -305,11 +370,11 @@ internal static class AtprotoJetstreamEnvelopeParser
         }
     }
 
-    private static string BuildEnvelopeFingerprint(JetstreamEvent envelope, string recordJson) =>
-        string.Join('\n', envelope.Did, envelope.TimeUs, envelope.Kind, envelope.Commit?.Operation,
+    private static string BuildEnvelopeFingerprint(JetstreamV2Event envelope, string recordJson) =>
+        string.Join('\n', envelope.Did, envelope.Seq, envelope.TimeUs, envelope.Kind, envelope.Commit?.Operation,
             envelope.Commit?.Collection, envelope.Commit?.Rkey, envelope.Commit?.Cid, recordJson);
 
-    private static string? BuildIdentityHash(JetstreamEvent envelope) =>
+    private static string? BuildIdentityHash(JetstreamV2Event envelope) =>
         envelope.Commit?.Collection is null || envelope.Commit.Rkey is null
             ? null
             : Hash(string.Join('\n', envelope.Did, envelope.Commit.Collection, envelope.Commit.Rkey));

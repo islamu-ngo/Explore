@@ -1,4 +1,4 @@
-// ABOUTME: Defines bounded fixed-endpoint configuration for the global ATProto Jetstream subscriber.
+// ABOUTME: Defines bounded fixed-endpoint configuration for the global ATProto Jetstream v2 subscriber.
 // ABOUTME: Validates lease, retry, message-size, and optional bounded DID filter entries at startup.
 
 using CarpaNet;
@@ -9,8 +9,24 @@ namespace Explore.Infrastructure.Services.Federation;
 public sealed class AtprotoJetstreamOptions
 {
     public const string SectionName = "Atproto:Jetstream";
-    public string Endpoint { get; set; } = "https://jetstream1.us-east.bsky.network";
+    public string Endpoint { get; set; } = BlueskyServices.JetstreamUsEast;
     public int MaxMessageSizeBytes { get; set; } = 2_113_536;
+
+    /// <summary>
+    /// Enables dict-zstd transport compression. The v2 client fetches and rotates the dictionary itself,
+    /// so this costs an extra outbound fetch at connect time; it is opt-in to keep the default connection
+    /// profile unchanged.
+    /// </summary>
+    public bool EnableCompression { get; set; }
+
+    /// <summary>
+    /// Maximum sealed-archive blocks the recovery change probe will download in one pass. Blocks are
+    /// roughly 430KB and are not pre-filtered by collection, so this caps a probe at about 27MB before it
+    /// gives up and lets recovery run at full scope.
+    /// </summary>
+    public int ArchiveProbeMaximumBlocks { get; set; } = 64;
+
+    public int ArchiveProbeDownloadConcurrency { get; set; } = 4;
     public int LeaseDurationSeconds { get; set; } = 60;
     public int LeaseRenewalSeconds { get; set; } = 20;
     public int CapabilityPollMilliseconds { get; set; } = 5_000;
@@ -53,6 +69,12 @@ public sealed class AtprotoJetstreamOptionsValidator : IValidateOptions<AtprotoJ
             || options.RetryMaximumMilliseconds > 300_000)
         {
             failures.Add("Jetstream polling and retry intervals are outside their bounded ranges.");
+        }
+
+        if (options.ArchiveProbeMaximumBlocks is < 0 or > 4_096
+            || options.ArchiveProbeDownloadConcurrency is < 1 or > 32)
+        {
+            failures.Add("Atproto:Jetstream archive probe budgets are outside their bounded ranges.");
         }
 
         if (options.AllowedDids is not { Length: <= 10_000 }

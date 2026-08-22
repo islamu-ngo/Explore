@@ -195,30 +195,40 @@ public sealed class AtprotoDependencyBoundaryTests
             "Federation");
         string[] sourceFiles = Directory.EnumerateFiles(federationRoot, "*.cs", SearchOption.AllDirectories).ToArray();
         string[] jetstreamClientOwners = sourceFiles
-            .Where(path => File.ReadAllText(path).Contains("new JetstreamClient", StringComparison.Ordinal))
+            .Where(path => File.ReadAllText(path).Contains("new JetstreamV2Client", StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .ToArray()!;
+        string[] legacyClientOwners = sourceFiles
+            .Where(path => Regex.IsMatch(
+                File.ReadAllText(path),
+                @"new JetstreamClient\b|\bJetstreamSubscribeOptions\b|\bJetstreamOptionsUpdate\b",
+                RegexOptions.CultureInvariant))
             .Select(Path.GetFileName)
             .ToArray()!;
         string source = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEventSource.cs"));
-        string subscriber = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamSubscriber.cs"));
-        string constants = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEnvelopeParser.cs"));
+        string parser = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEnvelopeParser.cs"));
 
-        await Assert.That(jetstreamClientOwners).IsEquivalentTo(["AtprotoJetstreamEventSource.cs"]);
+        // The live websocket adapter and the sealed-archive client are the only places allowed to build a
+        // client; everything else goes through their abstractions.
+        await Assert.That(jetstreamClientOwners)
+            .IsEquivalentTo(["AtprotoJetstreamEventSource.cs", "AtprotoJetstreamArchiveClient.cs"]);
+        await Assert.That(legacyClientOwners).IsEmpty();
         await Assert.That(Regex.IsMatch(
             source,
-            @"SendInitialOptionsAsync\s*\(\s*CreateOptionsUpdate\s*\(\s*subscription\s*\)",
-            RegexOptions.CultureInvariant)).IsTrue();
-        await Assert.That(Regex.IsMatch(
-            subscriber,
-            @"SendOptionsUpdateAsync\s*\(\s*CarpaNetJetstreamEventSource\.CreateOptionsUpdate\s*\(",
-            RegexOptions.CultureInvariant)).IsTrue();
-        await Assert.That(Regex.IsMatch(
-            source,
-            @"CreateOptionsUpdate\s*\(\s*AtprotoJetstreamSubscription subscription\s*\)\s*=>\s*new\s*\(\s*\)\s*\{\s*Payload\s*=\s*new JetstreamOptionsPayload\s*\{\s*WantedCollections\s*=\s*\[\s*AtprotoJetstreamConstants\.EventCollection\s*,\s*AtprotoJetstreamConstants\.RsvpCollection\s*\]",
+            @"CreateSubscribeOptions\s*\(\s*AtprotoJetstreamSubscription subscription\s*\)\s*=>\s*new\s*\(\s*\)\s*\{\s*Kinds\s*=\s*\[\s*JetstreamV2EventKind\.Commit\s*,\s*JetstreamV2EventKind\.Account\s*\]\s*,\s*Collections\s*=\s*\[\s*AtprotoJetstreamConstants\.EventCollection\s*,\s*AtprotoJetstreamConstants\.RsvpCollection\s*\]",
             RegexOptions.CultureInvariant)).IsTrue();
         await Assert.That(source).DoesNotContain("new ClientWebSocket");
-        await Assert.That(constants).Contains("community.lexicon.calendar.event");
-        await Assert.That(constants).Contains("community.lexicon.calendar.rsvp");
-        await Assert.That(constants).DoesNotContain("community.lexicon.calendar.*");
+        await Assert.That(parser).Contains("community.lexicon.calendar.event");
+        await Assert.That(parser).Contains("community.lexicon.calendar.rsvp");
+        await Assert.That(parser).DoesNotContain("community.lexicon.calendar.*");
+
+        // v2 splits the single v1 microsecond cursor into a resume token (seq) and an ordering key
+        // (time_us). SourceVersion is compared against PDS snapshot versions, which are unix
+        // microseconds, so binding it to seq would silently invert last-writer-wins.
+        await Assert.That(Regex.IsMatch(
+            parser,
+            @"SourceVersion\s*=\s*envelope\.TimeUs\s*,\s*SourceCursor\s*=\s*envelope\.Seq\s*,",
+            RegexOptions.CultureInvariant)).IsTrue();
     }
 
     private static string[] ValidateProjectConfiguration(XDocument document, string projectName)
