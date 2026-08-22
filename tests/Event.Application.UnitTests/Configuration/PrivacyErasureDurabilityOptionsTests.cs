@@ -27,6 +27,8 @@ public sealed class PrivacyErasureDurabilityOptionsTests
     [Arguments("externaldatabase", PrivacyErasureAuthorityTopology.ExternalDatabase)]
     [Arguments("CoLocated", PrivacyErasureAuthorityTopology.CoLocated)]
     [Arguments("colocated", PrivacyErasureAuthorityTopology.CoLocated)]
+    [Arguments("None", PrivacyErasureAuthorityTopology.None)]
+    [Arguments("none", PrivacyErasureAuthorityTopology.None)]
     public async Task SupportedTopologyName_IsAccepted(
         string configured,
         PrivacyErasureAuthorityTopology expected)
@@ -105,10 +107,15 @@ public sealed class PrivacyErasureDurabilityOptionsTests
         {
             ["PrivacyErasure:Authority:Topology"] = "CoLocated"
         });
+        PrivacyErasureDurabilityOptions none = Resolve(new Dictionary<string, string?>
+        {
+            ["PrivacyErasure:Authority:Topology"] = "None"
+        });
 
         await Assert.That(embedded.RestoreReplayProtection).IsTrue();
         await Assert.That(external.RestoreReplayProtection).IsTrue();
         await Assert.That(colocated.RestoreReplayProtection).IsFalse();
+        await Assert.That(none.RestoreReplayProtection).IsFalse();
     }
 
     private static PrivacyErasureDurabilityOptions Resolve(

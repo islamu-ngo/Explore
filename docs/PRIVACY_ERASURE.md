@@ -48,33 +48,33 @@ erasure request -> append authority fact (committed first)
 
 ---
 
-## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`
+## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`, `None`
 
-The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`ERASURE_TOPOLOGY` or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of three persistence topologies for storing the authority ledger.
+The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`ERASURE_TOPOLOGY` or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of four persistence topologies for storing the authority ledger.
 
-| Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode |
-|---|---|---|---|
-| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance |
-| **Supported Primary DBs** | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | **PostgreSQL or SQLite only** | **All 5 providers** (Authority DB itself is separate PostgreSQL) |
-| **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles |
-| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle |
-| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction |
-| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB |
-| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs |
-| **Operator Backup Units** | Primary database backup **plus** the dedicated authority-file backup | One primary database backup containing authority rows | Primary database backup **plus** an independently managed external PostgreSQL authority backup |
-| **Target Use Case** | Local development, CI, and single-replica self-hosting | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage |
+| Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode | `None` Mode |
+|---|---|---|---|---|
+| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance | In-memory no-op authority (zero database storage) |
+| **Supported Primary DBs** | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | **PostgreSQL or SQLite only** | **All 5 providers** (Authority DB itself is separate PostgreSQL) | **All 5 providers** |
+| **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles | None |
+| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle | `false` |
+| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **No** — in-memory only |
+| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB | **No** |
+| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs | Unlimited |
+| **Operator Backup Units** | Primary database backup **plus** the dedicated authority-file backup | One primary database backup containing authority rows | Primary database backup **plus** an independently managed external PostgreSQL authority backup | Primary database backup only |
+| **Target Use Case** | Local development, CI, and single-replica self-hosting (Default) | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage | Ephemeral testing or operators opting out of retained cryptographic erasure audit logs |
 
 ### Primary Database vs. Privacy Authority Compatibility Matrix
 
 The primary application persistence (users, events, registrations, ASP.NET Data Protection keys) fully supports all five database engines. The Privacy Erasure Authority topology compatibility is as follows:
 
-| Primary Database Provider | `EmbeddedSqlite` (Default) | `CoLocated` | `ExternalDatabase` |
-|---|:---:|:---:|:---:|
-| **PostgreSQL** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
-| **SQLite** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
-| **SQL Server** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
-| **MariaDB** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
-| **MySQL** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+| Primary Database Provider | `EmbeddedSqlite` (Default) | `CoLocated` | `ExternalDatabase` | `None` |
+|---|:---:|:---:|:---:|:---:|
+| **PostgreSQL** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
+| **SQLite** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
+| **SQL Server** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
+| **MariaDB** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
+| **MySQL** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
 
 #### Why does `CoLocated` only support PostgreSQL and SQLite?
 The Privacy Erasure Authority is not a generic CRUD table; it requires strict engine-level concurrency and writer serialization guarantees:

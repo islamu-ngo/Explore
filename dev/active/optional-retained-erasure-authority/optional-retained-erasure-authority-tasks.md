@@ -1,155 +1,146 @@
-<!-- ABOUTME: Progress ledger for three mutually exclusive privacy-erasure authority topologies. -->
-<!-- ABOUTME: Tracks five-provider CoLocated completion while retaining accepted historical work. -->
+<!-- ABOUTME: Execution ledger for retained privacy-erasure authority lifecycle and recovery work. -->
+<!-- ABOUTME: Tracks six current tasks while preserving delivered evidence and cancelling stale five-provider expansion. -->
 
-# Optional Retained Erasure Authority Tasks
+# Optional Retained Erasure Authority — Task Checklist
 
-**Status:** Historical semantics accepted; five-provider `CoLocated` completion in progress
-
-**Last Updated:** 2026-08-08 (Europe/Brussels)
-
-**Rule:** Do not uncheck completed behavior merely because its storage implementation is being replaced.
+Last Updated: 2026-08-20 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Re-baselined; implementation paused for session handoff.
-- **Completed rebaseline:** OREA-1009.
-- **Current priority:** OREA-1010.
-- **Next recommended slice:** Provider-neutral co-located authority model and
-  context for all five primary providers; do not start migration regeneration
-  until that model is settled.
-- **Known worktree condition:** Uncommitted implementation, migration, test,
-  intent, and documentation changes overlap Phase 10. Preserve and reconcile
-  them before editing.
-- **Handoff validation:** Planning-only `git diff --check` passed; no runtime
-  build or test command was run for the handoff.
+- **Overall status:** Re-baselined; awaiting user approval
+- **Completed:** 0/6 current implementation tasks (historical evidence tracked separately)
+- **Current priority:** OREA-1400 after dependency resolution
+- **Next recommended slice:** Resolve master legal-hold policy and coordinate multi-database Phase 1, then add typed authority high-water/floor state
+- **Known blockers:** legal-hold pseudonymization policy; overlapping provider-composition ownership
 
-## Historical Progress Ledger
+## Implementation Maintenance Rules
 
-- [x] **OREA-100** Define retained authority contracts and minimal authority data.
-- [x] **OREA-110** Define monotonic sequence/high-water/floor semantics.
-- [x] **OREA-120** Define idempotent replay and anti-resurrection invariants.
-- [x] **OREA-200** Implement privacy erasure orchestration.
-- [x] **OREA-210** Implement application erasure flow and transaction boundaries.
-- [x] **OREA-220** Implement transactional outbox/receipt convergence behavior.
-- [x] **OREA-300** Implement authority append/read foundations.
-- [ ] **OREA-310** Complete durable authority provider contract under `EmbeddedSqlite` and external PostgreSQL.
-- [ ] **OREA-320** Complete replay/checkpoint boundary tests after primary ledger removal.
-- [ ] **OREA-400** Settle embedded SQLite provider registration, migrations, and operational envelope.
-- [ ] **OREA-410** Settle external PostgreSQL structured configuration, roles, functions, and migrations.
-- [x] **OREA-420** Establish MigrationService as external authority migration owner.
-- [x] **OREA-500** Implement `PrivacyErasureStartupGate` before readiness.
-- [x] **OREA-510** Implement replay and checkpoint advancement.
-- [x] **OREA-520** Implement failure-closed startup behavior for unsafe authority state.
-- [x] **OREA-600** Establish authority security and least-data principles.
-- [x] **OREA-610** Establish observability and credential/identifier redaction.
-- [ ] **OREA-620** Complete independent disaster-recovery drills for target topologies.
-- [x] **OREA-700** Complete initial operational documentation and accepted evidence.
-- [ ] **OREA-710** Revalidate completeness after topology replacement.
-- [ ] **OREA-720** Capture final release evidence for all three modes.
+- Read the full workstream once at implementation start; on resume, read context/tasks first and only the relevant plan sections.
+- Do not reread unchanged artifacts after every task.
+- Mark substantial work `🟡 IN PROGRESS`; check it immediately when acceptance criteria are met.
+- Keep completed count, priority, next slice, dependencies, risks, and date accurate.
+- Check a phase complete only after all task and phase-verification checkboxes pass.
+- Update context after a phase, decision, blocker, validation failure, material discovery, or handoff.
+- Update the plan only when scope, architecture, sequence, acceptance, risk, or verification changes.
+- Run build/tests once at phase end, not after individual tasks.
+- Do not start Docker, Aspire, the application, browsers, Playwright, or live services for local verification.
+- Never hand-edit generated migrations or snapshots.
+- Do not resume OREA-1010–1018.
 
-## Phase 8: Rebaseline Contracts and Inventory
+## Phase 14 — Authority State and Replay Safety ⏳ NOT STARTED
 
-- [ ] **OREA-799** Restore a green Release build before any runtime authority edit and record unrelated fixes outside this workstream.
-- [x] **OREA-800** Settle three deployable authority modes (`CoLocated`, `EmbeddedSqlite`, `ExternalDatabase`) as mutually exclusive with one active authority storage destination.
-- [ ] **OREA-801** Define embedded file path, volume, one-writer, local-filesystem, permissions, WAL, private-cache, busy-timeout, and integrity constraints.
-- [ ] **OREA-802** Define privacy-prefixed external structured fields aligned with MDB-101.
-- [ ] **OREA-803** Restrict external authority provider to PostgreSQL initially.
-- [ ] **OREA-804** Remove raw authority connection-string and free-form fragment contracts.
-- [ ] **OREA-805** Inventory co-located tables, functions, repositories, migrations, configuration, and tests.
-- [ ] **OREA-806** Classify primary records as replay checkpoint, normal saga/outbox/receipt state, or duplicated authority ledger.
-- [ ] **OREA-807** Complete and evidence OREA-310 under the settled topologies.
-- [ ] **OREA-807A** Define and test a stable idempotent handoff that durably appends authority intent before primary erasure can be acknowledged.
-- [ ] **OREA-808** Record phase build/test evidence from a green baseline.
+- [ ] **OREA-1400 Add typed authority state and maintenance boundaries**
+  - **Files:**
+    - `src/Explore.Domain/PrivacyErasureAuthorityState.cs` (new)
+    - `src/Explore.Domain/PrivacyErasureCounter.cs` (existing)
+    - `src/Explore.Application/Contracts/PrivacyErasure/IPrivacyErasureAuthority.cs` (existing)
+    - `src/Explore.Application/Contracts/PrivacyErasure/IPrivacyErasureAuthorityMaintenance.cs` (new)
+    - `src/Explore.Application/Configuration/PrivacyErasureOptions.cs` (existing)
+    - `tests/Event.Domain.UnitTests/PrivacyErasureContractTests.cs` (existing)
+    - `tests/Event.Application.UnitTests/Configuration/PrivacyErasureModelCompositionTests.cs` (existing)
+  - **Acceptance:** High-water/floor and dry-run/apply contracts are typed, reject invalid/early maintenance before I/O, contain no sensitive values, and consume the master legal-hold policy without adding normal repository delete APIs.
+  - **Effort:** M
+  - **Dependencies:** Multi-database Phase 1; master privacy-erasure task 18 policy
 
-## Phase 9: Embedded SQLite Authority
+- [ ] **OREA-1401 Make replay and readiness floor-aware**
+  - **Files:**
+    - `src/Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs` (existing)
+    - `src/Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs` (existing)
+    - `src/Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs` (existing)
+    - `tests/Event.Application.UnitTests/Services/GlobalLocationPrivacyReplayCacheGateTests.cs` (existing)
+    - `tests/Event.API.IntegrationTests/Privacy/PrivacyErasureStartupGateTests.cs` (existing)
+    - `tests/Event.API.IntegrationTests/Privacy/PrivacyErasureReadinessHealthCheckTests.cs` (existing)
+  - **Acceptance:** Checkpoint-ahead, below-floor, gap, rollback, and unavailable states block startup with bounded reason codes; in-range replay remains ordered/idempotent; `CoLocated` never reports restore isolation.
+  - **Effort:** M
+  - **Dependencies:** OREA-1400
 
-- [x] **OREA-900** Add a dedicated SQLite authority DbContext and clean generated migration assembly with fixed `ie_` names.
-- [x] **OREA-901** Register the SQLite authority context for `EmbeddedSqlite` and co-located primary SQLite, while registering dedicated storage only for `EmbeddedSqlite`.
-- [x] **OREA-902** Create/validate the dedicated directory and file with restrictive permissions.
-- [x] **OREA-903** Initialize WAL once with bounded busy timeout and private cache.
-- [ ] **OREA-904** Implement monotonic append/read/high-water/floor behavior using SQLite-safe transactions.
-- [ ] **OREA-905** Implement replay and compaction without weakening retained-floor semantics.
-- [ ] **OREA-906** Enforce one API writer/replica and reject network/shared filesystem claims.
-- [ ] **OREA-907** Keep primary and authority SQLite files, volumes, health checks, and backups separate for `EmbeddedSqlite`; deliberately share only the physical file for `CoLocated` while keeping contexts and migration histories separate.
-- [ ] **OREA-908** Add real-file append concurrency, restart, replay, compaction, permissions, integrity, and backup/restore tests.
-- [ ] **OREA-909** Complete and evidence OREA-400.
-- [ ] **OREA-910** Record phase build/test evidence.
+### Phase 14 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-## Phase 10: Co-Located Provider Alignment and Single-Sink Enforcement
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-- [x] **OREA-1000** Deliver the historical PostgreSQL/SQLite `CoLocated` slice as a first-class primary-database authority sink.
-- [x] **OREA-1001** Add the historical dedicated co-located PostgreSQL context, generated migration, and direct primary-credential repository.
-- [x] **OREA-1002** Add the historical co-located SQLite path with fixed `ie_` tables and a distinct migration history.
-- [x] **OREA-1003** Apply configurable `DATABASE_SCHEMA` to PostgreSQL and reject any configurable database prefix in the delivered slice.
-- [x] **OREA-1004** Register exactly one authority adapter and no external/embedded authority credential or storage surface in `CoLocated`.
-- [x] **OREA-1005** Keep the primary application model checkpoint-only outside the selected co-located authority context.
-- [x] **OREA-1006** Keep MigrationService as the only production migration owner for the selected topology.
-- [ ] **OREA-1007** Prove co-located atomic backup/restore behavior and report `restoreReplayProtection=false` without claiming restore isolation.
-- [ ] **OREA-1008** Record phase build/test evidence.
-- [x] **OREA-1009** Rebaseline `CoLocated` acceptance to PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL while preserving exactly three mutually exclusive topologies.
-- [ ] **OREA-1010** Replace provider-specific co-located contexts/configurations with one provider-neutral authority model that applies `DATABASE_SCHEMA` to PostgreSQL/SQL Server, fixed `ie_` names to SQLite/MariaDB/MySQL, and the existing MySQL identifier policy.
-- [ ] **OREA-1011** Replace PostgreSQL SQL and co-located SQLite special cases with one EF repository using the existing transaction-scoped `RelationalNamedLock`, including MySQL/MariaDB lock release.
-- [ ] **OREA-1012** Generate dedicated co-located migration lanes for all five providers, keep embedded SQLite migrations separate, and regenerate every unapplied development artifact with `dotnet ef` rather than hand-editing it.
-- [ ] **OREA-1013** Make runtime DI and MigrationService select the same five-provider co-located context/repository and remove the three provider rejection branches.
-- [ ] **OREA-1014** Add fast composition, namespace, model, migration-ownership, topology-exclusivity, and architecture tests for all five providers.
-- [ ] **OREA-1015** Run the real-engine co-located matrix: migrate twice, append/retry/mismatch/concurrency/read ordering, replay, restart, namespace, and exactly-one-sink checks on all five providers.
-- [ ] **OREA-1016** Prove provider-native atomic co-located backup/restore for all five providers and report `restoreReplayProtection=false`.
-- [ ] **OREA-1017** Converge intent acceptance, configuration schema, `.env.example`, operator docs, troubleshooting, testing, backup/restore, and self-hosting guidance on five-provider co-located support and fixed `ie_` behavior.
-- [ ] **OREA-1018** Record Phase 10 build, required project-test, real-engine, migration-generation, and documentation evidence.
+## Phase 15 — Topology-Specific Retention and Recovery ⏳ NOT STARTED
 
-## Phase 11: Startup Replay and Rollback Detection
+- [ ] **OREA-1500 Implement embedded and co-located SQLite maintenance**
+  - **Files:**
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityDbContext.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EmbeddedPrivacyErasureAuthorityRepository.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/Configurations/EmbeddedPrivacyErasureCounterConfiguration.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/Configurations/EmbeddedPrivacyErasureIntentConfiguration.cs` (existing)
+    - `src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/Migrations/` (generated output)
+    - `tests/Event.Persistence.IntegrationTests/Privacy/EmbeddedPrivacyErasureRecoveryTests.cs` (existing)
+  - **Acceptance:** Horizon/hold eligibility, compaction, and floor advancement are atomic; held evidence is pseudonymized per policy; below-floor restore fails closed; supported replay remains idempotent; SQLite migrations are generated, not patched.
+  - **Effort:** L
+  - **Dependencies:** Phase 14
 
-- [ ] **OREA-1100** Compare primary replay checkpoint with retained high-water/floor before readiness.
-- [ ] **OREA-1101** Replay missing intent idempotently when primary is behind.
-- [ ] **OREA-1101A** Prove authority append succeeds before primary erasure acknowledgement and that primary failure after append converges safely by retry/replay.
-- [ ] **OREA-1102** Fail readiness when primary checkpoint is ahead of authority state.
-- [ ] **OREA-1103** Fail readiness for missing, corrupt, unavailable, unsafe-permission, or unreplayable authority storage.
-- [ ] **OREA-1104** Add counter/floor evidence sufficient to detect authority rollback or replacement.
-- [ ] **OREA-1105** Prove primary-only restore converges from untouched authority storage.
-- [ ] **OREA-1106** Prove older authority restore/replacement fails closed.
-- [ ] **OREA-1107** Complete and evidence OREA-320.
-- [ ] **OREA-1108** Record phase build/test evidence.
+- [ ] **OREA-1501 Implement co-located and external PostgreSQL maintenance**
+  - **Files:**
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/CoLocatedPrivacyErasureAuthorityDbContext.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/PrivacyErasureAuthorityDbContext.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/PrivacyErasureAuthorityDatabaseContract.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/CoLocatedPostgresPrivacyErasureAuthorityRepository.cs` (existing)
+    - `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EfCorePrivacyErasureAuthorityRepository.cs` (existing)
+    - `src/Explore.Persistence/Migrations/CoLocatedPrivacyErasureAuthority/` (generated output)
+    - `src/Explore.Persistence/Migrations/PrivacyErasureAuthority/` (generated output)
+    - `src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs` (existing)
+    - `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs` (existing)
+  - **Acceptance:** External maintenance remains function-only and table/migration access stays denied; co-located work remains in the primary boundary; append/maintenance concurrency cannot skip facts or over-advance floor; generated migrations/functions/grants are reproducible.
+  - **Effort:** L
+  - **Dependencies:** OREA-1400, OREA-1401
 
-## Phase 12: External PostgreSQL Completion
+### Phase 15 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] **OREA-1200** Bind privacy-prefixed structured PostgreSQL settings and build Npgsql strings internally.
-- [ ] **OREA-1201** Remove external raw `--connection` and environment escape hatches.
-- [ ] **OREA-1202** Preserve separate runtime and migrator credentials.
-- [ ] **OREA-1203** Complete PostgreSQL functions, ownership, ACLs, append/read, migration, replay, and startup behavior.
-- [ ] **OREA-1204** Prove the runtime role cannot migrate or bypass authority contracts.
-- [ ] **OREA-1205** Prove independent external backup/restore and rollback detection.
-- [ ] **OREA-1206** Complete and evidence OREA-410.
-- [ ] **OREA-1207** Record phase build/test evidence.
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EmbeddedPrivacyErasureRecoveryTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 
-## Phase 13: Deployment, Recovery, and Release
+## Phase 16 — Operator Contract and Release Closure ⏳ NOT STARTED
 
-- [ ] **OREA-1300** Add a dedicated embedded authority volume to Aspire, Compose, and deployment manifests.
-- [ ] **OREA-1301** Ensure primary backup/restore jobs exclude the authority file/volume.
-- [ ] **OREA-1302** Document embedded one-writer/local-filesystem limits and external topology selection.
-- [ ] **OREA-1303** Document separate authority backup, integrity, retention, restore, and key/credential procedures.
-- [ ] **OREA-1304** Run primary-only restore and replay drill.
-- [ ] **OREA-1305** Run authority rollback/replacement failure-closed drill.
-- [ ] **OREA-1306** Run corruption, permission, unavailable-storage, and interrupted-cutover drills.
-- [ ] **OREA-1307** Run independent external PostgreSQL restore drill.
-- [ ] **OREA-1308** Revalidate security, observability, compaction, and performance evidence under all three topologies.
-- [ ] **OREA-1309** Complete and evidence OREA-620.
-- [ ] **OREA-1310** Complete and evidence OREA-710 and OREA-720.
-- [ ] **OREA-1311** Run final Release build, architecture tests, file-backed authority tests, external PostgreSQL tests, and documentation-link checks.
+- [ ] **OREA-1600 Converge operator diagnostics, deployment, and recovery guidance**
+  - **Files:**
+    - `src/Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs` (existing)
+    - `src/Explore.AppHost/AppHost.cs` (existing)
+    - `docker-compose.yml` (existing)
+    - `.env.example` (existing)
+    - `docs/PRIVACY_ERASURE.md` (existing)
+    - `docs/CONFIGURATION.md` (existing)
+    - `docs/SECRETS.md` (existing)
+    - `docs/SELF_HOSTING.md` (existing)
+    - `docs/BACKUP_RESTORE_UPGRADE.md` (existing)
+    - `docs/TROUBLESHOOTING.md` (existing)
+    - `docs/TESTING.md` (existing)
+  - **Acceptance:** All surfaces use the approved provider matrix; embedded/external independence remains conditional; co-located atomic restore and false protection flag are explicit; diagnostics are bounded and credential/PII-free; Blazor receives no authority credentials.
+  - **Effort:** M
+  - **Dependencies:** Phase 15; multi-database Phase 2
 
-## Settled Decisions
+- [ ] **OREA-1601 Changelog contribution and final commit composition**
+  - **Files:** `docs/releases/changes/CHG-2026-0002.yaml` (new)
+  - **Acceptance:** Tier 2 fragment passes release policy with `Scope: privacy`, all impact dispositions, and `Change-Id: CHG-2026-0002`; one outcome-led commit is prepared after green verification and executed only with explicit authorization; breaking syntax/footer is added only if operator action is required.
+  - **Effort:** S
+  - **Dependencies:** OREA-1600 and all prior phase verification
 
-- [x] **OREA-D01** `EmbeddedSqlite` and `ExternalDatabase` authority must be outside the primary restore lifecycle; `CoLocated` intentionally shares it.
-- [x] **OREA-D02** Default topology is a dedicated embedded SQLite file, with `CoLocated` and `ExternalDatabase` as explicit alternate modes.
-- [x] **OREA-D03** Enterprise topology is a separately restored PostgreSQL database.
-- [x] **OREA-D04** Primary authority state is limited to the replay checkpoint except in `CoLocated`, where the primary database is the selected authority sink.
-- [x] **OREA-D05** Normal saga/outbox/receipt records remain in primary according to transaction ownership.
-- [x] **OREA-D06** Startup replay remains mandatory before readiness.
-- [x] **OREA-D07** Primary checkpoint ahead of authority fails closed.
-- [x] **OREA-D08** External operator configuration uses structured fields, never raw connection strings.
-- [x] **OREA-D09** Embedded mode is one writer on a durable local filesystem.
-- [x] **OREA-D10** Retained authority append precedes acknowledged destructive primary erasure; the primary outbox is not the first durable authority copy.
-- [x] **OREA-D11** Pre-v1 provider/topology changes use reset-only development guidance; no automatic cross-mode migration or backward-compatibility shim is required.
-- [x] **OREA-D12** `CoLocated` supports every primary provider: PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
-- [x] **OREA-D13** PostgreSQL and SQL Server use `DATABASE_SCHEMA` with default `islamu_event`; SQLite, MariaDB, and MySQL use fixed `ie_`, with no configurable prefix.
-- [x] **OREA-D14** Co-located monotonic allocation reuses one provider-neutral repository and the existing `RelationalNamedLock` instead of adding provider SQL repositories.
-- [x] **OREA-D15** `ExternalDatabase` remains PostgreSQL-only and `EmbeddedSqlite` remains a dedicated SQLite file; expanding `CoLocated` does not expand those provider contracts.
+### Phase 16 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+
+## Historical Delivered Evidence
+
+- [x] OREA-100/110/120: retained facts, monotonic sequencing, replay invariants.
+- [x] OREA-200/210/220: authority-first orchestration, local transaction, outbox/receipt behavior.
+- [x] OREA-300/420: authority persistence foundations and MigrationService ownership.
+- [x] OREA-500/510/520: startup gate, replay, and failure-closed behavior.
+- [x] OREA-600/610/700: privacy/security, bounded observability, initial operator guidance.
+- [x] OREA-900–903: embedded SQLite context/migration, registration, permissions, WAL/integrity.
+- [x] OREA-1000–1006: PostgreSQL/SQLite co-located composition, namespace, singular adapter, checkpoint boundary, migrator ownership.
+
+## Superseded / Cancelled Work
+
+- [x] **OREA-1009 superseded:** historical five-provider planning decision; not runtime evidence.
+- [x] **OREA-D12/D13/D14 superseded:** five-provider co-location, all-provider namespace, and universal repository decisions.
+- [x] **OREA-1010–1018 cancelled:** do not build provider-neutral co-located contexts/repositories or SQL Server/MariaDB/MySQL authority lanes.
+
+## Remaining / Transferred Work
+
+- Full User-PII inventory, provider settlement, receipt/status, and central fence remain in the master platform privacy-erasure plan.
+- Provider capability, composition diagnostics, migration ownership tests, CI matrix, and broad support docs remain in `multi-database-persistence-unification`.
+- The pre-existing `SSH.NET` advisory and build-warning reduction remain separate dependency/quality work.

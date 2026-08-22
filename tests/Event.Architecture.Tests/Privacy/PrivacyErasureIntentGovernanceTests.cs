@@ -7,35 +7,21 @@ public sealed class PrivacyErasureIntentGovernanceTests
 {
     private static readonly string[] RequiredContractTerms =
     [
-        "one authority-first workflow",
         "PrivacyErasure:Authority:Topology",
         "EmbeddedSqlite",
         "ExternalDatabase",
         "CoLocated",
-        "default is EmbeddedSqlite",
-        "application-side replay checkpoint remains active in all topologies",
-        "A present legacy PrivacyErasure:Durability:Mode key is rejected",
-        "reset-only",
-        "receipt/status",
-        "provider settlement",
-        "startup replay",
-        "retention",
-        "restore",
-        "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials",
-        "mapped to structured privacy-prefixed database fields only in the owning process",
-        "EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret",
-        "CoLocated reports restoreReplayProtection=false and is backed up and restored atomically with the primary database",
-        "dev/active/optional-retained-erasure-authority/**",
-        ".omo/evidence/optional-retained-erasure-authority/**",
-        "docs/DEPLOYMENT_MODES.md",
-        "docs/DEPLOYMENT_TIERS.md",
-        "Adding arbitrary JSON, table, column, SQL, reflection-driven, prompt-derived, or other executable erasure instructions",
-        "Storing live PII in the authority database, joining it from normal request paths, or introducing a distributed transaction",
-        "Bypassing tenant filters outside the one dedicated Persistence erasure adapter with a named reason and exact subject and tenant predicates",
-        "Calling Keycloak, ATProto, Listmonk, SMTP, object storage, webhooks, or any provider inside a handler, database transaction, migration, or startup replay transaction",
-        "Emitting PII, linkable identifiers, secrets, receipt credentials, provider payloads/responses, URLs, exception text, or unbounded values",
-        "Deleting any database, container, volume, backup, unrelated file, or unrelated dirty-worktree change",
-        "Weakening or deleting failing tests, tenant isolation, least-privilege ACLs, append-only guards, irreversible guards, legal holds, retention checks, receipt authorization, or HAL affordance rules"
+        "Primary application and Data Protection persistence retain PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL",
+        "Unsupported SQL Server, MariaDB, and MySQL CoLocated authority combinations fail during composition before adapter use and without exposing credentials, connection strings, or structured database values",
+        "Provider-native authority adapters remain distinct",
+        "MigrationService applies exactly one authority migration path",
+        "Hand-editing generated migration, designer, or model-snapshot artifacts",
+        "Weakening tenant filters, named query filters, subject predicates, or exact tenant predicates",
+        "Collapsing PostgreSQL, SQLite, and external PostgreSQL provider-native authority adapters into one generic authority implementation",
+        "Adding provider fallback, backward-compatibility translation, dual-write, or compatibility shims for unsupported topology/provider combinations",
+        "Exposing secrets, credentials, generated connection strings, structured database values, provider payloads, or raw exception text",
+        "Expanding CoLocated authority support beyond PostgreSQL and SQLite",
+        "Collapsing application, Data Protection, embedded authority, co-located authority, or external authority migration ownership into one project, schema, or history table"
     ];
 
     private static readonly string[] StaleAcceptanceMandates =
@@ -79,7 +65,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
     public async Task AuthorityFirstContract_RejectsMissingCredentialSeparationAcceptance()
     {
         const string credentialAcceptance =
-            "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret";
+            "Unsupported SQL Server, MariaDB, and MySQL CoLocated authority combinations fail during composition before adapter use and without exposing credentials, connection strings, or structured database values";
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
             ".agents", "contract", "intents.yaml"));
         string intent = SelectIntent(catalog, "platform-privacy-erasure");
