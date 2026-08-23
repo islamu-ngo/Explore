@@ -252,6 +252,11 @@ I am deeply grateful to all our amazing contributors.
 
 ![Repo Stats][repobeats-image]
 
+## ISLAMU Solutions
+
+- [ISLAMU Event][github-repo-link]: Event Platform & Management System.
+- [I-VSD][ivsd-github-repo-link]: Islamic Value Sensitive Design: A Framework for Provider-Mediated Software Solutions
+
 ## 🙏 Acknowledgement
 
 - [Keycloak][keycloak-link]: An Open Source Identity and Access Management Provider.
@@ -267,6 +272,11 @@ I am deeply grateful to all our amazing contributors.
 - [Weblate][weblate-link]: An Open Source Translation Management Platform.
 - [Kener][kener-link]: An Open Source Status Page.
 
+### Open-Source Libraries & Dependencies
+
+Our codebase is enriched by dozens of community-crafted .NET libraries. For the complete, centrally managed dependency list and version pins, see [`Directory.Packages.props`](Directory.Packages.props).
+*A heartfelt thank you to every open-source author and maintainer whose work (direct or transitive) helps make this project possible.*
+
 ## Inspiration (UI/...)
 
 - [Luma][luma-link]: A Modern Event Management & Discovery Platform
@@ -274,11 +284,6 @@ I am deeply grateful to all our amazing contributors.
 - [Mangadex][mangadex-link]: A Manga Discovery Platform with advanced filtering and multi-language support.
 - [Plane][plane-link]: An Open Source Project Management Platform that unifies projects, knowledge and agents with all-in-one workspace: projects, wiki, and AI.
 - [Hi.Events][hi.events-link]: An Open Source Event Ticketing and Management Platform
-
-## ISLAMU Solutions
-
-- [ISLAMU Event][github-repo-link]: Event Platform & Management System.
-- [I-VSD][ivsd-github-repo-link]: Islamic Value Sensitive Design: A Framework for Provider-Mediated Software Solutions
 
 ## 🌱 Sustainability
 
