@@ -1,0 +1,1043 @@
+{
+  "Files": [
+    {
+      "FileName": "ActorLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetActors",
+        "LinkRelations.Group-\u003ERouteNames.GetGroupById",
+        "LinkRelations.Organization-\u003ERouteNames.GetOrganizationById",
+        "LinkRelations.Self-\u003ERouteNames.GetActorById",
+        "LinkRelations.Self-\u003ERouteNames.GetActorByTenant"
+      ],
+      "Permissions": [
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.Create",
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.View"
+      ]
+    },
+    {
+      "FileName": "ActorSubscriptionLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Actor-\u003ERouteNames.GetActorById",
+        "LinkRelations.Collection-\u003ERouteNames.GetActorSubscriptions",
+        "LinkRelations.Create-\u003ERouteNames.SubscribeToActor",
+        "LinkRelations.Self-\u003ERouteNames.GetActorSubscriptionByActor"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.ActorSubscription:AuthorizationActions.ActorSubscriptions.Delete",
+        "ResourceDescriptors.ActorSubscription:AuthorizationActions.ActorSubscriptions.Update",
+        "ResourceDescriptors.ActorSubscription:AuthorizationActions.ActorSubscriptions.View",
+        "ResourceDescriptors.ActorSubscriptionList:AuthorizationActions.ActorSubscriptions.Delete",
+        "ResourceDescriptors.ActorSubscriptionList:AuthorizationActions.ActorSubscriptions.Update",
+        "ResourceDescriptors.ActorSubscriptionList:AuthorizationActions.ActorSubscriptions.View",
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.Create",
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.View"
+      ]
+    },
+    {
+      "FileName": "AiAssistantLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetAiConversations",
+        "LinkRelations.ConfirmAction-\u003ERouteNames.ConfirmAiProposedAction",
+        "LinkRelations.Create-\u003ERouteNames.CreateAiConversation",
+        "LinkRelations.RejectAction-\u003ERouteNames.RejectAiProposedAction",
+        "LinkRelations.Self-\u003ERouteNames.GetAiConversation",
+        "LinkRelations.SendMessage-\u003ERouteNames.SendAiMessage"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.AiConversation:AuthorizationActions.AiConversations.ConfirmAction",
+        "ResourceDescriptors.AiConversation:AuthorizationActions.AiConversations.RejectAction",
+        "ResourceDescriptors.AiConversation:AuthorizationActions.AiConversations.SendMessage",
+        "ResourceDescriptors.AiConversation:AuthorizationActions.AiConversations.View",
+        "ResourceDescriptors.AiConversationSummary:AuthorizationActions.AiConversations.SendMessage",
+        "ResourceDescriptors.AiConversationSummary:AuthorizationActions.AiConversations.View",
+        "ResourceKinds.AiConversation:AuthorizationActions.AiConversations.Create"
+      ]
+    },
+    {
+      "FileName": "CategoryLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetCategories",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateCategory",
+        "LinkRelations.Self-\u003ERouteNames.GetCategoryById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Category:AuthorizationActions.Delete",
+        "ResourceDescriptors.Category:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneDeploymentModeRunbookLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ERouteNames.TransitionControlPlaneDeploymentMode",
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneDomainLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneOperationsLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneOverviewLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneTenantEffectiveConfigurationLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName",
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneTenantLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Create-\u003ERouteNames.CreateControlPlaneTenant",
+        "LinkRelations.Self-\u003ERouteNames.GetControlPlaneTenantById",
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View",
+        "ResourceKinds.Tenant:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "ControlPlaneTenantPlanLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Create-\u003ERouteNames.CreateControlPlaneTenantPlanDraft",
+        "LinkRelations.Self-\u003ERouteNames.GetControlPlaneTenantPlanByKey",
+        "rel-\u003ErouteName",
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "CustomPropertyDefinitionLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateCustomPropertyDefinition"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.CustomPropertyDefinition:AuthorizationActions.Delete",
+        "ResourceDescriptors.CustomPropertyDefinition:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "CustomPropertyProjectionAdminLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.CustomPropertyProjection:AuthorizationActions.CustomPropertyProjections.Update",
+        "ResourceKinds.CustomPropertyProjection:AuthorizationActions.CustomPropertyProjections.View"
+      ]
+    },
+    {
+      "FileName": "EmailDispatchProcessorControlLinkPolicy.cs",
+      "Relations": [
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "EmailDispatchStatusLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceDescriptors.EmailDispatchStatus:AuthorizationActions.EmailDispatches.Park",
+        "ResourceDescriptors.EmailDispatchStatus:AuthorizationActions.EmailDispatches.Reconcile",
+        "ResourceDescriptors.EmailDispatchStatus:AuthorizationActions.EmailDispatches.Replay",
+        "ResourceDescriptors.EmailDispatchStatus:AuthorizationActions.EmailDispatches.Resolve"
+      ]
+    },
+    {
+      "FileName": "EventAgendaItemLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetEventAgendaItemsByEvent",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventAgendaItem",
+        "LinkRelations.Self-\u003ERouteNames.GetEventAgendaItemById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventAgendaItem:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventAgendaItem:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventCustomPropertyLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventCustomPropertyDefinition"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventCustomPropertyDefinition:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventCustomPropertyDefinition:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventDayLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetEventDaysByEvent",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventDay",
+        "LinkRelations.Self-\u003ERouteNames.GetEventDayById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventDay:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventDay:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.AddSession-\u003ERouteNames.CreateDraftEventSession",
+        "LinkRelations.AddSessionGroup-\u003ERouteNames.CreateEventSessionGroup",
+        "LinkRelations.ClaimEvent-\u003ERouteNames.SubmitEventOrganizerClaim",
+        "LinkRelations.Collection-\u003ERouteNames.GetEvents",
+        "LinkRelations.ConfigureParticipation-\u003ERouteNames.ConfigureEventParticipation",
+        "LinkRelations.CreateSessionDraft-\u003ERouteNames.CreateDraftEventSession",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEvent",
+        "LinkRelations.EventReportOptions-\u003ERouteNames.GetEventReportOptions",
+        "LinkRelations.ExportAttendees-\u003ERouteNames.ExportOrganizationSharedContacts",
+        "LinkRelations.ExternalRegistration-\u003ERouteNames.RedirectEventPublicAction",
+        "LinkRelations.ManageCapacityPools-\u003ERouteNames.GetEventTicketCatalogManagement",
+        "LinkRelations.ManagePublicActions-\u003ERouteNames.CreateEventPublicAction",
+        "LinkRelations.ManageRegistrationChannels-\u003ERouteNames.GetRegistrationProviderQueue",
+        "LinkRelations.ManageRegistrationWorkflow-\u003ERouteNames.GetRegistrationWorkflow",
+        "LinkRelations.ManageTicketTypes-\u003ERouteNames.GetEventTicketCatalogManagement",
+        "LinkRelations.ModerateHeavy-\u003ERouteNames.ModerateEventHeavy",
+        "LinkRelations.ModerateLight-\u003ERouteNames.ModerateEventLight",
+        "LinkRelations.ModerationHistory-\u003ERouteNames.GetEventModerationHistory",
+        "LinkRelations.ModerationReports-\u003ERouteNames.GetModerationReportQueue",
+        "LinkRelations.OptionalQuestionnaire-\u003ERouteNames.GetOptionalQuestionnaire",
+        "LinkRelations.OrganizerClaims-\u003ERouteNames.GetEventOrganizerClaims",
+        "LinkRelations.Program-\u003ERouteNames.GetEventSessionGroupsByEvent",
+        "LinkRelations.ProgramSummary-\u003ERouteNames.GetEventProgramSummary",
+        "LinkRelations.PublicActions-\u003ERouteNames.GetEventPublicActions",
+        "LinkRelations.Publish-\u003ERouteNames.PublishEvent",
+        "LinkRelations.PublishReadiness-\u003ERouteNames.GetEventPublishReadiness",
+        "LinkRelations.ReportEvent-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.ReportExternalLink-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.SessionCreateContext-\u003ERouteNames.GetEventSessionCreateContext",
+        "LinkRelations.SessionGroups-\u003ERouteNames.GetEventSessionGroupsByEvent",
+        "LinkRelations.Sessions-\u003ERouteNames.GetEventSessions",
+        "LinkRelations.SignInToRegister-\u003ERouteNames.StartAuthenticatedRegistrationOrder",
+        "LinkRelations.StartGuestRegistration-\u003ERouteNames.StartGuestRegistrationOrder",
+        "LinkRelations.StartRegistration-\u003ERouteNames.StartAuthenticatedRegistrationOrder",
+        "LinkRelations.SuggestCorrection-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.Team-\u003ERouteNames.GetEventTeam",
+        "LinkRelations.Unmoderate-\u003ERouteNames.UnmoderateEvent",
+        "LinkRelations.ViewParticipants-\u003ERouteNames.GetEventRegistrationOrders",
+        "LinkRelations.ViewRegistrationAnalytics-\u003ERouteNames.GetRegistrationAnswerAnalytics",
+        "LinkRelations.ViewRegistrationOrders-\u003ERouteNames.GetEventRegistrationOrders",
+        "LinkRelations.ViewRegistrationProviderHealth-\u003ERouteNames.GetRegistrationProviderHealth",
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Event:AuthorizationActions.Delete",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManagePublicActions",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManageRegistrationChannels",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManageRegistrationWorkflow",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManageRegistrations",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManageTeam",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManageTickets",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ModerateHeavy",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ModerateLight",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.Unmoderate",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ViewManagement",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ViewRegistrationProviderHealth",
+        "ResourceDescriptors.Event:AuthorizationActions.Update",
+        "ResourceDescriptors.EventList:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventList:AuthorizationActions.Update",
+        "ResourceDescriptors.EventOrganizerClaimForEvent:AuthorizationActions.Events.ClaimOrganizer",
+        "ResourceDescriptors.EventOrganizerClaimForEvent:AuthorizationActions.Events.ViewOrganizerClaims",
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.Create",
+        "ResourceKinds.ActorSubscription:AuthorizationActions.ActorSubscriptions.View",
+        "ResourceKinds.EventContactShareConsent:AuthorizationActions.ExportSharedContacts",
+        "ResourceKinds.RegistrationOrder:AuthorizationActions.Create",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventLocationLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventLocationDisclosure",
+        "LinkRelations.RemediateLocation-\u003ERouteNames.ConfirmEventLocationRemediation"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "EventOrganizerClaimLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Event-\u003ERouteNames.GetEventById",
+        "LinkRelations.ReviewClaim-\u003ERouteNames.ReviewEventOrganizerClaim",
+        "LinkRelations.Self-\u003ERouteNames.GetEventOrganizerClaim",
+        "LinkRelations.WithdrawClaim-\u003ERouteNames.WithdrawEventOrganizerClaim"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventOrganizerClaim:AuthorizationActions.Events.ReviewOrganizerClaim",
+        "ResourceDescriptors.EventOrganizerClaim:AuthorizationActions.Events.ViewOrganizerClaims",
+        "ResourceDescriptors.EventOrganizerClaim:AuthorizationActions.Events.WithdrawOrganizerClaim"
+      ]
+    },
+    {
+      "FileName": "EventPublicActionLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Delete-\u003ERouteNames.DeleteEventPublicAction",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventPublicAction",
+        "LinkRelations.Event-\u003ERouteNames.GetEventById",
+        "LinkRelations.Self-\u003ERouteNames.GetEventPublicAction"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventPublicAction:AuthorizationActions.Events.ManagePublicActions"
+      ]
+    },
+    {
+      "FileName": "EventReportLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Event-\u003ERouteNames.GetEventById",
+        "LinkRelations.ReportEvent-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.Self-\u003ERouteNames.GetEventReportOptions",
+        "LinkRelations.Self-\u003ERouteNames.GetMyEventReport",
+        "LinkRelations.UpdateCommunicationConsent-\u003ERouteNames.UpdateMyEventReportCommunicationConsent"
+      ],
+      "Permissions": [
+        "ResourceKinds.User:AuthorizationActions.Users.Update"
+      ]
+    },
+    {
+      "FileName": "EventSeriesLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetEventSeries",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSeries",
+        "LinkRelations.Self-\u003ERouteNames.GetEventSeriesById"
+      ],
+      "Permissions": [
+        "ResourceKinds.Actor:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "EventSessionAgendaItemLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionAgendaItem",
+        "LinkRelations.Self-\u003ERouteNames.GetEventSessionAgendaItemById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSessionAgendaItem:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSessionAgendaItem:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventSessionCustomPropertyLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionCustomPropertyDefinition"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSessionCustomPropertyDefinition:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSessionCustomPropertyDefinition:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventSessionGroupLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.AssignSession-\u003ERouteNames.AssignEventSessionToGroup",
+        "LinkRelations.Collection-\u003ERouteNames.GetEventSessionGroupsByEvent",
+        "LinkRelations.Delete-\u003ERouteNames.DeleteEventSessionGroup",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionGroup",
+        "LinkRelations.Event-\u003ERouteNames.GetEventById",
+        "LinkRelations.Self-\u003ERouteNames.GetEventSessionGroupById",
+        "LinkRelations.Sessions-\u003ERouteNames.GetEventSessionGroupSessions"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSessionGroup:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSessionGroup:AuthorizationActions.Update",
+        "ResourceDescriptors.EventSessionGroupList:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSessionGroupList:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "EventSessionLanguageLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetEventSessionLanguages",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionLanguage"
+      ],
+      "Permissions": [
+        "ResourceKinds.EventSession:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "EventSessionLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSession",
+        "LinkRelations.Publish-\u003ERouteNames.PublishEventSession",
+        "LinkRelations.Schedule-\u003ERouteNames.ScheduleEventSession",
+        "LinkRelations.Self-\u003ERouteNames.GetEventSessionById",
+        "LinkRelations.SessionGroups-\u003ERouteNames.GetEventSessionGroupById",
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSession:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSession:AuthorizationActions.Update",
+        "ResourceDescriptors.EventSessionList:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventSessionSpeakerLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionSpeaker"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSessionSpeaker:AuthorizationActions.Update",
+        "ResourceDescriptors.EventSessionSpeakerList:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "EventSessionTemplateLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventSessionTemplate"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventSessionTemplate:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventSessionTemplate:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventSessionTemplateSyncLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.SyncApply",
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.SyncDiff",
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.View"
+      ]
+    },
+    {
+      "FileName": "EventTeamMemberLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.AssignEventRole-\u003ERouteNames.AssignEventRole",
+        "LinkRelations.Revoke-\u003ERouteNames.RevokeEventRole"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageTeam"
+      ]
+    },
+    {
+      "FileName": "EventTemplateLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventTemplate"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.EventTemplate:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventTemplate:AuthorizationActions.Update",
+        "ResourceDescriptors.EventTemplateList:AuthorizationActions.Delete",
+        "ResourceDescriptors.EventTemplateList:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "EventTemplateSyncLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.SyncApply",
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.SyncDiff",
+        "ResourceKinds.CustomPropertyTemplate:AuthorizationActions.CustomPropertyTemplates.View"
+      ]
+    },
+    {
+      "FileName": "EventTicketingLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.CloneDraft-\u003ERouteNames.CloneEventTicketCatalogDraft",
+        "LinkRelations.CommercialDisclosures-\u003ERouteNames.UpdateEventTicketCatalogCommercialDisclosures",
+        "LinkRelations.CreateCapacityPool-\u003ERouteNames.CreateEventCapacityPool",
+        "LinkRelations.CreateDraft-\u003ERouteNames.CreateEventTicketCatalogDraft",
+        "LinkRelations.CreateTicketType-\u003ERouteNames.CreateEventTicketType",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventCapacityPool",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateEventTicketType",
+        "LinkRelations.Event-\u003ERouteNames.GetEventManagementDetails",
+        "LinkRelations.PaymentConnection-\u003ERouteNames.GetEventOrganizerPaymentConnection",
+        "LinkRelations.Preflight-\u003ERouteNames.GetPaidEventPublicationPreflight",
+        "LinkRelations.StartOnboarding-\u003ERouteNames.StartEventOrganizerPaymentOnboarding"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManagePaidEventCommerce",
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageTickets"
+      ]
+    },
+    {
+      "FileName": "GroupLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceDescriptors.Group:AuthorizationActions.Delete",
+        "ResourceDescriptors.Group:AuthorizationActions.Update",
+        "ResourceDescriptors.GroupList:AuthorizationActions.Delete",
+        "ResourceDescriptors.GroupList:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "GroupMemberLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Delete-\u003ERouteNames.DeleteGroupMember",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateGroupMember",
+        "LinkRelations.Self-\u003ERouteNames.GetGroupMemberById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.GroupMember:AuthorizationActions.Delete",
+        "ResourceDescriptors.GroupMember:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "IncomingWebhookEffectStatusLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceDescriptors.IncomingWebhookEffectStatus:AuthorizationActions.Webhooks.RedriveIncoming"
+      ]
+    },
+    {
+      "FileName": "InstanceOnboardingStatusLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "InstanceSettingGroupLinkPolicy.cs",
+      "Relations": [
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "LocationLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetLocations",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateLocation",
+        "LinkRelations.Self-\u003ERouteNames.GetLocationById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Location:AuthorizationActions.Delete",
+        "ResourceDescriptors.Location:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "LocationRoomLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetLocationRoomsByLocation",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateLocationRoom",
+        "LinkRelations.Self-\u003ERouteNames.GetLocationRoomById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.LocationRoom:AuthorizationActions.Delete",
+        "ResourceDescriptors.LocationRoom:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "ModerationReportLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetModerationReportQueue",
+        "LinkRelations.Event-\u003ERouteNames.GetEventManagementDetails",
+        "LinkRelations.Self-\u003ERouteNames.GetModerationReportDetail",
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ModerateLight",
+        "ResourceKinds.Event:AuthorizationActions.Events.ViewManagement"
+      ]
+    },
+    {
+      "FileName": "NotificationLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetNotifications",
+        "LinkRelations.Self-\u003ERouteNames.GetCurrentUserWebPushSubscription",
+        "LinkRelations.Self-\u003ERouteNames.GetNotificationById",
+        "LinkRelations.Self-\u003EselfRoute"
+      ],
+      "Permissions": []
+    },
+    {
+      "FileName": "OptionalQuestionnaireLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Event-\u003ERouteNames.GetEventById"
+      ],
+      "Permissions": []
+    },
+    {
+      "FileName": "OrganizationLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.LegitimacyEvidence-\u003ERouteNames.GetOrganizationTenantEvidenceCollection",
+        "LinkRelations.PrepareEvidenceUpload-\u003ERouteNames.CreateOrganizationTenantEvidenceUploadSession",
+        "LinkRelations.SubmitEvidence-\u003ERouteNames.SubmitOrganizationTenantEvidence"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Organization:AuthorizationActions.Delete",
+        "ResourceDescriptors.Organization:AuthorizationActions.Organizations.SubmitEvidence",
+        "ResourceDescriptors.Organization:AuthorizationActions.Organizations.ViewEvidence",
+        "ResourceDescriptors.Organization:AuthorizationActions.Update",
+        "ResourceDescriptors.OrganizationList:AuthorizationActions.Delete",
+        "ResourceDescriptors.OrganizationList:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "OrganizationMemberLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Delete-\u003ERouteNames.DeleteOrganizationMember",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateOrganizationMemberRole",
+        "LinkRelations.Self-\u003ERouteNames.GetOrganizationMemberById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.OrganizationMember:AuthorizationActions.Delete",
+        "ResourceDescriptors.OrganizationMember:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "OrganizationReviewLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetOrganizationReviews",
+        "LinkRelations.Self-\u003ERouteNames.GetOrganizationReviews"
+      ],
+      "Permissions": [
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "OrganizationTenantEvidenceLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Document-\u003ERouteNames.GetStorageObjectContent",
+        "LinkRelations.ReviewEvidence-\u003ERouteNames.ReviewOrganizationTenantEvidence",
+        "LinkRelations.Self-\u003ERouteNames.GetOrganizationTenantEvidence"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.OrganizationTenantEvidence:AuthorizationActions.Organizations.ReviewEvidence",
+        "ResourceDescriptors.OrganizationTenantEvidence:AuthorizationActions.Organizations.ViewEvidence",
+        "ResourceDescriptors.OrganizationTenantEvidenceDocument:AuthorizationActions.StorageObjects.Download"
+      ]
+    },
+    {
+      "FileName": "OrganizerPaymentConnectionLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.StartOnboarding-\u003ERouteNames.StartEventOrganizerPaymentOnboarding"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManagePaidEventCommerce"
+      ]
+    },
+    {
+      "FileName": "PaidEventPolicyLinkPolicies.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.View"
+      ]
+    },
+    {
+      "FileName": "PaidEventPublicationPreflightLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManagePaidEventCommerce",
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageTickets"
+      ]
+    },
+    {
+      "FileName": "PlatformMonetizationSettingsLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateInstancePlatformMonetizationSettings"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
+      ]
+    },
+    {
+      "FileName": "PromotionManagementLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetEventPromotions",
+        "LinkRelations.CreatePromotion-\u003ERouteNames.CreateEventPromotionDraft",
+        "LinkRelations.Publish-\u003ERouteNames.PublishEventPromotion",
+        "LinkRelations.RevisePromotion-\u003ERouteNames.ReviseEventPromotion",
+        "LinkRelations.Revoke-\u003ERouteNames.RevokeEventPromotion",
+        "LinkRelations.RotatePromotionCode-\u003ERouteNames.RotateEventPromotionCode"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManagePaidEventCommerce"
+      ]
+    },
+    {
+      "FileName": "RegistrationAnswerAnalyticsLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Self-\u003ERouteNames.GetRegistrationAnswerAnalytics"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageRegistrations"
+      ]
+    },
+    {
+      "FileName": "RegistrationAnswerFileLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Release-\u003ERouteNames.ReleaseRegistrationAnswerFile",
+        "LinkRelations.Self-\u003ERouteNames.GetRegistrationAnswerFile"
+      ],
+      "Permissions": []
+    },
+    {
+      "FileName": "RegistrationFormLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Event-\u003ERouteNames.GetEventManagementDetails",
+        "LinkRelations.Form-\u003ERouteNames.GetRegistrationForm",
+        "rel-\u003Eroute"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageRegistrationWorkflow",
+        "ResourceKinds.RegistrationForm:AuthorizationActions.RegistrationForms.Create",
+        "ResourceKinds.RegistrationForm:action"
+      ]
+    },
+    {
+      "FileName": "RegistrationFormTemplateLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Create-\u003ERouteNames.CreateRegistrationFormTemplate",
+        "LinkRelations.Instantiate-\u003ERouteNames.InstantiateRegistrationFormTemplate",
+        "rel-\u003Eroute"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:AuthorizationActions.Events.ManageRegistrationWorkflow",
+        "ResourceKinds.RegistrationForm:AuthorizationActions.RegistrationForms.Create",
+        "ResourceKinds.RegistrationForm:action"
+      ]
+    },
+    {
+      "FileName": "RegistrationOrderLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.ApplyPromotion-\u003ERouteNames.ApplyAuthenticatedRegistrationOrderPromotion",
+        "LinkRelations.Cancel-\u003ERouteNames.CancelAuthenticatedRegistrationOrder",
+        "LinkRelations.Continue-\u003ERouteNames.ContinueAuthenticatedRegistrationOrder",
+        "LinkRelations.Finalize-\u003ERouteNames.FinalizeAuthenticatedRegistrationOrder",
+        "LinkRelations.RemovePromotion-\u003ERouteNames.RemoveAuthenticatedRegistrationOrderPromotion",
+        "LinkRelations.RequirementProgress-\u003ERouteNames.GetAuthenticatedNativeRegistrationRequirementProgress",
+        "LinkRelations.Self-\u003ERouteNames.GetCurrentRegistrationOrder",
+        "LinkRelations.ViewParticipants-\u003ERouteNames.GetAuthenticatedRegistrationOrderParticipants"
+      ],
+      "Permissions": [
+        "resourceKind:AuthorizationActions.RegistrationOrders.Cancel",
+        "resourceKind:AuthorizationActions.RegistrationOrders.Continue",
+        "resourceKind:AuthorizationActions.RegistrationOrders.Finalize",
+        "resourceKind:AuthorizationActions.RegistrationOrders.View"
+      ]
+    },
+    {
+      "FileName": "RegistrationProviderManagementLinkPolicy.cs",
+      "Relations": [
+        "relation-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.Event:action",
+        "ResourceKinds.Tenant:action"
+      ]
+    },
+    {
+      "FileName": "ReportingRoutingStateLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateModerationReportingRoutingSettings",
+        "LinkRelations.Self-\u003ERouteNames.GetModerationReportingRoutingState"
+      ],
+      "Permissions": [
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.View"
+      ]
+    },
+    {
+      "FileName": "SchedulerAdminLinkPolicy.cs",
+      "Relations": [
+        "rel-\u003ErouteName"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:action"
+      ]
+    },
+    {
+      "FileName": "StorageAdminLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.PatchTenantStorageSettings",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateInstanceStorageSettings",
+        "LinkRelations.Self-\u003ERouteNames.GetInstanceStorageSettings",
+        "LinkRelations.Self-\u003ERouteNames.GetTenantStorageSettings"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.View"
+      ]
+    },
+    {
+      "FileName": "StorageObjectLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetStorageObjects",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateStorageObject",
+        "LinkRelations.Self-\u003ERouteNames.GetStorageObjectById",
+        "LinkRelations.Self-\u003ERouteNames.GetStorageObjects"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.StorageObject:AuthorizationActions.Delete",
+        "ResourceDescriptors.StorageObject:AuthorizationActions.StorageObjects.Download",
+        "ResourceDescriptors.StorageObject:AuthorizationActions.StorageObjects.PresignedDownload",
+        "ResourceDescriptors.StorageObject:AuthorizationActions.Update",
+        "ResourceKinds.StorageObject:AuthorizationActions.Delete",
+        "ResourceKinds.StorageObject:AuthorizationActions.StorageObjects.Download",
+        "ResourceKinds.StorageObject:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "StudioContextLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.ManageRegistrationChannels-\u003ERouteNames.GetManagedEventsByActor",
+        "LinkRelations.Self-\u003ERouteNames.GetStudioContext",
+        "LinkRelations.ViewParticipants-\u003ERouteNames.GetManagedEventsByActor",
+        "LinkRelations.ViewRegistrationOrders-\u003ERouteNames.GetManagedEventsByActor",
+        "LinkRelations.ViewRegistrationProviderHealth-\u003ERouteNames.GetManagedEventsByActor"
+      ],
+      "Permissions": []
+    },
+    {
+      "FileName": "SupportAccessLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetSupportAccessAuditEvents",
+        "LinkRelations.Collection-\u003ERouteNames.ListSupportAccessSessions"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.SupportAccessAuditEvent:AuthorizationActions.SupportAccessSessions.ViewAudit",
+        "ResourceDescriptors.SupportAccessSession:AuthorizationActions.SupportAccessSessions.ForceStop",
+        "ResourceDescriptors.SupportAccessSession:AuthorizationActions.SupportAccessSessions.List",
+        "ResourceDescriptors.SupportAccessSession:AuthorizationActions.SupportAccessSessions.Stop",
+        "ResourceDescriptors.SupportAccessSession:AuthorizationActions.SupportAccessSessions.ViewAudit",
+        "ResourceKinds.SupportAccessSession:AuthorizationActions.SupportAccessSessions.Start"
+      ]
+    },
+    {
+      "FileName": "TagLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetTags",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateTag",
+        "LinkRelations.Self-\u003ERouteNames.GetTagById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Tag:AuthorizationActions.Delete",
+        "ResourceDescriptors.Tag:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "TenantBrandingSettingsDocumentLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.PatchTenantBrandingSettingsDocument",
+        "LinkRelations.Self-\u003ERouteNames.GetTenantBrandingSettingsDocument"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.TenantBrandingSettingsDocument:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "TenantFooterSettingsLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.PatchTenantFooterSettings",
+        "LinkRelations.Self-\u003ERouteNames.GetTenantFooterSettings"
+      ],
+      "Permissions": [
+        "ResourceKinds.Tenant:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "TenantLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Collection-\u003ERouteNames.GetTenants",
+        "LinkRelations.Edit-\u003ERouteNames.UpdateTenant",
+        "LinkRelations.Self-\u003ERouteNames.GetTenantById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.Tenant:AuthorizationActions.Delete",
+        "ResourceDescriptors.Tenant:AuthorizationActions.Update",
+        "typeof:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "TenantModerationReportingDashboardLinkPolicy.cs",
+      "Relations": [],
+      "Permissions": [
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.View"
+      ]
+    },
+    {
+      "FileName": "TenantOnboardingStatusLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Self-\u003ERouteNames.GetTenantOnboardingStatus"
+      ],
+      "Permissions": [
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
+        "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update"
+      ]
+    },
+    {
+      "FileName": "TenantUserRoleGrantLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Create-\u003ERouteNames.CreateTenantUserRoleGrant",
+        "LinkRelations.Revoke-\u003ERouteNames.RevokeTenantUserRoleGrant",
+        "LinkRelations.Self-\u003ERouteNames.GetTenantUserRoleGrantById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.TenantUserRoleGrant:AuthorizationActions.Delete",
+        "ResourceKinds.TenantUserRoleGrant:AuthorizationActions.Create"
+      ]
+    },
+    {
+      "FileName": "UserLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Edit-\u003ERouteNames.UpdateCurrentUser",
+        "LinkRelations.Self-\u003ERouteNames.GetCurrentUser"
+      ],
+      "Permissions": [
+        "ResourceKinds.User:AuthorizationActions.Update"
+      ]
+    },
+    {
+      "FileName": "WebhookBulkReplayLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.BulkReplayPreview-\u003ERouteNames.PreviewWebhookBulkReplay",
+        "LinkRelations.BulkReplays-\u003ERouteNames.ScheduleWebhookBulkReplay",
+        "LinkRelations.Cancel-\u003ERouteNames.CancelWebhookBulkReplay",
+        "LinkRelations.Collection-\u003ERouteNames.GetWebhookBulkReplays",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookBulkReplayById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.WebhookBulkReplayOperation:AuthorizationActions.Webhooks.BulkReplay",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.BulkReplay"
+      ]
+    },
+    {
+      "FileName": "WebhookConsumerLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.ChangeProviderMode-\u003ERouteNames.UpdateWebhookConsumerProviderMode",
+        "LinkRelations.Create-\u003ERouteNames.CreateWebhookConsumer",
+        "LinkRelations.OpenProviderPortal-\u003ERouteNames.OpenSvixAppPortal",
+        "LinkRelations.RepairProviderBinding-\u003ERouteNames.RepairWebhookProviderBinding",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookConsumerById"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.WebhookConsumer:AuthorizationActions.Webhooks.ManageProvider",
+        "ResourceDescriptors.WebhookConsumer:AuthorizationActions.Webhooks.OpenProviderPortal",
+        "ResourceDescriptors.WebhookConsumer:AuthorizationActions.Webhooks.Update",
+        "ResourceDescriptors.WebhookConsumer:AuthorizationActions.Webhooks.View",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.Create"
+      ]
+    },
+    {
+      "FileName": "WebhookDeliveryLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.BulkReplayPreview-\u003ERouteNames.PreviewWebhookBulkReplay",
+        "LinkRelations.BulkReplays-\u003ERouteNames.GetWebhookBulkReplays",
+        "LinkRelations.DeliveryAttempts-\u003ERouteNames.GetWebhookDeliveryAttempts",
+        "LinkRelations.Payload-\u003ERouteNames.GetWebhookMessagePayload",
+        "LinkRelations.ProviderPublications-\u003ERouteNames.GetWebhookProviderPublications",
+        "LinkRelations.Related-\u003ERouteNames.GetWebhookMessageById",
+        "LinkRelations.Retry-\u003ERouteNames.RetryWebhookDeliveryAttempt",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookDeliveryAttemptById",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookDeliveryAttempts",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookMessageById",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookMessages"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.WebhookDeliveryAttempt:AuthorizationActions.Webhooks.Retry",
+        "ResourceDescriptors.WebhookDeliveryAttempt:AuthorizationActions.Webhooks.ViewDelivery",
+        "ResourceDescriptors.WebhookMessage:AuthorizationActions.Webhooks.ViewDelivery",
+        "ResourceDescriptors.WebhookMessage:AuthorizationActions.Webhooks.ViewPayload",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.BulkReplay",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.ViewDelivery"
+      ]
+    },
+    {
+      "FileName": "WebhookEndpointLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Create-\u003ERouteNames.CreateWebhookEndpoint",
+        "LinkRelations.Delete-\u003ERouteNames.DeleteWebhookEndpoint",
+        "LinkRelations.Pause-\u003ERouteNames.PauseWebhookEndpoint",
+        "LinkRelations.Resume-\u003ERouteNames.ResumeWebhookEndpoint",
+        "LinkRelations.RotateSecret-\u003ERouteNames.RotateWebhookEndpointSecret",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookEndpointById",
+        "LinkRelations.Test-\u003ERouteNames.TestWebhookEndpoint",
+        "LinkRelations.Update-\u003ERouteNames.UpdateWebhookEndpoint"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.Delete",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.Pause",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.Resume",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.RotateSecret",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.Test",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.Update",
+        "ResourceDescriptors.WebhookEndpoint:AuthorizationActions.Webhooks.View",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.Create"
+      ]
+    },
+    {
+      "FileName": "WebhookProviderPublicationLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Abandon-\u003ERouteNames.AbandonWebhookProviderPublication",
+        "LinkRelations.Reconcile-\u003ERouteNames.ReconcileWebhookProviderPublication",
+        "LinkRelations.Related-\u003ERouteNames.GetWebhookMessageById",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookProviderPublicationById",
+        "LinkRelations.Self-\u003ERouteNames.GetWebhookProviderPublications"
+      ],
+      "Permissions": [
+        "ResourceDescriptors.WebhookProviderPublication:AuthorizationActions.Webhooks.AbandonPublication",
+        "ResourceDescriptors.WebhookProviderPublication:AuthorizationActions.Webhooks.ReconcilePublication",
+        "ResourceDescriptors.WebhookProviderPublication:AuthorizationActions.Webhooks.ViewDelivery",
+        "ResourceKinds.Webhook:AuthorizationActions.Webhooks.ViewDelivery"
+      ]
+    }
+  ]
+}

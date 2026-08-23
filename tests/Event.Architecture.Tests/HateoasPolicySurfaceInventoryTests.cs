@@ -27,7 +27,7 @@ public sealed partial class HateoasPolicySurfaceInventoryTests
     private const string PolicyDirectoryRelativePath = "src/Explore.API/Hateoas/Policies";
 
     private const string BaselineRelativePath =
-        "dev/active/authorization-platform-redesign/artifacts/hal-policy-surface-baseline.json";
+        "tests/Event.Architecture.Tests/Baselines/hal-policy-surface-baseline.json";
 
     [GeneratedRegex(
         @"new\s+LinkDefinition\s*\(\s*(?<relation>[A-Za-z0-9_.]+)\s*,\s*(?<route>[A-Za-z0-9_.]+)\s*,",
