@@ -156,9 +156,25 @@ User profile updates use the `islamuevent_user` resource with the target domain 
 
 ### 4.1.1 Cerbos Package Upload
 
+#### In-App Onboarding & Admin Sync (`POST /api/instance/settings/authz-provider/sync`)
+
+Operators can synchronize the bundled policy package directly through the instance administration UI or API:
+
+- **Deployment credentials mode**: When `Cerbos:AdminApi:AdminUsername` and `Cerbos:AdminApi:AdminPassword` are present in environment variables or Infisical, onboarding/admin sync uses them automatically by default, keeping the one-time override form collapsed.
+- **One-time credential override**: If deployment credentials are missing or the operator explicitly wishes to supply temporary credentials, the UI provides a one-time username/password form. A complete username/password pair overrides deployment credentials for that single request and is held only in memory during the request. Partial pairs fail validation immediately.
+- **Credential security boundary**: One-time values are never written to `SystemSetting`, database rows, response bodies, logs, traces, or background jobs.
+- **Timeout and additive upload**: Admin HTTP API calls enforce a strict 10-second timeout. Policy and schema uploads are additive; they do not perform destructive deletions of existing policies.
+- **Runtime isolation**: Sync and revision status depend on the Cerbos Admin HTTP API, but runtime authorization evaluation depends solely on the gRPC PDP, ensuring PDP decision checks remain isolated from Admin API availability and latency.
+
+#### Hosted CI/CD Publishing
+
 For the hosted production path, `.github/workflows/cerbos-policy-check.yml` publishes schemas and policies to the Cerbos Admin API only after `Cerbos Policy Validation` succeeds on a `push` to `main`. The publish job uses the protected `production` GitHub Environment approval gate and the repository secrets documented in [CONFIGURATION.md](CONFIGURATION.md#deployment-cicd-secrets).
 
+#### Coolify PDP Deployment
+
 For a Coolify-managed Cerbos PDP, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md). That runbook covers the pinned Docker image, PostgreSQL policy-store schema, Admin API password hash, Traefik gRPC `h2c` label, and direct `cerbosctl` upload from this repository's `cerbos/policies/` folder.
+
+#### Direct CLI Upload (`cerbosctl`)
 
 When CI/CD publishing or Admin API sync is unavailable, operators can still push local policy and schema files with `cerbosctl` directly:
 
