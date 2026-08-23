@@ -48,7 +48,7 @@ ATProto credential operations remain server-private. The bootstrap/current-sessi
 
 ## 3. Core Authorization Components
 
-For authentication, JWT validation, and security-header behavior, see [SECURITY.md](SECURITY.md).
+For authentication, JWT validation, and security-header behavior, see [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md).
 
 ### 3.1. Endpoint-Level Authorization
 
@@ -339,7 +339,7 @@ Participation requirement writes use `[AuthorizeResource(ResourceKinds.Registrat
 
 ## 7. Related Documentation
 
--   [SECURITY.md](SECURITY.md): Covers the broader security model, including authentication and JWT configuration.
+-   [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md): Covers the broader security model, including authentication and JWT configuration.
 -   [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md): Quick reference for MediatR request-shape choices and provider fallback rules.
 -   [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md): Details the roles and responsibilities of different administrative levels.
 -   [API.md](API.md): Describes the MediatR pipeline and how authorization fits into the request flow.

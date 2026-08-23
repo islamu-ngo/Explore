@@ -1,5 +1,5 @@
 // ABOUTME: Proves verify-candidate binds release evidence to exact preparation commit B.
-// ABOUTME: Exercises deterministic candidate manifests, stale outputs, ref movement, and artifact drift.
+// ABOUTME: Exercises deterministic candidate manifests, stale outputs, wrong commits, and artifact drift.
 
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -35,7 +35,10 @@ public sealed class ReleaseCandidateVerificationTests
         await Assert.That(root.GetProperty("objectFormat").GetString()).IsEqualTo(fixture.ObjectFormat);
         await Assert.That(root.GetProperty("candidateOid").GetString()).IsEqualTo(fixture.B);
         await Assert.That(root.GetProperty("candidateParentOid").GetString()).IsEqualTo(fixture.A);
-        await Assert.That(root.GetProperty("releaseBranchRef").GetString()).IsEqualTo("refs/heads/v1.1");
+        await Assert.That(root.TryGetProperty("releaseBranchRef", out _)).IsFalse();
+        await Assert.That(root.TryGetProperty("releaseLineHeadOid", out _)).IsFalse();
+        await Assert.That(root.GetProperty("expectedIntegrationOldOid").GetString()).IsEqualTo(fixture.A);
+        await Assert.That(root.GetProperty("expectedIntegrationNewOid").GetString()).IsEqualTo(fixture.B);
         await Assert.That(root.GetProperty("baseStableRef").GetString()).IsEqualTo("refs/tags/v1.0.0");
         await Assert.That(root.GetProperty("previousPublishedRef").GetString()).IsEqualTo("refs/tags/v1.0.0");
         await Assert.That(root.GetProperty("trustedBundleTrustSha256").GetString()?.Length).IsEqualTo(64);
@@ -49,16 +52,12 @@ public sealed class ReleaseCandidateVerificationTests
     }
 
     [Test]
-    public async Task VerifyCandidateRejectsParentARefMovementDriftAndStaleManifest()
+    public async Task VerifyCandidateRejectsParentADriftAndStaleManifest()
     {
         if (OperatingSystem.IsWindows()) return;
 
         using var parent = CandidateFixture.Create();
         (int parentCode, string parentOutput) = parent.Verify(parent.A);
-
-        using var moved = CandidateFixture.Create();
-        moved.MoveReleaseBranchToA();
-        (int movedCode, string movedOutput) = moved.Verify(moved.B);
 
         using var drift = CandidateFixture.Create();
         File.AppendAllText(drift.NotesPath, "manual drift\n");
@@ -69,9 +68,7 @@ public sealed class ReleaseCandidateVerificationTests
         (int staleCode, string staleOutput) = stale.Verify(stale.B);
 
         await Assert.That(parentCode).IsEqualTo(Program.ToolchainRejected);
-        await Assert.That(parentOutput).IsEqualTo("verify_candidate_failed: git_candidate_not_release_branch_head\n");
-        await Assert.That(movedCode).IsEqualTo(Program.ToolchainRejected);
-        await Assert.That(movedOutput).IsEqualTo("verify_candidate_failed: git_candidate_not_release_branch_head\n");
+        await Assert.That(parentOutput).IsEqualTo("verify_candidate_failed: candidate_committed_artifact_mismatch\n");
         await Assert.That(driftCode).IsEqualTo(Program.ToolchainRejected);
         await Assert.That(driftOutput).IsEqualTo("verify_candidate_failed: candidate_generated_artifacts_dirty\n");
         await Assert.That(staleCode).IsEqualTo(Program.ToolchainRejected);
@@ -183,12 +180,10 @@ public sealed class ReleaseCandidateVerificationTests
             string previous = Commit("fix(events): preserve published event notes");
             Git("-c", "user.name=Release Test", "-c", "user.email=release@example.invalid", "tag", "-a", "v1.0.0", previous, "-m", "v1.0.0");
             A = Commit("feat(registration): let attendees correct registration details\n\nChange-Id: CHG-2026-0001");
-            Git("branch", "-f", "v1.1", A);
             WriteBundle();
             Prepare();
             Git("add", "docs/releases/1.1.0");
             B = Commit("docs(release): prepare 1.1.0\n\nChangelog: skip\nChangelog-Reason: release metadata commit");
-            Git("branch", "-f", "v1.1", B);
         }
 
         public string Root { get; }
@@ -208,7 +203,6 @@ public sealed class ReleaseCandidateVerificationTests
             catch (InvalidOperationException) { return null; }
         }
 
-        public void MoveReleaseBranchToA() => Git("branch", "-f", "v1.1", A);
         public void DriftPolicy() => File.AppendAllText(Path.Combine(RepositoryPath, "eng", "release", "policy", "release-policy.yaml"), "# drift\n");
         public void DriftSummary() => File.AppendAllText(Path.Combine(ReleaseDirectory, "summary.md"), "drift\n");
         public void DriftContext() => File.AppendAllText(ContextPath, " ");
@@ -271,7 +265,7 @@ public sealed class ReleaseCandidateVerificationTests
                 $"Version: 1.1.0\nLine: v1.1\nRelease-Date: 2026-08-14\nBase-Stable-Tag: v1.0.0\nPrevious-Published-Tag: v1.0.0\nRelease-Range:\n  Base-Ref: v1.0.0\n  Base-Oid: {previous}\n  Previous-Ref: v1.0.0\n  Previous-Oid: {previous}\nCompatibility:\n  - v1\nImpact-Dispositions:\n  breaking: not-applicable\n  security: not-applicable\n  migration: not-applicable\n  configuration: not-applicable\n  openapi: not-applicable\n  operator: documented\n");
             File.WriteAllText(Path.Combine(ReleaseDirectory, "summary.md"), "Attendees can now correct registration details.\n");
             File.WriteAllText(Path.Combine(RepositoryPath, "docs", "releases", "changes", "CHG-2026-0001.yaml"),
-                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
+                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY_OVERVIEW.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
             File.WriteAllText(Path.Combine(RepositoryPath, "eng", "release", "policy", "release-policy.yaml"),
                 ReleasePolicyYaml);
             File.WriteAllText(Path.Combine(RepositoryPath, "eng", "release", "policy", "scope-registry.yaml"),

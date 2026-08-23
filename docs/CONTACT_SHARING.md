@@ -86,4 +86,4 @@ The user settings UI warns that withdrawing consent does not guarantee removal f
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md) - organization admin workflow context.
 - [API.md](API.md) - API conventions and error shape.
 - [API_COOKBOOK.md](API_COOKBOOK.md) - integration guidance.
-- [SECURITY.md](SECURITY.md) - authorization action catalog.
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md) - authorization action catalog.

@@ -123,5 +123,5 @@ Public browse endpoints are often anonymous, but the generated reference remains
 
 - [API.md](API.md) — canonical API architecture and conventions.
 - [API_CHANGELOG.md](API_CHANGELOG.md) — API-specific changes.
-- [SECURITY.md](SECURITY.md) — authentication, authorization, and trust boundaries.
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md) — authentication, authorization, and trust boundaries.
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md) — API-key administration surfaces.

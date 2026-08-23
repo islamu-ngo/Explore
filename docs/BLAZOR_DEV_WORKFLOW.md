@@ -55,7 +55,7 @@ After the site is up, inspect the affected page in a browser at the relevant des
 ## 4. Cross-References
 
 - Component / render-mode conventions → [`docs/BLAZOR.md`](BLAZOR.md)
-- BFF auth / YARP / token forwarding → [`docs/SECURITY-MODEL.md`](SECURITY.md), [`blazor-bff-patterns`](../.agents/skills/blazor-bff-patterns/SKILL.md)
+- BFF auth / YARP / token forwarding → [`docs/SECURITY-MODEL.md`](SECURITY-MODEL.md), [`blazor-bff-patterns`](../.agents/skills/blazor-bff-patterns/SKILL.md)
 - UI conventions (MudBlazor, BEM, theming) → [`blazor-ui-conventions`](../.agents/skills/blazor-ui-conventions/SKILL.md)
 - Accessibility requirements → [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md)
 - Design tokens, CSS layers, wrappers → [`design-system`](../.agents/skills/design-system/SKILL.md)

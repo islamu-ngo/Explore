@@ -49,7 +49,7 @@ For this repository:
 1. Keep authoritative reference docs synchronized with code:
    - `API.md`
    - `CONFIGURATION.md`
-   - `SECURITY.md`
+   - `SECURITY_OVERVIEW.md`
    - `MULTI_TENANCY.md`
    - `RENDER_POLICIES.md`
 2. Keep troubleshooting and getting-started task-oriented.

@@ -101,5 +101,5 @@ No feature rewrite is required for these transitions.
 ## Related
 
 - [OPERATIONS.md](OPERATIONS.md)
-- [SECURITY.md](SECURITY.md)
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md)
 - [CONFIGURATION.md](CONFIGURATION.md)

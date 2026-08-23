@@ -27,7 +27,7 @@ Only list context channels that are visible or reasonably checkable in the curre
 
 - Say `repository/workspace docs` instead of listing every documentation file.
 - Say `code/config/tests` instead of listing every project, test assembly, or configuration file.
-- Name a specific file only when it is central to the requested action, such as `SECURITY-POLICY.md`, `CODE_OF_CONDUCT.md`, a privacy/terms file, or a user-provided path.
+- Name a specific file only when it is central to the requested action, such as `SECURITY.md`, `CODE_OF_CONDUCT.md`, a privacy/terms file, or a user-provided path.
 - Mention skills only when they retrieve project context, guide evidence collection, or produce project review/report artifacts. Do not list host-specific implementation skills unless the requested I-VSD action directly depends on them.
 - Mention MCPs, hosted integrations, or CLIs only when they can reveal project context, such as Plane, Jira, Linear, Confluence, Notion, GitHub/GitLab issues, discussions, PRs, Slack, support, incident, analytics, observability, or product-doc systems.
 - Do not list browser tools, filesystem tools, package-doc search, social/web exploration tools, or code-editing tools unless the user asked for them or the action specifically needs them.

@@ -371,7 +371,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [federation-doc]: docs/FEDERATION.md
 [ai-rag-doc]: docs/AI_RAG_FOUNDATION.md
 [erp-integration-doc]: docs/ERP_INTEGRATION_GUIDE.md
-[security-policy]: SECURITY-POLICY.md
+[security-policy]: SECURITY.md
 [privacy-policy]: https://openislamu.org/privacy
 [license-link]: LICENSE
 [contact-email]: mailto:contact@openislamu.org

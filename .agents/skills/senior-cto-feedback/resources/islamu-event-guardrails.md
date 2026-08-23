@@ -257,7 +257,7 @@ Likely docs:
 - `docs/CONFIGURATION.md`
 - `docs/SELF_HOSTING.md`
 - `docs/OPERATIONS.md`
-- `docs/SECURITY.md`
+- `docs/SECURITY_OVERVIEW.md`
 - `docs/MULTI_TENANCY.md`
 - `docs/BLAZOR.md`
 - `docs/TESTING.md`

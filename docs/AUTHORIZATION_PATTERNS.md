@@ -70,6 +70,6 @@ Notable behavior:
 
 ## Related
 
-- [SECURITY.md](SECURITY.md)
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md)
 - [AUTHORIZATION.md](AUTHORIZATION.md)
 - [adr/ADR-001-authorization-provider-architecture.md](adr/ADR-001-authorization-provider-architecture.md)

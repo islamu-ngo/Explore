@@ -45,7 +45,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Owner | Canonical Docs |
 |---|---|
 | Platform/Ops | `SELF_HOSTING.md`, `BACKUP_RESTORE_UPGRADE.md`, `OPERATIONS.md`, `CONFIGURATION.md`, `RELEASE_CHECKLIST.md` |
-| Security | `SECURITY.md`, `SECRETS.md`, `AUTHORIZATION_PATTERNS.md`, `DEPLOYMENT_TIERS.md` |
+| Security | `SECURITY_OVERVIEW.md`, `SECURITY-MODEL.md`, `SECRETS.md`, `AUTHORIZATION_PATTERNS.md`, `DEPLOYMENT_TIERS.md` |
 | API | `API.md`, `API_CHANGELOG.md`, OpenAPI/client-generation guidance in `GOVERNANCE.md` |
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |

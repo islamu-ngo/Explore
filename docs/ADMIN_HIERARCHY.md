@@ -322,7 +322,7 @@ Both backends produce identical decisions for identical inputs, so the platform 
 ## Related Documentation
 
 - **[MULTI_TENANCY.md](MULTI_TENANCY.md)** - Tenant isolation model
-- **[SECURITY.md](SECURITY.md)** - Authentication and authorization
+- **[SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md)** - Authentication and authorization
 - **[OPERATIONS.md](OPERATIONS.md)** - Operational procedures
 
 ## Implementation Reference

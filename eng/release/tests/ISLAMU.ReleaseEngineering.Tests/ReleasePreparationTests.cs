@@ -626,7 +626,6 @@ public sealed class ReleasePreparationTests
                 string previous = Commit("fix(events): preserve published event notes");
                 Git("-c", "user.name=Release Test", "-c", "user.email=release@example.invalid", "tag", "-a", "v1.0.0", previous, "-m", "v1.0.0");
                 string feature = Commit("feat(registration): let attendees correct registration details\n\nChange-Id: CHG-2026-0001");
-                Git("branch", "-f", "v1.1", feature);
             }
 
             string cliReleaseDirectory = Path.Combine(candidateRoot, "docs", "releases", "1.1.0");
@@ -635,7 +634,7 @@ public sealed class ReleasePreparationTests
             string previousOid = Git("rev-list", "--max-parents=0", "HEAD").Trim();
             CommandReleasePath = Path.Combine(cliReleaseDirectory, "release.yaml");
             CommandSummaryPath = Path.Combine(cliReleaseDirectory, "summary.md");
-            string featureOid = Git("rev-parse", "refs/heads/v1.1").Trim();
+            string featureOid = Git("rev-parse", "HEAD^{commit}").Trim();
             CommandContextPath = Path.Combine(cliReleaseDirectory, "release-context.v1.json");
             CommandRangePath = Path.Combine(cliReleaseDirectory, "range.txt");
             File.WriteAllText(CommandReleasePath,
@@ -644,7 +643,7 @@ public sealed class ReleasePreparationTests
             File.WriteAllText(Path.Combine(candidateRoot, "context.json"), "caller supplied context must be ignored\n");
             File.WriteAllText(Path.Combine(candidateRoot, "range.txt"), new string('f', 40) + "\n");
             File.WriteAllText(Path.Combine(candidateRoot, "docs", "releases", "changes", "CHG-2026-0001.yaml"),
-                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
+                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY_OVERVIEW.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
             return cliReleaseDirectory;
         }
 
@@ -689,7 +688,7 @@ public sealed class ReleasePreparationTests
                 $"Version: {version}\nLine: {line}\nRelease-Date: 2026-08-14\nBase-Stable-Tag: {baselineRef}\nPrevious-Published-Tag: {baselineRef}\nRelease-Range:\n  Base-Ref: {baselineRef}\n  Base-Oid: {baselineOid}\n  Previous-Ref: {baselineRef}\n  Previous-Oid: {baselineOid}\nCompatibility:\n  - v1\nImpact-Dispositions:\n  breaking: not-applicable\n  security: not-applicable\n  migration: not-applicable\n  configuration: not-applicable\n  openapi: not-applicable\n  operator: documented\n");
             File.WriteAllText(CommandSummaryPath, "Attendees can now correct registration details.\n");
             File.WriteAllText(Path.Combine(candidateRoot, "docs", "releases", "changes", "CHG-2026-0001.yaml"),
-                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
+                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY_OVERVIEW.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
             return cliReleaseDirectory;
         }
 
@@ -713,7 +712,7 @@ public sealed class ReleasePreparationTests
             var fragmentImpacts = new Dictionary<string, FragmentImpact>(StringComparer.Ordinal)
             {
                 ["breaking"] = new("docs/releases/README.md", "not-applicable", null, null),
-                ["security"] = new("docs/SECURITY.md", "not-applicable", null, null),
+                ["security"] = new("docs/SECURITY_OVERVIEW.md", "not-applicable", null, null),
                 ["migration"] = new("docs/RELEASE_RUNBOOK.md", "not-applicable", null, null),
                 ["configuration"] = new("docs/CONFIGURATION.md", "not-applicable", null, null),
                 ["openapi"] = new("docs/API_CHANGELOG.md", "not-applicable", null, null),

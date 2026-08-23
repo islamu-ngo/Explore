@@ -98,4 +98,4 @@ This ADR does not authorize implementation. Phase 6 begins only after explicit u
 - [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [DOMAIN.md](../DOMAIN.md)
 - [SELF_HOSTING.md](../SELF_HOSTING.md)
-- [SECURITY.md](../SECURITY.md)
+- [SECURITY_OVERVIEW.md](../SECURITY_OVERVIEW.md)

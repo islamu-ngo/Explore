@@ -19,7 +19,7 @@ Use the specialized docs for deep detail:
 |---|---|
 | API contract, HAL, idempotency | [API.md](API.md) |
 | Task-first API usage | [API_COOKBOOK.md](API_COOKBOOK.md) |
-| Auth/security model | [SECURITY.md](SECURITY.md) |
+| Auth/security model | [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md) |
 | Render policy and public SEO behavior | [RENDER_POLICIES.md](RENDER_POLICIES.md) |
 | Design tokens, wrappers, CSS layers | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) |
 | Accessibility rules | [ACCESSIBILITY.md](ACCESSIBILITY.md) |
@@ -450,7 +450,7 @@ Do not duplicate the specialized docs in this guide.
 
 - [API.md](API.md)
 - [API_COOKBOOK.md](API_COOKBOOK.md)
-- [SECURITY.md](SECURITY.md)
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md)
 - [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md)
 - [SELF_HOSTING.md](SELF_HOSTING.md)
 - [RENDER_POLICIES.md](RENDER_POLICIES.md)

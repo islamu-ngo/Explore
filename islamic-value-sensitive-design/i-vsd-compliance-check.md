@@ -44,7 +44,7 @@ No finding in this report should be represented as "Islamically compliant," "hal
 - `docs/CONTACT_SHARING.md`
 - `docs/FEDERATION.md`
 - `docs/CUSTOM_PROPERTIES.md`
-- `SECURITY-POLICY.md`
+- `SECURITY.md`
 - `CODE_OF_CONDUCT.md`
 - Selected analytics source anchors: `Explore.API/Controllers/AnalyticsRelayController.cs`, `Explore.Application/Features/PublicExperience/Handlers/Commands/RelayAnalyticsEventCommandHandler.cs`, `Explore.Application/Analytics/AnalyticsRuntimeProfileResolver.cs`, and `Explore.Infrastructure/Analytics/RuntimeAnalyticsProvider.cs`
 - Repository file inventory for projects, tests, and documentation surfaces

@@ -27,10 +27,21 @@ verification, signer policy, protected provider controls, and advisory dry run a
 implemented and accepted, operators MUST follow this manual checklist and MUST NOT
 claim automated release approval.
 
-After activation, a release line MUST prepare and validate one final commit `B`.
-`B` MUST be the release-line head, signed annotated tag target, candidate evidence
-commit, and stable `main` target when that tag is the newest stable release. The
-operator still approves the release; tooling only verifies and records evidence.
+After activation, a release MUST prepare and validate one final commit `B`. `B` MUST be
+the signed annotated tag target, the candidate evidence commit, and the stable `main`
+target when that tag is the newest stable release. No branch head is part of that
+identity: the tag object alone is the release, so any release stays verifiable after the
+branch that carried its commits advances or is deleted. The operator still approves the
+release; tooling only verifies and records evidence, and it removes no governance gate
+from this checklist.
+
+The advisory activation dry run required before any of this becomes required is an
+executable specification, not a document: see
+`eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ReleaseActivationDryRunTests.cs` and
+`TagAnchoredReVerificationTests.cs`. They walk prepare, exact-`B` candidate attestation,
+canonical tag message, SSH-signed annotated tag, final evidence, and the stable-`main`
+proposal against a disposable repository, then re-verify an already-closed release after
+its branch has moved and after it has been deleted.
 
 ## Release Evidence Bundle
 
@@ -136,7 +147,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 
 ## Security And Operations Contract
 
-- [ ] Authentication/authorization changes are documented in `SECURITY.md` or `AUTHORIZATION_PATTERNS.md`.
+- [ ] Authentication/authorization changes are documented in `SECURITY-MODEL.md`, `SECURITY_OVERVIEW.md`, or `AUTHORIZATION_PATTERNS.md`.
 - [ ] Rate-limit, timeout, forwarded-header, CORS, or proxy changes are documented.
 - [ ] Health-check, metrics, logging, or tracing changes are documented in `OPERATIONS.md`.
 - [ ] Backup/restore impact is documented in `BACKUP_RESTORE_UPGRADE.md` when data shape changes. The runbook must preserve the authority independently from the primary database, cover embedded SQLite file/WAL handling or the external PostgreSQL target as selected, and require restore rehearsal plus MigrationService idempotency proof.

@@ -20,7 +20,7 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 | Runtime health, rate limiting, request timeouts, metrics, graceful shutdown | [OPERATIONS.md](OPERATIONS.md) |
 | Configuration keys and environment-variable mapping | [CONFIGURATION.md](CONFIGURATION.md) |
 | Secret-provider setup and secret naming | [SECRETS.md](SECRETS.md) |
-| Auth/authz trust boundaries | [SECURITY.md](SECURITY.md) |
+| Auth/authz trust boundaries | [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md) |
 
 ## Quick Triage Order
 

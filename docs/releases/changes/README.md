@@ -24,7 +24,7 @@ Impacts:
     Disposition: documented
     Detail: Check-in integrations must send credential after upgrading.
   Security:
-    Reference: SECURITY-POLICY.md
+    Reference: SECURITY.md
     Disposition: coordinated
     Public-Disclosure: coordinated
   Migration:

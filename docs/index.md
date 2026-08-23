@@ -106,7 +106,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming provider callbacks, Coop/Osprey/Svix operational verification, and idempotency.
 - [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md) - Google Forms OAuth scopes, Pub/Sub OIDC setup, renewal/sweep behavior, and unsupported Drive/file boundaries.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
-- [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
+- [SECURITY_OVERVIEW.md](SECURITY_OVERVIEW.md) - auth/authz model and trust boundaries.
 - [SECURITY-MODEL.md](SECURITY-MODEL.md) - platform security invariants, privilege isolation, and privacy boundaries.
 - [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) - Privacy Erasure Authority, concrete meaning, storage topologies (EmbeddedSqlite, CoLocated, ExternalDatabase), independent restore-isolation rationale, and self-hoster decision guide.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
