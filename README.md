@@ -169,7 +169,7 @@ docker compose config
 docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
 ```
 
-Start with [Contributing](docs/CONTRIBUTING.md). Code contributors should also read
+Start with [Contributing](CONTRIBUTING.md). Code contributors should also read
 [Getting Started](docs/GETTING_STARTED.md) for profile modes, optional Compose profiles, validation commands, and troubleshooting links,
 [Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
 
@@ -418,5 +418,5 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 
 [ivsd-github-repo-link]: https://github.com/islamu-ngo/Islamic-Value-Sensitive-Design
 
-[contribution-guidelines]: docs/CONTRIBUTING.md
+[contribution-guidelines]: CONTRIBUTING.md
 [cla-link]: legal/CLA.md

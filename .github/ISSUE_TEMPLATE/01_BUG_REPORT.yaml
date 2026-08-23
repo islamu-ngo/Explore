@@ -1,0 +1,108 @@
+# ABOUTME: Comprehensive bug report template for ISLAMU Event.
+# ABOUTME: Collects reproduction steps, environment, version, topology, logs, and safety checks.
+
+name: 🐞 Bug Report
+description: "File a new bug report."
+title: "[Bug]: "
+labels: ["🔍 Triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > **Please ensure you are using the latest version of ISLAMU Event before submitting an issue, as the bug may have already been fixed in a recent update.** (Of course, if you're experiencing an issue on the latest version that wasn't present in a previous version, please let us know.)
+        >
+        > If you plan to submit a fix, branch from `develop` and target `develop` with your pull request.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description and Error Message
+      description: Provide a detailed description of the error or exception you encountered, along with any relevant log output or stack traces.
+      placeholder: Describe what happened and paste any relevant error messages or status codes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: Please describe what you expected to happen instead of the issue. Be as detailed as possible.
+      value: |
+        1.
+        2.
+        3.
+        4.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide a step-by-step guide to reproduce the issue. Be as detailed as possible, otherwise we may not be able to assist you.
+      value: |
+        1.
+        2.
+        3.
+        4.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ISLAMU Event Version
+      description: Please provide the ISLAMU Event version, release tag, or commit SHA you are using.
+      placeholder: "v0.1, commit abc1234, or develop branch"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: topology
+    attributes:
+      label: Deployment Topology
+      description: How is your ISLAMU Event instance deployed?
+      options:
+        - "Single-container Standalone (Event.Standalone / SQLite)"
+        - "Docker Compose Split Stack (Postgres, Redis, Keycloak, Cerbos)"
+        - "Local Development via .NET Aspire (`aspire run`)"
+        - "Coolify Deployment"
+        - "Bare Metal / Custom Kubernetes / Other"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System and Version (self-hosted)
+      description: Run `cat /etc/os-release` or `lsb_release -a` in your terminal and provide the operating system and version.
+      placeholder: "Ubuntu 24.04 LTS, Debian 12, macOS Sonoma, Windows WSL2..."
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Affected Component or Code Path (if known)
+      description: List files, routes, endpoints, UI pages, or docs if known.
+      placeholder: "Explore.API/Controllers/..., Explore.Blazor.Client/Pages/..., docs/SELF_HOSTING.md"
+
+  - type: textarea
+    id: visuals
+    attributes:
+      label: Screenshots / Visuals
+      description: If possible, provide screenshots, screen recordings, or diagrams to help illustrate the issue.
+      placeholder: "Attach images or provide links to recordings demonstrating the problem."
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: Any other relevant details about the issue.
+
+  - type: checkboxes
+    id: safety-checks
+    attributes:
+      label: Safety & Privacy Check
+      options:
+        - label: I have removed secrets, API keys, passwords, PII, and private tenant data from this report.
+          required: true

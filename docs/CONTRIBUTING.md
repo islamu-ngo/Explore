@@ -27,6 +27,8 @@ curl -sSL https://aspire.dev/install.sh | bash
 
 ## Starting Point
 
+For high-level expectations, project scope, discussion requirements, and the AI contribution policy, see the repository root [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 If this is your first contribution, start with [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md). It gives the shortest safe path for docs-only and small-bug PRs without duplicating this full workflow.
 
 For code changes, first prove the local stack can start from a clean checkout:
@@ -42,11 +44,11 @@ Use the GitHub templates to keep requests and reviews actionable:
 
 | Template | Use For |
 |---|---|
-| [Bug report](../.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects, validation gaps, and regressions. |
-| [Feature request](../.github/ISSUE_TEMPLATE/feature_request.yml) | New behavior with explicit problem, proposal, and non-goals. |
+| [Bug report](../.github/ISSUE_TEMPLATE/01_BUG_REPORT.yaml) | Reproducible defects, validation gaps, and regressions. |
+| [Feature request](https://github.com/islamu-ngo/Event/discussions/categories/feature-requests) | New behavior with explicit problem, proposal, and non-goals (via GitHub Discussions). |
 | [Documentation issue](../.github/ISSUE_TEMPLATE/documentation.yml) | Stale, missing, confusing, or incorrect docs with source anchors. |
 | [AI agent task](../.github/ISSUE_TEMPLATE/ai_agent_task.yml) | Work packages that need context, scoped files, validation, and handoff expectations. |
-| [Pull request template](../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, docs impact, validation evidence, UI screenshots, release/operator notes, and agent handoff. |
+| [Pull request template](../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, changes, AI disclosure, validation evidence, release notes, and contributor agreement. |
 
 ### How to Contribute
 

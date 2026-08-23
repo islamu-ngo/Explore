@@ -1,6 +1,10 @@
-name: AI agent task
+# ABOUTME: AI agent task template for packaging scoped tasks with context and validation rules.
+# ABOUTME: Collects files in scope, required docs/skills, validation commands, and handoff expectations.
+
+name: 🤖 AI Agent Task
 description: Package a task so an AI agent can start with enough context and validation expectations.
-title: "agent: "
+title: "[Task]: "
+labels: ["ai-agent"]
 body:
   - type: markdown
     attributes:
@@ -26,7 +30,7 @@ body:
     attributes:
       label: Required docs and rules
       description: List project docs, skills, plans, or active context files the agent must follow.
-      placeholder: AGENTS.md, AGENTS.md, docs/CONTRIBUTING.md, dev/active/.../context.md
+      placeholder: AGENTS.md, docs/CONTRIBUTING.md, dev/active/.../context.md
     validations:
       required: true
   - type: textarea
