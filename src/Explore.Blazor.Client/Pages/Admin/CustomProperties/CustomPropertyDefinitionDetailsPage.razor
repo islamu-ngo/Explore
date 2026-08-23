@@ -114,7 +114,7 @@
             </MudCardContent>
         </MudCard>
 
-        @if (_definition.PropertyType == (int)PropertyType.Option && _definition.Options?.Any() == true)
+        @if (_definition.PropertyType == PropertyType.Option && _definition.Options?.Any() == true)
         {
             <MudCard Elevation="0" Class="cp-def-details__card mb-6">
                 <MudCardHeader>

@@ -10,6 +10,7 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Persistence.Repositories;
+using Explore.Tests.Shared.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using TUnit.Core;
@@ -40,7 +41,8 @@ public sealed class LocationPrivacyCorrectionOutboxPostgreSqlTests(ProjectionTes
         var cache = new RecordingHybridCache(failedTag, failures: 1);
         var dispatcher = new LocationPrivacyCorrectionDispatcher(
             cache,
-            new NoopLocationPrivacyCorrectionPlanner());
+            new NoopLocationPrivacyCorrectionPlanner(),
+            EventLocationPrivacyMetricsFactory.Create());
         await Assert.That(async () => await dispatcher.DispatchAsync(message))
             .Throws<InvalidOperationException>();
 
@@ -90,7 +92,8 @@ public sealed class LocationPrivacyCorrectionOutboxPostgreSqlTests(ProjectionTes
         var cache = new RecordingHybridCache(failedTag, failures: 2);
         var dispatcher = new LocationPrivacyCorrectionDispatcher(
             cache,
-            new NoopLocationPrivacyCorrectionPlanner());
+            new NoopLocationPrivacyCorrectionPlanner(),
+            EventLocationPrivacyMetricsFactory.Create());
         await Assert.That(async () => await dispatcher.DispatchAsync(deadLetterMessage))
             .Throws<InvalidOperationException>();
 

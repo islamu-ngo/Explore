@@ -4090,6 +4090,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
 
+                            t.HasCheckConstraint("CK_EventAgendaItem_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+
                             t.HasCheckConstraint("CK_EventAgendaItem_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 
@@ -7724,6 +7726,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
 
+                            t.HasCheckConstraint("CK_EventSession_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+
                             t.HasCheckConstraint("CK_EventSession_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 
@@ -7784,7 +7788,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_session_agenda_items_elp_consistency");
 
-                    b.ToTable("event_session_agenda_items", "islamu_event");
+                    b.ToTable("event_session_agenda_items", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("CK_EventSessionAgendaItem_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+                        });
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_session_agenda_items:tenant_id,event_session_id,event_location_id,location_id");
                 });
@@ -8520,6 +8527,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_session_groups", "islamu_event", t =>
                         {
+                            t.HasCheckConstraint("CK_EventSessionGroup_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+
                             t.HasCheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 

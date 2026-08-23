@@ -39,6 +39,14 @@ public class EventSessionAgendaItemConfiguration : IEntityTypeConfiguration<Even
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.ToTable(t =>
+            // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
+            // event-scoped EventLocation. This closes the legacy write path that could attach a raw
+            // Location without a per-event disclosure policy.
+            t.HasCheckConstraint(
+                "CK_EventSessionAgendaItem_PhysicalLocationRequiresEventLocation",
+                "location_id IS NULL OR event_location_id IS NOT NULL"));
+
         builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.EventLocationId, e.LocationId })
             .HasDatabaseName("ix_event_session_agenda_items_elp_consistency");
 

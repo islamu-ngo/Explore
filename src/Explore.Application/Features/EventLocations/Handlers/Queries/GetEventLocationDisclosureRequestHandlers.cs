@@ -159,29 +159,68 @@ public sealed class GetManagementEventLocationRequestHandler(
     }
 }
 
+public sealed class GetManagementEventLocationsRequestHandler(
+    IEventRepository events,
+    IEventLocationRepository eventLocations,
+    IEventLocationDisclosureService disclosureService)
+    : IRequestHandler<GetManagementEventLocationsRequest, IReadOnlyList<EventLocationManagementDto>?>
+{
+    public Task<IReadOnlyList<EventLocationManagementDto>?> Handle(
+        GetManagementEventLocationsRequest request,
+        CancellationToken cancellationToken) =>
+        EventLocationManagementListProjection.ProjectAsync(
+            events,
+            eventLocations,
+            disclosureService,
+            request.EventId,
+            static _ => true,
+            cancellationToken);
+}
+
 public sealed class GetEventLocationReviewQueueRequestHandler(
     IEventRepository events,
     IEventLocationRepository eventLocations,
     IEventLocationDisclosureService disclosureService)
     : IRequestHandler<GetEventLocationReviewQueueRequest, IReadOnlyList<EventLocationManagementDto>?>
 {
-    public async Task<IReadOnlyList<EventLocationManagementDto>?> Handle(
+    public Task<IReadOnlyList<EventLocationManagementDto>?> Handle(
         GetEventLocationReviewQueueRequest request,
+        CancellationToken cancellationToken) =>
+        EventLocationManagementListProjection.ProjectAsync(
+            events,
+            eventLocations,
+            disclosureService,
+            request.EventId,
+            static placement => placement.NeedsPrivacyReview,
+            cancellationToken);
+}
+
+/// <summary>
+/// Shared management list projection. The full management list and the remediation queue differ only in
+/// which placements they select, so both resolve through one batched disclosure call and one
+/// authorization target lookup.
+/// </summary>
+internal static class EventLocationManagementListProjection
+{
+    public static async Task<IReadOnlyList<EventLocationManagementDto>?> ProjectAsync(
+        IEventRepository events,
+        IEventLocationRepository eventLocations,
+        IEventLocationDisclosureService disclosureService,
+        Guid eventId,
+        Func<EventLocation, bool> selector,
         CancellationToken cancellationToken)
     {
         Event? authorizationTarget = (await events.GetAuthorizationTargetsByIdsAsync(
-                [request.EventId],
+                [eventId],
                 cancellationToken))
-            .SingleOrDefault(item => item.Id == request.EventId);
+            .SingleOrDefault(item => item.Id == eventId);
         if (authorizationTarget is null)
         {
             return null;
         }
 
-        EventLocation[] placements = (await eventLocations.GetByEventIdAsync(
-                request.EventId,
-                cancellationToken))
-            .Where(item => item.NeedsPrivacyReview)
+        EventLocation[] placements = (await eventLocations.GetByEventIdAsync(eventId, cancellationToken))
+            .Where(selector)
             .ToArray();
         if (placements.Length == 0)
         {

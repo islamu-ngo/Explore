@@ -174,6 +174,34 @@ Not fully implemented today:
 
 Outbound delivery remains database-first: capability, self-consent, linked session, source version, and `EventLocationDisclosurePurpose.Public` are rechecked immediately before remote I/O. Remote failure changes only delivery state; it never rolls back or deletes the committed local event.
 
+## EventLocation Disclosure Authority
+
+Venue visibility is an event-scoped decision, not a property of a venue. `EventLocation` is the
+first-class association between an `Event` and either a physical `Location` or an explicit
+to-be-announced placeholder, and it owns the seven visibility flags, the full-details audience, the
+server-side reveal instant, the policy version, and the privacy-review flag. Two events using the same
+building therefore disclose independently, and tightening one never leaks through the other.
+
+- `EventLocationDisclosureEvaluator` is pure and synchronous. It takes immutable facts — placement,
+  location, room, effective governance, requester authority, server time — and returns a result. It
+  performs no I/O, so disclosure is decidable and exhaustively testable.
+- `IEventLocationDisclosureService` is the only request-scoped authority. `ResolveManyAsync` loads
+  placements, rooms, registration coverage, governance, and batched management authorization within a
+  bounded budget (one query per surface, one batched authorization) and then calls the evaluator per
+  row. Every query handler and projection converges here; `EventLocationDisclosureConvergenceTests`
+  fails the build if a new surface reaches the evaluator directly.
+- Two authorities sit beside it because they run without an HTTP requester:
+  `FanoutAttendeeLocationAuthorizationService` resolves one explicit background recipient, and
+  `PublicEventLocationDisclosureEvaluator` supplies fixed public-only authority to federation
+  snapshots. Both feed the same pure evaluator instead of reimplementing disclosure.
+- Purpose DTOs (`EventLocationPublicDto`, `EventLocationAttendeeDto`, `EventLocationManagementDto`)
+  have no public constructor. They can only be materialized from a disclosure result whose purpose
+  matches, which makes a contradictory response shape unrepresentable rather than merely discouraged.
+- Physical references are mediated in the database too: each carrier table (`event_sessions`,
+  `event_session_groups`, `event_agenda_items`, `event_session_agenda_items`) carries a check
+  constraint requiring `location_id IS NULL OR event_location_id IS NOT NULL`, so no write path can
+  attach a raw venue without a per-event disclosure policy.
+
 ## Outbox Pattern
 
 The system uses a transactional outbox for reliable asynchronous event delivery:

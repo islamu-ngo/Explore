@@ -1,0 +1,112 @@
+@* ABOUTME: Shared organizer table of EventLocation disclosure rows with per-row HAL-gated actions. *@
+@* ABOUTME: Backs both the full management view and the privacy-remediation queue without duplicating gating. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+@inject ITranslationService Translation
+
+<MudTable T="HalResourceOfEventLocationManagementDto"
+          Items="@Rows"
+          Dense="true"
+          Hover="true"
+          Loading="@Loading"
+          Elevation="0"
+          data-testid="event-location-management-table">
+    <HeaderContent>
+        <MudTh>@T("ui.event_location.table.venue", "Venue")</MudTh>
+        <MudTh>@T("ui.event_location.table.disclosure", "Disclosure")</MudTh>
+        <MudTh>@T("ui.event_location.table.audience", "Full details audience")</MudTh>
+        <MudTh>@T("ui.event_location.table.status", "Status")</MudTh>
+        <MudTh>@T("ui.event_location.table.actions", "Actions")</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <MudTd DataLabel="@T("ui.event_location.table.venue", "Venue")">
+            @(row.Fields?.VenueName ?? T("ui.event_location.table.unnamed_venue", "Unnamed venue"))
+        </MudTd>
+        <MudTd DataLabel="@T("ui.event_location.table.disclosure", "Disclosure")">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Color="@StateColor(row.State)">
+                @StateLabel(row.State)
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="@T("ui.event_location.table.audience", "Full details audience")">
+            @AudienceLabel(row.Policy?.FullDetailsAudienceId)
+        </MudTd>
+        <MudTd DataLabel="@T("ui.event_location.table.status", "Status")">
+            @if (row.NeedsPrivacyReview == true)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled"
+                         data-testid="event-location-needs-review">
+                    @T("ui.event_location.table.needs_review", "Needs privacy review")
+                </MudChip>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">@T("ui.event_location.table.ok", "OK")</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="@T("ui.event_location.table.actions", "Actions")">
+            @* Both controls exist only while the server advertises the matching relation. *@
+            @if (row.HasLink(EventLocationLinkRelations.Edit))
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           data-testid="event-location-edit"
+                           OnClick="@(() => OnEdit.InvokeAsync(row))">
+                    @T("ui.common.edit", "Edit")
+                </MudButton>
+            }
+            @if (row.HasLink(EventLocationLinkRelations.Remediate))
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.VerifiedUser"
+                           data-testid="event-location-remediate"
+                           OnClick="@(() => OnRemediate.InvokeAsync(row))">
+                    @T("ui.event_location.table.remediate", "Confirm remediation")
+                </MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body2" role="status">@EmptyMessage</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<HalResourceOfEventLocationManagementDto> Rows { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = string.Empty;
+    [Parameter] public EventCallback<HalResourceOfEventLocationManagementDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<HalResourceOfEventLocationManagementDto> OnRemediate { get; set; }
+
+    private string StateLabel(EventLocationDisclosureState? state) => state switch
+    {
+        EventLocationDisclosureState.Available => T("ui.event_location.state.available", "Available"),
+        EventLocationDisclosureState.To_be_announced => T("ui.event_location.state.tba", "To be announced"),
+        EventLocationDisclosureState.Private_venue => T("ui.event_location.state.private_venue", "Private venue"),
+        EventLocationDisclosureState.Needs_privacy_review => T("ui.event_location.state.needs_review", "Needs privacy review"),
+        EventLocationDisclosureState.Unavailable => T("ui.event_location.state.unavailable", "Unavailable"),
+        _ => T("ui.event_location.state.hidden", "Hidden")
+    };
+
+    private static Color StateColor(EventLocationDisclosureState? state) => state switch
+    {
+        EventLocationDisclosureState.Available => Color.Success,
+        EventLocationDisclosureState.To_be_announced => Color.Info,
+        EventLocationDisclosureState.Private_venue => Color.Secondary,
+        EventLocationDisclosureState.Needs_privacy_review => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string AudienceLabel(int? audienceId) => audienceId switch
+    {
+        2 => T("ui.event_location.audience.any_registrant", "Anyone currently registered"),
+        3 => T("ui.event_location.audience.confirmed", "Confirmed participants"),
+        _ => T("ui.event_location.audience.never", "Nobody")
+    };
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

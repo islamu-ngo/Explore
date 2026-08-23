@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Tests.Shared.Telemetry;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services;
@@ -224,6 +225,7 @@ public sealed class EventLocationDisclosureServiceTests
             management,
             currentUser,
             new EventLocationDisclosureEvaluator(),
+            EventLocationPrivacyMetricsFactory.Create(),
             new FixedTimeProvider(Now));
         return new(
             service,

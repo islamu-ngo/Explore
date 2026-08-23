@@ -14,6 +14,7 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
+using Explore.Tests.Shared.Telemetry;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -483,7 +484,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
             reportProviderSyncDispatcher ?? Substitute.For<IReportProviderSyncDispatcher>(),
             new LocationPrivacyCorrectionDispatcher(
                 selectedCache,
-                correctionPlanner),
+                correctionPlanner,
+                EventLocationPrivacyMetricsFactory.Create()),
             new PrivacyErasureCacheInvalidationDispatcher(selectedCache),
             outboxRepository ?? Substitute.For<IOutboxRepository>(),
             mediator ?? Substitute.For<IMediator>(),

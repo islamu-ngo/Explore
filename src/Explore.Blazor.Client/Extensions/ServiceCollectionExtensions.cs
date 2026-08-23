@@ -131,6 +131,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventDayService, EventDayService>();
         services.AddScoped<IEventAgendaItemService, EventAgendaItemService>();
         services.AddScoped<ILocationRoomService, LocationRoomService>();
+        services.AddScoped<IEventLocationService, EventLocationService>();
+        services.AddScoped<IPrivateHomeOwnershipService, PrivateHomeOwnershipService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
         services.AddScoped<IEventTeamService, EventTeamService>();

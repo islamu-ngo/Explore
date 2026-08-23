@@ -1,7 +1,9 @@
 // ABOUTME: Shared OpenAPI enum schema normalization for native OpenAPI and Swashbuckle.
 // ABOUTME: Keeps public enum schemas aligned with the API's JsonStringEnumConverter contract.
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
@@ -92,14 +94,51 @@ internal static class OpenApiStringEnumSchemaCatalog
 
 internal static class OpenApiStringEnumSchemaMutator
 {
+    /// <summary>
+    /// Serializer used only to discover the true wire spelling of an enum that declares its own
+    /// converter. No global string-enum converter is registered here on purpose: a member without a
+    /// type-level converter must fall back to its CLR name, matching <c>JsonStringEnumConverter</c>.
+    /// </summary>
+    private static readonly JsonSerializerOptions WireNameProbe = new();
+
     public static void Apply(OpenApiSchema schema, Type enumType)
     {
         schema.Type = JsonSchemaType.String;
         schema.Format = null;
         schema.Pattern = null;
-        schema.Enum = Enum.GetNames(enumType)
+        schema.Enum = GetWireNames(enumType)
             .Select(name => JsonValue.Create(name)!)
             .ToList<JsonNode>();
+    }
+
+    /// <summary>
+    /// Resolves the values the API actually serializes. Enums such as
+    /// <see cref="EventLocationDisclosureState"/> carry a custom converter that emits snake_case, so
+    /// publishing CLR names would ship a contract no generated client could deserialize.
+    /// </summary>
+    internal static IReadOnlyList<string> GetWireNames(Type enumType)
+    {
+        ArgumentNullException.ThrowIfNull(enumType);
+        bool hasCustomConverter = enumType
+            .GetCustomAttributes(typeof(JsonConverterAttribute), inherit: false)
+            .Length > 0;
+
+        var names = new List<string>();
+        foreach (object value in Enum.GetValues(enumType))
+        {
+            names.Add(hasCustomConverter
+                ? SerializeWireName(value, enumType)
+                : Enum.GetName(enumType, value)!);
+        }
+
+        return names;
+    }
+
+    private static string SerializeWireName(object value, Type enumType)
+    {
+        string json = JsonSerializer.Serialize(value, enumType, WireNameProbe);
+        return JsonSerializer.Deserialize<string>(json, WireNameProbe)
+            ?? Enum.GetName(enumType, value)!;
     }
 }
 

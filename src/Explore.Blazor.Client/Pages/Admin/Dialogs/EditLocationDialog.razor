@@ -1,7 +1,10 @@
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Pages.Events.Components
 @using Explore.Blazor.Client.Validators
 @using FluentValidation
 @using MudBlazor
+@inject IDialogService DialogService
 
 <MudDialog>
     <TitleContent>
@@ -11,6 +14,18 @@
         </MudText>
     </TitleContent>
     <DialogContent>
+        @* Ownership is a consent decision, not a form field: it is never saved as part of the address edit. *@
+        <div class="edit-location__ownership mb-3">
+            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Home"
+                       data-testid="edit-location-private-home"
+                       OnClick="OpenPrivateHomeConsentAsync">
+                @(IsPrivateHome
+                    ? "Take ownership of this private home"
+                    : "Mark as private home")
+            </MudButton>
+        </div>
+
         <EditForm EditContext="_editContext">
             <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.FullName" Label="Name" Required="true" RequiredError="Name is required." />
             <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Address" Label="Address" />
@@ -91,6 +106,26 @@
     }
 
     void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+
+    /// <summary>Private Home lookup id; kept local because the client never persists lookup tables.</summary>
+    private const int PrivateHomeLocationKindId = 5;
+
+    private bool IsPrivateHome => ExistingLocation.LocationKindId == PrivateHomeLocationKindId;
+
+    private async Task OpenPrivateHomeConsentAsync()
+    {
+        var parameters = new DialogParameters<HomeOwnerConsentDialog>
+        {
+            { component => component.LocationId, ExistingLocation.Id ?? Guid.Empty },
+            { component => component.ExpectedConcurrencyStamp, ExistingLocation.ConcurrencyStamp ?? Guid.Empty },
+            {
+                component => component.Mode,
+                IsPrivateHome ? HomeOwnerConsentMode.Transfer : HomeOwnerConsentMode.Classify
+            }
+        };
+
+        await DialogService.ShowAsync<HomeOwnerConsentDialog>("Private home consent", parameters);
+    }
 
     private sealed class LocationEditForm
     {

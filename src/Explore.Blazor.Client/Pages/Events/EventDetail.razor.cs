@@ -11,6 +11,7 @@ using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
@@ -133,6 +134,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
     [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
     [Inject] private IEventDayService EventDayService { get; set; } = default!;
+    [Inject] private IEventLocationService EventLocationService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -154,6 +156,12 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _isProcessingEventAction = false;
     private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
+
+    // Kept apart on purpose: structured data may only ever read the public projection, while the visible
+    // card may layer the attendee projection on top.
+    private EventLocationDisclosureView? _publicLocationView;
+    private EventLocationDisclosureView? _attendeeLocationView;
+
     private string? _errorMessage;
     private bool _imageLoadFailed;
     private Guid _lastRenderedEventId;
@@ -289,6 +297,8 @@ public partial class EventDetail : ComponentBase, IDisposable
                 _techAspect = MapTechAspect(_eventDetails.TechAspect);
 
                 CheckAuthorizationFromHalLinks();
+
+                await LoadEventLocationDisclosureAsync();
 
                 _eventSessions = RemovePhysicalLocationData(await EventService.GetSessionsByEventAsync(
                     EventId,
@@ -609,11 +619,42 @@ public partial class EventDetail : ComponentBase, IDisposable
         return "Date TBD";
     }
 
-    private string GetLocationDisplay() => IsDigitalEvent()
-        ? "Online"
-        : IsHybridEvent()
-            ? "Hybrid"
-            : "Location to be announced";
+    /// <summary>
+    /// Loads the server-evaluated disclosure for this event. The anonymous public projection is always
+    /// read; the attendee projection is layered on top only for a signed-in visitor, and the server —
+    /// not this page — decides whether that visitor's registration unlocks anything extra.
+    /// </summary>
+    private async Task LoadEventLocationDisclosureAsync()
+    {
+        _publicLocationView = null;
+        _attendeeLocationView = null;
+
+        IReadOnlyList<EventLocationPublicDto> publicLocations =
+            await EventLocationService.GetPublicAsync(EventId);
+        _publicLocationView = publicLocations
+            .Select(EventLocationDisclosureView.FromPublic)
+            .FirstOrDefault();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        IReadOnlyList<EventLocationAttendeeDto> attendeeLocations =
+            await EventLocationService.GetMyAccessAsync(EventId);
+        _attendeeLocationView = attendeeLocations
+            .Select(EventLocationDisclosureView.FromAttendee)
+            .FirstOrDefault(view => _publicLocationView is null
+                || view.EventLocationId == _publicLocationView.EventLocationId)
+            ?? attendeeLocations.Select(EventLocationDisclosureView.FromAttendee).FirstOrDefault();
+    }
+
+    /// <summary>The disclosure this visitor should see, or null when nothing was released at all.</summary>
+    private EventLocationDisclosureView? EffectiveLocationView =>
+        _publicLocationView is null && _attendeeLocationView is null
+            ? null
+            : EventLocationDisclosureView.Prefer(_publicLocationView, _attendeeLocationView);
 
     /// <summary>
     /// Generates a color code based on event type for placeholder images.
@@ -776,7 +817,42 @@ public partial class EventDetail : ComponentBase, IDisposable
             data["organizer"] = organizer;
         }
 
+        var location = BuildSchemaLocation();
+        if (location is not null)
+        {
+            data["location"] = location;
+        }
+
         return JsonSerializer.Serialize(data, EventStructuredDataJsonOptions);
+    }
+
+    /// <summary>
+    /// Structured data is crawler-facing, so it is built only from the anonymous public projection and
+    /// only from coarse fields. Street, postcode, and coordinates are never emitted here even when the
+    /// signed-in visitor can see them on the page: the markup is cached, scraped, and syndicated.
+    /// </summary>
+    private Dictionary<string, object?>? BuildSchemaLocation()
+    {
+        if (_publicLocationView is not { } view
+            || view.IsToBeAnnounced
+            || view.IsUnavailable)
+        {
+            return null;
+        }
+
+        var address = new Dictionary<string, object?> { ["@type"] = "PostalAddress" };
+        AddIfNotBlank(address, "addressLocality", view.City);
+        AddIfNotBlank(address, "addressCountry", view.Country);
+
+        var location = new Dictionary<string, object?> { ["@type"] = "Place" };
+        AddIfNotBlank(location, "name", view.VenueName);
+
+        if (address.Count > 1)
+        {
+            location["address"] = address;
+        }
+
+        return location.Count > 1 ? location : null;
     }
 
     private string GetSchemaEventStatus() =>
@@ -1861,19 +1937,18 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool IsHybridEvent() =>
         string.Equals(_eventDetails?.EventFormatMasterCode, "HYBRID", StringComparison.OrdinalIgnoreCase);
 
-    private string GetLocationHint()
+    /// <summary>
+    /// Format context that sits beside the disclosure card. It describes how the event runs and never
+    /// makes a claim about whether a venue exists or will be revealed.
+    /// </summary>
+    private string? GetEventFormatHint()
     {
         if (IsDigitalEvent())
         {
             return "Online event";
         }
 
-        if (IsHybridEvent())
-        {
-            return "Hybrid event";
-        }
-
-        return "Location details are not publicly available";
+        return IsHybridEvent() ? "Hybrid event" : null;
     }
 
     private static ICollection<EventSessionListDto> RemovePhysicalLocationData(

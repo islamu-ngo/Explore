@@ -65,9 +65,18 @@ public class EventSessionGroupConfiguration : IEntityTypeConfiguration<EventSess
             "EventLocationPrivacy:ConsistencyTrigger",
             "event_session_groups:tenant_id,event_id,event_location_id,location_id,room_id");
 
-        builder.ToTable(t => t.HasCheckConstraint(
-            "CK_EventSessionGroup_RoomRequiresLocation",
-            "room_id IS NULL OR location_id IS NOT NULL"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "CK_EventSessionGroup_RoomRequiresLocation",
+                "room_id IS NULL OR location_id IS NOT NULL");
+            // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
+            // event-scoped EventLocation. This closes the legacy write path that could attach a raw
+            // Location without a per-event disclosure policy.
+            t.HasCheckConstraint(
+                "CK_EventSessionGroup_PhysicalLocationRequiresEventLocation",
+                "location_id IS NULL OR event_location_id IS NOT NULL");
+        });
 
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
     }

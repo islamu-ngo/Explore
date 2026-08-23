@@ -56,6 +56,10 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         ReplaceInlineObjectPropertiesWithReferences(document);
         ReplaceInlineHalLinkDictionaryPropertiesWithReferences(document);
         ReplaceInlineHalLinkDictionaryArrayItemsWithReferences(document);
+
+        // Enums carrying their own converter are inlined as an untyped `{}` by GetOrCreateSchemaAsync,
+        // which degrades generated clients to `object`. Point them at their component schema instead.
+        ReplaceEnumPropertiesWithReferences(document);
     }
 
     private async Task PopulateHalResourceSchemas(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -209,6 +213,62 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Points every cataloged string-enum property at its component schema, on both the DTO schema and
+    /// each HAL wrapper that flattens it. Without this a converter-backed enum reaches NSwag as an
+    /// untyped schema and generates an <c>object</c> property that no UI can switch on.
+    /// </summary>
+    private static void ReplaceEnumPropertiesWithReferences(OpenApiDocument document)
+    {
+        if (document.Components?.Schemas is not { } schemas)
+            return;
+
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
+        {
+            foreach (var prop in dtoType.GetProperties())
+            {
+                var propertyType = UnwrapNullableType(prop.PropertyType);
+                if (!OpenApiStringEnumSchemaCatalog.IsStringEnum(propertyType)
+                    || !schemas.ContainsKey(propertyType.Name))
+                {
+                    continue;
+                }
+
+                var jsonName = GetJsonPropertyName(prop);
+
+                ReplacePropertyWithReference(document, dtoType.Name, jsonName, propertyType.Name);
+
+                foreach (var halSchemaName in HalOpenApiSchemaCatalog.DetailResourceMappings
+                    .Where(mapping => mapping.Value == dtoType)
+                    .Select(mapping => mapping.Key))
+                {
+                    ReplacePropertyWithReference(document, halSchemaName, jsonName, propertyType.Name);
+                }
+            }
+        }
+    }
+
+    private static void ReplacePropertyWithReference(
+        OpenApiDocument document,
+        string schemaName,
+        string propertyName,
+        string targetSchemaName)
+    {
+        if (document.Components?.Schemas?.TryGetValue(schemaName, out var schemaI) != true)
+            return;
+
+        if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+            return;
+
+        if (!schema.Properties.TryGetValue(propertyName, out var propertySchema)
+            || propertySchema is OpenApiSchemaReference)
+        {
+            return;
+        }
+
+        schema.Properties[propertyName] = new OpenApiSchemaReference(targetSchemaName, document);
     }
 
     private static Type UnwrapNullableType(Type type)

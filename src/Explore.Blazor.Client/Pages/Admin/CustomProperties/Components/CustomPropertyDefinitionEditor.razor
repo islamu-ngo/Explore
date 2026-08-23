@@ -144,14 +144,14 @@
 
     private EntityTypeName ModelEntityTypeName
     {
-        get => (EntityTypeName)(Model.EntityTypeName ?? 0);
-        set => Model.EntityTypeName = (int)value;
+        get => Model.EntityTypeName ?? EntityTypeName.Event;
+        set => Model.EntityTypeName = value;
     }
 
     private PropertyType ModelPropertyType
     {
-        get => (PropertyType)(Model.PropertyType ?? 0);
-        set => Model.PropertyType = (int)value;
+        get => Model.PropertyType ?? PropertyType.Text;
+        set => Model.PropertyType = value;
     }
 
     // Date binding helpers
@@ -185,9 +185,9 @@
         {
             Model = new CustomPropertyDefinitionDto
             {
-                EntityTypeName = (int)EntityTypeName.Event,
-                PropertyType = (int)PropertyType.Text,
-                ExposureLevel = (int)ExposureLevel.TenantAdminOnly
+                EntityTypeName = EntityTypeName.Event,
+                PropertyType = PropertyType.Text,
+                ExposureLevel = ExposureLevel.TenantAdminOnly
             };
         }
 

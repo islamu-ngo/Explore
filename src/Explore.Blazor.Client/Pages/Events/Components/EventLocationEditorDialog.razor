@@ -1,0 +1,261 @@
+@* ABOUTME: Organizer editor for one EventLocation disclosure policy, opened only from a server "edit" link. *@
+@* ABOUTME: Sends the seven visibility flags, audience, and reveal time with the read's concurrency tokens. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+@inject IEventLocationService EventLocations
+@inject ITranslationService Translation
+@inject IAccessibilityAnnouncerService Announcer
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Shield" aria-hidden="true" />
+            <MudText Typo="Typo.h6" HtmlTag="h2">
+                @T("ui.event_location.editor.title", "Location disclosure")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div aria-busy="@_busy">
+            @if (_resource is null)
+            {
+                <div class="d-flex justify-center pa-4" role="status">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true"
+                                         aria-label="@T("ui.common.loading", "Loading")" />
+                </div>
+            }
+            else if (!_canEdit)
+            {
+                @* Reaching here means the server withdrew the affordance between list and open. *@
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" role="alert">
+                    @T("ui.event_location.editor.not_permitted", "You are no longer allowed to change this location's disclosure.")
+                </MudAlert>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" role="alert" Class="mb-3">
+                        @_error
+                    </MudAlert>
+                }
+
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @T("ui.event_location.editor.description", "Choose what every visitor may see. Everything you leave off stays visible only to authorized attendees and organizers.")
+                    </MudText>
+
+                    <fieldset class="event-location-editor__fields">
+                        <legend class="mud-typography mud-typography-subtitle2">
+                            @T("ui.event_location.editor.public_fields", "Publicly visible fields")
+                        </legend>
+                        <MudSwitch T="bool" @bind-Value="_showVenueName" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_venue_name", "Venue name")" />
+                        <MudSwitch T="bool" @bind-Value="_showCity" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_city", "City")" />
+                        <MudSwitch T="bool" @bind-Value="_showCountry" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_country", "Country")" />
+                        <MudSwitch T="bool" @bind-Value="_showRoomName" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_room_name", "Room name")" />
+                        <MudSwitch T="bool" @bind-Value="_showStreetAddress" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_street_address", "Street address")" />
+                        <MudSwitch T="bool" @bind-Value="_showPostcode" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_postcode", "Postcode")" />
+                        <MudSwitch T="bool" @bind-Value="_showCoordinates" Color="Color.Primary"
+                                   Label="@T("ui.event_location.editor.show_coordinates", "Exact coordinates")" />
+                    </fieldset>
+
+                    <MudSelect T="int" @bind-Value="_fullDetailsAudienceId"
+                               Label="@T("ui.event_location.editor.audience", "Who may see full details")"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem T="int" Value="@AudienceNever">
+                            @T("ui.event_location.editor.audience_never", "Nobody")
+                        </MudSelectItem>
+                        <MudSelectItem T="int" Value="@AudienceAnyCurrentRegistrant">
+                            @T("ui.event_location.editor.audience_any_registrant", "Anyone currently registered")
+                        </MudSelectItem>
+                        <MudSelectItem T="int" Value="@AudienceConfirmedParticipant">
+                            @T("ui.event_location.editor.audience_confirmed", "Confirmed participants only")
+                        </MudSelectItem>
+                    </MudSelect>
+
+                    <MudStack Row="true" Spacing="2" Class="event-location-editor__reveal">
+                        <MudDatePicker @bind-Date="_revealDate"
+                                       Label="@T("ui.event_location.editor.reveal_date", "Reveal date (UTC)")"
+                                       Variant="Variant.Outlined" Clearable="true" />
+                        <MudTimePicker @bind-Time="_revealTime"
+                                       Label="@T("ui.event_location.editor.reveal_time", "Reveal time (UTC)")"
+                                       Variant="Variant.Outlined" Clearable="true" />
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @T("ui.event_location.editor.reveal_hint", "Leave both empty to reveal full details as soon as someone qualifies. The server clock decides, never the browser.")
+                    </MudText>
+                </MudStack>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary"
+                   OnClick="Cancel" Disabled="_busy">
+            @T("ui.common.cancel", "Cancel")
+        </MudButton>
+        @if (_canEdit)
+        {
+            <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary"
+                       data-testid="event-location-editor-save"
+                       OnClick="SaveAsync" Disabled="_busy">
+                @if (_busy)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @T("ui.common.save", "Save")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const int AudienceNever = 1;
+    private const int AudienceAnyCurrentRegistrant = 2;
+    private const int AudienceConfirmedParticipant = 3;
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter, EditorRequired] public Guid EventLocationId { get; set; }
+
+    /// <summary>
+    /// Optional pre-read resource. Supplying it avoids a second management read when the caller already
+    /// holds one; it is still the server links on that resource that decide whether editing is offered.
+    /// </summary>
+    [Parameter] public HalResourceOfEventLocationManagementDto? Resource { get; set; }
+
+    private HalResourceOfEventLocationManagementDto? _resource;
+    private bool _canEdit;
+    private bool _busy;
+    private string? _error;
+
+    private bool _showVenueName;
+    private bool _showCity;
+    private bool _showCountry;
+    private bool _showRoomName;
+    private bool _showStreetAddress;
+    private bool _showPostcode;
+    private bool _showCoordinates;
+    private int _fullDetailsAudienceId = AudienceConfirmedParticipant;
+    private DateTime? _revealDate;
+    private TimeSpan? _revealTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _resource = Resource
+            ?? await EventLocations.GetManagementAsync(EventId, EventLocationId);
+        ApplyResource();
+    }
+
+    private void ApplyResource()
+    {
+        if (_resource is null)
+        {
+            _canEdit = false;
+            return;
+        }
+
+        // Single source of truth for the affordance: the server link, never a local role or claim.
+        _canEdit = _resource.HasLink(EventLocationLinkRelations.Edit);
+
+        EventLocationDisclosurePolicyDto policy = _resource.Policy ?? new EventLocationDisclosurePolicyDto();
+        _showVenueName = policy.ShowVenueName;
+        _showCity = policy.ShowCity;
+        _showCountry = policy.ShowCountry;
+        _showRoomName = policy.ShowRoomName;
+        _showStreetAddress = policy.ShowStreetAddress;
+        _showPostcode = policy.ShowPostcode;
+        _showCoordinates = policy.ShowCoordinates;
+        _fullDetailsAudienceId = policy.FullDetailsAudienceId == 0
+            ? AudienceConfirmedParticipant
+            : policy.FullDetailsAudienceId;
+
+        if (policy.RevealFullDetailsFromUtc is { } revealUtc)
+        {
+            _revealDate = revealUtc.UtcDateTime.Date;
+            _revealTime = revealUtc.UtcDateTime.TimeOfDay;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy || _resource is null || !_canEdit)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        var request = new UpdateEventLocationDisclosureDto
+        {
+            ExpectedPolicyVersion = _resource.PolicyVersion ?? 0,
+            ExpectedConcurrencyStamp = _resource.ConcurrencyStamp ?? Guid.Empty,
+            Fields = new UpdateEventLocationDisclosureFieldsDto
+            {
+                ShowVenueName = _showVenueName,
+                ShowCity = _showCity,
+                ShowCountry = _showCountry,
+                ShowRoomName = _showRoomName,
+                ShowStreetAddress = _showStreetAddress,
+                ShowPostcode = _showPostcode,
+                ShowCoordinates = _showCoordinates
+            },
+            Audience = new UpdateEventLocationDisclosureAudienceDto
+            {
+                FullDetailsAudienceId = _fullDetailsAudienceId,
+                RevealFullDetailsFromUtc = new OptionalUpdateOfDateTime
+                {
+                    HasValue = true,
+                    Value = BuildRevealInstant()
+                }
+            }
+        };
+
+        BaseCommandResponseOfGuid response = await EventLocations.UpdateDisclosureAsync(
+            EventId,
+            EventLocationId,
+            request);
+
+        if (response.Success == true)
+        {
+            await Announcer.AnnouncePoliteAsync(
+                T("ui.event_location.editor.saved", "Location disclosure saved."));
+            MudDialog.Close(DialogResult.Ok(EventLocationId));
+            return;
+        }
+
+        // Concurrency and validation failures keep the dialog open with the stale tokens intact, so the
+        // organizer must re-read rather than blindly overwrite a policy someone else just tightened.
+        _error = response.Message
+            ?? T("ui.event_location.editor.save_failed", "Location disclosure could not be saved.");
+        await Announcer.AnnounceAssertiveAsync(_error);
+        _busy = false;
+    }
+
+    private DateTimeOffset? BuildRevealInstant()
+    {
+        if (_revealDate is not { } date)
+        {
+            return null;
+        }
+
+        DateTime utc = DateTime.SpecifyKind(date.Date.Add(_revealTime ?? TimeSpan.Zero), DateTimeKind.Utc);
+        return new DateTimeOffset(utc);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

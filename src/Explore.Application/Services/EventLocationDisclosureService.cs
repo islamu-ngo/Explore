@@ -8,6 +8,7 @@ using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Exceptions;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
@@ -22,6 +23,7 @@ public sealed class EventLocationDisclosureService(
     IEventLocationManagementAuthorizationService managementAuthorizationService,
     ICurrentUserService currentUserService,
     EventLocationDisclosureEvaluator evaluator,
+    EventLocationPrivacyMetrics metrics,
     TimeProvider timeProvider) : IEventLocationDisclosureService
 {
     public async Task<IReadOnlyDictionary<Guid, EventLocationDisclosureResult>> ResolveManyAsync(
@@ -120,17 +122,18 @@ public sealed class EventLocationDisclosureService(
                 registrationAccess,
                 managementDecisions);
 
-            results.Add(
-                request.EventLocationId,
-                evaluator.Evaluate(new(
-                    request,
-                    eventLocation,
-                    eventLocation?.Location,
-                    room,
-                    governanceFact,
-                    authority,
-                    serverNowUtc,
-                    Derivatives: null)));
+            EventLocationDisclosureResult result = evaluator.Evaluate(new(
+                request,
+                eventLocation,
+                eventLocation?.Location,
+                room,
+                governanceFact,
+                authority,
+                serverNowUtc,
+                Derivatives: null));
+
+            metrics.RecordDisclosure(request.Purpose, result.State);
+            results.Add(request.EventLocationId, result);
         }
 
         return results.ToImmutable();

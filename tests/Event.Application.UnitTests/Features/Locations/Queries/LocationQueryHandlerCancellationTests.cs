@@ -19,38 +19,6 @@ public sealed class LocationQueryHandlerCancellationTests
     private readonly IMapper _mapper = Substitute.For<IMapper>();
 
     [Test]
-    public async Task GetLocationsByCity_ForwardsCancellationToken()
-    {
-        var locations = new List<Location>();
-        var handler = new GetLocationsByCityRequestHandler(_locationRepository, _mapper);
-        var request = new GetLocationsByCityRequest { City = "Brussels" };
-        using var cancellation = new CancellationTokenSource();
-
-        _locationRepository.GetLocationsByCity(request.City, cancellation.Token).Returns(locations);
-        _mapper.Map<List<LocationListDto>>(locations).Returns([]);
-
-        await handler.Handle(request, cancellation.Token);
-
-        await _locationRepository.Received(1).GetLocationsByCity(request.City, cancellation.Token);
-    }
-
-    [Test]
-    public async Task GetLocationsByCountry_ForwardsCancellationToken()
-    {
-        var locations = new List<Location>();
-        var handler = new GetLocationsByCountryRequestHandler(_locationRepository, _mapper);
-        var request = new GetLocationsByCountryRequest { Country = "Belgium" };
-        using var cancellation = new CancellationTokenSource();
-
-        _locationRepository.GetLocationsByCountry(request.Country, cancellation.Token).Returns(locations);
-        _mapper.Map<List<LocationListDto>>(locations).Returns([]);
-
-        await handler.Handle(request, cancellation.Token);
-
-        await _locationRepository.Received(1).GetLocationsByCountry(request.Country, cancellation.Token);
-    }
-
-    [Test]
     public async Task GetLocationList_ForwardsCancellationToken()
     {
         var locations = new List<Location>();

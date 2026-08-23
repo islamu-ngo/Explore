@@ -77,6 +77,9 @@ public class BlazorTestContext : BunitContext
         Services.AddSingleton(Substitute.For<IEventApiClient>());
         Services.AddSingleton(Substitute.For<IAtprotoFederationSettingsService>());
         Services.AddSingleton(Substitute.For<IBrowserActionInterop>());
+        // EventLocation disclosure is now a page-level dependency of EventDetail. A default fail-closed
+        // substitute (no disclosures) keeps unrelated page tests from having to know about venue privacy.
+        Services.AddSingleton(Substitute.For<Explore.Blazor.Client.Contracts.Services.Events.IEventLocationService>());
         AddAccessibilityMocks();
         AddAppearanceThemeMock();
         AddPublicExperienceMock();

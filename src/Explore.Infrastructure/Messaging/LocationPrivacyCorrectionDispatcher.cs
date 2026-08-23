@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Explore.Application.Caching;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Services;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -13,7 +14,8 @@ namespace Explore.Infrastructure.Messaging;
 
 public sealed class LocationPrivacyCorrectionDispatcher(
     HybridCache cache,
-    IAtprotoLocationPrivacyCorrectionPlanner correctionPlanner)
+    IAtprotoLocationPrivacyCorrectionPlanner correctionPlanner,
+    EventLocationPrivacyMetrics metrics)
 {
     public const string GovernanceCorrectionEventType = LocationPrivacyOutboxMessageFactory.ProjectionCorrectionEventType;
 
@@ -30,10 +32,52 @@ public sealed class LocationPrivacyCorrectionDispatcher(
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
-    public async Task DispatchAsync(OutboxMessage message, CancellationToken cancellationToken = default)
+    public Task DispatchAsync(OutboxMessage message, CancellationToken cancellationToken = default) =>
+        ApplyAsync(message, isDeadLetterReconciliation: false, cancellationToken);
+
+    /// <summary>
+    /// Re-applies a correction the outbox already moved to dead-letter. Behaviourally identical to
+    /// <see cref="DispatchAsync"/> — corrections are idempotent — but recorded as a dead-letter
+    /// observation so backlog pressure stays distinguishable from ordinary retries.
+    /// </summary>
+    public Task ReconcileDeadLetterAsync(OutboxMessage message, CancellationToken cancellationToken = default) =>
+        ApplyAsync(message, isDeadLetterReconciliation: true, cancellationToken);
+
+    private async Task ApplyAsync(
+        OutboxMessage message,
+        bool isDeadLetterReconciliation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
+        if (!IsSupportedEventType(message.EventType))
+        {
+            // Recorded before any metric so an unroutable event type can never widen tag cardinality.
+            throw Invalid(message, "event type is not a supported location-privacy correction");
+        }
 
+        if (isDeadLetterReconciliation)
+        {
+            metrics.RecordCorrection(message.EventType, EventLocationCorrectionOutcome.DeadLetter);
+        }
+
+        try
+        {
+            await ApplyCorrectionAsync(message, cancellationToken);
+        }
+        catch (Exception) when (!isDeadLetterReconciliation)
+        {
+            metrics.RecordCorrection(message.EventType, EventLocationCorrectionOutcome.Retry);
+            throw;
+        }
+
+        if (!isDeadLetterReconciliation)
+        {
+            metrics.RecordCorrection(message.EventType, EventLocationCorrectionOutcome.Success);
+        }
+    }
+
+    private async Task ApplyCorrectionAsync(OutboxMessage message, CancellationToken cancellationToken)
+    {
         CorrectionDispatchPlan plan = message.EventType switch
         {
             LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType =>
@@ -65,6 +109,11 @@ public sealed class LocationPrivacyCorrectionDispatcher(
             }
         }
     }
+
+    private static bool IsSupportedEventType(string eventType) => eventType is
+        LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+        or LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType
+        or GovernanceCorrectionEventType;
 
     private static CorrectionDispatchPlan ValidateErasure(OutboxMessage message)
     {

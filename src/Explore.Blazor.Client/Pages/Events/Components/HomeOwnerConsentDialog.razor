@@ -1,0 +1,125 @@
+@* ABOUTME: Explicit household-consent gate for making a location a private home or taking its ownership. *@
+@* ABOUTME: The confirm button stays disabled until the owner ticks the versioned consent statement. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using MudBlazor
+@inject IPrivateHomeOwnershipService PrivateHomeOwnership
+@inject ITranslationService Translation
+@inject IAccessibilityAnnouncerService Announcer
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Home" aria-hidden="true" />
+            <MudText Typo="Typo.h6" HtmlTag="h2">
+                @(Mode == HomeOwnerConsentMode.Transfer
+                    ? T("ui.private_home.consent.transfer_title", "Take ownership of this home")
+                    : T("ui.private_home.consent.classify_title", "Host at a private home"))
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" role="alert" Class="mb-3">
+                @_error
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.body2" Class="mb-2">
+            @(Mode == HomeOwnerConsentMode.Transfer
+                ? T("ui.private_home.consent.transfer_body", "You are about to become the responsible owner of this private home. Only the incoming owner can accept this, and the change is recorded against your account.")
+                : T("ui.private_home.consent.classify_body", "A private home is treated as someone's household. Its name, rooms, and address stay hidden from the public and are only released to authorized participants."))
+        </MudText>
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3" id="private-home-consent-statement">
+            @T("ui.private_home.consent.statement", "I confirm I am responsible for this household address and consent to it being used as an event venue under the platform's privacy rules. I can request erasure at any time.")
+        </MudText>
+
+        <MudCheckBox T="bool"
+                     @bind-Value="_consentAcknowledged"
+                     Color="Color.Primary"
+                     data-testid="private-home-consent-checkbox"
+                     aria-describedby="private-home-consent-statement"
+                     Label="@T("ui.private_home.consent.acknowledge", "I give explicit consent")" />
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="private-home-consent-version">
+            @string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                T("ui.private_home.consent.version", "Consent version: {0}"),
+                PrivateHomeConsentStatement.CurrentVersion)
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary"
+                   OnClick="Cancel" Disabled="_busy">
+            @T("ui.common.cancel", "Cancel")
+        </MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary"
+                   data-testid="private-home-consent-confirm"
+                   OnClick="ConfirmAsync"
+                   Disabled="@(_busy || !_consentAcknowledged)">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(Mode == HomeOwnerConsentMode.Transfer
+                ? T("ui.private_home.consent.transfer_confirm", "Accept ownership")
+                : T("ui.private_home.consent.classify_confirm", "Confirm private home"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid LocationId { get; set; }
+    [Parameter, EditorRequired] public Guid ExpectedConcurrencyStamp { get; set; }
+    [Parameter] public HomeOwnerConsentMode Mode { get; set; } = HomeOwnerConsentMode.Classify;
+
+    private bool _consentAcknowledged;
+    private bool _busy;
+    private string? _error;
+
+    private async Task ConfirmAsync()
+    {
+        // Belt and braces: the button is disabled without consent, and the request is refused without it.
+        if (_busy || !_consentAcknowledged)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        var consent = new PrivateHomeOwnershipConsentDto
+        {
+            ConsentAcknowledged = true,
+            ConsentVersion = PrivateHomeConsentStatement.CurrentVersion
+        };
+
+        BaseCommandResponseOfGuid response = Mode == HomeOwnerConsentMode.Transfer
+            ? await PrivateHomeOwnership.AcceptOwnershipAsync(LocationId, ExpectedConcurrencyStamp, consent)
+            : await PrivateHomeOwnership.ClassifyAsPrivateHomeAsync(LocationId, ExpectedConcurrencyStamp, consent);
+
+        if (response.Success == true)
+        {
+            await Announcer.AnnouncePoliteAsync(
+                T("ui.private_home.consent.saved", "Private home ownership recorded."));
+            MudDialog.Close(DialogResult.Ok(LocationId));
+            return;
+        }
+
+        _error = response.Message
+            ?? T("ui.private_home.consent.failed", "The private home ownership change could not be saved.");
+        await Announcer.AnnounceAssertiveAsync(_error);
+        _busy = false;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

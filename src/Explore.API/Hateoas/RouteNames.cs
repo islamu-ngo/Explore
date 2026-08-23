@@ -197,6 +197,7 @@ public static class RouteNames
     public const string GetPublicEventLocations = "GetPublicEventLocations";
     public const string GetAttendeeEventLocations = "GetAttendeeEventLocations";
     public const string GetManagementEventLocation = "GetManagementEventLocation";
+    public const string GetManagementEventLocations = "GetManagementEventLocations";
     public const string GetEventLocationReviewQueue = "GetEventLocationReviewQueue";
     public const string UpdateEventLocationDisclosure = "UpdateEventLocationDisclosure";
     public const string ConfirmEventLocationRemediation = "ConfirmEventLocationRemediation";
@@ -301,11 +302,11 @@ public static class RouteNames
 
     public const string GetLocations = "GetLocations";
     public const string GetLocationById = "GetLocationById";
-    public const string GetLocationsByCity = "GetLocationsByCity";
-    public const string GetLocationsByCountry = "GetLocationsByCountry";
     public const string CreateLocation = "CreateLocation";
     public const string UpdateLocation = "UpdateLocation";
     public const string DeleteLocation = "DeleteLocation";
+    public const string ClassifyLocationAsPrivateHome = "ClassifyLocationAsPrivateHome";
+    public const string AcceptPrivateHomeOwnership = "AcceptPrivateHomeOwnership";
 
     #endregion
 

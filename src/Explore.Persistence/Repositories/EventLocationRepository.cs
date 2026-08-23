@@ -172,6 +172,11 @@ public sealed class EventLocationRepository(ExploreDbContext dbContext) : IEvent
             .ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountNeedingPrivacyReviewAsync(CancellationToken cancellationToken) =>
+        dbContext.EventLocations
+            .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceLocationPrivacyReviewQueueDepth)
+            .CountAsync(item => item.NeedsPrivacyReview, cancellationToken);
+
     public async Task SaveGovernanceChangesAsync(
         IReadOnlyCollection<EventLocationDisclosureAudit> audits,
         IReadOnlyCollection<OutboxMessage> outboxMessages,

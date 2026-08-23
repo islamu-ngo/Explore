@@ -15,5 +15,12 @@ public class LocationDto
     public double? Longitude { get; set; }
     public string? Timezone { get; set; }
     public Guid TenantId { get; set; }
+
+    /// <summary>
+    /// Descriptive venue kind. It never grants disclosure — it only tells management surfaces whether the
+    /// consent-backed private home workflow applies to this venue.
+    /// </summary>
+    public int LocationKindId { get; set; }
+
     public Guid ConcurrencyStamp { get; set; }
 }

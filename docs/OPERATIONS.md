@@ -367,6 +367,7 @@ Readiness interpretation:
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus public/curated exact-collection subscription is ready | Not used | Capability readiness cannot be resolved |
 | `privacy-erasure` | API | Authority is caught up and no provider work is `Unknown` or dead-lettered | Replay lag or provider reconciliation/dead-letter attention is present | Authority/checkpoint diagnostics cannot be read |
+| `event-location-privacy-review` | API | EventLocation privacy remediation backlog is at or below `LocationPrivacy:Observability:ReviewQueueDegradedThreshold` (default 50) | Backlog exceeds the threshold, so erased or tightened venues are still awaiting organizer remediation | The bounded aggregate backlog count cannot be read |
 | `islamu-event-api` | Blazor, Control Plane BFF | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor, Control Plane BFF | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
@@ -575,6 +576,19 @@ Added to every response by `SecurityHeadersMiddleware`:
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
 - `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`
 - Non-GET responses additionally receive `Cache-Control: no-store` and `Pragma: no-cache`.
+
+### EventLocation Privacy Metrics (OpenTelemetry)
+
+Meter `Explore.EventLocationPrivacy` reports how venue disclosure behaves in production without ever
+naming a tenant, event, venue, or requester. Every dimension is a closed vocabulary.
+
+- `event_location_privacy_disclosures_total` (`purpose` = `public`/`attendee`/`management`, `state` = `hidden`/`to_be_announced`/`available`/`private_venue`/`unavailable`/`needs_privacy_review`) — one increment per evaluated disclosure. A rising `hidden`/`unavailable` share on the public surface usually means governance was tightened or a venue lost its PII.
+- `event_location_privacy_corrections_total` (`event_type`, `status` = `success`/`retry`/`dead_letter`) — durable location-privacy correction dispatches. `event_type` is a compile-time outbox constant, never operator input.
+- `event_location_privacy_review_queue_depth` — gauge of live EventLocations still flagged `NeedsPrivacyReview`, refreshed whenever the `event-location-privacy-review` readiness check is scraped. Before the first probe the gauge reports nothing at all, so an unscraped instance is never mistaken for an empty queue.
+
+Alert on sustained `dead_letter` corrections and on review-queue depth above the configured threshold.
+Do not build dashboards that join these series to tenant or event identifiers; the labels deliberately
+do not carry them.
 
 ### Business Metrics (OpenTelemetry)
 

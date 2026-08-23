@@ -85,6 +85,7 @@ public static class Extensions
                     .AddMeter("Explore.Mcp")
                     .AddMeter("Explore.Translation")
                     .AddMeter("Explore.Projections")
+                    .AddMeter("Explore.EventLocationPrivacy")
                     .AddPrometheusExporter();
             })
             .WithTracing(tracing =>

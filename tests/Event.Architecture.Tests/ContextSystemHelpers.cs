@@ -29,7 +29,9 @@ internal static class ContextSystemHelpers
     {
         "Explore.API", "Explore.AppHost", "Explore.Application", "Explore.Domain", "Explore.Persistence",
         "Explore.Infrastructure", "Explore.Blazor", "Explore.Blazor.Client", "Event.Web.BffHosting",
-        "Explore.ServiceDefaults", "Explore.Secrets", "Explore.Diagnostic", "Event.MigrationService"
+        "Explore.ServiceDefaults", "Explore.Secrets", "Explore.Diagnostic", "Event.MigrationService",
+        "Explore.Persistence.Migrations.Sqlite", "Explore.Persistence.Migrations.SqlServer",
+        "Explore.Persistence.Migrations.MariaDb", "Explore.Persistence.Migrations.MySql"
     };
 
     public static string RepoPath(params string[] segments)

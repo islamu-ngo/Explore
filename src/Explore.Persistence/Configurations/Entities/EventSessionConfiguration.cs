@@ -146,6 +146,12 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             t.HasCheckConstraint(
                 "CK_EventSession_RoomRequiresLocation",
                 "room_id IS NULL OR location_id IS NOT NULL");
+            // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
+            // event-scoped EventLocation. This closes the legacy write path that could attach a raw
+            // Location without a per-event disclosure policy.
+            t.HasCheckConstraint(
+                "CK_EventSession_PhysicalLocationRequiresEventLocation",
+                "location_id IS NULL OR event_location_id IS NOT NULL");
         });
 
         // Optimistic concurrency control (database-agnostic)

@@ -26,9 +26,13 @@ public enum EventLocationDisclosureState
     NeedsPrivacyReview = 6
 }
 
-public sealed class EventLocationDisclosureStateJsonConverter : JsonConverter<EventLocationDisclosureState>
+/// <summary>
+/// Single source of truth for the stable snake_case identifiers used for EventLocation disclosure
+/// purposes and states on every external surface: JSON contracts, OpenAPI schemas, and metric tags.
+/// </summary>
+public static class EventLocationDisclosureWireNames
 {
-    private static readonly FrozenDictionary<EventLocationDisclosureState, string> WireNames =
+    private static readonly FrozenDictionary<EventLocationDisclosureState, string> StateNames =
         new Dictionary<EventLocationDisclosureState, string>
         {
             [EventLocationDisclosureState.Hidden] = "hidden",
@@ -39,9 +43,42 @@ public sealed class EventLocationDisclosureStateJsonConverter : JsonConverter<Ev
             [EventLocationDisclosureState.NeedsPrivacyReview] = "needs_privacy_review"
         }.ToFrozenDictionary();
 
-    private static readonly FrozenDictionary<string, EventLocationDisclosureState> StatesByWireName =
-        WireNames.ToFrozenDictionary(pair => pair.Value, pair => pair.Key, StringComparer.Ordinal);
+    private static readonly FrozenDictionary<string, EventLocationDisclosureState> StatesByName =
+        StateNames.ToFrozenDictionary(pair => pair.Value, pair => pair.Key, StringComparer.Ordinal);
 
+    private static readonly FrozenDictionary<EventLocationDisclosurePurpose, string> PurposeNames =
+        new Dictionary<EventLocationDisclosurePurpose, string>
+        {
+            [EventLocationDisclosurePurpose.Public] = "public",
+            [EventLocationDisclosurePurpose.Attendee] = "attendee",
+            [EventLocationDisclosurePurpose.Management] = "management"
+        }.ToFrozenDictionary();
+
+    public static bool TryGetStateName(EventLocationDisclosureState state, out string wireName) =>
+        StateNames.TryGetValue(state, out wireName!);
+
+    public static bool TryGetState(string wireName, out EventLocationDisclosureState state) =>
+        StatesByName.TryGetValue(wireName, out state);
+
+    public static string ForState(EventLocationDisclosureState state) =>
+        StateNames.TryGetValue(state, out string? wireName)
+            ? wireName
+            : throw new ArgumentOutOfRangeException(
+                nameof(state),
+                state,
+                "Unknown EventLocation disclosure state.");
+
+    public static string ForPurpose(EventLocationDisclosurePurpose purpose) =>
+        PurposeNames.TryGetValue(purpose, out string? wireName)
+            ? wireName
+            : throw new ArgumentOutOfRangeException(
+                nameof(purpose),
+                purpose,
+                "Unknown EventLocation disclosure purpose.");
+}
+
+public sealed class EventLocationDisclosureStateJsonConverter : JsonConverter<EventLocationDisclosureState>
+{
     public override EventLocationDisclosureState Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
@@ -53,7 +90,7 @@ public sealed class EventLocationDisclosureStateJsonConverter : JsonConverter<Ev
         }
 
         if (reader.GetString() is not { } wireName
-            || !StatesByWireName.TryGetValue(wireName, out var state))
+            || !EventLocationDisclosureWireNames.TryGetState(wireName, out var state))
         {
             throw new JsonException("Unknown EventLocation disclosure state.");
         }
@@ -66,7 +103,7 @@ public sealed class EventLocationDisclosureStateJsonConverter : JsonConverter<Ev
         EventLocationDisclosureState value,
         JsonSerializerOptions options)
     {
-        if (!WireNames.TryGetValue(value, out var wireName))
+        if (!EventLocationDisclosureWireNames.TryGetStateName(value, out string wireName))
         {
             throw new JsonException("Unknown EventLocation disclosure state.");
         }

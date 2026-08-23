@@ -42,8 +42,6 @@ public sealed class EventLocationPrivacyApiMetadataTests
         [
             GetAction<LocationController>(nameof(LocationController.GetAll)),
             GetAction<LocationController>(nameof(LocationController.GetById)),
-            GetAction<LocationController>(nameof(LocationController.GetByCity)),
-            GetAction<LocationController>(nameof(LocationController.GetByCountry)),
             GetAction<LocationRoomController>(nameof(LocationRoomController.GetByLocation)),
             GetAction<LocationRoomController>(nameof(LocationRoomController.GetById))
         ];
@@ -126,6 +124,43 @@ public sealed class EventLocationPrivacyApiMetadataTests
     }
 
     [Test]
+    public async Task GeographicVenueBrowseRoutes_AreRemovedFromTheApiSurface()
+    {
+        // ELP-430 contraction: these enumerated exact venue addresses, including private homes, for any
+        // caller holding tenant-wide location view and with no disclosure evaluation at all.
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        string[] removedRoutes =
+        [
+            "/api/location/by-city/Brussels",
+            "/api/location/by-country/Belgium"
+        ];
+
+        var violations = new List<string>();
+        foreach (string route in removedRoutes)
+        {
+            using var anonymous = new HttpRequestMessage(HttpMethod.Get, route);
+            using var anonymousResponse = await client.SendAsync(anonymous);
+            if (anonymousResponse.StatusCode != HttpStatusCode.NotFound)
+            {
+                violations.Add($"anonymous {route} -> {(int)anonymousResponse.StatusCode}");
+            }
+
+            using var authenticated = new HttpRequestMessage(HttpMethod.Get, route);
+            authenticated.Headers.Add(
+                TestAuthHandler.AuthHeaderName,
+                TestAuthHandler.CreateAuthHeaderValue(Guid.CreateVersion7()));
+            using var authenticatedResponse = await client.SendAsync(authenticated);
+            if (authenticatedResponse.StatusCode != HttpStatusCode.NotFound)
+            {
+                violations.Add($"authenticated {route} -> {(int)authenticatedResponse.StatusCode}");
+            }
+        }
+
+        await Assert.That(violations).IsEmpty();
+    }
+
+    [Test]
     public async Task ResourceAuthorizationDenial_FailsClosedForAuthenticatedPhysicalReads()
     {
         await using var factory = new AuthenticatedWebApplicationFactory
@@ -137,8 +172,6 @@ public sealed class EventLocationPrivacyApiMetadataTests
         [
             "/api/location",
             $"/api/location/{Guid.CreateVersion7()}",
-            "/api/location/by-city/Brussels",
-            "/api/location/by-country/Belgium",
             $"/api/locationroom/by-location/{Guid.CreateVersion7()}",
             $"/api/locationroom/{Guid.CreateVersion7()}"
         ];
@@ -665,8 +698,6 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
     [
         "/api/location",
         $"/api/location/{scenario.LocationId}",
-        $"/api/location/by-city/{Uri.EscapeDataString(scenario.LocationCity)}",
-        $"/api/location/by-country/{Uri.EscapeDataString(scenario.LocationCountry)}",
         $"/api/locationroom/by-location/{scenario.LocationId}",
         $"/api/locationroom/{scenario.RoomId}"
     ];
@@ -675,8 +706,6 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
     [
         "/api/location",
         $"/api/location/{scenario.OtherLocationId}",
-        $"/api/location/by-city/{Uri.EscapeDataString(scenario.OtherLocationCity)}",
-        $"/api/location/by-country/{Uri.EscapeDataString(scenario.OtherLocationCountry)}",
         $"/api/locationroom/by-location/{scenario.OtherLocationId}",
         $"/api/locationroom/{scenario.OtherRoomId}"
     ];

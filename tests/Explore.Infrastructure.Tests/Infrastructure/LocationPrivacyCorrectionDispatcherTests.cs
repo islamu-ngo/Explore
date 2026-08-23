@@ -7,6 +7,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
+using Explore.Tests.Shared.Telemetry;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Core;
@@ -58,7 +59,7 @@ public sealed class LocationPrivacyCorrectionDispatcherTests
         var cache = new RecordingHybridCache();
         var planner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
         OutboxMessage message = CreateCorrectionRequestedMessage(identity);
-        var dispatcher = new LocationPrivacyCorrectionDispatcher(cache, planner);
+        var dispatcher = new LocationPrivacyCorrectionDispatcher(cache, planner, EventLocationPrivacyMetricsFactory.Create());
         planner.PlanLocationPrivacyCorrectionAsync(
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
                 Arg.Any<CancellationToken>())
@@ -85,7 +86,7 @@ public sealed class LocationPrivacyCorrectionDispatcherTests
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
                 Arg.Any<CancellationToken>())
             .Returns(AtprotoPublicationPlanningResult.Skipped("session_missing"));
-        var dispatcher = new LocationPrivacyCorrectionDispatcher(cache, planner);
+        var dispatcher = new LocationPrivacyCorrectionDispatcher(cache, planner, EventLocationPrivacyMetricsFactory.Create());
 
         await Assert.That(async () => await dispatcher.DispatchAsync(CreateCorrectionRequestedMessage(identity)))
             .Throws<InvalidOperationException>();
@@ -301,7 +302,7 @@ public sealed class LocationPrivacyCorrectionDispatcherTests
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
                 Arg.Any<CancellationToken>())
             .Returns(AtprotoPublicationPlanningResult.Skipped("correction_already_planned"));
-        return new LocationPrivacyCorrectionDispatcher(cache, planner);
+        return new LocationPrivacyCorrectionDispatcher(cache, planner, EventLocationPrivacyMetricsFactory.Create());
     }
 
     private static IReadOnlyList<string> ExpectedTags(CorrectionIdentity identity) =>

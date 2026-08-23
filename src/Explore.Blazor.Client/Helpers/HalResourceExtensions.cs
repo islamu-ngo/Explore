@@ -247,6 +247,28 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<LocationDto>(json, JsonOptions) ?? new LocationDto();
     }
 
+    // ========== EventLocation Extensions ==========
+
+    /// <summary>
+    /// Materializes review-queue rows as HAL resources rather than bare DTOs. Each EventLocation carries
+    /// its own <c>_links</c>, and a manager may be able to remediate one row but not another in the same
+    /// queue — collapsing to the DTO would discard exactly the data the table needs.
+    /// </summary>
+    public static IReadOnlyList<HalResourceOfEventLocationManagementDto> GetItems(
+        this HalCollectionResourceOfEventLocationManagementDto? collection)
+    {
+        if (collection?._embedded?.Items is not { Count: > 0 } items)
+            return [];
+
+        return [.. items];
+    }
+
+    public static bool HasLink(this HalResourceOfEventLocationManagementDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasLink(this HalCollectionResourceOfEventLocationManagementDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
     // ========== Organization Extensions ==========
 
     /// <summary>

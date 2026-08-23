@@ -3,7 +3,7 @@
 
 # Address Geocoding And Spatial Discovery — Task Checklist
 
-Last Updated: 2026-08-12 Europe/Brussels
+Last Updated: 2026-08-23 Europe/Brussels
 
 ## Status Summary
 
@@ -11,7 +11,25 @@ Last Updated: 2026-08-12 Europe/Brussels
 - **Completed:** 0/28 implementation tasks (phase verification tracked separately).
 - **Current priority:** Task 1.1, codify the approved optional capability contract.
 - **Next recommended slice:** Complete Phase 1 only; do not start external provider or spatial work until its decision gates are satisfied.
+- **Upstream rebaseline (2026-08-23):** the Event Location Privacy workstream shipped completely and moved to `dev/zarchive/event-location-privacy/`. Phase 7's `ELP-230C/515/520/530` prerequisites are satisfied, and several shared location files this workstream edits have changed. See "Upstream Changes To Absorb" below before starting Task 1.2.
 - **Planning evidence:** Re-baseline Release build passed on 2026-08-12 with 37 projects, 0 errors, and 0 warnings. Tavily verified EF cross-context transactions, Google Places map/no-map and storage rules, OSM ODbL separation/attribution, tile-source constraints, and GeoNames CC BY 4.0 from primary sources. Final QA proved 28/28 task and 9/9 phase parity, one build/test gate per phase, and clean scoped diffs. Context7 is unavailable and must not be claimed as verified.
+
+## Upstream Changes To Absorb (Event Location Privacy, 2026-08-23)
+
+No task is invalidated and no phase is resequenced; the following are corrections to file-level
+assumptions plus one dependency that is now satisfied.
+
+| Change | Affects | Action |
+|---|---|---|
+| `GET /api/location/by-city\|by-country`, `ILocationRepository.GetLocationsByCity/GetLocationsByCountry`, and the matching `LocationService`/generated-client methods were deleted. | 1.3, 2.2, 6.2, 6.3 | Drop them from file expectations. `ILocalAddressSuggestionQuery` must not reintroduce an unfiltered geographic enumeration — that shape was removed for leaking exact private-home addresses to any tenant-wide viewer. |
+| `LocationDto` gained descriptive `LocationKindId`. | 1.3, 3.1, 6.2 | Preserve it through contract regeneration. Kind stays descriptive and never gates disclosure. |
+| `LocationController` gained `POST /{id}/private-home` and `POST /{id}/private-home/ownership` with `PrivateHomeOwnershipConsentDto`. | 1.3 | Preserve both operations and their `If-Match` requirement while removing body tenancy and raw coordinates. |
+| `EditLocationDialog.razor` now injects `IDialogService` and hosts the private-home consent action. | 6.2 | Keep the action when coordinate inputs are removed; consent stays a separate explicit decision, not an address-form field. |
+| Primary migration head is now `ContractEventLocationPhysicalReferences` across all five providers, adding `location_id IS NULL OR event_location_id IS NOT NULL` to the four carrier tables. | 3.x, 7.2, 7.3 | Branch Phase 3 migrations from this head. `EventLocationSchemaContractionTests` asserts exactly four add/drop pairs per provider. |
+| `EventLocationDisclosureConvergenceTests` and `OutboundProducerPrivacyTests` are now build-enforcing. | 2.x, 5.x, 7.x | Geocoding/discovery code must not call `EventLocationDisclosureEvaluator` directly, and no listed producer directory may reference `Location.Address/Postcode/Latitude/Longitude`. |
+| OpenAPI enum schemas derive from each type's own `JsonConverter`; HAL-wrapped enum properties emit `$ref`. | 3.1, 5.x | Register new address-source/visibility/provider enums in `OpenApiStringEnumSchemaCatalog`. Regenerate API before client — the client reads the emitted schema file. |
+| `Explore.EventLocationPrivacy` meter and the `event-location-privacy-review` readiness check exist. | 7.4, 8.x | `PostgisDiscoveryReadinessHealthCheck` slots beside an existing privacy row in the `docs/OPERATIONS.md` health table; follow its identifier-free label discipline. |
+| `ELP-230C`, `ELP-515`, `ELP-520`, `ELP-530`, `ELP-730` are complete. | Phase 7 gate | The gate item becomes verification of shipped evidence in `dev/zarchive/event-location-privacy/`, not coordination with an in-flight workstream. |
 
 ## Implementation Maintenance Rules
 
@@ -43,6 +61,7 @@ Last Updated: 2026-08-12 Europe/Brussels
 
 - [ ] **1.3 Remove Body-Controlled Tenancy And Regenerate The Contract**
   - **Files:** `src/Explore.Application/DTOs/Location/`, `src/Explore.Application/Features/Locations/`, `src/Explore.API/Controllers/LocationController.cs`, `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs`, location service/dialogs/tests, `docs/API.md`, `docs/API_CHANGELOG.md` (existing; exact files in plan Task 1.3).
+  - **Upstream (2026-08-23):** preserve the private-home ownership operations and `LocationDto.LocationKindId`; `LocationService`/`LocationServiceTests` no longer contain by-city/by-country members.
   - **Acceptance:** No tenant or raw coordinates are accepted in location writes; trusted context owns tenancy; manual command shape awaits effective policy/HAL instead of bypassing it; artifacts have only current shapes.
   - **Effort:** L
   - **Dependencies:** 1.2.
@@ -156,6 +175,7 @@ Last Updated: 2026-08-12 Europe/Brussels
 
 - [ ] **6.2 Integrate Create And Edit Dialogs**
   - **Files:** existing `src/Explore.Blazor.Client/Pages/Admin/Dialogs/CreateLocationDialog.razor`, code-behind, `EditLocationDialog.razor`, code-behind, `src/Explore.Blazor.Client/Services/LocationService.cs`, existing service tests, and new `tests/Explore.Blazor.Client.Tests/Pages/Admin/LocationDialogTests.cs`.
+  - **Upstream (2026-08-23):** `EditLocationDialog.razor` hosts the private-home consent action and injects `IDialogService`; keep both. `EventLocationPrivacyAccessibilityTests` is the template for the autocomplete component's a11y/RTL/localization guards.
   - **Acceptance:** Raw coordinates are gone; token matches visible fields; manual controls require HAL and clear stale selection; provider errors retain input; `None/None` is healthy; admin policy/provider status is clear. Current UI does not offer unimplemented Google; its activation must add GoogleMaps-or-None form validation and server warning atomically.
   - **Effort:** L
   - **Dependencies:** 6.1.
@@ -173,7 +193,7 @@ Last Updated: 2026-08-12 Europe/Brussels
 
 ## Phase 7: Optional PostGIS Capability Package ⛔ DECISION-GATED
 
-- **Gate entry checklist:** Explicit repository owner/product architecture approval; ADR-013 accepted by Task 7.1 with actual date and named decider/role; `ELP-230C/515/520/530` reconciled; target PostgreSQL activation path documented; capability-off rollback confirmed.
+- **Gate entry checklist:** Explicit repository owner/product architecture approval; ADR-013 accepted by Task 7.1 with actual date and named decider/role; shipped `ELP-230C/515/520/530` evidence confirmed against `dev/zarchive/event-location-privacy/` and the primary migration head still ending at `ContractEventLocationPhysicalReferences` for all five providers; target PostgreSQL activation path documented; capability-off rollback confirmed.
 
 - [ ] **7.1 Accept ADR-013 And Record The Activation Decision**
   - **Files:** `docs/adr/ADR-013-postgis-proximity-discovery.md`, this workstream, and `docs/ARCHITECTURE.md` only if its decision index/status requires synchronization.
@@ -185,7 +205,7 @@ Last Updated: 2026-08-12 Europe/Brussels
   - **Files:** new `PrimaryDatabaseCapabilityOptions.cs`; existing provider/persistence/migration composition, `.env.example`, AppHost/Compose, provider/AppHost tests, `CONFIGURATION.md`, `SELF_HOSTING.md`, `OPERATIONS.md` (exact paths in plan Task 7.2).
   - **Acceptance:** The flag defaults false and runs no spatial service/migration/probe; only PostgreSQL plus explicit true selects the optional context; invalid provider/mode combinations fail clearly; plain PostgreSQL remains the local default; managed/local activation is documented; the Aspire image override API is revalidated from current official documentation at implementation time.
   - **Effort:** L
-  - **Dependencies:** 7.1 and `ELP-230C` migration integrity.
+  - **Dependencies:** 7.1 and `ELP-230C` migration integrity (shipped 2026-08-23; verify the head, do not wait on it).
 
 - [ ] **7.3 Generate The Isolated PostGIS Projection Migration**
   - **Files:** central package/locks; new `src/Explore.Persistence/Spatial/Postgis/PostgisDiscoveryDbContext.cs`, design-time factory, row/config/store; Application scalar ports; generated dedicated migration/snapshot; spatial tests named in plan Task 7.3.

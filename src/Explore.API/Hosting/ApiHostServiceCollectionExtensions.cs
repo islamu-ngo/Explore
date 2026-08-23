@@ -432,7 +432,11 @@ public static class ApiHostServiceCollectionExtensions
             .AddCheck<PrivacyErasureReadinessHealthCheck>(
                 "privacy-erasure",
                 failureStatus: HealthStatus.Unhealthy,
-                tags: ["ready", "privacy", "erasure", "infrastructure"]);
+                tags: ["ready", "privacy", "erasure", "infrastructure"])
+            .AddCheck<EventLocationReviewQueueHealthCheck>(
+                "event-location-privacy-review",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "privacy", "location", "remediation", "infrastructure"]);
 
         builder.Services.AddApiRequestTimeouts(builder.Configuration);
         if (!isOpenApiGeneration)

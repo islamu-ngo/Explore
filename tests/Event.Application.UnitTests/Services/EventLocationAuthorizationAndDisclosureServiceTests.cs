@@ -12,6 +12,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Tests.Shared.Telemetry;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -489,6 +490,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
             management,
             currentUser,
             new EventLocationDisclosureEvaluator(),
+            EventLocationPrivacyMetricsFactory.Create(),
             new FixedTimeProvider(Now));
 
     private static ICurrentUserService CreateCurrentUser(Guid? userId)

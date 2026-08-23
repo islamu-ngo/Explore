@@ -12,8 +12,6 @@ public interface ILocationRepository : IGenericRepository<Location, Guid>
         Guid tenantId,
         IReadOnlyCollection<Guid> candidateLocationIds,
         CancellationToken cancellationToken = default);
-    Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default);
-    Task<List<Location>> GetLocationsByCountry(string country, CancellationToken cancellationToken = default);
     Task<List<Location>> GetOwnedPrivateHomesForGlobalErasureAsync(
         Guid ownerUserId,
         CancellationToken cancellationToken = default);

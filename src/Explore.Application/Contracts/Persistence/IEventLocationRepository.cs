@@ -30,6 +30,13 @@ public interface IEventLocationRepository
     Task<IReadOnlyList<EventLocation>> GetActiveForGovernanceUpdateAsync(
         Guid? tenantId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Counts live EventLocations still flagged for privacy remediation across every tenant.
+    /// Aggregate-only by design: readiness probes run without an ambient tenant and must never
+    /// project venue rows.
+    /// </summary>
+    Task<int> CountNeedingPrivacyReviewAsync(CancellationToken cancellationToken);
     Task SaveGovernanceChangesAsync(
         IReadOnlyCollection<EventLocationDisclosureAudit> audits,
         IReadOnlyCollection<OutboxMessage> outboxMessages,

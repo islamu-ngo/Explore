@@ -97,7 +97,7 @@ public sealed class CompositeOutboxMessageDispatcher(
             case LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType:
             case LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType:
             case LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType:
-                await locationPrivacyCorrectionDispatcher.DispatchAsync(message, ct);
+                await locationPrivacyCorrectionDispatcher.ReconcileDeadLetterAsync(message, ct);
                 return;
 
             case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:

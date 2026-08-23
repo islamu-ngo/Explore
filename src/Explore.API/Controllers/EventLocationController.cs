@@ -106,6 +106,37 @@ public sealed class EventLocationController(
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [PrivateNoStore]
+    [HttpGet("management", Name = RouteNames.GetManagementEventLocations)]
+    [EndpointSummary("Get managed event locations")]
+    [EndpointDescription("Returns every EventLocation attached to the event with its disclosure policy and affordances.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventLocationManagementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalCollectionResource<EventLocationManagementDto>>> GetManagementList(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<EventLocationManagementDto>? result = await mediator.Send(
+            new GetManagementEventLocationsRequest(eventId),
+            cancellationToken);
+        if (result is null)
+        {
+            return this.ToNotFoundProblem(EventLocationNotFoundProblem);
+        }
+
+        HalCollectionResource<EventLocationManagementDto> resource =
+            await resourceAssembler.ToCollectionResource(
+                result,
+                RouteNames.GetManagementEventLocations,
+                new { eventId },
+                HttpContext);
+        return Ok(resource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
     [HttpGet("review", Name = RouteNames.GetEventLocationReviewQueue)]
     [EndpointSummary("Get event location privacy review queue")]
     [EndpointDescription("Returns management-authorized EventLocations that still require privacy remediation.")]

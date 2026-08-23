@@ -20,6 +20,9 @@ public static class TenantFilterBypassReasons
     public const string InstanceLocationPrivacyGovernance =
         "Instance location-privacy governance versions active EventLocations across tenants after an authorized ceiling change.";
 
+    public const string InstanceLocationPrivacyReviewQueueDepth =
+        "Instance readiness counts the EventLocation privacy remediation backlog across tenants and projects no rows.";
+
     public const string UserExternalLoginAuthentication =
         "External-login authentication must locate a provider subject before tenant binding.";
 

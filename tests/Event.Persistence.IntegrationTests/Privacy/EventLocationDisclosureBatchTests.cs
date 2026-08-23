@@ -12,6 +12,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Explore.Tests.Shared.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -281,6 +282,7 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
             management,
             new TestCurrentUserService(requesterUserId),
             new EventLocationDisclosureEvaluator(),
+            EventLocationPrivacyMetricsFactory.Create(),
             new FixedTimeProvider(Now));
     }
 

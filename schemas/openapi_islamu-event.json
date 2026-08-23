@@ -20874,6 +20874,124 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/events/{eventId}/locations/management": {
+      "get": {
+        "tags": [
+          "EventLocation"
+        ],
+        "summary": "Get managed event locations",
+        "description": "Returns every EventLocation attached to the event with its disclosure policy and affordances.",
+        "operationId": "GetManagementEventLocations",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventLocationManagementDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventLocationManagementDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventLocationManagementDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/events/{eventId}/locations/review": {
       "get": {
         "tags": [
@@ -51669,19 +51787,27 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/location/by-city/{city}": {
-      "get": {
+    "/api/location/{id}/private-home": {
+      "post": {
         "tags": [
           "Location"
         ],
-        "summary": "Get Locations by City",
-        "description": "Get all locations in a specific city.",
-        "operationId": "GetLocationsByCity",
+        "summary": "Classify location as private home",
+        "description": "Marks a location as a private home and records the authenticated actor as its consenting owner.",
+        "operationId": "ClassifyLocationAsPrivateHome",
         "parameters": [
           {
-            "name": "city",
+            "name": "id",
             "in": "path",
             "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -51701,18 +51827,118 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateHomeOwnershipConsentDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateHomeOwnershipConsentDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfLocationListDto"
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfLocationListDto"
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -51723,19 +51949,27 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/location/by-country/{country}": {
-      "get": {
+    "/api/location/{id}/private-home/ownership": {
+      "post": {
         "tags": [
           "Location"
         ],
-        "summary": "Get Locations by Country",
-        "description": "Get all locations in a specific country.",
-        "operationId": "GetLocationsByCountry",
+        "summary": "Accept private home ownership",
+        "description": "Transfers private home ownership to the authenticated actor, who must supply explicit versioned consent.",
+        "operationId": "AcceptPrivateHomeOwnership",
         "parameters": [
           {
-            "name": "country",
+            "name": "id",
             "in": "path",
             "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -51755,18 +51989,118 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateHomeOwnershipConsentDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateHomeOwnershipConsentDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfLocationListDto"
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfLocationListDto"
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -92660,7 +92994,7 @@
             "format": "uuid"
           },
           "entityTypeName": {
-            "type": "integer"
+            "$ref": "#/components/schemas/EntityTypeName"
           },
           "tenantId": {
             "type": "string",
@@ -92682,7 +93016,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -92702,7 +93036,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -92884,7 +93218,7 @@
             "format": "uuid"
           },
           "entityTypeName": {
-            "type": "integer"
+            "$ref": "#/components/schemas/EntityTypeName"
           },
           "namespace": {
             "type": "string"
@@ -92896,7 +93230,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -92916,7 +93250,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -94133,7 +94467,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -94153,7 +94487,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -94384,7 +94718,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -94401,7 +94735,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "sourceTemplateId": {
             "type": [
@@ -95436,14 +95770,7 @@
             ]
           },
           "referencePrayer": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PrayerTime"
-              }
-            ]
+            "$ref": "#/components/schemas/PrayerTime"
           },
           "prayerTimeOffset": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -95924,14 +96251,66 @@
           }
         }
       },
+      "EventLocationDisclosurePolicyDto": {
+        "required": [
+          "showVenueName",
+          "showCity",
+          "showCountry",
+          "showRoomName",
+          "showStreetAddress",
+          "showPostcode",
+          "showCoordinates",
+          "fullDetailsAudienceId",
+          "revealFullDetailsFromUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "showVenueName": {
+            "type": "boolean"
+          },
+          "showCity": {
+            "type": "boolean"
+          },
+          "showCountry": {
+            "type": "boolean"
+          },
+          "showRoomName": {
+            "type": "boolean"
+          },
+          "showStreetAddress": {
+            "type": "boolean"
+          },
+          "showPostcode": {
+            "type": "boolean"
+          },
+          "showCoordinates": {
+            "type": "boolean"
+          },
+          "fullDetailsAudienceId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "revealFullDetailsFromUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "EventLocationDisclosureState": {
         "enum": [
-          "Hidden",
-          "ToBeAnnounced",
-          "Available",
-          "PrivateVenue",
-          "Unavailable",
-          "NeedsPrivacyReview"
+          "hidden",
+          "to_be_announced",
+          "available",
+          "private_venue",
+          "unavailable",
+          "needs_privacy_review"
         ],
         "type": "string"
       },
@@ -95949,162 +96328,14 @@
             ],
             "format": "uuid"
           },
-          "state": { },
+          "state": {
+            "$ref": "#/components/schemas/EventLocationDisclosureState"
+          },
           "fields": {
-            "required": [
-              "country",
-              "timezone",
-              "city",
-              "venueName",
-              "roomName",
-              "roomDescription",
-              "streetAddress",
-              "postcode",
-              "latitude",
-              "longitude",
-              "formattedAddress",
-              "mapUrl",
-              "geohash"
-            ],
-            "type": "object",
-            "properties": {
-              "country": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "timezone": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "city": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "venueName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "roomName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "roomDescription": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "streetAddress": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "postcode": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "latitude": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "longitude": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "formattedAddress": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "mapUrl": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "geohash": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventLocationManagementFieldsDto"
           },
           "policy": {
-            "required": [
-              "showVenueName",
-              "showCity",
-              "showCountry",
-              "showRoomName",
-              "showStreetAddress",
-              "showPostcode",
-              "showCoordinates",
-              "fullDetailsAudienceId",
-              "revealFullDetailsFromUtc"
-            ],
-            "type": "object",
-            "properties": {
-              "showVenueName": {
-                "type": "boolean"
-              },
-              "showCity": {
-                "type": "boolean"
-              },
-              "showCountry": {
-                "type": "boolean"
-              },
-              "showRoomName": {
-                "type": "boolean"
-              },
-              "showStreetAddress": {
-                "type": "boolean"
-              },
-              "showPostcode": {
-                "type": "boolean"
-              },
-              "showCoordinates": {
-                "type": "boolean"
-              },
-              "fullDetailsAudienceId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "revealFullDetailsFromUtc": {
-                "type": [
-                  "null",
-                  "string"
-                ],
-                "format": "date-time"
-              }
-            }
+            "$ref": "#/components/schemas/EventLocationDisclosurePolicyDto"
           },
           "needsPrivacyReview": {
             "type": "boolean"
@@ -96120,6 +96351,110 @@
           "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "EventLocationManagementFieldsDto": {
+        "required": [
+          "country",
+          "timezone",
+          "city",
+          "venueName",
+          "roomName",
+          "roomDescription",
+          "streetAddress",
+          "postcode",
+          "latitude",
+          "longitude",
+          "formattedAddress",
+          "mapUrl",
+          "geohash"
+        ],
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "venueName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomDescription": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "streetAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "formattedAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mapUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "geohash": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -97683,7 +98018,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -97703,7 +98038,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -97934,7 +98269,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -97951,7 +98286,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "sourceTemplateId": {
             "type": [
@@ -98954,14 +99289,7 @@
             "$ref": "#/components/schemas/SessionStartTimeType"
           },
           "referencePrayer": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PrayerTime"
-              }
-            ]
+            "$ref": "#/components/schemas/PrayerTime"
           },
           "offsetMinutes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -98973,14 +99301,7 @@
             "format": "int32"
           },
           "endReferencePrayer": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PrayerTime"
-              }
-            ]
+            "$ref": "#/components/schemas/PrayerTime"
           },
           "endOffsetMinutes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -107892,7 +108213,7 @@
             "format": "uuid"
           },
           "entityTypeName": {
-            "type": "integer"
+            "$ref": "#/components/schemas/EntityTypeName"
           },
           "tenantId": {
             "type": "string",
@@ -107914,7 +108235,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -107934,7 +108255,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -108130,7 +108451,7 @@
             "format": "uuid"
           },
           "entityTypeName": {
-            "type": "integer"
+            "$ref": "#/components/schemas/EntityTypeName"
           },
           "namespace": {
             "type": "string"
@@ -108142,7 +108463,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -108162,7 +108483,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -108828,7 +109149,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -108848,7 +109169,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -109093,7 +109414,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -109110,7 +109431,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "sourceTemplateId": {
             "type": [
@@ -110388,162 +110709,14 @@
             ],
             "format": "uuid"
           },
-          "state": { },
+          "state": {
+            "$ref": "#/components/schemas/EventLocationDisclosureState"
+          },
           "fields": {
-            "required": [
-              "country",
-              "timezone",
-              "city",
-              "venueName",
-              "roomName",
-              "roomDescription",
-              "streetAddress",
-              "postcode",
-              "latitude",
-              "longitude",
-              "formattedAddress",
-              "mapUrl",
-              "geohash"
-            ],
-            "type": "object",
-            "properties": {
-              "country": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "timezone": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "city": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "venueName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "roomName": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "roomDescription": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "streetAddress": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "postcode": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "latitude": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "longitude": {
-                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-                "type": [
-                  "null",
-                  "number",
-                  "string"
-                ],
-                "format": "double"
-              },
-              "formattedAddress": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "mapUrl": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              },
-              "geohash": {
-                "type": [
-                  "null",
-                  "string"
-                ]
-              }
-            }
+            "$ref": "#/components/schemas/EventLocationManagementFieldsDto"
           },
           "policy": {
-            "required": [
-              "showVenueName",
-              "showCity",
-              "showCountry",
-              "showRoomName",
-              "showStreetAddress",
-              "showPostcode",
-              "showCoordinates",
-              "fullDetailsAudienceId",
-              "revealFullDetailsFromUtc"
-            ],
-            "type": "object",
-            "properties": {
-              "showVenueName": {
-                "type": "boolean"
-              },
-              "showCity": {
-                "type": "boolean"
-              },
-              "showCountry": {
-                "type": "boolean"
-              },
-              "showRoomName": {
-                "type": "boolean"
-              },
-              "showStreetAddress": {
-                "type": "boolean"
-              },
-              "showPostcode": {
-                "type": "boolean"
-              },
-              "showCoordinates": {
-                "type": "boolean"
-              },
-              "fullDetailsAudienceId": {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": [
-                  "integer",
-                  "string"
-                ],
-                "format": "int32"
-              },
-              "revealFullDetailsFromUtc": {
-                "type": [
-                  "null",
-                  "string"
-                ],
-                "format": "date-time"
-              }
-            }
+            "$ref": "#/components/schemas/EventLocationDisclosurePolicyDto"
           },
           "needsPrivacyReview": {
             "type": "boolean"
@@ -111142,7 +111315,7 @@
             ]
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -111162,7 +111335,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "isSearchable": {
             "type": "boolean"
@@ -111407,7 +111580,7 @@
             "type": "string"
           },
           "propertyType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/PropertyType"
           },
           "isRequired": {
             "type": "boolean"
@@ -111424,7 +111597,7 @@
             "format": "int32"
           },
           "exposureLevel": {
-            "type": "integer"
+            "$ref": "#/components/schemas/ExposureLevel"
           },
           "sourceTemplateId": {
             "type": [
@@ -115067,6 +115240,14 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "locationKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "concurrencyStamp": {
             "type": "string",
@@ -125617,6 +125798,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "locationKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
@@ -133203,6 +133392,21 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "PrivateHomeOwnershipConsentDto": {
+        "required": [
+          "consentAcknowledged",
+          "consentVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "consentAcknowledged": {
+            "type": "boolean"
+          },
+          "consentVersion": {
+            "type": "string"
           }
         }
       },

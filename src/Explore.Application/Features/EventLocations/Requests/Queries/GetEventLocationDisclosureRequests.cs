@@ -17,6 +17,17 @@ public sealed record GetAttendeeEventLocationsRequest(Guid EventId)
 public sealed record GetManagementEventLocationRequest(Guid EventId, Guid EventLocationId)
     : IRequest<EventLocationManagementDto?>;
 
+/// <summary>
+/// Every EventLocation attached to the event, projected for management. The review queue is the
+/// remediation-only specialization of this same read.
+/// </summary>
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
+public sealed record GetManagementEventLocationsRequest(Guid EventId)
+    : IRequest<IReadOnlyList<EventLocationManagementDto>?>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => EventId.ToString("D");
+}
+
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
 public sealed record GetEventLocationReviewQueueRequest(Guid EventId)
     : IRequest<IReadOnlyList<EventLocationManagementDto>?>, ISecureRequest

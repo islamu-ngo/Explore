@@ -1,0 +1,90 @@
+@* ABOUTME: Organizer page listing every EventLocation of one event with its disclosure policy. *@
+@* ABOUTME: Offers edit and remediation strictly from server HAL relations, never from local roles. *@
+@page "/events/{EventId:guid}/locations/manage"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Events
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Pages.Events.Components
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject IEventLocationService EventLocations
+@inject IDialogService DialogService
+@inject ITranslationService Translation
+
+<PageTitle>@T("ui.event_location.manage.title", "Event locations")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <section aria-labelledby="manage-event-locations-title" aria-busy="@_loading">
+        <MudText Id="manage-event-locations-title" Typo="Typo.h1" HtmlTag="h1" Class="mb-2">
+            @T("ui.event_location.manage.title", "Event locations")
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            @T("ui.event_location.manage.description", "Each event decides independently what to reveal about a venue. Changing this event never changes another event that uses the same place.")
+        </MudText>
+
+        <EventLocationManagementTable Rows="@_rows"
+                                      Loading="@_loading"
+                                      EmptyMessage="@T("ui.event_location.manage.empty", "This event has no locations yet.")"
+                                      OnEdit="OpenEditorAsync"
+                                      OnRemediate="OpenRemediationAsync" />
+    </section>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private IReadOnlyList<HalResourceOfEventLocationManagementDto> _rows = [];
+    private bool _loading = true;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _rows = await EventLocations.GetManagementListAsync(EventId);
+        _loading = false;
+    }
+
+    private async Task OpenEditorAsync(HalResourceOfEventLocationManagementDto row)
+    {
+        var parameters = new DialogParameters<EventLocationEditorDialog>
+        {
+            { dialog => dialog.EventId, EventId },
+            { dialog => dialog.EventLocationId, row.EventLocationId ?? Guid.Empty },
+            { dialog => dialog.Resource, row }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<EventLocationEditorDialog>(
+            T("ui.event_location.editor.title", "Location disclosure"),
+            parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            // Re-read so the next edit carries fresh concurrency tokens rather than the saved-over ones.
+            await LoadAsync();
+        }
+    }
+
+    private async Task OpenRemediationAsync(HalResourceOfEventLocationManagementDto row)
+    {
+        var parameters = new DialogParameters<ConfirmRemediationDialog>
+        {
+            { dialog => dialog.EventId, EventId },
+            { dialog => dialog.Resource, row }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<ConfirmRemediationDialog>(
+            T("ui.event_location.remediation.title", "Confirm privacy remediation"),
+            parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

@@ -16,8 +16,6 @@ public interface ILocationService
     Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto dto);
     Task<bool> DeleteLocationAsync(Guid locationId);
-    Task<ICollection<LocationListDto>> GetLocationsByCityAsync(string city);
-    Task<ICollection<LocationListDto>> GetLocationsByCountryAsync(string country);
 }
 
 public class LocationService : ILocationService
@@ -124,34 +122,6 @@ public class LocationService : ILocationService
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error deleting location: {StatusCode}", ex.StatusCode);
             return false;
-        }
-    }
-
-    public async Task<ICollection<LocationListDto>> GetLocationsByCityAsync(string city)
-    {
-        try
-        {
-            var result = await _apiClient.GetLocationsByCityAsync(city);
-            return result?.GetItems() ?? new List<LocationListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] API error fetching locations by city: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
-        }
-    }
-
-    public async Task<ICollection<LocationListDto>> GetLocationsByCountryAsync(string country)
-    {
-        try
-        {
-            var result = await _apiClient.GetLocationsByCountryAsync(country);
-            return result?.GetItems() ?? new List<LocationListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] API error fetching locations by country: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
         }
     }
 }

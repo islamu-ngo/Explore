@@ -54,24 +54,6 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.Locations
-            .AsNoTracking()
-            .Include(l => l.Pii)
-            .Where(l => l.City == city)
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task<List<Location>> GetLocationsByCountry(string country, CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.Locations
-            .AsNoTracking()
-            .Include(l => l.Pii)
-            .Where(l => l.Country == country)
-            .ToListAsync(cancellationToken);
-    }
-
     public async Task<List<Location>> GetOwnedPrivateHomesForGlobalErasureAsync(
         Guid ownerUserId,
         CancellationToken cancellationToken = default)

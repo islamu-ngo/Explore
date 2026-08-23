@@ -1,0 +1,120 @@
+@* ABOUTME: Renders one EventLocation disclosure for public or attendee visitors. *@
+@* ABOUTME: Shows only server-released fields and states TBA / private-venue honestly instead of promising more. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Models.Events
+@using MudBlazor
+@inject ITranslationService Translation
+
+<div class="event-location-disclosure" data-testid="event-location-disclosure">
+    <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.2;"
+             data-testid="event-location-headline">
+        @Headline()
+    </MudText>
+
+    @if (View is null || View.IsToBeAnnounced)
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined"
+                 data-testid="event-location-tba-badge">
+            @T("ui.event_location.public.tba_badge", "To be announced")
+        </MudChip>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @T("ui.event_location.public.tba_hint", "The organizer has not chosen a venue yet.")
+        </MudText>
+    }
+    else if (View.IsUnavailable)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="event-location-unavailable">
+            @T("ui.event_location.public.unavailable", "Venue details are not available right now.")
+        </MudText>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(View.RoomName))
+        {
+            <MudText Typo="Typo.body2" data-testid="event-location-room">@View.RoomName</MudText>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(CoarseLine()))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="event-location-coarse">
+                @CoarseLine()
+            </MudText>
+        }
+
+        @if (View.HasExactDetail)
+        {
+            @* Only ever reached on the attendee surface: the public projection cannot carry these. *@
+            <div class="event-location-disclosure__exact" data-testid="event-location-exact">
+                @if (!string.IsNullOrWhiteSpace(View.StreetAddress))
+                {
+                    <MudText Typo="Typo.body2" data-testid="event-location-street">@View.StreetAddress</MudText>
+                }
+                @if (!string.IsNullOrWhiteSpace(View.Postcode))
+                {
+                    <MudText Typo="Typo.body2" data-testid="event-location-postcode">@View.Postcode</MudText>
+                }
+                @if (!string.IsNullOrWhiteSpace(View.MapUrl))
+                {
+                    <MudLink Href="@View.MapUrl" Target="_blank" rel="noopener noreferrer"
+                             data-testid="event-location-map">
+                        @T("ui.event_location.attendee.open_map", "Open map")
+                    </MudLink>
+                }
+            </div>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @T("ui.event_location.attendee.exact_notice", "These details were shared with you as a registered participant. Please do not republish them.")
+            </MudText>
+        }
+        else if (View.IsPrivateVenue)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="event-location-private-hint">
+                @T("ui.event_location.public.private_hint", "This is a private venue. The exact address is shared with participants when the organizer releases it.")
+            </MudText>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>The server-evaluated disclosure. Null renders the same honest "to be announced" state.</summary>
+    [Parameter] public EventLocationDisclosureView? View { get; set; }
+
+    private string Headline()
+    {
+        if (View is null || View.IsToBeAnnounced)
+        {
+            return T("ui.event_location.public.tba", "Location to be announced");
+        }
+
+        if (View.IsUnavailable)
+        {
+            return T("ui.event_location.public.unavailable_headline", "Venue unavailable");
+        }
+
+        if (!string.IsNullOrWhiteSpace(View.VenueName))
+        {
+            return View.VenueName!;
+        }
+
+        return string.IsNullOrWhiteSpace(CoarseLine())
+            ? T("ui.event_location.public.withheld", "Venue details are not public")
+            : CoarseLine();
+    }
+
+    private string CoarseLine()
+    {
+        if (View is null)
+        {
+            return string.Empty;
+        }
+
+        string[] parts = new[] { View.City, View.Country }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Select(part => part!)
+            .ToArray();
+        return string.Join(", ", parts);
+    }
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

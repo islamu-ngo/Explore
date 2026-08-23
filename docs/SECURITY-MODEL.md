@@ -287,6 +287,34 @@ Approved planned email privacy rules split reporter case-update consent from fol
 
 Lifecycle-email destination authority is explicit and limited to two sources. `TenantUserVerifiedEmail` requires a current composite tenant membership and verified persisted address. `ManagedTenantAdministratorInvitation` additionally requires same-tenant persisted managed-provisioning authority and the exact decoded invitation destination. Incompatible pre-1.0 delivery ledgers are transactionally reset rather than granted a synthetic legacy authority; preserved inbox notifications and unrelated business/audit/settings data are not deleted. Address, subject, body, exact location, report evidence, consent data, and provider errors are excluded from logs, metrics, health, pointer payloads, and deduplication keys.
 
+## Event Location Privacy
+
+Venue data is the platform's sharpest personal-data edge: a private home address identifies a
+household, not an account. The boundary is enforced server-side and mirrored, never decided, by the UI.
+
+- **Purpose partitioning.** Public, attendee, and management reads are separate operations with
+  separate response contracts. The anonymous public read never varies by authentication cookie and is
+  the only cacheable one; attendee, management, review, and both writes are `private, no-store`.
+- **Fail closed.** Unknown or unclassified venues resolve to hidden, not public. A private home's
+  public label is always the generic `Private venue`; its rooms, room descriptions, street, postcode,
+  and coordinates are never on the public contract at all. Access instructions, entry details, and
+  door codes have no route purpose on any contract.
+- **Entitlement plus time.** Exact fields require the venue policy, the merged instance/tenant
+  governance ceiling, the requester's registration coverage, *and* the server clock passing the reveal
+  instant. The browser clock is never consulted.
+- **Audited exact reads.** Management reads append a PII-free `EventLocationExactReadAudit` record
+  before returning, so who looked at an exact address is answerable without storing the address again.
+- **Consent-backed ownership.** A location becomes a private home only when an authenticated actor
+  supplies an explicit versioned acknowledgement, and ownership transfers only to the consenting user
+  themselves. Ownership is never inferred from `CreatedBy`.
+- **Erasure converges.** Erasing a user tombstones their owned home's identifying labels and rooms,
+  flags every affected `EventLocation` for privacy review, and emits correction intents inside the same
+  transaction. Organizers clear the flag only by pointing at a usable venue or an explicit TBA.
+- **Affordance gating.** Blazor renders Edit and remediation strictly from `_links["edit"]` and
+  `_links["remediate-location"]` on that specific resource. Structured data (JSON-LD) is built only
+  from the anonymous public projection and only from venue name, city, and country — never from the
+  attendee projection, and never with street, postcode, or coordinates.
+
 ## Event Registration Privacy
 
 Event registration reads are self-service by default. Attendee identity is not a generic event-registration read concern.

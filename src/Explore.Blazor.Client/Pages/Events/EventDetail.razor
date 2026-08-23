@@ -402,12 +402,11 @@
                             <MudIcon Icon="@(IsDigitalEvent() ? Icons.Material.Filled.Videocam : IsHybridEvent() ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)" Class="event-icon-box--icon" />
                         </div>
                         <div>
-                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.2;">
-                                @GetLocationDisplay()
-                            </MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @GetLocationHint()
-                            </MudText>
+                            <EventLocationDisclosureCard View="@EffectiveLocationView" />
+                            @if (GetEventFormatHint() is { } formatHint)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@formatHint</MudText>
+                            }
                         </div>
                     </div>
 

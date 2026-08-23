@@ -1,0 +1,106 @@
+@* ABOUTME: Confirmation dialog that clears an EventLocation privacy review after erasure or tightening. *@
+@* ABOUTME: Posts the remediation confirmation with the concurrency tokens carried by the reviewed resource. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Helpers
+@using MudBlazor
+@inject IEventLocationService EventLocations
+@inject ITranslationService Translation
+@inject IAccessibilityAnnouncerService Announcer
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" aria-hidden="true" />
+            <MudText Typo="Typo.h6" HtmlTag="h2">
+                @T("ui.event_location.remediation.title", "Confirm privacy remediation")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" role="alert" Class="mb-3">
+                @_error
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.body2">
+            @T("ui.event_location.remediation.body", "Confirm that this event now points at a usable venue, or is explicitly marked to be announced. The server rejects the confirmation if neither is true.")
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary"
+                   OnClick="Cancel" Disabled="_busy">
+            @T("ui.common.cancel", "Cancel")
+        </MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Warning"
+                   data-testid="event-location-remediation-confirm"
+                   OnClick="ConfirmAsync" Disabled="_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @T("ui.event_location.remediation.confirm", "Confirm")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter, EditorRequired] public HalResourceOfEventLocationManagementDto Resource { get; set; } = null!;
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task ConfirmAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        // The dialog is only reachable from a "remediate-location" affordance; re-checking here keeps the
+        // guarantee if a caller ever opens it directly.
+        if (!Resource.HasLink(EventLocationLinkRelations.Remediate))
+        {
+            _error = T("ui.event_location.remediation.not_permitted", "You are no longer allowed to remediate this location.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        BaseCommandResponseOfGuid response = await EventLocations.ConfirmRemediationAsync(
+            EventId,
+            Resource.EventLocationId ?? Guid.Empty,
+            new ConfirmEventLocationRemediationDto
+            {
+                ExpectedPolicyVersion = Resource.PolicyVersion ?? 0,
+                ExpectedConcurrencyStamp = Resource.ConcurrencyStamp ?? Guid.Empty
+            });
+
+        if (response.Success == true)
+        {
+            await Announcer.AnnouncePoliteAsync(
+                T("ui.event_location.remediation.confirmed", "Privacy review cleared."));
+            MudDialog.Close(DialogResult.Ok(Resource.EventLocationId ?? Guid.Empty));
+            return;
+        }
+
+        _error = response.Message
+            ?? T("ui.event_location.remediation.failed", "The privacy review could not be cleared.");
+        await Announcer.AnnounceAssertiveAsync(_error);
+        _busy = false;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

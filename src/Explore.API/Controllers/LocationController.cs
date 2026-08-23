@@ -44,6 +44,11 @@ public class LocationController : ControllerBase
         "Location not found",
         "Location not found.");
 
+    private static readonly ApiValidationProblemDescriptor PrivateHomeValidationProblem = new(
+        "privateHomeOwnership",
+        "Private home ownership validation failed",
+        "The private home ownership change could not be applied.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<LocationController> _logger;
     private readonly ITenantContext _tenantContext;
@@ -123,58 +128,6 @@ public class LocationController : ControllerBase
     }
 
     /// <summary>
-    /// Get locations by city.
-    /// </summary>
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet("by-city/{city}", Name = RouteNames.GetLocationsByCity)]
-    [EndpointSummary("Get Locations by City")]
-    [EndpointDescription("Get all locations in a specific city.")]
-    [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    [PrivateNoStore]
-    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCity(string city, CancellationToken cancellationToken = default)
-    {
-        var locations = await _mediator.Send(new GetLocationsByCityRequest
-        {
-            City = city,
-            TenantId = _tenantContext.TenantId
-        }, cancellationToken);
-
-        var halResource = await _resourceAssembler.ToCollectionResource(
-            locations,
-            RouteNames.GetLocationsByCity,
-            HttpContext);
-
-        return Ok(halResource);
-    }
-
-    /// <summary>
-    /// Get locations by country.
-    /// </summary>
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet("by-country/{country}", Name = RouteNames.GetLocationsByCountry)]
-    [EndpointSummary("Get Locations by Country")]
-    [EndpointDescription("Get all locations in a specific country.")]
-    [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    [PrivateNoStore]
-    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCountry(string country, CancellationToken cancellationToken = default)
-    {
-        var locations = await _mediator.Send(new GetLocationsByCountryRequest
-        {
-            Country = country,
-            TenantId = _tenantContext.TenantId
-        }, cancellationToken);
-
-        var halResource = await _resourceAssembler.ToCollectionResource(
-            locations,
-            RouteNames.GetLocationsByCountry,
-            HttpContext);
-
-        return Ok(halResource);
-    }
-
-    /// <summary>
     /// Create a new location.
     /// </summary>
     [Authorize]
@@ -246,6 +199,102 @@ public class LocationController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Classify a location as a private home, taking consenting ownership as the authenticated actor.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpPost("{id:guid}/private-home", Name = RouteNames.ClassifyLocationAsPrivateHome)]
+    [EndpointSummary("Classify location as private home")]
+    [EndpointDescription("Marks a location as a private home and records the authenticated actor as its consenting owner.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ClassifyAsPrivateHome(
+        Guid id,
+        [FromBody] PrivateHomeOwnershipConsentDto consent,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                PrivateHomeValidationProblem,
+                "If-Match header is required and must contain the current location concurrency stamp.");
+        }
+
+        BaseCommandResponse<Guid> response = await _mediator.Send(
+            new ClassifyLocationAsPrivateHomeCommand
+            {
+                LocationId = id,
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+                ConsentVersion = consent.ConsentVersion,
+                ConsentAcknowledged = consent.ConsentAcknowledged
+            },
+            cancellationToken);
+
+        return ToPrivateHomeResult(response);
+    }
+
+    /// <summary>
+    /// Accept ownership of an existing private home as the authenticated actor.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpPost("{id:guid}/private-home/ownership", Name = RouteNames.AcceptPrivateHomeOwnership)]
+    [EndpointSummary("Accept private home ownership")]
+    [EndpointDescription("Transfers private home ownership to the authenticated actor, who must supply explicit versioned consent.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> AcceptPrivateHomeOwnership(
+        Guid id,
+        [FromBody] PrivateHomeOwnershipConsentDto consent,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                PrivateHomeValidationProblem,
+                "If-Match header is required and must contain the current location concurrency stamp.");
+        }
+
+        BaseCommandResponse<Guid> response = await _mediator.Send(
+            new AcceptPrivateHomeOwnershipCommand
+            {
+                LocationId = id,
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+                ConsentVersion = consent.ConsentVersion,
+                ConsentAcknowledged = consent.ConsentAcknowledged
+            },
+            cancellationToken);
+
+        return ToPrivateHomeResult(response);
+    }
+
+    private ActionResult<BaseCommandResponse<Guid>> ToPrivateHomeResult(BaseCommandResponse<Guid> response)
+    {
+        if (response.Success)
+        {
+            return Ok(response);
+        }
+
+        return response.FailureCode == FailureCodes.NotFound
+            ? this.ToNotFoundProblem(LocationNotFoundProblem)
+            : this.ToCommandValidationProblem(response, PrivateHomeValidationProblem);
     }
 
     /// <summary>

@@ -3,7 +3,46 @@
 
 # Address Geocoding And Spatial Discovery — Context
 
-Last Updated: 2026-08-12 Europe/Brussels
+Last Updated: 2026-08-23 Europe/Brussels
+
+## SESSION PROGRESS (2026-08-23 Europe/Brussels) — Upstream Rebaseline
+
+The Event Location Privacy workstream shipped completely and moved to
+`dev/zarchive/event-location-privacy/`. This workstream was re-checked against that change. **No task
+was invalidated and no phase was resequenced**; what changed is a set of file-level assumptions and one
+dependency that is now satisfied. Plan Sections 2.1/2.2/2.4, Tasks 1.3, 2.2, 3.1, 6.2, Phase 7's gate,
+and Section 12 were amended, and `tasks.md` gained an "Upstream Changes To Absorb" table.
+
+### What changed underneath this workstream
+
+- **Deleted surface.** `GET /api/location/by-city|by-country`, `ILocationRepository.GetLocationsByCity`/
+  `GetLocationsByCountry`, the matching `LocationService`/generated-client methods, and their tests are
+  gone. They enumerated exact venue addresses — including private homes — for any caller with
+  tenant-wide location view, with no disclosure evaluation. `ILocalAddressSuggestionQuery` must not
+  reintroduce that shape.
+- **Location contract grew.** `LocationDto` carries descriptive `LocationKindId`, and `LocationController`
+  gained consent-backed `POST /{id}/private-home` and `POST /{id}/private-home/ownership`
+  (`PrivateHomeOwnershipConsentDto`, `If-Match` required, ownership claimed only by the incoming owner).
+- **`EditLocationDialog.razor` changed.** It now injects `IDialogService` and hosts the private-home
+  consent action. Task 6.2 removes coordinate inputs from this file and must preserve that action.
+- **Migration head moved.** All five providers now end at `ContractEventLocationPhysicalReferences`,
+  which adds `location_id IS NULL OR event_location_id IS NOT NULL` to the four carrier tables. Phase 3
+  branches from there.
+- **New build-enforcing guards.** `EventLocationDisclosureConvergenceTests` closes
+  `EventLocationDisclosureEvaluator` to a documented authority set;
+  `OutboundProducerPrivacyTests` fails any listed producer directory that reads raw venue address or
+  coordinates; `EventLocationSchemaContractionTests` pins the contraction migration.
+- **OpenAPI enum generation changed.** Enum schemas now derive from each type's own `JsonConverter`, and
+  HAL-wrapped enum properties emit `$ref` instead of `integer`/`object`. New address-source/visibility
+  enums must be registered in `OpenApiStringEnumSchemaCatalog`, and the API must be rebuilt before the
+  client because the client reads the emitted schema file.
+- **Phase 7 dependency satisfied.** `ELP-230C`, `ELP-515`, `ELP-520`, `ELP-530`, and `ELP-730` are done.
+  That gate item is now an evidence check, not a wait.
+
+### Still true
+
+Planning remains complete and runtime implementation still has not started. Task 1.1 is still the
+current priority, and the Photon/map/Google/ADR blockers below are unchanged.
 
 ## SESSION PROGRESS (2026-08-12 Europe/Brussels)
 
@@ -43,11 +82,12 @@ Last Updated: 2026-08-12 Europe/Brussels
 - **Photon production topology:** Public Photon is unsuitable as an implicit development or production dependency; endpoint ownership, regional/planet data footprint, update cadence, and capacity are not approved.
 - **Map source:** No basemap/style source has passed the Phase 9 license, self-hosting, privacy, performance, and cost gate; public OSM/demo tiles remain forbidden defaults.
 - **Google activation:** Pairing semantics are resolved, but storage/retention, EEA terms, session/billing, field masks, and implementation scope are not approved. Do not expose `GooglePlaces` as a selectable value yet.
+- **Resolved 2026-08-23 — Event Location Privacy dependency:** previously an in-flight coordination risk, now shipped and archived. Phase 7 verifies its evidence instead of waiting on it.
 - **Context7:** Requested documentation connector is unavailable. Revalidate dependencies there if it becomes available, otherwise continue with primary official documentation and record the substitution.
 
 ## Quick Resume
 
-1. Read this context and `address-geocoding-and-spatial-discovery-tasks.md`.
+1. Read this context and `address-geocoding-and-spatial-discovery-tasks.md`, including its "Upstream Changes To Absorb" table.
 2. Read only the current phase, constraints, or changed decisions from `address-geocoding-and-spatial-discovery-plan.md`; do not reread the full unchanged plan every resume.
 3. Start from Task 1.1 unless the user overrides it.
 4. Keep `tasks.md` current. Update context/plan only at their defined triggers.
@@ -71,14 +111,14 @@ First repair the `Location` write boundary: trusted tenancy only, atomic address
 | `src/Explore.Application/Profiles/LookupMappingProfile.cs` | Existing | Application | Current flattened Location maps. | Characterize then remove unsafe create mapping if no longer needed. |
 | `src/Explore.Domain/Settings/Definitions/` and `IHierarchicalSettingsResolver` | Existing/modify | Domain/Application | Lockable five-tier address-creation governance. | Instance/tenant mode plus organization grant; no user self-grant. |
 | `src/Explore.Application/Contracts/Geocoding/` | New | Application | Provider-neutral geocoder, models, and selection protection. | `None` is healthy; no HTTP/NTS/provider DTOs. |
-| `src/Explore.Application/Contracts/Persistence/ILocalAddressSuggestionQuery.cs` | New | Application | Bounded semantic port for scoped local suggestions. | Tenant-approved/current-org/current-creator semantics only. |
+| `src/Explore.Application/Contracts/Persistence/ILocalAddressSuggestionQuery.cs` | New | Application | Bounded semantic port for scoped local suggestions. | Tenant-approved/current-org/current-creator semantics only. Must not revive the deleted `GetLocationsByCity/Country` enumeration shape. |
 | `src/Explore.Application/Features/Geocoding/` | New | Application | CQRS provider/local merge, effective policy, validation, and promotion. | Manual validators; cancellation; local data never upstreamed. |
 | `src/Explore.Persistence/Repositories/` address query | New/modify | Persistence | SQL tenant/visibility filtering before exact PII projection. | Provider-neutral across all five primary databases. |
 | `src/Explore.Infrastructure/Geocoding/` | New | Infrastructure | Photon HTTP and Data Protection adapters. | `HttpClientFactory`, resilience, PII-safe telemetry. |
 | `src/Explore.API/Controllers/GeocodingController.cs` | New | API | Authenticated private autocomplete POST. | Named route, rate limit, RFC 7807, no-store. |
 | `src/Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs` | Existing | BFF | Existing API/YARP proxy, token and tenant boundary. | Reuse; no bespoke geocoding BFF endpoint. |
 | `src/Explore.Blazor.Client/Components/Locations/AddressAutocomplete.*` | New | Blazor | Accessible address selection. | Combobox/listbox, debounce/cancel, attribution, RTL. |
-| `src/Explore.Blazor.Client/Pages/Admin/Dialogs/*LocationDialog*` | Existing | Blazor | Manual location create/edit experience. | Remove coordinate inputs; integrate protected selection. |
+| `src/Explore.Blazor.Client/Pages/Admin/Dialogs/*LocationDialog*` | Existing | Blazor | Manual location create/edit experience. | Remove coordinate inputs; integrate protected selection. `EditLocationDialog` also hosts the private-home consent action and injects `IDialogService` (2026-08-23) — preserve both. |
 | `src/Explore.Secrets/Database/PrimaryDatabaseCapabilityOptions.cs` | New, Phase 7 | Composition | Binds and validates optional primary-database capabilities. | `Database__Capabilities__Postgis` defaults false and is valid only for PostgreSQL. |
 | `src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs` | Existing | Persistence | Closed five-provider EF configuration. | Primary `ExploreDbContext` remains NTS/PostGIS-free for every provider. |
 | `src/Explore.Persistence/Spatial/Postgis/PostgisDiscoveryDbContext.cs` | New, Phase 7 | Persistence | Isolated optional spatial model. | Registered/migrated only for PostgreSQL plus the explicit capability. |
@@ -90,7 +130,10 @@ First repair the `Location` write boundary: trusted tenancy only, atomic address
 | `schemas/openapi_islamu-event.json` | Generated | Contract | Canonical API schema. | Regenerate, never hand-edit. |
 | `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` | Generated | Blazor | Generated API client. | Regenerate, never hand-edit. |
 | `tests/Event.Architecture.Tests/DiscoveryPostgisSeparationArchitectureTests.cs` | Existing | Tests | Current negative proof that PostGIS runtime is absent. | Rebaseline only after activation to positive privacy/layer guards. |
-| `dev/active/event-location-privacy/` | Existing | Dev docs | Authoritative PII disclosure/erasure/remediation workstream. | `ELP-515/520/530/730` are dependencies/evidence targets. |
+| `tests/Event.Architecture.Tests/EventLocationDisclosureConvergenceTests.cs` | Existing | Tests | Closes the disclosure evaluator to a documented authority set. | Geocoding/discovery must route through `IEventLocationDisclosureService`, never the evaluator. |
+| `tests/Event.API.IntegrationTests/Privacy/OutboundProducerPrivacyTests.cs` | Existing | Tests | Negative audit of outbound producer families. | Listed directories must not reference `Location.Address/Postcode/Latitude/Longitude`. |
+| `tests/Event.Architecture.Tests/EventLocationSchemaContractionTests.cs` | Existing | Tests | Pins the five-provider contraction migration. | Phase 3/7 migrations extend that head; four add/drop pairs per provider. |
+| `dev/zarchive/event-location-privacy/` | Archived 2026-08-23 | Dev docs | Authoritative PII disclosure/erasure/remediation workstream, now shipped. | `ELP-230C/515/520/530/730` are complete; treat as evidence, not pending dependencies. |
 | `dev/active/home-discovery-experience/` | Existing | Dev docs | Authoritative area-only Home and deferred PostGIS phase. | Preserve area-only behavior; cross-link instead of duplicating. |
 
 ## Key Decisions

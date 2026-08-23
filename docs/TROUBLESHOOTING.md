@@ -107,22 +107,22 @@ Checks:
 1. Regenerate the governed OpenAPI document through the same API build-time generation path used by CI:
 
    ```bash
-   dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet
+   dotnet build src/Explore.API/Explore.API.csproj --configuration Release --verbosity quiet
    ```
 
-2. Rebuild `Explore.Blazor.Client`; its `GenerateApiClient` target regenerates `Clients/EventApiClient.g.cs`:
+2. Rebuild `src/Explore.Blazor.Client`; its `GenerateApiClient` target regenerates `Clients/EventApiClient.g.cs`:
 
    ```bash
-   dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+   dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
    ```
 
 3. Confirm only intentional generated artifacts changed:
 
    ```bash
-   git diff -- schemas/openapi_islamu-event.json Explore.Blazor.Client/Clients/EventApiClient.g.cs
+   git diff -- schemas/openapi_islamu-event.json src/Explore.Blazor.Client/Clients/EventApiClient.g.cs
    ```
 
-4. Commit `schemas/openapi_islamu-event.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` only when the API-surface change is intentional. Do not hand-edit either file.
+4. Commit `schemas/openapi_islamu-event.json` and `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` only when the API-surface change is intentional. Do not hand-edit either file.
 
 If CI reports drift on an unrelated PR, check `.github/workflows/openapi-contract.yml` job summary. The guard has an internal no-op detector; unrelated changes should pass without regeneration.
 

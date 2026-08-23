@@ -60,6 +60,7 @@ using Explore.Application.Services.Lifecycle;
 using Explore.Application.Services.Registration;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Settings;
+using Explore.Application.Telemetry;
 using Explore.Application.Webhooks;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
@@ -159,6 +160,13 @@ public static class ApplicationServicesRegistration
                 options => EventReminderOptions.IsValidLeadTimeHours(options.EventReminderLeadTimeHours),
                 $"EmailDispatch:EventReminderLeadTimeHours must be between {EventReminderOptions.MinLeadTimeHours} and {EventReminderOptions.MaxLeadTimeHours} hours.")
             .ValidateOnStart();
+        services.AddOptions<EventLocationPrivacyObservabilityOptions>()
+            .Bind(configuration.GetSection(EventLocationPrivacyObservabilityOptions.SectionName))
+            .Validate(
+                options => EventLocationPrivacyObservabilityOptions.IsValidReviewQueueDegradedThreshold(
+                    options.ReviewQueueDegradedThreshold),
+                $"LocationPrivacy:Observability:ReviewQueueDegradedThreshold must be between {EventLocationPrivacyObservabilityOptions.MinReviewQueueDegradedThreshold} and {EventLocationPrivacyObservabilityOptions.MaxReviewQueueDegradedThreshold}.")
+            .ValidateOnStart();
         services.AddOptions<OrganizerPaymentReadinessReconciliationOptions>()
             .Bind(configuration.GetSection(OrganizerPaymentReadinessReconciliationOptions.SectionName))
             .ValidateOnStart();
@@ -221,7 +229,9 @@ public static class ApplicationServicesRegistration
         services.AddScoped<RegistrationFormTemplateCommandService>();
         services.AddScoped<IEventLocationExactReadAuditService, EventLocationExactReadAuditService>();
         services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();
+        services.AddSingleton<EventLocationPrivacyMetrics>();
         services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();
+        services.AddScoped<IEventLocationReviewQueueMonitor, EventLocationReviewQueueMonitor>();
         services.AddScoped<IFanoutAttendeeLocationAuthorizationService, FanoutAttendeeLocationAuthorizationService>();
         services.AddScoped<PrivacyErasureApplier>();
         services.AddScoped<IPrivacyErasureService, RetainedAuthorityPrivacyErasureWorkflow>();

@@ -118,6 +118,29 @@ Event reads expose typed provenance plus reviewed `Active` public actions. Exter
 - Organizer-claim list/detail, submit, withdraw, and review operations live under `/api/events/{eventId}/organizer-claims`; claimant-scoped reads use `GET /api/actors/{claimantActorId}/organizer-claims`. All claim reads are authenticated and `no-store`; withdraw requires `If-Match`.
 - Event-bound claim requests and HAL checks authorize as `islamuevent_event_organizer_claim` while carrying server-only parent-event and claim metadata. Withdrawal uses `withdraw-organizer-claim`; before provider evaluation, the server loads the persisted claim and claimant actor and supplies claimant user, organization, or group ownership as non-serialized authorization attributes. Request route/body ownership is never trusted. Public action, claim, correction, and unsafe-link affordances require a published public event; withdrawal and review candidates require a pending or evidence-required claim. Clients must use `_links`, not provenance, actor ids, status inference, or role claims, to decide which controls to render.
 
+### EventLocation Disclosure Endpoints
+
+Venue disclosure is decided per event, not per venue. The same physical `Location` can be fully public for one event and withheld for another, so every read is a separate purpose-specific operation and the response shape differs by purpose. All of them live under `/api/events/{eventId:guid}/locations` and address venues by `EventLocationId`; the physical `LocationId` appears only on the management contract.
+
+- Anonymous `GET /api/events/{eventId}/locations` returns `EventLocationPublicDto` for a published public event. It never varies by authentication cookie and carries no exact street, postcode, or coordinates.
+- Authenticated `GET /api/events/{eventId}/locations/my-access` returns `EventLocationAttendeeDto` for the caller's own registration coverage. Exact fields appear only when policy, instance/tenant governance, entitlement, and the server-side reveal time all allow it.
+- Authenticated `GET /api/events/{eventId}/locations/{eventLocationId}/management` returns `HalResource<EventLocationManagementDto>` after `event:view-management` authorization, and appends a PII-free exact-read audit record before returning.
+- Authenticated `GET /api/events/{eventId}/locations/management` returns every EventLocation on the event as a HAL collection; `GET /api/events/{eventId}/locations/review` is the same read filtered to `NeedsPrivacyReview`.
+- `PATCH /api/events/{eventId}/locations/{eventLocationId}/disclosure` updates the seven visibility flags, the full-details audience, and the reveal instant. It requires both `ExpectedPolicyVersion` and `ExpectedConcurrencyStamp` in the body.
+- `POST /api/events/{eventId}/locations/{eventLocationId}/remediation/confirm` clears a privacy review, and only for a usable active physical venue or an explicit to-be-announced association.
+- Attendee, management, review, and both write routes are `Cache-Control: private, no-store`. The anonymous public read is the only cacheable one.
+- `state` is a stable snake_case string (`hidden`, `to_be_announced`, `available`, `private_venue`, `unavailable`, `needs_privacy_review`) on every purpose contract.
+- Clients must gate Edit and remediation controls on `_links["edit"]` and `_links["remediate-location"]`, never on local roles or claims. Each row in a collection carries its own links.
+
+### Private Home Ownership Endpoints
+
+A private home is somebody's household, so ownership is claimed by the incoming owner with explicit versioned consent — never assigned to a third party.
+
+- `POST /api/location/{id}/private-home` classifies a location as a private home and records the authenticated actor as its consenting owner.
+- `POST /api/location/{id}/private-home/ownership` transfers ownership to the authenticated actor. The domain requires the consenting user and the new owner to be the same person.
+- Both require the current concurrency stamp in `If-Match` and a body containing `consentAcknowledged: true` plus a `consentVersion`. A missing or false acknowledgement is a refusal, not a default, and is rejected before the location is loaded.
+- The generic geographic browse routes `GET /api/location/by-city/{city}` and `GET /api/location/by-country/{country}` are removed. They enumerated exact venue addresses, including private homes, without any disclosure evaluation.
+
 ### Template Sync Endpoints
 
 - Event sync routes live under `/api/events/{eventId:guid}/template-sync/{diff|apply|history}`.
