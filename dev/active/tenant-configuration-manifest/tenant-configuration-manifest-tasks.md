@@ -469,3 +469,45 @@ If artifact state disagrees with code or validation:
 4. Reconcile task checkboxes and phase verification from actual evidence.
 5. Do not sweep unrelated workstreams or turn the journal into a session log.
 
+## Phase 8: Paid Checkout Policy And Governance Manifest Integration ⏳ NOT STARTED
+
+Plan reference: Section 19. Depends on tenant-manifest Phases 1, 3, and 4; API/export/UI tasks also depend on Phases 6 and 7. Registration-data-collection Phase 18C is complete.
+
+### [ ] TCM-810 — Classify manifest-owned payment policy and sovereign locks
+
+- [ ] Inventory every paid-policy, governance, acceptance, provider, refund, and operator field with its authoritative owner.
+- [ ] Allow only non-secret tenant policy narrowing that `PaidEventPolicyRules` can prove safe.
+- [ ] Lock operator identity, official origin/status, provider profile/credentials, charge type, liability, and refund execution outside tenant-manifest ownership.
+- [ ] Add RED broadening, credential/operator override, secret/PII, cross-tenant, and stale-revision tests.
+
+### [ ] TCM-820 — Extend typed catalog and schema for safe paid-policy narrowing
+
+- [ ] Add deterministic typed catalog/schema entries for approved non-sensitive narrowing axes.
+- [ ] Reject unknown payment keys, instance-authority broadening, unsupported currency/risk combinations, and refund/liability claims.
+- [ ] Regenerate schema fixtures and keep strict JSON/version/size rules unchanged.
+
+### [ ] TCM-830 — Apply policy and initial governance through canonical commands
+
+- [ ] Route manifest values through Application/domain policy composition; never write payment/governance tables directly.
+- [ ] Apply tenant-qualified policy revisions and any approved initial sale-control posture atomically with manifest audit.
+- [ ] Preserve serializable stop/resume/review and provider-handoff linearization.
+- [ ] Add real PostgreSQL manifest-versus-stop/review/handoff collision tests and full rollback proof.
+
+### [ ] TCM-840 — Add HAL administration and secret-free export parity
+
+- [ ] Surface effective, inherited, manifest-owned, and sovereign-locked facts through generated API/BFF/HAL contracts.
+- [ ] Gate Blazor affordances only from HAL and preserve keyboard, focus, localization, and RTL behavior.
+- [ ] Export only non-sensitive manifest-owned values; Portable output identifies flattened values and locks without implying override authority.
+
+### [ ] TCM-850 — Regenerate artifacts and preserve Phase 18C safety gates
+
+- [ ] Regenerate affected schema, API inventory, OpenAPI, NSwag, and provider migrations from source.
+- [ ] Run tenant-isolation, authorization/HAL, mutation, concurrency, PII, and disclosure gates.
+- [ ] Keep registration Phase 18C authority/freshness/payment suites green.
+- [ ] Update manifest, payment, operations, self-hosting, and I-VSD documentation without claiming refund behavior.
+
+### Phase 8 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] Run the selected tenant-manifest project test plus Phase 18C payment authority/freshness regression selectors.
+

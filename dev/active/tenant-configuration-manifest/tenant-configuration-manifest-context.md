@@ -171,3 +171,12 @@ Implementation phase commands are defined once in the plan/tasks and must not be
 - **Workspace warning:** preserve unrelated dirty files; no cleanup or reset is authorized.
 - **Deferred:** YAML, secret references, and managed reconcile/field ownership.
 
+### Follow-up — 2026-08-24 Europe/Brussels (paid-checkout governance integration)
+
+- Registration-data-collection Phase 18C is complete and now owns the canonical paid-checkout authority chain: instance policy, valid tenant narrowing, persisted stop/review governance, immutable buyer acceptance, freshness, and provider handoff.
+- A future manifest phase may own only non-secret tenant policy narrowing validated by `PaidEventPolicyRules`. It must not make operator identity, official status/origin, provider credentials/profile, charge type, liability, or refund execution tenant-configurable.
+- Stop-sale is operational governance with serializable transitions, reviewer separation, and audit; it is not a plain setting. Any bootstrap posture must invoke the same Application/domain transition path inside the manifest transaction.
+- Manifest exports remain secret- and PII-free and must distinguish manifest-owned values from sovereign locks.
+- The follow-up is appended as Phase 8 tasks and does not change the current next task: `TCM-110`.
+- Dependencies: tenant-manifest Phases 1, 3, and 4 for runtime application; Phases 6 and 7 for export/HAL/UI; registration Phase 19 before any refund-related manifest surface.
+

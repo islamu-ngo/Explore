@@ -706,3 +706,36 @@ Planning status after this artifact set: **Draft; awaiting user review and appro
 
 The most likely failure is not JSON parsing; it is incomplete policy ownership. The repository has multiple settings mutation and event-publication paths, and a missed path would make the safety invariant misleading. Phase 1 therefore blocks every manifest or UI feature. The other material operational risk is shared-workspace overlap: `.env.example`, README, and `.agents/contract/intents.yaml` already contain unrelated modifications, so implementation must merge surgically rather than overwrite them. Public hosting for the canonical schema URI must serve the exact generated artifact before documentation presents it as resolvable; runtime validation does not depend on that network endpoint.
 
+## 19. Paid Checkout Policy And Governance Integration Follow-up
+
+This is an append-only follow-up discovered by registration-data-collection Phase 18C. It does not change the current manifest starting point (`TCM-110`) or weaken the Phase 1 publication/reporting-policy blocker.
+
+### 19.1 Scope and authority boundary
+
+- Integrate only non-secret tenant policy **narrowing** that the existing `PaidEventPolicyRules` can prove does not broaden instance authority.
+- Keep instance operator identity, official status/origin, provider profile, provider credential ownership, charge type, liability allocation, and any future refund execution authority outside tenant-manifest ownership.
+- Treat tenant/event stop-sale as persisted operational governance with reviewer/audit semantics, not as a browser-written setting or an unaudited manifest boolean.
+- Do not place provider keys, connected-account IDs, buyer contacts, acceptance text, or reconciliation payloads in manifests, exports, audit payloads, logs, metrics, or traces.
+
+### 19.2 Integration design
+
+- Extend the manifest catalog with an explicit paid-checkout namespace only after Phase 1 caller inventory and Phase 3 schema/catalog foundations are complete.
+- Parse manifest values into typed Application commands; reuse domain validation and policy composition rather than writing settings or payment tables directly.
+- Apply paid-policy changes and any declared initial sale-control posture inside the existing transactional manifest operation, with tenant-qualified reads, serializable governance transitions where required, deterministic audit facts, and full rollback on failure.
+- Preserve the Phase 18C authority chain: effective instance policy → valid tenant narrowing → persisted sale control/review → server-authored acceptance → freshness check → provider handoff.
+- Expose effective and locked status through the existing generated API/BFF/HAL administration flow. Blazor must render mutation affordances only from HAL.
+- Export only non-sensitive manifest-owned policy values. Portable export must identify flattened values and sovereign locks without claiming they are tenant-overridable.
+
+### 19.3 Verification additions
+
+- Add RED tests for attempted instance-policy broadening, operator/credential override, stop-sale bypass, cross-tenant application, stale revision, partial transaction, secret/PII export, and HAL/direct-authorization disagreement.
+- Run real PostgreSQL collision tests for manifest apply versus stop/resume/review and provider handoff.
+- Regenerate any affected schema, API inventory, OpenAPI, NSwag, and provider migrations from source.
+- Require Phase 18C payment authority, freshness, mutation, and disclosure suites to remain green.
+
+### 19.4 Dependencies and sequencing
+
+- Registration-data-collection Phase 18C is complete and supplies the canonical paid-checkout authority model.
+- Runtime implementation follows tenant-manifest Phases 1, 3, and 4; administration/export work follows Phases 6 and 7.
+- Phase 19 refund work may add new policy facts later, but no manifest key may predeclare or imply refund execution, reserve ownership, liability, or consumer protection before that authority is implemented.
+
