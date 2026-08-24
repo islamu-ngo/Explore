@@ -23,6 +23,8 @@
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Testcontainers.RabbitMq" />
+    <!-- SSH.NET: direct ref activates CPM pin 2026.0.0, remediating GHSA-q939-rpr3-3284 transitive via Testcontainers -->
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
 

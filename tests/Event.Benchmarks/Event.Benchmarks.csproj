@@ -16,6 +16,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <!-- SSH.NET: direct ref activates CPM pin 2026.0.0, remediating GHSA-q939-rpr3-3284 transitive via Testcontainers -->
+    <PackageReference Include="SSH.NET" />
   </ItemGroup>
 
   <ItemGroup>
