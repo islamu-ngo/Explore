@@ -47,7 +47,7 @@ jobs:
 
           is_codeql_ignored() {
             case "$1" in
-              .claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*|_bmad/*|_bmad-output/*|docs/*|schemas/*|assets/*|dev/*|event/*|docker/*|docker-compose.yml|amp/*|*.md|LICENSE|.editorconfig|.dockerignore|.mcp.json|repomix.config.json|opencode.json|jean.json)
+              .agents/*|.claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*|_bmad/*|_bmad-output/*|docs/*|schemas/*|assets/*|dev/*|event/*|docker/*|docker-compose.yml|amp/*|*.md|LICENSE|.editorconfig|.dockerignore|.mcp.json|repomix.config.json|opencode.json|jean.json)
                 return 0
                 ;;
               *)

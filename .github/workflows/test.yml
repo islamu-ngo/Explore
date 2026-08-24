@@ -47,7 +47,7 @@ jobs:
 
           is_build_test_ignored() {
             case "$1" in
-              .claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
+              .agents/*|.claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
               _bmad/*|_bmad-output/*) return 0 ;;
               docs/*|schemas/*|assets/*|dev/*|event/*) return 0 ;;
               cerbos/*|docker/*|docker-compose.yml|src/Explore.AppHost/*|tests/Event.Benchmarks/*|amp/*) return 0 ;;
@@ -159,7 +159,12 @@ jobs:
                   run_arch="true"
                   run_infra="true"
                   ;;
-                src/Explore.Infrastructure/*|src/Explore.Persistence/*|src/Explore.Atproto.Transport/*|tests/Explore.Infrastructure.Tests/*|tests/Event.Persistence.IntegrationTests/*)
+                src/Explore.API/*|tests/Event.API.IntegrationTests/*)
+                  run_app="true"
+                  run_infra="true"
+                  run_arch="true"
+                  ;;
+                src/Explore.Infrastructure/*|src/Explore.Persistence/*|src/Explore.Atproto.Transport/*|src/Explore.MigrationService/*|tests/Explore.Infrastructure.Tests/*|tests/Event.Persistence.IntegrationTests/*|tests/Event.MigrationService.IntegrationTests/*|tests/Event.Quartz.IntegrationTests/*)
                   run_infra="true"
                   run_arch="true"
                   ;;
@@ -170,6 +175,14 @@ jobs:
                   ;;
                 src/Explore.Blazor/*|src/Explore.Blazor.Client/*|src/Event.Web.BffHosting/*|tests/Explore.Blazor.Client.Tests/*|tests/Explore.Blazor.IntegrationTests/*)
                   run_blazor="true"
+                  run_arch="true"
+                  ;;
+                src/CarpaNet/*|tests/CarpaNet.UnitTests/*)
+                  run_arch="true"
+                  run_infra="true"
+                  ;;
+                src/Explore.Diagnostic/*|tests/Explore.Diagnostic.UnitTests/*)
+                  run_arch="true"
                   ;;
                 tests/Event.Architecture.Tests/*)
                   run_arch="true"
