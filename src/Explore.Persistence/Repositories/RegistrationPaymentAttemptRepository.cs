@@ -6,6 +6,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Explore.Persistence.Repositories;
 
@@ -20,12 +21,15 @@ public sealed partial class RegistrationPaymentAttemptRepository(ExploreDbContex
 
     private async Task<T> ExecuteFencedTransactionAsync<T>(
         Func<CancellationToken, Task<T>> operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
         var strategy = dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                isolationLevel,
+                cancellationToken);
             try
             {
                 T result = await operation(cancellationToken);

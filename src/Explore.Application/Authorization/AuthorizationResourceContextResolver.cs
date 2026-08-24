@@ -24,6 +24,7 @@ public sealed class AuthorizationResourceContextResolver(
     IOrganizationMemberRepository? organizationMemberRepository = null,
     IStorageObjectRepository? storageObjectRepository = null,
     IEventSessionRepository? eventSessionRepository = null,
+    IRegistrationInventoryRepository? registrationInventoryRepository = null,
     IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null,
     ITenantContext? tenantContext = null)
 {
@@ -54,7 +55,7 @@ public sealed class AuthorizationResourceContextResolver(
 
         var facts = await ResolveTrustedFactsAsync(resourceKind, resourceId, declaredFacts, cancellationToken);
 
-        if (resourceKind == ResourceKinds.RegistrationForm && facts is null)
+        if (resourceKind is ResourceKinds.RegistrationForm or ResourceKinds.RegistrationOrder && facts is null)
         {
             throw new AuthorizationException(resourceKind, action);
         }
@@ -78,12 +79,44 @@ public sealed class AuthorizationResourceContextResolver(
             ResourceKinds.Event => await ResolveEventFactsAsync(resourceId, declaredFacts, cancellationToken),
             ResourceKinds.EventOrganizerClaim => await ResolveOrganizerClaimFactsAsync(declaredFacts, cancellationToken),
             ResourceKinds.RegistrationForm => await ResolveRegistrationFormFactsAsync(declaredFacts, cancellationToken),
+            ResourceKinds.RegistrationOrder => await ResolveRegistrationOrderFactsAsync(
+                resourceId, declaredFacts, cancellationToken),
             ResourceKinds.EventSession => await ResolveEventSessionFactsAsync(resourceId, declaredFacts, cancellationToken),
             ResourceKinds.OrganizationMember => await ResolveOrganizationMemberFactsAsync(resourceId, declaredFacts, cancellationToken),
             ResourceKinds.StorageObject => await ResolveStorageObjectFactsAsync(resourceId, declaredFacts, cancellationToken),
             ResourceKinds.CustomPropertyProjection => await ResolveProjectionFactsAsync(declaredFacts, cancellationToken),
             _ => declaredFacts
         };
+    }
+
+    private async Task<IAuthorizationFacts?> ResolveRegistrationOrderFactsAsync(
+        string resourceId,
+        IAuthorizationFacts? declaredFacts,
+        CancellationToken cancellationToken)
+    {
+        if (registrationInventoryRepository is null ||
+            tenantContext is null ||
+            !Guid.TryParse(resourceId, out Guid orderId))
+        {
+            return null;
+        }
+
+        RegistrationOrder? order = await registrationInventoryRepository.GetOrderWithLinesAsync(
+            orderId,
+            tenantContext.TenantId,
+            cancellationToken);
+        if (order is null ||
+            declaredFacts is RegistrationOrderAuthorizationFacts requested &&
+            requested.EventId != Guid.Empty &&
+            requested.EventId != order.EventId)
+        {
+            return null;
+        }
+
+        return new RegistrationOrderAuthorizationFacts(
+            order.TenantId,
+            order.EventId,
+            order.AccountUserId);
     }
 
     private async Task<WebhookOwnershipScope> ResolveWebhookOwnershipAsync(

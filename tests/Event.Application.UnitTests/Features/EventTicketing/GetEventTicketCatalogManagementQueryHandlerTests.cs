@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Features.EventTicketing.Handlers.Queries;
 using Explore.Application.Features.EventTicketing.Requests.Queries;
 using Explore.Application.Features.EventTicketing.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
@@ -184,7 +185,16 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
         _groupTenants,
         _authorization,
         _tenant,
-        _commerceConfiguration);
+        _commerceConfiguration,
+        ReadyCheckoutActivation());
+
+    private static IPaidCheckoutActivationService ReadyCheckoutActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateSaleControlAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
 
     private static void SetNavigation<TTarget>(object source, string propertyName, TTarget value) where TTarget : class =>
         source.GetType().GetProperty(propertyName)!.SetValue(source, value);

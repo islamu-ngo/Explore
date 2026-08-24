@@ -43,7 +43,7 @@ public sealed class PaidEventPolicyRulesTests
             callerCurrencies,
             "EUR",
             RequiredRefundFloor(),
-            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, 1_000_000, 250_000)],
+            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, null, 1_000_000, null, 30, 250_000)],
             true,
             180);
 
@@ -106,7 +106,7 @@ public sealed class PaidEventPolicyRulesTests
         PaidEventPolicyVersion disabledTenant = CreateTenantPolicy(activeInstance, [ActorTypeEnum.Organization], ["EUR"], "EUR", enabled: false);
         PaidEventPolicyVersion inactiveInstance = CreateEnabledInstance([ActorTypeEnum.Organization], ["EUR"], "EUR");
         _ = inactiveInstance.CreateRevision(false, [ActorTypeEnum.Organization], true, ["EUR"], "EUR", RequiredRefundFloor(), [], true, 90);
-        PaidEventPolicyVersion inactiveTenant = CreateTenantPolicy(PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(true, [ActorTypeEnum.Organization], true, ["EUR"], "EUR", RequiredRefundFloor(), [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, 1_000_000, 250_000)], true, 180), [ActorTypeEnum.Organization], ["EUR"], "EUR");
+        PaidEventPolicyVersion inactiveTenant = CreateTenantPolicy(PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(true, [ActorTypeEnum.Organization], true, ["EUR"], "EUR", RequiredRefundFloor(), [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, null, 1_000_000, null, 30, 250_000)], true, 180), [ActorTypeEnum.Organization], ["EUR"], "EUR");
         inactiveTenant.Retire();
 
         await Assert.That(PaidEventPolicyRules.GetEffectiveCurrencyCodes(disabledInstance, null)).IsEmpty();
@@ -182,21 +182,21 @@ public sealed class PaidEventPolicyRulesTests
             [ActorTypeEnum.Organization],
             ["EUR"],
             "EUR",
-            riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 400_000, 900_000, 200_000)]);
+            riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 400_000, null, 900_000, null, 30, 200_000)]);
 
         PaidEventPolicyRules.ValidateTenantPolicy(instance, accepted);
         await Assert.That(accepted.CurrencyRiskLimits.Single().CurrencyCode).IsEqualTo("EUR");
 
         await Assert.That(() => PaidEventPolicyRules.ValidateTenantPolicy(instance, CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [])))
             .Throws<InvalidOperationException>();
-        await Assert.That(() => PaidEventPolicyRules.ValidateTenantPolicy(instance, CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", null, 900_000, 200_000)])))
+        await Assert.That(() => PaidEventPolicyRules.ValidateTenantPolicy(instance, CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", null, null, 900_000, null, 30, 200_000)])))
             .Throws<InvalidOperationException>();
-        await Assert.That(() => PaidEventPolicyRules.ValidateTenantPolicy(instance, CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_001, 900_000, 200_000)])))
+        await Assert.That(() => PaidEventPolicyRules.ValidateTenantPolicy(instance, CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_001, null, 900_000, null, 30, 200_000)])))
             .Throws<InvalidOperationException>();
-        await Assert.That(() => CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("USD", 1, 1, 1)]))
+        await Assert.That(() => CreateTenantPolicy(instance, [ActorTypeEnum.Organization], ["EUR"], "EUR", riskLimits: [PaidEventPolicyCurrencyRiskLimit.Create("USD", 1, null, 1, null, 30, 1)]))
             .Throws<ArgumentException>();
-        await Assert.That(() => PaidEventPolicyCurrencyRiskLimit.Create("XXX", 1, null, null)).Throws<ArgumentException>();
-        await Assert.That(() => PaidEventPolicyCurrencyRiskLimit.Create("EUR", 0, null, null)).Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => PaidEventPolicyCurrencyRiskLimit.Create("XXX", 1, null, null, null, null, null)).Throws<ArgumentException>();
+        await Assert.That(() => PaidEventPolicyCurrencyRiskLimit.Create("EUR", 0, null, null, null, null, null)).Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -209,7 +209,7 @@ public sealed class PaidEventPolicyRulesTests
             SingleUse(["EUR"]),
             "EUR",
             SingleUse(RequiredRefundFloor()),
-            SingleUse([PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, 1_000_000, 250_000)]),
+            SingleUse([PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, null, 1_000_000, null, 30, 250_000)]),
             true,
             180);
 
@@ -262,7 +262,7 @@ public sealed class PaidEventPolicyRulesTests
             ["USD"],
             "USD",
             RequiredRefundFloor(),
-            [PaidEventPolicyCurrencyRiskLimit.Create("USD", 100, 100, 100)],
+            [PaidEventPolicyCurrencyRiskLimit.Create("USD", 100, null, 100, null, 30, 100)],
             true,
             1);
 
@@ -278,7 +278,7 @@ public sealed class PaidEventPolicyRulesTests
         string[] materializedCurrencyCodes = allowedCurrencyCodes.ToArray();
         PaidEventPolicyCurrencyRiskLimit[] riskLimits = materializedCurrencyCodes
             .Where(currencyCode => currencyCode is "EUR" or "USD")
-            .Select(currencyCode => PaidEventPolicyCurrencyRiskLimit.Create(currencyCode, 500_000, 1_000_000, 250_000))
+            .Select(currencyCode => PaidEventPolicyCurrencyRiskLimit.Create(currencyCode, 500_000, null, 1_000_000, null, 30, 250_000))
             .ToArray();
 
         return PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(

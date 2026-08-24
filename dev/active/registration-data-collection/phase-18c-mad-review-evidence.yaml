@@ -1,0 +1,118 @@
+# ABOUTME: Records anonymized epistemic MAD findings and dispositions for the Phase 18C paid-checkout gate.
+# ABOUTME: Preserves review axes, machine-verifiable evidence, remediation, and weighted acceptance without reviewer identities.
+
+review:
+  protocol: epistemic-mad
+  date: 2026-08-24
+  scope: phase-18c-paid-checkout
+  panel_size: 3
+  anonymized: true
+  decision: accept_after_remediation
+
+axes:
+  - id: authority
+    focus: tenant-isolation-hal-authorization-pii
+    findings:
+      - id: MAD-A1
+        severity: blocker
+        claim: authenticated payment requests lacked exact resource authorization parity with HAL
+        disposition: remediated
+        evidence:
+          - secure requests carry RegistrationOrder resource requirements
+          - authorization facts resolve from tenant-qualified persisted orders
+          - payment authorization contract tests pass
+      - id: MAD-A2
+        severity: high
+        claim: fabricated acceptance snapshots could preserve a copied revision
+        disposition: remediated
+        evidence:
+          - freshness compares every immutable authority and disclosure fact
+          - claim rejects stale or malformed acceptance before provider handoff
+          - malformed line money fails closed without throwing
+      - id: MAD-A3
+        severity: medium
+        claim: live localization could erase shipped same-language safety labels
+        disposition: remediated
+        evidence:
+          - live values override matching keys
+          - shipped same-language defaults fill missing keys
+          - partial-provider and Arabic RTL tests pass
+
+  - id: persistence
+    focus: money-concurrency-provider-handoff-recovery
+    findings:
+      - id: MAD-P1
+        severity: blocker
+        claim: stop-sale could race provider handoff
+        disposition: remediated
+        evidence:
+          - preparation executes under serializable isolation
+          - committed tenant or event stop-sale denies handoff atomically
+          - PostgreSQL exploit regression passes
+      - id: MAD-P2
+        severity: blocker
+        claim: accepted totals lacked a database reconciliation invariant
+        disposition: remediated
+        evidence:
+          - total_minor equals organizer plus platform contribution
+          - direct-SQL SQLite tampering regression passes
+          - five provider migration models have no pending changes
+      - id: MAD-P3
+        severity: high
+        claim: policy facts could change between revision calculation and acceptance persistence
+        disposition: remediated
+        evidence:
+          - acceptance binds the policy and operator authority used for revision calculation
+          - policy A/B race regression passes
+      - id: MAD-P4
+        severity: medium
+        claim: reconciliation fixture tests raced on a shared PostgreSQL database
+        disposition: remediated
+        evidence:
+          - stateful reconciliation class is non-parallel
+          - fifty-row and one-thousand-row PostgreSQL gates pass 2/2
+
+  - id: disclosure
+    focus: api-generated-contract-ui-accessibility-localization
+    findings:
+      - id: MAD-D1
+        severity: high
+        claim: generated contracts did not require every accepted authority fact
+        disposition: remediated
+        evidence:
+          - acceptance value, collection, and line members are required
+          - OpenAPI contract suite passes 33/33
+          - repeated OpenAPI, inventory, and NSwag hashes are identical
+      - id: MAD-D2
+        severity: high
+        claim: payment UI omitted operator origin, activation, provider profile, and typed line facts
+        disposition: remediated
+        evidence:
+          - panel renders every accepted line and authority fact
+          - explicit keyboard acknowledgement is required
+          - French culture formatting and Arabic RTL render checks pass
+      - id: MAD-D3
+        severity: high
+        claim: payment documentation overstated automatic debit, collection, liability, refund, and protection behavior
+        disposition: remediated
+        evidence:
+          - docs state refunds are not implemented
+          - future refund authority and operating requirements are explicit
+
+verification:
+  mutation:
+    tool: Stryker.NET 4.16.0
+    score_percent: 92.57
+    scope:
+      - PaidCheckoutGovernanceHandlers.cs
+      - PaidCheckoutActivationService.cs
+      - PaidOrderAcceptanceService.cs
+      - PaidOrderAcceptanceFreshnessService.cs
+      - RegistrationPaymentAttemptClaimService.cs
+      - RegistrationPaymentCheckoutDispatchService.cs
+    prose_string_mutations_excluded: true
+  weighted_vote:
+    authority: accept
+    persistence: accept
+    disclosure: accept
+    overall: accept_after_remediation

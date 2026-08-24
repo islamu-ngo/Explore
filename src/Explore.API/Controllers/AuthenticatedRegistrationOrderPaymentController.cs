@@ -38,10 +38,23 @@ public sealed class AuthenticatedRegistrationOrderPaymentController(IMediator me
         Guid eventId,
         Guid orderId,
         [FromHeader(Name = IdempotencyKeyHeader)] string idempotencyKey,
+        [FromBody] PaidOrderAcceptanceAcknowledgementDto? acceptance,
         CancellationToken cancellationToken = default)
     {
         _ = idempotencyKey;
-        return MapResult(await Mediator.Send(new StartAuthenticatedRegistrationPaymentCommand(eventId, orderId), cancellationToken), eventId, orderId, false);
+        return MapResult(await Mediator.Send(new StartAuthenticatedRegistrationPaymentCommand(eventId, orderId, acceptance), cancellationToken), eventId, orderId, false);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("{orderId:guid}/payment/acceptance", Name = RouteNames.GetAuthenticatedPaidOrderAcceptance)]
+    [ProducesResponseType(typeof(PaidOrderAcceptanceDisclosureDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PaidOrderAcceptanceDisclosureDto>> GetAcceptance(Guid eventId, Guid orderId, CancellationToken cancellationToken = default)
+    {
+        PaidOrderAcceptanceDisclosureDto? disclosure = await Mediator.Send(new GetAuthenticatedPaidOrderAcceptanceQuery(eventId, orderId), cancellationToken);
+        return disclosure is null ? PaymentNotFoundResult() : Ok(disclosure);
     }
 
     [Authorize]

@@ -38,7 +38,10 @@ public sealed class PaidEventPolicyCurrencyRiskLimitDto
 {
     public string CurrencyCode { get; init; } = string.Empty;
     public long? PerEventSalesCeilingMinor { get; init; }
+    public int? PerEventSalesCountCeiling { get; init; }
     public long? RollingOrganizerSalesCeilingMinor { get; init; }
+    public int? RollingOrganizerSalesCountCeiling { get; init; }
+    public int? RollingOrganizerWindowDays { get; init; }
     public long? HighValueReviewThresholdMinor { get; init; }
 }
 

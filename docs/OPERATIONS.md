@@ -11,6 +11,12 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
 
+## Paid Checkout Stop-Sale And Reconciliation
+
+`Payments:CheckoutGovernance:ActivationStatus` defaults to `suspended`, which blocks new paid claim and provider dispatch across the deployment until the startup-owned operator profile is complete and explicitly set to `approved`. Once deployment activation is approved, instance operators manage durable tenant-wide or event-specific controls through the private/no-store `/api/tenants/{tenantId}/paid-checkout-governance/sale-control` HAL resource. A first activation or stopped control requires a resume request and approval from a different authenticated operator; every transition appends bounded audit facts. Do not disable the webhook endpoint or reconciliation scheduler: stop-sale preserves signed intake and remedy/recovery paths.
+
+Reconciliation claims at most 50 rows in stable `next_attempt_at/created_at/id` order through `ix_payment_reconciliation_effects_worker_poll`; the PostgreSQL path claims one batch in one command, provider reads occur after claims, and each decision settles separately. `explore.payments.checkout_activation` emits only `allowed|blocked` outcomes and closed `reason_category` values. Logs and metrics never contain buyer contacts, acceptance text, account IDs, or provider payloads.
+
 ## Operational Runbooks
 
 | Task | Runbook | Use When |

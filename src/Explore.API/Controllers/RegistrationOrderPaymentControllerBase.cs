@@ -23,7 +23,7 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
     private protected static readonly CommandFailurePolicy PaymentFailures = CommandFailurePolicy
         .ValidatedBy(PaymentValidationProblem)
         .NotFound(PaymentNotFoundProblem, "registration_order_not_found")
-        .Conflict("Payment action unavailable", "The requested payment action is not available.", "not_payable", "payment_retry_not_available")
+        .Conflict("Payment action unavailable", "The requested payment action is not available.", "not_payable", "payment_retry_not_available", "payment_acceptance_required", "payment_acceptance_stale", "payment_risk_review_required", "payment_review_required", "payment_ceiling_exceeded", "paid_sale_stopped")
         .Unavailable(
             "Payment temporarily unavailable",
             "Payment could not be started.",
@@ -31,7 +31,14 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
             "payment_readiness_unavailable",
             "payment_organizer_unavailable",
             "payment_configuration_unavailable",
-            "payment_connection_unavailable");
+            "payment_connection_unavailable",
+            "payment_acceptance_unavailable",
+            "payment_policy_invalid",
+            "payment_policy_unavailable",
+            "payment_operator_inactive",
+            "paid_sale_control_uninitialized",
+            "payment_activation_invalid",
+            "payment_activation_unavailable");
 
     protected ActionResult<HalResource<RegistrationPaymentDto>> MapResult(
         RegistrationPaymentCommandResultDto result,

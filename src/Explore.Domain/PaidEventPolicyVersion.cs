@@ -434,7 +434,10 @@ public sealed class PaidEventPolicyCurrencyRiskLimitRow
         Ordinal = ordinal;
         CurrencyCode = limit.CurrencyCode;
         PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor;
+        PerEventSalesCountCeiling = limit.PerEventSalesCountCeiling;
         RollingOrganizerSalesCeilingMinor = limit.RollingOrganizerSalesCeilingMinor;
+        RollingOrganizerSalesCountCeiling = limit.RollingOrganizerSalesCountCeiling;
+        RollingOrganizerWindowDays = limit.RollingOrganizerWindowDays;
         HighValueReviewThresholdMinor = limit.HighValueReviewThresholdMinor;
     }
 
@@ -450,7 +453,13 @@ public sealed class PaidEventPolicyCurrencyRiskLimitRow
 
     public long? PerEventSalesCeilingMinor { get; private set; }
 
+    public int? PerEventSalesCountCeiling { get; private set; }
+
     public long? RollingOrganizerSalesCeilingMinor { get; private set; }
+
+    public int? RollingOrganizerSalesCountCeiling { get; private set; }
+
+    public int? RollingOrganizerWindowDays { get; private set; }
 
     public long? HighValueReviewThresholdMinor { get; private set; }
 
@@ -460,6 +469,9 @@ public sealed class PaidEventPolicyCurrencyRiskLimitRow
     internal PaidEventPolicyCurrencyRiskLimit ToValueObject() => PaidEventPolicyCurrencyRiskLimit.Create(
         CurrencyCode,
         PerEventSalesCeilingMinor,
+        PerEventSalesCountCeiling,
         RollingOrganizerSalesCeilingMinor,
+        RollingOrganizerSalesCountCeiling,
+        RollingOrganizerWindowDays,
         HighValueReviewThresholdMinor);
 }

@@ -11,6 +11,7 @@ using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.API.OpenApi;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Application.Features.Promotions.Requests.Commands;

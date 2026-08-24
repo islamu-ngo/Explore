@@ -6350,10 +6350,56 @@ Table "incoming_webhook_messages" {
 
   Note: 'Exact bytes are verified before capture. Stripe payment callbacks retain only a normalized identifiers envelope while payload_hash remains the exact signed-body SHA-256. Provider event and event-type/object identities are unique at database authority.'
 }
+Table "paid_order_acceptance_snapshots" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "event_id" uuid [not null]
+  "composition_revision" varchar(80) [not null]
+  "disclosure_revision" varchar(80) [not null]
+  "merchant_display_name" varchar(200) [not null]
+  "operator_id" uuid [not null]
+  "operator_display_name" varchar(200) [not null]
+  "is_official_instance" boolean [not null]
+  "official_origin" varchar(500) [not null]
+  "delivery_milestone" varchar(2000) [not null]
+  "currency_code" varchar(3) [not null]
+  "organizer_amount_minor" bigint [not null]
+  "platform_fee_minor" bigint [not null]
+  "platform_contribution_minor" bigint [not null]
+  "total_minor" bigint [not null]
+  "instance_policy_version_id" uuid [not null]
+  "tenant_policy_version_id" uuid
+  "refund_policy_version" int [not null]
+  "refund_policy_text" varchar(2000) [not null]
+  "refund_policy_language_tag" varchar(35) [not null]
+  "support_contact" varchar(320) [not null]
+  "complaint_contact" varchar(320) [not null]
+  "provider_code" varchar(40) [not null]
+  "provider_profile_code" varchar(40) [not null]
+  "charge_type" varchar(40) [not null]
+  "statement_descriptor" varchar(22) [not null]
+  "line_facts_json" varchar(16000) [not null]
+  "accepted_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_paid_order_acceptance_snapshots_tenant_id_id']
+    (tenant_id, registration_order_id, disclosure_revision) [unique, name: 'ix_paid_order_acceptance_snapshots_tenant_order_disclosure']
+    (tenant_id, event_id, accepted_at) [name: 'ix_paid_order_acceptance_snapshots_tenant_event_accepted']
+  }
+
+  Note: 'Immutable exact buyer-accepted merchant, independent operator, delivery, line/money, refund, complaint, provider, and statement facts. No historical payment attempt is backfilled.'
+}
+
 Table "payment_attempts" {
   "id" uuid [pk, not null]
   "tenant_id" uuid [not null]
   "registration_order_id" uuid [not null]
+  "paid_order_acceptance_snapshot_id" uuid
   "recipient_tenant_id" uuid [not null]
   "recipient_organizer_actor_id" uuid [not null]
   "recipient_connection_id" uuid [not null]
@@ -6403,6 +6449,7 @@ Table "payment_attempts" {
     (active_scope_key, active_uniqueness_slot) [unique, name: 'ix_payment_attempts_active_scope_key_active_uniqueness_slot']
     provider_idempotency_key [unique, name: 'ix_payment_attempts_provider_idempotency_key']
     (tenant_id, registration_order_id, payment_attempt_status_id) [name: 'ix_payment_attempts_tenant_id_registration_order_id_payment_attempt_status_id']
+    (tenant_id, paid_order_acceptance_snapshot_id) [name: 'ix_payment_attempts_tenant_acceptance']
   }
 
   Note: 'Durable registration checkout attempt. Checks enforce status/floor ranges, nonnegative money composition, and portable one-active-attempt scope-slot uniqueness; recipient and amount facts are snapshotted locally before provider I/O.'
@@ -6469,7 +6516,7 @@ Table "payment_reconciliation_effects" {
     (tenant_id, payment_attempt_id) [unique, name: 'ix_payment_reconciliation_effects_tenant_id_payment_attempt_id']
     (tenant_id, source_incoming_webhook_message_id) [name: 'ix_payment_reconciliation_effects_tenant_id_source_incoming_webhook_message_id']
     (tenant_id, checkout_dispatch_effect_id) [name: 'ix_payment_reconciliation_effects_tenant_id_checkout_dispatch_effect_id']
-    (status, next_attempt_at, created_at) [name: 'ix_payment_reconciliation_effects_status_next_attempt_at_created_at']
+    (status, next_attempt_at, created_at, id) [name: 'ix_payment_reconciliation_effects_worker_poll']
   }
 
   Note: 'Identifiers-only durable due work for authoritative connected-account Checkout and PaymentIntent retrieval. Lease token and monotonic fence protect retry, interruption recovery, completion, and parking.'
@@ -7373,8 +7420,12 @@ Ref: "organizer_payment_provider_account_operations"."tenant_id" > "tenants"."id
 Ref: "organizer_payment_provider_account_operations"."organizer_actor_id" > "actors"."id" [delete: restrict]
 Ref: "organizer_payment_provider_account_operations".("tenant_id", "connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: restrict]
 Ref: "organizer_payment_provider_connection_supported_currencies".("tenant_id", "organizer_payment_provider_connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: cascade]
+Ref: "paid_order_acceptance_snapshots"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "paid_order_acceptance_snapshots".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "paid_order_acceptance_snapshots".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "payment_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "payment_attempts".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "payment_attempts".("tenant_id", "paid_order_acceptance_snapshot_id") - "paid_order_acceptance_snapshots".("tenant_id", "id") [delete: restrict]
 Ref: "payment_attempts"."payment_attempt_status_id" > "payment_attempt_statuses"."id" [delete: restrict]
 Ref: "payment_attempts"."authoritative_status_floor_id" > "payment_attempt_statuses"."id" [delete: restrict]
 Ref: "checkout_dispatch_effects"."tenant_id" > "tenants"."id" [delete: restrict]

@@ -56,6 +56,49 @@ public sealed class GetAuthenticatedRegistrationPaymentQueryHandler(
     }
 }
 
+public sealed class GetGuestPaidOrderAcceptanceQueryHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    TimeProvider timeProvider,
+    RegistrationPaymentContractService payments)
+    : IRequestHandler<GetGuestPaidOrderAcceptanceQuery, PaidOrderAcceptanceDisclosureDto?>
+{
+    public async Task<PaidOrderAcceptanceDisclosureDto?> Handle(GetGuestPaidOrderAcceptanceQuery request, CancellationToken cancellationToken)
+    {
+        var validator = new GuestRegistrationOrderAccessCommandValidator<GetGuestPaidOrderAcceptanceQuery>();
+        if (!(await validator.ValidateAsync(request, cancellationToken)).IsValid)
+        {
+            return null;
+        }
+
+        RegistrationOrder? order = await RegistrationOrderAccessGuard.GetGuestOrderAsync(
+            inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId, request.CapabilityToken, timeProvider, cancellationToken);
+        return order is null ? null : (await payments.GetAcceptanceDisclosureAsync(order, cancellationToken)).Disclosure;
+    }
+}
+
+public sealed class GetAuthenticatedPaidOrderAcceptanceQueryHandler(
+    IRegistrationInventoryRepository inventory,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    RegistrationPaymentContractService payments)
+    : IRequestHandler<GetAuthenticatedPaidOrderAcceptanceQuery, PaidOrderAcceptanceDisclosureDto?>
+{
+    public async Task<PaidOrderAcceptanceDisclosureDto?> Handle(GetAuthenticatedPaidOrderAcceptanceQuery request, CancellationToken cancellationToken)
+    {
+        var validator = new AuthenticatedRegistrationOrderAccessCommandValidator<GetAuthenticatedPaidOrderAcceptanceQuery>();
+        if (!(await validator.ValidateAsync(request, cancellationToken)).IsValid)
+        {
+            return null;
+        }
+
+        RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
+            inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken);
+        return order is null ? null : (await payments.GetAcceptanceDisclosureAsync(order, cancellationToken)).Disclosure;
+    }
+}
+
 public sealed class GetGuestRegistrationPaymentCheckoutTargetQueryHandler(
     IRegistrationInventoryRepository inventory,
     IGuestCapabilityTokenService capabilities,

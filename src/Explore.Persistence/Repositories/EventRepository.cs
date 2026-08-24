@@ -47,6 +47,18 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
+    public Task<Event?> GetEventWithDetailsAsync(
+        Guid id,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        _dbContext.Events
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .IncludeStandardDetails()
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId, cancellationToken);
+
     public async Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken)
     {
         return await _dbContext.Events

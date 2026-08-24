@@ -264,6 +264,11 @@ public partial class ExploreDbContext
     public DbSet<OrganizerPaymentProviderAccountOperation> OrganizerPaymentProviderAccountOperations { get; set; }
     public DbSet<OrganizerPaymentProviderConnection> OrganizerPaymentProviderConnections { get; set; }
     public DbSet<OrganizerPaymentProviderConnectionSupportedCurrency> OrganizerPaymentProviderConnectionSupportedCurrencies { get; set; }
+    public DbSet<PaidCheckoutSaleControl> PaidCheckoutSaleControls { get; set; }
+    public DbSet<PaidCheckoutSaleControlAudit> PaidCheckoutSaleControlAudits { get; set; }
+    public DbSet<PaidCheckoutReviewApproval> PaidCheckoutReviewApprovals { get; set; }
+    public DbSet<PaidOrderAcceptanceSnapshot> PaidOrderAcceptanceSnapshots { get; set; }
+    public DbSet<PaidOrderAcceptanceLine> PaidOrderAcceptanceLines { get; set; }
     public DbSet<PaymentAttempt> PaymentAttempts { get; set; }
     public DbSet<PaymentAttemptStatus> PaymentAttemptStatuses { get; set; }
     public DbSet<CheckoutDispatchEffect> CheckoutDispatchEffects { get; set; }

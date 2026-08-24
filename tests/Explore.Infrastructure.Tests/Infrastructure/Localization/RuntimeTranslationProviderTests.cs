@@ -59,11 +59,11 @@ public class RuntimeTranslationProviderTests
                 """));
 
         var result = await provider.ExportTranslationsAsync("en");
-        var list = result.ToList();
+        var translations = result.ToDictionary(value => value.KeyName, value => value.Value);
 
-        await Assert.That(list.Count).IsEqualTo(1);
-        await Assert.That(list[0].KeyName).IsEqualTo("lookup.tag.FIQH.full_name");
-        await Assert.That(list[0].Value).IsEqualTo("Provider Fiqh");
+        await Assert.That(translations["lookup.tag.FIQH.full_name"]).IsEqualTo("Provider Fiqh");
+        await Assert.That(translations).ContainsKey("ui.common.loading");
+        await Assert.That(translations).ContainsKey("payment.acceptance.heading");
         await Assert.That(resolver.ResolveCallCount).IsGreaterThanOrEqualTo(1);
     }
 
@@ -115,9 +115,11 @@ public class RuntimeTranslationProviderTests
         var result = await provider.ExportTranslationsAsync("en");
         var list = result.ToList();
 
-        await Assert.That(list.Count).IsEqualTo(1);
-        await Assert.That(list[0].KeyName).IsEqualTo("lookup.tag.FIQH.full_name");
-        await Assert.That(list[0].Value).IsEqualTo("Weblate Fiqh");
+        await Assert.That(list.Count).IsGreaterThan(1);
+        await Assert.That(list.Single(value => value.KeyName == "lookup.tag.FIQH.full_name").Value)
+            .IsEqualTo("Weblate Fiqh");
+        await Assert.That(list.Single(value => value.KeyName == "payment.acceptance.heading").Value)
+            .IsEqualTo("Review before payment");
         await Assert.That(resolver.ResolveCallCount).IsGreaterThanOrEqualTo(1);
     }
 
@@ -152,7 +154,7 @@ public class RuntimeTranslationProviderTests
     }
 
     [Test]
-    public async Task ExportTranslations_WhenConnectedProviderReturnsEmpty_ReturnsEmptyLiveResult()
+    public async Task ExportTranslations_WhenConnectedProviderReturnsEmpty_ReturnsShippedFallbacks()
     {
         var tempDirectory = Directory.CreateTempSubdirectory("runtime-provider-offline-");
         try
@@ -187,7 +189,11 @@ public class RuntimeTranslationProviderTests
             var result = await provider.ExportTranslationsAsync("en");
             var list = result.ToList();
 
-            await Assert.That(list.Count).IsEqualTo(0);
+            await Assert.That(list.Count).IsGreaterThan(1);
+            await Assert.That(list.Single(value => value.KeyName == "lookup.tag.FIQH.full_name").Value)
+                .IsEqualTo("Offline Fiqh");
+            await Assert.That(list.Single(value => value.KeyName == "payment.acceptance.heading").Value)
+                .IsEqualTo("Review before payment");
             await Assert.That(resolver.ResolveCallCount).IsGreaterThanOrEqualTo(1);
         }
         finally

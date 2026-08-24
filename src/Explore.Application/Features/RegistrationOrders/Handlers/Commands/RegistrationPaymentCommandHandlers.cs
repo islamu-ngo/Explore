@@ -31,7 +31,7 @@ public sealed class StartGuestRegistrationPaymentCommandHandler(
 
         RegistrationOrder? order = await RegistrationOrderAccessGuard.GetGuestOrderAsync(
             inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId, request.CapabilityToken, timeProvider, cancellationToken);
-        return order is null ? NotFound() : await payments.StartAsync(order, cancellationToken);
+        return order is null ? NotFound() : await payments.StartAsync(order, request.Acceptance, cancellationToken);
     }
 
     private static RegistrationPaymentCommandResultDto NotFound() => PaymentNotFound.Result();
@@ -77,7 +77,7 @@ public sealed class StartAuthenticatedRegistrationPaymentCommandHandler(
 
         RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderBeforeExpiryAsync(
             inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, timeProvider, cancellationToken);
-        return order is null ? PaymentNotFound.Result() : await payments.StartAsync(order, cancellationToken);
+        return order is null ? PaymentNotFound.Result() : await payments.StartAsync(order, request.Acceptance, cancellationToken);
     }
 }
 

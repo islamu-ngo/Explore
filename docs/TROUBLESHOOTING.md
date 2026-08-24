@@ -11,6 +11,14 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
 
+## Paid Checkout Is Not Offered
+
+1. Confirm the order HAL contains both `payment-acceptance` and `start-payment`; do not bypass a missing relation.
+2. Check global/event stop-sale and complete server-owned `Payments:CheckoutGovernance` values.
+3. Verify active instance/tenant policy, currency ceilings/review gates, catalog merchant/refund/support disclosures, organizer connection freshness, Stripe mode, platform identity, and official HTTPS origin.
+4. A `payment_acceptance_stale` response means reload and re-acknowledge exact facts. `payment_acceptance_required` on an old attempt is intentional; do not backfill it.
+5. Keep webhook intake and reconciliation running while sales are stopped. If restore introduced due work, follow `BACKUP_RESTORE_UPGRADE.md` rather than creating another Checkout.
+
 ## Related Runbooks
 
 | Need | Go To |

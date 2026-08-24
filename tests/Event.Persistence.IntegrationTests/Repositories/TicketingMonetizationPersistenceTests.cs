@@ -283,8 +283,8 @@ public sealed class TicketingMonetizationPersistenceTests
             refundProtections: Enum.GetValues<PaidEventRefundProtection>(),
             currencyRiskLimits:
             [
-                PaidEventPolicyCurrencyRiskLimit.Create("usd", 100_00, 500_00, 75_00),
-                PaidEventPolicyCurrencyRiskLimit.Create("eur", 90_00, 450_00, 70_00)
+                PaidEventPolicyCurrencyRiskLimit.Create("usd", 100_00, null, 500_00, null, 30, 75_00),
+                PaidEventPolicyCurrencyRiskLimit.Create("eur", 90_00, null, 450_00, null, 30, 70_00)
             ],
             requiresFirstPaidEventReview: true,
             farFutureReviewThresholdDays: 180);
@@ -324,7 +324,7 @@ public sealed class TicketingMonetizationPersistenceTests
             ["EUR", "USD"],
             "EUR",
             Enum.GetValues<PaidEventRefundProtection>(),
-            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, 1_000_000, 250_000)],
+            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, null, 1_000_000, null, 30, 250_000)],
             true,
             180);
         PaidEventPolicyVersion tenant = PaidEventPolicyVersion.CreateTenant(
@@ -335,7 +335,7 @@ public sealed class TicketingMonetizationPersistenceTests
             ["EUR"],
             "EUR",
             Enum.GetValues<PaidEventRefundProtection>(),
-            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 250_000, 750_000, 100_000)],
+            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 250_000, null, 750_000, null, 30, 100_000)],
             true,
             90);
 

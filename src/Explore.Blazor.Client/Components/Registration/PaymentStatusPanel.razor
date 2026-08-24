@@ -1,13 +1,17 @@
 @* ABOUTME: Shared attendee payment status and action panel driven only by payment HAL relations. *@
 @* ABOUTME: Polls authoritative nonterminal state and navigates only to same-origin BFF checkout actions. *@
+@using System.Globalization
+@using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Localization
 @implements IAsyncDisposable
+@inject ITranslationService Translations
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService Focus
 @inject NavigationManager Navigation
 
-<section class="payment-status" aria-labelledby="payment-status-heading" data-testid="payment-status">
-    <MudText Id="payment-status-heading" Typo="Typo.h5" HtmlTag="h2">Payment</MudText>
+<section class="payment-status" aria-labelledby="payment-status-heading" data-testid="payment-status" lang="@Translations.CurrentLanguage" dir="@Direction">
+    <MudText Id="payment-status-heading" Typo="Typo.h5" HtmlTag="h2">@T("payment.heading", "Payment")</MudText>
 
     @if (_actionError is not null)
     {
@@ -19,10 +23,57 @@
 
     @if (_payment is null)
     {
-        @if (Start is not null)
+        @if (_acceptance is not null && Start is not null)
         {
-            <MudText Typo="Typo.body1">Your order is ready for secure payment.</MudText>
-            <AppButton Disabled="_isBusy" OnClick="StartAsync" data-testid="start-payment">Start payment</AppButton>
+            <section class="payment-acceptance" aria-labelledby="payment-acceptance-heading" data-testid="payment-acceptance" lang="@Translations.CurrentLanguage" dir="@Direction">
+                <MudText Id="payment-acceptance-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.acceptance.heading", "Review before payment")</MudText>
+                <dl>
+                    <dt>@T("payment.acceptance.merchant", "Merchant disclosure")</dt><dd>@_acceptance.MerchantDisclosureText</dd>
+                    <dt>@T("payment.acceptance.operator", "Instance operator")</dt><dd>@_acceptance.OperatorDisplayName (@(_acceptance.IsOfficialInstance == true ? T("payment.operator.official", "official") : T("payment.operator.independent", "independent"))), @_acceptance.OperatorRegionCode</dd>
+                    <dt>@T("payment.acceptance.officialOrigin", "Operator origin")</dt><dd data-testid="acceptance-official-origin">@_acceptance.OfficialOrigin</dd>
+                    <dt>@T("payment.acceptance.activationStatus", "Operator activation status")</dt><dd data-testid="acceptance-activation-status">@_acceptance.OperatorActivationStatus</dd>
+                    <dt>@T("payment.acceptance.operatorLinks", "Operator legal information")</dt>
+                    <dd class="payment-acceptance__links">
+                        <a href="@_acceptance.OperatorWebsiteUrl" rel="noopener">@T("payment.operator.website", "Website")</a>
+                        <a href="@_acceptance.OperatorLegalNoticeUrl" rel="noopener">@T("payment.operator.legal", "Legal notice")</a>
+                        <a href="@_acceptance.OperatorTermsUrl" rel="noopener">@T("payment.operator.terms", "Terms")</a>
+                        <a href="@_acceptance.OperatorPrivacyUrl" rel="noopener">@T("payment.operator.privacy", "Privacy")</a>
+                    </dd>
+                    <dt>@T("payment.acceptance.delivery", "Event schedule")</dt><dd>@FormatSchedule(_acceptance)</dd>
+                    <dt>@T("payment.acceptance.organizerAmount", "Organizer amount")</dt><dd>@FormatMoney(_acceptance.OrganizerAmountMinor, _acceptance)</dd>
+                    <dt>@T("payment.acceptance.platformFee", "Platform fee")</dt><dd>@FormatMoney(_acceptance.PlatformFeeMinor, _acceptance)</dd>
+                    <dt>@T("payment.acceptance.platformContribution", "Platform contribution")</dt><dd>@FormatMoney(_acceptance.PlatformContributionMinor, _acceptance)</dd>
+                    <dt>@T("payment.acceptance.total", "Total")</dt><dd><strong>@FormatMoney(_acceptance.TotalMinor, _acceptance)</strong></dd>
+                    <dt>@string.Format(Culture, T("payment.acceptance.refundPolicy", "Refund policy (version {0})"), _acceptance.RefundPolicyVersion)</dt><dd lang="@_acceptance.RefundPolicyLanguageTag" dir="auto">@_acceptance.RefundPolicyText</dd>
+                    <dt>@T("payment.acceptance.support", "Support")</dt><dd>@_acceptance.SupportContact</dd>
+                    <dt>@T("payment.acceptance.complaints", "Complaints")</dt><dd>@_acceptance.ComplaintContact (@_acceptance.ComplaintOwner)</dd>
+                    <dt>@T("payment.acceptance.operations", "Operational ownership")</dt><dd>@_acceptance.RefundOwner; @_acceptance.DisputeOwner; @_acceptance.ReconciliationOwner</dd>
+                    <dt>@T("payment.acceptance.payment", "Payment")</dt><dd>@_acceptance.ProviderCode (@_acceptance.ProviderEnvironment), @_acceptance.ChargeType, @T("payment.acceptance.credentialOwner", "credential owner") @_acceptance.ProviderCredentialOwner, @T("payment.acceptance.statementDescriptor", "statement descriptor") @_acceptance.StatementDescriptor</dd>
+                    <dt>@T("payment.acceptance.providerProfile", "Provider profile")</dt><dd data-testid="acceptance-provider-profile">@_acceptance.ProviderProfileCode</dd>
+                </dl>
+                <section class="payment-acceptance__lines" aria-labelledby="payment-acceptance-lines-heading">
+                    <MudText Id="payment-acceptance-lines-heading" Typo="Typo.subtitle2" HtmlTag="h4">@T("payment.acceptance.lines", "Accepted ticket lines")</MudText>
+                    <ul>
+                        @foreach (PaidOrderAcceptanceLineDto line in _acceptance.Lines)
+                        {
+                            <li data-testid="acceptance-line">
+                                <MudText Typo="Typo.body1" HtmlTag="h5">@line.Name</MudText>
+                                <dl>
+                                    <dt>@T("payment.acceptance.lineQuantity", "Quantity")</dt><dd>@line.Quantity.ToString("N0", Culture)</dd>
+                                    <dt>@T("payment.acceptance.lineUnitAmount", "Unit amount")</dt><dd>@FormatMoney(line.UnitAmountMinor, _acceptance)</dd>
+                                    <dt>@T("payment.acceptance.lineDiscount", "Discount")</dt><dd>@FormatMoney(line.DiscountAmountMinor, _acceptance)</dd>
+                                    <dt>@T("payment.acceptance.lineTotal", "Line total")</dt><dd>@FormatMoney(line.LineTotalMinor, _acceptance)</dd>
+                                </dl>
+                            </li>
+                        }
+                    </ul>
+                </section>
+                <label class="payment-acceptance__acknowledgement">
+                    <input type="checkbox" checked="@_acknowledged" @onchange="SetAcknowledgement" data-testid="payment-acceptance-acknowledgement" />
+                    @T("payment.acceptance.acknowledgement", "I have reviewed and accept these payment, schedule, refund, operator, support, and complaint facts.")
+                </label>
+                <AppButton Disabled="@(_isBusy || !_acknowledged)" OnClick="StartAsync" data-testid="start-payment">@T("payment.start", "Start payment")</AppButton>
+            </section>
         }
     }
     else
@@ -36,7 +87,7 @@
                 <MudText Typo="Typo.body2">@StatusCopy</MudText>
                 @if (_payment.LastUpdatedAt is { } updated)
                 {
-                    <MudText Typo="Typo.caption" dir="auto">Last updated @updated.ToLocalTime().ToString("g")</MudText>
+                    <MudText Typo="Typo.caption" dir="auto">@T("payment.lastUpdated", "Last updated") @updated.ToLocalTime().ToString("g", Culture)</MudText>
                 }
             </div>
         </div>
@@ -48,16 +99,16 @@
             {
                 @if (_preparedCheckoutPath is null)
                 {
-                    <AppButton Disabled="_isBusy" OnClick="@(() => PrepareCheckoutAsync(checkoutUri))" data-testid="prepare-checkout">Prepare secure checkout</AppButton>
+                    <AppButton Disabled="_isBusy" OnClick="@(() => PrepareCheckoutAsync(checkoutUri))" data-testid="prepare-checkout">@T("payment.prepareCheckout", "Prepare secure checkout")</AppButton>
                 }
                 else
                 {
-                    <AppButton Href="@_preparedCheckoutPath" target="_blank" rel="opener" data-testid="checkout-redirect">Continue to secure checkout</AppButton>
+                    <AppButton Href="@_preparedCheckoutPath" target="_blank" rel="opener" data-testid="checkout-redirect">@T("payment.continueCheckout", "Continue to secure checkout")</AppButton>
                 }
             }
             @if (CanRetry)
             {
-                <AppButton Disabled="_isBusy" Variant="Variant.Outlined" OnClick="RetryAsync" data-testid="retry-payment">Retry payment</AppButton>
+                <AppButton Disabled="_isBusy" Variant="Variant.Outlined" OnClick="RetryAsync" data-testid="retry-payment">@T("payment.retry", "Retry payment")</AppButton>
             }
         </div>
         }
@@ -65,7 +116,8 @@
 </section>
 
 @code {
-    [Parameter] public Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Start { get; set; }
+    [Parameter] public Func<string, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Start { get; set; }
+    [Parameter] public Func<CancellationToken, Task<PaidOrderAcceptanceDisclosureDto?>>? LoadAcceptance { get; set; }
     [Parameter] public Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Load { get; set; }
     [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Refresh { get; set; }
     [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Retry { get; set; }
@@ -80,7 +132,9 @@
         [TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15)];
     private readonly CancellationTokenSource _disposeCancellation = new();
     private HalResourceOfRegistrationPaymentDto? _payment;
+    private PaidOrderAcceptanceDisclosureDto? _acceptance;
     private string? _actionError;
+    private bool _acknowledged;
     private bool _isBusy;
     private bool _initialized;
     private bool _isExpired;
@@ -104,30 +158,43 @@
         "RequiresAction" => Icons.Material.Filled.OpenInNew,
         _ => Icons.Material.Filled.HourglassTop
     };
-    private string StatusTitle => _isExpired ? "Payment window expired" : StatusCode switch
+    private CultureInfo Culture => TryCulture(Translations.CurrentLanguage);
+    private string Direction =>
+        CultureRegistry.TryGetEntry(Translations.CurrentLanguage, out CultureEntry entry) && entry.IsRtl
+            ? "rtl"
+            : "ltr";
+    private string StatusTitle => _isExpired ? T("payment.status.expired.title", "Payment window expired") : StatusCode switch
     {
-        "Created" => "Payment created",
-        "Processing" => "Payment processing",
-        "RequiresAction" => "Payment action required",
-        "Failed" => "Payment failed",
-        "Cancelled" => "Payment cancelled",
-        "Succeeded" => "Payment succeeded",
-        "NeedsReconciliation" => "Payment needs review",
-        _ => "Payment outcome unknown"
+        "Created" => T("payment.status.created.title", "Payment created"),
+        "Processing" => T("payment.status.processing.title", "Payment processing"),
+        "RequiresAction" => T("payment.status.action.title", "Payment action required"),
+        "Failed" => T("payment.status.failed.title", "Payment failed"),
+        "Cancelled" => T("payment.status.cancelled.title", "Payment cancelled"),
+        "Succeeded" => T("payment.status.succeeded.title", "Payment succeeded"),
+        "NeedsReconciliation" => T("payment.status.review.title", "Payment needs review"),
+        _ => T("payment.status.unknown.title", "Payment outcome unknown")
     };
     private string StatusCopy => _isExpired
-        ? "Automatic payment checks stopped at the server-provided expiry. Your order is being reloaded for current options."
+        ? T("payment.status.expired.copy", "Automatic payment checks stopped at the server-provided expiry. Your order is being reloaded for current options.")
         : StatusCode switch
     {
-        "Created" => "Your payment has been created and is waiting to continue.",
-        "Processing" => "The payment is still processing. This page will check again automatically.",
-        "RequiresAction" => "Continue to secure checkout when the action is available.",
-        "Failed" => "The payment failed. Retry is available only when the server confirms it is safe.",
-        "Cancelled" => "The payment was cancelled. Any next action must be offered by the server.",
-        "Succeeded" => "Payment is confirmed by the server. Your order is being refreshed.",
-        "NeedsReconciliation" => "The payment needs organizer review. Do not submit another payment.",
-        _ => "The payment outcome is not known yet. Do not retry unless the server offers that action."
+        "Created" => T("payment.status.created.copy", "Your payment has been created and is waiting to continue."),
+        "Processing" => T("payment.status.processing.copy", "The payment is still processing. This page will check again automatically."),
+        "RequiresAction" => T("payment.status.action.copy", "Continue to secure checkout when the action is available."),
+        "Failed" => T("payment.status.failed.copy", "The payment failed. Retry is available only when the server confirms it is safe."),
+        "Cancelled" => T("payment.status.cancelled.copy", "The payment was cancelled. Any next action must be offered by the server."),
+        "Succeeded" => T("payment.status.succeeded.copy", "Payment is confirmed by the server. Your order is being refreshed."),
+        "NeedsReconciliation" => T("payment.status.review.copy", "The payment needs organizer review. Do not submit another payment."),
+        _ => T("payment.status.unknown.copy", "The payment outcome is not known yet. Do not retry unless the server offers that action.")
     };
+
+    protected override void OnInitialized() => Translations.OnLanguageChanged += HandleLanguageChanged;
+
+    private void HandleLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -137,6 +204,21 @@
         }
 
         _initialized = true;
+        if (LoadAcceptance is not null)
+        {
+            try
+            {
+                _acceptance = await LoadAcceptance(_disposeCancellation.Token);
+            }
+            catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+            {
+            }
+            catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
+            {
+                await ShowActionErrorAsync(T("payment.error.disclosureLoad", "Payment disclosures could not be loaded."), focus: false);
+            }
+        }
+
         if (Load is not null)
         {
             try
@@ -164,12 +246,17 @@
             }
             catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
             {
-                await ShowActionErrorAsync("Payment status could not be loaded.", focus: false);
+                await ShowActionErrorAsync(T("payment.error.statusLoad", "Payment status could not be loaded."), focus: false);
             }
         }
     }
 
-    private Task StartAsync() => ExecuteAsync(Start);
+    private Task StartAsync() => Start is null || _acceptance is null || !_acknowledged
+        ? Task.CompletedTask
+        : ExecuteAsync(cancellationToken => Start(_acceptance.DisclosureRevision, cancellationToken));
+
+    private void SetAcknowledgement(ChangeEventArgs args) =>
+        _acknowledged = args.Value is bool value && value;
 
     private Task RetryAsync() => Retry is null || _payment is null
         ? Task.CompletedTask
@@ -189,7 +276,7 @@
             _payment = await operation(_disposeCancellation.Token);
             if (_payment is null || _disposeCancellation.IsCancellationRequested)
             {
-                await ShowActionErrorAsync("The payment action could not be completed.", focus: true);
+                await ShowActionErrorAsync(T("payment.error.action", "The payment action could not be completed."), focus: true);
                 return;
             }
 
@@ -213,7 +300,7 @@
         }
         catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
         {
-            await ShowActionErrorAsync("The payment action could not be completed.", focus: true);
+            await ShowActionErrorAsync(T("payment.error.action", "The payment action could not be completed."), focus: true);
         }
         finally
         {
@@ -267,7 +354,7 @@
         }
         catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
         {
-            await ShowActionErrorAsync("Payment status could not be refreshed.", focus: false);
+            await ShowActionErrorAsync(T("payment.error.refresh", "Payment status could not be refreshed."), focus: false);
         }
     }
 
@@ -398,7 +485,7 @@
                 navigation.Query.Length != 0 ||
                 !string.Equals(navigation.AbsolutePath, expectedPath, StringComparison.Ordinal))
             {
-                await ShowActionErrorAsync("Secure checkout could not be opened.", focus: true);
+                await ShowActionErrorAsync(T("payment.error.checkout", "Secure checkout could not be opened."), focus: true);
                 return;
             }
 
@@ -410,7 +497,7 @@
         }
         catch (Exception) when (!_disposeCancellation.IsCancellationRequested)
         {
-            await ShowActionErrorAsync("Secure checkout could not be opened.", focus: true);
+            await ShowActionErrorAsync(T("payment.error.checkout", "Secure checkout could not be opened."), focus: true);
         }
         finally
         {
@@ -418,8 +505,54 @@
         }
     }
 
+    private string T(string key, string fallback) => Translations.T(key, fallback);
+
+    private static CultureInfo TryCulture(string languageCode)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(languageCode);
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.GetCultureInfo("en-GB");
+        }
+    }
+
+    private string FormatMoney(long minorAmount, PaidOrderAcceptanceDisclosureDto disclosure)
+    {
+        int digits = disclosure.CurrencyMinorUnitDigits;
+        decimal divisor = 1m;
+        for (int index = 0; index < digits; index++) divisor *= 10m;
+        decimal major = minorAmount / divisor;
+        string number = major.ToString($"N{digits}", Culture);
+        return Culture.NumberFormat.CurrencyPositivePattern is 1 or 3
+            ? $"{number} {disclosure.CurrencyCode}"
+            : $"{disclosure.CurrencyCode} {number}";
+    }
+
+    private string FormatSchedule(PaidOrderAcceptanceDisclosureDto disclosure)
+    {
+        DateTimeOffset starts = disclosure.DeliveryStartsAtUtc;
+        DateTimeOffset ends = disclosure.DeliveryEndsAtUtc;
+        try
+        {
+            TimeZoneInfo zone = TimeZoneInfo.FindSystemTimeZoneById(disclosure.EventTimeZoneId);
+            starts = TimeZoneInfo.ConvertTime(starts, zone);
+            ends = TimeZoneInfo.ConvertTime(ends, zone);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+        }
+        catch (InvalidTimeZoneException)
+        {
+        }
+        return $"{starts.ToString("g", Culture)} - {ends.ToString("g", Culture)} ({disclosure.EventTimeZoneId})";
+    }
+
     public async ValueTask DisposeAsync()
     {
+        Translations.OnLanguageChanged -= HandleLanguageChanged;
         _disposeCancellation.Cancel();
         if (_pollingTask is not null)
         {

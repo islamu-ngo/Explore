@@ -60,6 +60,10 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
 
     public Guid RegistrationOrderId { get; private set; }
 
+    public Guid? PaidOrderAcceptanceSnapshotId { get; private set; }
+
+    public PaidOrderAcceptanceSnapshot? AcceptanceSnapshot { get; private set; }
+
     public OrganizerPaymentRecipientSnapshot RecipientSnapshot { get; private set; } = null!;
 
     public string ProviderCode { get; private set; } = string.Empty;
@@ -184,6 +188,36 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
             timestamp,
             expiry);
     }
+
+    public void AttachAcceptance(PaidOrderAcceptanceSnapshot acceptance)
+    {
+        ArgumentNullException.ThrowIfNull(acceptance);
+        if (PaidOrderAcceptanceSnapshotId.HasValue)
+        {
+            if (PaidOrderAcceptanceSnapshotId == acceptance.Id)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException("Payment attempt acceptance evidence is immutable.");
+        }
+
+        if (acceptance.TenantId != TenantId || acceptance.RegistrationOrderId != RegistrationOrderId ||
+            !string.Equals(acceptance.CompositionRevision, CompositionRevision, StringComparison.Ordinal) ||
+            !string.Equals(acceptance.CurrencyCode, CurrencyCode, StringComparison.Ordinal) ||
+            acceptance.OrganizerAmountMinor != OrganizerAmountMinor || acceptance.PlatformFeeMinor != PlatformFeeMinor ||
+            acceptance.PlatformContributionMinor != PlatformContributionMinor || acceptance.TotalMinor != TotalMinor ||
+            !string.Equals(acceptance.ProviderCode, ProviderCode, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(acceptance.ProviderProfileCode, ProfileCode, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Acceptance evidence must match the exact payment attempt facts.", nameof(acceptance));
+        }
+
+        PaidOrderAcceptanceSnapshotId = acceptance.Id;
+        AcceptanceSnapshot = acceptance;
+    }
+
+    public bool HasImmutableAcceptance => PaidOrderAcceptanceSnapshotId.HasValue && AcceptanceSnapshot is not null;
 
     public bool MarkDispatchPending(DateTime observedAt, string? providerRequestId)
     {

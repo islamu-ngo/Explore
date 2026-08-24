@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -36,7 +37,9 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         Guid eventId,
         Guid tenantId,
         CancellationToken cancellationToken) =>
-        CatalogDetailsQuery().FirstOrDefaultAsync(catalog => catalog.Id == catalogId
+        CatalogDetailsQuery()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .FirstOrDefaultAsync(catalog => catalog.Id == catalogId
             && catalog.EventId == eventId
             && catalog.TenantId == tenantId, cancellationToken);
 

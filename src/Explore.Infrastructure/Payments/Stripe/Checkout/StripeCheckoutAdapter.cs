@@ -24,7 +24,9 @@ public sealed class StripeCheckoutAdapter(
     public PaymentProviderDescriptor Describe() => new(
         "stripe",
         "OrganizerDirect",
-        global::Stripe.StripeConfiguration.ApiVersion);
+        global::Stripe.StripeConfiguration.ApiVersion,
+        options.Value.ExpectsLiveMode ? "live" : "test",
+        "instance-operator");
 
     public async Task<HostedCheckoutCreateResult> CreateAsync(
         HostedCheckoutCreateRequest request,

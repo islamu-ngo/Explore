@@ -118,7 +118,10 @@ public sealed class PaidEventPolicyCurrencyRiskLimitRowConfiguration : IEntityTy
         builder.Property(row => row.PolicyScopeKey).IsRequired().HasMaxLength(48);
         builder.Property(row => row.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.Property(row => row.PerEventSalesCeilingMinor).HasColumnType("bigint");
+        builder.Property(row => row.PerEventSalesCountCeiling);
         builder.Property(row => row.RollingOrganizerSalesCeilingMinor).HasColumnType("bigint");
+        builder.Property(row => row.RollingOrganizerSalesCountCeiling);
+        builder.Property(row => row.RollingOrganizerWindowDays);
         builder.Property(row => row.HighValueReviewThresholdMinor).HasColumnType("bigint");
         builder.HasIndex(row => new { row.PolicyScopeKey, row.PaidEventPolicyVersionId, row.CurrencyCode }).IsUnique();
     }

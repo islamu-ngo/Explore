@@ -3,14 +3,14 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-21 Europe/Brussels
+Last Updated: 2026-08-24 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phase 18 is complete: **110/141 implementation tasks are complete; 31 remain unchecked**. The user approved the full Phase 18 implementation and closeout on 2026-08-21.
-- **Current priority:** No Phase 19 work starts without a new explicit implementation request.
+- **Overall status:** Phase 18 is complete and unchanged: **110/157 implementation tasks are complete; 47 remain unchecked**. The Phase 19+ plan was re-baselined on 2026-08-24 with append-only Phase 18C corrections.
+- **Current priority:** No new paid Checkout or Phase 19+ implementation starts before explicit approval and Task 18C.1 RED evidence.
 - **Latest implementation evidence:** Phase 18 adds an independent `PaymentAttempt`, durable Checkout dispatch and reconciliation effects, generated five-provider migrations/DBML, Infrastructure-only Stripe direct-charge Checkout, strict signed Connect payment intake, paid-order finalization under existing requirements/approval/capacity authority, account/guest/Studio API and HAL, one-time same-origin BFF checkout tickets, and HAL-driven attendee/Studio UI. Split tickets require Redis; Standalone uses bounded memory. Free orders remain provider-free.
 - **Verification evidence:** Release build exited with 0 errors; full `Explore.Infrastructure.Tests` passed `1424/1424`; full Application passed `3893/3893`; full BFF passed `451/451`; focused HTTP/EF verification passed `2/2`; and the dependency-license validator passed. Broad API/Persistence failures remain unrelated shared-worktree baseline findings where already recorded.
-- **Research evidence:** [`phase18-clean-room-evidence.md`](phase18-clean-room-evidence.md) records official Stripe titles/URLs/access date, neutral facts, AnySearch unavailability, source-free implementation attestation, AFC/SSO PASS, and the unchanged existing `Stripe.net` 52.3.0 Apache-2.0 dependency.
+- **Research/I-VSD evidence:** [`phase18-clean-room-evidence.md`](phase18-clean-room-evidence.md), [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), and [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md) are the current traceability set. AnySearch and Context7 MCPs were unavailable during the 2026-08-24 re-baseline; official Stripe/Microsoft docs were researched through available web tools.
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -402,76 +402,97 @@ Last Updated: 2026-08-21 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors
 - [x] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` — `1424/1424` passed; repeat justified by money-moving Checkout/webhook adapter distinct from Phase 16 onboarding
 
-## Phase 19: Refunds, Cancellation, Rescheduling, Disputes, And Buyer Protection ⏳ NOT STARTED
-- [ ] **19.1 Versioned refund floor and order acceptance snapshot** — mandatory remedies, organizer-more-generous-only policy, exact buyer disclosures/text/language retained. — **Effort:** L
-- [ ] **19.2 `RefundAttempt` and dispute projection domain/persistence** — independent capped amount/status/provider/account/idempotency/audit, monotonic provider truth, generated migrations. — **Effort:** L
-- [ ] **19.3 Cancellation/reschedule workflow and transactional refund fanout** — stop sales first, bounded restart-safe outbox per captured payment, no delete with paid orders, accept-new-terms or refund. — **Effort:** XL
-- [ ] **19.4 `Stripe.net` refunds/disputes, webhooks, and reconciliation** — typed create/retrieve on original `StripeAccount`, durable idempotency, provider-neutral errors/request IDs, allowlisted observations, explicit fee/contribution allocation, and transport/signed fixtures for pending balance, partial/full, rate limit, timeout, late success, and dispute lifecycle. — **Effort:** XL
-- [ ] **19.5 Buyer/organizer surfaces, HAL, metrics, and runbook** — policy-authorized request/refund/cancel/reconcile, truthful pending/succeeded UI, audit, bounded telemetry, generated contracts/docs. — **Effort:** XL
+## Phase 18C: Paid-Checkout Safety Correction And Activation Gate ✅ COMPLETE
+- [x] **18C.1 RED buyer-acceptance, activation, tenant, HAL, and recovery specifications** — failing public-contract/invariant tests preceded production edits and cover missing/stale terms, operator identity, cross-tenant access, stop-sale bypass, fabricated backfill, restore duplication, and endpoint/HAL parity. — **Effort:** L
+- [x] **18C.2 GREEN immutable paid-order acceptance snapshot and Checkout gate** — exact merchant/operator/official status/delivery/currency/totals/fee/contribution/refund text+language/support/provider/statement facts; no synthetic history; tenant-qualified persistence. — **Effort:** XL
+- [x] **18C.3 GREEN instance operator authority, risk ceilings, complaints, and stop-sale** — own credentials/identity, versioned instance controls, named owners, reviewer separation, global/event stop-sale preserving webhooks/refunds/reconciliation/reads, HAL and audit. — **Effort:** XL
+- [x] **18C.4 GREEN recovery baseline, measurable payment operations, and truthful docs** — restore/replay of payment/inbox/outbox/Quartz/key evidence without duplicate Checkout; claim <=50 rows/round trip; 1,000 no-I/O observations/10 minutes; correct stale/liability wording append-only. — **Effort:** XL
+- [x] **18C.5 GREEN acceptance disclosure API, BFF, UI, and generated contracts** — exact localized accessible acknowledgement tied to immutable snapshot; private/no-store; stale acknowledgement denied; API/HAL/client convergence. — **Effort:** XL
+
+### Phase 18C Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - **Evidence:** Release build 0 errors; Phase 18C-owned API/payment classes 22/22 final and 40/40 before final mutation hardening. The complete API execution was 2,305/2,330 with one governed skip and 24 unrelated shared-worktree visibility/authorization/snapshot/email fixture failures; no Phase 18C-owned failure remained. Full completion evidence and project counts are recorded in the latest context handoff.
+
+## Phase 19: Refunds, Cancellation Campaigns, Rescheduling, Disputes, And Buyer Protection ⏳ NOT STARTED
+- [ ] **19.0 RED refund, dispute, campaign, tenant, and HAL invariant specifications** — concurrent reservation caps include ambiguous states; open-dispute denial; cancellation restart; duplicate provider facts; original-account, tenant, and authorization/HAL failures are proven before code. — **Effort:** XL
+- [ ] **19.1 GREEN refund policy, line allocation, and accepted authority** — reuse existing floor; organizer-more-generous versions; checked integer-minor organizer/fee/contribution allocation; uncaptured cancellation; future-only terms. — **Effort:** L
+- [ ] **19.2 GREEN `RefundAttempt`, reservation authority, and dispute projection** — atomic cap across every non-released state; independent multiple-dispute truth; immutable account/provider/currency; tenant-qualified persistence and real PostgreSQL races. — **Effort:** L
+- [ ] **19.3 GREEN cancellation and material-change campaigns** — one transaction stops sales and records campaign/cursor/outbox; batches <=100; unique campaign/payment/allocation key; counters and restart-safe closure; no unbounded fanout transaction. — **Effort:** XL
+- [ ] **19.4 GREEN Stripe refunds/disputes, webhook observations, and reconciliation** — original direct-charge account, stable non-PII idempotency, no extra mutation retry, async pending/requires-action/failure/ambiguity/dispute fixtures, no SDK leakage. — **Effort:** XL
+- [ ] **19.5 GREEN buyer/organizer/trust-safety HAL, metrics, and recovery** — separate authorities, truthful provider-proven states, generic tenant behavior, PII-free bounded telemetry, audited runbooks/alerts, generated contracts/docs. — **Effort:** XL
 
 ### Phase 19 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 20: `AdmissionTicket`, QR Credential, Delivery, Lookup, And Self-Service ⏳ NOT STARTED
-- [ ] **20.1 Admission ticket and credential lifecycle domain** — one per confirmed assignment; separate display reference; Active/Suspended/Revoked/Cancelled/Transferred/Expired; one live credential. — **Effort:** L
-- [ ] **20.2 Idempotent issuance, persistence, and generated migrations** — confirmation effect, CSPRNG credential, keyed digest/key version, retry-stable uniqueness, no stored plaintext. — **Effort:** L
-- [ ] **20.3 QR representation and clean-room encoder/decoder gate** — compatible dependency evidence, version+opaque-token only, native feature detection plus supported decoder/HID/manual fallback. — **Effort:** L
-- [ ] **20.4 Ticket lookup, resend, and account/guest recovery** — account list plus uniform, rate-limited, single-use expiring hashed recovery capabilities and side-channel email. — **Effort:** L
-- [ ] **20.5 Ticket API/HAL/BFF/Blazor delivery and self-service** — private/no-store QR/print/detail, accessible manual text, exact support/refund/transfer relations, generated contracts/docs. — **Effort:** XL
+## Phase 20: Admission Authority, Opaque QR Credential, Recovery, And Self-Service ⏳ NOT STARTED
+- [ ] **20.0 RED admission, credential, recovery, tenant, and revocation specifications** — no-ticket-before-confirmation, one live credential, free/paid split, full-relevant-refund revocation, unrelated add-on refund, rotation, tenant collisions, generic recovery, and HAL parity fail first. — **Effort:** L
+- [ ] **20.1 GREEN admission ticket and credential lifecycle domain** — separate admission/payment/recovery states; one per confirmed assignment; separate display reference; exhaustive Active/Suspended/Revoked/Cancelled/Transferred/Expired and rotation rules. — **Effort:** L
+- [ ] **20.2 GREEN free-order issuance, persistence, and generated migrations** — confirmation effect, CSPRNG credential, keyed digest/key version, retry-stable UUIDv7 identity, tenant-qualified uniqueness, no stored plaintext, restore-safe keys. — **Effort:** L
+- [ ] **20.3 GREEN QR representation and clean-room encoder/decoder gate** — license/AFC/SSO evidence, version+opaque bearer only, native feature detection plus supported decoder/HID/manual paths, no logs/DOM/storage/referrer leakage. — **Effort:** L
+- [ ] **20.4 GREEN ticket lookup, resend, and account/guest recovery** — trusted bounded rate-limit partitions, uniform responses, single-use expiring keyed capabilities, side-channel delivery, audit and restore/key-rotation proof. — **Effort:** L
+- [ ] **20.5 GREEN ticket API/HAL/BFF/Blazor delivery and self-service** — private/no-store/referrer-safe QR/print/detail, sensitive manual alternative, exact support/refund/transfer relations, accessible RTL contracts, generated artifacts. — **Effort:** XL
+- [ ] **20.6 GREEN paid confirmation, refund, and cancellation integration** — paid issuance only from reconciled confirmation; exact relevant refund/cancellation revokes; add-on-only refund leaves admission; no Stripe type/state in admission. — **Effort:** L
 
 ### Phase 20 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Undo ⏳ NOT STARTED
-- [ ] **21.1 Admission targets, policies, and append-only event model** — event/day/session entitlements, window/re-entry, CheckIn/Undo facts with actor/scanner/reason/time. — **Effort:** L
-- [ ] **21.2 Atomic persistence and check-in/undo concurrency** — keyed credential lookup, active-state lock, idempotent duplicate, deterministic undo race, bounded partial batch, model parity. — **Effort:** XL
-- [ ] **21.3 Check-in API, Cerbos, HAL, and scanner capability issuance** — authenticated staff or tenant/event/target/action/expiry/device-scoped revocable capability; bounded door data. — **Effort:** XL
-- [ ] **21.4 Camera, HID, and manual scanner client flow** — approved decoder, permissions/fallback, rapid-duplicate suppression, accessible non-color results, relation gate, no token persistence. — **Effort:** XL
-- [ ] **21.5 Check-in summary, export-safe audit, observability, and runbook** — bounded target/status counts and procedures for device loss, bad scan, undo, queue/connectivity failures. — **Effort:** M
+## Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Recovery ⏳ NOT STARTED
+- [ ] **21.0 RED admission race, capability, tenant, outage, and performance specifications** — deterministic database races, one-time secret disclosure, revocation/theft, wrong scope, batch partial failure, fail-closed connectivity, query count and declared latency fixture. — **Effort:** XL
+- [ ] **21.1 GREEN admission targets, policies, and append-only event model** — event/day/session entitlements, window/re-entry, exhaustive CheckIn/Undo facts/results with actor/scanner/reason/time; no mutable Boolean truth. — **Effort:** L
+- [ ] **21.2 GREEN atomic persistence and check-in/undo concurrency** — one indexed tenant+digest lookup, active-state lock, deterministic duplicate/undo race, batch <=100, tenant-qualified model parity and PostgreSQL evidence. — **Effort:** XL
+- [ ] **21.3 GREEN check-in API, Cerbos, HAL, and scanner capability issuance** — authenticated staff or scoped revocable capability; plaintext once at issuance, masked later; bounded door data; rate/audit/HAL parity. — **Effort:** XL
+- [ ] **21.4 GREEN camera, HID, and manual scanner client flow** — approved decoder, permission/fallback, rapid-duplicate suppression, accessible non-color/sound results, relation gate, deterministic bUnit/JS contracts, no token persistence. — **Effort:** XL
+- [ ] **21.5 GREEN summary, export-safe audit, observability, and incident operations** — bounded counts/metrics and procedures for device loss, compromise, undo, saturation, connectivity, authenticated exception, restore and reconciliation. — **Effort:** M
 
 ### Phase 21 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 22: Ticket Transfer, Reissue, Reassignment, And Holder Self-Service ⏳ NOT STARTED
-- [ ] **22.1 Published transfer policy and domain rules** — allowed/deadline/max/checked-in/guardian/company/approval constraints immutable for sold tickets. — **Effort:** M
-- [ ] **22.2 Transfer offer, recipient PII, capability, persistence, and migrations** — encrypted/split contact, one active offer, single-use expiring keyed-hash acceptance, atomic terminal race. — **Effort:** L
-- [ ] **22.3 Atomic acceptance, participant requirements, and credential rotation** — recollect required data/consent, reassign future holder, revoke old QR, issue new, preserve purchase/payment history. — **Effort:** XL
-- [ ] **22.4 Organizer correction/reissue versus holder transfer** — distinct audited reasoned actions; commercial/admission authority; explicit checked-in override policy. — **Effort:** L
-- [ ] **22.5 Transfer/self-service API, notifications, and Blazor surfaces** — capability-scoped recipient flow, holder ticket HAL, Studio actions, outbox email, anti-enumeration, generated contracts/docs. — **Effort:** XL
+- [ ] **22.0 RED transfer race, consent, tenant, capability, and HAL specifications** — accept/cancel/expire, transfer/check-in, reissue/scan, fresh consent, PII, generic lookup, copied-QR invalidation, authorization/HAL, and purchaser/payment invariants fail first. — **Effort:** XL
+- [ ] **22.1 GREEN published transfer policy and domain rules** — immutable sold-ticket deadline/max/checked-in/guardian/company/approval constraints; distinguish holder transfer, organizer correction, and reissue; no commercial mutation. — **Effort:** M
+- [ ] **22.2 GREEN transfer offer, recipient PII, capability, persistence, and migrations** — encrypted/split contact, one active offer, single-use expiring keyed digest/key version, tenant-qualified persistence, indexed expiry, one terminal race winner. — **Effort:** L
+- [ ] **22.3 GREEN atomic acceptance, participant requirements, and credential rotation** — recollect data/consent, reassign future holder, revoke old QR, durable new issuance/notification, preserve purchaser/order/payment/audit. — **Effort:** XL
+- [ ] **22.4 GREEN organizer correction/reissue versus holder transfer** — separate audited reasoned actions, exact authority, contributor denial, notification, and explicit checked-in override; reissue always rotates. — **Effort:** L
+- [ ] **22.5 GREEN transfer/self-service API, notifications, and Blazor surfaces** — minimal capability recipient flow, private/no-store, holder HAL and Studio actions, anti-enumeration, accessible effects/consent, generated contracts/docs. — **Effort:** XL
 
 ### Phase 22 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 23: Waitlist Offers, Event-Bound Add-Ons, And Separate Fulfillment ⏳ NOT STARTED
-- [ ] **23.1 Waitlist policy, entry, and offer domain** — explicit fair ordering, scoped identity/privacy, bounded expiry, separate from order/admission. — **Effort:** L
-- [ ] **23.2 Capacity-triggered offer reservation and persistence races** — capacity release → bounded offer → normal hold; atomic accept/expire/queue advance without oversell. — **Effort:** XL
-- [ ] **23.3 Waitlist API, HAL, notifications, and self-service** — account/capability join/leave/accept, bounded organizer health, same-origin email, accessible countdown. — **Effort:** L
-- [ ] **23.4 Event-add-on catalog and mixed-order snapshots** — event-scoped immutable add-on/final-price/promotion/fulfillment facts, separate inventory, one merchant/currency, never admission, no Event tax/invoice aggregate or general storefront. — **Effort:** XL
-- [ ] **23.5 Event-add-on inventory, fulfillment, promotion, payment, and UI integration** — reserve/consume/release, existing money snapshots, independent fulfillment, HAL-gated Studio/checkout, no marketing/accounting/invoice UI. — **Effort:** XL
+## Phase 23: Independent Waitlist And Event-Add-On Slices ⏳ NOT STARTED
+- [ ] **23W.0 RED waitlist fairness, capacity race, tenant, and recovery specifications** — deterministic ordering/tie-breaker, one active scoped entry/offer, release/checkout and accept/expire races, idempotent advance, generic position, and waitlisted-order distinction fail first. — **Effort:** XL
+- [ ] **23W.1 GREEN waitlist policy, entry, and offer domain** — explicit FIFO/approved priority, transparent tie-breaker, bounded expiry, privacy-minimized position, no hidden paid priority, separate from order/admission/waitlisted status. — **Effort:** L
+- [ ] **23W.2 GREEN capacity-triggered offer reservation and persistence races** — released capacity -> bounded offer -> existing hold, fenced indexed expiry/advance, tenant-qualified model parity, real PostgreSQL no-oversell races. — **Effort:** XL
+- [ ] **23W.3 GREEN waitlist API, HAL, notifications, self-service, and operations** — account/capability join/leave/accept, bounded queue health, same-origin notification, accessible countdown, anti-enumeration, no-reorder recovery. — **Effort:** L
+- [ ] **23A.0 RED add-on money, inventory, refund, admission, and tenant specifications** — checked minor-unit totals, one merchant/currency, inventory race, refund allocation, admission exclusion, tenant/HAL, and forbidden storefront/tax/invoice boundaries fail first. — **Effort:** XL
+- [ ] **23A.1 GREEN event-add-on catalog and mixed-order snapshots** — event-scoped immutable buyer-visible price/promotion/refund/disclosure/fulfillment facts, separate inventory, one merchant/currency, tenant-qualified model, never admission. — **Effort:** XL
+- [ ] **23A.2 GREEN add-on inventory, fulfillment, promotion, payment, and refund integration** — reserve/consume/release, existing immutable commercial snapshots, independent durable fulfillment, deterministic races, add-on refund does not revoke ticket. — **Effort:** XL
+- [ ] **23A.3 GREEN add-on API, HAL, Studio/checkout UI, disclosure, and operations** — canonical event-only affordances, accessible terms, generated contracts, bounded post-commit integration facts, no marketing/accounting/tax/invoice UI. — **Effort:** XL
 
 ### Phase 23 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 24: Conditional `ProtectedDelayedPayout` Profile ⛔ APPROVAL-GATED
-- [ ] **24.1 Approval evidence and exact Stripe control contract** — dated Stripe/platform/country/controller/dashboard/holding-limit plus legal, Islamic-finance, reserve, complaint, dispute, and operator evidence; missing means disabled. — **Effort:** L
-- [ ] **24.2 Settlement milestone, hold-limit, and release domain/persistence** — explicit `SettlementReleaseAt`, public schedule independence, blocker state, release-once rules, portable migrations. — **Effort:** XL
-- [ ] **24.3 Stable typed `Stripe.net` payout controls, release worker, and reconciliation** — separate conditional capability; request-scoped account/idempotency outside transactions; fenced worker; provider/error/request-ID reconciliation and control drift; never release with blockers; remain disabled if preview/raw/undocumented SDK access would be required. — **Effort:** XL
-- [ ] **24.4 Protected-profile publication, disclosure, HAL/UI, and incident operations** — approved-only instance surface, non-escrow/milestone/remedy acceptance, separation of duties, audit, alerts, contracts/docs. — **Effort:** XL
+- [ ] **24.1 Approval evidence and exact provider/control contract** — dated role/route/artifact/scope/expiry/stop condition for provider/account/controller/holding limit, legal, qualified scholarly, reserve, complaint, dispute, consumer-law, and operator evidence; missing means disabled and no runtime work. — **Effort:** L
+- [ ] **24.2 RED release, blocker, tenant, drift, and recovery specifications** — only after approval: milestone/limit, duplicate/concurrent release, cancellation/refund/dispute/restriction/review blockers, ambiguous handoff, drift, tenant/HAL fail first; no preview/raw API mocks. — **Effort:** XL
+- [ ] **24.3 GREEN settlement milestone, hold-limit, and release domain/persistence** — explicit `SettlementReleaseAt`, schedule independence, blocker state, release-once, tenant-qualified portable model, real PostgreSQL races. — **Effort:** XL
+- [ ] **24.4 GREEN stable typed Stripe payout controls, release worker, and reconciliation** — conditional capability only; request-scoped account/idempotency outside transactions; fencing, ambiguity and drift recovery; disabled if stable typed support is absent. — **Effort:** XL
+- [ ] **24.5 GREEN protected-profile publication, disclosure, HAL/UI, and incident operations** — approved-only instance surface, non-escrow/milestone/remedy/uncertainty acceptance, separation of duties, named owners, audit, alerts, contracts/docs, explicit deployment status. — **Effort:** XL
 
 ### Phase 24 Verification — RUN ONCE AFTER ALL PHASE TASKS AND ONLY WHEN UNBLOCKED
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 25: Self-Hosted Safety, Official-Instance Trust, Pilot Hardening, And Closeout ⏳ NOT STARTED
-- [ ] **25.1 Self-hosted configuration, secret rotation, and operator-origin disclosure** — own Connect credentials, test/live separation, public-origin validation, overlap rotation, official marker outside tenant control. — **Effort:** L
-- [ ] **25.2 Organizer/event risk limits, review, complaints, and stop-sale** — verification/evidence/velocity/value ceilings, reviewer separation, suspension while refunds/webhooks continue. — **Effort:** XL
-- [ ] **25.3 Reconciliation, observability, SDK upgrade drills, and full in-scope Stripe fixture matrix** — custom-transport + signed-event evidence for SCA, duplicate/delay/order, signature/API-version/mode mismatch, SDK retry/rate-limit/timeout, pending/partial refund, cancel restart, dispute, restriction, recipient/currency and conditional-payout scenarios; bounded request-ID alerts and audited recovery; exact package/API/webhook pin documented. — **Effort:** XL
-- [ ] **25.4 Canonical contract/docs synchronization and workstream completion audit** — intent, docs, OpenAPI/NSwag/DBML, D21–D30 and Event/external-system-boundary traceability, external launch gaps, deferred-record retirement, ledger parity. — **Effort:** L
+## Phase 25: Pilot Hardening, Recovery Proof, And Closeout ⏳ NOT STARTED
+- [ ] **25.0 RED cross-capability recovery, drift, tenant, and closeout specifications** — restore/replay/key-ring/fencing/dead-letter/provider drift/tenant/HAL/generated-contract/ledger invariants fail first without asserting prose or adding live/browser gates. — **Effort:** XL
+- [ ] **25.1 GREEN reconciliation, observability, backup/restore, and recovery drills** — application data, Data Protection/capability keys, secrets, inbox/outbox, Quartz/fencing, campaigns/cursors/workers resume without duplicate effects or lost evidence. — **Effort:** XL
+- [ ] **25.2 GREEN full provider/capability fixture matrix and upgrade gate** — exact package/API/webhook/dependency/license evidence; payment/refund/dispute/account/optional payout, QR/key/capability, timeout/retry/drift fixtures; no second-provider factory. — **Effort:** XL
+- [ ] **25.3 GREEN canonical contracts, release/changelog, docs, and workstream closeout** — intent/docs/release fragments/OpenAPI/NSwag/DBML/I-VSD/D21–D30/evidence parity; external gaps and production-approved/test-only/disabled status explicit. — **Effort:** L
 
 ### Phase 25 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`

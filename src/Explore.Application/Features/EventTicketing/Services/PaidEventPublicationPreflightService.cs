@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
@@ -21,7 +22,8 @@ public sealed class PaidEventPublicationPreflightService(
     IGroupTenantRepository tenantGroups,
     IAuthorizationProvider authorization,
     ITenantContext tenant,
-    IOrganizerPaymentCommerceConfiguration commerceConfiguration)
+    IOrganizerPaymentCommerceConfiguration commerceConfiguration,
+    IPaidCheckoutActivationService checkoutActivation)
 {
     public async Task<PaidEventPublicationPreflightDto> AssessAsync(Guid eventId, CancellationToken cancellationToken)
     {
@@ -48,6 +50,14 @@ public sealed class PaidEventPublicationPreflightService(
         }
 
         var blockers = new List<PaidEventPublicationPreflightBlockerDto>();
+        PaidCheckoutActivationResult saleControl = await checkoutActivation.EvaluateSaleControlAsync(
+            eventTarget.TenantId, eventTarget.Id, cancellationToken);
+        if (!saleControl.IsActive)
+        {
+            blockers.Add(Block(saleControl.FailureCode ?? "checkout_governance_unavailable", saleControl.Message));
+            return Result(eventTarget, draft.Id, isPaid, blockers);
+        }
+
         PaidEventPolicyVersion? instancePolicy = await policies.GetActiveInstanceAsync(cancellationToken);
         PaidEventPolicyVersion? tenantPolicy = await policies.GetActiveTenantAsync(tenant.TenantId, cancellationToken);
         if (!TryValidatePolicy(instancePolicy, tenantPolicy, blockers))

@@ -44,23 +44,25 @@ public sealed class RegistrationPaymentReconciliationService(
         int parked = 0;
         int stale = 0;
         int requeuedDispatches = 0;
-        for (int index = 0; index < request.BatchSize; index++)
+        if (string.IsNullOrWhiteSpace(request.LeaseOwner) || request.BatchSize is < 1 or > 50 ||
+            request.LeaseDuration is { } requestedLease && requestedLease <= TimeSpan.Zero)
+        {
+            throw new ArgumentException("Payment reconciliation requests require a lease owner and batch size from 1 through 50.", nameof(request));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        DateTime claimTime = timeProvider.GetUtcNow().UtcDateTime;
+        IReadOnlyList<PaymentReconciliationClaim> claims = await repository.ClaimDueReconciliationsAsync(
+            request.LeaseOwner,
+            request.BatchSize,
+            claimTime,
+            request.LeaseDuration ?? DefaultLeaseDuration,
+            cancellationToken);
+        foreach (PaymentReconciliationClaim claim in claims)
         {
             cancellationToken.ThrowIfCancellationRequested();
             DateTime now = timeProvider.GetUtcNow().UtcDateTime;
-            IReadOnlyList<PaymentReconciliationClaim> claims = await repository.ClaimDueReconciliationsAsync(
-                request.LeaseOwner,
-                1,
-                now,
-                request.LeaseDuration ?? DefaultLeaseDuration,
-                cancellationToken);
-            if (claims.Count == 0)
-            {
-                break;
-            }
-
             claimed++;
-            PaymentReconciliationClaim claim = claims[0];
             PaymentAttempt? attempt = await repository.GetReconciliationAttemptAsync(claim, now, cancellationToken);
             if (string.IsNullOrWhiteSpace(attempt?.ProviderCheckoutSessionId))
             {

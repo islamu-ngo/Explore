@@ -108,7 +108,10 @@ public sealed class ReviseInstancePaidEventPolicyCommandHandler(IPaidEventPolicy
         request.CurrencyRiskLimits.Select(limit => PaidEventPolicyCurrencyRiskLimit.Create(
             limit.CurrencyCode,
             limit.PerEventSalesCeilingMinor,
+            limit.PerEventSalesCountCeiling,
             limit.RollingOrganizerSalesCeilingMinor,
+            limit.RollingOrganizerSalesCountCeiling,
+            limit.RollingOrganizerWindowDays,
             limit.HighValueReviewThresholdMinor));
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
@@ -147,9 +150,12 @@ internal sealed class PaidEventPolicyCurrencyRiskLimitDtoValidator : AbstractVal
     public PaidEventPolicyCurrencyRiskLimitDtoValidator()
     {
         RuleFor(limit => limit.CurrencyCode).NotEmpty().MaximumLength(3);
-        RuleFor(limit => limit.PerEventSalesCeilingMinor).GreaterThanOrEqualTo(0).When(limit => limit.PerEventSalesCeilingMinor.HasValue);
-        RuleFor(limit => limit.RollingOrganizerSalesCeilingMinor).GreaterThanOrEqualTo(0).When(limit => limit.RollingOrganizerSalesCeilingMinor.HasValue);
-        RuleFor(limit => limit.HighValueReviewThresholdMinor).GreaterThanOrEqualTo(0).When(limit => limit.HighValueReviewThresholdMinor.HasValue);
+        RuleFor(limit => limit.PerEventSalesCeilingMinor).GreaterThan(0).When(limit => limit.PerEventSalesCeilingMinor.HasValue);
+        RuleFor(limit => limit.PerEventSalesCountCeiling).GreaterThan(0).When(limit => limit.PerEventSalesCountCeiling.HasValue);
+        RuleFor(limit => limit.RollingOrganizerSalesCeilingMinor).GreaterThan(0).When(limit => limit.RollingOrganizerSalesCeilingMinor.HasValue);
+        RuleFor(limit => limit.RollingOrganizerSalesCountCeiling).GreaterThan(0).When(limit => limit.RollingOrganizerSalesCountCeiling.HasValue);
+        RuleFor(limit => limit.RollingOrganizerWindowDays).GreaterThan(0).When(limit => limit.RollingOrganizerWindowDays.HasValue);
+        RuleFor(limit => limit.HighValueReviewThresholdMinor).GreaterThan(0).When(limit => limit.HighValueReviewThresholdMinor.HasValue);
     }
 }
 

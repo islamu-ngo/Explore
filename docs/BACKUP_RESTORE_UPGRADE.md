@@ -11,6 +11,10 @@ ABOUTME: Grounds release operations in provider-native database tools, authority
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
 
+## Payment Restore Inventory And Order
+
+Before restore, enable global stop-sale. Restore as one consistent recovery point: application database tables for payment attempts, paid acceptance snapshots, Checkout dispatch effects, incoming webhook messages/effects, payment reconciliation effects, succeeded observations, secret-binding metadata, and Quartz state; then restore Data Protection keys before exposing BFF sessions or one-time Checkout tickets. Rebind provider and webhook secrets without copying secret values into evidence. Start signed webhook intake and reconciliation first, verify stable due claims and no duplicate provider idempotency identities, then restore support/reads. Clear stop-sale only after reconciliation health is bounded and current acceptance disclosure can be regenerated. Never synthesize acceptance for a historical attempt after restore.
+
 ## Pre-v1 Privacy-erasure Reset Policy
 
 The removed `PrivacyErasure:Durability:Mode` contract has no compatibility

@@ -192,11 +192,11 @@ public sealed class RegistrationOrderServiceTests : IDisposable
     {
         var order = CreateOrder();
 
-        var result = await _service.StartCurrentPaymentAsync(order.EventId!.Value, order.Id!.Value, order);
+        var result = await _service.StartCurrentPaymentAsync(order.EventId!.Value, order.Id!.Value, order, "revision");
 
         await Assert.That(result).IsNull();
         await _apiClient.DidNotReceive().StartAuthenticatedRegistrationPaymentAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<PaidOrderAcceptanceAcknowledgementDto?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -205,10 +205,12 @@ public sealed class RegistrationOrderServiceTests : IDisposable
         var order = CreateOrder("start-payment");
         var payment = CreatePayment("payment-status", "checkout-redirect");
         _apiClient.StartAuthenticatedRegistrationPaymentAsync(
-                order.EventId!.Value, order.Id!.Value, Arg.Is<string>(value => IsUuid7(value)), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                order.EventId!.Value, order.Id!.Value, Arg.Is<string>(value => IsUuid7(value)), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Is<PaidOrderAcceptanceAcknowledgementDto>(value => value.Acknowledged == true && value.DisclosureRevision == "revision"),
+                Arg.Any<CancellationToken>())
             .Returns(payment);
 
-        var result = await _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order);
+        var result = await _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, "revision");
 
         await Assert.That(result).IsSameReferenceAs(payment);
     }

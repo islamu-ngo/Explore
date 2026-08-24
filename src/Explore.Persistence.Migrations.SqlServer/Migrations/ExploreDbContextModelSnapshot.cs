@@ -16125,6 +16125,246 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("owner_types", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutReviewApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("event_id");
+
+                    b.Property<long?>("MaximumOrderAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("maximum_order_amount_minor");
+
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("organizer_actor_id");
+
+                    b.Property<Guid>("PaidEventPolicyVersionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("paid_event_policy_version_id");
+
+                    b.Property<string>("RequestReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("request_reason_code");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("ReviewReasonCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("review_reason_code");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<string>("StatusCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("TriggerId")
+                        .HasColumnType("int")
+                        .HasColumnName("trigger_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_paid_checkout_review_approvals");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_paid_checkout_review_approvals_tenant_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "OrganizerActorId", "PaidEventPolicyVersionId", "CurrencyCode", "TriggerId", "StatusCode")
+                        .HasDatabaseName("ix_paid_checkout_review_approvals_tenant_id_event_id_organizer_actor_id_paid_event_policy_version_id_currency_code_trigger_id_s");
+
+                    b.ToTable("paid_checkout_review_approvals", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_paid_checkout_review_approvals_amount", "(trigger_id = 1 AND maximum_order_amount_minor IS NULL) OR (trigger_id = 2 AND maximum_order_amount_minor > 0)");
+
+                            t.HasCheckConstraint("ck_paid_checkout_review_approvals_separation", "reviewed_by_user_id IS NULL OR reviewed_by_user_id <> requested_by_user_id");
+
+                            t.HasCheckConstraint("ck_paid_checkout_review_approvals_status", "status_code IN ('pending', 'approved', 'rejected')");
+
+                            t.HasCheckConstraint("ck_paid_checkout_review_approvals_trigger", "trigger_id IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControl", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsStopped")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_stopped");
+
+                    b.Property<DateTime?>("ResumeRequestedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("resume_requested_at");
+
+                    b.Property<Guid?>("ResumeRequestedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("resume_requested_by");
+
+                    b.Property<DateTime?>("ResumeReviewedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("resume_reviewed_at");
+
+                    b.Property<Guid?>("ResumeReviewedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("resume_reviewed_by");
+
+                    b.Property<string>("ScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("nvarchar(48)")
+                        .HasColumnName("scope_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_paid_checkout_sale_controls");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_paid_checkout_sale_controls_tenant_id_id");
+
+                    b.HasIndex("TenantId", "EventId")
+                        .HasDatabaseName("ix_paid_checkout_sale_controls_tenant_id_event_id");
+
+                    b.HasIndex("TenantId", "ScopeKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_checkout_sale_controls_tenant_id_scope_key");
+
+                    b.ToTable("paid_checkout_sale_controls", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_paid_checkout_sale_controls_version", "version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControlAudit", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("PaidCheckoutSaleControlId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("paid_checkout_sale_control_id");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int")
+                        .HasColumnName("sequence");
+
+                    b.Property<string>("ActionCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("action_code");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<Guid?>("SubjectUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("subject_user_id");
+
+                    b.HasKey("TenantId", "PaidCheckoutSaleControlId", "Sequence")
+                        .HasName("pk_paid_checkout_sale_control_audits");
+
+                    b.HasIndex("TenantId", "EventId", "OccurredAt")
+                        .HasDatabaseName("ix_paid_checkout_sale_control_audits_tenant_id_event_id_occurred_at");
+
+                    b.ToTable("paid_checkout_sale_control_audits", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_paid_checkout_sale_control_audits_sequence", "sequence > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedCurrency", b =>
                 {
                     b.Property<string>("PolicyScopeKey")
@@ -16222,9 +16462,21 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("per_event_sales_ceiling_minor");
 
+                    b.Property<int?>("PerEventSalesCountCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("per_event_sales_count_ceiling");
+
                     b.Property<long?>("RollingOrganizerSalesCeilingMinor")
                         .HasColumnType("bigint")
                         .HasColumnName("rolling_organizer_sales_ceiling_minor");
+
+                    b.Property<int?>("RollingOrganizerSalesCountCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("rolling_organizer_sales_count_ceiling");
+
+                    b.Property<int?>("RollingOrganizerWindowDays")
+                        .HasColumnType("int")
+                        .HasColumnName("rolling_organizer_window_days");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier")
@@ -16356,6 +16608,326 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasDatabaseName("ix_paid_event_policy_versions_policy_scope_key_version_number");
 
                     b.ToTable("paid_event_policy_versions", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceLine", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("PaidOrderAcceptanceSnapshotId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("paid_order_acceptance_snapshot_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int")
+                        .HasColumnName("ordinal");
+
+                    b.Property<long>("DiscountAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("discount_amount_minor");
+
+                    b.Property<long>("LineTotalMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_total_minor");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrderLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("order_line_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<long>("UnitAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_amount_minor");
+
+                    b.HasKey("TenantId", "PaidOrderAcceptanceSnapshotId", "Ordinal")
+                        .HasName("pk_paid_order_acceptance_lines");
+
+                    b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_order_acceptance_lines_tenant_id_paid_order_acceptance_snapshot_id_order_line_id");
+
+                    b.ToTable("paid_order_acceptance_lines", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_paid_order_acceptance_lines_shape", "ordinal >= 0 AND quantity > 0 AND unit_amount_minor >= 0 AND discount_amount_minor >= 0 AND line_total_minor >= 0 AND discount_amount_minor <= unit_amount_minor * quantity AND line_total_minor = unit_amount_minor * quantity - discount_amount_minor");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AcceptedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<string>("ActivationStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("activation_status");
+
+                    b.Property<string>("ChargeType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("charge_type");
+
+                    b.Property<string>("ComplaintContact")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasColumnName("complaint_contact");
+
+                    b.Property<string>("ComplaintOwner")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("complaint_owner");
+
+                    b.Property<string>("CompositionRevision")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("composition_revision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTimeOffset>("DeliveryEndsAtUtc")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("delivery_ends_at_utc");
+
+                    b.Property<DateTimeOffset>("DeliveryStartsAtUtc")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("delivery_starts_at_utc");
+
+                    b.Property<string>("DisclosureRevision")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("disclosure_revision");
+
+                    b.Property<string>("DisputeOwner")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("dispute_owner");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventTimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("event_time_zone_id");
+
+                    b.Property<Guid>("InstancePolicyVersionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("instance_policy_version_id");
+
+                    b.Property<bool>("IsOfficialInstance")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_official_instance");
+
+                    b.Property<string>("MerchantDisclosureText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("merchant_disclosure_text");
+
+                    b.Property<string>("OfficialOrigin")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("official_origin");
+
+                    b.Property<string>("OperatorDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("operator_display_name");
+
+                    b.Property<Guid>("OperatorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("operator_id");
+
+                    b.Property<string>("OperatorLegalNoticeUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("operator_legal_notice_url");
+
+                    b.Property<string>("OperatorPrivacyUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("operator_privacy_url");
+
+                    b.Property<string>("OperatorRegionCode")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)")
+                        .HasColumnName("operator_region_code");
+
+                    b.Property<string>("OperatorTermsUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("operator_terms_url");
+
+                    b.Property<string>("OperatorWebsiteUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("operator_website_url");
+
+                    b.Property<long>("OrganizerAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("organizer_amount_minor");
+
+                    b.Property<long>("PlatformContributionMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_contribution_minor");
+
+                    b.Property<long>("PlatformFeeMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_fee_minor");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderCredentialOwner")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("provider_credential_owner");
+
+                    b.Property<string>("ProviderEnvironment")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("provider_environment");
+
+                    b.Property<string>("ProviderProfileCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("provider_profile_code");
+
+                    b.Property<string>("ReconciliationOwner")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("reconciliation_owner");
+
+                    b.Property<string>("RefundOwner")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("refund_owner");
+
+                    b.Property<string>("RefundPolicyLanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("nvarchar(35)")
+                        .HasColumnName("refund_policy_language_tag");
+
+                    b.Property<string>("RefundPolicyText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("refund_policy_text");
+
+                    b.Property<int>("RefundPolicyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("refund_policy_version");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<string>("StatementDescriptor")
+                        .IsRequired()
+                        .HasMaxLength(22)
+                        .HasColumnType("nvarchar(22)")
+                        .HasColumnName("statement_descriptor");
+
+                    b.Property<string>("SupportContact")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasColumnName("support_contact");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid?>("TenantPolicyVersionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_policy_version_id");
+
+                    b.Property<long>("TotalMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_minor");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_paid_order_acceptance_snapshots");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_paid_order_acceptance_snapshots_tenant_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "AcceptedAt")
+                        .HasDatabaseName("ix_paid_order_acceptance_snapshots_tenant_id_event_id_accepted_at");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "DisclosureRevision")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_order_acceptance_snapshots_tenant_id_registration_order_id_disclosure_revision");
+
+                    b.ToTable("paid_order_acceptance_snapshots", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_paid_order_acceptance_amounts", "organizer_amount_minor > 0 AND platform_fee_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND platform_contribution_minor >= 0 AND total_minor = organizer_amount_minor + platform_contribution_minor");
+
+                            t.HasCheckConstraint("ck_paid_order_acceptance_delivery", "delivery_ends_at_utc > delivery_starts_at_utc");
+
+                            t.HasCheckConstraint("ck_paid_order_acceptance_refund_version", "refund_policy_version > 0");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantDataCollectionMode", b =>
@@ -16638,6 +17210,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("organizer_amount_minor");
 
+                    b.Property<Guid?>("PaidOrderAcceptanceSnapshotId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("paid_order_acceptance_snapshot_id");
+
                     b.Property<int>("PaymentAttemptStatusId")
                         .HasColumnType("int")
                         .HasColumnName("payment_attempt_status_id");
@@ -16740,6 +17316,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_payment_attempts_active_scope_key_active_uniqueness_slot");
 
+                    b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasDatabaseName("ix_payment_attempts_tenant_id_paid_order_acceptance_snapshot_id");
+
                     b.HasIndex("TenantId", "RegistrationOrderId", "PaymentAttemptStatusId")
                         .HasDatabaseName("ix_payment_attempts_tenant_id_registration_order_id_payment_attempt_status_id");
 
@@ -16747,7 +17326,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_payment_attempts_active_slot", "(payment_attempt_status_id IN (6, 7) AND active_uniqueness_slot <> 'active') OR active_uniqueness_slot = 'active'");
 
-                            t.HasCheckConstraint("ck_payment_attempts_amounts", "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor");
+                            t.HasCheckConstraint("ck_payment_attempts_amounts", "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor");
 
                             t.HasCheckConstraint("ck_payment_attempts_authoritative_status_floor", "authoritative_status_floor_id BETWEEN 1 AND 8");
 
@@ -16905,8 +17484,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "SourceIncomingWebhookMessageId")
                         .HasDatabaseName("ix_payment_reconciliation_effects_tenant_id_source_incoming_webhook_message_id");
 
-                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("ix_payment_reconciliation_effects_status_next_attempt_at_created_at");
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_payment_reconciliation_effects_worker_poll");
+
+                    b.HasIndex("Status", "ProcessingLeaseExpiresAt", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_payment_reconciliation_effects_expired_lease_poll");
 
                     b.ToTable("payment_reconciliation_effects", "islamu_event", t =>
                         {
@@ -34576,6 +35158,52 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Navigation("Connection");
                 });
 
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutReviewApproval", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_checkout_review_approvals_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_checkout_review_approvals_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControl", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_checkout_sale_controls_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_paid_checkout_sale_controls_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControlAudit", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidCheckoutSaleControl", null)
+                        .WithMany("AuditTrail")
+                        .HasForeignKey("TenantId", "PaidCheckoutSaleControlId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_checkout_sale_control_audits_paid_checkout_sale_controls_tenant_id_paid_checkout_sale_control_id");
+                });
+
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedCurrency", b =>
                 {
                     b.HasOne("Explore.Domain.PaidEventPolicyVersion", null)
@@ -34627,6 +35255,43 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_paid_event_policy_versions_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceLine", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_order_acceptance_lines_paid_order_acceptance_snapshots_tenant_id_paid_order_acceptance_snapshot_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceSnapshot", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_order_acceptance_snapshots_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_order_acceptance_snapshots_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_order_acceptance_snapshots_registration_orders_tenant_id_registration_order_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
@@ -34689,6 +35354,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_payment_attempts_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", "AcceptanceSnapshot")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payment_attempts_paid_order_acceptance_snapshots_tenant_id_paid_order_acceptance_snapshot_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -34772,6 +35444,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .HasForeignKey("PaymentAttemptId")
                                 .HasConstraintName("fk_payment_attempts_payment_attempts_id");
                         });
+
+                    b.Navigation("AcceptanceSnapshot");
 
                     b.Navigation("PaymentAttemptStatus");
 
@@ -34889,125 +35563,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
                 {
-                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("nvarchar(max)")
-                                        .HasColumnName("domains_instance_base_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_instance_base_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("AllowTenantCustomDomains")
-                                .IsRequired();
-
-                            b1.Navigation("InstanceBaseDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantCustomDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantSubdomain")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -35127,6 +35682,125 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uniqueidentifier")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("nvarchar(max)")
+                                        .HasColumnName("domains_instance_base_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_instance_base_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowTenantCustomDomains")
+                                .IsRequired();
+
+                            b1.Navigation("InstanceBaseDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantCustomDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSubdomain")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -35243,6 +35917,73 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
 
                             b1.Navigation("EventCardClickOpensDetailPage")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uniqueidentifier")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 
@@ -35845,73 +36586,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
 
                             b1.Navigation("Version")
-                                .IsRequired();
-                        });
-
-                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("EnableIslamicModule")
-                                .IsRequired();
-
-                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 
@@ -41005,6 +41679,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Navigation("SupportedCurrencyRows");
                 });
 
+            modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControl", b =>
+                {
+                    b.Navigation("AuditTrail");
+                });
+
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyVersion", b =>
                 {
                     b.Navigation("AllowedCurrencyRows");
@@ -41014,6 +41693,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Navigation("CurrencyRiskLimitRows");
 
                     b.Navigation("RefundProtectionRows");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceSnapshot", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionSetting", b =>

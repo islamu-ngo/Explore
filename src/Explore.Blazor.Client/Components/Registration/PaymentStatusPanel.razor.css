@@ -9,6 +9,70 @@
     border-radius: var(--isl-radius-card);
 }
 
+.payment-acceptance {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.payment-acceptance dl {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.4fr) minmax(0, 1fr);
+    gap: var(--isl-space-2) var(--isl-space-3);
+    margin: 0;
+}
+
+.payment-acceptance dt {
+    font-weight: 600;
+}
+
+.payment-acceptance dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.payment-acceptance__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-3);
+}
+
+.payment-acceptance__links a:focus-visible,
+.payment-acceptance__acknowledgement input:focus-visible {
+    outline: 2px solid var(--isl-color-focus);
+    outline-offset: 2px;
+}
+
+.payment-acceptance__acknowledgement {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--isl-space-2);
+    max-inline-size: 70ch;
+}
+
+.payment-acceptance__acknowledgement input {
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    flex: 0 0 auto;
+}
+
+.payment-acceptance__lines ul {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.payment-acceptance__lines li {
+    padding: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.payment-acceptance__lines h5 {
+    margin-block-end: var(--isl-space-2);
+}
+
 .payment-status__message {
     display: flex;
     align-items: flex-start;
@@ -20,6 +84,12 @@
 
 .payment-status__message--attention {
     border-inline-start-color: var(--isl-color-error);
+}
+
+@media (max-width: 40rem) {
+    .payment-acceptance dl {
+        grid-template-columns: 1fr;
+    }
 }
 
 .payment-status__actions {

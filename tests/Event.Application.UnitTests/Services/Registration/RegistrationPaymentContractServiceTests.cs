@@ -20,6 +20,7 @@ public sealed class RegistrationPaymentContractServiceTests
     private readonly IRegistrationPaymentAttemptRepository _attempts = Substitute.For<IRegistrationPaymentAttemptRepository>();
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
     private readonly IHostedCheckoutSessionRetriever _retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
+    private readonly IPaidOrderAcceptanceFreshnessService _freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
 
     [Test]
     public async Task ResolveCheckoutTargetAsync_RequiresExactOpenUnpaidUnexpiredMatchingSession()
@@ -71,7 +72,7 @@ public sealed class RegistrationPaymentContractServiceTests
         _retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
             .Returns(HostedCheckoutRetrieveResult.Succeeded(valid, null));
 
-        var expiredStart = await service.StartAsync(expiredOrder, CancellationToken.None);
+        var expiredStart = await service.StartAsync(expiredOrder, null, CancellationToken.None);
         RegistrationPaymentDto? expiredRedirectStatus = await service.GetAsync(expiredOrder, CancellationToken.None);
 
         await Assert.That(expiredStart.Success).IsFalse();
@@ -120,6 +121,7 @@ public sealed class RegistrationPaymentContractServiceTests
             .SetValue(replacement, (int)PaymentAttemptStatusEnum.Created);
         CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(replacement, UtcNow);
         _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((replacement, effect));
+        _freshness.IsCurrentAsync(replacement, Arg.Any<CancellationToken>()).Returns(true);
 
         RegistrationPaymentCommandResultDto replay = await CreateService().RetryAsync(order, CancellationToken.None);
         typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.PaymentAttemptStatusId))!
@@ -130,6 +132,26 @@ public sealed class RegistrationPaymentContractServiceTests
         await Assert.That(replay.Payment!.Id).IsEqualTo(replacement.Id);
         await Assert.That(unknown.Success).IsFalse();
         await Assert.That(unknown.FailureCode).IsEqualTo("payment_retry_not_available");
+    }
+
+    [Test]
+    public async Task RetryAsync_RejectsStaleAcceptanceBeforeAnyRetryMutation()
+    {
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt attempt = CreateRequiresActionAttempt();
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.ProviderCheckoutSessionId))!.SetValue(attempt, null);
+        typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.PaymentAttemptStatusId))!
+            .SetValue(attempt, (int)PaymentAttemptStatusEnum.Created);
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(attempt, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((attempt, effect));
+        _freshness.IsCurrentAsync(attempt, Arg.Any<CancellationToken>()).Returns(false);
+
+        RegistrationPaymentCommandResultDto result = await CreateService().RetryAsync(order, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("payment_acceptance_stale");
+        await _attempts.DidNotReceive().RetryParkedPreHandoffAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -149,6 +171,8 @@ public sealed class RegistrationPaymentContractServiceTests
 
     private RegistrationPaymentContractService CreateService()
     {
+        var claimFreshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        claimFreshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
         var claimService = new RegistrationPaymentAttemptClaimService(
             _attempts,
             Substitute.For<IRegistrationInventoryRepository>(),
@@ -157,8 +181,25 @@ public sealed class RegistrationPaymentContractServiceTests
             Substitute.For<IPaidEventPolicyRepository>(),
             Substitute.For<IOrganizerPaymentCommerceConfiguration>(),
             Substitute.For<IPaymentProviderDescriptor>(),
+            Substitute.For<IPaidCheckoutActivationService>(),
+            claimFreshness,
             new InlineUnitOfWork());
-        return new(_attempts, _finalization, claimService, _retriever, new FixedTimeProvider(UtcNow));
+        var acceptanceService = new PaidOrderAcceptanceService(
+            Substitute.For<IEventTicketCatalogRepository>(),
+            Substitute.For<IEventRepository>(),
+            Substitute.For<IPaidEventPolicyRepository>(),
+            ReadyGovernance(),
+            Substitute.For<IPaidCheckoutActivationService>(),
+            Substitute.For<IPaymentProviderDescriptor>(),
+            new FixedTimeProvider(UtcNow));
+        return new(
+            _attempts,
+            _finalization,
+            claimService,
+            acceptanceService,
+            _freshness,
+            _retriever,
+            new FixedTimeProvider(UtcNow));
     }
 
     private RegistrationOrder CreateOrder(DateTime? expiresAt = null)
@@ -184,6 +225,14 @@ public sealed class RegistrationPaymentContractServiceTests
         return order;
     }
 
+    private static IPaidCheckoutGovernance ReadyGovernance()
+    {
+        var governance = Substitute.For<IPaidCheckoutGovernance>();
+        governance.IsConfigured.Returns(true);
+        governance.IsActivated.Returns(true);
+        return governance;
+    }
+
     private PaymentAttempt CreateRequiresActionAttempt()
     {
         OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
@@ -201,6 +250,10 @@ public sealed class RegistrationPaymentContractServiceTests
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), _tenantId, _orderId, recipient, "OrganizerDirect", "2026-08-20.acacia",
             "composition-a", 1_000, 75, 125, "checkout:key", UtcNow, UtcNow.AddMinutes(30));
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            _tenantId, _orderId, Guid.CreateVersion7(), "composition-a",
+            recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
+            1_000, 75, 125, UtcNow));
         attempt.MarkDispatchPending(UtcNow.AddSeconds(1), null);
         attempt.MarkRequiresAction("cs_exact", UtcNow.AddSeconds(2), null);
         return attempt;

@@ -1,6 +1,7 @@
 // ABOUTME: Defines the identity-free registration-order payload returned to a capability holder.
 // ABOUTME: Projects safe order state without exposing account or purchaser actor identifiers.
 
+using System.Text.Json.Serialization;
 using Explore.Application.Responses;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
@@ -29,6 +30,8 @@ public sealed class GuestRegistrationOrderDto
     public DateTime? RejectedAt { get; init; }
     public DateTime? CancelledAt { get; init; }
     public IReadOnlyList<RegistrationOrderLineDto> Lines { get; init; } = [];
+    [JsonIgnore]
+    public bool PaidCheckoutActivationAvailable { get; init; }
 
     public static GuestRegistrationOrderDto From(RegistrationOrderDto order)
     {
@@ -56,7 +59,8 @@ public sealed class GuestRegistrationOrderDto
             ConfirmedAt = order.ConfirmedAt,
             RejectedAt = order.RejectedAt,
             CancelledAt = order.CancelledAt,
-            Lines = order.Lines
+            Lines = order.Lines,
+            PaidCheckoutActivationAvailable = order.PaidCheckoutActivationAvailable
         };
     }
 }

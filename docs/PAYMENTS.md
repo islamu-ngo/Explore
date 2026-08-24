@@ -6,10 +6,16 @@
 > **Audience:** Operators | Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Commerce
-> **Last Verified:** 2026-08-21
+> **Last Verified:** 2026-08-24
 > **Source Anchors:** `Explore.Domain/PaymentAttempt.cs`, `Explore.Domain/OrganizerPaymentProviderConnection.cs`, `Explore.Domain/PaidEventPolicyVersion.cs`, `Explore.Domain/Services/Registration/PaidEventPolicyRules.cs`, `Explore.Application/Contracts/Payments/`, `Explore.Application/Contracts/Services/IOrganizerPaymentOnboardingProvider.cs`, `Explore.Application/Services/Registration/RegistrationPaymentAttemptClaimService.cs`, `Explore.Infrastructure/Payments/Stripe/`, `Explore.API/Controllers/PaidEventPolicySettingsController.cs`, `Explore.Blazor/Extensions/BffRegistrationPaymentEndpoints.cs`, `docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md`, `docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md`
 
 ISLAMU Event provides a robust, multi-tenant, and **provider-neutral payment architecture** for paid event ticketing. The subsystem is decoupled through Clean Architecture ports and adapters: domain and application logic remain completely independent of any specific payment vendor.
+
+## Paid Checkout Activation Safety
+
+New paid Checkout is disabled by default and fails closed until `Payments:CheckoutGovernance` names the independent instance operator, official origin, complaint contact, refund language, statement descriptor, and charge type. The browser first reads exact server facts and explicitly acknowledges their SHA-256 revision. The resulting `PaidOrderAcceptanceSnapshot` pins merchant/operator status, delivery, line and aggregate money, refund/support/complaint, provider, and descriptor facts before a provider session can be created. Historical attempts remain readable and reconcilable with a null acceptance reference; they are never backfilled. A global or event stop-sale blocks new claim and dispatch while signed webhooks, reconciliation, support, and reads continue. Refund initiation is not implemented and is not a stop-sale capability.
+
+`OrganizerDirect` describes the technical direct-charge profile. It does not establish who legally controls an account, bears loss, or owes a remedy in a particular deployment. Operators must retain provider, contractual, legal, and operational evidence for those deployment-specific conclusions.
 
 **Stripe is currently the initial concrete payment provider adapter** implemented in Infrastructure via Stripe Connect. The platform is designed so additional payment gateways (such as PayPal, Mollie, Lemonsqueezy, or regional processors) can be added as modular Infrastructure adapters without altering the core Domain or Application business rules.
 
@@ -184,30 +190,20 @@ To publish paid events, an organizer actor must connect an eligible merchant acc
 
 ---
 
-## 7. Refunds & Balance Liability in OrganizerDirect
+## 7. Refunds And Balance Liability In OrganizerDirect
 
-A common operational question in the `OrganizerDirect` model is: **how do refunds work if ticket funds go directly to the organizer, and what happens if an organizer withdraws the money from their bank?**
+`OrganizerDirect` is a technical direct-charge profile, not a universal legal or loss-allocation conclusion. Provider balance recovery, bank debit eligibility, negative-balance collection, and liability vary by provider configuration, controller country, connected-account agreement, payment method, and applicable law. Operators must verify those facts against current provider and contractual evidence; this document does not state that a provider will debit an organizer automatically, pursue one party, or insulate another party from loss.
 
-### 1. Does the refund come out of the organizer's Stripe account?
-**Yes, 100%.** 
-Because `OrganizerDirect` creates direct charges on the organizer's connected account (`acct_...`), any refund is issued directly against that original charge in the organizer's account. Neither the instance host nor tenant administrators are the merchant of record.
+ISLAMU Event does **not** currently implement refund initiation, a `RefundAttempt` aggregate, a refund provider port, or a refund API. A stop-sale therefore preserves no in-product refund command. Operators must not advertise an application refund workflow until the separate refund workstream ships and is operationally rehearsed.
 
-### 2. How does Stripe pull the funds for a refund?
-When a refund is triggered in ISLAMU Event:
-1. **Available / Pending Balance First:** Stripe attempts to deduct the refund amount from the organizer's current Stripe account balance (funds from ongoing or upcoming ticket sales).
-2. **Automatic Bank Debit (if balance is insufficient):** If the organizer has already received a payout to their bank account and their Stripe balance is zero (or less than the refund amount), **Stripe automatically initiates a reverse direct debit (ACH, SEPA, Bacs, etc.) from the organizer's linked bank account** to cover the refund.
+Any future refund implementation must:
 
-### 3. What if the organizer empties their bank account as well?
-If the bank auto-debit fails (e.g., closed account or insufficient funds):
-- **Negative Balance on Stripe:** The organizer's connected account enters a **negative balance**.
-- **Future Sales Offset:** Any future ticket sales or payments to that organizer account are automatically withheld by Stripe until the negative balance is cleared.
-- **Liability & Collections (Stripe vs. Organizer):** Because the platform uses **Direct Charges with Stripe-managed loss collection** (per ADR-022 and controller configuration), **Stripe pursues the organizer directly** based on the identity verification (KYC/KYB, government ID, business registration, tax ID) collected during Stripe-hosted onboarding.
-- **Platform Protection:** The ISLAMU platform operator and tenant administrators are **not liable** for the organizer's negative balance. The platform's operating funds and bank accounts are never debited for an organizer's bad balance or refund defaults.
-
-### 4. How ISLAMU Tracks Refunds
-1. ISLAMU records an independent, idempotent `RefundAttempt` pinned to the original connected account and charge ID.
-2. The refund status stays `Pending` / `Requested` until Stripe processes the transaction.
-3. Once Stripe confirms execution (via signed webhook `charge.refunded` or background reconciliation), ISLAMU marks the order and refund state as `Succeeded`. If Stripe rejects the refund (e.g., account frozen/blocked), it is flagged for manual reconciliation without corrupting order history.
+1. pin the original tenant, order, provider, connected account, charge, currency, and amount;
+2. use durable idempotency and an explicit reconciliation state machine;
+3. preserve buyer remedy access while new sales are stopped;
+4. expose only server-authorized HAL affordances;
+5. document deployment-specific responsibility without deriving legal conclusions from the charge profile; and
+6. prove webhook, retry, duplicate-delivery, insufficient-balance, and restore behavior before activation.
 
 ---
 

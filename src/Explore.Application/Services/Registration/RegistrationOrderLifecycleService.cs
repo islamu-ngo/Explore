@@ -23,7 +23,8 @@ public sealed partial class RegistrationOrderLifecycleService(
     IRegistrationFinalizationRepository finalization,
     IRegistrationPaymentAttemptRepository paymentAttempts,
     IScheduledDeadlineDispatcher deadlines,
-    TimeProvider timeProvider) : IRegistrationOrderLifecycleService
+    TimeProvider timeProvider,
+    IPaidOrderAcceptanceService paidAcceptance) : IRegistrationOrderLifecycleService
 {
     public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
@@ -781,7 +782,13 @@ public sealed partial class RegistrationOrderLifecycleService(
         }
 
         PlatformContributionSetting? contributionSetting = await contributionSettings.GetActiveAsync(cancellationToken);
-        return RegistrationOrderDto.From(order, contributionSetting: contributionSetting);
+        RegistrationOrderDto dto = RegistrationOrderDto.From(order, contributionSetting: contributionSetting);
+        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+                dto.StatusId, dto.TotalDueMinor, dto.ExpiresAt, timeProvider.GetUtcNow().UtcDateTime))
+        {
+            dto.PaidCheckoutActivationAvailable = (await paidAcceptance.DescribeAsync(order, cancellationToken)).Success;
+        }
+        return dto;
     }
 
     public async Task<IReadOnlyList<RegistrationOrderDto>> GetByEventAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken)

@@ -172,6 +172,8 @@ public static class ApplicationServicesRegistration
             .ValidateOnStart();
         services.AddOptions<OrganizerPaymentCommerceOptions>()
             .Bind(configuration.GetSection(OrganizerPaymentCommerceOptions.SectionName));
+        services.AddOptions<PaidCheckoutGovernanceOptions>()
+            .Bind(configuration.GetSection(PaidCheckoutGovernanceOptions.SectionName));
         services.AddOptions<PromotionCodeLookupOptions>()
             .Bind(configuration.GetSection(PromotionCodeLookupOptions.SectionName))
             .Validate(
@@ -180,6 +182,8 @@ public static class ApplicationServicesRegistration
             .ValidateOnStart();
         services.AddScoped<IOrganizerPaymentCommerceConfiguration>(provider =>
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OrganizerPaymentCommerceOptions>>().Value);
+        services.AddScoped<IPaidCheckoutGovernance>(provider =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<PaidCheckoutGovernanceOptions>>().Value);
         services.AddSingleton<IValidateOptions<OrganizerPaymentReadinessReconciliationOptions>, OrganizerPaymentReadinessReconciliationOptionsValidator>();
         services.AddOptions<RegistrationFileAnswerOptions>()
             .Bind(configuration.GetSection(RegistrationFileAnswerOptions.SectionName));
@@ -223,6 +227,11 @@ public static class ApplicationServicesRegistration
         services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
         services.AddScoped<OrganizerPaymentReadinessReconciliationService>();
         services.AddScoped<PaidEventPublicationPreflightService>();
+        services.AddScoped<PaidCheckoutActivationService>();
+        services.AddSingleton<IPaidCheckoutTelemetry, PaidCheckoutTelemetry>();
+        services.AddScoped<IPaidCheckoutActivationService, TelemetryPaidCheckoutActivationService>();
+        services.AddScoped<IPaidOrderAcceptanceService, PaidOrderAcceptanceService>();
+        services.AddScoped<IPaidOrderAcceptanceFreshnessService, PaidOrderAcceptanceFreshnessService>();
         services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();

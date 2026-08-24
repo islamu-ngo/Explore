@@ -31,7 +31,9 @@ public sealed class RegistrationPaymentCheckoutDispatchService(
     IHostedCheckoutSessionRetriever checkoutRetriever,
     IPaymentIntentRetriever paymentIntentRetriever,
     IRegistrationOrderLifecycleService orderLifecycle,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IPaidCheckoutActivationService checkoutActivation,
+    IPaidOrderAcceptanceFreshnessService acceptanceFreshness)
 {
     private static readonly TimeSpan ProviderCutoffMinimum = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan ProviderCutoffTransportMargin = TimeSpan.FromMinutes(1);
@@ -198,6 +200,32 @@ public sealed class RegistrationPaymentCheckoutDispatchService(
                 continue;
             }
 
+            if (attempt.AcceptanceSnapshot is not { } acceptance)
+            {
+                CheckoutDispatchConfigurationDisposition disposition = await DeferActivationAsync(
+                    claim, "payment_acceptance_missing", now, cancellationToken);
+                CountDisposition(disposition, ref retried, ref parked, ref stale);
+                continue;
+            }
+
+            PaidCheckoutActivationResult activation = await checkoutActivation.EvaluateAsync(
+                new(attempt.TenantId, acceptance.EventId, attempt.CurrencyCode, attempt.TotalMinor, now, attempt.Id), cancellationToken);
+            if (!activation.IsActive)
+            {
+                CheckoutDispatchConfigurationDisposition disposition = await DeferActivationAsync(
+                    claim, activation.FailureCode ?? "payment_activation_unavailable", now, cancellationToken);
+                CountDisposition(disposition, ref retried, ref parked, ref stale);
+                continue;
+            }
+
+            if (!await acceptanceFreshness.IsCurrentAsync(attempt, cancellationToken))
+            {
+                CheckoutDispatchConfigurationDisposition disposition = await DeferActivationAsync(
+                    claim, "payment_acceptance_stale", now, cancellationToken);
+                CountDisposition(disposition, ref retried, ref parked, ref stale);
+                continue;
+            }
+
             DateTime preparedAt = timeProvider.GetUtcNow().UtcDateTime;
             DateTime minimumCutoff = preparedAt.Add(ProviderCutoffMinimum).Add(ProviderCutoffTransportMargin);
             attempt = await repository.PrepareCheckoutDispatchAsync(claim, preparedAt, minimumCutoff, cancellationToken);
@@ -346,6 +374,28 @@ public sealed class RegistrationPaymentCheckoutDispatchService(
         int exponent = Math.Clamp(attemptCount - 1, 0, 4);
         int seconds = Math.Min(MaxPreHandoffRetrySeconds, InitialPreHandoffRetrySeconds * (1 << exponent));
         return TimeSpan.FromSeconds(seconds);
+    }
+
+    private async Task<CheckoutDispatchConfigurationDisposition> DeferActivationAsync(
+        CheckoutDispatchClaim claim,
+        string failureCode,
+        DateTime observedAt,
+        CancellationToken cancellationToken)
+    {
+        CheckoutDispatchConfigurationDisposition disposition = await repository.DeferCheckoutDispatchForConfigurationAsync(
+            claim, failureCode, observedAt.AddMinutes(5), observedAt, cancellationToken);
+        return await ResolveConfigurationDispositionAsync(claim, disposition, observedAt, cancellationToken);
+    }
+
+    private static void CountDisposition(
+        CheckoutDispatchConfigurationDisposition disposition,
+        ref int retried,
+        ref int parked,
+        ref int stale)
+    {
+        if (disposition == CheckoutDispatchConfigurationDisposition.Deferred) retried++;
+        else if (disposition == CheckoutDispatchConfigurationDisposition.CancelledExpired) parked++;
+        else stale++;
     }
 
     private Task<CheckoutDispatchConfigurationDisposition> ResolveConfigurationDispositionAsync(

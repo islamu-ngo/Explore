@@ -80,11 +80,17 @@ public static class LinkRelations
     /// Indicates a resource where payment is accepted.
     /// </summary>
     public const string Payment = "payment";
+    public const string PaymentAcceptance = "payment-acceptance";
     public const string StartPayment = "start-payment";
     public const string PaymentStatus = "payment-status";
     public const string CheckoutRedirect = "checkout-redirect";
     public const string RetryPayment = "retry-payment";
     public const string StudioPaymentStatus = "studio-payment-status";
+    public const string StopPaidSales = "stop-paid-sales";
+    public const string RequestPaidSalesResume = "request-paid-sales-resume";
+    public const string ReviewPaidSalesResume = "review-paid-sales-resume";
+    public const string RequestPaidCheckoutReview = "request-paid-checkout-review";
+    public const string DecidePaidCheckoutReview = "decide-paid-checkout-review";
 
     public const string Instantiate = "instantiate";
 

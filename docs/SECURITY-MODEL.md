@@ -9,6 +9,10 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Last Verified:** 2026-08-09
 > **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/Scheduling/MaintenanceSweepJobs.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
+## Paid Commerce Trust Boundary
+
+Paid acceptance is tenant-qualified immutable evidence, not a browser claim. Official-instance status and operator identity come only from instance-owned server configuration; merchant/organizer identity remains separate. Every new claim and provider handoff requires a current acceptance revision and the exact persisted provider/policy/composition facts. Missing evidence, policy review requirements, or global/event stop-sale removes HAL sale affordances and blocks direct endpoints. Existing signed webhook intake, reconciliation, support, refund paths, and reads intentionally remain available during stop-sale.
+
 ## Security Model
 
 Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md), the platform standardizes on **Keycloak** as its single, mandatory identity and authentication plane across all deployment modes (SaaS, BYOC, On-Premise), while delegating fine-grained resource authorization to **Cerbos**:

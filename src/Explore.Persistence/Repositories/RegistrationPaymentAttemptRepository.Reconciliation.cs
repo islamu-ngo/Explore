@@ -72,9 +72,15 @@ public sealed partial class RegistrationPaymentAttemptRepository
         TimeSpan leaseDuration,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(leaseOwner) || batchSize is < 1 or > 1000 || leaseDuration <= TimeSpan.Zero)
+        if (string.IsNullOrWhiteSpace(leaseOwner) || batchSize is < 1 or > 50 || leaseDuration <= TimeSpan.Zero)
         {
             return [];
+        }
+
+        if (string.Equals(dbContext.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+        {
+            return await ClaimDueReconciliationsPostgreSqlAsync(
+                leaseOwner.Trim(), batchSize, claimedAt, leaseDuration, cancellationToken);
         }
 
         List<PaymentReconciliationEffect> candidates = await dbContext.PaymentReconciliationEffects
@@ -83,7 +89,9 @@ public sealed partial class RegistrationPaymentAttemptRepository
                 ((value.Status == OutboxMessageStatus.Pending || value.Status == OutboxMessageStatus.Failed) && value.NextAttemptAt <= claimedAt) ||
                 (value.Status == OutboxMessageStatus.Processing && value.ProcessingLeaseExpiresAt <= claimedAt))
             .OrderBy(value => value.NextAttemptAt ?? value.CreatedAt)
-            .Take(1)
+            .ThenBy(value => value.CreatedAt)
+            .ThenBy(value => value.Id)
+            .Take(batchSize)
             .ToListAsync(cancellationToken);
         var claims = new List<PaymentReconciliationClaim>(candidates.Count);
         foreach (PaymentReconciliationEffect effect in candidates)
@@ -118,6 +126,71 @@ public sealed partial class RegistrationPaymentAttemptRepository
             dbContext.ChangeTracker.Clear();
             return [];
         }
+    }
+
+    private async Task<IReadOnlyList<PaymentReconciliationClaim>> ClaimDueReconciliationsPostgreSqlAsync(
+        string leaseOwner,
+        int batchSize,
+        DateTime claimedAt,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken)
+    {
+        Guid leaseToken = Guid.CreateVersion7();
+        DateTime leaseExpiresAt = claimedAt.Add(leaseDuration);
+        List<PostgreSqlReconciliationClaimRow> rows = await dbContext.Database.SqlQuery<PostgreSqlReconciliationClaimRow>($$"""
+            WITH locked AS
+            (
+                SELECT tenant_id, id, COALESCE(next_attempt_at, created_at) AS due_at, created_at
+                FROM payment_reconciliation_effects
+                WHERE ((status IN (1, 4) AND next_attempt_at <= {{claimedAt}})
+                    OR (status = 2 AND processing_lease_expires_at <= {{claimedAt}}))
+                ORDER BY COALESCE(next_attempt_at, created_at), created_at, id
+                LIMIT {{batchSize}}
+                FOR UPDATE SKIP LOCKED
+            ), candidates AS
+            (
+                SELECT tenant_id, id,
+                       ROW_NUMBER() OVER (ORDER BY due_at, created_at, id) AS claim_order
+                FROM locked
+            ), updated AS
+            (
+                UPDATE payment_reconciliation_effects AS effect
+                SET status = 2,
+                    attempt_count = effect.attempt_count + 1,
+                    processing_fence = effect.processing_fence + 1,
+                    processing_lease_owner = {{leaseOwner}},
+                    processing_lease_token = {{leaseToken}},
+                    processing_lease_expires_at = {{leaseExpiresAt}},
+                    next_attempt_at = NULL,
+                    last_failure_code = CASE WHEN effect.status = 2 THEN 'payment_reconciliation_interrupted' ELSE effect.last_failure_code END,
+                    unknown_at = CASE WHEN effect.status = 2 THEN {{claimedAt}} ELSE effect.unknown_at END,
+                    updated_at = {{claimedAt}}
+                FROM candidates
+                WHERE effect.tenant_id = candidates.tenant_id AND effect.id = candidates.id
+                RETURNING effect.tenant_id, effect.id AS effect_id,
+                          effect.payment_attempt_id,
+                          effect.processing_lease_token AS lease_token,
+                          effect.processing_fence,
+                          effect.attempt_count,
+                          effect.checkout_dispatch_effect_id,
+                          effect.checkout_dispatch_unknown_at,
+                          effect.checkout_dispatch_processing_fence,
+                          effect.checkout_dispatch_attempt_count,
+                          candidates.claim_order
+            )
+            SELECT * FROM updated ORDER BY claim_order
+            """).ToListAsync(cancellationToken);
+        return rows.Select(row => new PaymentReconciliationClaim(
+            row.TenantId,
+            row.EffectId,
+            row.PaymentAttemptId,
+            row.LeaseToken,
+            row.ProcessingFence,
+            row.AttemptCount,
+            row.CheckoutDispatchEffectId,
+            row.CheckoutDispatchUnknownAt,
+            row.CheckoutDispatchProcessingFence,
+            row.CheckoutDispatchAttemptCount)).ToArray();
     }
 
     public async Task<PaymentAttempt?> GetReconciliationAttemptAsync(
@@ -291,6 +364,21 @@ public sealed partial class RegistrationPaymentAttemptRepository
             .GroupBy(value => new { value.TenantId, value.RegistrationOrderId })
             .CountAsync(group => group.Count() > 1, cancellationToken);
         return new(due, unknown, parked, oldest, configurationBlocked, duplicateSucceededOrders);
+    }
+
+    private sealed class PostgreSqlReconciliationClaimRow
+    {
+        public Guid TenantId { get; init; }
+        public Guid EffectId { get; init; }
+        public Guid PaymentAttemptId { get; init; }
+        public Guid LeaseToken { get; init; }
+        public long ProcessingFence { get; init; }
+        public int AttemptCount { get; init; }
+        public Guid? CheckoutDispatchEffectId { get; init; }
+        public DateTime? CheckoutDispatchUnknownAt { get; init; }
+        public long? CheckoutDispatchProcessingFence { get; init; }
+        public int? CheckoutDispatchAttemptCount { get; init; }
+        public long ClaimOrder { get; init; }
     }
 
     private static bool ApplyPaymentDecision(PaymentAttempt attempt, PaymentReconciliationDecision decision)

@@ -16,7 +16,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
         Guid registrationOrderId,
         CancellationToken cancellationToken)
     {
-        var row = await (from attempt in dbContext.PaymentAttempts
+        var row = await (from attempt in dbContext.PaymentAttempts.Include(value => value.AcceptanceSnapshot)
                          join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
                              equals new { effect.TenantId, effect.PaymentAttemptId }
                          where attempt.TenantId == tenantId && attempt.RegistrationOrderId == registrationOrderId
@@ -31,7 +31,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
         Guid registrationOrderId,
         CancellationToken cancellationToken)
     {
-        var row = await (from attempt in dbContext.PaymentAttempts
+        var row = await (from attempt in dbContext.PaymentAttempts.Include(value => value.AcceptanceSnapshot)
                          join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
                              equals new { effect.TenantId, effect.PaymentAttemptId }
                          where attempt.TenantId == tenantId &&
@@ -48,7 +48,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
         string compositionRevision,
         CancellationToken cancellationToken)
     {
-        var row = await (from attempt in dbContext.PaymentAttempts
+        var row = await (from attempt in dbContext.PaymentAttempts.Include(value => value.AcceptanceSnapshot)
                          join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
                              equals new { effect.TenantId, effect.PaymentAttemptId }
                          where attempt.TenantId == tenantId &&
@@ -81,8 +81,22 @@ public sealed partial class RegistrationPaymentAttemptRepository
             return new(historical.Value.Attempt, historical.Value.DispatchEffect, Created: false);
         }
 
+        PaidOrderAcceptanceSnapshot? persistedAcceptance = claim.Attempt.AcceptanceSnapshot;
+        bool acceptanceAlreadyExists = persistedAcceptance is not null &&
+            await dbContext.PaidOrderAcceptanceSnapshots.AnyAsync(
+                value => value.TenantId == persistedAcceptance.TenantId && value.Id == persistedAcceptance.Id,
+                cancellationToken);
+
         await dbContext.PaymentAttempts.AddAsync(claim.Attempt, cancellationToken);
         await dbContext.CheckoutDispatchEffects.AddAsync(claim.DispatchEffect, cancellationToken);
+        if (acceptanceAlreadyExists)
+        {
+            dbContext.Entry(persistedAcceptance!).State = EntityState.Unchanged;
+            foreach (PaidOrderAcceptanceLine line in persistedAcceptance!.Lines)
+            {
+                dbContext.Entry(line).State = EntityState.Unchanged;
+            }
+        }
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);

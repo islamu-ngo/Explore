@@ -11,6 +11,10 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
     const int MaximumAuthorizationTargetBatchSize = 256;
 
     Task<Event?> GetEventWithDetails(Guid id);
+    Task<Event?> GetEventWithDetailsAsync(
+        Guid id,
+        Guid tenantId,
+        CancellationToken cancellationToken);
     Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken);
     Task<Event?> GetPublicEventForOpenGraphAsync(string publicCode, CancellationToken cancellationToken);
     Task<bool> IsPubliclyEligibleAsync(Guid tenantId, Guid eventId, CancellationToken cancellationToken);

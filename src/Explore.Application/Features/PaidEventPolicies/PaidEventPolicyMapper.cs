@@ -24,7 +24,10 @@ internal static class PaidEventPolicyMapper
         {
             CurrencyCode = limit.CurrencyCode,
             PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor,
+            PerEventSalesCountCeiling = limit.PerEventSalesCountCeiling,
             RollingOrganizerSalesCeilingMinor = limit.RollingOrganizerSalesCeilingMinor,
+            RollingOrganizerSalesCountCeiling = limit.RollingOrganizerSalesCountCeiling,
+            RollingOrganizerWindowDays = limit.RollingOrganizerWindowDays,
             HighValueReviewThresholdMinor = limit.HighValueReviewThresholdMinor
         }).ToArray(),
         RequiresFirstPaidEventReview = policy.RequiresFirstPaidEventReview,

@@ -3,7 +3,47 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-21 Europe/Brussels
+Last Updated: 2026-08-24 Europe/Brussels
+
+## PHASE 19+ RE-BASELINED / PHASE 18C NEXT (2026-08-24 Europe/Brussels)
+
+### Current Outcome
+
+Phase 18 remains complete and its six checked tasks/evidence are unchanged. A Senior CTO and I-VSD audit found that the future sequence was not safe to execute: paid Checkout exists before the complete immutable buyer-acceptance/operator snapshot now required; the old plan clustered tests after production work; cancellation fanout mixed bounded paging with one unbounded transaction; refund caps omitted ambiguous reservations; activation controls were deferred to Phase 25; and Phases 20–23 lacked direct I-VSD traceability.
+
+The plan is now append-only for completed work and execution-grade from the correction boundary onward:
+
+- **Phase 18C** is the first unchecked correction slice. It blocks new positive Checkout until exact accepted terms, merchant/operator/support/delivery facts, instance-owned official status, risk/complaint/stop-sale authority, recovery evidence, and API/HAL disclosure converge. Existing payment attempts are historical evidence; no backfill may claim acceptance that did not occur.
+- **Phase 19** uses an atomic refund reservation across every non-definitively-released state and a durable cancellation/material-change campaign with batches no larger than 100. Provider I/O remains outside transactions and uses the original direct-charge account plus stable idempotency.
+- **Phase 20** allows free admission after Phase 18C and delays paid/refund integration until Phase 19. Admission, payment, and recovery remain separate state machines and capabilities.
+- **Phases 21–22** start with failing invariant/race specifications for online check-in, one-time scanner capability disclosure, transfer consent, credential rotation, tenant isolation, and terminal races.
+- **Phase 23** is split into independent `23W` waitlist and `23A` add-on slices. Existing waitlisted orders are not waitlist offers. Add-ons stay event-bound and outside admission, marketing, tax, accounting, invoicing, and general commerce.
+- **Phase 24** allows research after Phase 18C but keeps all runtime work blocked until dated provider, legal, qualified Islamic scholarly, reserve, complaint, dispute, and accountable-operator approvals exist. Missing evidence means disabled.
+- **Phase 25** is recovery, provider/capability fixtures, release/changelog, canonical docs/contracts, and deployment-status closeout; activation controls no longer wait until closeout.
+
+The execution ledger is now **110/157 implementation tasks complete; 47 remain unchecked**. Every Phase 18C–25 behavioral slice has an explicit Red Phase that must fail for the intended missing behavior before Green production work. Phase-end verification remains one Release build plus at most one selected non-browser project.
+
+### Authority And Research
+
+- [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md) is the Phase 18C–25 provider-responsibility traceability report.
+- [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md) remains the detailed payment-risk authority; it is not a legal opinion, fatwa, or certification.
+- Official Stripe documentation was checked for idempotent requests, refunds, disputes, and Connect direct charges. Official Microsoft documentation was checked for EF Core concurrency/transactions, ASP.NET Core partitioned rate limits, and self-hosted Data Protection key management. Facts were reduced to source-free functional requirements; no third-party source/code was ingested.
+- AnySearch and Context7 MCPs were not available in this session. No claim is made that either was used; available web research tools supplied official documentation instead.
+
+### Next
+
+1. Obtain explicit implementation approval for **Task 18C.1 Red Phase** only.
+2. Record failing buyer-acceptance, activation, tenant, HAL, and recovery specifications before any production edit.
+3. Keep paid Checkout unavailable until Phase 18C completes; do not start Phase 19 or later Green work early.
+
+### Current Blockers And Unknowns
+
+- No Phase 19+ runtime implementation exists. `RefundAttempt`, admission credential, check-in, transfer, waitlist offer, add-on, and protected payout types remain planned.
+- Existing Phase 18 attempts lack the complete accepted commercial/operator snapshot. The plan forbids synthetic historical acceptance.
+- Database-application and restore evidence remains deployment-specific; model/migration parity is not rollout proof.
+- `ProtectedDelayedPayout` lacks the approvals required by ADR-024 and both I-VSD reports, so it remains disabled.
+- Legal, consumer/payment-services, provider-controller/loss-liability, qualified Islamic scholarly, accessibility, privacy, and staffed operational evidence remain external gates where named.
+- Historical handoffs and completed task text remain audit history. This top section and the revised Phase 18C–25 plan/tasks are the current resume authority.
 
 ## PHASE 18 COMPLETE (2026-08-21 Europe/Brussels)
 
@@ -469,10 +509,10 @@ The shared content reader and presigned-download handler deny provider access wh
 
 ## Quick Resume
 1. Read this context and `registration-data-collection-tasks.md`.
-2. Read only the current phase, §4 constraints, and any changed decisions from `registration-data-collection-plan.md`; do not reread the full plan on every resume.
-3. The consultation file (`registration-data-collection-consultation.md`) is the deep reference — open a specific section only when a task cites it (§ references appear throughout the plan/tasks).
-4. Start from Task 16.5 unless the user overrides. Do not start Checkout/payment, refund/dispute, admission, QR, check-in, transfer, or payout work outside the current Phase 16 task scope.
-5. Keep `tasks.md` current during implementation; update this context/plan only at their defined triggers (see plan §15).
+2. Read only Phase 18C, §4 constraints, §7 testing, and any changed decision from `registration-data-collection-plan.md`; do not reread the full plan on every resume.
+3. Read the two linked I-VSD reports and the specific ADR/official-source evidence cited by the active task; do not reopen broad external research without a named unresolved question.
+4. Start from Task 18C.1 only after explicit implementation approval. Record the intended RED receipt before any Green production edit; do not start Phase 19 or later work early.
+5. Keep `tasks.md` current during implementation; update this context/plan only at their defined triggers (plan §15).
 
 ## Key Files And Responsibilities
 
@@ -480,10 +520,11 @@ The shared content reader and presigned-download handler deny provider access wh
 |---|---|---|---|---|
 | `dev/active/registration-data-collection/registration-data-collection-consultation.md` | Existing | Docs | Combined CTO consultation (Reports 1+2) — authoritative product/architecture source | Do not edit |
 | `dev/active/registration-data-collection/hi-events-report.md` | Existing | Docs | Hi.Events research — behavior catalog, §7 defect-derived acceptance criteria, §9 adopt/adapt/reject, §11.4 deferred inventory | Do not edit; cited from Phases 4–8 + Task 14.8; never an architecture authority; **its §10 code-reuse permission is overridden — no Hi.Events code copy ever (CLA/dual-licensing, plan §4.13)** |
+| `islamic-value-sensitive-design/i-vsd-registration-data-collection.md` | New | Docs | Phase 18C–25 provider-responsibility, dignity, fairness, privacy, accessibility, self-hosting, and escalation traceability | Required by plan/context/tasks; not legal, fatwa, or certification |
 | `islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md` | Existing | Docs | Paid-event organizer-recipient, Stripe Connect, currency, refund, payout, malicious-fork, legal, and Islamic-finance design authority | Reference from ADR-022/024 and Phases 15–19, 23–25; do not treat as legal/fatwa/certification |
 | `dev/report/event-platform-boundary-and-external-business-integrations.md` | Existing | Docs | Approved Event-only product boundary, future Listmonk/Qonto integration paths, Qonto evidence, and preserved removed tax/invoice design | Required by ADR-024; Qonto/accounting runtime stays outside this workstream |
 | `dev/active/registration-data-collection/deferred-design-records.md` | Existing | Docs | Source-free triggers/boundaries for commerce/admission breadth | Superseded per record only after ADR acceptance and implementation evidence |
-| `docs/adr/ADR-022..024-*.md` | Planned P15 | Docs | Paid commerce, admission/security, external-business-system/event-breadth/protected-payout authority | Runtime phases blocked until Accepted |
+| `docs/adr/ADR-022..024-*.md` | Existing / accepted | Docs | Paid commerce, admission/security, external-business-system/event-breadth/protected-payout authority | Runtime phases follow their approved boundaries; P24 still needs external approvals |
 | `Directory.Packages.props` | Existing → modified P16 | Dependency | Exact central `Stripe.net` stable-version pin | 2026-08-13 baseline `52.3.0`; revalidate in 15.4; do not add in planning/P15 |
 | `src/Explore.Infrastructure/Explore.Infrastructure.csproj` | Existing → modified P16 | Infrastructure | Sole project-level `Stripe.net` reference | No Domain/Application/API/Blazor reference |
 | `src/Explore.Infrastructure/Payments/Stripe/**` | Planned P16/P18/P19/P24 | Infrastructure | Responsibility-separated Connect, Checkout, webhook, refund/dispute, and conditional payout adapters | SDK models/options/exceptions stop here; no provider factory or god service |
@@ -556,7 +597,7 @@ Pending external decisions/gates owned by tasks: revalidation of the current `St
 
 ## Validation Baseline
 
-Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus at most one `dotnet test --project tests/<selected>/<selected>.csproj --configuration Release --verbosity quiet` — selections per phase (plan §7): P0 Architecture, P1 Domain, P2 API, P3 Architecture, P4 Persistence, P5 Persistence, P6 Application, P7 Domain, P8 Application, P9 API, P10–P12 Infrastructure, P13 API, P14 Blazor.Client, P15 Architecture, P16 Infrastructure, P17 Persistence, P18 Infrastructure, P19 Application, P20 Domain, P21 API, P22 Application, P23 Persistence, P24 Infrastructure conditional, P25 API. Run only after all phase tasks complete. Never start the app, browser, Docker, Aspire, or live services for verification.
+For Phase 18C onward, each behavioral phase begins with a focused RED selector that must fail for the intended missing invariant, followed by the same focused GREEN selector after implementation. After all phase tasks, run `dotnet build --configuration Release --verbosity quiet` once plus at most one selected non-browser project: P18C API, P19 Persistence, P20 Domain, P21 API, P22 Application, P23 Persistence, P24 Infrastructure only when approved, and P25 API. Never weaken tests, infer real-engine proof from model parity, or start the app, browser, Aspire, or live services for the phase gate. Named real PostgreSQL concurrency evidence remains required when the environment is available; otherwise record the blocker honestly.
 
 ## Current Known Risks / Unknowns
 
@@ -628,3 +669,20 @@ Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus
 - **Documentation impact:** Active dev docs only; implementation phases own product/API documentation when behavior ships.
 - **Risks:** Actor-context authorization/disclosure joins the existing migration, Phase 5 density, money-math, provider drift, and licensing risks.
 - **Notes for next contributor/agent:** Extend `StudioWorkspaceNavigation` / `StudioEventNavigation`; do not revive `Pages/Events/Manage/**`. Check-in, Communications, and Analytics remain absent until separate implementations provide both route and HAL relation.
+
+### Handoff — 2026-08-24 Europe/Brussels (Phase 18C complete; Phase 19 next)
+
+- **Status:** Phase 18C is complete. Phases 1-18 remain historically unchanged; the correction was delivered only through the append-only 18C gate.
+- **Architecture:** `PaidOrderAcceptanceSnapshot` is immutable tenant-bound commercial evidence. `PaidOrderAcceptanceService` composes persisted order/catalog/schedule, operator governance, provider profile, policy lineage, refund/support ownership, typed lines, and exact money into one revision. `PaidOrderAcceptanceFreshnessService` rebuilds that authority before claim and provider handoff and fails closed for every changed or malformed fact.
+- **Authority and flow:** authenticated payment commands implement `ISecureRequest` against the exact registration-order resource used by HAL. Tenant/event stop-sale and provider preparation are linearized under serializable isolation. Browser affordances remain HAL-only; private payment responses are `no-store`.
+- **Persistence:** acceptance values and lines, governance controls/audits/reviews, reconciliation state, and money checks are tenant-qualified. Generated PostgreSQL, SQL Server, MariaDB, MySQL, and SQLite migration chains are model-clean through `Event.MigrationService`; migrations and snapshots were never hand-edited.
+- **Recovery:** provider dispatch is idempotent and bounded, unknown outcomes reconcile without duplicate creation, claims are capped at 50 per round trip, and the 1,000-row PostgreSQL recovery budget passes. The stateful reconciliation fixture is explicitly non-parallel to avoid shared-database migration/seed races.
+- **Disclosure:** OpenAPI and NSwag require every accepted authority and line fact. `PaymentStatusPanel` renders operator origin/status, provider profile, exact schedule/refund/support facts, and quantity/unit/discount/total per line with keyboard acknowledgement, culture-safe money/time, and culture-driven RTL.
+- **Mutation and review:** the six safety-critical Application files pass Stryker at **92.57%**. The anonymized MAD record is `phase-18c-mad-review-evidence.yaml`; every blocker/high finding was remediated and reverified.
+- **Final verification:** Release build 0 errors; Domain 858/858; Application 3,985/3,985; Architecture 443 passed plus one governed skip; Infrastructure 1,474/1,474; Blazor BFF 451/451; Blazor Client 2,549 passed plus one governed skip; Secrets 231/231; owned payment API classes 22/22; paid persistence 27/27; PostgreSQL reconciliation 2/2; OpenAPI 33/33 and inventory 1/1. Repeated generated hashes were identical.
+- **Broader-suite qualification:** the complete API run executed 2,330 tests: 2,305 passed, one governed skip, and 24 unrelated shared-worktree visibility/authorization/snapshot/email fixture failures. The prolonged full Persistence run exposed a pre-existing `ManyServiceProvidersCreatedWarning`; focused Phase 18C persistence gates are green.
+- **Manual QA:** inline C# drivers observed complete disclosure and acceptance, exact-current freshness, malformed-line fail-closed behavior, missing/stale acknowledgement denial, and durable stop-sale denial. The real component renderer passed complete facts, keyboard acknowledgement, French formatting, and Arabic RTL. Aspire orchestration was exercised but API startup remained blocked by an existing persistent local PostgreSQL schema whose objects lack matching migration history; no developer data was deleted.
+- **Tooling limitation:** AnySearch and Context7 MCPs were unavailable. Official Stripe and Microsoft documentation was used through available web tooling and reduced to source-free functional requirements under the clean-room policy.
+- **Workspace note:** unrelated shared changes remain untouched. The two generated API `.received.json` snapshots were restored to canonical content, but `apply_patch` necessarily normalized their missing final newline; only that byte-level newline difference remains.
+- **Next task:** Phase 19 Task 19.0 — write failing refund, cancellation, material-change, dispute, idempotency, tenant-isolation, capability, and HAL specifications before implementing refund behavior.
+- **Phase 19 constraint:** refunds are not currently implemented. Do not infer refund liability, collection authority, reserve ownership, or platform protection; fail closed until the Phase 19 authority and operating model is explicit.

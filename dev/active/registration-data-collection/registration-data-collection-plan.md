@@ -3,7 +3,7 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-21 Europe/Brussels
+Last Updated: 2026-08-24 Europe/Brussels
 
 ---
 
@@ -2135,175 +2135,284 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 
 ---
 
-### Phase 19: Refunds, Cancellation, Rescheduling, Disputes, And Buyer Protection
-- **Goal:** Implement the I-VSD refund floor and truthful asynchronous financial closure for paid events.
+### Phase 18C: Paid-Checkout Safety Correction And Activation Gate ✅ COMPLETE
+- **Goal:** Correct the completed Phase 18 safety gap before any new paid Checkout: persist what the buyer accepted, identify the actual instance operator, fail closed on incomplete commercial evidence, and prove recovery without fabricating historical acceptance.
+- **Why this is append-only:** Phases 1-18 and their evidence remain immutable. This phase adds corrective behavior and documentation; it does not reopen, rewrite, backfill, alias, or mark any completed task incomplete.
 - **Depends on:** Phase 18.
-- **Relevant files:** new refund-policy snapshots, `RefundAttempt`, dispute projection/rules/repositories; event cancellation/reschedule commands; Application refund/retrieval contracts; `Explore.Infrastructure/Payments/Stripe/Refunds/**` adapter plus webhook observation mapping; outbox/reconciliation; attendee/Studio support surfaces.
-- **Related skills/rules:** `outbox-pattern`, Domain/Application/EF/API/HAL/Blazor rules, `error-tracking`, `auth-patterns`.
-- **Acceptance criteria:** cancellation stops sales atomically; one idempotent refund intent per captured payment/amount; original connected account only; pending insufficient-balance truth; partial/full refunds; contribution/fee refund policy explicit; disputes projected; reschedule/material-change choice; audit and notification; no editable terms bypass.
+- **Current-state evidence:** `PaymentAttempt` pins recipient/provider/money/idempotency facts but does not yet pin exact refund text/language, instance-operator identity, complaint contact, delivery milestone, or statement descriptor. Existing attempts remain historical evidence and must never be rewritten to imply acceptance that did not occur.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md), ADR-022, and the `registration-data-collection` intent.
+- **Relevant files:** paid catalog/order/payment acceptance snapshots; paid-publication and Checkout claim gates; instance identity and risk/complaint/stop-sale policy; API/HAL/BFF/Blazor disclosures; `docs/{PAYMENTS,SELF_HOSTING,SECURITY-MODEL,OPERATIONS,BACKUP_RESTORE_UPGRADE,TROUBLESHOOTING}.md`.
+- **Acceptance criteria:** no positive Checkout without a complete immutable acceptance snapshot; exact operator/merchant/support/refund/delivery facts are visible before payment; official status is instance-owned and tenant-immutable; stop-sale preserves webhooks/refunds/reconciliation/read access; no categorical Stripe liability claim without deployment evidence; no historical acceptance backfill.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Keep event non-selling and refund attempts reconciling. Operator intervention may retry/reconcile, never mark success manually without provider evidence.
+  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Disable new paid publication and Checkout. Preserve existing payment facts, reconciliation, refunds, support reads, and operator recovery. Development databases may be recreated under the existing clean-baseline policy; persisted evidence is never rewritten.
 
-#### Task 19.1: Versioned refund floor and order acceptance snapshot
-- **Type:** create/modify
-- **Layer:** Domain/Application
-- **Files:** refund policy/version/rules, event paid-publication requirements, order commercial snapshot.
-- **Description:** Encode mandatory cancellation, material-change, duplicate/incorrect-charge, non-delivery, and buyer-change-of-mind floor; organizers may be more generous only. Snapshot buyer-visible text/version and support/merchant disclosures before payment.
-- **Acceptance Criteria:** tenant/organizer cannot weaken instance floor; policy change future-only; accepted text and language retained.
+#### Task 18C.1 (Red Phase): Buyer-acceptance, activation, tenant, and recovery invariant specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API tests
+- **Files:** focused `PaidOrderAcceptanceSnapshot`, payment-dispatch gate, operator identity, stop-sale, restore/replay, tenant-isolation, and HAL contract tests in the owning existing test projects.
+- **Description:** Before production edits, author invariant-breaker tests for missing/stale terms, missing operator or complaint identity, mixed Stripe mode/origin, cross-tenant snapshot access, Checkout without acceptance, stop-sale bypass, fabricated backfill, restore-and-reconcile duplication, and direct endpoint/HAL disagreement. Capture the expected RED receipt before Green work.
+- **Acceptance Criteria:** tests fail for the named missing behavior rather than fixture/setup errors; public contracts and database facts are asserted instead of private implementation shape; exact tenant-negative and historical-no-backfill cases exist.
 - **Dependencies:** Phase 18
 - **Effort:** L
 
-#### Task 19.2: `RefundAttempt` and dispute projection domain/persistence
+#### Task 18C.2 (Green Phase): Immutable paid-order acceptance snapshot and Checkout gate
+- **Type:** create/modify
+- **Layer:** Domain/Application/Persistence
+- **Files:** new acceptance aggregate/value objects/rules/configuration/repository/generated migrations; paid catalog/order composition; payment creation/dispatch gate.
+- **Description:** Persist the exact merchant, independent instance operator, official/unofficial status, event delivery milestone, currency, line totals, fee, contribution, refund policy version/text/language, support/complaint contact, provider, charge type, and statement descriptor accepted before payment. Checkout creation consumes only this immutable snapshot.
+- **Acceptance Criteria:** missing or stale commercial evidence fails closed; future policy change does not rewrite accepted facts; existing attempts receive no synthetic acceptance; tenant-qualified keys/filters/FKs and cross-tenant negative tests pass; repositories return entities and handlers map contracts.
+- **Dependencies:** 18C.1
+- **Effort:** XL
+
+#### Task 18C.3 (Green Phase): Instance operator authority, risk ceilings, complaints, and stop-sale
+- **Type:** create/modify
+- **Layer:** Domain/Application/API/Cerbos/Blazor
+- **Files:** instance-owned operator/official-origin configuration; risk/review/complaint/incident policies and commands; paid-publication/Checkout gates; Admin/Studio/public HAL and generated contracts.
+- **Description:** Move activation-critical controls formerly deferred to Phase 25 ahead of further paid use. Bind each deployment to its own Stripe credentials and operator identity; add versioned first-event/value/velocity ceilings, named complaint/refund/dispute/reconciliation owners, separation of duties, and global/event stop-sale without recipient substitution.
+- **Acceptance Criteria:** tenant administrators cannot set official status or platform risk ceilings; suspension stops new sales while signed intake, refunds, reconciliation, admission reads, and support remain available; every action is API-authorized, audited, and represented by HAL; telemetry uses bounded non-PII categories.
+- **Dependencies:** 18C.1, 18C.2
+- **Effort:** XL
+
+#### Task 18C.4 (Green Phase): Recovery baseline, measurable payment operations, and truthful docs
+- **Type:** create/modify
+- **Layer:** Persistence/Application/Ops/Docs
+- **Files:** reconciliation claim/query paths and indexes; backup/restore/upgrade/runbooks; commercial and self-hosting docs; deterministic recovery fixtures.
+- **Description:** Prove restoration of payment attempts, dispatch effects, webhook inbox, reconciliation state, succeeded observations, secret-binding metadata, Quartz job state, and Data Protection keys resumes without duplicate Checkout. Correct stale Phase 16 status and categorical Stripe-liability wording append-only. Record real provider/controller/loss-liability uncertainty rather than guessing.
+- **Acceptance Criteria:** reference PostgreSQL fixture uses indexed stable due ordering; reconciliation claims up to 50 rows in one database round trip and settles each outside provider transactions; 1,000 due no-I/O observations drain within 10 minutes on the declared CI fixture; backup inventory and key-restore order are documented; no compatibility shim or historical rewrite.
+- **Dependencies:** 18C.2, 18C.3
+- **Effort:** XL
+
+#### Task 18C.5 (Green Phase): Acceptance disclosure API, BFF, UI, and contract convergence
+- **Type:** create/modify
+- **Layer:** API/BFF/Blazor/Contracts
+- **Files:** paid-order/Checkout DTOs and link policies; BFF payment surfaces; public/guest/account checkout UI; OpenAPI/NSwag/API inventory/docs.
+- **Description:** Render exact acceptance facts before payment and require an explicit, localized, accessible acknowledgement tied to the immutable snapshot. Keep the generated API contract authoritative; UI renders actions only from HAL.
+- **Acceptance Criteria:** direct endpoint authorization and HAL emission agree from the same persisted facts; private responses are `no-store`; stale acknowledgement cannot dispatch payment; RTL/keyboard/screen-reader contract coverage exists; generated artifacts are regenerated, never hand-edited.
+- **Dependencies:** 18C.2, 18C.3
+- **Effort:** XL
+
+#### Phase 18C completion evidence — 2026-08-24
+- Immutable tenant-bound acceptance evidence now pins server-authored operator, official-origin, schedule, refund, support, provider, statement, typed-line, revision, and money facts; freshness rejects every changed or malformed fact before provider handoff.
+- Instance/operator governance, tenant/event stop-sale, independent review, reserved exposure, reconciliation, and provider dispatch execute from persisted authority with serializable stop-sale linearization and exact authorization/HAL parity.
+- All five generated provider migration chains report no pending model changes through `Event.MigrationService`; OpenAPI (33/33), API inventory, and NSwag generation are byte-stable across repeated generation.
+- Final Release build has zero errors. Domain 858/858, Application 3,985/3,985, Architecture 443 passed plus one governed skip, Infrastructure 1,474/1,474, Blazor BFF 451/451, Blazor Client 2,549 passed plus one governed skip, Secrets 231/231, owned payment API classes 22/22, paid persistence 27/27, and PostgreSQL reconciliation 2/2 pass.
+- The six-file safety-critical Stryker campaign passes at **92.57%** after direct machine-behavior coverage; prose-only string mutations remain excluded because tests must not pin wording.
+- Manual C# drivers observed complete disclosure/acceptance, exact-current freshness, malformed-line fail-closed behavior, missing/stale acknowledgement denial, and durable stop-sale denial. The rendered component surface passed complete facts, keyboard acknowledgement, French formatting, and Arabic RTL checks.
+
+---
+
+### Phase 19: Refunds, Cancellation Campaigns, Rescheduling, Disputes, And Buyer Protection
+- **Goal:** Implement bounded, concurrency-safe refund reservation and truthful asynchronous financial closure for paid events.
+- **Depends on:** Phase 18C.
+- **Authority:** the two linked I-VSD reports, ADR-022/024, and current official Stripe refund, dispute, direct-charge, and idempotency behavior captured as source-free functional requirements.
+- **Relevant files:** refund-policy snapshots, `RefundAttempt`, refund reservation/allocation and dispute projections; cancellation/material-change campaigns; Application refund/retrieval contracts; `src/Explore.Infrastructure/Payments/Stripe/Refunds/**`; incoming-webhook observations; outbox/reconciliation; API/HAL/BFF/Blazor/Ops surfaces.
+- **Related skills/rules:** `outbox-pattern`, Domain/Application/EF/API/HAL/Blazor rules, `error-tracking`, `auth-patterns`, `ip-clean-room`.
+- **Acceptance criteria:** one atomic reservation per payment/allocation revision; all ambiguous/non-released states count against refundable capacity; original direct-charge connected account only; no provider I/O in transactions; cancellation persists a bounded campaign/cursor instead of enumerating all payments in one transaction; disputes remain separate provider truth; buyer and operator state is truthful.
+- **Performance gates:** cancellation initiation p95 <= 500 ms on a declared 10,000-order PostgreSQL fixture because it does not enumerate orders; campaign generation batches <= 100 payments; every due/cursor query has an indexed predicate and stable order.
+- **Phase-end verification (run once after all tasks):**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Stop new sales and refund initiation while preserving campaign/refund reconciliation. Operator actions may resume/reconcile durable work; they never manufacture success without provider evidence.
+
+#### Task 19.0 (Red Phase): Refund, dispute, campaign, tenant, and HAL invariant specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API/Infrastructure tests
+- **Files:** focused refund allocation/reservation, campaign race, Stripe adapter, tenant-isolation, direct endpoint/HAL, and recovery test classes.
+- **Description:** Author failing public-contract and real-persistence tests before production code for concurrent partial/full reservations, `Requested`/dispatch-ambiguous/`Pending`/`Unknown`/`RequiresAction` caps, open-dispute refund denial, cancellation restart, duplicate callback/finalization, cross-tenant collisions, connected-account substitution, and authorization/HAL parity.
+- **Acceptance Criteria:** RED failures prove the missing invariants; tests subscribe to deterministic state/effects rather than timing; Stripe fixtures assert provider-neutral contracts without SDK types outside Infrastructure.
+- **Dependencies:** Phase 18C
+- **Effort:** XL
+
+#### Task 19.1 (Green Phase): Refund policy, line allocation, and accepted authority
+- **Type:** create/modify
+- **Layer:** Domain/Application
+- **Files:** existing refund-floor rules plus organizer-more-generous policy versions; deterministic per-line organizer/fee/contribution allocation; accepted commercial snapshot integration.
+- **Description:** Reuse the existing hard refund floor rather than creating a competing floor. Freeze exact buyer-visible policy and deterministic integer-minor allocation before payment, including add-on/admission effects and payment-method constraints.
+- **Acceptance Criteria:** tenant/organizer cannot weaken the floor; policy changes are future-only; allocations sum exactly with checked integer arithmetic; contribution/fee behavior is explicit; uncaptured payments follow cancellation rather than refund.
+- **Dependencies:** 19.0
+- **Effort:** L
+
+#### Task 19.2 (Green Phase): `RefundAttempt`, reservation authority, and dispute projection
 - **Type:** create
 - **Layer:** Domain/Persistence
 - **Files:** refund/dispute entities/status/rules/configurations/repositories/generated migrations.
-- **Description:** Independent requested/pending/succeeded/failed/requires-action/unknown lifecycle with original charge/account/currency, amount allocation, reason, provider identity/idempotency, and audit. Disputes are provider projections, not locally editable truth.
-- **Acceptance Criteria:** cumulative successful/pending refund cannot exceed captured amount; monotonic transitions; provider/account immutable; model parity.
-- **Dependencies:** 19.1
+- **Description:** Persist independent `Requested`, `DispatchPending`, `Pending`, `RequiresAction`, `Unknown`, `Succeeded`, and definitively released terminal states with original charge type/account/currency, line allocation, provider identity/idempotency, concurrency token, and audit. Disputes are independent provider projections and can occur more than once per payment.
+- **Acceptance Criteria:** one transaction atomically reserves captured allocation across every non-released state; cumulative reservation cannot exceed captured amount; open dispute blocks ordinary refund; tenant-qualified keys/filters/FKs, monotonic transitions, five-provider model parity, and real PostgreSQL collision tests pass.
+- **Dependencies:** 19.0, 19.1
 - **Effort:** L
 
-#### Task 19.3: Cancellation/reschedule workflow and transactional refund fanout
+#### Task 19.3 (Green Phase): Cancellation and material-change campaigns
 - **Type:** create/modify
 - **Layer:** Application
-- **Files:** event lifecycle commands/handlers, order query/repository paths, refund outbox messages, notification intents.
-- **Description:** Cancellation immediately stops sales and writes retry-stable refund work for all affected captured payments in the same local transaction. Material change/reschedule notifies buyers and records accept-new-terms or refund choice. Deletion with paid orders is rejected.
-- **Acceptance Criteria:** restart-safe fanout; zero missed/double jobs; large events bounded/paged; failures do not reopen sales.
+- **Files:** event lifecycle commands/handlers; cancellation/material-change campaign and cursor; refund intent/outbox generation; notification intents; campaign queries.
+- **Description:** One local transaction stops sales, records the immutable event decision, creates one durable campaign/cursor/outbox trigger, and audits the actor. A fenced worker pages captured payments in batches <= 100 and creates unique `(campaign, payment, allocation revision)` refund intents. Rescheduling records buyer accept-new-terms or refund choice.
+- **Acceptance Criteria:** initiation never enumerates all orders; restart-safe cursor and unique keys prove zero missed/double work; campaign counters expose total/generated/pending/succeeded/failed/unknown/operator-case facts; deletion with paid evidence is rejected; failures never reopen sales.
 - **Dependencies:** 19.2
 - **Effort:** XL
 
-#### Task 19.4: Stripe refunds/disputes, webhooks, and reconciliation
+#### Task 19.4 (Green Phase): Stripe refunds/disputes, webhook observations, and reconciliation
 - **Type:** create
 - **Layer:** Infrastructure/Application/API
-- **Files:** Application refund/retrieval contracts and result types; `Explore.Infrastructure/Payments/Stripe/Refunds/**`; shared Stripe error mapper; webhook observation mappings; reconciliation/health worker; deterministic transport/signed-event fixtures.
-- **Description:** Use the exact-pinned `Stripe.net` refund/retrieval services outside transactions. Every create/retrieve supplies the original `RequestOptions.StripeAccount`; every mutation supplies the persisted `RequestOptions.IdempotencyKey`. Map provider refund/dispute objects and `StripeException` outcomes to bounded local observations, capture request IDs, process only allowlisted signed refund/dispute event families, and retrieve authoritative pending/unknown state. Explicitly decide application-fee/contribution refund allocation from the snapshotted policy; never infer allocation from mutable current settings.
-- **Acceptance Criteria:** custom-transport assertions prove original account/idempotency and no double retry; insufficient-balance pending, partial/full, duplicate, rate-limit, timeout, late-success, and dispute lifecycle fixtures; application-fee behavior explicit; dispute creates bounded action projection; no platform/recipient substitution; no raw Stripe error or SDK model escapes Infrastructure.
+- **Files:** provider-neutral Application contracts/results; `src/Explore.Infrastructure/Payments/Stripe/Refunds/**`; shared Stripe mapper; allowlisted webhook observations; reconciliation/health worker; deterministic transport/signed fixtures.
+- **Description:** Execute provider calls outside transactions with the persisted original connected account and stable, non-PII idempotency key. Treat refund creation as asynchronous; retrieve authoritative state for pending/unknown/requires-action, handle rare failure/cancellation, and keep open-dispute workflow separate. Do not add an independent mutation retry layer.
+- **Acceptance Criteria:** fixtures cover insufficient available balance, partial/full, `requires_action`, refund failure, duplicate/rate-limit/timeout-before-and-after-handoff/late-success, inquiry/formal/multiple/late-win disputes, and account restriction; no account substitution or SDK/error leakage; ambiguous handoff cannot create a second provider refund.
 - **Dependencies:** 19.2, 19.3
 - **Effort:** XL
 
-#### Task 19.5: Buyer/organizer refund and cancellation surfaces, HAL, metrics, and runbook
+#### Task 19.5 (Green Phase): Buyer, organizer, trust/safety, HAL, metrics, and recovery
 - **Type:** create/modify
 - **Layer:** Application/API/Cerbos/Blazor/Ops
 - **Files:** refund commands/queries/controllers/policies/links, Studio payments, attendee order self-service, metrics/health/docs, OpenAPI/NSwag.
-- **Description:** Authorized organizers can refund within policy; trust/safety cancellation is separately authorized; buyers request eligible refunds and view exact state. Metrics use bounded provider/state/reason categories; runbook covers pending balance, disputes, failed fanout, reconciliation, and communications.
-- **Acceptance Criteria:** “refunded” only on succeeded; every action HAL-gated/audited; PII-free telemetry; generic cross-tenant responses.
+- **Description:** Separate buyer request, organizer refund, trust/safety cancellation, dispute action, retry, and reconcile authorities. Expose exact campaign/refund/dispute state and deadlines; alert/runbook thresholds cover pending balance, failed fanout, ambiguous handoff, dispute response, recovery, and customer communication.
+- **Acceptance Criteria:** “refunded” appears only for provider-proven success; every action is server-authorized, HAL-gated, audited, rate-limited where public, and generically cross-tenant; generated contracts converge; metrics contain no tenant/event/order/payment/amount/PII labels.
 - **Dependencies:** 19.1–19.4
 - **Effort:** XL
 
 ---
 
-### Phase 20: `AdmissionTicket`, QR Credential, Delivery, Lookup, And Self-Service
-- **Goal:** Issue independently revocable admission credentials after free confirmation or reconciled paid confirmation and let account/guest holders recover them safely.
-- **Depends on:** Phase 19 for paid orders; existing confirmed free path remains valid.
-- **Relevant files:** new `AdmissionTicket`, credential status/version/rules/repository; issuance outbox/handler; QR renderer/decoder dependency decision; recovery capability/delivery; ticket API/BFF/Blazor/email templates.
-- **Related skills/rules:** Domain/Application/EF/API/HAL/BFF/Blazor rules, `outbox-pattern`, `auth-patterns`, `ip-clean-room`.
-- **Acceptance criteria:** one ticket per concrete assignment; issue idempotently; high-entropy opaque QR with keyed hash only and no PII; rotation/revocation; accessible printable/digital surface; generic resend; account tickets and guest capability; no offline validation claim; dependency license gate.
+### Phase 20: Admission Authority, Opaque QR Credential, Recovery, And Self-Service
+- **Goal:** Issue independently revocable online admission credentials after confirmed free orders, then integrate paid/refund authority without coupling admission to payment-provider objects.
+- **Depends on:** Phase 18C for free admission; Phase 19 for paid/refund integration.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), ADR-023, and the existing assignment/confirmation authority.
+- **Relevant files:** new `AdmissionTicket`, credential status/version/rules/repository; issuance outbox/handler; QR renderer/decoder dependency evidence; recovery capability/delivery; ticket API/BFF/Blazor/email templates.
+- **Related skills/rules:** Domain/Application/EF/API/HAL/BFF/Blazor rules, `outbox-pattern`, `auth-patterns`, `ip-clean-room`, accessibility.
+- **Acceptance criteria:** one ticket per concrete assignment; free issuance can proceed independently; paid issuance requires reconciled confirmation; high-entropy opaque credential uses a keyed digest at rest and contains no PII; display/manual code is the same sensitive bearer representation, not authority-free metadata; revocation/rotation, recovery, accessible delivery, anti-enumeration, and dependency-license evidence are explicit.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Stop new rendering/delivery while preserving tickets; manual organizer lookup uses authenticated bounded details, never bypasses credential state.
 
-#### Task 20.1: Admission ticket and credential lifecycle domain
+#### Task 20.0 (Red Phase): Admission, credential, recovery, tenant, and revocation specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API tests
+- **Files:** focused ticket lifecycle, issuance replay, digest/key rotation, recovery anti-enumeration, tenant collision, refund revocation, HAL, and contract tests.
+- **Description:** Author failing invariant tests before production code for no-ticket-before-confirmation, one live credential, free/paid separation, full-relevant-refund revocation, partial add-on-refund non-revocation, old-credential rejection after rotation, cross-tenant digest collisions, generic recovery, and direct endpoint/HAL parity.
+- **Acceptance Criteria:** RED receipt proves missing behavior; bearer values never appear in test names/log output; public contracts and persisted state are asserted rather than private helper shape.
+- **Dependencies:** Phase 18C
+- **Effort:** L
+
+#### Task 20.1 (Green Phase): Admission ticket and credential lifecycle domain
 - **Type:** create
 - **Layer:** Domain
 - **Files:** `AdmissionTicket`, status/reason lookups, `AdmissionCredentialRules`.
 - **Description:** Link tenant/event/order/line/assignment/participant and immutable catalog facts. Model Active/Suspended/Revoked/Cancelled/Transferred/Expired plus credential generation/version/rotation metadata and display reference separate from authority.
-- **Acceptance Criteria:** no ticket before confirmed order; one live credential; public ID never validates; cancellation/full relevant refund revokes through explicit transition.
-- **Dependencies:** Phase 19
+- **Acceptance Criteria:** no ticket before confirmed order; one live credential; public ID never validates; ticket/payment/order states remain separate; cancellation/full relevant refund revokes through an explicit transition; state machine is exhaustive and monotonic.
+- **Dependencies:** 20.0
 - **Effort:** L
 
-#### Task 20.2: Idempotent issuance, persistence, and generated migrations
+#### Task 20.2 (Green Phase): Free-order issuance, persistence, and generated migrations
 - **Type:** create
 - **Layer:** Application/Persistence
 - **Files:** issuance service/outbox handler, repository/configurations/DbSets/filters/generated migrations.
-- **Description:** Consume confirmation effect and issue one ticket per assignment with CSPRNG credential, keyed lookup digest/key version, and retry-stable IDs. Store no plaintext token after issuance response materialization.
-- **Acceptance Criteria:** replay produces no duplicate; assignment/ticket uniqueness; tenant filters; five-provider parity.
+- **Description:** Consume confirmed free-order effects and issue one ticket per assignment with a CSPRNG credential, keyed lookup digest/key version, retry-stable UUIDv7 identity, and durable delivery effect. Store no plaintext after one-time response materialization.
+- **Acceptance Criteria:** replay produces no duplicate; assignment/ticket and active-credential uniqueness; tenant-qualified keys/filters/FKs; key version survives restore; five-provider model parity and real PostgreSQL collision proof.
 - **Dependencies:** 20.1
 - **Effort:** L
 
-#### Task 20.3: QR representation and clean-room encoder/decoder gate
+#### Task 20.3 (Green Phase): QR representation and clean-room encoder/decoder gate
 - **Type:** investigate + create
 - **Layer:** Infrastructure/Blazor
 - **Files:** dependency evidence, QR rendering service, client scanning abstraction used later by Phase 21.
-- **Description:** Select the smallest outbound-license-compatible QR encoder/decoder after official docs/license validation. Encode only version + opaque token. Feature-detect native `BarcodeDetector` but supply supported-library, HID, and manual fallbacks; apply size/error-correction/contrast/accessibility limits.
-- **Acceptance Criteria:** dependency-policy command green; no third-party source ingestion; deterministic decode fixtures; no secret in logs/DOM persistence/local storage.
+- **Description:** Select the smallest outbound-license-compatible encoder/decoder from official package/license evidence through the clean-room gate. Encode only version plus opaque bearer token. Feature-detect native `BarcodeDetector` without treating it as universal, and preserve HID/manual paths for Phase 21.
+- **Acceptance Criteria:** dependency-policy command green; source-free functional specification and AFC/SSO evidence retained; deterministic decode fixtures; no secret in logs, URLs outside the same-origin flow, persistent DOM, browser storage, telemetry, or referrers; contrast/size/error-correction and non-QR alternative are specified.
 - **Dependencies:** Phase 15.4, 20.2
 - **Effort:** L
 
-#### Task 20.4: Ticket lookup, resend, and account/guest recovery
+#### Task 20.4 (Green Phase): Ticket lookup, resend, and account/guest recovery
 - **Type:** create
 - **Layer:** Domain/Application/API
 - **Files:** recovery capability purpose, commands/queries/controller/rate policy/email outbox.
 - **Description:** Account users list authorized tickets. Guests request a same-origin recovery link using uniform responses/timing, rate limits, random single-use expiring hashed capabilities, and verified side-channel delivery. Resend rotates recovery capability, not admission credential unless reissue is requested.
-- **Acceptance Criteria:** email/display ID never grants access; cross-tenant and absent address indistinguishable; tokens no-store/redacted; abuse limits and audit.
+- **Acceptance Criteria:** email/display ID never grants access; partition key derives from trusted normalized identity without attacker-controlled unbounded cardinality; cross-tenant and absent address are indistinguishable; tokens are single-purpose/no-store/redacted; abuse limits, audit, key rotation, and restore behavior are proven.
 - **Dependencies:** 20.2
 - **Effort:** L
 
-#### Task 20.5: Ticket API/HAL/BFF/Blazor delivery and self-service
+#### Task 20.5 (Green Phase): Ticket API/HAL/BFF/Blazor delivery and self-service
 - **Type:** create/modify
 - **Layer:** API/Cerbos/BFF/Blazor
 - **Files:** ticket detail/QR/print endpoints, BFF capability bridge, `/tickets/**` pages, attendee order links, email templates, OpenAPI/NSwag/docs.
 - **Description:** Render ticket identity, event/session entitlements, holder, status, QR, and support/refund/transfer affordances from HAL. Serve QR only after account/order/recovery capability authorization and never cache privately scoped content.
-- **Acceptance Criteria:** accessible non-QR text/manual code; print and mobile layouts; no local role/status action gating; revoked ticket clearly non-validating.
+- **Acceptance Criteria:** accessible bearer-code alternative is labeled sensitive; print/mobile/RTL/keyboard contracts; private `no-store`/referrer policy; no local role/status action gating; revoked ticket clearly non-validating; direct endpoint denial and HAL omission agree.
 - **Dependencies:** 20.3, 20.4
 - **Effort:** XL
 
+#### Task 20.6 (Green Phase): Paid confirmation, refund, and cancellation integration
+- **Type:** create/modify
+- **Layer:** Domain/Application
+- **Files:** paid-order finalization effect handler; admission issuance/revocation orchestration; refund allocation and cancellation campaign integration.
+- **Description:** After Phase 19, issue admission only from reconciled paid confirmation and suspend/revoke from exact cancellation or full relevant ticket-line refund facts. Keep add-on allocation independent so an add-on-only refund cannot revoke admission.
+- **Acceptance Criteria:** payment success alone still cannot bypass requirements/approval/capacity; duplicate effects remain idempotent; full relevant refund/cancellation rotates or revokes admission; partial unrelated allocation leaves the ticket valid; no Stripe type or provider state enters the admission aggregate.
+- **Dependencies:** Phase 19, 20.1, 20.2
+- **Effort:** L
+
 ---
 
-### Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Undo
-- **Goal:** Give authorized event staff reliable online camera/HID/manual check-in with append-only audit and entitlement-aware results.
+### Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Recovery
+- **Goal:** Give authorized event staff reliable online camera/HID/manual check-in with append-only audit, explicit outage behavior, and entitlement-aware results.
 - **Depends on:** Phase 20.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), ADR-023, HAL authority, and capability-security rules.
 - **Relevant files:** new admission target/policy/check-in entities/rules/repositories; check-in CQRS/API/Cerbos/HAL; scanner capability; Studio check-in UI and bounded metrics.
 - **Related skills/rules:** Domain/Application/EF/API/HAL/BFF/Blazor rules, `auth-patterns`, `error-tracking`.
-- **Acceptance criteria:** event/day/session targets; single-entry or configured re-entry; time windows; atomic duplicate protection; compensating undo; revoked/transferred/wrong-scope rejection; scoped scanner tokens; camera/HID/manual parity; per-item batch response; no offline claim.
+- **Acceptance criteria:** event/day/session targets; single-entry or configured re-entry; time windows; atomic duplicate protection; compensating undo; revoked/transferred/wrong-scope rejection; one-time scanner-token disclosure; camera/HID/manual parity; per-item batch response; no offline-validation fallback or silent local queue.
+- **Performance gates:** one indexed tenant+credential-digest lookup; single check-in p95 <= 250 ms and p99 <= 500 ms at 50 concurrent requests on the declared PostgreSQL CI fixture; batch maximum 100 items with independent results and no transaction spanning client/provider work.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Disable scanner capability issuance; authenticated manual lookup remains. Existing check-in facts are never deleted.
 
-#### Task 21.1: Admission targets, policies, and append-only event model
+#### Task 21.0 (Red Phase): Admission race, capability, tenant, outage, and performance specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Persistence/API/Blazor tests
+- **Files:** focused check-in/undo concurrency, credential lookup, capability issuance/revocation, rate-limit, HAL, JS-module/bUnit scanner contract, query-count, and throughput tests.
+- **Description:** Author failing tests before production code for duplicate scans, check-in/undo races, wrong tenant/event/target, old credential, capability theft/revocation, exact one-time secret disclosure, batch partial failure, queue saturation, and no-connectivity fail-closed behavior.
+- **Acceptance Criteria:** RED receipt proves missing invariants; real PostgreSQL tests synchronize on lock/state rather than sleeps; performance fixture and thresholds are declared; no browser/E2E/live-service dependency is introduced.
+- **Dependencies:** Phase 20
+- **Effort:** XL
+
+#### Task 21.1 (Green Phase): Admission targets, policies, and append-only event model
 - **Type:** create
 - **Layer:** Domain
 - **Files:** admission target/check-in policy/event/status lookups and rules.
 - **Description:** Resolve target from event/day/session and ticket entitlements; model early/late window, entry count/re-entry, and CheckIn/Undo facts with actor/scanner/reason/time.
-- **Acceptance Criteria:** target not entitled rejected; undo requires active check-in and reason; no mutable Boolean source of truth.
-- **Dependencies:** Phase 20
+- **Acceptance Criteria:** target not entitled rejected; undo requires active check-in and reason; event facts are append-only; no mutable Boolean source of truth; exhaustive state/result codes support accessible client messages.
+- **Dependencies:** 21.0
 - **Effort:** L
 
-#### Task 21.2: Atomic persistence and check-in/undo concurrency
+#### Task 21.2 (Green Phase): Atomic persistence and check-in/undo concurrency
 - **Type:** create
 - **Layer:** Persistence/Application
 - **Files:** repositories/configurations/DbSets/filters/generated migrations, command handlers.
-- **Description:** Resolve credential hash tenant-safely, lock active ticket/target state, append one fact, and return idempotent AlreadyCheckedIn/NotCheckedIn outcomes. Batch has bounded size and transaction per item or bounded chunk, not all-or-nothing.
-- **Acceptance Criteria:** concurrent duplicate has one active result; undo/check-in race deterministic; cross-event/tenant generic reject; model parity.
-- **Dependencies:** 21.1
+- **Description:** Resolve one indexed keyed digest with an explicit tenant predicate, lock active ticket/target state, append one fact, and return idempotent `AlreadyCheckedIn`/`NotCheckedIn` outcomes. Batch maximum is 100 with transaction per item or proven bounded chunk, never all-or-nothing.
+- **Acceptance Criteria:** concurrent duplicate has one active result; undo/check-in race deterministic; cross-event/tenant generic rejection; tenant-qualified keys/filters/FKs; provider-portable model parity plus real PostgreSQL locking and query-count evidence.
+- **Dependencies:** 21.0, 21.1
 - **Effort:** XL
 
-#### Task 21.3: Check-in API, Cerbos, HAL, and scanner capability issuance
+#### Task 21.3 (Green Phase): Check-in API, Cerbos, HAL, and scanner capability issuance
 - **Type:** create
 - **Layer:** Application/API/Cerbos
 - **Files:** controllers/policies/routes/relations, scanner capability service, rate policies, OpenAPI/NSwag.
-- **Description:** Normal authenticated staff actions plus organizer-issued scanner capabilities scoped to tenant/event/targets/actions/expiry/device label and individually revocable. API returns bounded holder/ticket/result data needed at the door.
-- **Acceptance Criteria:** capability cannot browse attendees or other events; expiry/revocation immediate; no secret in response after issuance; HAL controls issue/revoke/check-in/undo.
+- **Description:** Normal authenticated staff actions plus organizer-issued scanner capabilities scoped to tenant/event/targets/actions/expiry/device label and individually revocable. Plaintext capability is returned exactly once at issuance and is masked/absent from every later read. API returns only bounded door data.
+- **Acceptance Criteria:** capability cannot browse attendees or other events; expiry/revocation immediate; issuance is authenticated, audited, and rate-limited; no subsequent response/log/metric persists the secret; HAL controls issue/revoke/check-in/undo and matches direct endpoint authorization.
 - **Dependencies:** 21.2
 - **Effort:** XL
 
-#### Task 21.4: Camera, HID, and manual scanner client flow
+#### Task 21.4 (Green Phase): Camera, HID, and manual scanner client flow
 - **Type:** create
 - **Layer:** Blazor/BFF
 - **Files:** `/studio/events/{eventId}/check-in`, scanner components/JS isolation/CSS/tests.
 - **Description:** Camera uses approved decoder and secure-context permission handling; HID keyboard scanners and manual input feed the same bounded queue. Prevent duplicate rapid submissions; announce success/already/wrong/revoked without relying on color/sound.
-- **Acceptance Criteria:** exact HAL gate; accessible focus/live regions; RTL; graceful camera denial/unsupported browser; no token persistence.
+- **Acceptance Criteria:** exact HAL gate; accessible focus/live regions and non-color/non-sound feedback; RTL; deterministic bUnit/JS-module contracts for camera denial/unsupported browser/HID/manual paths; no token persistence; stale work cancels on route/capability change.
 - **Dependencies:** 20.3, 21.3
 - **Effort:** XL
 
-#### Task 21.5: Check-in summary, export-safe audit, observability, and runbook
+#### Task 21.5 (Green Phase): Check-in summary, export-safe audit, observability, and incident operations
 - **Type:** create/modify
 - **Layer:** Application/API/Blazor/Ops
 - **Files:** summary queries/HAL, bounded metrics, audit/runbook/docs.
-- **Description:** Provide counts by target/status without raw PII metrics, authorized minimal audit, scanner health, and procedures for device loss, credential compromise, mistaken scan/undo, queue saturation, and connectivity outage.
-- **Acceptance Criteria:** cardinality bounded; no admission credential in audit/log; summary cannot enumerate outside organizer authority.
+- **Description:** Provide counts by target/status without raw PII metrics, authorized minimal audit, scanner health, and procedures for device loss, credential compromise, mistaken scan/undo, queue saturation, and connectivity outage. Connectivity loss never enables offline validation; any emergency admission exception is a separate authenticated, reasoned, append-only operator action reconciled later.
+- **Acceptance Criteria:** bounded cardinality; no credential/PII/high-cardinality identifiers in audit/log/metrics; summary cannot enumerate outside organizer authority; p95/p99 and rejection/backlog thresholds alert; stop/restore/reconcile actions are HAL-gated and audited.
 - **Dependencies:** 21.2–21.4
 - **Effort:** M
 
@@ -2312,226 +2421,278 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 ### Phase 22: Ticket Transfer, Reissue, Reassignment, And Holder Self-Service
 - **Goal:** Transfer future admission safely without rewriting purchase/payment/consent history or leaving copied QR credentials valid.
 - **Depends on:** Phases 20–21.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), ADR-023, participant consent/PII rules, and capability-security rules.
 - **Relevant files:** transfer policy on ticket catalog/type; new `TicketTransferOffer` + split PII/capability; transfer CQRS/API/Cerbos/HAL/notifications; self-service and Studio correction UI.
 - **Related skills/rules:** Domain/Application/EF/API/HAL/BFF/Blazor rules, `outbox-pattern`, `auth-patterns`.
-- **Acceptance criteria:** published transfer policy; pending/accepted/declined/cancelled/expired; acceptance capability; required transferee data; atomic assignment/holder change and credential rotation; checked-in/expired/nontransferable denial; consent not copied; no resale/money movement.
+- **Acceptance criteria:** published transfer policy; pending/accepted/declined/cancelled/expired; acceptance capability; minimum pre-acceptance disclosure; required transferee data and fresh consent; atomic assignment/holder change and credential rotation; checked-in/expired/nontransferable denial; purchase/payment history unchanged; no resale or money movement.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Disable new offers; pending offers can expire/cancel. Never restore a revoked credential; issue a fresh credential through audited reissue.
 
-#### Task 22.1: Published transfer policy and domain rules
+#### Task 22.0 (Red Phase): Transfer race, consent, tenant, capability, and HAL specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API/Blazor tests
+- **Files:** focused policy, accept/cancel/expire, transfer/check-in, reissue/scan, consent recollection, PII encryption, tenant isolation, capability, authorization/HAL, and self-service contract tests.
+- **Description:** Author failing tests before production code for every terminal race, copied-QR invalidation, no consent inheritance, generic recipient lookup, minimum data disclosure, checked-in denial/explicit override, and purchaser/payment immutability.
+- **Acceptance Criteria:** RED failures prove missing public behavior; real-persistence races synchronize on database state without sleeps; cross-tenant inputs return generic results; no test logs PII or capability material.
+- **Dependencies:** Phases 20–21
+- **Effort:** XL
+
+#### Task 22.1 (Green Phase): Published transfer policy and domain rules
 - **Type:** create/modify
 - **Layer:** Domain
 - **Files:** ticket type/catalog transfer policy snapshots and rules.
 - **Description:** Configure allowed flag, deadline, maximum transfers, checked-in restriction, recipient/guardian/company constraints, and whether organizer approval is required. Published/in-flight facts immutable.
-- **Acceptance Criteria:** policy cannot change existing eligibility silently; transfer never changes merchant/currency/price/refund policy.
-- **Dependencies:** Phase 21
+- **Acceptance Criteria:** policy cannot change existing eligibility silently; transfer never changes merchant/currency/price/refund policy; the model distinguishes holder transfer, organizer correction, and credential reissue.
+- **Dependencies:** 22.0
 - **Effort:** M
 
-#### Task 22.2: Transfer offer, recipient PII, capability, persistence, and migrations
+#### Task 22.2 (Green Phase): Transfer offer, recipient PII, capability, persistence, and migrations
 - **Type:** create
 - **Layer:** Domain/Persistence
 - **Files:** transfer entities/status/rules/configurations/repositories/generated migrations.
-- **Description:** Store offer lifecycle and split/encrypted recipient contact; acceptance token is random, purpose-scoped, single-use, expiring, keyed-hashed. One active offer per ticket.
-- **Acceptance Criteria:** no token/plain email logs; cross-tenant generic lookup; concurrent accept/cancel/expire has one winner; model parity.
+- **Description:** Store offer lifecycle and split/encrypted recipient contact; acceptance token is random, purpose-scoped, single-use, expiring, and stored only as a keyed digest with key version. One active offer per ticket.
+- **Acceptance Criteria:** no token/plain email logs; tenant-qualified keys/filters/FKs; cross-tenant generic lookup; concurrent accept/cancel/expire has one winner; expiry query is indexed/stably ordered; five-provider model parity plus real PostgreSQL race proof.
 - **Dependencies:** 22.1
 - **Effort:** L
 
-#### Task 22.3: Atomic acceptance, participant requirements, and credential rotation
+#### Task 22.3 (Green Phase): Atomic acceptance, participant requirements, and credential rotation
 - **Type:** create
 - **Layer:** Application
 - **Files:** transfer commands/handlers, participant/assignment/form fulfillment integration, admission credential service/outbox.
-- **Description:** Invite, accept, decline, cancel, expire. Acceptance verifies/recollects required transferee data and consent, then atomically reassigns holder/participant, accepts offer, revokes old credential, and issues the new credential/outbox notification.
-- **Acceptance Criteria:** retry idempotent; copied old QR immediately invalid; purchaser/order/payment/audit unchanged; adult consent never inherited.
+- **Description:** Invite, accept, decline, cancel, and expire. Acceptance verifies/recollects every required transferee datum and consent, then atomically reassigns future holder/participant, accepts the offer, revokes the old credential, and records durable new-credential/notification effects.
+- **Acceptance Criteria:** retry idempotent; copied old QR immediately invalid; purchaser/order/payment/audit unchanged; adult/guardian consent never inherited; transfer/check-in and accept/expire races have one deterministic winner.
 - **Dependencies:** 22.2
 - **Effort:** XL
 
-#### Task 22.4: Organizer correction/reissue versus holder transfer
+#### Task 22.4 (Green Phase): Organizer correction/reissue versus holder transfer
 - **Type:** create
 - **Layer:** Application/API/Cerbos
 - **Files:** organizer reassign/reissue commands, audit reason codes, policies/HAL.
 - **Description:** Separate data correction, credential reissue, and organizer-forced reassignment from holder transfer. Require commercial/admission authority, reason, notification, and affected-state checks.
-- **Acceptance Criteria:** no silent transfer; contributors denied; reissue rotates even for same holder; checked-in override is explicit policy/action.
+- **Acceptance Criteria:** no silent transfer; contributors and non-owning organizer contexts denied; reissue rotates even for the same holder; checked-in override is a separate explicit policy/action with reason, notification, and append-only audit.
 - **Dependencies:** 22.3
 - **Effort:** L
 
-#### Task 22.5: Transfer/self-service API, notifications, and Blazor surfaces
+#### Task 22.5 (Green Phase): Transfer/self-service API, notifications, and Blazor surfaces
 - **Type:** create/modify
 - **Layer:** API/BFF/Blazor
 - **Files:** transfer/reissue endpoints/links, ticket pages, Studio attendees/check-in, email templates, OpenAPI/NSwag/docs.
-- **Description:** Holder actions come only from ticket HAL; recipient link enters a capability-scoped same-origin flow; organizer actions stay in Studio. Show deadlines, policy, pending state, and exact effects accessibly.
-- **Acceptance Criteria:** no enumeration; action absent after expiry/check-in/revocation; recipient sees minimum pre-acceptance data; all notifications outbox-driven.
+- **Description:** Holder actions come only from ticket HAL; recipient links enter a capability-scoped same-origin flow; organizer actions remain in Studio. Show deadline, policy, actor/operator identity, pending state, consent impact, and exact effects accessibly.
+- **Acceptance Criteria:** no enumeration; direct authorization and HAL omission agree after expiry/check-in/revocation; recipient sees only minimum pre-acceptance data; responses are private/no-store; all notifications are outbox-driven; generated contracts/docs converge.
 - **Dependencies:** 22.3, 22.4
 - **Effort:** XL
 
 ---
 
-### Phase 23: Waitlist Offers, Event-Bound Add-Ons, And Separate Fulfillment
-- **Goal:** Add remaining event-bound checkout breadth without becoming a general commerce/accounting product, polluting ticket/admission semantics, or weakening shared-capacity correctness.
-- **Depends on:** Phases 17–22.
-- **Relevant files:** waitlist entry/offer/policy; capacity/hold integration; event-add-on catalog/order lines/inventory/fulfillment; CQRS/API/HAL/Blazor/notifications.
+### Phase 23: Independent Waitlist And Event-Add-On Slices
+- **Goal:** Deliver waitlists and event-bound add-ons as separate bounded capabilities with independent sequencing, rollback, tests, and operations.
+- **Depends on:** Phase 18C and existing capacity/holds for 23W; Phases 18–20 for 23A. Neither slice depends on the other.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), ADR-024, existing capacity-hold invariants, and the Event-only external-business boundary.
+- **Relevant files:** 23W waitlist entry/offer/policy and capacity integration; 23A event-add-on catalog/order lines/inventory/fulfillment and commercial integration; separate CQRS/API/HAL/Blazor/notifications.
 - **Related skills/rules:** Domain/Application/EF/API/HAL/Blazor rules, `outbox-pattern`, `dotnet-efcore-guidelines`.
-- **Acceptance criteria:** fair explicit waitlist policy; bounded expiring offers reserve shared capacity; atomic accept/expire; add-ons are event-scoped and never create entitlements/check-in; one currency/merchant per mixed order; promotion eligibility explicit; fulfillment independent from admission/refund allocation; tax/accounting/invoice ownership absent from Event.
+- **Acceptance criteria:** existing `Waitlisted` order status is not mislabeled as a waitlist offer; fair explicit queue policy; bounded expiring offers reserve shared capacity; atomic accept/expire/advance; event add-ons never create admission entitlements; one merchant/currency per mixed order; promotion/refund allocation explicit; fulfillment independent; no Event-owned general storefront, marketing, tax, accounting, invoice, or credit-note system.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Disable new waitlist offers/add-ons; preserve offers/orders/fulfillment history. Expiry releases reserved capacity/inventory once.
 
-#### Task 23.1: Waitlist policy, entry, and offer domain
+#### Task 23W.0 (Red Phase): Waitlist fairness, capacity race, tenant, and recovery specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API tests
+- **Files:** focused queue ordering, privacy, offer/checkout/cancellation races, capacity hold, expiry/restart, tenant isolation, HAL, and queue-health tests.
+- **Description:** Author failing tests before production code for deterministic FIFO/approved-priority ordering, one active scoped entry/offer, release-versus-checkout races, accept-versus-expire, idempotent advancement, generic public position, and distinction from existing waitlisted-order status.
+- **Acceptance Criteria:** RED receipt proves missing behavior; real PostgreSQL race tests synchronize on state/locks without sleeps; fairness policy and tie-breakers are machine-consumed values; cross-tenant collisions and enumeration are denied generically.
+- **Dependencies:** Phase 18C and existing capacity/holds
+- **Effort:** XL
+
+#### Task 23W.1 (Green Phase): Waitlist policy, entry, and offer domain
 - **Type:** create
 - **Layer:** Domain
 - **Files:** waitlist policy/entry/offer/status/rules.
 - **Description:** Event/ticket/pool scope, explicit FIFO or approved priority policy, join identity, expiry, max active offers, and states. Entry does not equal order or admission.
-- **Acceptance Criteria:** deterministic ordering; privacy-minimized public position; one active entry/offer per scoped identity.
-- **Dependencies:** Phase 22
+- **Acceptance Criteria:** deterministic ordering with stable tie-breaker; privacy-minimized position; one active entry/offer per scoped identity; no hidden paid priority or provider-controlled ranking; existing waitlisted orders remain a separate capacity-policy outcome.
+- **Dependencies:** 23W.0
 - **Effort:** L
 
-#### Task 23.2: Capacity-triggered offer reservation and persistence races
+#### Task 23W.2 (Green Phase): Capacity-triggered offer reservation and persistence races
 - **Type:** create
 - **Layer:** Application/Persistence
 - **Files:** waitlist repositories/configurations/migrations, capacity release outbox handler, offer acceptance/expiry worker.
-- **Description:** Released capacity schedules bounded offers; offer atomically owns a normal inventory hold until expiry; acceptance creates/continues an order; timeout releases once and advances queue.
-- **Acceptance Criteria:** no shared-pool oversell; cancellation/offer/normal checkout race deterministic; retry/fanout idempotent; model parity.
-- **Dependencies:** 23.1
+- **Description:** Released capacity schedules bounded offers; each offer atomically owns the existing normal inventory-hold primitive until expiry; acceptance creates/continues an order; timeout releases once and advances the queue through a fenced, indexed worker.
+- **Acceptance Criteria:** no shared-pool oversell; cancellation/offer/normal-checkout and accept/expire races are deterministic; retry/fanout idempotent; tenant-qualified keys/filters/FKs; queue lag/backlog thresholds; five-provider model parity plus real PostgreSQL concurrency proof.
+- **Dependencies:** 23W.1
 - **Effort:** XL
 
-#### Task 23.3: Waitlist API, HAL, notifications, and self-service
+#### Task 23W.3 (Green Phase): Waitlist API, HAL, notifications, self-service, and operations
 - **Type:** create
 - **Layer:** Application/API/Cerbos/Blazor
 - **Files:** commands/queries/controllers/policies/links, event/checkout/Studio pages, email outbox, contracts/docs.
-- **Description:** Join/leave/accept via account or order-scoped capability; organizer sees bounded queue/offer health and policy actions. Generic public responses resist event-contact enumeration.
-- **Acceptance Criteria:** HAL-only actions; expired offer cannot revive; notifications contain same-origin capability only; accessible countdown/state.
-- **Dependencies:** 23.2
+- **Description:** Join/leave/accept via account or purpose-scoped capability; organizer sees bounded queue/offer health and policy actions. Generic responses resist contact enumeration. Runbooks define worker restart, capacity mismatch, stale offers, notification failure, and queue recovery.
+- **Acceptance Criteria:** direct authorization and HAL actions agree; expired offer cannot revive; notifications contain same-origin capability only; accessible countdown/state; bounded metrics contain no tenant/event/contact identifiers; recovery does not skip or reorder entries.
+- **Dependencies:** 23W.2
 - **Effort:** L
 
-#### Task 23.4: Event-add-on catalog and mixed-order snapshots
+#### Task 23A.0 (Red Phase): Add-on money, inventory, refund, admission, and tenant specifications
+- **Type:** test-first specification
+- **Layer:** Domain/Application/Persistence/API tests
+- **Files:** focused add-on catalog/version, inventory race, mixed-order composition, promotion, refund allocation, fulfillment, tenant isolation, admission exclusion, and HAL tests.
+- **Description:** Author failing tests before production code for checked integer-minor totals, one merchant/currency, add-on inventory races, add-on-only refund not revoking admission, ticket-line refund not silently canceling delivered add-on, no admission/check-in query leakage, and no tax/invoice/general-storefront surface.
+- **Acceptance Criteria:** RED receipt proves missing behavior; real PostgreSQL inventory races exist; allocation invariants use persisted/API integer minor units; forbidden product-boundary routes/entities fail architecture checks.
+- **Dependencies:** Phases 18–20
+- **Effort:** XL
+
+#### Task 23A.1 (Green Phase): Event-add-on catalog and mixed-order snapshots
 - **Type:** create
 - **Layer:** Domain/Persistence
 - **Files:** event-add-on/catalog/version/order-line/fulfillment entities/rules/configurations/migrations.
-- **Description:** Optional event-scoped merchandise or service add-on with immutable name, final configured price, promotion eligibility, and separate finite/unlimited inventory. Mixed order keeps one connected merchant and currency; add-ons do not assign participants or entitlements. Tax/accounting classification and legal documents stay external.
-- **Acceptance Criteria:** no add-on line in admission/check-in queries; no general cross-event storefront; deterministic totals/refund allocation; provider-portable model parity; no Event tax/invoice aggregate.
-- **Dependencies:** Phase 18, 23.1
+- **Description:** Model optional event-scoped merchandise/service add-ons with immutable buyer-visible name, final configured integer-minor price, promotion/refund/disclosure policy, and separate finite/unlimited inventory. Mixed orders retain one connected merchant and currency; add-ons never assign participants or entitlements.
+- **Acceptance Criteria:** no add-on in admission/check-in authority; no cross-event storefront; checked deterministic totals/allocation; tenant-qualified keys/filters/FKs; provider-portable model parity; no Event tax/invoice/credit-note/accounting aggregate.
+- **Dependencies:** 23A.0
 - **Effort:** XL
 
-#### Task 23.5: Event-add-on inventory, fulfillment, promotion, payment, and UI integration
+#### Task 23A.2 (Green Phase): Add-on inventory, fulfillment, promotion, payment, and refund integration
 - **Type:** create/modify
-- **Layer:** Application/API/Cerbos/Blazor
-- **Files:** event-add-on/fulfillment CQRS, checkout composition, promotion/payment/refund integration, Studio add-on/orders UI, contracts/docs.
-- **Description:** Reserve/consume/release add-on inventory with order holds; route line totals through existing payment/refund snapshots; fulfill independently with auditable status and no check-in effects.
-- **Acceptance Criteria:** partial add-on refund does not revoke ticket; cancelled ticket allocation does not cancel a delivered add-on unless policy says; all controls HAL-gated; no marketing/accounting/invoice UI is introduced.
-- **Dependencies:** 23.4
+- **Layer:** Application/Persistence
+- **Files:** event-add-on/fulfillment CQRS; inventory repositories/workers; checkout composition; promotion/payment/refund integration; outbox events.
+- **Description:** Reserve/consume/release add-on inventory with order holds; route line totals through existing immutable payment/refund snapshots; fulfill independently through audited state and durable post-commit effects.
+- **Acceptance Criteria:** concurrent inventory has one winner; partial add-on refund does not revoke admission; ticket cancellation/refund does not silently cancel delivered add-on; external side effects occur post-commit; recovery reconciles inventory/fulfillment without duplicate delivery.
+- **Dependencies:** 23A.1, Phase 19
+- **Effort:** XL
+
+#### Task 23A.3 (Green Phase): Add-on API, HAL, Studio/checkout UI, disclosure, and operations
+- **Type:** create/modify
+- **Layer:** API/Cerbos/Blazor/Ops
+- **Files:** add-on/fulfillment endpoints and policies; Studio/checkout/order UI; generated contracts; external-integration events/docs/runbooks.
+- **Description:** Expose event-bound add-on authoring, purchase, fulfillment, and refund affordances only through canonical API/HAL. Show exact price, fulfillment, refund, operator, and support terms; emit bounded post-commit facts for approved external specialist systems.
+- **Acceptance Criteria:** no local role/claim gating; direct authorization and HAL agree; accessible localized disclosures; no marketing/accounting/tax/invoice UI; generated contracts deterministic; metrics and support artifacts exclude PII and amounts as labels.
+- **Dependencies:** 23A.1, 23A.2
 - **Effort:** XL
 
 ---
 
 ### Phase 24: Conditional `ProtectedDelayedPayout` Profile
-- **Goal:** Implement strict release control only if every approval in D30 is real; otherwise keep the profile unavailable without blocking normal paid events.
-- **Depends on:** Phase 19 plus Stripe, legal, Islamic-finance, and operator approvals; independent of deferred finance integrations.
-- **Relevant files:** ADR-024 approval addendum; settlement policy/release aggregate; separate Application payout-control contract; `Explore.Infrastructure/Payments/Stripe/Payouts/**` adapter using the already pinned SDK only when supported by the approved contract; risk/reconciliation/incident surfaces.
+- **Goal:** Investigate strict release control early, but implement it only if every approval in D30 is current, attributable, and operationally supportable; otherwise record a disabled decision.
+- **Depends on:** Task 24.1 research may start after Phase 18C. Runtime Tasks 24.2–24.5 require Phase 19 plus Stripe, legal, qualified Islamic scholarly, consumer/payment-services, reserve, complaint, dispute, and accountable-operator approvals.
+- **Authority:** [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md), ADR-024, and dated external approvals. I-VSD is not a fatwa or certification.
+- **Relevant files:** ADR-024 approval addendum; settlement policy/release aggregate; separate Application payout-control contract; `src/Explore.Infrastructure/Payments/Stripe/Payouts/**` only if the pinned stable SDK supports the approved contract; risk/reconciliation/incident surfaces.
 - **Related skills/rules:** Domain/Application/EF/API/HAL/Blazor rules, `outbox-pattern`, `error-tracking`, `ip-clean-room`.
-- **Acceptance criteria:** explicit `SettlementReleaseAt`, country holding-limit validation, non-escrow disclosure, stop/review/cancel/refund gates, operator liability/reserve ownership, connected-account/dashboard constraints, reconciliation. No normal configuration path can bypass missing approvals.
+- **Acceptance criteria:** explicit `SettlementReleaseAt`; country/account/control holding-limit evidence; non-escrow disclosure; stop/review/cancel/refund/dispute gates; named liability/reserve/complaint owners; connected-account/dashboard constraints; ambiguous-release recovery. No configuration, tenant, organizer, raw HTTP, preview API, or undocumented parameter bypasses missing approvals.
 - **Phase-end verification (run once after all tasks, only when the phase is unblocked):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Disable new protected catalogs; preserve existing release/refund obligations and reconciliation. Never silently fall back to `OrganizerDirect` after a buyer accepted held-release terms.
 
-#### Task 24.1: Approval evidence and exact Stripe control contract
+#### Task 24.1: Approval evidence and exact provider/control contract
 - **Type:** investigate + modify
 - **Layer:** Docs/Configuration
 - **Files:** ADR-024 addendum, provider conformance/approval record, legal/scholarly/operator evidence references.
-- **Description:** Pin platform/connected countries, fees/losses controller, Dashboard/control type, payout schedule/manual capability, holding limit, reserve/complaint/dispute owner, and exact buyer/organizer disclosures.
-- **Acceptance Criteria:** all approvals dated and attributable; any missing fact keeps profile disabled; “escrow” absent.
-- **Dependencies:** Phase 15.3, Phase 19
+- **Description:** Pin platform and connected-account countries, account controller/loss collector, dashboard/control type, payout schedule/manual capability, holding limit, reserve/complaint/dispute owner, consumer-law basis, legal review, qualified Islamic scholarly questions/decision, and exact buyer/organizer/operator disclosures.
+- **Acceptance Criteria:** each approval names role/route, evidence artifact, date, scope, expiry/revalidation trigger, and stop condition; any missing/unstable fact records the profile disabled; “escrow” and certification claims are absent; no runtime source/package/migration is created by this task.
+- **Dependencies:** Phase 18C
 - **Effort:** L
 
-#### Task 24.2: Settlement milestone, hold-limit, and release domain/persistence
+#### Task 24.2 (Red Phase): Release, blocker, tenant, drift, and recovery specifications
+- **Type:** test-first specification; blocked until 24.1 approves implementation
+- **Layer:** Domain/Application/Persistence/Infrastructure/API tests
+- **Files:** focused milestone/holding-limit, release-once, blocker, tenant isolation, ambiguous provider handoff, control drift, HAL/separation-of-duties, and restore/reconcile tests.
+- **Description:** Before production code, author failing invariant tests for multi-day/open-ended/online events, cancellation/refund/dispute/account restriction/operator review blockers, duplicate/concurrent release, timeout before/after handoff, account-control drift, cross-tenant substitution, and fail-closed publication.
+- **Acceptance Criteria:** tests remain absent/skipped only while 24.1 is formally disabled; once unblocked, RED evidence exists before production; no preview/raw/undocumented provider surface is mocked into acceptability.
+- **Dependencies:** 24.1 approved, Phase 19
+- **Effort:** XL
+
+#### Task 24.3 (Green Phase): Settlement milestone, hold-limit, and release domain/persistence
 - **Type:** create
 - **Layer:** Domain/Persistence
 - **Files:** settlement policy/release/status/rules/configurations/repositories/migrations.
 - **Description:** Snapshot explicit release timestamp/milestone and review buffer, independent of public end time. Validate sale window against country limit; block release on cancellation, suspension, dispute, unresolved refund, account restriction, or operator review.
-- **Acceptance Criteria:** multi-day/open-ended/online scenarios; release exactly once; no midnight inference; model parity.
-- **Dependencies:** 24.1
-- **Effort:** XL
-
-#### Task 24.3: Stripe payout controls, release worker, and reconciliation
-- **Type:** create
-- **Layer:** Application/Infrastructure
-- **Files:** separate Application payout-control contract/results; `Explore.Infrastructure/Payments/Stripe/Payouts/**`; outbox worker; allowlisted provider event mappings; reconciliation/health.
-- **Description:** Only after Task 24.1 proves the stable pinned SDK/API supports the exact approved control model, configure/monitor the payout schedule, issue release outside transactions with request-scoped connected account and stable idempotency, map provider errors/request IDs, and reconcile payout/balance/account states. Detect organizer/manual paths that invalidate the promise and stop sales/escalate. If the required operation needs a preview, undocumented parameter, raw Stripe API request, or broader controller role, keep the profile disabled and return to the approval gate.
-- **Acceptance Criteria:** no conditional payout code contaminates the default Checkout/refund adapters; ambiguous release reconciles; stale worker fenced; no release with unresolved blockers; account/control drift alert; SDK/API support is stable, typed, and conformance-tested.
+- **Acceptance Criteria:** multi-day/open-ended/online scenarios; release exactly once; no midnight inference; tenant-qualified keys/filters/FKs; five-provider model parity plus real PostgreSQL release/blocker races.
 - **Dependencies:** 24.2
 - **Effort:** XL
 
-#### Task 24.4: Protected-profile publication, disclosure, HAL/UI, and incident operations
+#### Task 24.4 (Green Phase): Stable typed Stripe payout controls, release worker, and reconciliation
+- **Type:** create
+- **Layer:** Application/Infrastructure
+- **Files:** separate Application payout-control contract/results; `src/Explore.Infrastructure/Payments/Stripe/Payouts/**`; outbox worker; allowlisted provider event mappings; reconciliation/health.
+- **Description:** Only after approval proves the stable pinned SDK/API supports the exact contract, configure/monitor the schedule and issue release outside transactions with request-scoped connected account and stable idempotency. Reconcile payout/balance/account observations, fence workers, and stop sales/escalate on account or manual-control drift. If support requires preview/raw/undocumented access or broader authority, return a disabled decision.
+- **Acceptance Criteria:** conditional code does not contaminate default Checkout/refund adapters; ambiguous release cannot duplicate; no release with unresolved blockers; control drift alert and runbook; provider SDK/API support is stable, typed, license-gated, and conformance-tested.
+- **Dependencies:** 24.3
+- **Effort:** XL
+
+#### Task 24.5 (Green Phase): Protected-profile publication, disclosure, HAL/UI, and incident operations
 - **Type:** create/modify
 - **Layer:** Application/API/Cerbos/Blazor/Ops
 - **Files:** publish preflight, buyer/organizer/operator pages/links, metrics/health/runbook, contracts/docs.
-- **Description:** Profile appears only under approved instance policy and eligible country/account/window. Disclose non-escrow, release milestone, operator, remedies, and risk. Provide stop-sale/review/reconcile/release actions with separation of duties and durable audit.
-- **Acceptance Criteria:** tenant/organizer cannot enable; buyer acceptance snapshotted; all actions HAL-gated; incident ownership and alerts testable.
-- **Dependencies:** 24.1–24.3
+- **Description:** Profile appears only under approved instance policy and eligible country/account/window. Disclose non-escrow status, release milestone, operator, remedies, uncertainty, and risk before payment. Provide stop-sale/review/reconcile/release actions with separation of duties and durable audit.
+- **Acceptance Criteria:** tenant/organizer cannot enable; buyer acceptance snapshotted; direct authorization and HAL agree; named incident/complaint/dispute owners and alerts are testable; deployment decision is explicitly enabled, test-only, or disabled.
+- **Dependencies:** 24.1–24.4
 - **Effort:** XL
 
 ---
 
-### Phase 25: Self-Hosted Safety, Official-Instance Trust, Pilot Hardening, And Closeout
-- **Goal:** Make the implemented commerce/admission stack operable without implying that every fork is ISLAMU-protected.
-- **Depends on:** Phases 16–23; Phase 24 only if approved/enabled.
-- **Relevant files:** configuration/secrets/health/metrics/runbooks/admin disclosures; risk/complaint/review controls; integration fixtures; canonical docs/OpenAPI/NSwag/DBML/intent/workstream closeout.
+### Phase 25: Pilot Hardening, Recovery Proof, And Closeout
+- **Goal:** Prove the implemented commerce/admission stack is recoverable, supportable, contract-complete, and honestly classified for each deployment.
+- **Depends on:** Phases 18C–23; Phase 24 only if approved/enabled.
+- **Authority:** both I-VSD reports, ADR-022–024, the registration intent, self-hosting/operator contracts, and the release/changelog policy.
+- **Relevant files:** health/metrics/runbooks and recovery fixtures; provider/capability matrices; canonical docs/OpenAPI/NSwag/DBML/intent/release fragments/workstream closeout.
 - **Related skills/rules:** `error-tracking`, `ip-clean-room`, `auth-patterns`, `outbox-pattern`, all affected rules.
-- **Acceptance criteria:** every self-hoster uses own Connect platform; official/unofficial operator disclosure; test/live mode separation; secret/webhook rotation; bounded reconciliation health; organizer/event risk ceilings and stop-sale; complaints/incidents/disputes ownership; legal/scholarly/Stripe launch checklist; no production-ready claim from test fixtures alone.
+- **Acceptance criteria:** backup/restore/replay and key recovery cover payment/refund/admission/transfer/waitlist/add-on state; bounded health and dead-letter operations; full deterministic provider/capability fixtures; official/self-hosted operator and external-launch evidence remain distinct; final deployment status is `production-approved`, `test-only`, or `disabled`; no production-ready claim from fixtures alone.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Global payment kill switch stops new paid publication/Checkout but preserves webhook/refund/reconciliation/admission reads. Admission kill switches are target/action specific and preserve audit.
+- **Rollback / failure handling:** Existing 18C stop-sale and scoped admission controls remain the rollback surface. Preserve all historical facts and reconcile durable work; no closeout task may erase evidence to obtain a green status.
 
-#### Task 25.1: Self-hosted configuration, secret rotation, and operator-origin disclosure
-- **Type:** modify/create
-- **Layer:** DevOps/API/Blazor/Docs
-- **Files:** structured config/validation, secret definitions/rotation, setup/admin/public disclosure surfaces, `docs/{CONFIGURATION,SECRETS,SELF_HOSTING,SECURITY-MODEL}.md`.
-- **Description:** Separate test/live Stripe keys and webhook endpoints; validate public origins; rotate secrets with overlap; disclose instance operator and whether official ISLAMU-hosted; never distribute ISLAMU credentials/brand trust to forks.
-- **Acceptance Criteria:** startup fails closed on mixed mode/origin/secret mismatch; redacted diagnostics; official marker cannot be set through tenant settings.
-- **Dependencies:** Phases 16–23
-- **Effort:** L
-
-#### Task 25.2: Organizer/event risk limits, review, complaints, and stop-sale
-- **Type:** create/modify
-- **Layer:** Domain/Application/API/Cerbos/Blazor
-- **Files:** risk policy/review/case commands, paid publication/checkout gates, Admin/Studio surfaces/HAL/audit.
-- **Description:** Versioned first-event/high-value/velocity ceilings, local verification/evidence, complaint intake, incident suspension, and stop-sale without recipient redirection. Stripe KYC/Radar evidence complements but never replaces local event trust.
-- **Acceptance Criteria:** fail-closed thresholds; reviewer separation; suspension stops new sales while refunds/webhooks continue; bounded reason codes and audit.
-- **Dependencies:** Phases 16–19
+#### Task 25.0 (Red Phase): Cross-capability recovery, drift, tenant, and closeout specifications
+- **Type:** test-first specification
+- **Layer:** Architecture/Application/Persistence/Infrastructure/API tests
+- **Files:** focused backup/restore/replay, key-ring recovery, worker fencing, dead-letter, provider drift, tenant isolation, HAL parity, generated-contract, and documentation-ledger invariant tests.
+- **Description:** Author failing closeout invariants before hardening changes. Cover restoration during ambiguous payment/refund, credential key rotation, cancellation/waitlist cursor recovery, duplicate worker claim, unsupported provider/API version, control drift, and stale plan/context/tasks counts/links.
+- **Acceptance Criteria:** RED receipt proves the unclosed invariants; machine-consumed contracts are asserted rather than prose wording; no test deletes/skips/weakens existing failures; no Docker/Aspire/browser/live-service requirement is introduced into the phase gate.
+- **Dependencies:** Phases 18C–23
 - **Effort:** XL
 
-#### Task 25.3: Reconciliation, observability, recovery drills, and provider fixture matrix
+#### Task 25.1 (Green Phase): Reconciliation, observability, backup/restore, and recovery drills
 - **Type:** modify/create
 - **Layer:** Application/Infrastructure/API/Ops
-- **Files:** payment/refund/account/payout/admission health, bounded metrics/alerts, runbooks, `Stripe.net` transport/signature/conformance fixtures, SDK/API upgrade checklist.
-- **Description:** Cover success, SCA, duplicate/delayed/out-of-order webhook, signature/API-version/mode mismatch, ambiguous timeout, rate limit, SDK retry, insufficient-balance refund, partial refund, cancellation restart, dispute, account restriction, recipient change, unsupported currency, and protected-profile windows. Exercise adapter headers/bodies/error mapping plus workers through deterministic custom-`HttpClient` and `EventUtility.GenerateSignatureHeader` fixtures; live accounts and Stripe CLI sandbox drills remain external launch gates.
-- **Acceptance Criteria:** all in-scope Stripe capabilities have provider-neutral contract evidence; no PII/high-cardinality IDs; provider request IDs are retained only in bounded support/audit context; orphan/contradictory state alerts; dead-letter/reconcile actions audited and HAL-gated; exact package/API/webhook versions documented; test/live evidence distinguished.
-- **Dependencies:** Phases 18–24 as enabled
+- **Files:** payment/refund/account/admission/transfer/waitlist/add-on and optional payout health; bounded metrics/alerts; backup/restore/upgrade/troubleshooting runbooks; restore/replay fixtures.
+- **Description:** Exercise restore ordering for application data, Data Protection/capability keys, secret bindings, webhook inbox, outbox, Quartz/fencing state, and durable cursors. Resume each worker without duplicate external effects or lost monotonic evidence.
+- **Acceptance Criteria:** recovery point/order and operator ownership are explicit; orphan/contradictory state alerts; dead-letter/reconcile actions audited and HAL-gated; no PII/high-cardinality labels or raw payloads; optional Phase 24 evidence stays conditional.
+- **Dependencies:** 25.0
 - **Effort:** XL
 
-#### Task 25.4: Canonical contract/docs synchronization and workstream completion audit
+#### Task 25.2 (Green Phase): Full provider/capability fixture matrix and upgrade gate
+- **Type:** modify/create
+- **Layer:** Infrastructure/Application/API
+- **Files:** `Stripe.net` transport/signature/conformance fixtures; worker fixtures; QR/capability/key-version fixtures; SDK/API/dependency upgrade checklist.
+- **Description:** Cover Checkout/refund/dispute/account and optional payout outcomes, duplicate/delayed/out-of-order signed observations, signature/API-version/mode mismatch, ambiguous timeout, rate limit, SDK retry, insufficient-balance/requires-action/failed refund, cancellation restart, recipient/currency/control drift, QR rotation, and capability expiry. Live Stripe/CLI/country corridors remain external launch evidence.
+- **Acceptance Criteria:** all in-scope provider capabilities have provider-neutral contract evidence; exact package/API/webhook/dependency versions and licenses documented; no second-provider factory; test/live/external evidence distinguished; source-free clean-room register remains complete.
+- **Dependencies:** 25.0, 25.1
+- **Effort:** XL
+
+#### Task 25.3 (Green Phase): Canonical contracts, release/changelog, docs, and workstream closeout
 - **Type:** modify
 - **Layer:** Docs/Contracts
-- **Files:** `.agents/contract/intents.yaml`, `docs/{DOMAIN,API,API_CHANGELOG,AUTHORIZATION,SECURITY-MODEL,WEBHOOKS,OUTBOX_PATTERN,BLAZOR,CONFIGURATION,SECRETS,SELF_HOSTING,CONTACT_SHARING}.md`, OpenAPI/NSwag/DBML, this plan/context/tasks.
-- **Description:** Regenerate contracts, map every D21–D30 invariant and phase acceptance to shipped code/tests/docs, record external launch gaps, and retire `deferred-design-records.md` entries only when implemented. Preserve clean-room source register and dependency evidence.
-- **Acceptance Criteria:** no stale “future payment/admission” claims; Event/external-business-system boundary and deferred report remain explicit; no optional Phase 24 completion claim without approvals; task/plan/context counts match; generated artifacts deterministic.
-- **Dependencies:** 25.1–25.3
+- **Files:** `.agents/contract/intents.yaml`, `docs/{DOMAIN,API,API_CHANGELOG,AUTHORIZATION,SECURITY-MODEL,WEBHOOKS,OUTBOX_PATTERN,BLAZOR,CONFIGURATION,SECRETS,SELF_HOSTING,BACKUP_RESTORE_UPGRADE,TROUBLESHOOTING,CONTACT_SHARING}.md`, `docs/releases/changes/CHG-*.yaml`, OpenAPI/NSwag/DBML, both I-VSD reports, and this plan/context/tasks.
+- **Description:** Regenerate contracts, map D21–D30 and every Phase 18C–25 acceptance gate to shipped code/tests/docs, classify release/changelog impact, record external launch gaps, and retire deferred records only when evidence exists.
+- **Acceptance Criteria:** no stale future/current claims; Event/external-business boundary explicit; optional Phase 24 remains disabled unless approved; I-VSD obligations map to task/evidence/owner/escalation; task/plan/context counts and links match; generated artifacts deterministic; final status is production-approved, test-only, or disabled per deployment.
+- **Dependencies:** 25.1, 25.2
 - **Effort:** L
 
 ---
 
 ## 7. Testing Strategy
 
-One fastest relevant non-browser project per phase, exactly one `dotnet test` command at phase end (assignments and repeat-justifications inline in each phase above): P0 Architecture, P1 Domain, P2 API, P3 Architecture, P4 Persistence, P5 Persistence, P6 Application, P7 Domain, P8 Application, P9 API, P10 Infrastructure, P11 Infrastructure, P12 Infrastructure, P13 API, P14 Blazor.Client, P15 Architecture, P16 Infrastructure, P17 Persistence, P18 Infrastructure, P19 Application, P20 Domain, P21 API, P22 Application, P23 Persistence, P24 Infrastructure (conditional), P25 API.
+Every behavioral phase starts with its named **Red Phase** task. The implementation agent authors public-contract, invariant-breaker, tenant-negative, and concurrency specifications first, executes the narrow selector, and records a failure caused by the missing behavior before writing production code. Green work satisfies those specifications without weakening or replacing them. This per-task RED/GREEN evidence is distinct from the phase-end gate.
 
-Contract-mandated projects not selected above are recorded as contract requirements and folded into owning task acceptance; a phase may substitute its one selected project only when the dominant risk changes and the reason is recorded before execution. No E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification is planned in implementation phases. Stripe adapters use deterministic contract fixtures through `Stripe.net`'s supported custom-`HttpClient` seam and signed webhook helper; no extra mocking package or `stripe-mock` dependency is planned. Application tests replace only the small provider capability ports. Live Stripe accounts/CLI, country/currency corridors, legal opinions, Islamic-finance review, and production incident staffing are external launch evidence, not automated phase gates and never inferred from fixture success.
+At phase end, run exactly one Release build and at most one fastest relevant non-browser project: P18C API, P19 Persistence, P20 Domain, P21 API, P22 Application, P23 Persistence, P24 Infrastructure only when approved, and P25 API. Contract-mandated projects not selected at phase end remain acceptance requirements of their owning tasks and are covered by focused selectors during RED/GREEN work; the final release gate executes the intent's full nonzero project matrix when implementation is actually ready for release.
+
+No E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, live-service smoke, or manual runtime walkthrough is part of these implementation phase gates. Stripe adapters use deterministic provider-neutral contract fixtures through approved `Stripe.net` transport/signature seams; Application replaces only small capability ports. Real PostgreSQL concurrency evidence is mandatory where named, but environment absence is a blocker rather than a pass. Live Stripe accounts/CLI, country/currency corridors, legal opinions, qualified Islamic scholarly review, and staffed operations are external launch evidence and are never inferred from fixture success.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
-- **Docs:** Existing ADR-016..018 remain authoritative; ADR-022..024 land in P15. `docs/DOMAIN.md`, `API.md`, `API_CHANGELOG.md`, `AUTHORIZATION.md`, `SECURITY-MODEL.md`, `WEBHOOKS.md`, `OUTBOX_PATTERN.md`, `BLAZOR.md`, `CONFIGURATION.md`, `SECRETS.md`, `SELF_HOSTING.md`, `ADMIN_GUIDE.md`, `CONTACT_SHARING.md`, `OPERATIONS.md`, `TROUBLESHOOTING.md`, DBML, OpenAPI, and NSwag are updated only by phases that materially change them. The I-VSD consultation and `dev/report/event-platform-boundary-and-external-business-integrations.md` are referenced, not edited during implementation unless their decisions change.
+- **Docs:** ADR-016–018 and ADR-022–024 are current authorities. `docs/DOMAIN.md`, `API.md`, `API_CHANGELOG.md`, `AUTHORIZATION.md`, `SECURITY-MODEL.md`, `WEBHOOKS.md`, `OUTBOX_PATTERN.md`, `BLAZOR.md`, `CONFIGURATION.md`, `SECRETS.md`, `SELF_HOSTING.md`, `BACKUP_RESTORE_UPGRADE.md`, `ADMIN_GUIDE.md`, `CONTACT_SHARING.md`, `OPERATIONS.md`, `TROUBLESHOOTING.md`, release fragments, DBML, OpenAPI, and NSwag are updated only by phases that materially change them. Both I-VSD reports and `dev/report/event-platform-boundary-and-external-business-integrations.md` are required traceability inputs.
+- **Release/changelog strategy:** this planning-only re-baseline is `Changelog: skip`. Each later high-impact or breaking implementation slice uses the repository Conventional Commit scope matching its bounded capability (`payments`, `registration`, `admission`, `ticketing`, `ops`, or `docs`) and adds a validated `docs/releases/changes/CHG-*.yaml` fragment before PR handoff; generated-contract-only churn is described in the owning fragment, not given a compatibility shim.
 - **Configuration:** exact stable `Stripe.net` + pinned API/webhook endpoint version; instance Stripe Connect keys/webhook secrets and test/live mode; explicit SDK timeout/network-retry settings; paid-event policy ceilings and tenant narrowing; organizer kinds; currency set/default; refund/risk limits; QR/token key versions; optional protected-profile approvals. Safe defaults are payments off until configured, organization-only when enabled upstream, EUR-only only when the operator chooses it, bounded SDK retries with no duplicate resilience layer, strict webhook API-version matching, and `ProtectedDelayedPayout` unavailable. Qonto/accounting/invoice configuration does not belong to this workstream.
 - **Operations:** account/payment/refund/dispute/payout reconciliation, admission issuance, waitlist expiry, and check-in health join the existing fenced/outbox worker model. Kill switches stop new sales or scoped scanner actions while preserving webhook/refund/reconciliation and historical reads. Runbooks own dead letters, ambiguous provider acceptance, secret rotation, device compromise, cancellation batches, disputes, and operator communications.
 
@@ -2561,7 +2722,7 @@ Bounded metrics only (`provider`, `operation`, `outcome`, `profile`, `currency`,
 
 ## 12. Migration And Compatibility Plan
 
-Clean-baseline strategy per D13 remains: **no compatibility aliases, data backfills for unshipped shapes, shims, or dual writes**. Phases 16–24 add entities/configurations first, then regenerate unapplied development migrations through EF for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL; migration/designer/snapshot files are never hand-edited. Breaking names/contracts may be corrected directly before release. Model parity does not prove database rollout. Once real payment, refund, ticket, check-in, external-document-reference, or settlement history exists in a deployed environment, that history is immutable evidence and future development changes use additive corrective migrations, not destructive rewriting.
+Clean-baseline strategy per D13 remains: **no compatibility aliases, fake acceptance backfills, shims, dual writes, or legacy request authority**. Phase 18C and Phases 19–24 change source entities/configurations first, then regenerate unapplied development migrations through EF for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL; migration/designer/snapshot files are never hand-edited. Breaking unshipped names/contracts are corrected directly. Development databases may be recreated, but persisted payment/refund/admission evidence is never rewritten to satisfy a new invariant. Model parity does not prove database rollout; each deployment needs migration apply/restore evidence.
 
 ## 13. Risk Register
 
@@ -2571,7 +2732,7 @@ Clean-baseline strategy per D13 remains: **no compatibility aliases, data backfi
 | Committed migration artifacts are mistaken for database rollout | Medium | High | Treat `ff30795a2`, `20260729183118_RemoveLegacyEventPricing`, and the no-pending-model result as artifact/model evidence only; require explicit database-application and runtime-rollout evidence before deployment claims | Ledger or release note claims schema is applied without deployment evidence | Task 2.2 / release owner |
 | Phase 5 aggregate replacement ripples wider than mapped (AT Proto, emails, notifications) | High | High | In-phase dependents sweep (5.9); delete-last sequencing; `rg` gates in acceptance | Build breaks on delete commits | 5.6/5.9 |
 | Capacity race bugs under multi-replica load | Medium | High — oversell | Explicit locking in one transaction; persistence race tests; hold sweeper fencing | Race test flakes; pool counter drift | 5.3 |
-| Scope explosion across 26 phases | High | High | Strict ADR/dependency order; default launch stops after P23/P25; P24 conditional; specialist marketing/accounting/tax/invoicing stay external; no second payment provider/offline credential/resale/affiliates | tasks.md drift or new unapproved aggregate | all |
+| Scope explosion across an append-only workstream | High | High | Strict ADR/dependency order; Phase 18C blocks unsafe expansion; 23W/23A are independent; P24 conditional; specialist marketing/accounting/tax/invoicing stay external; no second payment provider/offline credential/resale/affiliates | tasks.md drift or new unapproved aggregate | all |
 | Provider API drift vs consultation citations (dated 2026-07) | Medium | Medium | Conformance re-verification tasks (10.1/11.1/12.1); capability tuples fail closed | Conformance evidence deltas | 10.1, 11.1, 12.1 |
 | Schema-hash instability breaking published-version identity | Low | High | Golden-hash tests, culture-invariant serializer frozen at first publish | Hash test failure | 7.4 |
 | Guest abuse of PublicTransactional surface | Medium | Medium | Dedicated rate policy, idempotency, antiforgery, quotas, honest limits | Rate-limit metrics, reconciliation queue spikes | 3.1–3.3, 5.4 |
@@ -2579,41 +2740,41 @@ Clean-baseline strategy per D13 remains: **no compatibility aliases, data backfi
 | OpenAPI/NSwag churn destabilizing client | Medium | Medium | Regeneration as discrete per-phase final step; naming tests; changelog discipline | `ApiClientNamingTests` failures | every API phase |
 | Answer CHECK constraints vs EF model friction | Medium | Low | Raw-SQL check constraints in configurations; persistence tests | Migration generation errors | 8.2 |
 | Consent/subject refactor breaking existing contact-share flows | Medium | Medium | P13 owns the full vertical incl. docs; parity tests | Contact-share API test failures | 13.1 |
-| Money-math defects in pricing modes / fee policy / contribution (rounding, currency, float drift) | Medium | High | Decimal-only value objects, explicit per-currency rounding rules, exhaustive decimal tests; Hi.Events float-money defect is the named counter-example | Failing decimal tests; totals mismatch between line/order/earnings figures | 4.1, 5.2, 5.10 |
+| Money-math defects in pricing modes / fee policy / contribution / refund allocation | Medium | Critical | Persistence/API/provider boundaries use checked integer minor units and percentages use integer basis points; any bounded decimal intermediate is explicit, pure, converted once, and covered by rounding/allocation tests | Overflow, allocation remainder, or totals mismatch between line/order/earnings/refund figures | 4.1, 5.2, 5.10, 18C.2, 19.1 |
 | Tenant-level actors gaining monetization control (abuse of contribution/fees) | Low | Medium | Instance-admin-only Admin endpoints; fail-closed authorization tests; no tenant-visible management surface | Authorization parity failures; unexpected 200s in monetization tests | 4.5 |
 | Hi.Events commercial breadth pulling deferred features into active phases | Medium | Medium | D19 scope discipline; deferred inventory lives only in Task 14.8 records | Discovered tasks referencing promo/refund/check-in outside P14 | 14.8 |
 | AGPLv3 code contamination from Hi.Events breaking CLA dual-licensing | Low | Critical | §4.13 no-code-copy rule; clean-room implementation from report + plan only; agents never open the Hi.Events repo while coding; PR review watches for transcribed code | Code resembling Hi.Events sources; references to its repo paths in diffs | All phases; rule recorded in ADR-018 (0.2) |
 | Studio actor-context over-disclosure or stale navigation authority | Low | High | Validate actor hints server-side; `PrivateNoStore`; relation-only DTO; event pages re-authorize operations and use event/resource HAL links | Unauthorized actor hint succeeds; role/event inventory appears in context DTO; sidebar action survives missing relation | 5.7, 5.8, 6.4, 14.7 |
 | Wrong merchant/account receives charge or refund | Low | Critical | Actor-bound connection, immutable catalog/attempt snapshot, connected-account request context, no admin fallback | provider account differs from snapshot; recipient mutation after sale | 16.2, 18.1–18.4, 19.4 |
-| Duplicate charge/refund after timeout or webhook replay | Medium | Critical | Durable idempotency before handoff, inbox dedupe, monotonic rules, reconciliation before retry | multiple provider objects for one local attempt; contradictory terminal state | 18.2–18.4, 19.2–19.4 |
-| Provider/KYC approval is mistaken for genuine-event trust | Medium | High | Local organizer/event verification, risk ceilings, complaints, stop-sale, cancellation/refunds | fraud complaints, velocity threshold, evidence review failure | 16.1, 26.2 |
+| Duplicate charge/refund after timeout, concurrent reservation, or webhook replay | Medium | Critical | Durable idempotency before handoff, atomic reservation including ambiguous states, inbox dedupe, monotonic rules, reconciliation before retry | multiple provider objects for one local attempt; reserved amount exceeds captured allocation; contradictory terminal state | 18.2–18.4, 19.0–19.4 |
+| Provider/KYC approval is mistaken for genuine-event trust | Medium | High | Local organizer/event verification, instance-owned risk ceilings, complaints, stop-sale, cancellation/refunds | fraud complaints, velocity threshold, evidence review failure | 18C.3 |
 | Promotion/hold races oversubscribe usage or change totals | Medium | High | One transaction/lock order; live reservations count; immutable order composition | confirmed uses exceed limit; provider/local total mismatch | 17.2–17.3 |
-| QR/display/recovery identifier becomes a reusable bearer leak | Medium | Critical | CSPRNG opaque credential, keyed hash, no PII/log/storage, scope/expiry/rotation, generic recovery | credential in telemetry/referrer; old QR validates after rotation | 20.1–20.5, 22.2–22.3 |
+| QR/display/recovery identifier becomes a reusable bearer leak | Medium | Critical | CSPRNG opaque credential, keyed digest/key version, one-time disclosure, no PII/log/storage, scope/expiry/rotation, generic recovery | credential in telemetry/referrer; old QR validates after rotation | 20.0–20.6, 22.0–22.3 |
 | Check-in or transfer race admits/reassigns twice | Medium | High | Atomic active-state constraints, append-only facts, one active offer, compensating undo | two successful concurrent scans/transfers | 21.2, 22.2–22.3 |
 | Refund shown complete while Stripe balance leaves it pending | Medium | High | Independent attempt state, provider event/reconciliation truth, exact UI language | local succeeded without provider success evidence | 19.2–19.5 |
-| Specialist integration scope leaks accounting/tax/invoicing into Event | Medium | High | D29 product boundary; removed design preserved in the external-integration report; future Qonto work is separate and optional | Event-owned ledger, tax engine, invoice numbering/document aggregate, or campaign UI appears in this workstream | 15.3, 23.4–23.5, 25.4 |
-| Delayed payout creates custody/liability or false escrow promise | Medium | Critical | Optional P24 hard gate; explicit milestone/limits/non-escrow disclosure; Stripe/legal/scholarly approval | profile enabled without all approvals; sales exceed hold limit | 24.1–24.4 |
-| Malicious fork implies ISLAMU protection or uses shared credentials | Medium | Critical | Per-instance Connect platform, official-origin disclosure, no shared secrets/normal admin official marker | duplicate official branding/origin or ISLAMU account ID on fork | 25.1 |
+| Specialist integration scope leaks accounting/tax/invoicing into Event | Medium | High | D29 product boundary; removed design preserved in the external-integration report; future Qonto work is separate and optional | Event-owned ledger, tax engine, invoice numbering/document aggregate, or campaign UI appears in this workstream | 15.3, 23A.0–23A.3, 25.3 |
+| Delayed payout creates custody/liability or false escrow promise | Medium | Critical | Optional P24 hard gate; explicit milestone/limits/non-escrow disclosure; provider/legal/qualified-scholarly/operator approval | profile enabled without all approvals; sales exceed hold limit | 24.1–24.5 |
+| Malicious fork implies ISLAMU protection or uses shared credentials | Medium | Critical | Phase 18C per-instance Connect identity, official-origin disclosure, no shared secrets/tenant-settable official marker | duplicate official branding/origin or ISLAMU account ID on fork | 18C.2–18C.3 |
 
 ## 14. Success Metrics And Definition Of Done
 
-Functional success retains every original registration/form/ticket/pricing/consent scenario and adds: verified organization connects its own Stripe account; user/group organizer is allowed only by explicit narrowing policy; Belgium EUR lock and global organizer-confirmed EUR/USD/MAD/SAR/AED; local promo reservation and immutable discount; successful/SCA/delayed/duplicate/unknown payment; cancellation and pending/succeeded/partial refund; dispute projection; free and paid `AdmissionTicket` issuance; revoked QR rejection; event/session check-in, duplicate and undo; transfer acceptance rotates old QR; generic resend/recovery; account/guest self-service; waitlist offer expiry; event-add-on fulfillment separate from admission; explicit absence of Event-owned marketing/accounting/tax/invoice features; and official/self-hosted operator disclosure. Every buyer sees merchant, operator, currency, totals, fee/contribution, refund policy, and any non-escrow release promise before payment.
+Functional success retains every original registration/form/ticket/pricing/consent scenario and adds: no positive Checkout without exact accepted terms and operator identity; local risk/complaint/stop-sale authority; concurrency-safe refund reservations and bounded cancellation campaigns; truthful refund/dispute reconciliation; free and paid `AdmissionTicket` issuance; revoked QR rejection; event/session check-in, duplicate and undo; transfer acceptance rotates old QR; generic recovery; fair expiring waitlist offers distinct from waitlisted orders; event-add-on fulfillment separate from admission; explicit absence of Event-owned marketing/accounting/tax/invoice features; recoverable self-hosted key/data/worker state; and official/self-hosted operator disclosure.
 
-Per phase, the automated gate is exactly one Release build plus at most one selected non-browser project. The expanded default workstream is Done when P15–P23 and P25 are complete in addition to the preserved P0–P14 state, the intent/ADRs and I-VSD invariants hold, generated artifacts/docs match behavior, and external launch gaps are explicit. P24 is complete only if its approvals exist and it ships; otherwise it remains intentionally unavailable and does not block an `OrganizerDirect` production decision. Qonto/Listmonk specialist work remains a separate optional workstream. “Implemented” never means legally, regulatorily, contractually, or Sharia certified.
+The default workstream is Done when Phase 18C and Phases 19–23/25 are complete, every Red Phase receipt predates production code, the intent/ADRs and both I-VSD reports trace to evidence, generated artifacts/docs match behavior, and external launch gaps are explicit. Phase 24 is complete only if approvals exist and runtime ships; otherwise a dated disabled decision is the correct outcome and does not block `OrganizerDirect`. Qonto/Listmonk specialist work remains separate. “Implemented” never means legal, regulatory, contractual, religious, or Sharia certification.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
 1. At first implementation start, read plan, context, and tasks once; on cold resume, read context + tasks first, then only the plan sections for the current phase or changed decision.
 2. During an uninterrupted session, do not reread unchanged plan/context/tasks after every task; keep the current task in working context and reopen only the exact section needed.
-3. Start from the highest-priority unchecked task unless the user overrides.
+3. Start from the highest-priority unchecked task unless the user overrides. For Phase 18C onward, never start a Green task until its owning Red Phase receipt exists and fails for the intended missing behavior.
 4. `tasks.md` is the hot execution ledger: check a substantial task immediately after its implementation acceptance criteria are met; reconcile smaller completed tasks together no later than phase end.
-5. Implementation-task and phase-verification checkboxes stay separate; a phase is complete only after its build and selected test checkboxes pass.
+5. Red, Green, and phase-verification checkboxes stay separate. A phase is complete only after all implementation acceptance criteria, one Release build, and the selected phase-end project pass.
 6. Update the status summary, completed count, current priority, next recommended slice, discovered tasks, deferred work, and `Last Updated` whenever task state changes.
 7. Update context after a completed phase, meaningful decision, blocker, failed validation, material discovery, or before pause/compaction/transfer; do not rewrite for trivia.
 8. Update the plan only when scope, architecture, phase order, acceptance criteria, risks, or validation strategy changes.
 9. Record failed validation with known cause and next recovery action in tasks/context without marking the phase complete.
 10. Before pausing, compaction, transfer, or PR creation: reconcile affected tasks, add a dated handoff, and identify unrelated dirty files the next contributor must avoid.
-11. Run phase verification only after all phase tasks, with one Release build and at most one selected project test; do not repeat green commands or start the application/browser.
+11. During a behavioral task, run only the focused selector needed to record RED then GREEN. Run phase verification once after all phase tasks, with one Release build and at most one selected project; do not repeat broad green commands or start the application/browser.
 12. Never report completion when repository reality and the task ledger disagree.
 
 Every implementation summary must teach: what changed and why; patterns/libraries/protocols used (CQRS/MediatR, UnitOfWork, outbox, HAL affordance gating, capability segregation, idempotency/fencing, tenant isolation); important files/classes/handlers with responsibilities; data/control flow; repo conventions honored; verification performed; remaining work; dev-doc update status.
@@ -2634,4 +2795,15 @@ For completed work, `Docs updated` must confirm `tasks.md` reconciliation; repor
 
 ## 17. Potential Risks & Unknowns
 
-The highest-risk new slice is **Phase 18–19**: one wrong connected-account context, idempotency boundary, amount composition, or webhook transition can misdirect money, double charge/refund, or confirm an unpaid order. Keep provider identities and local snapshots immutable, persist intent before I/O, and treat reconciliation as required behavior rather than recovery polish. The second risk is **Phase 20–22**: QR, scanner, recovery, and transfer are bearer-capability surfaces; a low-entropy/display identifier, leaked token, or non-atomic rotation makes copied tickets valid. Online opaque validation is intentionally chosen before offline signatures. The third risk is **Phase 24**: payout control is not primarily a coding problem. Missing Stripe contract, consumer/payment-services, operations, or Islamic-finance evidence must remove the profile from HAL/configuration; it must not become a best-effort default. A parallel product risk is integration scope creep: Qonto/Listmonk may receive bounded event facts, but accounting, tax, invoicing, and marketing must stay outside Event as recorded in the deferred report. Phase 15.4 used Context7/official documentation and an isolated metadata probe; Tavily MCP was unavailable and no Tavily research is claimed.
+The highest-risk new slice is **Phase 18C–19**: paid Checkout exists before the complete accepted commercial/operator snapshot now required by the I-VSD and CTO audit. New paid capture must fail closed until Phase 18C; historical acceptance must not be fabricated. Refund reservations must include ambiguous states, and cancellation must use a durable paged campaign rather than an unbounded transaction. The second risk is **Phase 20–22**: QR, scanner, recovery, and transfer are bearer-capability surfaces whose keys, one-time disclosure, revocation, restore order, and terminal races must be explicit. The third risk is **Phase 24**: payout control is primarily an external authority and operating-model question; missing evidence must produce a disabled decision. Product-scope creep remains forbidden. AnySearch and Context7 MCPs were not available in this session; official Stripe/Microsoft documentation was researched through the available web tools and reduced to source-free functional requirements.
+
+## 18. Session Handoff — 2026-08-24 Europe/Brussels
+
+- **Delivered:** Phase 18C is complete. Paid Checkout now requires immutable tenant-bound commercial acceptance, current operator/governance authority, exact HAL/direct authorization parity, and a fresh acknowledgement before provider handoff. Stop-sale preserves signed webhook intake, reconciliation, support, and reads.
+- **Architecture:** Domain snapshots and governance aggregates own invariants; Application CQRS/services compose and revalidate authority; Persistence enforces tenant-qualified constraints and serializable sale-control linearization; Infrastructure remains the Stripe adapter boundary; API/BFF/Blazor expose private no-store contracts and HAL-gated affordances.
+- **Generated artifacts:** PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL migrations/model snapshots, OpenAPI, API inventory, NSwag client, and localized disclosure bundles were regenerated from source.
+- **Verification:** Release build passed with zero errors. Domain 858/858, Application 3,985/3,985, Architecture 443 plus one governed skip, Infrastructure 1,474/1,474, BFF 451/451, Client 2,549 plus one governed skip, Secrets 231/231, owned payment API 22/22, paid persistence 27/27, and PostgreSQL reconciliation 2/2 passed. The six-file safety-critical Stryker campaign scored 92.57%.
+- **Manual QA:** C# drivers observed complete acceptance, exact-current freshness, malformed evidence failing closed, stale/missing acknowledgement denial, and durable stop-sale. Rendered component checks covered keyboard acknowledgement, French formatting, and Arabic RTL.
+- **Known external blockers:** the complete API suite still contains 24 unrelated shared-worktree fixture failures; the broad Persistence suite exposes a pre-existing `ManyServiceProvidersCreatedWarning`; local Aspire API startup is blocked by an existing PostgreSQL schema whose objects lack matching migration history. No local database was deleted.
+- **Shared-worktree boundary:** queue-driven-worker migration, records-adoption, agent-governance, and the two snapshot EOF-only changes are unrelated and must remain outside this workstream's commits.
+- **Resume point:** start Phase 19 Task 19.0 with failing refund reservation, cancellation campaign, dispute, tenant-isolation, idempotency, capability, and HAL specifications. Refund execution remains unavailable until its authority and operating model are implemented and verified.

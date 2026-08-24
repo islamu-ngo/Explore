@@ -317,7 +317,8 @@ public sealed class RegistrationParticipantCommandHandlerTests
                 _inventory, Substitute.For<IPromotionRedemptionRepository>(), _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
                 Substitute.For<IRegistrationPaymentAttemptRepository>(),
                 new NoOpScheduledDeadlineDispatcher(),
-                new FixedTimeProvider(UtcNow));
+                new FixedTimeProvider(UtcNow),
+                Substitute.For<IPaidOrderAcceptanceService>());
         }
 
         public Guid TenantId { get; }

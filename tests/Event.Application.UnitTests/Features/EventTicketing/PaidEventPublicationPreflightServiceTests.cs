@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Features.EventTicketing.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
@@ -200,7 +201,16 @@ public sealed class PaidEventPublicationPreflightServiceTests
         _groupTenants,
         _authorization,
         _tenant,
-        _commerceConfiguration);
+        _commerceConfiguration,
+        ReadyCheckoutActivation());
+
+    private static IPaidCheckoutActivationService ReadyCheckoutActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateSaleControlAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
 
     private void ConfigureReadyFacts(Actor organizer, IReadOnlyList<string> connectionCurrencies, bool configureConnection = true)
     {

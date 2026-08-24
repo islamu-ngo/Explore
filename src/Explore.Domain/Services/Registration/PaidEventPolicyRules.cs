@@ -165,8 +165,19 @@ public static class PaidEventPolicyRules
 
             PaidEventPolicyCurrencyRiskLimit? tenantLimit = tenantPolicy.CurrencyRiskLimits.SingleOrDefault(limit => limit.CurrencyCode == instanceLimit.CurrencyCode);
             ValidateCeiling(instanceLimit.PerEventSalesCeilingMinor, tenantLimit?.PerEventSalesCeilingMinor, "Tenant per-event sales ceiling cannot exceed or remove the instance ceiling.");
+            ValidateCeiling(instanceLimit.PerEventSalesCountCeiling, tenantLimit?.PerEventSalesCountCeiling, "Tenant per-event sales-count ceiling cannot exceed or remove the instance ceiling.");
             ValidateCeiling(instanceLimit.RollingOrganizerSalesCeilingMinor, tenantLimit?.RollingOrganizerSalesCeilingMinor, "Tenant rolling organizer sales ceiling cannot exceed or remove the instance ceiling.");
+            ValidateCeiling(instanceLimit.RollingOrganizerSalesCountCeiling, tenantLimit?.RollingOrganizerSalesCountCeiling, "Tenant rolling organizer sales-count ceiling cannot exceed or remove the instance ceiling.");
+            ValidateWindow(instanceLimit.RollingOrganizerWindowDays, tenantLimit?.RollingOrganizerWindowDays);
             ValidateCeiling(instanceLimit.HighValueReviewThresholdMinor, tenantLimit?.HighValueReviewThresholdMinor, "Tenant high-value review threshold cannot exceed or remove the instance threshold.");
+        }
+    }
+
+    private static void ValidateWindow(int? instanceWindow, int? tenantWindow)
+    {
+        if (instanceWindow.HasValue && (!tenantWindow.HasValue || tenantWindow.Value < instanceWindow.Value))
+        {
+            throw new InvalidOperationException("Tenant rolling organizer window cannot shorten or remove the instance window.");
         }
     }
 

@@ -17,7 +17,7 @@ public sealed class RegistrationPaymentReconciliationServiceTests
     private static readonly Guid AttemptId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000003");
 
     [Test]
-    public async Task ReconcileDueAsync_FiftyDueEffectsUseFiftyFreshOneItemClaims()
+    public async Task ReconcileDueAsync_FiftyDueEffectsUseOneBoundedStableClaimBatch()
     {
         var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
         var checkout = Substitute.For<IHostedCheckoutSessionRetriever>();
@@ -25,9 +25,8 @@ public sealed class RegistrationPaymentReconciliationServiceTests
         PaymentReconciliationClaim[] claims = Enumerable.Range(0, 50)
             .Select(index => new PaymentReconciliationClaim(TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), index + 1, 1))
             .ToArray();
-        int cursor = 0;
-        repository.ClaimDueReconciliationsAsync("payment-reconciliation", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
-            .Returns(_ => cursor < claims.Length ? new[] { claims[cursor++] } : []);
+        repository.ClaimDueReconciliationsAsync("payment-reconciliation", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns(claims);
         foreach (PaymentReconciliationClaim claim in claims)
         {
             repository.GetReconciliationAttemptAsync(claim, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns((PaymentAttempt?)null);
@@ -39,8 +38,36 @@ public sealed class RegistrationPaymentReconciliationServiceTests
             new("payment-reconciliation", 50, TimeSpan.FromMinutes(2)), CancellationToken.None);
 
         await Assert.That(result.Claimed).IsEqualTo(50);
-        await repository.Received(50).ClaimDueReconciliationsAsync(
-            "payment-reconciliation", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>());
+        await repository.Received(1).ClaimDueReconciliationsAsync(
+            "payment-reconciliation", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task OneThousandNoProviderIoObservationsDrainWithinTwentyThirtySecondCadences()
+    {
+        var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
+        var checkout = Substitute.For<IHostedCheckoutSessionRetriever>();
+        var payments = Substitute.For<IPaymentIntentRetriever>();
+        var due = new Queue<PaymentReconciliationClaim>(Enumerable.Range(0, 1_000).Select(index =>
+            new PaymentReconciliationClaim(TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), index + 1, 1)));
+        repository.ClaimDueReconciliationsAsync("payment-reconciliation", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns(_ => Enumerable.Range(0, Math.Min(50, due.Count)).Select(_ => due.Dequeue()).ToArray());
+        repository.GetReconciliationAttemptAsync(Arg.Any<PaymentReconciliationClaim>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns((PaymentAttempt?)null);
+        repository.SettleReconciliationAsync(Arg.Any<PaymentReconciliationClaim>(), Arg.Any<PaymentReconciliationDecision>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var service = new RegistrationPaymentReconciliationService(repository, checkout, payments, new FixedTimeProvider(UtcNow));
+
+        int claimed = 0;
+        for (int cadence = 0; cadence < 20; cadence++)
+        {
+            claimed += (await service.ReconcileDueAsync(new("payment-reconciliation"), CancellationToken.None)).Claimed;
+        }
+
+        await Assert.That(claimed).IsEqualTo(1_000);
+        await Assert.That(due).IsEmpty();
+        await checkout.DidNotReceiveWithAnyArgs().RetrieveAsync(default!, default);
+        await payments.DidNotReceiveWithAnyArgs().RetrievePaymentIntentAsync(default!, default);
     }
 
     [Test]
@@ -222,9 +249,8 @@ public sealed class RegistrationPaymentReconciliationServiceTests
         attempt.MarkRequiresAction("cs_123", UtcNow.AddMinutes(-1), "req_create");
         var claim = new PaymentReconciliationClaim(TenantId, Guid.CreateVersion7(), AttemptId, Guid.CreateVersion7(), 1, 1);
         var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
-        int claimCount = 0;
-        repository.ClaimDueReconciliationsAsync("payment-reconciliation", 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
-            .Returns(_ => claimCount++ == 0 ? [claim] : []);
+        repository.ClaimDueReconciliationsAsync("payment-reconciliation", 50, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns([claim]);
         repository.GetReconciliationAttemptAsync(claim, UtcNow, Arg.Any<CancellationToken>()).Returns(attempt);
         repository.SettleReconciliationAsync(claim, Arg.Any<PaymentReconciliationDecision>(), Arg.Any<CancellationToken>()).Returns(true);
         var checkout = Substitute.For<IHostedCheckoutSessionRetriever>();

@@ -3,6 +3,11 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-24
+
+- **Breaking (pre-v1): paid start requires explicit current acceptance.** Authenticated and guest payment-start requests now carry `PaidOrderAcceptanceAcknowledgementDto`; absent, false, or stale acknowledgement fails closed. New private/no-store `GET .../payment/acceptance` operations return exact merchant, independent instance operator/official status, delivery, line/money, refund language/version/text, support/complaint, provider/charge, and statement facts. HAL adds `payment-acceptance`; clients must render and acknowledge those server facts before using `start-payment`.
+- **Behavioural: paid publication/claim/dispatch stop-sale.** Incomplete instance governance and global/event stop-sale remove new-sale HAL affordances and block direct sale paths while existing payment status, signed webhook intake, reconciliation, support, and recovery remain available. Historical attempts without acceptance remain historical and cannot be backfilled or dispatched.
+
 ## 2026-08-23
 
 - **Breaking (pre-v1) contract correction: `EventLocationDisclosureState` is published with its real wire values.** The OpenAPI schema previously declared the CLR names (`ToBeAnnounced`, `PrivateVenue`, `NeedsPrivacyReview`), while the API has always serialized snake_case (`to_be_announced`, `private_venue`, `needs_privacy_review`) through a type-level converter. Any generated client therefore failed to deserialize every multi-word state. The schema now reports what the server actually sends, and the OpenAPI enum generator resolves values through the type's own converter rather than assuming CLR names, so a converter-backed enum can never ship a mismatched contract again. Regenerate from `schemas/openapi_islamu-event.json`.

@@ -2,11 +2,16 @@
 // ABOUTME: Verifies transactional safeguards, private caching, and named route stability before implementation.
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Features.RegistrationOrders.Requests.Commands;
+using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -17,6 +22,49 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class RegistrationPaymentContractTests
 {
     [Test]
+    public async Task AuthenticatedPaymentRequestsEnforceTheSamePermissionsAsHal()
+    {
+        await AssertSecureRequest<StartAuthenticatedRegistrationPaymentCommand>(
+            AuthorizationActions.RegistrationOrders.Continue);
+        await AssertSecureRequest<RetryAuthenticatedRegistrationPaymentCommand>(
+            AuthorizationActions.RegistrationOrders.Continue);
+        await AssertSecureRequest<GetAuthenticatedPaidOrderAcceptanceQuery>(
+            AuthorizationActions.RegistrationOrders.Continue);
+        await AssertSecureRequest<GetAuthenticatedRegistrationPaymentQuery>(
+            AuthorizationActions.RegistrationOrders.View);
+        await AssertSecureRequest<GetAuthenticatedRegistrationPaymentCheckoutTargetQuery>(
+            AuthorizationActions.RegistrationOrders.View);
+    }
+
+    [Test]
+    public async Task PaidAcceptanceMarksEveryExactValueAndCollectionAsRequired()
+    {
+        string[] requiredProperties =
+        [
+            "IsOfficialInstance",
+            "DeliveryStartsAtUtc",
+            "DeliveryEndsAtUtc",
+            "CurrencyMinorUnitDigits",
+            "OrganizerAmountMinor",
+            "PlatformFeeMinor",
+            "PlatformContributionMinor",
+            "TotalMinor",
+            "RefundPolicyVersion",
+            "Lines"
+        ];
+        foreach (string propertyName in requiredProperties)
+        {
+            PropertyInfo property = typeof(PaidOrderAcceptanceDisclosureDto).GetProperty(propertyName)!;
+            await Assert.That(property.GetCustomAttribute<RequiredMemberAttribute>()).IsNotNull();
+        }
+
+        foreach (PropertyInfo property in typeof(PaidOrderAcceptanceLineDto).GetProperties())
+        {
+            await Assert.That(property.GetCustomAttribute<RequiredMemberAttribute>()).IsNotNull();
+        }
+    }
+
+    [Test]
     public async Task GuestPaymentWritesAreCapabilityScopedPublicTransactionalAndIdempotent()
     {
         await AssertEndpoint<GuestRegistrationOrderPaymentController, HttpPostAttribute>(
@@ -25,6 +73,8 @@ public sealed class RegistrationPaymentContractTests
             nameof(GuestRegistrationOrderPaymentController.Retry), "guest/{orderId:guid}/payment/retry", RouteNames.RetryGuestRegistrationPayment, EndpointClass.PublicTransactional, true);
         await AssertEndpoint<GuestRegistrationOrderPaymentController, HttpGetAttribute>(
             nameof(GuestRegistrationOrderPaymentController.GetStatus), "guest/{orderId:guid}/payment", RouteNames.GetGuestRegistrationPayment, EndpointClass.Public, false);
+        await AssertEndpoint<GuestRegistrationOrderPaymentController, HttpGetAttribute>(
+            nameof(GuestRegistrationOrderPaymentController.GetAcceptance), "guest/{orderId:guid}/payment/acceptance", RouteNames.GetGuestPaidOrderAcceptance, EndpointClass.Public, false);
     }
 
     [Test]
@@ -36,6 +86,8 @@ public sealed class RegistrationPaymentContractTests
             nameof(AuthenticatedRegistrationOrderPaymentController.Retry), "{orderId:guid}/payment/retry", RouteNames.RetryAuthenticatedRegistrationPayment, EndpointClass.Authenticated, true);
         await AssertEndpoint<AuthenticatedRegistrationOrderPaymentController, HttpGetAttribute>(
             nameof(AuthenticatedRegistrationOrderPaymentController.GetStatus), "{orderId:guid}/payment", RouteNames.GetAuthenticatedRegistrationPayment, EndpointClass.Authenticated, false);
+        await AssertEndpoint<AuthenticatedRegistrationOrderPaymentController, HttpGetAttribute>(
+            nameof(AuthenticatedRegistrationOrderPaymentController.GetAcceptance), "{orderId:guid}/payment/acceptance", RouteNames.GetAuthenticatedPaidOrderAcceptance, EndpointClass.Authenticated, false);
         await AssertEndpoint<StudioRegistrationOrderPaymentController, HttpGetAttribute>(
             nameof(StudioRegistrationOrderPaymentController.GetStatus), "{orderId:guid}/payment/studio", RouteNames.GetStudioRegistrationPayment, EndpointClass.Authenticated, false);
     }
@@ -66,5 +118,15 @@ public sealed class RegistrationPaymentContractTests
         {
             await Assert.That(method.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
         }
+    }
+
+    private static async Task AssertSecureRequest<TRequest>(string action)
+        where TRequest : ISecureRequest
+    {
+        AuthorizeResourceAttribute? requirement =
+            typeof(TRequest).GetCustomAttribute<AuthorizeResourceAttribute>();
+        await Assert.That(requirement).IsNotNull();
+        await Assert.That(requirement!.Resource).IsEqualTo(ResourceKinds.RegistrationOrder);
+        await Assert.That(requirement.Action).IsEqualTo(action);
     }
 }

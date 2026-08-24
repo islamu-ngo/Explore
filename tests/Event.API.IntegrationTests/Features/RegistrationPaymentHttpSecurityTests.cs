@@ -8,11 +8,13 @@ using System.Net.Http.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
 using Event.Api.IntegrationTests.Fixtures;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -31,6 +33,8 @@ public sealed class RegistrationPaymentHttpSecurityTests
     {
         IHostedCheckoutSessionRetriever retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
         IRegistrationPaymentAttemptRepository attempts = Substitute.For<IRegistrationPaymentAttemptRepository>();
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
         var timeProvider = new MutableTimeProvider(UtcNow);
         await using WebApplicationFactory<Program> factory = new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -39,6 +43,8 @@ public sealed class RegistrationPaymentHttpSecurityTests
                 services.AddSingleton(retriever);
                 services.RemoveAll<IRegistrationPaymentAttemptRepository>();
                 services.AddSingleton(attempts);
+                services.RemoveAll<IPaidOrderAcceptanceFreshnessService>();
+                services.AddSingleton(freshness);
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(timeProvider);
             }));
@@ -104,13 +110,13 @@ public sealed class RegistrationPaymentHttpSecurityTests
     }
 
     [Test]
-    public async Task TerminalGuestRetryReplaysSameKeyAndConcurrentFreshKeysReuseReplacement()
+    public async Task TerminalGuestRetryWithStaleAcceptanceReplaysConflictWithoutReplacement()
     {
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
         Guid organizerActorId = Guid.CreateVersion7();
         var eventRepository = Substitute.For<IEventRepository>();
-        eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
+        eventRepository.GetEventWithDetailsAsync(eventId, TenantId, Arg.Any<CancellationToken>()).Returns(new Explore.Domain.Event
         {
             Id = eventId,
             TenantId = TenantId,
@@ -130,12 +136,19 @@ public sealed class RegistrationPaymentHttpSecurityTests
         connections.GetActiveByScopeAsync(
             TenantId, organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
         var policies = Substitute.For<IPaidEventPolicyRepository>();
-        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+        PaidEventPolicyVersion disabledPolicy = PaidEventPolicyVersion.CreateDefaultInstance();
+        PaidEventPolicyVersion activePolicy = disabledPolicy.CreateRevision(
+            true, disabledPolicy.AllowedOrganizerKinds, false, disabledPolicy.AllowedCurrencyCodes, "EUR",
+            disabledPolicy.RefundProtections, [], false, null);
+        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(activePolicy);
         var commerce = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
         commerce.ProviderCode.Returns("stripe");
         commerce.ConnectPlatformId.Returns("platform-live-eu");
         var descriptor = Substitute.For<IPaymentProviderDescriptor>();
-        descriptor.Describe().Returns(new PaymentProviderDescriptor("stripe", "OrganizerDirect", "2026-07-29.dahlia"));
+        descriptor.Describe().Returns(new PaymentProviderDescriptor(
+            "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(false);
         await using WebApplicationFactory<Program> factory = new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
@@ -149,6 +162,8 @@ public sealed class RegistrationPaymentHttpSecurityTests
                 services.AddSingleton(commerce);
                 services.RemoveAll<IPaymentProviderDescriptor>();
                 services.AddSingleton(descriptor);
+                services.RemoveAll<IPaidOrderAcceptanceFreshnessService>();
+                services.AddSingleton(freshness);
                 services.RemoveAll<Microsoft.Extensions.Hosting.IHostedService>();
             }));
         PaymentScope payment;
@@ -165,10 +180,14 @@ public sealed class RegistrationPaymentHttpSecurityTests
             db.RegistrationOrders.Add(order);
             OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
                 TenantId, organizerActorId, connection.Id, "stripe", "platform-live-eu", "acct_authority", "BE", "EUR",
-                Guid.CreateVersion7(), null, UtcNow);
+                activePolicy.Id, null, UtcNow);
             PaymentAttempt terminal = PaymentAttempt.Create(
                 Guid.CreateVersion7(), TenantId, orderId, recipient, "OrganizerDirect", "2026-07-29.dahlia",
                 order.ConcurrencyStamp.ToString("N"), 1_000, 75, 125, "checkout:terminal", UtcNow.AddMinutes(-1), UtcNow.AddMinutes(30));
+            terminal.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+                TenantId, orderId, eventId, order.ConcurrencyStamp.ToString("N"),
+                recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
+                1_000, 75, 125, UtcNow.AddMinutes(-1)));
             terminal.MarkDispatchFailed(UtcNow.AddSeconds(-30), "req-terminal");
             CheckoutDispatchEffect terminalEffect = CheckoutDispatchEffect.Create(terminal, UtcNow.AddMinutes(-1));
             db.PaymentAttempts.Add(terminal);
@@ -181,44 +200,25 @@ public sealed class RegistrationPaymentHttpSecurityTests
         const string replayKey = "terminal-retry-replay";
         using HttpResponseMessage first = await PostRetryAsync(client, payment, replayKey, "{}");
         string firstBody = await first.Content.ReadAsStringAsync();
-        using (IServiceScope firstVerificationScope = factory.Services.CreateScope())
-        {
-            ExploreDbContext firstVerification = firstVerificationScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-            PaymentAttempt firstReplacement = await firstVerification.PaymentAttempts
-                .AsNoTracking()
-                .Where(value => value.TenantId == TenantId && value.RegistrationOrderId == orderId)
-                .OrderByDescending(value => value.CreatedAt)
-                .FirstAsync();
-            CheckoutDispatchEffect firstEffect = await firstVerification.CheckoutDispatchEffects
-                .AsNoTracking()
-                .SingleAsync(value => value.PaymentAttemptId == firstReplacement.Id);
-            await Assert.That((PaymentAttemptStatusEnum)firstReplacement.PaymentAttemptStatusId).IsEqualTo(PaymentAttemptStatusEnum.Created);
-            await Assert.That(firstEffect.Status).IsEqualTo(OutboxMessageStatus.Pending);
-        }
         using HttpResponseMessage replay = await PostRetryAsync(client, payment, replayKey, "{}");
         string replayBody = await replay.Content.ReadAsStringAsync();
-        HttpResponseMessage[] concurrent = await Task.WhenAll(
-            PostRetryAsync(client, payment, "fresh-retry-a", "{}"),
-            PostRetryAsync(client, payment, "fresh-retry-b", "{}"));
 
-        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(replay.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(replayBody).IsEqualTo(firstBody);
-        foreach (HttpResponseMessage response in concurrent)
-        {
-            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            response.Dispose();
-        }
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+        await Assert.That(firstBody).Contains("payment_acceptance_stale");
+        await Assert.That(replay.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+        await Assert.That(replayBody).Contains("payment_acceptance_stale");
         using IServiceScope verificationScope = factory.Services.CreateScope();
         ExploreDbContext verification = verificationScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         PaymentAttempt[] attempts = await verification.PaymentAttempts
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(value => value.TenantId == TenantId && value.RegistrationOrderId == orderId)
             .ToArrayAsync();
-        await Assert.That(attempts.Length).IsEqualTo(2);
-        await Assert.That(attempts.Count(value => value.ActiveUniquenessSlot == PaymentAttempt.ActiveUniquenessSlotValue)).IsEqualTo(1);
-        await Assert.That(attempts.Count(value => (PaymentAttemptStatusEnum)value.PaymentAttemptStatusId == PaymentAttemptStatusEnum.Created)).IsEqualTo(1);
-        await Assert.That(await verification.CheckoutDispatchEffects.CountAsync(
-            value => value.TenantId == TenantId && value.RegistrationOrderId == orderId)).IsEqualTo(2);
+        await Assert.That(attempts.Length).IsEqualTo(1);
+        await Assert.That((PaymentAttemptStatusEnum)attempts[0].PaymentAttemptStatusId).IsEqualTo(PaymentAttemptStatusEnum.Failed);
+        await Assert.That(await verification.CheckoutDispatchEffects
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .CountAsync(
+            value => value.TenantId == TenantId && value.RegistrationOrderId == orderId)).IsEqualTo(1);
     }
 
     private static async Task<HttpResponseMessage> PostStartAsync(HttpClient client, PaymentScope scope, string key)
@@ -332,10 +332,15 @@ public sealed class RegistrationPaymentHttpSecurityTests
         OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
             TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), "stripe", "platform-live-eu", "acct_private",
             "BE", "EUR", Guid.CreateVersion7(), null, UtcNow);
-        return PaymentAttempt.Create(
+        PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, order.Id, recipient, "OrganizerDirect", "2026-08-20.acacia",
             order.ConcurrencyStamp.ToString("N"), 1_000, 75, 125, "checkout:" + sessionId, UtcNow,
             order.ExpiresAt <= UtcNow ? UtcNow.AddMinutes(30) : order.ExpiresAt);
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            TenantId, order.Id, order.EventId, order.ConcurrencyStamp.ToString("N"),
+            recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
+            1_000, 75, 125, UtcNow));
+        return attempt;
     }
 
     private static void Set(object target, string property, object? value) =>

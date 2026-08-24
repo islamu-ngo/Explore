@@ -11,6 +11,10 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 
 ---
 
+## Paid Checkout Ownership Gate
+
+A self-host is an independent operator unless project governance has provisioned official status in server-owned instance configuration. Tenant administrators and browser requests cannot assert official status. Paid Checkout starts stopped: configure a deployment-specific operator identity, HTTPS origin and legal links, accountable complaint/refund/dispute/reconciliation owners, refund language, statement descriptor, charge type, and this deployment's own Stripe platform credentials under `Payments:CheckoutGovernance` and `Payments:OrganizerDirect`. Set startup-owned `ActivationStatus` to `approved` only after that evidence is complete, then use the authorized paid-checkout governance HAL resource to request and independently approve each tenant's initial durable sale control. Never reuse ISLAMU provider credentials or imply ISLAMU protection for an independent deployment.
+
 ## Overview
 
 ISLAMU Event is designed for easy self-hosting. Its minimum operational stack

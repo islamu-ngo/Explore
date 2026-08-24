@@ -41,6 +41,7 @@
         {
             <PaymentStatusPanel @key="(EventId, OrderId)"
                                 Start="@(CanStartPayment ? StartPaymentAsync : null)"
+                                LoadAcceptance="@(CanReviewPayment ? LoadPaymentAcceptanceAsync : null)"
                                 Load="@(CanLoadPayment ? LoadPaymentAsync : null)"
                                  Refresh="RefreshPaymentAsync"
                                  Retry="RetryPaymentAsync"
@@ -164,7 +165,8 @@
     private bool CanApplyPromotion => _order?._links?.ContainsKey("apply-promotion") == true && !CanRemovePromotion;
     private bool CanRemovePromotion => _order?._links?.ContainsKey("remove-promotion") == true;
     private bool HasPromotionState => CanApplyPromotion || CanRemovePromotion || !string.IsNullOrWhiteSpace(_order?.AppliedPromotionDisplayLabel);
-    private bool CanStartPayment => _order?._links?.ContainsKey("start-payment") == true;
+    private bool CanReviewPayment => _order?._links?.ContainsKey("payment-acceptance") == true;
+    private bool CanStartPayment => _order?._links?.ContainsKey("start-payment") == true && CanReviewPayment;
     private bool CanLoadPayment => _order?._links?.ContainsKey("payment-status") == true;
     private bool HasPaymentAction => CanStartPayment || CanLoadPayment;
 
@@ -207,8 +209,10 @@
         _contributionBasisPoints));
 
     private Task FinalizeAsync() => ApplyAsync(() => RegistrationOrderService.FinalizeCurrentAsync(EventId, OrderId));
-    private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(CancellationToken cancellationToken) =>
-        RegistrationOrderService.StartCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
+    private Task<PaidOrderAcceptanceDisclosureDto?> LoadPaymentAcceptanceAsync(CancellationToken cancellationToken) =>
+        RegistrationOrderService.GetCurrentPaymentAcceptanceAsync(EventId, OrderId, _order!, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(string disclosureRevision, CancellationToken cancellationToken) =>
+        RegistrationOrderService.StartCurrentPaymentAsync(EventId, OrderId, _order!, disclosureRevision, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> LoadPaymentAsync(CancellationToken cancellationToken) =>
         RegistrationOrderService.GetCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RefreshPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>

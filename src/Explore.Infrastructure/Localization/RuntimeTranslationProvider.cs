@@ -83,6 +83,16 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         {
             var results = await provider.ExportTranslationsAsync(languageCode, ct);
             var list = results.ToList();
+            if (provider != _offlineProvider)
+            {
+                var merged = (await _offlineProvider.ExportTranslationsAsync(languageCode, ct))
+                    .ToDictionary(value => value.KeyName, value => value, StringComparer.Ordinal);
+                foreach (TranslationExport translation in list)
+                {
+                    merged[translation.KeyName] = translation;
+                }
+                list = merged.Values.OrderBy(value => value.KeyName, StringComparer.Ordinal).ToList();
+            }
             stopwatch.Stop();
             _metrics.RecordFetch(providerName, languageCode, provider == _offlineProvider ? "hit_offline" : "hit_tms");
             _metrics.RecordFetchDuration(providerName, languageCode, stopwatch.Elapsed.TotalSeconds);

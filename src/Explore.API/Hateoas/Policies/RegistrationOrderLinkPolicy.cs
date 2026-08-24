@@ -119,12 +119,25 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: Facts(dto));
         }
 
-        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+        if (dto.PaidCheckoutActivationAvailable && RegistrationPaymentPayability.IsCurrentlyPayable(
                 dto.StatusId,
                 dto.TotalDueMinor,
                 dto.ExpiresAt,
                 timeProvider.GetUtcNow().UtcDateTime))
         {
+            yield return new LinkDefinition(
+                    LinkRelations.PaymentAcceptance,
+                    RouteNames.GetAuthenticatedPaidOrderAcceptance,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Get,
+                    "Review payment terms",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Continue,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    facts: Facts(dto));
+
             yield return new LinkDefinition(
                     LinkRelations.StartPayment,
                     RouteNames.StartAuthenticatedRegistrationPayment,

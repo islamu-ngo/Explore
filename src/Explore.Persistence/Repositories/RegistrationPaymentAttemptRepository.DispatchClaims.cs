@@ -100,6 +100,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
         return await (from effect in ActiveClaim(claim, observedAt).AsNoTracking()
                       join attempt in dbContext.PaymentAttempts
                               .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
+                              .Include(value => value.AcceptanceSnapshot)
                               .AsNoTracking()
                           on new { effect.TenantId, Id = effect.PaymentAttemptId } equals new { attempt.TenantId, attempt.Id }
                       select attempt).SingleOrDefaultAsync(cancellationToken);
@@ -131,7 +132,8 @@ public sealed partial class RegistrationPaymentAttemptRepository
                 .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
                 .AsNoTracking()
                 .SingleOrDefaultAsync(value => value.TenantId == claim.TenantId && value.Id == claim.RegistrationOrderId, token);
-            if ((order is not null &&
+            if (!attempt.PaidOrderAcceptanceSnapshotId.HasValue ||
+                (order is not null &&
                  ((RegistrationOrderStatusEnum)order.RegistrationOrderStatusId != RegistrationOrderStatusEnum.AwaitingPayment ||
                   order.TotalDueMinorSnapshot <= 0 ||
                   order.ExpiresAt is not { } cutoff || cutoff <= dispatchingAt)) ||
@@ -206,6 +208,18 @@ public sealed partial class RegistrationPaymentAttemptRepository
                 return null;
             }
 
+            bool saleStopped = await dbContext.PaidCheckoutSaleControls
+                .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
+                .AnyAsync(value =>
+                    value.TenantId == claim.TenantId &&
+                    value.IsStopped &&
+                    (value.EventId == null || value.EventId == order.EventId),
+                    token);
+            if (saleStopped)
+            {
+                return null;
+            }
+
             List<RegistrationInventoryHold> activeHolds = await dbContext.RegistrationInventoryHolds
                 .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
                 .Where(value => value.TenantId == claim.TenantId && value.RegistrationOrderId == claim.RegistrationOrderId &&
@@ -229,7 +243,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
             _ = attempt.MarkDispatchPending(preparedAt, providerRequestId: null);
             await dbContext.SaveChangesAsync(token);
             return attempt;
-        }, cancellationToken);
+        }, cancellationToken, System.Data.IsolationLevel.Serializable);
 
     public Task<CheckoutDispatchConfigurationDisposition> DeferCheckoutDispatchForConfigurationAsync(
         CheckoutDispatchClaim claim,

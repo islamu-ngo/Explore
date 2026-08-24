@@ -405,15 +405,18 @@ public sealed class OrderRecoveryTests : IDisposable
     [Test]
     public async Task AuthenticatedPayment_StartsOnlyFromExactOrderRelationAndRendersAuthoritativeFailureRetry()
     {
-        var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "start-payment");
+        var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "payment-acceptance", "start-payment");
         order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
         var failed = CreatePayment("Failed", "Failed", "payment-status", "retry-payment");
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
-        _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(failed);
+        _service.GetCurrentPaymentAcceptanceAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>())
+            .Returns(Acceptance());
+        _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, "revision", Arg.Any<CancellationToken>()).Returns(failed);
 
         var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
             .Add(component => component.EventId, order.EventId.Value)
             .Add(component => component.OrderId, order.Id.Value));
+        cut.WaitForElement("[data-testid='payment-acceptance-acknowledgement']").Change(true);
         cut.WaitForElement("[data-testid='start-payment']").Click();
 
         cut.WaitForElement("[data-testid='retry-payment']");
@@ -1042,6 +1045,45 @@ public sealed class OrderRecoveryTests : IDisposable
 
         return resource;
     }
+
+    private static PaidOrderAcceptanceDisclosureDto Acceptance() => new()
+    {
+        DisclosureRevision = "revision",
+        MerchantDisclosureText = "Example Organizer, legal merchant",
+        OperatorDisplayName = "Independent Operator",
+        IsOfficialInstance = false,
+        OfficialOrigin = "https://events.example.test",
+        OperatorRegionCode = "BE",
+        OperatorWebsiteUrl = "https://events.example.test",
+        OperatorLegalNoticeUrl = "https://events.example.test/legal",
+        OperatorTermsUrl = "https://events.example.test/terms",
+        OperatorPrivacyUrl = "https://events.example.test/privacy",
+        OperatorActivationStatus = "approved",
+        DeliveryStartsAtUtc = DateTimeOffset.Parse("2026-09-10T17:00:00Z"),
+        DeliveryEndsAtUtc = DateTimeOffset.Parse("2026-09-10T20:00:00Z"),
+        EventTimeZoneId = "Europe/Brussels",
+        CurrencyCode = "EUR",
+        CurrencyMinorUnitDigits = 2,
+        OrganizerAmountMinor = 1_000,
+        PlatformFeeMinor = 75,
+        PlatformContributionMinor = 125,
+        TotalMinor = 1_125,
+        RefundPolicyVersion = 1,
+        RefundPolicyText = "Refund policy",
+        RefundPolicyLanguageTag = "en-GB",
+        SupportContact = "support@example.test",
+        ComplaintContact = "complaints@example.test",
+        ComplaintOwner = "Trust and Safety",
+        RefundOwner = "Payments Operations",
+        DisputeOwner = "Dispute Operations",
+        ReconciliationOwner = "Payment Reconciliation",
+        ProviderCode = "stripe",
+        ProviderProfileCode = "OrganizerDirect",
+        ProviderEnvironment = "test",
+        ProviderCredentialOwner = "instance-operator",
+        ChargeType = "direct-charge",
+        StatementDescriptor = "EXAMPLE EVENT"
+    };
 
     private static HalResourceOfRegistrationPaymentDto CreatePayment(
         string statusCode,

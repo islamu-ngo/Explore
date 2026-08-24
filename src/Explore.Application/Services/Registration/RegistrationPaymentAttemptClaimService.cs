@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 
 namespace Explore.Application.Services.Registration;
 
@@ -13,7 +14,8 @@ public sealed record RegistrationPaymentAttemptClaimRequest(
     Guid TenantId,
     Guid RegistrationOrderId,
     DateTime RequestedAt,
-    Guid? TerminalAttemptId = null);
+    Guid? TerminalAttemptId = null,
+    PaidOrderAcceptanceSnapshot? AcceptanceSnapshot = null);
 
 public sealed record RegistrationPaymentAttemptClaimResult(
     bool Success,
@@ -34,6 +36,8 @@ public sealed class RegistrationPaymentAttemptClaimService(
     IPaidEventPolicyRepository policies,
     IOrganizerPaymentCommerceConfiguration commerceConfiguration,
     IPaymentProviderDescriptor paymentProviderDescriptor,
+    IPaidCheckoutActivationService checkoutActivation,
+    IPaidOrderAcceptanceFreshnessService acceptanceFreshness,
     IUnitOfWork unitOfWork)
 {
     private static readonly TimeSpan MinimumProviderCutoff = TimeSpan.FromMinutes(30);
@@ -65,6 +69,66 @@ public sealed class RegistrationPaymentAttemptClaimService(
                 expiresAt <= request.RequestedAt)
             {
                 return RegistrationPaymentAttemptClaimResult.Failure("not_payable", "Registration order is not payable.");
+            }
+
+            PaidOrderAcceptanceSnapshot? acceptance = request.AcceptanceSnapshot;
+            string lockedCompositionRevision = ResolveCompositionRevision(order);
+
+            PaidCheckoutActivationResult activation = await checkoutActivation.EvaluateAsync(
+                new(order.TenantId, order.EventId, order.CurrencyCode, order.TotalDueMinorSnapshot, request.RequestedAt), token);
+            if (!activation.IsActive)
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    activation.FailureCode ?? "payment_activation_unavailable", activation.Message);
+            }
+
+            if (acceptance is not null &&
+                (acceptance.TenantId != order.TenantId || acceptance.RegistrationOrderId != order.Id ||
+                 acceptance.EventId != order.EventId || !string.Equals(acceptance.CompositionRevision, lockedCompositionRevision, StringComparison.Ordinal)))
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_acceptance_stale",
+                    "Payment disclosures changed. Review and acknowledge the current facts.");
+            }
+
+            (OrganizerPaymentRecipientSnapshot? Snapshot, string? FailureCode, string? Message) readiness =
+                await CreateRecipientSnapshotAsync(order, request.RequestedAt, token);
+            if (readiness.Snapshot is not { } recipient)
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    readiness.FailureCode ?? "payment_readiness_unavailable",
+                    readiness.Message ?? "Payment readiness is temporarily unavailable.");
+            }
+
+            PaymentProviderDescriptor descriptor = paymentProviderDescriptor.Describe();
+            if (!string.Equals(descriptor.ProviderCode, recipient.ProviderCode, StringComparison.Ordinal) ||
+                !string.Equals(descriptor.ProfileCode, recipient.ProfileCode, StringComparison.Ordinal))
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_configuration_unavailable",
+                    "Payment provider configuration does not match the organizer connection.");
+            }
+
+            if (acceptance is null)
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_acceptance_required",
+                    "Current buyer acceptance evidence is required before payment.");
+            }
+
+            if (!acceptance.IsCurrent(
+                    lockedCompositionRevision,
+                    acceptance.DisclosureRevision,
+                    recipient.InstancePolicyVersionId,
+                    recipient.TenantPolicyVersionId,
+                    descriptor.ProviderCode,
+                    descriptor.ProfileCode,
+                    descriptor.Environment,
+                    descriptor.CredentialOwner))
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_acceptance_stale",
+                    "Payment disclosures changed. Review and acknowledge the current facts.");
             }
 
             if (request.TerminalAttemptId is { } terminalAttemptId)
@@ -121,7 +185,6 @@ public sealed class RegistrationPaymentAttemptClaimService(
                 }
             }
 
-            string lockedCompositionRevision = ResolveCompositionRevision(order);
             (PaymentAttempt Attempt, CheckoutDispatchEffect DispatchEffect)? active = await attempts.GetActiveByOrderAsync(
                 request.TenantId, request.RegistrationOrderId, token);
             if (active is not null)
@@ -131,7 +194,17 @@ public sealed class RegistrationPaymentAttemptClaimService(
                     activeStatus is PaymentAttemptStatusEnum.Failed or PaymentAttemptStatusEnum.Cancelled;
                 if (!retryingAuthoritativeTerminal)
                 {
-                    return new(true, active.Value.Attempt, active.Value.DispatchEffect, false, "Registration order already has an active payment attempt.");
+                    if (!active.Value.Attempt.HasImmutableAcceptance)
+                    {
+                        return RegistrationPaymentAttemptClaimResult.Failure(
+                            "payment_acceptance_required",
+                            "Historical payment attempts cannot be given synthetic acceptance.");
+                    }
+                    return await acceptanceFreshness.IsCurrentAsync(active.Value.Attempt, token)
+                        ? new(true, active.Value.Attempt, active.Value.DispatchEffect, false, "Registration order already has an active payment attempt.")
+                        : RegistrationPaymentAttemptClaimResult.Failure(
+                            "payment_acceptance_stale",
+                            "Payment disclosures changed. Review and acknowledge the current facts.");
                 }
 
             }
@@ -145,26 +218,19 @@ public sealed class RegistrationPaymentAttemptClaimService(
                     historicalStatus is PaymentAttemptStatusEnum.Failed or PaymentAttemptStatusEnum.Cancelled;
                 if (!retryingAuthoritativeTerminal)
                 {
-                    return new(true, historical.Value.Attempt, historical.Value.DispatchEffect, false, "Registration order already has a payment attempt for this composition.");
+                    if (!historical.Value.Attempt.HasImmutableAcceptance)
+                    {
+                        return RegistrationPaymentAttemptClaimResult.Failure(
+                            "payment_acceptance_required",
+                            "Historical payment attempts cannot be given synthetic acceptance.");
+                    }
+                    return await acceptanceFreshness.IsCurrentAsync(historical.Value.Attempt, token)
+                        ? new(true, historical.Value.Attempt, historical.Value.DispatchEffect, false, "Registration order already has a payment attempt for this composition.")
+                        : RegistrationPaymentAttemptClaimResult.Failure(
+                            "payment_acceptance_stale",
+                            "Payment disclosures changed. Review and acknowledge the current facts.");
                 }
 
-            }
-
-            (OrganizerPaymentRecipientSnapshot? Snapshot, string? FailureCode, string? Message) readiness =
-                await CreateRecipientSnapshotAsync(order, request.RequestedAt, token);
-            if (readiness.Snapshot is not { } recipient)
-            {
-                return RegistrationPaymentAttemptClaimResult.Failure(
-                    readiness.FailureCode ?? "payment_readiness_unavailable",
-                    readiness.Message ?? "Payment readiness is temporarily unavailable.");
-            }
-            PaymentProviderDescriptor descriptor = paymentProviderDescriptor.Describe();
-            if (!string.Equals(descriptor.ProviderCode, recipient.ProviderCode, StringComparison.Ordinal) ||
-                !string.Equals(descriptor.ProfileCode, recipient.ProfileCode, StringComparison.Ordinal))
-            {
-                return RegistrationPaymentAttemptClaimResult.Failure(
-                    "payment_configuration_unavailable",
-                    "Payment provider configuration does not match the organizer connection.");
             }
 
             Guid attemptId = Guid.CreateVersion7();
@@ -184,6 +250,13 @@ public sealed class RegistrationPaymentAttemptClaimService(
                     : CreateIdempotencyKey(order, lockedCompositionRevision),
                 request.RequestedAt,
                 paymentCutoff);
+            attempt.AttachAcceptance(acceptance);
+            if (!await acceptanceFreshness.IsCurrentAsync(attempt, token))
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_acceptance_stale",
+                    "Payment disclosures changed. Review and acknowledge the current facts.");
+            }
             CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(attempt, request.RequestedAt);
             RegistrationPaymentAttemptClaimOutcome outcome = await attempts.ClaimAsync(new(attempt, effect), token);
             return new(true, outcome.Attempt, outcome.DispatchEffect, outcome.Created, outcome.Created ? "Payment attempt claimed." : "Registration order already has an active payment attempt.");
@@ -195,7 +268,10 @@ public sealed class RegistrationPaymentAttemptClaimService(
         DateTime requestedAt,
         CancellationToken cancellationToken)
     {
-        Event? eventTarget = await events.GetEventWithDetails(order.EventId);
+        Event? eventTarget = await events.GetEventWithDetailsAsync(
+            order.EventId,
+            order.TenantId,
+            cancellationToken);
         if (eventTarget?.TenantId != order.TenantId || eventTarget.OrganizerActorId is not Guid organizerActorId)
         {
             return (null, "payment_organizer_unavailable", "The event organizer is not ready to accept payment.");
@@ -203,9 +279,27 @@ public sealed class RegistrationPaymentAttemptClaimService(
 
         PaidEventPolicyVersion? instancePolicy = await policies.GetActiveInstanceAsync(cancellationToken);
         PaidEventPolicyVersion? tenantPolicy = await policies.GetActiveTenantAsync(order.TenantId, cancellationToken);
-        if (instancePolicy is null || string.IsNullOrWhiteSpace(commerceConfiguration.ProviderCode) || string.IsNullOrWhiteSpace(commerceConfiguration.ConnectPlatformId))
+        if (instancePolicy is null || !instancePolicy.IsActive || !instancePolicy.IsPaymentsEnabled || instancePolicy.TenantId is not null ||
+            string.IsNullOrWhiteSpace(commerceConfiguration.ProviderCode) || string.IsNullOrWhiteSpace(commerceConfiguration.ConnectPlatformId))
         {
             return (null, "payment_configuration_unavailable", "Payment policy or platform configuration is unavailable.");
+        }
+
+        if (tenantPolicy is not null)
+        {
+            try
+            {
+                PaidEventPolicyRules.ValidateTenantPolicy(instancePolicy, tenantPolicy);
+            }
+            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+            {
+                return (null, "payment_configuration_unavailable", "Payment policy or platform configuration is unavailable.");
+            }
+
+            if (!tenantPolicy.IsActive || !tenantPolicy.IsPaymentsEnabled)
+            {
+                return (null, "payment_configuration_unavailable", "Payment policy or platform configuration is unavailable.");
+            }
         }
 
         OrganizerPaymentProviderConnection? connection = await connections.GetActiveByScopeAsync(

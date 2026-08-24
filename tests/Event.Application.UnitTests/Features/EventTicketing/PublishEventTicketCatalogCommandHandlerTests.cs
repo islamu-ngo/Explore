@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Features.EventTicketing.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
@@ -361,7 +362,16 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         _groupTenants,
         _authorization,
         _tenant,
-        _commerceConfiguration);
+        _commerceConfiguration,
+        ReadyCheckoutActivation());
+
+    private static IPaidCheckoutActivationService ReadyCheckoutActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateSaleControlAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
 
     private DomainEvent CreatePlatformEvent(Actor? organizer = null) => new()
     {

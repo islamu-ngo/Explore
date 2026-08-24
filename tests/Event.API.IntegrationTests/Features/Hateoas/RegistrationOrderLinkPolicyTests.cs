@@ -117,7 +117,8 @@ public sealed class RegistrationOrderLinkPolicyTests
             StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.AwaitingPayment,
             StatusCode = "AWAITING_PAYMENT",
             TotalDueMinor = 1_000,
-            ExpiresAt = UtcNow.AddMinutes(30)
+            ExpiresAt = UtcNow.AddMinutes(30),
+            PaidCheckoutActivationAvailable = true
         };
 
         var links = CreatePolicy().GetLinks(order, null).ToList();
@@ -131,6 +132,29 @@ public sealed class RegistrationOrderLinkPolicyTests
             .IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
         await Assert.That(links.Single(link => link.Rel == LinkRelations.StudioPaymentStatus).PermissionResourceKind)
             .IsEqualTo(ResourceKinds.Event);
+    }
+
+    [Test]
+    public async Task GetLinks_WhenStopSaleIsActiveOmitsNewSaleButPreservesPaymentStatusRead()
+    {
+        var order = new RegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.AwaitingPayment,
+            StatusCode = "AWAITING_PAYMENT",
+            TotalDueMinor = 1_000,
+            ExpiresAt = UtcNow.AddMinutes(5)
+        };
+        var policy = new RegistrationOrderLinkPolicy(new FixedTimeProvider(UtcNow));
+
+        var links = policy.GetLinks(order, null).ToList();
+
+        await Assert.That(links.Select(link => link.Rel)).DoesNotContain(LinkRelations.StartPayment);
+        await Assert.That(links.Select(link => link.Rel)).DoesNotContain(LinkRelations.PaymentAcceptance);
+        await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.PaymentStatus);
     }
 
     [Test]
@@ -148,7 +172,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             ExpiresAt = UtcNow.AddSeconds(-1)
         };
 
-        var links = new RegistrationOrderLinkPolicy(new FixedTimeProvider(UtcNow)).GetLinks(order, null).ToList();
+        var links = CreatePolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).DoesNotContain(LinkRelations.StartPayment);
         await Assert.That(links.Select(link => link.Rel)).Contains(LinkRelations.PaymentStatus);

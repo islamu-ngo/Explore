@@ -59,6 +59,55 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
     }
 
     [Test]
+    public async Task DispatchDueAsync_RechecksStoppedSaleBeforeProviderButDoesNotBlockAlreadyHandedOffSettlement()
+    {
+        var stoppedRepository = RepositoryWithClaim(out CheckoutDispatchClaim stoppedClaim, out _);
+        var stoppedCreator = Substitute.For<IHostedCheckoutSessionCreator>();
+        var stoppedActivation = Substitute.For<IPaidCheckoutActivationService>();
+        stoppedActivation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PaidCheckoutActivationResult.Failure("paid_sale_stopped", "stopped"));
+        stoppedRepository.DeferCheckoutDispatchForConfigurationAsync(
+                stoppedClaim, "paid_sale_stopped", Arg.Any<DateTime>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(CheckoutDispatchConfigurationDisposition.Deferred);
+
+        RegistrationPaymentCheckoutDispatchResult stopped = await Service(
+            stoppedRepository, stoppedCreator, activation: stoppedActivation).DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(stopped.Retried).IsEqualTo(1);
+        await stoppedCreator.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+
+        var handedOffRepository = RepositoryWithClaim(out CheckoutDispatchClaim handedOffClaim, out PaymentAttempt handedOffAttempt);
+        handedOffAttempt.MarkDispatchPending(UtcNow.AddSeconds(-1), null);
+        handedOffAttempt.MarkRequiresAction("cs_existing", UtcNow, null);
+        handedOffRepository.CompleteCheckoutDispatchAsync(
+            handedOffClaim, "cs_existing", Arg.Any<string?>(), UtcNow, Arg.Any<CancellationToken>()).Returns(true);
+        RegistrationPaymentCheckoutDispatchResult handedOff = await Service(
+            handedOffRepository, stoppedCreator, activation: stoppedActivation).DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(handedOff.Completed).IsEqualTo(1);
+        await stoppedActivation.Received(1).EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_StaleAcceptanceDefersBeforePreparingOrCallingProvider()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out _);
+        var creator = Substitute.For<IHostedCheckoutSessionCreator>();
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(false);
+        repository.DeferCheckoutDispatchForConfigurationAsync(
+                claim, "payment_acceptance_stale", Arg.Any<DateTime>(), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(CheckoutDispatchConfigurationDisposition.Deferred);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, creator, freshness: freshness).DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Retried).IsEqualTo(1);
+        await repository.DidNotReceiveWithAnyArgs().PrepareCheckoutDispatchAsync(default!, default, default, default);
+        await creator.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
     public async Task DispatchDueAsync_DelayedQueuePersistsSharedMarginCutoffImmediatelyBeforeHandoff()
     {
         var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out PaymentAttempt attempt);
@@ -150,7 +199,8 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
         repository.MarkCheckoutDispatchUnknownAsync(claim, "req_unknown", UtcNow.AddTicks(1), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        RegistrationPaymentCheckoutDispatchResult result = await Service(repository, creator).DispatchDueAsync(Request(), CancellationToken.None);
+        RegistrationPaymentCheckoutDispatchResult result = await Service(repository, creator)
+            .DispatchDueAsync(Request(), CancellationToken.None);
 
         await Assert.That(result.Unknown).IsEqualTo(1);
         await creator.Received(1).CreateAsync(Arg.Any<HostedCheckoutCreateRequest>(), Arg.Any<CancellationToken>());
@@ -487,6 +537,235 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
         await Assert.That(result.Retried).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task DeferDueForConfigurationAsync_StopsExactlyAtBatchSize()
+    {
+        var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
+        CheckoutDispatchClaim[] claims = Enumerable.Range(0, 3).Select(index => new CheckoutDispatchClaim(
+            Guid.CreateVersion7(), TenantId, OrderId, AttemptId, Guid.CreateVersion7(), index + 1, AttemptCount: 1)).ToArray();
+        int cursor = 0;
+        repository.ClaimDueDispatchEffectsAsync("checkout-test", 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns(_ => cursor < claims.Length ? [claims[cursor++]] : []);
+        repository.DeferCheckoutDispatchForConfigurationAsync(
+                Arg.Any<CheckoutDispatchClaim>(), "configuration_unavailable", UtcNow.AddMinutes(5), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(CheckoutDispatchConfigurationDisposition.Deferred);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>()).DeferDueForConfigurationAsync(
+            "checkout-test", 2, TimeSpan.FromMinutes(2), "configuration_unavailable", CancellationToken.None);
+
+        await Assert.That(result.Claimed).IsEqualTo(2);
+        await Assert.That(result.Retried).IsEqualTo(2);
+        await repository.Received(2).ClaimDueDispatchEffectsAsync(
+            "checkout-test", 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>());
+        await repository.Received(2).DeferCheckoutDispatchForConfigurationAsync(
+            Arg.Any<CheckoutDispatchClaim>(), "configuration_unavailable", UtcNow.AddMinutes(5), UtcNow, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DeferDueForConfigurationAsync_StopsWhenNoClaimIsAvailable()
+    {
+        var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
+        repository.ClaimDueDispatchEffectsAsync(
+                "checkout-test", 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>()).DeferDueForConfigurationAsync(
+            "checkout-test", 1, TimeSpan.FromMinutes(2), "configuration_unavailable", CancellationToken.None);
+
+        await Assert.That(result.Claimed).IsEqualTo(0);
+        await repository.DidNotReceiveWithAnyArgs().DeferCheckoutDispatchForConfigurationAsync(default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_RejectsZeroBatchSizeBeforeRepositoryAccess()
+    {
+        var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
+
+        await Assert.That(async () => await Service(
+                repository, Substitute.For<IHostedCheckoutSessionCreator>()).DispatchDueAsync(
+                Request() with { BatchSize = 0 }, CancellationToken.None))
+            .Throws<ArgumentException>();
+        await repository.DidNotReceiveWithAnyArgs().ClaimDueDispatchEffectsAsync(default!, default, default, default, default);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_AcceptsExactRequestBoundaries()
+    {
+        var repository = Substitute.For<IRegistrationPaymentAttemptRepository>();
+        string leaseOwner = new('x', CheckoutDispatchEffect.MaxLeaseOwnerLength);
+        repository.ClaimDueDispatchEffectsAsync(
+                leaseOwner, 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>()).DispatchDueAsync(
+            Request() with { LeaseOwner = leaseOwner, BatchSize = 1000 }, CancellationToken.None);
+
+        await Assert.That(result.Claimed).IsEqualTo(0);
+        await repository.Received(1).ClaimDueDispatchEffectsAsync(
+            leaseOwner, 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_ReplacesEmptyProviderFailureCode()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out _);
+        var creator = Substitute.For<IHostedCheckoutSessionCreator>();
+        creator.CreateAsync(Arg.Any<HostedCheckoutCreateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutCreateResult.Failed(new HostedCheckoutFailure(
+                string.Empty, HostedCheckoutFailureKind.ProviderRejected, ProviderRequestId: "req_bad")));
+        repository.FailCheckoutDispatchAsync(
+            claim, "checkout_provider_rejected", "req_bad", UtcNow.AddTicks(1), CancellationToken.None).Returns(true);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(repository, creator).DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Parked).IsEqualTo(1);
+        await repository.Received(1).FailCheckoutDispatchAsync(
+            claim, "checkout_provider_rejected", "req_bad", UtcNow.AddTicks(1), CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_PreservesMaximumLengthProviderFailureCode()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out _);
+        string failureCode = new('x', CheckoutDispatchEffect.MaxFailureCodeLength);
+        var creator = Substitute.For<IHostedCheckoutSessionCreator>();
+        creator.CreateAsync(Arg.Any<HostedCheckoutCreateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutCreateResult.Failed(new HostedCheckoutFailure(
+                failureCode, HostedCheckoutFailureKind.ProviderRejected, ProviderRequestId: "req_bad")));
+        repository.FailCheckoutDispatchAsync(
+            claim, failureCode, "req_bad", UtcNow.AddTicks(1), CancellationToken.None).Returns(true);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(repository, creator).DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Parked).IsEqualTo(1);
+        await repository.Received(1).FailCheckoutDispatchAsync(
+            claim, failureCode, "req_bad", UtcNow.AddTicks(1), CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_UnknownSessionAmountMismatchDoesNotRetrievePaymentIntent()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out PaymentAttempt attempt);
+        attempt.MarkRequiresAction("cs_existing", UtcNow.AddSeconds(-2), "req_create");
+        attempt.MarkUnknown(UtcNow.AddSeconds(-1), "req_unknown");
+        var retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
+        retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutRetrieveResult.Succeeded(
+                Session() with { SessionId = "cs_existing", PaymentId = "pi_existing", AmountTotalMinor = 12_51 },
+                "req_retrieve"));
+        var paymentIntents = Substitute.For<IPaymentIntentRetriever>();
+        paymentIntents.RetrievePaymentIntentAsync(Arg.Any<PaymentIntentRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PaymentIntentRetrieveResult.Succeeded(
+                new("pi_existing", 12_50, "EUR", 4_50, PaymentIntentStatus.Succeeded), "req_pi"));
+        repository.MarkCheckoutDispatchUnknownAsync(
+            claim, "req_retrieve", UtcNow.AddTicks(1), CancellationToken.None).Returns(true);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>(), retriever, paymentIntents)
+            .DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Unknown).IsEqualTo(1);
+        await paymentIntents.DidNotReceiveWithAnyArgs().RetrievePaymentIntentAsync(default!, default);
+        await repository.DidNotReceiveWithAnyArgs().CompleteCheckoutDispatchAsync(default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_UnknownPaymentIntentAmountMismatchStaysUnknown()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out PaymentAttempt attempt);
+        attempt.MarkRequiresAction("cs_existing", UtcNow.AddSeconds(-2), "req_create");
+        attempt.MarkUnknown(UtcNow.AddSeconds(-1), "req_unknown");
+        var retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
+        retriever.RetrieveAsync(Arg.Any<HostedCheckoutRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutRetrieveResult.Succeeded(
+                Session() with { SessionId = "cs_existing", PaymentId = "pi_existing" }, "req_retrieve"));
+        var paymentIntents = Substitute.For<IPaymentIntentRetriever>();
+        paymentIntents.RetrievePaymentIntentAsync(Arg.Any<PaymentIntentRetrieveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PaymentIntentRetrieveResult.Succeeded(
+                new("pi_existing", 12_51, "EUR", 4_50, PaymentIntentStatus.Succeeded), "req_pi"));
+        repository.MarkCheckoutDispatchUnknownAsync(
+            claim, "req_retrieve", UtcNow.AddTicks(1), CancellationToken.None).Returns(true);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>(), retriever, paymentIntents)
+            .DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Unknown).IsEqualTo(1);
+        await repository.DidNotReceiveWithAnyArgs().CompleteCheckoutDispatchAsync(default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_SecondPreHandoffFailureUsesTenSecondBackoff()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim original, out PaymentAttempt attempt);
+        CheckoutDispatchClaim claim = original with { AttemptCount = 2 };
+        repository.ClaimDueDispatchEffectsAsync(
+                "checkout-test", 1, UtcNow, TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+            .Returns([claim], []);
+        repository.GetClaimedAttemptAsync(claim, UtcNow, Arg.Any<CancellationToken>()).Returns(attempt);
+        repository.PrepareCheckoutDispatchAsync(claim, UtcNow, UtcNow.AddMinutes(31), Arg.Any<CancellationToken>()).Returns(attempt);
+        var creator = Substitute.For<IHostedCheckoutSessionCreator>();
+        creator.CreateAsync(Arg.Any<HostedCheckoutCreateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(HostedCheckoutCreateResult.Failed(new HostedCheckoutFailure(
+                "configuration_unavailable", HostedCheckoutFailureKind.Configuration,
+                ProviderHandoffStarted: false,
+                PreHandoffDisposition: HostedCheckoutPreHandoffDisposition.Transient)));
+        repository.DeferCheckoutDispatchForConfigurationAsync(
+                claim, "configuration_unavailable", UtcNow.AddTicks(1).AddSeconds(10), UtcNow.AddTicks(1), CancellationToken.None)
+            .Returns(CheckoutDispatchConfigurationDisposition.Deferred);
+
+        RegistrationPaymentCheckoutDispatchRequest request = Request() with { BatchSize = 1 };
+        RegistrationPaymentCheckoutDispatchResult result = await Service(repository, creator)
+            .DispatchDueAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Retried).IsEqualTo(1);
+        await repository.Received(1).DeferCheckoutDispatchForConfigurationAsync(
+            claim, "configuration_unavailable", UtcNow.AddTicks(1).AddSeconds(10), UtcNow.AddTicks(1), CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_CancelledExpiredActivationDispositionCountsParked()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out _);
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PaidCheckoutActivationResult.Failure("paid_sale_stopped", "stopped"));
+        repository.DeferCheckoutDispatchForConfigurationAsync(
+                claim, "paid_sale_stopped", UtcNow.AddMinutes(5), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(CheckoutDispatchConfigurationDisposition.CancelledExpired);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>(), activation: activation)
+            .DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Parked).IsEqualTo(1);
+        await Assert.That(result.Retried).IsEqualTo(0);
+        await Assert.That(result.Stale).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DispatchDueAsync_StaleActivationDispositionCountsStale()
+    {
+        var repository = RepositoryWithClaim(out CheckoutDispatchClaim claim, out _);
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PaidCheckoutActivationResult.Failure("paid_sale_stopped", "stopped"));
+        repository.DeferCheckoutDispatchForConfigurationAsync(
+                claim, "paid_sale_stopped", UtcNow.AddMinutes(5), UtcNow, Arg.Any<CancellationToken>())
+            .Returns(CheckoutDispatchConfigurationDisposition.Stale);
+
+        RegistrationPaymentCheckoutDispatchResult result = await Service(
+            repository, Substitute.For<IHostedCheckoutSessionCreator>(), activation: activation)
+            .DispatchDueAsync(Request(), CancellationToken.None);
+
+        await Assert.That(result.Stale).IsEqualTo(1);
+        await Assert.That(result.Retried).IsEqualTo(0);
+        await Assert.That(result.Parked).IsEqualTo(0);
+    }
+
     private static IRegistrationPaymentAttemptRepository RepositoryWithClaim(out CheckoutDispatchClaim claim, out PaymentAttempt attempt)
     {
         claim = new(
@@ -515,14 +794,33 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
         IHostedCheckoutSessionRetriever? retriever = null,
         IPaymentIntentRetriever? paymentIntents = null,
         IRegistrationOrderLifecycleService? orderLifecycle = null,
-        TimeProvider? timeProvider = null) =>
+        TimeProvider? timeProvider = null,
+        IPaidCheckoutActivationService? activation = null,
+        IPaidOrderAcceptanceFreshnessService? freshness = null) =>
         new(
             repository,
             creator,
             retriever ?? Substitute.For<IHostedCheckoutSessionRetriever>(),
             paymentIntents ?? Substitute.For<IPaymentIntentRetriever>(),
             orderLifecycle ?? Substitute.For<IRegistrationOrderLifecycleService>(),
-            timeProvider ?? new FixedTimeProvider(UtcNow));
+            timeProvider ?? new FixedTimeProvider(UtcNow),
+            activation ?? ReadyActivation(),
+            freshness ?? CurrentAcceptance());
+
+    private static IPaidOrderAcceptanceFreshnessService CurrentAcceptance()
+    {
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
+        return freshness;
+    }
+
+    private static IPaidCheckoutActivationService ReadyActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
 
     private static RegistrationPaymentCheckoutDispatchRequest Request() => new(
         "checkout-test",
@@ -556,7 +854,7 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             UtcNow.AddMinutes(-2));
-        return PaymentAttempt.Create(
+        PaymentAttempt attempt = PaymentAttempt.Create(
             attemptId ?? AttemptId,
             TenantId,
             OrderId,
@@ -570,6 +868,11 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
             "checkout:stable",
             UtcNow.AddMinutes(-2),
             UtcNow.AddMinutes(30));
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            TenantId, OrderId, Guid.CreateVersion7(), "composition-1",
+            recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
+            10_00, 2_00, 2_50, UtcNow.AddMinutes(-1)));
+        return attempt;
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

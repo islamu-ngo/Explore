@@ -524,6 +524,36 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
     }
 
     [Test]
+    public async Task CommittedStopSalePreventsProviderHandoffAuthorization()
+    {
+        PaymentRaceSeed seed = await SeedPaymentRaceAsync(PaymentAttemptStatusEnum.Created);
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+        await using ExploreDbContext context = CreateRetryingTenantContext(seed.TenantId);
+        var repository = new RegistrationPaymentAttemptRepository(context);
+        CheckoutDispatchClaim claim = (await repository.ClaimDueDispatchEffectsAsync(
+            "worker-stop-fence",
+            1,
+            UtcNow,
+            TimeSpan.FromMinutes(2),
+            timeout.Token)).Single();
+        context.PaidCheckoutSaleControls.Add(PaidCheckoutSaleControl.CreateStopped(
+            seed.TenantId,
+            seed.Order.EventId,
+            Guid.CreateVersion7(),
+            "incident",
+            UtcNow.AddTicks(1)));
+        await context.SaveChangesAsync(timeout.Token);
+
+        PaymentAttempt? prepared = await repository.PrepareCheckoutDispatchAsync(
+            claim,
+            UtcNow.AddTicks(2),
+            UtcNow.AddMinutes(31),
+            timeout.Token);
+
+        await Assert.That(prepared).IsNull();
+    }
+
+    [Test]
     public async Task ConfigurationBlockedPastCutoffRequiresApplicationLifecycleWithoutRepositoryCancellation()
     {
         PaymentRaceSeed seed = await SeedPaymentRaceAsync(PaymentAttemptStatusEnum.Created, expiredCutoff: true);
@@ -576,7 +606,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             new RegistrationFinalizationRepository(context),
             paymentRepository,
             deadlines,
-            new FixedTimeProvider(UtcNow));
+            new FixedTimeProvider(UtcNow),
+            Substitute.For<IPaidOrderAcceptanceService>());
 
         CheckoutDispatchConfigurationDisposition first = await lifecycle.CancelExpiredConfigurationBlockedPaymentAsync(
             claim, UtcNow, timeout.Token);
@@ -701,7 +732,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         commerce.ProviderCode.Returns("stripe");
         commerce.ConnectPlatformId.Returns("platform-eu");
         var descriptor = Substitute.For<IPaymentProviderDescriptor>();
-        descriptor.Describe().Returns(new PaymentProviderDescriptor("stripe", "OrganizerDirect", "2026-07-29.dahlia"));
+        descriptor.Describe().Returns(new PaymentProviderDescriptor(
+            "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
         var service = new RegistrationPaymentAttemptClaimService(
             new RegistrationPaymentAttemptRepository(context),
             new RegistrationInventoryRepository(context),
@@ -710,10 +742,27 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             policies,
             commerce,
             descriptor,
+            ReadyActivation(),
+            CurrentAcceptance(),
             new EfCoreUnitOfWork(context));
         return await service.ClaimAsync(
             new(seed.TenantId, seed.OrderId, requestedAt ?? UtcNow.AddSeconds(1), terminalAttemptId ?? seed.AttemptId),
             cancellationToken);
+    }
+
+    private static IPaidCheckoutActivationService ReadyActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
+
+    private static IPaidOrderAcceptanceFreshnessService CurrentAcceptance()
+    {
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
+        return freshness;
     }
 
     private static OrganizerPaymentProviderConnection ReadyConnection(Guid tenantId, Guid organizerActorId)
@@ -1012,7 +1061,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             new RegistrationFinalizationRepository(context),
             new RegistrationPaymentAttemptRepository(context),
             Substitute.For<IScheduledDeadlineDispatcher>(),
-            new FixedTimeProvider(UtcNow));
+            new FixedTimeProvider(UtcNow),
+            Substitute.For<IPaidOrderAcceptanceService>());
         return await service.FinalizePaidAsync(orderId, tenantId, cancellationToken);
     }
 
@@ -1037,7 +1087,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             new RegistrationFinalizationRepository(context),
             new RegistrationPaymentAttemptRepository(context),
             Substitute.For<IScheduledDeadlineDispatcher>(),
-            new FixedTimeProvider(UtcNow));
+            new FixedTimeProvider(UtcNow),
+            Substitute.For<IPaidOrderAcceptanceService>());
         return await service.FinalizePaidAsync(orderId, tenantId, cancellationToken);
     }
 

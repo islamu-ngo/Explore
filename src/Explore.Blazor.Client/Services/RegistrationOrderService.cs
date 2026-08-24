@@ -123,11 +123,21 @@ public sealed class RegistrationOrderService(
             : await GetCurrentAsync(eventId, orderId, cancellationToken);
     }
 
-    public Task<HalResourceOfRegistrationPaymentDto?> StartCurrentPaymentAsync(
+    public Task<PaidOrderAcceptanceDisclosureDto?> GetCurrentPaymentAcceptanceAsync(
         Guid eventId, Guid orderId, HalResourceOfRegistrationOrderDto order, CancellationToken cancellationToken = default) =>
-        HasLink(order._links, "start-payment")
+        HasLink(order._links, "payment-acceptance")
+            ? ExecuteAsync(() => apiClient.GetAuthenticatedPaidOrderAcceptanceAsync(eventId, orderId, cancellationToken: cancellationToken))
+            : Task.FromResult<PaidOrderAcceptanceDisclosureDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> StartCurrentPaymentAsync(
+        Guid eventId, Guid orderId, HalResourceOfRegistrationOrderDto order, string disclosureRevision, CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "start-payment") && !string.IsNullOrWhiteSpace(disclosureRevision)
             ? ExecuteAsync(() => apiClient.StartAuthenticatedRegistrationPaymentAsync(
-                eventId, orderId, NewIdempotencyKey(), cancellationToken: cancellationToken))
+                eventId, orderId, NewIdempotencyKey(), body: new PaidOrderAcceptanceAcknowledgementDto
+                {
+                    DisclosureRevision = disclosureRevision,
+                    Acknowledged = true
+                }, cancellationToken: cancellationToken))
             : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
 
     public Task<HalResourceOfRegistrationPaymentDto?> GetCurrentPaymentAsync(
@@ -383,15 +393,31 @@ public sealed class RegistrationOrderService(
             : await GetGuestAsync(eventId, orderId, capability, cancellationToken);
     }
 
-    public Task<HalResourceOfRegistrationPaymentDto?> StartGuestPaymentAsync(
+    public Task<PaidOrderAcceptanceDisclosureDto?> GetGuestPaymentAcceptanceAsync(
         Guid eventId,
         Guid orderId,
         GuestRegistrationOrderCapability capability,
         HalResourceOfGuestRegistrationOrderDto order,
         CancellationToken cancellationToken = default) =>
-        HasLink(order._links, "start-payment")
+        HasLink(order._links, "payment-acceptance")
+            ? ExecuteAsync(() => apiClient.GetGuestPaidOrderAcceptanceAsync(
+                eventId, orderId, capability.Value, cancellationToken: cancellationToken))
+            : Task.FromResult<PaidOrderAcceptanceDisclosureDto?>(null);
+
+    public Task<HalResourceOfRegistrationPaymentDto?> StartGuestPaymentAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfGuestRegistrationOrderDto order,
+        string disclosureRevision,
+        CancellationToken cancellationToken = default) =>
+        HasLink(order._links, "start-payment") && !string.IsNullOrWhiteSpace(disclosureRevision)
             ? ExecuteAsync(() => apiClient.StartGuestRegistrationPaymentAsync(
-                eventId, orderId, NewIdempotencyKey(), capability.Value, cancellationToken: cancellationToken))
+                eventId, orderId, NewIdempotencyKey(), capability.Value, body: new PaidOrderAcceptanceAcknowledgementDto
+                {
+                    DisclosureRevision = disclosureRevision,
+                    Acknowledged = true
+                }, cancellationToken: cancellationToken))
             : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
 
     public Task<HalResourceOfRegistrationPaymentDto?> GetGuestPaymentAsync(

@@ -13,18 +13,34 @@ public sealed class RegistrationPaymentContractService(
     IRegistrationPaymentAttemptRepository attempts,
     IRegistrationFinalizationRepository finalization,
     RegistrationPaymentAttemptClaimService claims,
+    IPaidOrderAcceptanceService acceptances,
+    IPaidOrderAcceptanceFreshnessService acceptanceFreshness,
     IHostedCheckoutSessionRetriever checkoutRetriever,
     TimeProvider timeProvider)
 {
-    public async Task<RegistrationPaymentCommandResultDto> StartAsync(RegistrationOrder order, CancellationToken cancellationToken)
+    public Task<PaidOrderAcceptanceResult> GetAcceptanceDisclosureAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken) => acceptances.DescribeAsync(order, cancellationToken);
+
+    public async Task<RegistrationPaymentCommandResultDto> StartAsync(
+        RegistrationOrder order,
+        PaidOrderAcceptanceAcknowledgementDto? acknowledgement,
+        CancellationToken cancellationToken)
     {
-        if (!IsCurrentlyPayable(order, timeProvider.GetUtcNow().UtcDateTime))
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        if (!IsCurrentlyPayable(order, now))
         {
             return Failure("not_payable", "Registration order is not payable.");
         }
 
+        PaidOrderAcceptanceResult accepted = await acceptances.AcceptAsync(order, acknowledgement, now, cancellationToken);
+        if (accepted.Snapshot is not { } acceptance)
+        {
+            return Failure(accepted.FailureCode ?? "payment_acceptance_required", accepted.Message);
+        }
+
         RegistrationPaymentAttemptClaimResult result = await claims.ClaimAsync(
-            new(order.TenantId, order.Id, timeProvider.GetUtcNow().UtcDateTime), cancellationToken);
+            new(order.TenantId, order.Id, now, AcceptanceSnapshot: acceptance), cancellationToken);
         if (!result.Success || result.Attempt is null || result.DispatchEffect is null)
         {
             return Failure(result.FailureCode ?? "payment_start_failed", result.Message);
@@ -45,10 +61,14 @@ public sealed class RegistrationPaymentContractService(
         SucceededPaymentLookupResult succeeded = await finalization.GetSucceededPaymentAsync(
             order.TenantId, order.Id, cancellationToken);
         bool conflict = succeeded.Status == SucceededPaymentLookupStatus.Conflict;
+        bool retryAvailable = !conflict &&
+            CanRetry(order, row.Value.Attempt, row.Value.DispatchEffect, timeProvider.GetUtcNow().UtcDateTime) &&
+            await acceptanceFreshness.IsCurrentAsync(row.Value.Attempt, cancellationToken);
         return Map(
             order,
             row.Value.Attempt,
             row.Value.DispatchEffect,
+            retryAvailable,
             failureCode: conflict ? SucceededPaymentLookupResult.DuplicateCode : null,
             needsReconciliation: conflict);
     }
@@ -68,6 +88,11 @@ public sealed class RegistrationPaymentContractService(
             return Failure("payment_retry_not_available", "Payment retry is not available.");
         }
 
+        if (!await acceptanceFreshness.IsCurrentAsync(row.Value.Attempt, cancellationToken))
+        {
+            return Failure("payment_acceptance_stale", "Current buyer acceptance evidence is required before retry.");
+        }
+
         if (IsAlreadyQueuedAfterUserRetry(row.Value.Attempt, row.Value.DispatchEffect))
         {
             return Success(Map(order, row.Value.Attempt, row.Value.DispatchEffect));
@@ -77,7 +102,7 @@ public sealed class RegistrationPaymentContractService(
         if (status is PaymentAttemptStatusEnum.Failed or PaymentAttemptStatusEnum.Cancelled)
         {
             RegistrationPaymentAttemptClaimResult terminalRetry = await claims.ClaimAsync(
-                new(order.TenantId, order.Id, now, row.Value.Attempt.Id), cancellationToken);
+                new(order.TenantId, order.Id, now, row.Value.Attempt.Id, row.Value.Attempt.AcceptanceSnapshot), cancellationToken);
             return terminalRetry.Success && terminalRetry.Attempt is not null && terminalRetry.DispatchEffect is not null
                 ? Success(Map(order, terminalRetry.Attempt, terminalRetry.DispatchEffect))
                 : Failure(terminalRetry.FailureCode ?? "payment_retry_not_available", terminalRetry.Message);
@@ -114,7 +139,8 @@ public sealed class RegistrationPaymentContractService(
         (PaymentAttempt Attempt, CheckoutDispatchEffect DispatchEffect)? row = await attempts.GetLatestByOrderAsync(
             order.TenantId, order.Id, cancellationToken);
         PaymentAttempt attempt = row?.Attempt!;
-        if (attempt is null || (PaymentAttemptStatusEnum)attempt.PaymentAttemptStatusId != PaymentAttemptStatusEnum.RequiresAction ||
+        if (attempt is null || !attempt.HasImmutableAcceptance ||
+            (PaymentAttemptStatusEnum)attempt.PaymentAttemptStatusId != PaymentAttemptStatusEnum.RequiresAction ||
             attempt.ProviderCheckoutSessionId is not { } sessionId)
         {
             return null;

@@ -12,6 +12,7 @@ using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -24,6 +25,31 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     private static readonly Guid OtherTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
     private static readonly Guid OrderId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000010");
+
+    [Test]
+    public async Task DatabaseRejectsChargeTotalThatDiffersFromPersistedComposition()
+    {
+        await using var context = await CreateContextAsync();
+        var repository = new RegistrationPaymentAttemptRepository(context);
+        RegistrationPaymentAttemptClaimOutcome outcome = await repository.ClaimAsync(
+            Claim(TenantId, OrderId, "composition-total-constraint"),
+            CancellationToken.None);
+        IEntityType attemptType = context.Model.FindEntityType(typeof(PaymentAttempt))!;
+        StoreObjectIdentifier tableObject = StoreObjectIdentifier.Table(
+            attemptType.GetTableName()!,
+            attemptType.GetSchema());
+        string table = tableObject.Name;
+        string totalColumn = attemptType.FindProperty(nameof(PaymentAttempt.TotalMinor))!.GetColumnName(tableObject)!;
+        string idColumn = attemptType.FindProperty(nameof(PaymentAttempt.Id))!.GetColumnName(tableObject)!;
+
+        string sql = $"UPDATE \"{table}\" SET \"{totalColumn}\" = \"{totalColumn}\" + 1 WHERE \"{idColumn}\" = {{0}}";
+        SqliteException exception = await Assert.That(async () => await context.Database.ExecuteSqlRawAsync(
+                sql,
+                outcome.Attempt.Id))
+            .Throws<SqliteException>();
+        await Assert.That(exception.Message).Contains("ck_payment_attempts_amounts");
+        await Assert.That(exception.SqliteErrorCode).IsEqualTo(19);
+    }
 
     [Test]
     public async Task ClaimAsyncCreatesAttemptAndDispatchEffectOncePerTenantOrderAcrossCompositionRevisions()
@@ -290,7 +316,7 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         var inventory = Substitute.For<IRegistrationInventoryRepository>();
         inventory.GetOrderForUpdateWithLinesAsync(OrderId, TenantId, Arg.Any<CancellationToken>()).Returns(order);
         var eventRepository = Substitute.For<IEventRepository>();
-        eventRepository.GetEventWithDetails(order.EventId).Returns(new Explore.Domain.Event
+        eventRepository.GetEventWithDetailsAsync(order.EventId, TenantId, Arg.Any<CancellationToken>()).Returns(new Explore.Domain.Event
         {
             Id = order.EventId,
             TenantId = TenantId,
@@ -308,15 +334,39 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         var connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
         connections.GetActiveByScopeAsync(TenantId, connection.OrganizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
         var policies = Substitute.For<IPaidEventPolicyRepository>();
-        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+        PaidEventPolicyVersion instancePolicy = EnabledInstancePolicy();
+        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
         var commerce = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
         commerce.ProviderCode.Returns("stripe");
         commerce.ConnectPlatformId.Returns("platform-live-eu");
         var descriptor = Substitute.For<IPaymentProviderDescriptor>();
-        descriptor.Describe().Returns(new PaymentProviderDescriptor("stripe", "OrganizerDirect", "2026-07-29.dahlia"));
-        var service = new RegistrationPaymentAttemptClaimService(repository, inventory, eventRepository, connections, policies, commerce, descriptor, new EfCoreUnitOfWork(context));
+        descriptor.Describe().Returns(new PaymentProviderDescriptor(
+            "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
+        var service = new RegistrationPaymentAttemptClaimService(
+            repository,
+            inventory,
+            eventRepository,
+            connections,
+            policies,
+            commerce,
+            descriptor,
+            ReadyActivation(),
+            CurrentAcceptance(),
+            new EfCoreUnitOfWork(context));
 
-        RegistrationPaymentAttemptClaimResult result = await service.ClaimAsync(new(TenantId, OrderId, UtcNow), CancellationToken.None);
+        PaidOrderAcceptanceSnapshot acceptance = PaidAcceptanceTestFacts.Create(
+            TenantId,
+            OrderId,
+            order.EventId,
+            order.ConcurrencyStamp.ToString("N"),
+            instancePolicy.Id,
+            1_000,
+            75,
+            125,
+            UtcNow);
+        RegistrationPaymentAttemptClaimResult result = await service.ClaimAsync(
+            new(TenantId, OrderId, UtcNow, AcceptanceSnapshot: acceptance),
+            CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Created).IsTrue();
@@ -339,24 +389,57 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         typeof(RegistrationOrder).GetProperty(nameof(RegistrationOrder.ExpiresAt))!
             .SetValue(order, UtcNow.AddMinutes(1));
         string pinnedRevision = order.ConcurrencyStamp.ToString("N");
+        PaidEventPolicyVersion instancePolicy = EnabledInstancePolicy();
         RegistrationPaymentAttemptClaimOutcome existing = await repository.ClaimAsync(
-            Claim(TenantId, OrderId, pinnedRevision), CancellationToken.None);
+            Claim(TenantId, OrderId, pinnedRevision, order.EventId, instancePolicy.Id), CancellationToken.None);
         var inventory = Substitute.For<IRegistrationInventoryRepository>();
         inventory.GetOrderForUpdateWithLinesAsync(OrderId, TenantId, Arg.Any<CancellationToken>()).Returns(order);
         inventory.GetActiveHoldsForUpdateAsync(OrderId, TenantId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<RegistrationInventoryHold>());
+        Guid organizerActorId = existing.Attempt.RecipientSnapshot.OrganizerActorId;
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetEventWithDetailsAsync(order.EventId, TenantId, Arg.Any<CancellationToken>()).Returns(new Explore.Domain.Event
+        {
+            Id = order.EventId,
+            TenantId = TenantId,
+            OrganizerActorId = organizerActorId,
+            Title = "Paid event",
+            Actor = null!,
+            Tenant = null!,
+            EventFormat = null!,
+            VisibilityType = null!,
+            EventStatus = null!
+        });
+        OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
+            Guid.CreateVersion7(), TenantId, organizerActorId, "stripe", "platform-live-eu", "acct_authority", UtcNow);
+        connection.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
+            "BE", ChargeCapabilityState.Active, ProviderRequirementsState.Satisfied, ["EUR"], UtcNow, "ready-1"));
+        var connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
+        connections.GetActiveByScopeAsync(
+            TenantId, organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
+        var policies = Substitute.For<IPaidEventPolicyRepository>();
+        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
+        var commerce = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
+        commerce.ProviderCode.Returns("stripe");
+        commerce.ConnectPlatformId.Returns("platform-live-eu");
+        var descriptor = Substitute.For<IPaymentProviderDescriptor>();
+        descriptor.Describe().Returns(new PaymentProviderDescriptor(
+            "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
         var service = new RegistrationPaymentAttemptClaimService(
             repository,
             inventory,
-            Substitute.For<IEventRepository>(),
-            Substitute.For<IOrganizerPaymentProviderConnectionRepository>(),
-            Substitute.For<IPaidEventPolicyRepository>(),
-            Substitute.For<IOrganizerPaymentCommerceConfiguration>(),
-            Substitute.For<IPaymentProviderDescriptor>(),
+            eventRepository,
+            connections,
+            policies,
+            commerce,
+            descriptor,
+            ReadyActivation(),
+            CurrentAcceptance(),
             new EfCoreUnitOfWork(context));
 
         RegistrationPaymentAttemptClaimResult result = await service.ClaimAsync(
-            new(TenantId, OrderId, UtcNow), CancellationToken.None);
+            new(TenantId, OrderId, UtcNow, AcceptanceSnapshot: existing.Attempt.AcceptanceSnapshot),
+            CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Created).IsFalse();
@@ -379,7 +462,7 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         var inventory = Substitute.For<IRegistrationInventoryRepository>();
         inventory.GetOrderForUpdateWithLinesAsync(OrderId, TenantId, Arg.Any<CancellationToken>()).Returns(order);
         var eventRepository = Substitute.For<IEventRepository>();
-        eventRepository.GetEventWithDetails(order.EventId).Returns(new Explore.Domain.Event
+        eventRepository.GetEventWithDetailsAsync(order.EventId, TenantId, Arg.Any<CancellationToken>()).Returns(new Explore.Domain.Event
         {
             Id = order.EventId,
             TenantId = TenantId,
@@ -399,12 +482,14 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         connections.GetActiveByScopeAsync(
             TenantId, organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
         var policies = Substitute.For<IPaidEventPolicyRepository>();
-        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+        PaidEventPolicyVersion instancePolicy = EnabledInstancePolicy();
+        policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
         var commerce = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
         commerce.ProviderCode.Returns("stripe");
         commerce.ConnectPlatformId.Returns("platform-live-eu");
         var descriptor = Substitute.For<IPaymentProviderDescriptor>();
-        descriptor.Describe().Returns(new PaymentProviderDescriptor("stripe", "OrganizerDirect", "2026-07-29.dahlia"));
+        descriptor.Describe().Returns(new PaymentProviderDescriptor(
+            "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
         var service = new RegistrationPaymentAttemptClaimService(
             repository,
             inventory,
@@ -413,16 +498,26 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             policies,
             commerce,
             descriptor,
+            ReadyActivation(),
+            CurrentAcceptance(),
             new EfCoreUnitOfWork(context));
 
+        PaidOrderAcceptanceSnapshot acceptance = PaidAcceptanceTestFacts.Create(
+            TenantId,
+            OrderId,
+            order.EventId,
+            order.ConcurrencyStamp.ToString("N"),
+            instancePolicy.Id,
+            1_000,
+            75,
+            125,
+            UtcNow);
         RegistrationPaymentAttemptClaimResult first = await service.ClaimAsync(
-            new(TenantId, OrderId, UtcNow), CancellationToken.None);
+            new(TenantId, OrderId, UtcNow, AcceptanceSnapshot: acceptance), CancellationToken.None);
         first.Attempt!.MarkDispatchFailed(UtcNow.AddSeconds(1), "req-a-failed");
-        await repository.ReleaseActiveSlotAsync(first.Attempt, UtcNow.AddSeconds(1), CancellationToken.None);
         RegistrationPaymentAttemptClaimResult second = await service.ClaimAsync(
-            new(TenantId, OrderId, UtcNow.AddSeconds(2), first.Attempt.Id), CancellationToken.None);
+            new(TenantId, OrderId, UtcNow.AddSeconds(2), first.Attempt.Id, acceptance), CancellationToken.None);
         second.Attempt!.MarkDispatchFailed(UtcNow.AddSeconds(3), "req-b-failed");
-        await repository.ReleaseActiveSlotAsync(second.Attempt, UtcNow.AddSeconds(3), CancellationToken.None);
 
         (PaymentAttempt Attempt, CheckoutDispatchEffect DispatchEffect)? newest =
             await repository.GetByOrderCompositionAsync(
@@ -430,9 +525,9 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         await Assert.That(newest!.Value.Attempt.Id).IsEqualTo(second.Attempt.Id);
 
         RegistrationPaymentAttemptClaimResult third = await service.ClaimAsync(
-            new(TenantId, OrderId, UtcNow.AddSeconds(4), second.Attempt.Id), CancellationToken.None);
+            new(TenantId, OrderId, UtcNow.AddSeconds(4), second.Attempt.Id, acceptance), CancellationToken.None);
         RegistrationPaymentAttemptClaimResult repeated = await service.ClaimAsync(
-            new(TenantId, OrderId, UtcNow.AddSeconds(5), second.Attempt.Id), CancellationToken.None);
+            new(TenantId, OrderId, UtcNow.AddSeconds(5), second.Attempt.Id, acceptance), CancellationToken.None);
 
         await Assert.That(first.Created).IsTrue();
         await Assert.That(second.Created).IsTrue();
@@ -765,7 +860,9 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             checkout,
             payment,
             Substitute.For<IRegistrationOrderLifecycleService>(),
-            time);
+            time,
+            ReadyActivation(),
+            CurrentAcceptance());
         _ = await dispatch.DispatchDueAsync(new RegistrationPaymentCheckoutDispatchRequest(
             "checkout-replay",
             1,
@@ -855,16 +952,44 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         await Assert.That(await context.PaymentSucceededObservations.CountAsync()).IsEqualTo(0);
     }
 
-    private static RegistrationPaymentAttemptClaim Claim(Guid tenantId, Guid orderId, string compositionRevision)
+    private static RegistrationPaymentAttemptClaim Claim(
+        Guid tenantId,
+        Guid orderId,
+        string compositionRevision,
+        Guid? eventId = null,
+        Guid? instancePolicyVersionId = null)
     {
+        OrganizerPaymentRecipientSnapshot recipient = RecipientSnapshot(tenantId, instancePolicyVersionId);
         PaymentAttempt attempt = PaymentAttempt.Create(
-            Guid.CreateVersion7(), tenantId, orderId, RecipientSnapshot(tenantId), "OrganizerDirect", "2026-08-20.acacia", compositionRevision, 1_000, 75, 125,
+            Guid.CreateVersion7(), tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", compositionRevision, 1_000, 75, 125,
             $"checkout:{tenantId:N}:{orderId:N}:{compositionRevision}", UtcNow, UtcNow.AddMinutes(30));
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            tenantId,
+            orderId,
+            eventId ?? Guid.CreateVersion7(),
+            compositionRevision,
+            recipient.InstancePolicyVersionId,
+            1_000,
+            75,
+            125,
+            UtcNow));
         return new(attempt, CheckoutDispatchEffect.Create(attempt, UtcNow));
     }
 
-    private static OrganizerPaymentRecipientSnapshot RecipientSnapshot(Guid tenantId) => OrganizerPaymentRecipientSnapshot.Create(
-        tenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), "stripe", "platform-live-eu", "acct_123", "BE", "EUR", Guid.CreateVersion7(), null, UtcNow);
+    private static OrganizerPaymentRecipientSnapshot RecipientSnapshot(
+        Guid tenantId,
+        Guid? instancePolicyVersionId = null) => OrganizerPaymentRecipientSnapshot.Create(
+        tenantId,
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        "stripe",
+        "platform-live-eu",
+        "acct_123",
+        "BE",
+        "EUR",
+        instancePolicyVersionId ?? Guid.CreateVersion7(),
+        null,
+        UtcNow);
 
     private static RegistrationOrder CreatePayableOrder(Guid tenantId, Guid orderId, long organizerDirectedMinor, long platformFeeMinor, long platformContributionMinor)
     {
@@ -889,6 +1014,36 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         typeof(RegistrationOrder).GetProperty(nameof(RegistrationOrder.TotalDueMinorSnapshot))!.SetValue(order, organizerDirectedMinor + platformContributionMinor);
         order.ConcurrencyStamp = Guid.Parse("018e4e5c-7f00-7000-8000-000000000099");
         return order;
+    }
+
+    private static IPaidOrderAcceptanceFreshnessService CurrentAcceptance()
+    {
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
+        return freshness;
+    }
+
+    private static IPaidCheckoutActivationService ReadyActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
+    }
+
+    private static PaidEventPolicyVersion EnabledInstancePolicy()
+    {
+        PaidEventPolicyVersion disabled = PaidEventPolicyVersion.CreateDefaultInstance();
+        return disabled.CreateRevision(
+            true,
+            disabled.AllowedOrganizerKinds,
+            false,
+            ["EUR"],
+            "EUR",
+            disabled.RefundProtections,
+            [],
+            false,
+            null);
     }
 
     private static async Task<ExploreDbContext> CreateContextAsync()

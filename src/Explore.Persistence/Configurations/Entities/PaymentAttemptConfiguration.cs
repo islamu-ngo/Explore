@@ -16,7 +16,9 @@ public sealed class PaymentAttemptConfiguration : IEntityTypeConfiguration<Payme
         {
             table.HasCheckConstraint("ck_payment_attempts_status", "payment_attempt_status_id BETWEEN 1 AND 8");
             table.HasCheckConstraint("ck_payment_attempts_authoritative_status_floor", "authoritative_status_floor_id BETWEEN 1 AND 8");
-            table.HasCheckConstraint("ck_payment_attempts_amounts", "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor");
+            table.HasCheckConstraint(
+                "ck_payment_attempts_amounts",
+                "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor");
             table.HasCheckConstraint("ck_payment_attempts_active_slot", $"(payment_attempt_status_id IN ({(int)PaymentAttemptStatusEnum.Failed}, {(int)PaymentAttemptStatusEnum.Cancelled}) AND active_uniqueness_slot <> '{PaymentAttempt.ActiveUniquenessSlotValue}') OR active_uniqueness_slot = '{PaymentAttempt.ActiveUniquenessSlotValue}'");
         });
         builder.Property(value => value.Id).ValueGeneratedNever();
@@ -54,6 +56,11 @@ public sealed class PaymentAttemptConfiguration : IEntityTypeConfiguration<Payme
             .HasForeignKey(value => new { value.TenantId, value.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id })
             .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.AcceptanceSnapshot).WithMany()
+            .HasForeignKey(value => new { value.TenantId, AcceptanceId = value.PaidOrderAcceptanceSnapshotId })
+            .HasPrincipalKey(value => new { value.TenantId, AcceptanceId = value.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
         builder.HasOne(value => value.PaymentAttemptStatus).WithMany().HasForeignKey(value => value.PaymentAttemptStatusId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<PaymentAttemptStatus>().WithMany().HasForeignKey(value => value.AuthoritativeStatusFloorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.ActiveScopeKey, value.ActiveUniquenessSlot }).IsUnique();
@@ -143,7 +150,10 @@ public sealed class PaymentReconciliationEffectConfiguration : IEntityTypeConfig
             .HasPrincipalKey(value => new { value.TenantId, value.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.PaymentAttemptId }).IsUnique();
-        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt });
+        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt, value.Id })
+            .HasDatabaseName("ix_payment_reconciliation_effects_worker_poll");
+        builder.HasIndex(value => new { value.Status, value.ProcessingLeaseExpiresAt, value.CreatedAt, value.Id })
+            .HasDatabaseName("ix_payment_reconciliation_effects_expired_lease_poll");
     }
 }
 

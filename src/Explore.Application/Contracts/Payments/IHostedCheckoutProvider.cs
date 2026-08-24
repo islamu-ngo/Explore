@@ -25,7 +25,12 @@ public interface IPaymentProviderDescriptor
     PaymentProviderDescriptor Describe();
 }
 
-public sealed record PaymentProviderDescriptor(string ProviderCode, string ProfileCode, string ApiRevision);
+public sealed record PaymentProviderDescriptor(
+    string ProviderCode,
+    string ProfileCode,
+    string ApiRevision,
+    string Environment,
+    string CredentialOwner);
 
 public sealed class HostedCheckoutCreateRequest
 {

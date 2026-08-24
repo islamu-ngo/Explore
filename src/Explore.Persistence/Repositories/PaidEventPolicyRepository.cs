@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -10,13 +11,18 @@ namespace Explore.Persistence.Repositories;
 public sealed class PaidEventPolicyRepository(ExploreDbContext dbContext) : IPaidEventPolicyRepository
 {
     public Task<PaidEventPolicyVersion?> GetActiveInstanceAsync(CancellationToken cancellationToken) =>
-        dbContext.PaidEventPolicyVersions.SingleOrDefaultAsync(policy => policy.TenantId == null && policy.IsActive, cancellationToken);
+        dbContext.PaidEventPolicyVersions
+            .IgnoreAllFilters(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .SingleOrDefaultAsync(policy => policy.TenantId == null && policy.IsActive, cancellationToken);
 
     public Task<PaidEventPolicyVersion?> GetActiveTenantAsync(Guid tenantId, CancellationToken cancellationToken) =>
-        dbContext.PaidEventPolicyVersions.SingleOrDefaultAsync(policy => policy.TenantId == tenantId && policy.IsActive, cancellationToken);
+        dbContext.PaidEventPolicyVersions
+            .IgnoreAllFilters(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .SingleOrDefaultAsync(policy => policy.TenantId == tenantId && policy.IsActive, cancellationToken);
 
     public async Task<PaidEventPolicyVersion[]> ListTenantHistoryAsync(Guid tenantId, CancellationToken cancellationToken) =>
         await dbContext.PaidEventPolicyVersions
+            .IgnoreAllFilters(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Where(policy => policy.TenantId == tenantId)
             .OrderBy(policy => policy.VersionNumber)

@@ -1,12 +1,16 @@
 // ABOUTME: bUnit coverage for authoritative attendee payment state rendering and exact HAL actions.
 // ABOUTME: Verifies every bounded status, same-origin checkout filtering, and no blind retry behavior.
 
+using AngleSharp.Dom;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Registration;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
+using NSubstitute;
+using System.Globalization;
 using System.Reflection;
 
 namespace Explore.Blazor.Client.Tests.Components.Registration;
@@ -23,6 +27,13 @@ public sealed class PaymentStatusPanelTests : IDisposable
         _ctx.Services.RemoveAll<IAccessibilityFocusService>();
         _ctx.Services.AddSingleton<IAccessibilityAnnouncerService>(_announcer);
         _ctx.Services.AddSingleton<IAccessibilityFocusService>(_focus);
+        _ctx.Services.RemoveAll<ITranslationService>();
+        var translations = Substitute.For<ITranslationService>();
+        translations.CurrentLanguage.Returns("en-GB");
+        translations.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
+        translations.T("payment.acceptance.heading", Arg.Any<string?>()).Returns("Localized payment review");
+        _ctx.Services.AddSingleton(translations);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -46,6 +57,95 @@ public sealed class PaymentStatusPanelTests : IDisposable
         await Assert.That(cut.Find("#payment-actionable-status").GetAttribute("role")).IsNull();
         await Assert.That(cut.Find("#payment-actionable-status").GetAttribute("aria-live")).IsNull();
         await Assert.That(cut.FindAll("[data-testid='retry-payment']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task AcceptanceRendersExactServerFactsAndRequiresExplicitKeyboardOperableAcknowledgement()
+    {
+        string? acceptedRevision = null;
+        var cut = _ctx.RenderMudComponent<PaymentStatusPanel>(parameters => parameters
+            .Add(component => component.LoadAcceptance, _ => Task.FromResult<PaidOrderAcceptanceDisclosureDto?>(Acceptance()))
+            .Add(component => component.Start, (revision, _) =>
+            {
+                acceptedRevision = revision;
+                return Task.FromResult<HalResourceOfRegistrationPaymentDto?>(CreatePayment("Created", "payment-status"));
+            }));
+
+        var checkbox = cut.WaitForElement("[data-testid='payment-acceptance-acknowledgement']");
+        var start = cut.Find("[data-testid='start-payment']");
+        await Assert.That(start.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Localized payment review");
+        await Assert.That(cut.Markup).DoesNotContain("Review before payment");
+        await Assert.That(cut.Markup).Contains("Independent Operator");
+        await Assert.That(cut.Markup).Contains("EUR 10.00");
+        await Assert.That(cut.Markup).Contains("Europe/Brussels");
+        await Assert.That(cut.Markup).Contains("Refund policy");
+        await Assert.That(cut.Markup).Contains("complaints@example.test");
+        await Assert.That(cut.Find("[data-testid='acceptance-official-origin']").TextContent)
+            .Contains("https://events.example.test");
+        await Assert.That(cut.Find("[data-testid='acceptance-activation-status']").TextContent)
+            .Contains("approved");
+        await Assert.That(cut.Find("[data-testid='acceptance-provider-profile']").TextContent)
+            .Contains("OrganizerDirect");
+        await Assert.That(cut.FindAll("[data-testid='acceptance-line']").Count).IsEqualTo(2);
+        await Assert.That(cut.Markup).Contains("General admission");
+        await Assert.That(cut.Markup).Contains("Family admission");
+        await Assert.That(cut.Find("[lang='ar']")).IsNotNull();
+
+        await checkbox.ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("[data-testid='start-payment']").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await Assert.That(acceptedRevision).IsEqualTo("revision");
+    }
+
+    [Test]
+    public async Task AcceptanceUsesActiveCultureForMoneyAndScheduleOrdering()
+    {
+        using var context = new BlazorTestContext();
+        context.Services.RemoveAll<ITranslationService>();
+        var translations = Substitute.For<ITranslationService>();
+        translations.CurrentLanguage.Returns("fr-FR");
+        translations.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
+        context.Services.AddSingleton(translations);
+        var culture = CultureInfo.GetCultureInfo("fr-FR");
+        string number = 10m.ToString("N2", culture);
+        string money = culture.NumberFormat.CurrencyPositivePattern is 1 or 3
+            ? $"{number} EUR"
+            : $"EUR {number}";
+        DateTimeOffset localStart = TimeZoneInfo.ConvertTime(
+            DateTimeOffset.Parse("2026-09-10T17:00:00Z"),
+            TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels"));
+        string scheduleStart = localStart.ToString("g", culture);
+
+        var cut = context.RenderMudComponent<PaymentStatusPanel>(parameters => parameters
+            .Add(component => component.LoadAcceptance, _ => Task.FromResult<PaidOrderAcceptanceDisclosureDto?>(Acceptance()))
+            .Add(component => component.Start, (_, _) => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null)));
+
+        cut.WaitForElement("[data-testid='payment-acceptance']");
+        await Assert.That(cut.Markup).Contains(money);
+        await Assert.That(cut.Markup).Contains(scheduleStart);
+    }
+
+    [Test]
+    public async Task AcceptanceDirectionFollowsArabicUiCulture()
+    {
+        using var context = new BlazorTestContext();
+        context.Services.RemoveAll<ITranslationService>();
+        var translations = Substitute.For<ITranslationService>();
+        translations.CurrentLanguage.Returns("ar");
+        translations.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
+        context.Services.AddSingleton(translations);
+
+        var cut = context.RenderMudComponent<PaymentStatusPanel>(parameters => parameters
+            .Add(component => component.LoadAcceptance, _ => Task.FromResult<PaidOrderAcceptanceDisclosureDto?>(Acceptance()))
+            .Add(component => component.Start, (_, _) => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null)));
+
+        IElement panel = cut.WaitForElement("[data-testid='payment-status']");
+        IElement acceptance = cut.Find("[data-testid='payment-acceptance']");
+        await Assert.That(panel.GetAttribute("dir")).IsEqualTo("rtl");
+        await Assert.That(acceptance.GetAttribute("dir")).IsEqualTo("rtl");
     }
 
     [Test]
@@ -331,6 +431,66 @@ public sealed class PaymentStatusPanelTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='retry-payment']")).IsEmpty();
         await Assert.That(cut.FindAll("[data-testid='checkout-redirect']")).IsEmpty();
     }
+
+    private static PaidOrderAcceptanceDisclosureDto Acceptance() => new()
+    {
+        DisclosureRevision = "revision",
+        MerchantDisclosureText = "Example Organizer, legal merchant",
+        OperatorDisplayName = "Independent Operator",
+        IsOfficialInstance = false,
+        OfficialOrigin = "https://events.example.test",
+        OperatorRegionCode = "BE",
+        OperatorWebsiteUrl = "https://events.example.test",
+        OperatorLegalNoticeUrl = "https://events.example.test/legal",
+        OperatorTermsUrl = "https://events.example.test/terms",
+        OperatorPrivacyUrl = "https://events.example.test/privacy",
+        OperatorActivationStatus = "approved",
+        DeliveryStartsAtUtc = DateTimeOffset.Parse("2026-09-10T17:00:00Z"),
+        DeliveryEndsAtUtc = DateTimeOffset.Parse("2026-09-10T20:00:00Z"),
+        EventTimeZoneId = "Europe/Brussels",
+        CurrencyCode = "EUR",
+        CurrencyMinorUnitDigits = 2,
+        OrganizerAmountMinor = 1_000,
+        PlatformFeeMinor = 75,
+        PlatformContributionMinor = 125,
+        TotalMinor = 1_125,
+        RefundPolicyVersion = 1,
+        RefundPolicyText = "Refund policy",
+        RefundPolicyLanguageTag = "ar",
+        SupportContact = "support@example.test",
+        ComplaintContact = "complaints@example.test",
+        ComplaintOwner = "Trust and Safety",
+        RefundOwner = "Payments Operations",
+        DisputeOwner = "Dispute Operations",
+        ReconciliationOwner = "Payment Reconciliation",
+        ProviderCode = "stripe",
+        ProviderProfileCode = "OrganizerDirect",
+        ProviderEnvironment = "test",
+        ProviderCredentialOwner = "instance-operator",
+        ChargeType = "direct-charge",
+        StatementDescriptor = "EXAMPLE EVENT",
+        Lines =
+        [
+            new PaidOrderAcceptanceLineDto
+            {
+                OrderLineId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101"),
+                Name = "General admission",
+                Quantity = 1,
+                UnitAmountMinor = 600,
+                DiscountAmountMinor = 0,
+                LineTotalMinor = 600
+            },
+            new PaidOrderAcceptanceLineDto
+            {
+                OrderLineId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000102"),
+                Name = "Family admission",
+                Quantity = 2,
+                UnitAmountMinor = 250,
+                DiscountAmountMinor = 100,
+                LineTotalMinor = 400
+            }
+        ]
+    };
 
     private static HalResourceOfRegistrationPaymentDto CreatePayment(string status, params string[] relations) => new()
     {

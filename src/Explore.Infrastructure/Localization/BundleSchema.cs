@@ -46,11 +46,12 @@ internal static class BundleSchema
     {
         if (string.IsNullOrWhiteSpace(key) || key != key.Trim() || key.Any(char.IsWhiteSpace) || !HasAllowedPrefix(key) || key.Split('.').Any(segment => segment.Length == 0))
         {
-            throw new JsonException($"Localization bundle key '{key}' must start with 'ui.' or 'lookup.' and use non-empty dot-separated segments without whitespace.");
+            throw new JsonException($"Localization bundle key '{key}' must start with 'ui.', 'lookup.', or 'payment.' and use non-empty dot-separated segments without whitespace.");
         }
     }
 
     private static bool HasAllowedPrefix(string key) =>
         key.StartsWith("ui.", StringComparison.Ordinal) ||
-        key.StartsWith("lookup.", StringComparison.Ordinal);
+        key.StartsWith("lookup.", StringComparison.Ordinal) ||
+        key.StartsWith("payment.", StringComparison.Ordinal);
 }

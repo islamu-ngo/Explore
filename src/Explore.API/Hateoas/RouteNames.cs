@@ -157,6 +157,12 @@ public static class RouteNames
     public const string UpdateEventCapacityPool = "UpdateEventCapacityPool";
     public const string DeleteEventCapacityPool = "DeleteEventCapacityPool";
     public const string GetPaidEventPublicationPreflight = "GetPaidEventPublicationPreflight";
+    public const string GetPaidCheckoutSaleControl = "GetPaidCheckoutSaleControl";
+    public const string StopPaidCheckoutSales = "StopPaidCheckoutSales";
+    public const string RequestPaidCheckoutResume = "RequestPaidCheckoutResume";
+    public const string ReviewPaidCheckoutResume = "ReviewPaidCheckoutResume";
+    public const string RequestPaidCheckoutReview = "RequestPaidCheckoutReview";
+    public const string DecidePaidCheckoutReview = "DecidePaidCheckoutReview";
     public const string UpdateEventTicketCatalogCommercialDisclosures = "UpdateEventTicketCatalogCommercialDisclosures";
     public const string GetEventOrganizerPaymentConnection = "GetEventOrganizerPaymentConnection";
     public const string StartEventOrganizerPaymentOnboarding = "StartEventOrganizerPaymentOnboarding";
@@ -362,10 +368,12 @@ public static class RouteNames
     public const string RemoveAuthenticatedRegistrationOrderPromotion = "RemoveAuthenticatedRegistrationOrderPromotion";
     public const string StartGuestRegistrationPayment = "StartGuestRegistrationPayment";
     public const string GetGuestRegistrationPayment = "GetGuestRegistrationPayment";
+    public const string GetGuestPaidOrderAcceptance = "GetGuestPaidOrderAcceptance";
     public const string RetryGuestRegistrationPayment = "RetryGuestRegistrationPayment";
     public const string GetGuestRegistrationPaymentCheckoutTarget = "GetGuestRegistrationPaymentCheckoutTarget";
     public const string StartAuthenticatedRegistrationPayment = "StartAuthenticatedRegistrationPayment";
     public const string GetAuthenticatedRegistrationPayment = "GetAuthenticatedRegistrationPayment";
+    public const string GetAuthenticatedPaidOrderAcceptance = "GetAuthenticatedPaidOrderAcceptance";
     public const string RetryAuthenticatedRegistrationPayment = "RetryAuthenticatedRegistrationPayment";
     public const string GetAuthenticatedRegistrationPaymentCheckoutTarget = "GetAuthenticatedRegistrationPaymentCheckoutTarget";
     public const string GetStudioRegistrationPayment = "GetStudioRegistrationPayment";

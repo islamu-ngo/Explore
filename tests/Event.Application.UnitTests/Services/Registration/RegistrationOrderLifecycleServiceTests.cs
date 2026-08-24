@@ -1798,7 +1798,8 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _finalization,
         _paymentAttempts,
         _deadlines,
-        new FixedTimeProvider(UtcNow));
+        new FixedTimeProvider(UtcNow),
+        Substitute.For<IPaidOrderAcceptanceService>());
 
     private static PromotionReservation CreateActivePromotionReservation(
         RegistrationOrder order,

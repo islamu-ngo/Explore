@@ -40,10 +40,25 @@ public sealed class GuestRegistrationOrderPaymentController(IMediator mediator) 
         Guid orderId,
         [FromHeader(Name = CapabilityHeader)] string? capability,
         [FromHeader(Name = IdempotencyKeyHeader)] string idempotencyKey,
+        [FromBody] PaidOrderAcceptanceAcknowledgementDto? acceptance,
         CancellationToken cancellationToken = default)
     {
         _ = idempotencyKey;
-        return MapResult(await Mediator.Send(new StartGuestRegistrationPaymentCommand(eventId, orderId, capability), cancellationToken), eventId, orderId, true);
+        return MapResult(await Mediator.Send(new StartGuestRegistrationPaymentCommand(eventId, orderId, capability, acceptance), cancellationToken), eventId, orderId, true);
+    }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [PrivateNoStore]
+    [HttpGet("guest/{orderId:guid}/payment/acceptance", Name = RouteNames.GetGuestPaidOrderAcceptance)]
+    [ProducesResponseType(typeof(PaidOrderAcceptanceDisclosureDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PaidOrderAcceptanceDisclosureDto>> GetAcceptance(
+        Guid eventId, Guid orderId, [FromHeader(Name = CapabilityHeader)] string? capability, CancellationToken cancellationToken = default)
+    {
+        PaidOrderAcceptanceDisclosureDto? disclosure = await Mediator.Send(
+            new GetGuestPaidOrderAcceptanceQuery(eventId, orderId, capability), cancellationToken);
+        return disclosure is null ? PaymentNotFoundResult() : Ok(disclosure);
     }
 
     [AllowAnonymous]

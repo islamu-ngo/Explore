@@ -29,7 +29,7 @@ public sealed class PaymentReconciliationDrainJobTests
         await setup.Repository.Received(2).ClaimDueDispatchEffectsAsync(
             "payment-checkout-dispatch-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
         await setup.Repository.Received(1).ClaimDueReconciliationsAsync(
-            "payment-reconciliation-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
+            "payment-reconciliation-drain-job", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
     }
 
     [Test]
@@ -96,7 +96,7 @@ public sealed class PaymentReconciliationDrainJobTests
                 "payment-checkout-dispatch-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
             .Returns(_ => dispatchClaims++ == 1 ? [checkoutClaim] : []);
         setup.Repository.ClaimDueReconciliationsAsync(
-                "payment-reconciliation-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+                "payment-reconciliation-drain-job", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
             .Returns(_ => reconciliationClaims++ == 0 ? [reconciliationClaim] : []);
         setup.Repository.GetReconciliationAttemptAsync(reconciliationClaim, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(attempt);
         setup.Repository.RequeueLatestUnknownDispatchAsync(TenantId, attempt.Id, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(true);
@@ -124,7 +124,7 @@ public sealed class PaymentReconciliationDrainJobTests
         await setup.Job.Execute(setup.Context);
 
         await setup.Repository.Received(1).ClaimDueReconciliationsAsync(
-            "payment-reconciliation-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
+            "payment-reconciliation-drain-job", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
         await setup.Creator.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
@@ -151,7 +151,7 @@ public sealed class PaymentReconciliationDrainJobTests
             Arg.Any<DateTime>(),
             setup.Cancellation.Token);
         await setup.Repository.Received(1).ClaimDueReconciliationsAsync(
-            "payment-reconciliation-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
+            "payment-reconciliation-drain-job", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), setup.Cancellation.Token);
         await setup.Creator.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
@@ -162,7 +162,7 @@ public sealed class PaymentReconciliationDrainJobTests
                 "payment-checkout-dispatch-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
             .Returns([]);
         repository.ClaimDueReconciliationsAsync(
-                "payment-reconciliation-drain-job", 1, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
+                "payment-reconciliation-drain-job", 50, Arg.Any<DateTime>(), TimeSpan.FromMinutes(2), Arg.Any<CancellationToken>())
             .Returns([]);
         var creator = Substitute.For<IHostedCheckoutSessionCreator>();
         var checkout = Substitute.For<IHostedCheckoutSessionRetriever>();
@@ -174,7 +174,9 @@ public sealed class PaymentReconciliationDrainJobTests
             checkout,
             payment,
             Substitute.For<IRegistrationOrderLifecycleService>(),
-            time);
+            time,
+            ReadyCheckoutActivation(),
+            CurrentAcceptance());
         var reconciliation = new RegistrationPaymentReconciliationService(repository, checkout, payment, time);
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["PublicBaseUrl"] = publicBaseUrl })
@@ -191,9 +193,29 @@ public sealed class PaymentReconciliationDrainJobTests
         OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
             TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), "stripe", "platform-test", "acct_123", "BE", "EUR",
             Guid.CreateVersion7(), null, UtcNow.AddMinutes(-2));
-        return PaymentAttempt.Create(
+        PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, Guid.CreateVersion7(), recipient, "OrganizerDirect", "2026-07-29.dahlia",
             "composition-job", 1_000, 75, 125, "checkout:job:stable", UtcNow.AddMinutes(-2), UtcNow.AddMinutes(30));
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            TenantId, attempt.RegistrationOrderId, Guid.CreateVersion7(), "composition-job",
+            recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
+            1_000, 75, 125, UtcNow.AddMinutes(-1)));
+        return attempt;
+    }
+
+    private static IPaidOrderAcceptanceFreshnessService CurrentAcceptance()
+    {
+        var freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+        freshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
+        return freshness;
+    }
+
+    private static IPaidCheckoutActivationService ReadyCheckoutActivation()
+    {
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(true, null, "active"));
+        return activation;
     }
 
     private static CheckoutDispatchClaim CheckoutClaim(PaymentAttempt attempt) =>

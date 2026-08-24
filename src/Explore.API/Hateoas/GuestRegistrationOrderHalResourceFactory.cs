@@ -51,9 +51,11 @@ public static class GuestRegistrationOrderHalResourceFactory
                 url.Link(RouteNames.FinalizeGuestRegistrationOrder, values)!, HttpMethods.Post));
         }
 
-        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+        if (order.PaidCheckoutActivationAvailable && RegistrationPaymentPayability.IsCurrentlyPayable(
                 order.StatusId, order.TotalDueMinor, order.ExpiresAt, timeProvider.GetUtcNow().UtcDateTime))
         {
+            resource.WithLink(LinkRelations.PaymentAcceptance, HalLink.Create(
+                url.Link(RouteNames.GetGuestPaidOrderAcceptance, values)!));
             resource.WithLink(LinkRelations.StartPayment, HalLink.CreateAction(
                 url.Link(RouteNames.StartGuestRegistrationPayment, values)!, HttpMethods.Post));
         }

@@ -48,6 +48,56 @@ public sealed class DataProtectionKeyPersistenceTests
         }
     }
 
+    [Test]
+    public async Task RelationalBackupRestoreRetainsKeyAndUnprotectsPreRestorePayload()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"payment-dp-restore-{Guid.CreateVersion7():N}");
+        Directory.CreateDirectory(directory);
+        string databasePath = Path.Combine(directory, "keys.db");
+        string backupPath = Path.Combine(directory, "keys.backup.db");
+        const string payload = "pre-restore-payment-capability";
+        try
+        {
+            string protectedPayload;
+            int keyCount;
+            await using (ServiceProvider first = BuildRelationalServiceProvider(databasePath))
+            {
+                protectedPayload = first.GetRequiredService<IDataProtectionProvider>().CreateProtector(Purpose).Protect(payload);
+                await using AsyncServiceScope scope = first.CreateAsyncScope();
+                DataProtectionKeyContext context = scope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>();
+                keyCount = await context.DataProtectionKeys.CountAsync();
+                await Assert.That(keyCount).IsGreaterThanOrEqualTo(1);
+                await Assert.That(await context.DataProtectionKeys.AllAsync(key => key.Xml.Contains("activationDate") && key.Xml.Contains("expirationDate"))).IsTrue();
+            }
+
+            File.Copy(databasePath, backupPath, overwrite: true);
+            File.Delete(databasePath);
+            File.Copy(backupPath, databasePath);
+
+            await using ServiceProvider restored = BuildRelationalServiceProvider(databasePath);
+            string unprotected = restored.GetRequiredService<IDataProtectionProvider>().CreateProtector(Purpose).Unprotect(protectedPayload);
+            await using AsyncServiceScope restoredScope = restored.CreateAsyncScope();
+            DataProtectionKeyContext restoredContext = restoredScope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>();
+            await Assert.That(unprotected).IsEqualTo(payload);
+            await Assert.That(await restoredContext.DataProtectionKeys.CountAsync()).IsEqualTo(keyCount);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static ServiceProvider BuildRelationalServiceProvider(string databasePath)
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<DataProtectionKeyContext>(options => options.UseSqlite($"Data Source={databasePath}"));
+        services.AddDataProtection().SetApplicationName(ApplicationName).PersistKeysToDbContext<DataProtectionKeyContext>();
+        ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        using IServiceScope scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>().Database.EnsureCreated();
+        return provider;
+    }
+
     private static ServiceProvider BuildServiceProvider(string databaseName, InMemoryDatabaseRoot databaseRoot)
     {
         var services = new ServiceCollection();

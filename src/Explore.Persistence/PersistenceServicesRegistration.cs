@@ -232,6 +232,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
         services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();
         services.AddScoped<IPaidEventPolicyRepository, PaidEventPolicyRepository>();
+        services.AddScoped<IPaidCheckoutActivationRepository, PaidCheckoutActivationRepository>();
         services.AddScoped<IPlatformFeePolicyRepository, PlatformFeePolicyRepository>();
         services.AddScoped<IPlatformContributionSettingRepository, PlatformContributionSettingRepository>();
         services.AddScoped<IOrganizerPaymentProviderAccountOperationRepository, OrganizerPaymentProviderAccountOperationRepository>();
