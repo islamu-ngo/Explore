@@ -14,7 +14,7 @@ public sealed class AiReplayReportGenerator
     private const string Version = "atcr-ai-replay-v1";
     private const string RequiredCreateEventHalRel = "create-event";
     private const string CreateEventDraftToolName = "CreateEventDraft";
-    private const string ValidFixturePayloadJson = "{\"title\":\"Replay fixture\"}";
+    private const string ValidFixturePayloadJson = "{\"title\":\"Replay fixture\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}";
     private const string MissingTitleFixturePayloadJson = "{\"description\":\"Replay fixture missing a required field\"}";
 
     private static readonly string[] RequiredProjectedMcpToolNames =

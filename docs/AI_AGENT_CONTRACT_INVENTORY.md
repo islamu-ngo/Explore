@@ -30,7 +30,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 | Create event custom property definition | CreateEventCustomPropertyDefinition | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_definition:create | EventSubResourceAiActionMapper | no | yes |
 | Create event day | CreateEventDay | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-agenda | event-day-context | islamuevent_event_day:create | EventSubResourceAiActionMapper | no | yes |
 | Create event draft | CreateEventDraft | Medium | HumanConfirmationRequired | Required | create-event | /calendar, /events, /events/new | event-drafting, event-planning | event, selected-references | islamuevent_event:create | CreateEventDraftAiActionMapper | yes | yes |
-| Create event registration | CreateEventRegistration | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-registrations | event-registration-context | islamuevent_event_registration:create | EventSubResourceAiActionMapper | no | yes |
 | Create event session | CreateEventSession | Medium | HumanConfirmationRequired | Required | add-session | /calendar, /events/manage, /events/program, /events/{eventId} | event-sessions | event-session-context | islamuevent_event_session:create | EventSubResourceAiActionMapper | no | yes |
 | Create event session group | CreateEventSessionGroup | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-program | event-session-group-context | islamuevent_event_session_group:create | EventSubResourceAiActionMapper | no | yes |
 | Create event session template | CreateEventSessionTemplate | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-templates | event-session-template-context | islamuevent_custom_property_template:create | EventSubResourceAiActionMapper | no | yes |
@@ -40,7 +39,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 | Delete event custom property definition | DeleteEventCustomPropertyDefinition | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_definition:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event day | DeleteEventDay | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-agenda | event-day-context | islamuevent_event_day:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event Islamic aspect | DeleteEventIslamicAspect | High | HumanConfirmationRequired | Required | edit | /calendar, /events/detail, /events/manage, /events/{eventId} | event-aspects, event-management | event, event-aspect-context, event-management-context | islamuevent_event:update | DeleteEventIslamicAspectAiActionMapper | no | yes |
-| Delete event registration | DeleteEventRegistration | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-registrations | event-registration-context | islamuevent_event_registration:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event session | DeleteEventSession | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-sessions | event-session-context | islamuevent_event_session:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event session group | DeleteEventSessionGroup | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-program | event-session-group-context | islamuevent_event_session_group:delete | EventSubResourceAiActionMapper | no | yes |
 | Delete event session template | DeleteEventSessionTemplate | High | HumanConfirmationRequired | Required | delete | /calendar, /events/manage, /events/program, /events/{eventId} | event-templates | event-session-template-context | islamuevent_custom_property_template:delete | EventSubResourceAiActionMapper | no | yes |
@@ -59,7 +57,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 | Update event custom property definition | UpdateEventCustomPropertyDefinition | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-custom-properties | event-custom-property-context | islamuevent_custom_property_definition:update | EventSubResourceAiActionMapper | no | yes |
 | Update event day | UpdateEventDay | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-agenda | event-day-context | islamuevent_event_day:update | EventSubResourceAiActionMapper | no | yes |
 | Update event draft | UpdateEventDraft | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/detail, /events/manage, /events/{eventId} | event-drafting, event-management | event, event-management-context | islamuevent_event:update | UpdateEventDraftAiActionMapper | no | yes |
-| Update event registration | UpdateEventRegistration | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-registrations | event-registration-context | islamuevent_event_registration:update | EventSubResourceAiActionMapper | no | yes |
 | Update event session | UpdateEventSession | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-sessions | event-session-context | islamuevent_event_session:update | EventSubResourceAiActionMapper | no | yes |
 | Update event session group | UpdateEventSessionGroup | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-program | event-session-group-context | islamuevent_event_session_group:update | EventSubResourceAiActionMapper | no | yes |
 | Update event session template | UpdateEventSessionTemplate | Medium | HumanConfirmationRequired | Required | edit | /calendar, /events/manage, /events/program, /events/{eventId} | event-templates | event-session-template-context | islamuevent_custom_property_template:update | EventSubResourceAiActionMapper | no | yes |
@@ -125,13 +122,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 - Safe action instructions: Create a draft proposal only. Put poster-derived date, time, location, gender mode, and primary-session speaker actor references in structured fields instead of prose; keep description as a short summary. The initial event draft may include at most one primary session because event creation creates the first draft session by convention. Use the dedicated event-session draft workflow only after an event exists and the source clearly contains additional sessions. Do not publish, invite attendees, assign roles, or claim the event exists before the user confirms the proposal.
 - Result card: event-draft-proposal-card
 
-### CreateEventRegistration
-
-- Availability: Available only when the current API/HAL context exposes the required event-management affordance.
-- Follow-up policy: AskClarifyingQuestionBeforeProposal
-- Safe action instructions: Read the current management context first, use server-issued identifiers and concurrency stamps, propose create event registration only, and do not claim side effects happened before confirmation.
-- Result card: event-registration-proposal-card
-
 ### CreateEventSession
 
 - Availability: Available only when the current API/HAL context exposes the required event-management affordance.
@@ -194,13 +184,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 - Follow-up policy: ShowWarningsBeforeConfirmation
 - Safe action instructions: Read event management context first, use its concurrency stamp, require explicit destructive confirmation metadata, and do not claim the Islamic aspect was deleted before the user confirms the proposal.
 - Result card: event-islamic-aspect-delete-proposal-card
-
-### DeleteEventRegistration
-
-- Availability: Available only when the current API/HAL context exposes the required event-management affordance.
-- Follow-up policy: ShowWarningsBeforeConfirmation
-- Safe action instructions: Read the current management context first, use server-issued identifiers and concurrency stamps, propose delete event registration only, and do not claim side effects happened before confirmation.
-- Result card: event-registration-delete-proposal-card
 
 ### DeleteEventSession
 
@@ -327,13 +310,6 @@ _Add local reviewer notes here. This section is preserved by the generator._
 - Follow-up policy: AskClarifyingQuestionBeforeProposal
 - Safe action instructions: Read event management context first, use its concurrency stamp, propose a draft update only, and do not claim the event was updated before the user confirms the proposal.
 - Result card: event-draft-update-proposal-card
-
-### UpdateEventRegistration
-
-- Availability: Available only when the current API/HAL context exposes the required event-management affordance.
-- Follow-up policy: AskClarifyingQuestionBeforeProposal
-- Safe action instructions: Read the current management context first, use server-issued identifiers and concurrency stamps, propose update event registration only, and do not claim side effects happened before confirmation.
-- Result card: event-registration-update-proposal-card
 
 ### UpdateEventSession
 

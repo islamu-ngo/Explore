@@ -45,7 +45,7 @@ public sealed class AiEvaluationReportGenerator
         var allDefinitions = registry.Definitions;
         var validation = registry.ValidatePayload(
             AiProposedActionKind.CreateEventDraft,
-            "{\"title\":\"Draft\",\"description\":\"Details\"}");
+            "{\"title\":\"Draft\",\"description\":\"Details\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
 
         if (validation.Succeeded &&
             definition.ConfirmationMode == AiToolConfirmationMode.Required &&

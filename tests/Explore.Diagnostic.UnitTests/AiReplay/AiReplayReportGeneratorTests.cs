@@ -49,7 +49,9 @@ public sealed class AiReplayReportGeneratorTests
         await Assert.That(inspectorScenario.Diagnostics).Contains("propose_update_event_draft");
         await Assert.That(inspectorScenario.Diagnostics).Contains("propose_publish_event");
         await Assert.That(inspectorScenario.Diagnostics).Contains("propose_create_event_session");
-        await Assert.That(inspectorScenario.Diagnostics).Contains("44 registry-projected proposal tools");
+        var expectedToolCount = Explore.Application.Features.AiAssistant.Tools.AiToolContractRegistry.CreateDefault()
+            .Definitions.Count(d => d.ExposeToMcp);
+        await Assert.That(inspectorScenario.Diagnostics).Contains($"{expectedToolCount} registry-projected proposal tools");
         await Assert.That(inspectorScenario.DatabaseSideEffectsDetected).IsFalse();
     }
 

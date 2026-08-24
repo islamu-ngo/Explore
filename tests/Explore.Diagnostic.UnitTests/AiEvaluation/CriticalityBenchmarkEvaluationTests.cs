@@ -20,7 +20,7 @@ public sealed class CriticalityBenchmarkEvaluationTests
     [DisplayName("Adversarial injection vectors are caught by safety filters and fail closed")]
     public async Task AdversarialInjectionVectors_AreDetectedAndFenced()
     {
-        var bypassRegex = new Regex(@"(ignore\s+(all\s+)?previous\s+rules|system\s+override|debug\s+mode|bypass\s+mode|disable\s+tenant|export\s+credentials)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        var bypassRegex = new Regex(@"(ignore\s+(all\s+)?previous\s+rules|system\s+override|debug\s+mode|bypass\s+mode|disable\s+tenant|export\s+.*credentials)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         var violations = new List<string>();
 
