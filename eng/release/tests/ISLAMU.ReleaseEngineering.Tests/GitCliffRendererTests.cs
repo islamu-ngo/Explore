@@ -442,7 +442,7 @@ public sealed class GitCliffRendererTests
             "policy-v1",
             "config-v1",
             "trust-v1")
-            { ExpectedManifestDigest = Digest(Path.Combine(BundleRoot, "trusted-bundle.manifest.json")) };
+        { ExpectedManifestDigest = Digest(Path.Combine(BundleRoot, "trusted-bundle.manifest.json")) };
 
         private void RewriteManifestAndReceipt()
         {

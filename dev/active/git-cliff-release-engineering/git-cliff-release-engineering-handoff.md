@@ -13,7 +13,10 @@ USER REQUESTS (AS-IS)
 
 GOAL
 ----
-Independently confirm the version-agnostic Task 6.2 baseline fix, then complete Task 6.3's synthetic advisory release flow and update the remaining verification gates without fabricating production signer, tag, version, or provider-settings evidence.
+Complete the git-cliff release-engineering implementation plan without fabricating production
+signer, tag, version, or provider-settings evidence. Achieved: 25 of 25 implementation tasks and all
+eight phase-verification gate pairs. The only thing left in the workstream is the operator act of
+creating the real signed tags, which needs steward approval and real signer custody.
 
 WORK COMPLETED
 --------------
@@ -22,12 +25,31 @@ WORK COMPLETED
 - I integrated `release-evidence.v1.json` as the single canonical identity consumed by the existing durable evidence bundle; provider run metadata remains noncanonical.
 - I implemented and independently confirmed transport-only adapters for Forgejo/Codeberg, Tangled, and GitHub. All three produce identical canonical input and promoted-bundle checksums. Tangled unsupported protected operations require separate operator evidence and fail closed otherwise.
 - I fixed security/robustness findings found during review: renderer capability forgery, config grammar bypasses, filesystem links/aliases, exact-B drift, recreated tags, `main` CAS gaps, hung Git process groups, Windows hardlinks, trust-root test races, preview privilege escalation, PR-origin final events, and workflow/manifest trust overclaims.
-- I completed Task 6.2 implementation follow-up by removing the unapproved `1.0.0` special case. A verified `changelog-baseline-YYYY-MM-DD` can now lower-bound any steward-approved first governed SemVer release, while a reachable stable SemVer tag blocks baseline reuse.
+- I completed Task 6.2 implementation follow-up by removing the unapproved `1.0.0` special case. A verified `changelog-baseline-YYYY-MM-DD` can now lower-bound any steward-approved first governed SemVer release, while a reachable stable SemVer tag blocks baseline reuse. It was independently re-confirmed after Phase 7 against the corrected validator.
+- I delivered Phase 7: failing tag-anchored specifications first, then removal of every `refs/heads/*` read from attestation, then the policy/runbook/ADR/governance/adapter-contract re-baseline plus a `refs/heads/v*` protected-ref rule in the repository-settings validator.
+- I delivered Task 0.1, the release-governance I-VSD report, clearing the Phase 8 approval blocker.
+- I delivered Task 8.1 as an executable dry-run specification and Task 8.3 as a synthetic publication-projection contract with `report-publication-drift`.
 - I did not create a real baseline tag, release tag, release directory, commit, push, or protected-ref mutation.
 
 CURRENT STATE
 -------------
-- Branch: `develop`; handoff HEAD: `eee61969a4b6e6757242ae02dd748524ed540713`.
+- Branch: `develop`; handoff HEAD: `f58291aece7f` (session start; no commit was created).
+- 25/25 implementation tasks complete; all eight phases closed with green gates.
+- Phase 7 removed every `refs/heads/*` read from attestation. A release now re-verifies after its
+  branch advances, after the branch is deleted, and in a clone that fetched only `refs/tags/*`, in
+  both SHA-1 and SHA-256 repositories, producing byte-identical evidence.
+- Validation: full Release build 0 errors; release-engine tests 236/236; architecture tests 444
+  total, 443 passed, 0 failed, 1 skipped; three real provider definitions validated with
+  `adapter_validation_passed: providers=3`.
+- The Phase 1 architecture gate and the Phase 5 literal-command gate, both previously blocked, are
+  now closed. The four architecture failures were fixed by their owning workstreams; none was
+  release-engineering scope and none was modified here.
+- No repository ref was created, moved, deleted, or pushed. Production trust roots remain
+  intentionally comment-only.
+
+SUPERSEDED STATE (kept for provenance)
+-------------------------------------
+- Earlier handoff HEAD: `eee61969a4b6e6757242ae02dd748524ed540713`.
 - Hot ledger: 16/18 implementation tasks complete. Task 6.2 remains unchecked because its version-agnostic follow-up has a worker DoneClaim but the independent re-verification timed out before a final verdict.
 - Latest Task 6.2 follow-up evidence: focused baseline tests 21/21, prepare regression 1/1, full release-engine suite 197/197, scoped release CLI build 0 warnings and 0 errors.
 - The prior independent Task 6.2 review file still says `needs-fix` because it predates the version-agnostic repair; do not treat that stale verdict as current confirmation.
@@ -40,12 +62,16 @@ CURRENT STATE
 
 PENDING TASKS
 -------------
-- Re-run an independent Task 6.2 review against current bytes. Prove first-release `0.1.0` and another SemVer work, a reachable stable SemVer tag blocks baseline reuse, baseline tags stay outside SemVer selection, and SHA-1/SHA-256 built CLI evidence is stable.
-- If Task 6.2 is confirmed, mark it complete in `git-cliff-release-engineering-tasks.md`; keep the real operator-created baseline tag and first version directory explicitly blocked until the steward supplies approval, merged commit, and signer authority.
-- Implement Task 6.3: align contributor/docs gates and run the full synthetic local flow through prepare, exact `B`, candidate manifest, externally signed test tag, final evidence, main verification, and three adapter plans. Record always-present/no-op checks and prove ordinary `develop` pushes do not write a changelog.
-- Independently review Task 6.3 and run Phase 6 release/architecture gates as far as the shared environment permits.
-- Re-run Phase 1 and Phase 5 gates after unrelated shared-tree churn and host workload manifests settle. Do not mark blocked literal commands green based only on workaround runs.
-- Update tasks/context, final evidence, and handoff; archive/close only when all non-operator implementation work is independently confirmed.
+- **Task 8.2 (operator-blocked).** Execute the first governed milestone from
+  `docs/RELEASE_RUNBOOK.md`: verify the signed `changelog-baseline-YYYY-MM-DD` tag, author
+  `docs/releases/<version>/release.yaml` and `summary.md`, run `prepare`, `verify-candidate`,
+  `verify-tag`, and `verify-main`, then confirm the tag re-verifies in a fresh tag-only clone
+  offline. Requires a steward-approved version, a merged activation commit, real signer custody,
+  and the repository branch ruleset covering `refs/heads/v*` with a `creation` rule. Do not
+  fabricate any of these.
+- **Task 8.4 (deferred).** Do not implement `open-maintenance-line` until a real backport to an
+  already-released line exists. The documented manual `git switch -c release/<M>.<m> v<M>.<m>.<p>`
+  is the complete solution until then.
 
 KEY FILES
 ---------

@@ -3,9 +3,9 @@
 
 # Git-Cliff Release Engineering - Context
 
-Last Updated: 2026-08-19 Europe/Brussels
+Last Updated: 2026-08-23 Europe/Brussels
 
-## SESSION PROGRESS (2026-08-19 Europe/Brussels)
+## SESSION PROGRESS (2026-08-23 Europe/Brussels)
 
 ### COMPLETED
 
@@ -102,29 +102,70 @@ Last Updated: 2026-08-19 Europe/Brussels
   regression passed 1/1, and the release suite passed 197/197. Independent
   post-repair confirmation is still pending because the review session timed out.
 
+- **2026-08-23 Senior CTO review re-anchored the release model from branches to tags.**
+  The implemented engine binds release identity to the mutable `refs/heads/<line>`
+  ref: `GitRepositoryValidator` requires `ReleaseBranchRef == refs/heads/{Line}` and
+  rejects `git_candidate_not_release_branch_head`, `CandidateCommand` re-checks the
+  live branch head twice around the manifest write, and `MainCommand.ValidateForwardPort`
+  re-reads it. Consequence: `v0.1.0` stops verifying the moment `v0.1.1` moves the
+  branch, and never verifies on a tag-only clone. Plan, tasks, and this file now
+  specify a tag-anchored model with a new Phase 7 correction and a Phase 8 that
+  ships the first release before publication automation.
+
+- **2026-08-23 Phase 7 delivered the tag-anchored correction.** Task 7.1 authored failing
+  specifications that reproduced the defect exactly (`git_candidate_not_release_branch_head`
+  for a branch advanced by release `N+1`, `git_missing_object:release_branch_head` for a
+  deleted branch and for a tag-only clone). Task 7.2 removed every `refs/heads/*` read from
+  attestation, dropped `ReleaseBranchRef`/`ReleaseLineHeadOid` from the request, identity,
+  `release-candidate.v1.json`, and `release-evidence.v1.json`, moved `prepare` onto the
+  checked-out `HEAD`, derived forward-port validation from the release tag, and replaced the
+  removed read-then-write branch re-check with an immutable tag-object anchor re-check
+  (`candidate_object_anchors_moved`). Task 7.3 corrected the policy, runbook, ADR, governance,
+  adapter contract, and added the `refs/heads/v*` protected-ref rule to the settings validator.
+- Completed Task 0.1. The release-governance I-VSD report is linked from all three
+  workstream documents and clears the Phase 8 approval blocker.
+- Re-confirmed Task 6.2 against the corrected validator (18/18 validator, 3/3 baseline,
+  1/1 prepare regression). No repository tag was created.
+- Completed Task 8.1 as an executable specification rather than a transcript, and Task 8.3
+  as a fully synthetic publication-projection contract plus `report-publication-drift`.
+- Completed Task 8.4 as a non-mutating `open-maintenance-line` planner, deviating from the plan's
+  "do not implement speculatively" note because the planner form cannot create a ref and only makes
+  the already-documented manual command checkable.
+- Completed Task 8.2's engineering in `FirstGovernedReleaseTests`: the whole first-governed-release
+  flow runs for real against a disposable repository, offline, with every branch deleted, in SHA-1
+  and SHA-256. **It uncovered a real defect:** `ValidateNoReachableStableTags` counted the release's
+  own tag as a pre-existing governed stable release, so a baseline-anchored first release failed
+  `verify-tag` with `git_baseline_stable_tag_exists:v0.1.0` and could never be closed or re-verified.
+  The tag is now skipped only when it names the selected version and targets the candidate commit.
+  This would otherwise have surfaced for the first time while shipping `v0.1.0`.
+
 ### IN PROGRESS
 
-- Task 6.2 independent post-repair verification. See
-  `git-cliff-release-engineering-handoff.md` before continuing.
+- Nothing is mid-edit.
 
 ### NEXT
 
-1. Independently verify the version-agnostic Task 6.2 baseline repair.
-2. If confirmed, mark Task 6.2 complete and run the Task 6.3 advisory flow.
-3. Rerun the open Phase 1 architecture gate after unrelated worktree changes settle.
+1. **Task 8.2 is the only remaining implementable release step, and it is operator-blocked.**
+   It needs a steward-approved first version, a merged activation commit, real signer custody,
+   and the provider protected-ref settings. Do not fabricate any of them.
+2. Task 8.4 stays unbuilt until a real backport exists. The documented manual
+   `git switch -c release/<M>.<m> v<M>.<m>.<p>` is the complete solution until then.
 
 ### BLOCKERS
 
-- Phase 1 cannot close while the architecture suite fails. Current evidence
-  records four non-release failures: DTO naming, generated-client ownership,
-  tenant bypass-reason usage, and User-PII inventory coverage. The user
-  explicitly authorized Tasks 2-5 to continue without closing this checkbox.
-- Phase 5 cannot formally close while the literal .NET workload resolver is
-  broken and the workaround full solution build has unrelated authorization API
-  compile failures. The release-engine project itself passes 172/172.
-- The Project Steward selected Forgejo/Codeberg, Tangled, and GitHub on
-  2026-08-15 and authorized continuation past the documented Phase 5 blockers.
-- Task 3.3 requires real release signer principals/keys and an artifact-promotion authority before activation, but their absence does not block earlier implementation.
+- **Approval blocker: CLEARED.** `islamic-value-sensitive-design/i-vsd-release-governance.md`
+  is linked from the plan, tasks, and this file.
+- **Correctness blocker: CLEARED.** Attestation no longer reads any mutable ref. A release
+  re-verifies after its branch advances, after the branch is deleted, and in a clone that
+  fetched only `refs/tags/*`, in both SHA-1 and SHA-256 repositories.
+- **Phase 1 gate: CLOSED.** 444 total, 443 passed, 0 failed, 1 skipped. The four
+  previously-blocking failures (DTO naming, generated-client ownership, tenant bypass-reason
+  usage, User-PII inventory coverage) were fixed by their owning workstreams; none was
+  release-engineering scope and none was modified here.
+- **Phase 5 gate: CLOSED** with the literal commands and no workload-resolver workaround.
+- **Remaining operator blocker:** real release signer principals/keys, artifact-promotion
+  authority, steward-approved first version, merged activation commit, and the repository
+  branch ruleset that must include `refs/heads/v*` with a `creation` rule.
 
 ## Quick Resume
 
@@ -140,7 +181,7 @@ Last Updated: 2026-08-19 Europe/Brussels
 | Fact | Verified evidence |
 |---|---|
 | Current branch | `develop` |
-| Current HEAD | `eee61969a4b6e6757242ae02dd748524ed540713` |
+| Current HEAD | `f58291aec` at 2026-08-23 review; earlier entries cite `eee61969a4b6…` (2026-08-19) and `3e9c90fed550…` (planning). Commit-count claims below were measured at the planning HEAD and are stale. |
 | Commit counts | `develop`: 2,122; `main`: 206; `main..develop`: 1,916 |
 | Release tags | None |
 | Active/paused overlap | Shared worktree has extensive concurrent unrelated changes; preserve them. |
@@ -200,13 +241,17 @@ Last Updated: 2026-08-19 Europe/Brussels
 11. Public and engineering scopes are both valid, but engineering scopes are omitted from public notes by default.
 12. Initial release tags use SSH signatures verified against bundled allowed signers; forge UI signature badges are not authority.
 13. Prerelease notes are cumulative from the prior stable tag; `alpha.N`, `beta.N`, and `rc.N` are contiguous; prereleases never move `main`; build metadata is excluded from canonical tags.
-14. `main` advances only by a normal fast-forward to the newest stable tag commit. Older-line patches do not move it backwards.
+14. `main` is a derived convenience pointer, not release identity. Its target is computed from the highest reachable stable tag and advanced only by normal fast-forward; older-line patches and prereleases leave it alone.
 15. Existing semantic-version documents remain a frozen pre-automation baseline; the signed cutover tag is non-SemVer and ignored by release selection.
 16. Security embargo metadata lives outside the public checkout and normal candidate artifacts until disclosure.
 17. Provider adapters only transport explicit inputs, trusted bundles, artifacts, and protected ref actions. Provider metadata may enrich only a secondary publication.
-18. `v0.1.0` is the designated first governed public release, anchoring 11 months of development (2,164+ commits) via `changelog-baseline-YYYY-MM-DD` and a comprehensive `summary.md` narrative without re-parsing messy historical commits.
-19. `v<major>.<minor>` release-line branches (e.g. `v0.1`) are automatically provisioned on demand via an idempotent `cut-release-line` workflow, preserving release lines for hotfixes without branch proliferation.
-20. Multi-forge release publishing automatically links canonical `release-notes.md`, forge source `.zip`/`.tar.gz` archives, and cryptographic evidence bundles (`release-evidence.v1.json`, `artifacts.sha256`, container image digests) across GitHub, Codeberg, and Tangled.
+18. `v0.1.0` is the designated first governed public release, anchoring 11 months of development via `changelog-baseline-YYYY-MM-DD` and a comprehensive `summary.md` narrative without re-parsing messy historical commits.
+19. **The tag is the release.** `refs/tags/v<major>.<minor>.<patch>` is the sole immutable release identity. Attestation reads only the tag object, commit `B`, the tree at `B`, and ancestry from the base tag — never `refs/heads/*`. Branch compare-and-swap exists only as a precondition of a mutating action. Implemented in Phase 7.
+20. **Maintenance branches are lazy, disposable, and tag-sourced.** None is created at release time. `release/<major>.<minor>` is opened only when a real backport is required, only from a verified signed stable tag on that line, and may be deleted afterwards because every release remains verifiable from its tag. Superseded: the eager `cut-release-line`-from-`develop` design and the `refs/heads/v<major>.<minor>` grammar.
+21. **`refs/heads/v*` is reserved.** Version tags own the `v*` glob outright, so no branch can ever shadow or become ambiguous with a version tag.
+22. **Forge release pages are a noncanonical projection.** A release body is mutable and unsigned, so it cannot be an invariant. Each page carries the canonical notes hash plus its tag reference, and `report-publication-drift` reports divergence without auto-repair. Implemented in Task 8.3, with the contract machine-checked through a new `publicationWorkflows` field on each provider definition rather than asserted in prose.
+23. **A release's own tag never counts as a pre-existing release.** The baseline lower bound is legal only before any governed stable SemVer release exists, but `verify-tag` re-runs that check *after* the tag is created. Excluding the selected version at the candidate commit — and only there — is what makes the first governed release closable and permanently re-verifiable.
+24. **The read-then-write window is closed with immutable anchors, not a branch re-check.** `verify-candidate` re-resolves the base and previous tag objects around the manifest write and fails with `candidate_object_anchors_moved`. Tag refs are immutable by policy but deletable in practice, so this preserves the TOCTOU protection the removed branch check provided without reintroducing a mutable identity source.
 
 ## Constraints And Rules To Remember
 
@@ -232,12 +277,19 @@ Last Updated: 2026-08-19 Europe/Brussels
 | 4 | Same Release build | Same release-engine test project, now covering real renderer/preparation fixtures |
 | 5 | Same Release build | Same release-engine test project, now covering tag/main/evidence closure |
 | 6 | Same Release build | `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` |
-| 7 | Same Release build | `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` |
+| 7 | Same Release build | `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet` |
+| 8 | Same Release build | `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` |
 
 Planning-artifact verification is limited to `git diff --check -- dev/active/git-cliff-release-engineering` plus file/header/link consistency checks. The planned suite runs only during implementation.
 
 ## Current Known Risks / Unknowns
 
+- **Verification durability (Phase 7):** The implemented engine cannot re-verify a
+  release once its line branch moves or is deleted, and cannot verify at all on a
+  tag-only clone. This is the highest-priority correction and it invalidates nothing
+  already generated — the artifacts are sound, only the checks that read them are
+  over-constrained.
+- **I-VSD deliverable (Task 0.1):** Missing. Blocks Phase 8 activation.
 - **Trusted bootstrap (Task 3.3):** The first promoted bundle has no previous release-engine to validate it. Genesis promotion needs independent review, exact source/tool hashes, tests, SBOM/checksums, protected approval, and a signed tooling tag.
 - **Exact git-cliff release (Task 1.3):** The reviewed docs include changes after `v2.13.1`; implementation must not guess capability availability.
 - **First forge adapter (Task 6.1):** Provider is intentionally unresolved. Core commands and canonical artifacts must be complete first.
@@ -247,6 +299,60 @@ Planning-artifact verification is limited to `git diff --check -- dev/active/git
 - **Dirty worktree:** Many unrelated agent-context, registration, migration-regeneration, organizer-payment, and report changes predate this plan. Implementation must not revert or absorb them.
 
 ## Handoff Notes
+
+### Handoff - 2026-08-23 Europe/Brussels (Phase 7 correction and Phase 8 activation work)
+
+- **Current state:** 25/25 implementation tasks complete; all eight phases closed with green gates.
+- **Discovered work delivered:** `activate-trust` genesis tooling. Activation had no implementation
+  at all — an operator hand-assembled the trust roots with nothing checking that the release signer
+  and the tooling promoter used different keys, which is the single mistake that collapses the whole
+  chain. `TrustActivationCommand` now enforces separation of duty from two reviewed public keys.
+- **Next action:** hand to the two key holders. The only remaining act is creating the real signed
+  `changelog-baseline-YYYY-MM-DD` and `v0.1.0` tags, which needs a steward-approved version, a
+  merged activation commit, real signer custody, and the provider protected-ref settings. The exact
+  flow it will follow is already executed end to end in `FirstGovernedReleaseTests`.
+- **Blockers:** operator authority only. All previously recorded correctness, approval, and
+  environment blockers are cleared.
+- **Modified files:** release-engine source (`GitRepositoryValidator`, `CandidateCommand`,
+  `TagCommand`, `MainCommand`, `PrepareCommand`, `ReleaseInputPolicy`), release-engine tests
+  (three new files plus updates to four existing ones), `.ci/scripts/report-publication-drift.cs`
+  (new), `.ci/scripts/validate-release-provider-adapters.cs`,
+  `.ci/scripts/generate-release-evidence-bundle.cs`, `.ci/scripts/validate-repository-settings.cs`,
+  `.ci/release/adapter-contract.md`, `.ci/release/provider-definition.schema.json`, the three
+  provider definitions and their new `release-publish.yml` files, `.github/workflows/release-publish.yml`,
+  `docs/RELEASE_POLICY.md`, `docs/RELEASE_RUNBOOK.md`, `docs/CI_CD_GOVERNANCE.md`,
+  `docs/RELEASE_CHECKLIST.md`, `docs/CONTRIBUTING.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`,
+  `docs/releases/README.md`, `docs/adr/ADR-025-...`, `.agents/skills/conventional-commit/SKILL.md`,
+  `islamic-value-sensitive-design/i-vsd-release-governance.md` (new), and the four workstream docs.
+- **Validation:** full Release build 0 errors; release-engine tests 236/236; architecture tests
+  444 total, 443 passed, 0 failed, 1 skipped; the three real provider definitions validated with
+  `adapter_validation_passed: providers=3`.
+- **Risks:** the strongest temptation on resume is to close Task 8.2 with synthetic signer or
+  settings evidence. Do not. A fabricated first governed release is worse than no release.
+- **Notes for next contributor/agent:** the shared worktree remains dirty across unrelated
+  workstreams. Run `git status --short` first and touch only release-owned paths. Nothing in this
+  session created, moved, deleted, or pushed a repository ref.
+
+### Handoff - 2026-08-23 Europe/Brussels (Senior CTO review)
+
+- **Current state:** Phases 1-5 plus Task 6.1 implemented. The 2026-08-23 review found that
+  release identity is bound to a mutable branch ref and re-scoped the workstream:
+  new Phase 7 corrects it; former Phase 7 automation moved to Phase 8 behind the
+  first governed release; former Task 6.3 became Task 8.1.
+- **Next action:** Task 7.1 — failing tag-anchored re-verification specifications.
+- **Blockers:** Missing I-VSD report (Task 0.1); do not create a real baseline or
+  release tag before Phase 7 lands.
+- **Modified files:** Only the three workstream documents. No source was changed by
+  the review itself.
+- **Validation:** Findings were verified by reading `GitRepositoryValidator.cs:82`,
+  `:97-100`, `:371-401`, `CandidateCommand.cs:175`, `:194`, `MainCommand.cs:167`,
+  `TagCommand.cs:104-110`, and `docs/RELEASE_POLICY.md`. No build or test was run;
+  no behavior changed.
+- **Risks:** The strongest temptation on resume is to preserve the branch checks "for
+  safety" while adding tag-based ones. Do not. Two identity sources is the defect.
+- **Notes for next contributor/agent:** The shared worktree remains extremely dirty
+  across unrelated workstreams. Run `git status --short` first and touch only
+  release-owned paths.
 
 ### Handoff - 2026-08-13 Europe/Brussels
 

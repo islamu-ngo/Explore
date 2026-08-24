@@ -19,6 +19,7 @@ This page is the operational reference for implemented runtime behavior. Task pr
 | Back up, restore, upgrade, or roll back | [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) | You are preparing a release, recovering an environment, or testing disaster recovery. |
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
+| Prepare, attest, tag, or re-verify a governed release | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | You are running `prepare`, `verify-candidate`, `verify-tag`, `verify-main`, `verify-baseline`, opening or deleting a maintenance line, or checking an existing release from its tag alone. |
 | Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
 ## Localization Static Bundle Operations

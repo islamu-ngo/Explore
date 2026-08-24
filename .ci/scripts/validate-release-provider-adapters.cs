@@ -165,6 +165,7 @@ static ProviderDefinition ReadProviderDefinition(string path, string definitionD
         DisplayName: ReadString(root, "displayName"),
         DefinitionDirectory: definitionDirectory,
         DiscoveryWorkflows: ReadStringArray(root, "discoveryWorkflows"),
+        PublicationWorkflows: ReadStringArray(root, "publicationWorkflows"),
         Actions: ReadStringArray(root, "actions"),
         PreviewLane: new PreviewLane(ReadString(preview, "event"), ReadBool(preview, "trustedCodeOnly"), ReadStringArray(preview, "secrets"), ReadStringArray(preview, "permissions"), ReadStringArrayOrEmpty(preview, "requiredChecks"), ReadBool(preview, "alwaysPresentNoop")),
         FinalLane: new FinalLane(ReadString(final, "event"), ReadString(final, "trustedRef"), ReadBool(final, "trustedCodeOnly"), ReadBool(final, "environmentApproval"), ReadBool(final, "requiresSelfHostedTrustedRunner"), ReadStringArrayOrEmpty(final, "requiredChecks"), ReadBool(final, "alwaysPresentNoop"), ReadBool(final, "candidateStopsBeforeFinal")),
@@ -202,7 +203,6 @@ static ReleaseInputs ReadInputs(string inputsPath)
     return new ReleaseInputs(
         ReadString(root, "schemaVersion"),
         ReadString(root, "targetOid"),
-        ReadString(root, "releaseLineHeadOid"),
         ReadString(root, "expectedOldProtectedRefOid"),
         ReadString(root, "tagObjectId"),
         ReadString(root, "tagName"),
@@ -215,7 +215,7 @@ static ReleaseInputs ReadInputs(string inputsPath)
 static void ValidateInputs(ReleaseInputs inputs)
 {
     if (inputs.SchemaVersion != "release-adapter-inputs.v1") throw new AdapterException("adapter_input_schema_invalid");
-    foreach (string oid in new[] { inputs.TargetOid, inputs.ReleaseLineHeadOid, inputs.ExpectedOldProtectedRefOid, inputs.TagObjectId })
+    foreach (string oid in new[] { inputs.TargetOid, inputs.ExpectedOldProtectedRefOid, inputs.TagObjectId })
     {
         if (!FullOidPattern().IsMatch(oid)) throw new AdapterException("adapter_input_oid_not_full");
     }
@@ -252,7 +252,55 @@ static void ValidateProvider(ProviderDefinition provider, string operation, Exte
     if (provider.ProviderId == "forgejo-codeberg" && !provider.FinalLane.RequiresSelfHostedTrustedRunner) throw new AdapterException("adapter_self_hosted_runner_required");
     if (provider.ProviderId == "github" && provider.PreviewLane.Event != "pull_request") throw new AdapterException("adapter_github_preview_event_invalid");
     ValidateDiscoveryWorkflows(provider);
+    ValidatePublicationWorkflows(provider);
 }
+
+// A published release page is a noncanonical projection of the signed tag. It is mutable and
+// unsigned, so the contract it must satisfy is stated here and machine-checked: trusted final lane
+// only, canonical notes hash and tag reference on the page, self-verifying assets attached, and a
+// recorded operator no-op for any provider that has no release API at all.
+static void ValidatePublicationWorkflows(ProviderDefinition provider)
+{
+    foreach (string workflow in provider.PublicationWorkflows)
+    {
+        string path = ResolveDiscoveryWorkflowPath(provider, workflow);
+        if (!File.Exists(path) || IsAlias(path)) throw new AdapterException("adapter_publication_workflow_missing");
+        string text = File.ReadAllText(path);
+        if (!text.Contains("release-publish", StringComparison.Ordinal)) throw new AdapterException("adapter_publication_workflow_mismatch");
+        if (WorkflowHasEvent(text, "pull_request") || WorkflowHasEvent(text, "pull_request_target") || WorkflowHasEvent(text, "push"))
+        {
+            throw new AdapterException("adapter_publication_untrusted_origin");
+        }
+
+        if (!text.Contains("canonical-notes-sha256", StringComparison.Ordinal) || !text.Contains("tag-reference", StringComparison.Ordinal))
+        {
+            throw new AdapterException("adapter_publication_canonical_reference_missing");
+        }
+
+        foreach (string asset in RequiredPublicationAssets())
+        {
+            if (!text.Contains(asset, StringComparison.Ordinal)) throw new AdapterException("adapter_publication_asset_missing");
+        }
+
+        foreach (string action in ExtractUsedActions(text))
+        {
+            if (!ActionPinPattern().IsMatch(action)) throw new AdapterException("adapter_action_pin_mutable");
+        }
+
+        if (provider.Capabilities.ReleasePublication)
+        {
+            if (provider.FinalLane.EnvironmentApproval && !text.Contains("environment:", StringComparison.Ordinal)) throw new AdapterException("adapter_final_environment_required");
+        }
+        else
+        {
+            if (!provider.Capabilities.OperatorEvidenceRequired) throw new AdapterException("adapter_publication_noop_evidence_required");
+            if (!text.Contains("recorded-no-op", StringComparison.Ordinal)) throw new AdapterException("adapter_publication_noop_evidence_required");
+        }
+    }
+}
+
+static IReadOnlyList<string> RequiredPublicationAssets() =>
+    ["release-evidence.v1.json", "artifacts.sha256", "container-image-digests", "sbom"];
 
 static void ValidateDiscoveryWorkflows(ProviderDefinition provider)
 {
@@ -511,14 +559,14 @@ static int Fail(string code)
     return 1;
 }
 
-static IReadOnlySet<string> TopKeys() => new HashSet<string>(["schemaVersion", "providerId", "displayName", "discoveryWorkflows", "actions", "previewLane", "finalLane", "capabilities", "guards", "diagnostics"], StringComparer.Ordinal);
+static IReadOnlySet<string> TopKeys() => new HashSet<string>(["schemaVersion", "providerId", "displayName", "discoveryWorkflows", "publicationWorkflows", "actions", "previewLane", "finalLane", "capabilities", "guards", "diagnostics"], StringComparer.Ordinal);
 static IReadOnlySet<string> PreviewKeys() => new HashSet<string>(["event", "trustedCodeOnly", "secrets", "permissions", "requiredChecks", "alwaysPresentNoop"], StringComparer.Ordinal);
 static IReadOnlySet<string> PreviewSchemaKeys() => new HashSet<string>(["event", "trustedCodeOnly", "secrets", "permissions", "alwaysPresentNoop"], StringComparer.Ordinal);
 static IReadOnlySet<string> FinalKeys() => new HashSet<string>(["event", "trustedRef", "trustedCodeOnly", "environmentApproval", "requiresSelfHostedTrustedRunner", "requiredChecks", "alwaysPresentNoop", "candidateStopsBeforeFinal"], StringComparer.Ordinal);
 static IReadOnlySet<string> FinalSchemaKeys() => new HashSet<string>(["event", "trustedRef", "trustedCodeOnly", "environmentApproval", "requiresSelfHostedTrustedRunner", "alwaysPresentNoop", "candidateStopsBeforeFinal"], StringComparer.Ordinal);
 static IReadOnlySet<string> CapabilityKeys() => new HashSet<string>(["artifacts", "retentionDays", "protectedRefCas", "releasePublication", "operatorEvidenceRequired"], StringComparer.Ordinal);
 static IReadOnlySet<string> GuardKeys() => new HashSet<string>(["immutableBundleVerification", "providerNeutralChecksumEquality", "metadataCanonical", "misleadingSuccessForbidden"], StringComparer.Ordinal);
-static IReadOnlySet<string> InputKeys() => new HashSet<string>(["schemaVersion", "targetOid", "releaseLineHeadOid", "expectedOldProtectedRefOid", "tagObjectId", "tagName", "releaseBundlePath", "releaseBundleSha256", "artifactManifestSha256", "dirtyWorktree"], StringComparer.Ordinal);
+static IReadOnlySet<string> InputKeys() => new HashSet<string>(["schemaVersion", "targetOid", "expectedOldProtectedRefOid", "tagObjectId", "tagName", "releaseBundlePath", "releaseBundleSha256", "artifactManifestSha256", "dirtyWorktree"], StringComparer.Ordinal);
 static IReadOnlySet<string> ExternalEvidenceKeys() => new HashSet<string>(["schemaVersion", "providerId", "operation", "unsupportedCapability", "approved"], StringComparer.Ordinal);
 static Regex FullOidPattern() => Patterns.FullOid();
 static Regex Sha256Pattern() => Patterns.Sha256();
@@ -526,12 +574,12 @@ static Regex ProviderIdPattern() => Patterns.ProviderId();
 static Regex ActionPinPattern() => Patterns.ActionPin();
 
 sealed record AdapterOptions(string ProvidersRoot, string InputsPath, string BundleRoot, string OutputRoot, string? Provider, string Operation, string? ExternalControlEvidencePath);
-sealed record ProviderDefinition(string SchemaVersion, string ProviderId, string DisplayName, string DefinitionDirectory, IReadOnlyList<string> DiscoveryWorkflows, IReadOnlyList<string> Actions, PreviewLane PreviewLane, FinalLane FinalLane, Capabilities Capabilities, Guards Guards, IReadOnlyList<string> Diagnostics);
+sealed record ProviderDefinition(string SchemaVersion, string ProviderId, string DisplayName, string DefinitionDirectory, IReadOnlyList<string> DiscoveryWorkflows, IReadOnlyList<string> PublicationWorkflows, IReadOnlyList<string> Actions, PreviewLane PreviewLane, FinalLane FinalLane, Capabilities Capabilities, Guards Guards, IReadOnlyList<string> Diagnostics);
 sealed record PreviewLane(string Event, bool TrustedCodeOnly, IReadOnlyList<string> Secrets, IReadOnlyList<string> Permissions, IReadOnlyList<string> RequiredChecks, bool AlwaysPresentNoop);
 sealed record FinalLane(string Event, string TrustedRef, bool TrustedCodeOnly, bool EnvironmentApproval, bool RequiresSelfHostedTrustedRunner, IReadOnlyList<string> RequiredChecks, bool AlwaysPresentNoop, bool CandidateStopsBeforeFinal);
 sealed record Capabilities(bool Artifacts, int RetentionDays, bool ProtectedRefCas, bool ReleasePublication, bool OperatorEvidenceRequired);
 sealed record Guards(bool ImmutableBundleVerification, bool ProviderNeutralChecksumEquality, bool MetadataCanonical, bool MisleadingSuccessForbidden);
-sealed record ReleaseInputs(string SchemaVersion, string TargetOid, string ReleaseLineHeadOid, string ExpectedOldProtectedRefOid, string TagObjectId, string TagName, string ReleaseBundlePath, string ReleaseBundleSha256, string ArtifactManifestSha256, bool DirtyWorktree);
+sealed record ReleaseInputs(string SchemaVersion, string TargetOid, string ExpectedOldProtectedRefOid, string TagObjectId, string TagName, string ReleaseBundlePath, string ReleaseBundleSha256, string ArtifactManifestSha256, bool DirtyWorktree);
 sealed record ExternalControlEvidence(string SchemaVersion, string ProviderId, string Operation, string UnsupportedCapability, bool Approved);
 sealed class AdapterException(string code) : Exception(code)
 {

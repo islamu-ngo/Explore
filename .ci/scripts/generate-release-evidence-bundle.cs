@@ -633,7 +633,6 @@ static ReleaseIdentity ReadReleaseIdentity(string path, ArtifactEvidence manifes
     string tagObjectId = RequiredString(root, "tagObjectId");
     string targetOid = RequiredString(root, "targetOid");
     string candidateOid = RequiredString(root, "candidateOid");
-    string releaseLineHeadOid = RequiredString(root, "releaseLineHeadOid");
     string candidateManifestSha256 = RequiredString(root, "candidateManifestSha256");
     string releaseDescriptorSha256 = RequiredString(root, "releaseDescriptorSha256");
     string releaseSummarySha256 = RequiredString(root, "releaseSummarySha256");
@@ -652,11 +651,11 @@ static ReleaseIdentity ReadReleaseIdentity(string path, ArtifactEvidence manifes
     string[] versionParts = version.Split(['.', '-'], 4);
     if (!line.Equals($"v{versionParts[0]}.{versionParts[1]}", StringComparison.Ordinal)) throw new InvalidOperationException("release_bundle_line_mismatch");
     if (!tagName.Equals($"v{version}", StringComparison.Ordinal)) throw new InvalidOperationException("release_bundle_tag_name_mismatch");
-    string[] objectIds = [tagObjectId, targetOid, candidateOid, releaseLineHeadOid, RequiredString(root, "previousPublishedOid"), RequiredString(root, "previousPublishedTagObjectId"), RequiredString(root, "baseStableOid"), RequiredString(root, "baseStableTagObjectId")];
+    string[] objectIds = [tagObjectId, targetOid, candidateOid, RequiredString(root, "previousPublishedOid"), RequiredString(root, "previousPublishedTagObjectId"), RequiredString(root, "baseStableOid"), RequiredString(root, "baseStableTagObjectId")];
     if (objectIds.Any(oid => oid.Length != oidLength || !fullOidPattern.IsMatch(oid))) throw new InvalidOperationException("release_bundle_oid_invalid");
-    if (!string.Equals(targetOid, candidateOid, StringComparison.Ordinal) || !string.Equals(targetOid, releaseLineHeadOid, StringComparison.Ordinal)) throw new InvalidOperationException("release_bundle_target_mismatch");
+    if (!string.Equals(targetOid, candidateOid, StringComparison.Ordinal)) throw new InvalidOperationException("release_bundle_target_mismatch");
     if (string.Equals(tagObjectId, targetOid, StringComparison.Ordinal)) throw new InvalidOperationException("release_bundle_tag_object_mismatch");
-    if (RequiredString(root, "candidateManifestSchemaVersion") != "release-candidate.v1" || RequiredString(root, "releaseBranchRef") != $"refs/heads/{line}")
+    if (RequiredString(root, "candidateManifestSchemaVersion") != "release-candidate.v1")
         throw new InvalidOperationException("release_bundle_final_manifest_schema_invalid");
     foreach (string digest in root.EnumerateObject().Where(property => property.Name.EndsWith("Sha256", StringComparison.Ordinal)).Select(property => property.Value.GetString()!))
     {
@@ -705,9 +704,9 @@ static void ValidateCanonicalManifest(byte[] bytes, JsonElement root)
     [
         "baseStableOid", "baseStableTag", "baseStableTagObjectId", "candidateManifestSchemaVersion",
         "candidateManifestSha256", "candidateOid", "line", "objectFormat", "oidLength",
-        "previousPublishedOid", "previousPublishedTag", "previousPublishedTagObjectId", "releaseBranchRef",
+        "previousPublishedOid", "previousPublishedTag", "previousPublishedTagObjectId",
         "releaseContextSha256", "releaseDate", "releaseDescriptorSha256", "releaseFragmentsSha256",
-        "releaseLineHeadOid", "releaseNotesSha256", "releaseSummarySha256", "schemaVersion", "signerAlgorithm",
+        "releaseNotesSha256", "releaseSummarySha256", "schemaVersion", "signerAlgorithm",
         "signerKeyFingerprint", "signerPrincipal", "signerRole", "signerValidFrom", "signerValidUntil", "tagName",
         "tagObjectId", "targetOid", "trustedBundleConfigSha256", "trustedBundleGitCliffSha256",
         "trustedBundleManifestSha256", "trustedBundlePolicySha256", "trustedBundleToolchainSha256",

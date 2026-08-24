@@ -86,7 +86,6 @@ public static class CandidateCommand
                 descriptor.Version,
                 $"refs/tags/{descriptor.BaseStableTag}",
                 $"refs/tags/{descriptor.PreviousPublishedTag}",
-                $"refs/heads/{descriptor.Line}",
                 candidateOid),
                 timeout);
             if (!git.IsValid || git.Identity is null)
@@ -172,9 +171,13 @@ public static class CandidateCommand
                 committedContext,
                 committedNotes);
 
-            if (!string.Equals(RunGit(root, "rev-parse", "--verify", $"refs/heads/{descriptor.Line}^{{commit}}").Trim(), candidateOid, StringComparison.Ordinal))
+            // The manifest is derived entirely from immutable objects, but the *refs* naming the base
+            // and previous tags could be recreated while this command runs. Re-resolving them around
+            // the write keeps the published manifest bound to the objects that were actually measured,
+            // without reintroducing any dependency on a mutable branch head.
+            if (!ObjectAnchorsUnchanged(root, git.Identity))
             {
-                return Reject(output, "git_candidate_not_release_branch_head");
+                return Reject(output, "candidate_object_anchors_moved");
             }
 
             bool manifestCreated = false;
@@ -191,10 +194,10 @@ public static class CandidateCommand
                 manifestCreated = true;
             }
 
-            if (!string.Equals(RunGit(root, "rev-parse", "--verify", $"refs/heads/{descriptor.Line}^{{commit}}").Trim(), candidateOid, StringComparison.Ordinal))
+            if (!ObjectAnchorsUnchanged(root, git.Identity))
             {
                 if (manifestCreated && File.Exists(manifestPath)) File.Delete(manifestPath);
-                return Reject(output, "git_candidate_not_release_branch_head");
+                return Reject(output, "candidate_object_anchors_moved");
             }
 
             output.WriteLine($"release_candidate_verified: {Path.GetRelativePath(root, manifestPath).Replace(Path.DirectorySeparatorChar, '/')}");
@@ -271,10 +274,8 @@ public static class CandidateCommand
             releaseDate = descriptor.ReleaseDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
             candidateOid = git.CandidateOid,
             candidateParentOid,
-            releaseBranchRef = $"refs/heads/{descriptor.Line}",
-            releaseLineHeadOid = git.ReleaseBranchHeadOid,
-            expectedReleaseBranchOldOid = candidateParentOid,
-            expectedReleaseBranchNewOid = git.CandidateOid,
+            expectedIntegrationOldOid = candidateParentOid,
+            expectedIntegrationNewOid = git.CandidateOid,
             rangeBaseOid = descriptor.ReleaseRange.BaseOid,
             rangePreviousOid = descriptor.ReleaseRange.PreviousOid,
             rangeOids,
@@ -390,9 +391,43 @@ public static class CandidateCommand
     private static bool IsExactCommittedFile(string repositoryRoot, string candidateOid, string path)
     {
         string relative = Path.GetRelativePath(repositoryRoot, path).Replace(Path.DirectorySeparatorChar, '/');
-        string committed = RunGit(repositoryRoot, "rev-parse", "--verify", $"{candidateOid}:{relative}").Trim();
+        if (!TryRunGit(repositoryRoot, out string committed, "rev-parse", "--verify", $"{candidateOid}:{relative}"))
+        {
+            return false;
+        }
+
         string observed = RunGit(repositoryRoot, "hash-object", "--", relative).Trim();
-        return FullOidPattern.IsMatch(committed) && string.Equals(committed, observed, StringComparison.Ordinal);
+        return FullOidPattern.IsMatch(committed.Trim()) && string.Equals(committed.Trim(), observed, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Confirms the annotated tags that bound the release range still resolve to the objects the
+    /// manifest recorded. Tag refs are immutable by policy but deletable in practice, so this closes
+    /// the read-then-write window that the removed branch-head re-check used to cover.
+    /// </summary>
+    private static bool ObjectAnchorsUnchanged(string repositoryRoot, GitRepositoryObjectIdentity identity) =>
+        AnchorMatches(repositoryRoot, $"refs/tags/{identity.BaseStableTag}^{{object}}", identity.BaseStableTagObjectOid) &&
+        AnchorMatches(repositoryRoot, $"refs/tags/{identity.BaseStableTag}^{{commit}}", identity.BaseStableCommitOid) &&
+        AnchorMatches(repositoryRoot, $"refs/tags/{identity.PreviousPublishedTag}^{{object}}", identity.PreviousPublishedTagObjectOid) &&
+        AnchorMatches(repositoryRoot, $"refs/tags/{identity.PreviousPublishedTag}^{{commit}}", identity.PreviousPublishedCommitOid) &&
+        AnchorMatches(repositoryRoot, $"{identity.CandidateOid}^{{commit}}", identity.CandidateOid);
+
+    private static bool AnchorMatches(string repositoryRoot, string reference, string expectedOid) =>
+        TryRunGit(repositoryRoot, out string observed, "rev-parse", "--verify", "--end-of-options", reference) &&
+        string.Equals(observed.Trim(), expectedOid, StringComparison.Ordinal);
+
+    private static bool TryRunGit(string repositoryRoot, out string output, params string[] arguments)
+    {
+        try
+        {
+            output = RunGit(repositoryRoot, arguments);
+            return true;
+        }
+        catch (IOException)
+        {
+            output = string.Empty;
+            return false;
+        }
     }
 
     private static TrustedBundleResult VerifyBundle(string candidateRoot)

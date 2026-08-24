@@ -6,13 +6,20 @@
     ".ci/providers/forgejo-codeberg/release-adapter-preview.yml",
     ".ci/providers/forgejo-codeberg/release-adapter-final.yml"
   ],
+  "publicationWorkflows": [
+    ".ci/providers/forgejo-codeberg/release-publish.yml"
+  ],
   "actions": [],
   "previewLane": {
     "event": "pull_request",
     "trustedCodeOnly": false,
     "secrets": [],
-    "permissions": ["contents:read"],
-    "requiredChecks": ["release-adapter-preview"],
+    "permissions": [
+      "contents:read"
+    ],
+    "requiredChecks": [
+      "release-adapter-preview"
+    ],
     "alwaysPresentNoop": true
   },
   "finalLane": {
@@ -21,7 +28,9 @@
     "trustedCodeOnly": true,
     "environmentApproval": true,
     "requiresSelfHostedTrustedRunner": true,
-    "requiredChecks": ["release-adapter-final"],
+    "requiredChecks": [
+      "release-adapter-final"
+    ],
     "alwaysPresentNoop": true,
     "candidateStopsBeforeFinal": true
   },
@@ -38,5 +47,8 @@
     "metadataCanonical": false,
     "misleadingSuccessForbidden": true
   },
-  "diagnostics": ["adapter_validation_passed", "adapter_self_hosted_runner_required"]
+  "diagnostics": [
+    "adapter_validation_passed",
+    "adapter_self_hosted_runner_required"
+  ]
 }

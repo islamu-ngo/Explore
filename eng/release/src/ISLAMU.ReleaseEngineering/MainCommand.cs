@@ -164,9 +164,11 @@ public static class MainCommand
 
     private static string? ValidateForwardPort(string root, string releaseDirectory, MainEvidence evidence, string expectedOld, TimeSpan timeout)
     {
-        if (!string.Equals(RunGit(root, timeout, "rev-parse", "--verify", $"refs/heads/{evidence.Line}^{{commit}}").Trim(), evidence.TargetOid, StringComparison.Ordinal))
+        // The release being forward-ported is identified by its own signed tag, never by the branch
+        // that happened to carry its commits. `Line` is a version-line label here, not a ref.
+        if (!string.Equals(RunGit(root, timeout, "rev-parse", "--verify", $"refs/tags/{evidence.TagName}^{{commit}}").Trim(), evidence.TargetOid, StringComparison.Ordinal))
         {
-            return "release_main_release_line_target_mismatch";
+            return "release_main_release_tag_target_mismatch";
         }
 
         try

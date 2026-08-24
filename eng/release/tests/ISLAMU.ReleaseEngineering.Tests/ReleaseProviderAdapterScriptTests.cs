@@ -12,6 +12,40 @@ namespace ISLAMU.ReleaseEngineering.Tests;
 public sealed class ReleaseProviderAdapterScriptTests
 {
     [Test]
+    public async Task ProviderAdapterScriptEnforcesThePublicationProjectionContract()
+    {
+        // A published page is the weakest surface in the system, so the few things that *are*
+        // enforceable are enforced at manifest-validation time rather than trusted to prose.
+        using var untrustedOrigin = ProviderFixture.CreateSingle("github");
+        untrustedOrigin.MutatePublicationWorkflow("github", yaml => yaml.Replace("on:\n  workflow_dispatch:", "on:\n  pull_request:", StringComparison.Ordinal));
+
+        using var missingReference = ProviderFixture.CreateSingle("github");
+        missingReference.MutatePublicationWorkflow("github", yaml => yaml.Replace("canonical-notes-sha256", "release-title", StringComparison.Ordinal));
+
+        using var missingAsset = ProviderFixture.CreateSingle("github");
+        missingAsset.MutatePublicationWorkflow("github", yaml => yaml.Replace("sbom", "changelog", StringComparison.Ordinal));
+
+        using var mutableAction = ProviderFixture.CreateSingle("github");
+        mutableAction.MutatePublicationWorkflow("github", yaml => yaml + "      - uses: actions/checkout@v4\n");
+
+        using var unevidencedNoop = ProviderFixture.CreateSingle("tangled");
+        unevidencedNoop.MutatePublicationWorkflow("tangled", yaml => yaml.Replace("recorded-no-op", "published", StringComparison.Ordinal));
+
+        ScriptResult originResult = untrustedOrigin.Run();
+        ScriptResult referenceResult = missingReference.Run();
+        ScriptResult assetResult = missingAsset.Run();
+        ScriptResult actionResult = mutableAction.Run();
+        ScriptResult noopResult = unevidencedNoop.Run();
+
+        await Assert.That(originResult.ExitCode).IsNotEqualTo(0);
+        await Assert.That(originResult.Output).Contains("adapter_publication_untrusted_origin");
+        await Assert.That(referenceResult.Output).Contains("adapter_publication_canonical_reference_missing");
+        await Assert.That(assetResult.Output).Contains("adapter_publication_asset_missing");
+        await Assert.That(actionResult.Output).Contains("adapter_action_pin_mutable");
+        await Assert.That(noopResult.Output).Contains("adapter_publication_noop_evidence_required");
+    }
+
+    [Test]
     public async Task ProviderAdapterScriptRejectsUnknownAndMissingSchemaKeys()
     {
         using var unknown = ProviderFixture.CreateSingle("github");
@@ -337,7 +371,6 @@ public sealed class ReleaseProviderAdapterScriptTests
             {
               "schemaVersion": "release-adapter-inputs.v1",
               "targetOid": "{{oid}}",
-              "releaseLineHeadOid": "{{oid}}",
               "expectedOldProtectedRefOid": "{{new string('b', 40)}}",
               "tagObjectId": "{{new string('c', 40)}}",
               "tagName": "v1.1.0",
@@ -382,6 +415,12 @@ public sealed class ReleaseProviderAdapterScriptTests
         }
 
         public void MutateProvider(string provider, Func<string, string> mutate) => File.WriteAllText(ProviderPath(provider), mutate(File.ReadAllText(ProviderPath(provider))));
+
+        public void MutatePublicationWorkflow(string provider, Func<string, string> mutate)
+        {
+            string path = Path.Combine(ProvidersRoot, provider, "release-publish.yml");
+            File.WriteAllText(path, mutate(File.ReadAllText(path)));
+        }
 
         public void MutateFinalEvent(string provider, string finalEvent) => MutateProvider(provider, json => json
             .Replace("\"event\": \"workflow_dispatch\",\n    \"trustedRef\": \"default-branch\"", $"\"event\": \"{finalEvent}\",\n    \"trustedRef\": \"default-branch\"", StringComparison.Ordinal)
@@ -458,6 +497,7 @@ public sealed class ReleaseProviderAdapterScriptTests
               "providerId": "{{provider}}",
               "displayName": "{{provider}}",
               "discoveryWorkflows": ["release-adapter-preview.yml", "release-adapter-final.yml"],
+              "publicationWorkflows": ["release-publish.yml"],
               "actions": [{{actions}}],
               "previewLane": {
                 "event": "pull_request",
@@ -494,6 +534,20 @@ public sealed class ReleaseProviderAdapterScriptTests
             }
             """);
             WriteDiscoveryWorkflows(provider, finalEvent);
+            WritePublicationWorkflow(provider, tangled);
+        }
+
+        private void WritePublicationWorkflow(string provider, bool unsupportedPublication)
+        {
+            string environment = provider == "tangled" ? string.Empty : "    environment: production\n";
+            string noop = unsupportedPublication
+                ? "      - run: printf '%s\\n' 'release-publish: recorded-no-op, provider has no documented release publication API'\n"
+                : string.Empty;
+            File.WriteAllText(
+                Path.Combine(ProvidersRoot, provider, "release-publish.yml"),
+                "name: publish\non:\n  workflow_dispatch:\njobs:\n  release-publish:\n" + environment + "    steps:\n" + noop +
+                "      - run: printf '%s\\n' 'page-header: canonical-notes-sha256 and tag-reference'\n" +
+                "      - run: printf '%s\\n' 'assets: release-evidence.v1.json artifacts.sha256 container-image-digests sbom'\n");
         }
 
         private void WriteDiscoveryWorkflows(string provider, string finalEvent)

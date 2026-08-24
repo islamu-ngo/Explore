@@ -16,9 +16,9 @@ research/provenance record, not architecture authority.
 
 ## Decision
 
-1. The canonical release core is provider-neutral and runs only on governed
-   `v<major>.<minor>` release lines. `develop` has no generated `Unreleased`
-   changelog writes.
+1. The canonical release core is provider-neutral. Every release declares a
+   version-line label `v<major>.<minor>`, which classifies the release and never names
+   a ref. `develop` has no generated `Unreleased` changelog writes.
 2. ISLAMU-owned release-engine policy decides commit validity, inclusion, impact,
    version compatibility, range/tag selection, trust validation, and evidence.
    git-cliff is a pinned renderer only: it receives normalized context and performs
@@ -27,11 +27,17 @@ research/provenance record, not architecture authority.
    the release engine, policy, renderer configuration, tool lock, context contract,
    and signer roots. Candidate source and configuration are input data, never final
    authority.
-4. Each release has exactly one final preparation commit `B`. `B` is the
-   release-branch head, candidate-attestation commit, SSH-signed annotated tag
-   target, committed-note commit, and stable `main` target for the newest stable
-   release. A squash, merge, rebase, or ref race that changes the object invalidates
-   the candidate.
+4. **The tag object is the sole release identity.** Attestation reads only the
+   annotated tag object, the preparation commit `B` it targets, the tree at `B`, and
+   ancestry from the base tag; it never resolves `refs/heads/*`. Each release has
+   exactly one final preparation commit `B`, which is the candidate-attestation commit,
+   the SSH-signed annotated tag target, the committed-note commit, and the stable `main`
+   target for the newest stable release. A squash, merge, or rebase produces a different
+   object and invalidates the candidate. Branch compare-and-swap survives only as a
+   precondition of a mutating push.
+10. Version tags own the `refs/heads/v*` glob; no branch may be created there.
+    Maintenance branches are named `release/<major>.<minor>`, are opened lazily from a
+    verified signed stable tag only when a real backport exists, and are disposable.
 5. `release.yaml` and `summary.md` are the only human-owned release inputs.
    `release-notes.md` is fully generated; no mixed ownership markers or manual tag
    message duplication are used.
@@ -51,6 +57,17 @@ research/provenance record, not architecture authority.
    unshipped report design.
 
 ## Consequences
+
+**Superseded model.** Decision 4 originally bound release identity to the mutable
+branch ref `refs/heads/<line>`: the validator required the candidate to equal that
+branch head, and the candidate/final manifests recorded `releaseBranchRef` and
+`releaseLineHeadOid`. That model is wrong, because a release must stay verifiable
+indefinitely and provider-independently: `v0.1.0` stopped verifying the moment `v0.1.1`
+advanced the branch, and never verified at all in a clone that fetched only tags. It
+was replaced on 2026-08-23 with the tag-anchored model above. The companion design that
+eagerly provisioned a `v<major>.<minor>` branch per release from `develop` was rejected
+in the same review: such a branch contains commits that were never in the release, and
+a tag already reconstructs the line exactly.
 
 The release engine is a small offline tool, not a service, provider SDK, or plugin
 framework. Operators retain approval, tag creation, publication, and deployment.

@@ -48,6 +48,55 @@ public sealed record FragmentImpact(
     string? PublicDisclosure,
     string? Detail);
 
+public sealed record RefNamespaceDecision(bool IsAllowed, string? Diagnostic);
+
+/// <summary>
+/// Governs which Git ref names the release model is allowed to create.
+/// Version tags own the <c>v*</c> glob outright: a branch named <c>v0.1</c> beside tag <c>v0.1.0</c>
+/// would let a bare name resolve to either object depending on Git's disambiguation order, so branch
+/// creation in that namespace is refused by policy instead of being disambiguated after the fact.
+/// Maintenance lines therefore use <c>release/&lt;major&gt;.&lt;minor&gt;</c> and are opened on demand
+/// from a verified signed stable tag, never provisioned eagerly at release time.
+/// </summary>
+public static class ReleaseRefNamespacePolicy
+{
+    private const string BranchPrefix = "refs/heads/";
+    private static readonly Regex MaintenanceBranchPattern = new("^release/(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex ReservedBranchPattern = new("^v.*$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex LineLabelPattern = new("^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    /// <summary>Reserved glob recorded in provider protected-ref settings; no branch may match it.</summary>
+    public const string ReservedBranchGlob = "refs/heads/v*";
+
+    public static bool IsReservedBranchRef(string branchRef) =>
+        branchRef is not null &&
+        branchRef.StartsWith(BranchPrefix, StringComparison.Ordinal) &&
+        ReservedBranchPattern.IsMatch(branchRef[BranchPrefix.Length..]);
+
+    public static bool IsMaintenanceBranchRef(string branchRef) =>
+        branchRef is not null &&
+        branchRef.StartsWith(BranchPrefix, StringComparison.Ordinal) &&
+        MaintenanceBranchPattern.IsMatch(branchRef[BranchPrefix.Length..]);
+
+    /// <summary>Maps a version line label such as <c>v1.2</c> onto its maintenance branch ref.</summary>
+    public static string MaintenanceBranchRefForLine(string line) =>
+        line is not null && line.StartsWith('v') && LineLabelPattern.IsMatch(line)
+            ? $"{BranchPrefix}release/{line[1..]}"
+            : throw new ArgumentException("release_line_label_malformed", nameof(line));
+
+    public static RefNamespaceDecision EvaluateBranchCreation(string branchRef)
+    {
+        if (branchRef is null || !branchRef.StartsWith(BranchPrefix, StringComparison.Ordinal))
+        {
+            return new RefNamespaceDecision(false, "ref_namespace_branch_ref_malformed");
+        }
+
+        return IsReservedBranchRef(branchRef)
+            ? new RefNamespaceDecision(false, "ref_namespace_version_tag_glob_reserved")
+            : new RefNamespaceDecision(true, null);
+    }
+}
+
 public static class ReleaseInputPolicy
 {
     private const int MaximumYamlBytes = 65_536;

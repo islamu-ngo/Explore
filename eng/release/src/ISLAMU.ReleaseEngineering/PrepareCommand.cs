@@ -1,5 +1,5 @@
 // ABOUTME: Loads bounded prepare inputs and verifies the promoted renderer bundle before composition.
-// ABOUTME: Emits deterministic diagnostics and the exact release-metadata commit message without Git mutation.
+// ABOUTME: Composes the release range from the checked-out HEAD, never from a branch derived off the line label.
 
 using System.Text;
 using System.Text.RegularExpressions;
@@ -56,7 +56,7 @@ public static class PrepareCommand
                 return Reject(output, pinnedObjectsDiagnostic);
             }
 
-            ReleaseCommit[] commits = ReadGitRange(root, descriptor.PreviousPublishedTag, $"refs/heads/{descriptor.Line}");
+            ReleaseCommit[] commits = ReadGitRange(root, descriptor.PreviousPublishedTag, "HEAD");
             string[] rangeOids = commits.Select(commit => commit.Oid).ToArray();
             string[] linkedChangeIds = commits
                 .SelectMany(commit => ChangeIdPattern.Matches(commit.Message).Select(match => match.Groups["id"].Value))
@@ -155,18 +155,17 @@ public static class PrepareCommand
                 descriptor.Version,
                 $"refs/tags/{descriptor.BaseStableTag}",
                 $"refs/tags/{descriptor.PreviousPublishedTag}",
-                $"refs/heads/{descriptor.Line}",
-                RunGit(repositoryRoot, "rev-parse", $"refs/heads/{descriptor.Line}^{{commit}}").Trim()));
+                RunGit(repositoryRoot, "rev-parse", "HEAD^{commit}").Trim()));
             return git.IsValid ? null : git.Diagnostics.Count == 0 ? "prepare_release_range_moved" : git.Diagnostics[0];
         }
 
         string baseOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.BaseStableTag}^{{commit}}").Trim();
         string previousOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.PreviousPublishedTag}^{{commit}}").Trim();
-        string lineOid = RunGit(repositoryRoot, "rev-parse", $"refs/heads/{descriptor.Line}^{{commit}}").Trim();
+        string headOid = RunGit(repositoryRoot, "rev-parse", "HEAD^{commit}").Trim();
 
         return string.Equals(descriptor.ReleaseRange.BaseOid, baseOid, StringComparison.Ordinal) &&
             string.Equals(descriptor.ReleaseRange.PreviousOid, previousOid, StringComparison.Ordinal) &&
-            !string.Equals(lineOid, previousOid, StringComparison.Ordinal)
+            !string.Equals(headOid, previousOid, StringComparison.Ordinal)
             ? null
             : "prepare_release_range_moved";
     }
@@ -176,9 +175,9 @@ public static class PrepareCommand
             ? baseline
             : null;
 
-    private static ReleaseCommit[] ReadGitRange(string repositoryRoot, string previousPublishedTag, string releaseBranchRef)
+    private static ReleaseCommit[] ReadGitRange(string repositoryRoot, string previousPublishedTag, string rangeEndRef)
     {
-        string raw = RunGit(repositoryRoot, "log", "--reverse", "--format=%H%x00%B%x1e", $"{previousPublishedTag}..{releaseBranchRef}");
+        string raw = RunGit(repositoryRoot, "log", "--reverse", "--format=%H%x00%B%x1e", $"{previousPublishedTag}..{rangeEndRef}");
         return raw.Split('\u001e', StringSplitOptions.RemoveEmptyEntries)
             .Select(entry => entry.TrimStart('\n'))
             .Where(entry => entry.Length != 0)

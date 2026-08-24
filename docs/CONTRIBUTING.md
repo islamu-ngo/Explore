@@ -109,7 +109,20 @@ from public notes by default.
 Breaking commits must include both the `!` marker and a non-empty
 `BREAKING CHANGE:` footer. Nonbreaking commits may be omitted explicitly only
 with both `Changelog: skip` and a non-empty `Changelog-Reason:`; breaking
-changes cannot be skipped. The release preparation commit is:
+changes cannot be skipped.
+
+High-impact, breaking, migration, security, and deterministically grouped work also
+needs a governed change fragment under `docs/releases/changes/<change-id>.yaml` and a
+matching `Change-Id:` footer. A backport records the original commit in that fragment's
+`Backport-Of` field as a full object ID.
+
+Canonical release notes deliberately carry **no** author or committer identity, email,
+raw commit body, or provider handle. Release artifacts are signed, mirrored, and
+permanent, so contributor recognition is kept out of them on purpose; see
+[i-vsd-release-governance.md](../islamic-value-sensitive-design/i-vsd-release-governance.md)
+for why that trade was made.
+
+The release preparation commit is:
 
 ```text
 chore(release): prepare v1.1.0

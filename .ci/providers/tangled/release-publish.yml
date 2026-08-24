@@ -1,0 +1,20 @@
+# ABOUTME: Tangled publication projection definition for a provider without a documented release API.
+# ABOUTME: Declares the recorded no-op path and the operator evidence required instead of a published page.
+
+name: Release Publish Projection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release-publish:
+    name: release-publish
+    runs-on: self-hosted
+    steps:
+      - name: Declare the unsupported publication path
+        run: |
+          printf '%s\n' 'release-publish: recorded-no-op, provider has no documented release publication API'
+          printf '%s\n' 'evidence: release-adapter-external-control-evidence.v1 required from an operator'
+          printf '%s\n' 'page-header: canonical-notes-sha256 and tag-reference apply if a page is ever created'
+          printf '%s\n' 'assets: release-evidence.v1.json artifacts.sha256 container-image-digests sbom'
+          printf '%s\n' 'release-validity: unaffected, the signed tag closes the release'

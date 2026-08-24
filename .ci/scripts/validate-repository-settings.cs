@@ -185,6 +185,7 @@ async Task CheckRulesetsAsync(string repo, JsonObject checksObject, List<Finding
     var hasMain = false;
     var hasDevelop = false;
     var hasMergeQueue = false;
+    var hasReservedVersionTagGlob = false;
 
     if (list.Json is JsonArray array)
     {
@@ -208,6 +209,12 @@ async Task CheckRulesetsAsync(string repo, JsonObject checksObject, List<Finding
             if (detailObject?["rules"] is JsonArray ruleArray)
             {
                 hasMergeQueue |= ruleArray.OfType<JsonObject>().Any(rule => string.Equals(rule["type"]?.GetValue<string>(), "merge_queue", StringComparison.Ordinal));
+
+                // Version tags own the v* glob outright. A branch named v0.1 beside tag v0.1.0
+                // would make a bare name resolvable to either object, so branch creation in that
+                // namespace must be refused by the provider, not disambiguated afterwards.
+                hasReservedVersionTagGlob |= includeRefs.Contains("refs/heads/v*", StringComparer.Ordinal) &&
+                    ruleArray.OfType<JsonObject>().Any(rule => string.Equals(rule["type"]?.GetValue<string>(), "creation", StringComparison.Ordinal));
             }
         }
     }
@@ -222,6 +229,7 @@ async Task CheckRulesetsAsync(string repo, JsonObject checksObject, List<Finding
         ["hasMainRuleset"] = hasMain,
         ["hasDevelopRuleset"] = hasDevelop,
         ["hasMergeQueueRule"] = hasMergeQueue,
+        ["hasReservedVersionTagGlobRule"] = hasReservedVersionTagGlob,
         ["rulesets"] = rulesets
     };
 
@@ -233,6 +241,11 @@ async Task CheckRulesetsAsync(string repo, JsonObject checksObject, List<Finding
     if (!hasDevelop)
     {
         output.Add(new Finding("develop ruleset", "error", "No branch ruleset includes refs/heads/develop."));
+    }
+
+    if (!hasReservedVersionTagGlob)
+    {
+        output.Add(new Finding("reserved version-tag glob", "error", "No branch ruleset blocks creation under refs/heads/v*; version tags must own that glob."));
     }
 }
 

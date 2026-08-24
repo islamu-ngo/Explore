@@ -1,5 +1,5 @@
 // ABOUTME: Exercises provider-neutral Git object validation against disposable synthetic repositories.
-// ABOUTME: Covers descriptor-selected tags, release-line refs, promisor objects, and graph failures.
+// ABOUTME: Covers descriptor-selected tags, immutable ancestry, promisor objects, and graph failures.
 
 using System.Diagnostics;
 using ISLAMU.ReleaseEngineering;
@@ -27,7 +27,6 @@ public sealed class GitRepositoryValidatorTests
             "1.1.0",
             "refs/tags/v1.0.0",
             "refs/tags/v1.0.0",
-            "refs/heads/v1.1",
             candidate));
 
         await Assert.That(result.IsValid).IsTrue();
@@ -58,8 +57,7 @@ public sealed class GitRepositoryValidatorTests
             "1.1.2",
             BaseStableRef: "refs/tags/v1.0.0",
             PreviousPublishedRef: "refs/tags/v1.1.0",
-            ReleaseBranchRef: "refs/heads/v1.1",
-            CandidateRef: candidate));
+            CandidateOid: candidate));
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.Diagnostics).Contains("git_unexpected_newer_tag:v1.1.1");
@@ -82,7 +80,6 @@ public sealed class GitRepositoryValidatorTests
             "1.0.1",
             "refs/tags/v1.0.0",
             "refs/tags/v1.0.0",
-            "refs/heads/v1.0",
             candidate));
 
         await Assert.That(result.IsValid).IsTrue();
@@ -110,7 +107,6 @@ public sealed class GitRepositoryValidatorTests
             "0.1.0",
             "refs/tags/changelog-baseline-2026-08-15",
             "refs/tags/changelog-baseline-2026-08-15",
-            "refs/heads/v0.1",
             preOneCandidate));
         GitReleaseValidationResult laterResult = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
             laterSemVer.Path,
@@ -118,7 +114,6 @@ public sealed class GitRepositoryValidatorTests
             "2.0.0",
             "refs/tags/changelog-baseline-2026-08-15",
             "refs/tags/changelog-baseline-2026-08-15",
-            "refs/heads/v2.0",
             laterCandidate));
 
         await Assert.That(preOneResult.IsValid).IsTrue();
@@ -144,7 +139,6 @@ public sealed class GitRepositoryValidatorTests
             "0.2.0",
             "refs/tags/changelog-baseline-2026-08-15",
             "refs/tags/changelog-baseline-2026-08-15",
-            "refs/heads/v0.2",
             candidate));
 
         await Assert.That(result.IsValid).IsFalse();
@@ -169,8 +163,7 @@ public sealed class GitRepositoryValidatorTests
             "1.1.1",
             BaseStableRef: "refs/tags/v1.1.0",
             PreviousPublishedRef: "refs/tags/v1.1.0",
-            ReleaseBranchRef: "refs/heads/v1.1",
-            CandidateRef: candidate,
+            CandidateOid: candidate,
             ExpectedTagObjectOids: new Dictionary<string, string> { ["v1.1.0"] = selectedTagObject }));
 
         await Assert.That(result.IsValid).IsFalse();
@@ -193,16 +186,14 @@ public sealed class GitRepositoryValidatorTests
             "1.1.0",
             BaseStableRef: "refs/tags/v1.0.0",
             PreviousPublishedRef: "refs/tags/v1.0.0",
-            ReleaseBranchRef: "refs/heads/v1.1",
-            CandidateRef: candidate));
+            CandidateOid: candidate));
         GitReleaseValidationResult missing = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
             repo.Path,
             "v1.1",
             "1.1.0",
             BaseStableRef: "refs/tags/v1.0.0",
             PreviousPublishedRef: "refs/tags/v1.0.0",
-            ReleaseBranchRef: "refs/heads/v1.1",
-            CandidateRef: new string('f', candidate.Length)));
+            CandidateOid: new string('f', candidate.Length)));
 
         await Assert.That(present.IsValid).IsTrue();
         await Assert.That(present.Diagnostics).DoesNotContain("git_partial_clone_objects_missing");
@@ -226,8 +217,7 @@ public sealed class GitRepositoryValidatorTests
             "1.1.1",
             BaseStableRef: "refs/tags/v1.1.0",
             PreviousPublishedRef: "refs/tags/v1.1.0",
-            ReleaseBranchRef: "refs/heads/v1.1",
-            CandidateRef: candidate);
+            CandidateOid: candidate);
 
         GitReleaseValidationResult complete = GitRepositoryValidator.Validate(request);
         repo.RemoveObject(selectedTagObject);
@@ -272,7 +262,7 @@ public sealed class GitRepositoryValidatorTests
     }
 
     [Test]
-    public async Task AmbiguousRefsMissingObjectsAndWrongLineVersionsFailClosed()
+    public async Task UnqualifiedRefsMissingObjectsAndWrongLineVersionsFailClosed()
     {
         using var repo = GitRepositoryFixture.Create();
         string v110 = repo.Commit("v1.1.0");
@@ -281,17 +271,17 @@ public sealed class GitRepositoryValidatorTests
         repo.Branch("v1.1", candidate);
         repo.LightweightTag("v1.1", candidate);
 
-        GitReleaseValidationResult ambiguous = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.1.1", "refs/tags/v1.1.0", "refs/tags/v1.1.0", "v1.1", candidate));
-        GitReleaseValidationResult wrongLine = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.2.0", "refs/tags/v1.1.0", "refs/tags/v1.1.0", "refs/heads/v1.1", candidate));
-        GitReleaseValidationResult missing = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.1.1", "refs/tags/v1.1.0", "refs/tags/v1.1.0", "refs/heads/v1.1", new string('f', 40)));
+        GitReleaseValidationResult unqualified = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.1.1", "v1.1.0", "refs/tags/v1.1.0", candidate));
+        GitReleaseValidationResult wrongLine = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.2.0", "refs/tags/v1.1.0", "refs/tags/v1.1.0", candidate));
+        GitReleaseValidationResult missing = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(repo.Path, "v1.1", "1.1.1", "refs/tags/v1.1.0", "refs/tags/v1.1.0", new string('f', 40)));
 
-        await Assert.That(ambiguous.Diagnostics).Contains("git_ambiguous_ref:v1.1");
+        await Assert.That(unqualified.Diagnostics).Contains("git_malformed_tag_ref:v1.1.0");
         await Assert.That(wrongLine.Diagnostics).Contains("git_selected_version_line_mismatch");
         await Assert.That(missing.Diagnostics).Contains("git_missing_object:candidate");
     }
 
     [Test]
-    public async Task ShallowRepositoriesNonAncestorPreviousAndMovedCandidatesFailClosed()
+    public async Task ShallowRepositoriesAndNonAncestorPreviousFailClosedWhileOlderCandidatesStillVerify()
     {
         using var source = GitRepositoryFixture.Create();
         string v110 = source.Commit("v1.1.0");
@@ -306,7 +296,6 @@ public sealed class GitRepositoryValidatorTests
             "1.1.1",
             "refs/tags/v1.1.0",
             "refs/tags/v1.1.0",
-            "refs/heads/v1.1",
             candidate));
 
         using var moved = GitRepositoryFixture.Create();
@@ -315,7 +304,9 @@ public sealed class GitRepositoryValidatorTests
         string oldCandidate = moved.Commit("old preparation");
         string newCandidate = moved.Commit("moved preparation");
         moved.Branch("v1.1", newCandidate);
-        GitReleaseValidationResult movedResult = GitRepositoryValidator.Validate(Request(moved, "1.1.1", oldCandidate));
+        // The branch has since advanced to newCandidate. oldCandidate is still a complete, linear,
+        // base-tag-descended range end, so it must keep verifying: that is the durability contract.
+        GitReleaseValidationResult behindBranchTip = GitRepositoryValidator.Validate(Request(moved, "1.1.1", oldCandidate));
 
         using var unrelated = GitRepositoryFixture.Create();
         string previousUnrelated = unrelated.Commit("v1.1.0");
@@ -326,7 +317,7 @@ public sealed class GitRepositoryValidatorTests
         GitReleaseValidationResult unrelatedResult = GitRepositoryValidator.Validate(Request(unrelated, "1.1.1", unrelatedCandidate));
 
         await Assert.That(shallowResult.Diagnostics).Contains("git_shallow_repository");
-        await Assert.That(movedResult.Diagnostics).Contains("git_candidate_not_release_branch_head");
+        await Assert.That(behindBranchTip.IsValid).IsTrue();
         await Assert.That(unrelatedResult.Diagnostics).Contains("git_previous_not_ancestor");
     }
 
@@ -348,7 +339,7 @@ public sealed class GitRepositoryValidatorTests
     }
 
     [Test]
-    public async Task RevisionsAndWrongReleaseBranchShapeFailClosed()
+    public async Task SymbolicCandidateRevisionsFailClosedAndVersionTagGlobStaysReserved()
     {
         using var repo = GitRepositoryFixture.Create();
         string v110 = repo.Commit("v1.1.0");
@@ -362,11 +353,10 @@ public sealed class GitRepositoryValidatorTests
             "1.1.1",
             "refs/tags/v1.1.0",
             "refs/tags/v1.1.0",
-            "refs/heads/release/v1.1",
             "HEAD"));
 
         await Assert.That(result.Diagnostics).Contains("git_object_id_not_full:candidate");
-        await Assert.That(result.Diagnostics).Contains("git_release_branch_line_mismatch");
+        await Assert.That(ReleaseRefNamespacePolicy.EvaluateBranchCreation("refs/heads/v1.1").Diagnostic).IsEqualTo("ref_namespace_version_tag_glob_reserved");
     }
 
     [Test]
@@ -388,7 +378,6 @@ public sealed class GitRepositoryValidatorTests
             "1.1.2",
             "refs/tags/v1.1.0",
             "refs/tags/v1.1.0",
-            "refs/heads/v1.1",
             candidate));
 
         using var recreated = GitRepositoryFixture.Create();
@@ -405,7 +394,6 @@ public sealed class GitRepositoryValidatorTests
             "1.1.1",
             "refs/tags/v1.1.0",
             "refs/tags/v1.1.0",
-            "refs/heads/v1.1",
             recreatedCandidate,
             ExpectedTagObjectOids: new Dictionary<string, string> { ["v1.1.0"] = originalTagObject }));
 
@@ -514,7 +502,6 @@ public sealed class GitRepositoryValidatorTests
             version,
             "refs/tags/v1.1.0",
             "refs/tags/v1.1.0",
-            "refs/heads/v1.1",
             candidate);
 
     private sealed class GitRepositoryFixture : IDisposable

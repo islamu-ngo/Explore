@@ -41,9 +41,10 @@ dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-
    reviewed operator action. Do not use `v0.0.0` or any fake SemVer tag as a baseline,
    and do not treat the selected version number as proof that this is the first
    governed release.
-2. An operator selects a governed `v<major>.<minor>` line and prepares only
-   `release.yaml` and `summary.md`; public high-impact facts are supplied through
-   validated change fragments.
+2. An operator selects the version-line **label** `v<major>.<minor>` the release
+   belongs to and prepares only `release.yaml` and `summary.md`; public high-impact
+   facts are supplied through validated change fragments. The label classifies the
+   release; it never names a branch and nothing derives a ref from it.
 3. The trusted bundle validates complete Git objects, policy, range, version,
    impacts, and public inputs. It normalizes context and calls the promoted
    git-cliff renderer with the `VerifiedTrustedBundle` capability returned by
@@ -55,8 +56,10 @@ dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-
    preparation commit `B`. The message explicitly explains its release-metadata
    changelog skip so the generated note does not include itself.
 5. The authoritative bundle verifies candidate `B` and emits deterministic
-   pre-tag candidate evidence. Review preserves `B` through a fast-forward-only
-   compare-and-swap update; any replacement requires regeneration and review.
+   pre-tag candidate evidence from immutable objects only. Integrating `B` into the
+   branch it was prepared on is a fast-forward-only compare-and-swap; that
+   compare-and-swap is a precondition of the *push*, not part of verification. Any
+   replacement of `B` requires regeneration and review because it is a new object.
 6. An authorized release operator creates an SSH-signed annotated tag targeting
    exactly `B`. Tag verification records signer, tag object ID, candidate digest,
    policy/tool hashes, and note/context hashes in final evidence.
@@ -120,8 +123,9 @@ releases, or update protected refs by themselves.
 
 ### Preparation command
 
-After `docs/releases/<version>/release.yaml` and `summary.md` are reviewed on the
-governed release branch, run:
+After `docs/releases/<version>/release.yaml` and `summary.md` are reviewed, check out
+the commit the release should end at and run the command from that working tree. The
+range end is the checked-out `HEAD`; no branch name is derived from the line label.
 
 ```sh
 dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
@@ -137,8 +141,8 @@ config, and trust versions through `ISLAMU_RELEASE_TRUSTED_BUNDLE`,
 `ISLAMU_RELEASE_POLICY_VERSION`, `ISLAMU_RELEASE_CONFIG_VERSION`, and
 `ISLAMU_RELEASE_TRUST_VERSION`.
 The command verifies that promotion before rendering, reads the descriptor and
-summary, derives the complete local Git range from `Previous-Published-Tag` to
-`refs/heads/<Line>`, validates linked public fragments and impact evidence,
+summary, derives the complete local Git range from `Previous-Published-Tag` to the
+checked-out `HEAD`, validates linked public fragments and impact evidence,
 atomically creates `release-notes.md`, and writes canonical
 `release-context.v1.json` next to the release inputs. The generated notes always
 use this order: maintainer summary, release-visible details only, then complete
@@ -152,9 +156,9 @@ or write failure stops without changing `release.yaml` or `summary.md`.
 
 ### Candidate verification command
 
-After the reviewed preparation commit `B` is created and the governed release-line
-branch still points at it, run the promoted bundle verifier against that exact full
-commit object:
+After the reviewed preparation commit `B` is created, run the promoted bundle verifier
+against that exact full commit object. No branch has to point at `B`, and the command
+works identically in a clone that fetched only `refs/tags/*`:
 
 ```sh
 dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
@@ -162,20 +166,23 @@ dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEng
 ```
 
 The command reads the same protected environment variables as `prepare`. It validates
-the local repository without lazy fetches or replacement objects, requires
-`refs/heads/<Line>` to equal `<full-B-oid>`, requires `B` to be the terminal commit in
-the descriptor-selected range, and requires `B`'s terminal footers to be exactly
+the local repository without lazy fetches or replacement objects, resolves the base and
+previous tags as annotated tag objects, requires `B` to descend from the base tag along
+a linear range, requires `B` to be the terminal commit in the descriptor-selected range,
+and requires `B`'s terminal footers to be exactly
 `Changelog: skip` and `Changelog-Reason: release metadata commit`. It recomputes the
 release context through `B`, rerenders the notes with the separately promoted trusted
 bundle, and compares both committed generated artifacts byte-for-byte. It then writes
 or verifies `docs/releases/<version>/release-candidate.v1.json`.
 
 `release-candidate.v1.json` is pre-tag evidence only. It records schema/object format,
-full `B` and range commit IDs, version/line/date, base and previous tag commit IDs,
-the exact parent/expected-old and branch/expected-new IDs, trusted
+full `B` and range commit IDs, version/line-label/date, base and previous tag commit
+IDs, the exact parent as `expectedIntegrationOldOid` and `B` as
+`expectedIntegrationNewOid` for the integration push precondition, trusted
 bundle/policy/config/trust/tool hashes, and release descriptor, fragment, summary,
-context, and note hashes. It deliberately omits tag object IDs, current time,
-provider metadata, identities, emails, raw commit bodies, tokens, and secrets.
+context, and note hashes. It deliberately omits every branch ref and branch head object
+ID, tag object IDs, current time, provider metadata, identities, emails, raw commit
+bodies, tokens, and secrets.
 
 Successful output is one bounded line:
 
@@ -186,14 +193,15 @@ release_candidate_verified: docs/releases/<version>/release-candidate.v1.json
 Failures are also bounded and use stable diagnostic codes, for example:
 
 ```text
-verify_candidate_failed: git_candidate_not_release_branch_head
+verify_candidate_failed: candidate_committed_artifact_mismatch
+verify_candidate_failed: candidate_object_anchors_moved
 verify_candidate_failed: candidate_terminal_commit_not_release_metadata_skip
 verify_candidate_failed: candidate_release_context_mismatch
 verify_candidate_failed: candidate_release_notes_mismatch
 verify_candidate_failed: candidate_manifest_stale
 ```
 
-Any branch/ref movement, squash/rebase/merge replacement, wrong parent/range,
+Base or previous tag recreation, squash/rebase/merge replacement, wrong parent/range,
 descriptor, fragment, policy, config, tool, bundle, context, summary, or note drift,
 shallow/partial/replace/graft state, object-format mismatch, stale candidate manifest,
 or dirty committed generated artifact stops before tagging or publication.
@@ -326,13 +334,155 @@ candidate/tag/main verification from current local objects.
 - The bundle MUST include the release engine, policy, renderer config, tool pin, and
   SSH signer roots. The provider MUST retain protected-ref and environment approval
   evidence for final operations.
-- `B`, release-line head, candidate record, tag target, committed notes, and stable
-  `main` target MUST be checked as one exact full-object identity.
+- `B`, the candidate record, the tag target, the committed notes, and the stable
+  `main` target MUST be checked as one exact full-object identity. No branch head takes
+  part in that identity; a branch head appears only as a push precondition.
 - Public canonical artifacts MUST be deterministic and provider-neutral. Capture
   required hashes and inputs without wall-clock, provider, author, raw-body, or token
   data.
 - Restricted security inputs MUST remain in the embargo lane outside the public
   checkout. If disclosure is not authorized, stop before public generation or tag.
+
+### Publication projection and drift reporting
+
+Publishing to a forge release page is a derived, noncanonical view of the signed tag. Canonical
+truth stays the tag object plus `release-notes.md` committed at `B`. A release is complete without
+any published page.
+
+Each published page MUST carry the canonical `release-notes.md` SHA-256 and its tag reference, and
+MUST attach `release-evidence.v1.json`, `artifacts.sha256`, container image digests, and SBOM.
+Those assets are self-verifying; forge-generated source archives may be linked but are never
+treated as reproducible artifacts.
+
+To report drift between what is published and what was signed:
+
+```sh
+dotnet run --file .ci/scripts/report-publication-drift.cs -- \
+  --release-directory docs/releases/<version> \
+  --projections publication-projection.v1.json \
+  --output publication-drift
+```
+
+The projection input is a bounded `release-publication-projection.v1` document that the operator or
+adapter assembles from what each forge currently shows. For each provider it records `state`
+(`published`, `unavailable`, or `unsupported`), the `declaredCanonicalNotesSha256`, the
+`declaredTagRef`, the attached `assets`, and either the `publishedBody` or its
+`publishedBodySha256`.
+
+Outcomes:
+
+- `in-sync` — the page carries the canonical hash and tag reference and the required assets.
+- `drift` — reported with specific findings. The command still exits `0`; drift never invalidates a
+  release, and the tool never edits a page. Pass `--fail-on-drift` if you want a blocking gate.
+- `recorded-no-op` — the provider has no release API, or the forge was unavailable, and an
+  `operatorEvidenceReference` was supplied. Without that reference this is reported as drift, so a
+  silent omission cannot pass as a deliberate no-op.
+
+If the local `release-notes.md` no longer hashes to the value in `release-evidence.v1.json`, the
+command fails closed with `drift_canonical_notes_mismatch`. That is a local checkout problem, not a
+forge problem: fix the checkout before drawing conclusions about a published page.
+
+### Maintenance lines (open on demand, delete freely)
+
+No branch is provisioned when a release is tagged. The default state after `v0.1.0` is
+one tag and zero new branches. Open a maintenance line only when a real backport to an
+already-released line is required:
+
+```sh
+git switch -c release/<major>.<minor> v<major>.<minor>.<patch>
+```
+
+Plan the action first. The engine derives the source from the release's own verified tag, so
+there is no source argument to get wrong:
+
+```sh
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  open-maintenance-line docs/releases/<version> <full-tag-object-id>
+```
+
+It re-verifies the tag through the promoted bundle, refuses prereleases, derives
+`refs/heads/release/<major>.<minor>` from the version-line label, and prints one bounded line:
+
+```text
+maintenance_line_verified: action=create-maintenance-line branch=refs/heads/release/<M>.<m> source-tag=v<M>.<m>.<p> expected-old=none expected-new=<full-B-oid> instruction=git switch -c release/<M>.<m> v<M>.<m>.<p>
+```
+
+If the branch already contains the released commit the action is `already-open` with
+`instruction=no-op-maintenance-line-already-open`. The command never creates, moves, deletes, or
+force-updates a ref; the operator runs the printed command.
+
+Rules:
+
+- The **only** legal source is a verified signed stable tag on that line. `develop`,
+  `main`, and arbitrary commits are rejected with `maintenance_line_source_not_release_tag`,
+  because a branch cut from anywhere else contains commits that were never in the release and a
+  patch built on it would ship unreviewed integration work.
+- The branch MUST be named `release/<major>.<minor>` — no `v` prefix. `refs/heads/v*` is
+  a reserved, protected namespace owned by version tags; creation there is rejected by
+  provider settings and by `ReleaseRefNamespacePolicy`.
+- Re-running against an existing branch is a no-op. Never force-update it.
+- Deleting the branch after its final patch is supported, non-destructive cleanup:
+
+```sh
+git branch -D release/<major>.<minor>
+git push origin --delete release/<major>.<minor>
+```
+
+Every release on that line remains fully verifiable afterwards, because verification
+reads only the tag object, `B`, the tree at `B`, and ancestry from the base tag. To
+reconstruct the line at any later time, re-run the `git switch -c` command above.
+
+### Trust activation (two people, once)
+
+Until this runs, `eng/release/trust/` is comment-only and every attestation path fails closed. That
+is the correct default: a release-signing root asserted by nobody is worse than no root at all.
+
+Activation is deliberately a **two-person act**. `separationOfDuty.releaseSignerCannotPromoteOwnCandidateBundle`
+means one key must never be able to both promote the tooling bundle and sign the release that bundle
+attests — otherwise a single compromised key forges the entire chain. Two people therefore each
+generate their own key and keep their own private half:
+
+```sh
+# Release operator, on their own machine:
+ssh-keygen -t ed25519 -C "islamu-release-operator"
+
+# Tooling promoter, on a different machine:
+ssh-keygen -t ed25519 -C "islamu-tooling-promoter"
+```
+
+Each person sends **only the `.pub` file**. Private keys never enter this repository, a trusted
+bundle, a CI secret store, or a chat message. Then, with both public keys present:
+
+```sh
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  activate-trust \
+  --release-principal <release-operator-principal> \
+  --release-key /path/to/release.pub \
+  --promotion-principal <tooling-promoter-principal> \
+  --promotion-key /path/to/promotion.pub \
+  --valid-from <yyyy-MM-dd> --valid-until <yyyy-MM-dd> \
+  --output eng/release/trust
+```
+
+The command accepts public key material only and refuses a file containing `PRIVATE KEY`. It
+rejects a non-`ssh-ed25519` algorithm, a malformed key, an inverted or malformed validity window, a
+malformed principal, and any attempt to use one principal, one key, or one fingerprint for both
+roles. It writes `allowed-signers`, `promotion-allowed-signers`, and an activated
+`release-signing-policy.yaml`, then prints both fingerprints:
+
+```text
+trust_activated: output=eng/release/trust
+trust_release_signer: principal=... algorithm=ssh-ed25519 fingerprint=SHA256:... valid-from=... valid-until=...
+trust_promotion_signer: principal=... algorithm=ssh-ed25519 fingerprint=SHA256:...
+```
+
+Re-running with identical inputs is a byte-idempotent no-op. Replacing an already-activated root is
+a **rotation**, not an activation: it fails with `trust_activation_would_replace_existing_root`
+unless `--replace` is passed, and the rotation must also be appended to
+`eng/release/trust/rotation-history.md`.
+
+Both fingerprints must be confirmed out of band with the two key holders before the first release is
+signed, and `genesisIndependentReviewRequired` still applies to the first promoted bundle.
 
 ### Trusted-bundle bootstrap and upgrades
 

@@ -24,9 +24,10 @@ authored GitHub Release process in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 No release-engine workflow, trusted bundle, signer set, or provider adapter is active
 yet. This section defines the approved future boundary without claiming activation.
 
-When implemented, the release engine MUST run only for a governed
-`v<major>.<minor>` release line; `develop` MUST NOT receive generated
-`[Unreleased]` changelog writes. The canonical release contract is provider-neutral:
+When implemented, every release MUST declare the version-line label
+`v<major>.<minor>` it belongs to. That label is a classification, not a ref: nothing
+derives a branch name from it, and attestation MUST NOT resolve any `refs/heads/*`.
+`develop` MUST NOT receive generated `[Unreleased]` changelog writes. The canonical release contract is provider-neutral:
 the engine receives complete local Git objects, explicit inputs, and a previously
 promoted trusted tool bundle. Provider adapters MAY transport those inputs, retained
 artifacts, and protected ref actions, but MUST NOT classify changes, choose a version,
@@ -34,7 +35,7 @@ alter canonical notes, or add provider metadata to canonical checksums.
 
 The authoritative final lane MUST use the promoted bundle rather than candidate
 engine source, policy, templates, renderer configuration, or signer roots. It MUST
-prove one final preparation commit `B`: the release-line head, candidate attestation,
+prove one final preparation commit `B` from immutable objects only: candidate attestation,
 SSH-signed annotated tag target, and, for the newest stable release, `main` target
 MUST resolve to that same full Git object. Candidate jobs remain unprivileged; final
 operators retain approval, tagging, publication, deployment, and protected-ref
@@ -160,6 +161,8 @@ These controls cannot be fully enforced from workflow YAML and must be configure
 
 Protect `main` and `develop` with a ruleset or branch-protection rule that requires pull requests and current status checks before merge.
 
+**Reserved version-tag glob.** A branch ruleset MUST include `refs/heads/v*` with a `creation` rule so no branch can be created in that namespace. Version tags own the `v*` glob outright: a branch named `v0.1` beside tag `v0.1.0` would let a bare name resolve to either object, so this is refused at ref-creation time rather than disambiguated afterwards. Maintenance lines use `release/<major>.<minor>` instead and are opened on demand from a verified signed stable tag. `.ci/scripts/validate-repository-settings.cs` reports `hasReservedVersionTagGlobRule` and fails the drift check when the rule is absent.
+
 Recommended checks after the PR1-PR8 governance baseline stabilizes:
 
 | Check | Workflow | Job name | Branch-protection status | Notes |
@@ -189,6 +192,7 @@ Record evidence for these settings before treating the repository as enterprise-
 | Development branch protection / ruleset | `develop` requires pull requests and current required checks before merge. | Ruleset export, branch protection API output, or maintainer screenshot. | 2026-06-01 API evidence: branch protection endpoint returns 404 and no `develop` ruleset was returned. Missing expected controls. |
 | Required check names | Check names match the table above and are stable before branch protection is updated. | Branch protection required-check export. | 2026-06-01 API evidence: no branch-protection status-check configuration returned. Required checks are not configured yet. |
 | Merge queue | Enabled only after all required workflows have `merge_group` or always-present wrappers. | Ruleset export showing queue status and required checks. | 2026-06-01 API evidence: repository ruleset export showed no merge-queue rule. |
+| Reserved version-tag glob | A branch ruleset includes `refs/heads/v*` with a `creation` rule so version tags keep sole ownership of the `v*` namespace. | Ruleset export showing the `refs/heads/v*` include and `creation` rule; `repository-settings-evidence` reports `hasReservedVersionTagGlobRule`. | Not yet configured. `.ci/scripts/validate-repository-settings.cs` now reports this control; the rule must be created in repository settings before the first governed release tag. |
 | Environments | `staging` and `production` exist with environment-scoped secrets. Production requires reviewers and branch/tag restrictions. | Environment settings screenshot/API output with secret names redacted. | 2026-06-01 remediation: `staging` and `production` environments created. `production` requires reviewer `@amirakrari`; custom deployment branch policies allow `main` and `v*`. `staging` custom deployment branch policy allows `develop`. Environment secrets still need maintainer verification with values redacted. |
 | Actions policy | Repository allows only GitHub-owned, verified, or SHA-pinned actions according to the organization policy. | Actions policy API output or maintainer screenshot. | 2026-06-01 API evidence: Actions are enabled and `allowed_actions` is `all`; policy is not restricted at the repository level. |
 | Security features | Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled; CodeQL default setup is disabled while `CodeQL Advanced` owns uploads. | Security settings screenshot/API output. | 2026-06-07 API evidence: CodeQL default setup set to `not-configured` to unblock advanced workflow uploads. 2026-06-01 API evidence: secret scanning and push protection enabled; dependency graph/vulnerability alerts enabled; code-scanning API accessible with an open CodeQL alert; Dependabot security updates / automated security fixes enabled (`enabled: true`, `paused: false`). |

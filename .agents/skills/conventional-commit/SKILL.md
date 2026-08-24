@@ -20,7 +20,9 @@ priority: high
 - Breaking changes require `!`, a non-empty `BREAKING CHANGE:` footer, and cannot use `Changelog: skip`.
 - High-impact, breaking, migration, or security work requires its governed change fragment and matching `Change-Id` footer.
 - Internal nonbreaking work uses both `Changelog: skip` and a non-empty `Changelog-Reason`.
-- Never rewrite published history without explicit approval.
+- A backport records the original commit in its fragment's `Backport-Of` field as a full object ID; the commit itself is an ordinary commit on the target line. Never restate the original commit's identity in the subject.
+- The release-metadata commit `B` is the one commit whose terminal footers must be exactly `Changelog: skip` and `Changelog-Reason: release metadata commit`, so the generated notes do not include themselves.
+- Never rewrite published history without explicit approval. A squash, rebase, or merge that replaces a prepared `B` produces a different object and invalidates its candidate attestation.
 
 ## Format
 

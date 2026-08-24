@@ -16,8 +16,18 @@ steps.
 
 ## Canonical release contract
 
-- Releases MUST originate from a governed `v<major>.<minor>` line. `develop` MUST
-  NOT receive generated `Unreleased` changelog writes.
+- **The tag is the release.** `refs/tags/v<major>.<minor>.<patch>[-prerelease]` MUST be
+  the sole immutable release identity. Attestation MUST read only the annotated tag
+  object, the preparation commit `B` it targets, the tree at `B`, and ancestry from the
+  base tag. Attestation MUST NOT resolve, compare against, or require any ref under
+  `refs/heads/*`, so a release stays verifiable after the branch that carried its
+  commits advances, is deleted, or was never fetched.
+- Compare-and-swap against an observed branch head is permitted only inside a
+  **mutating** step — the `main` fast-forward proposal and provider push preconditions —
+  where a stale ref is a genuine race. It MUST NOT appear in any verification path.
+- Every release MUST declare a version-line **label** `v<major>.<minor>`. The label
+  classifies the release; it is not a ref and nothing may derive a branch name from it.
+  `develop` MUST NOT receive generated `Unreleased` changelog writes.
 - ISLAMU policy MUST decide commit validity, visibility, impacts, grouping inputs,
   SemVer, range/tag selection, trust, and canonical evidence. git-cliff MUST render
   normalized context only and MUST NOT decide any of those matters.
@@ -36,11 +46,23 @@ steps.
 - `summary.md` MUST be the sole maintainer-owned public narrative.
 - `release-notes.md` MUST be fully generated from the validated sources and
   normalized context. It MUST NOT contain manually maintained generated regions.
-- A release MUST finish at one preparation commit `B`. The release-line head,
-  candidate evidence, signed annotated tag target, and stable `main` target for the
-  newest stable release MUST equal the same full Git object `B`.
-- A changed head, replacement, squash, merge, rebase, or regeneration drift MUST
-  invalidate the candidate and require a new reviewed `B`.
+- A release MUST finish at one preparation commit `B`. Candidate evidence, the signed
+  annotated tag target, and the stable `main` target for the newest stable release MUST
+  equal the same full Git object `B`. No branch head is part of that equality.
+- Replacement, squash, merge, rebase, or regeneration drift MUST invalidate the
+  candidate and require a new reviewed `B`, because each produces a different object.
+
+## Ref namespace
+
+- Version tags own the `v*` glob outright. Creating any branch matching
+  `refs/heads/v*` MUST be rejected — by provider protected-ref settings and by
+  `ReleaseRefNamespacePolicy` — so no branch can shadow or be confused with a version
+  tag. This is enforced as policy, never resolved as an ambiguity after the fact.
+- Maintenance branches MUST be named `release/<major>.<minor>`. They are **lazy**: none
+  is created at release time. One MAY be opened on demand when a real backport is
+  required, and its only legal source is a verified signed stable tag on that line.
+  Deleting it afterwards is supported and MUST leave every release on that line fully
+  verifiable, because every release is closed by its tag.
 
 ## Trust, determinism, and privacy
 

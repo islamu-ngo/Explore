@@ -31,8 +31,9 @@ manifest/workflow parity.
 The planner accepts one `release-adapter-inputs.v1` JSON document containing:
 
 - `targetOid`: final preparation commit `B`, full SHA-1 or SHA-256 object ID.
-- `releaseLineHeadOid`: release branch head, full object ID.
-- `expectedOldProtectedRefOid`: compare-and-swap old protected-ref object ID.
+- `expectedOldProtectedRefOid`: compare-and-swap old protected-ref object ID. This is a
+  **mutation precondition**, not release identity: it exists so a protected-ref update
+  fails on a race. No adapter input carries a branch ref or branch head as identity.
 - `tagObjectId`: final annotated tag object ID.
 - `tagName`: canonical tag name.
 - `releaseBundlePath`: path under the supplied bundle root.
@@ -56,6 +57,40 @@ Each successful provider plan is `provider.transport-plan.v1.json` and contains:
 - tag object and promoted bundle checksum;
 - canonical checksum set for the release inputs and promoted bundle;
 - `transportOnly=true` and `metadataCanonical=false`.
+
+## Publication Projection
+
+Publishing a release page is **not** part of release identity. Each provider definition declares
+`publicationWorkflows` (possibly empty). The validator enforces what is actually enforceable:
+
+- The workflow runs only in a trusted lane. `pull_request`, `pull_request_target`, and `push`
+  origins are rejected (`adapter_publication_untrusted_origin`).
+- Every published body carries the canonical `release-notes.md` SHA-256 and its tag reference, so a
+  reader can check the page against the repository (`adapter_publication_canonical_reference_missing`).
+- Self-verifying assets are attached: `release-evidence.v1.json`, `artifacts.sha256`, container
+  image digests, and SBOM (`adapter_publication_asset_missing`). Forge-generated `.zip`/`.tar.gz`
+  archives may be linked but are never treated as reproducible artifacts.
+- External actions in publication workflows use full SHA pins (`adapter_action_pin_mutable`).
+- A provider whose `capabilities.releasePublication` is false must set
+  `operatorEvidenceRequired` and declare a `recorded-no-op` path
+  (`adapter_publication_noop_evidence_required`). A missing release API or a forge outage is a
+  recorded no-op with operator evidence, never a failed release.
+
+`.ci/scripts/report-publication-drift.cs` consumes a bounded `release-publication-projection.v1`
+document and the release's own `release-evidence.v1.json`, then writes
+`publication-drift-report.v1.json` plus a Markdown summary. It **reports**: it never edits a page,
+never rewrites canonical bytes, and never invalidates a release. Its report always carries
+`autoRepair: false` and `releaseInvalidated: false`. Drift exits `0` by default; operators who want
+a blocking gate pass `--fail-on-drift`.
+
+## Reserved Ref Namespace
+
+Version tags own the `v*` glob outright. Providers MUST configure a protected-ref rule
+that rejects branch creation under `refs/heads/v*`, so no branch can shadow or be
+confused with a version tag. Maintenance lines use `release/<major>.<minor>` and are
+opened on demand from a verified signed stable tag; adapters never create them as part
+of a release. Release identity is the annotated tag object alone — an adapter that
+cannot perform a protected-ref action fails closed and never substitutes a branch state.
 
 ## Stable Diagnostics
 

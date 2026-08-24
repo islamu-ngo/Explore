@@ -764,7 +764,7 @@ public sealed class ReleasePreparationTests
                 "policy-v1",
                 "config-v1",
                 "trust-v1")
-                { ExpectedManifestDigest = Digest(Path.Combine(bundleRoot, "trusted-bundle.manifest.json")) };
+            { ExpectedManifestDigest = Digest(Path.Combine(bundleRoot, "trusted-bundle.manifest.json")) };
             TrustedBundleResult result = TrustedBundlePolicy.Verify(request);
             if (!result.IsValid || result.Bundle is null) throw new InvalidOperationException(result.Diagnostic);
             return result.Bundle;

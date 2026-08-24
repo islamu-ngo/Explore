@@ -40,7 +40,10 @@ Impact-Dispositions:
 Rules:
 
 - `Version` is SemVer without build metadata.
-- `Line` is the active `v<major>.<minor>` release line and must match `Version`.
+- `Line` is the version-line **label** `v<major>.<minor>` and must match `Version`. It is a
+  classification, not a Git ref: no branch name is derived from it, and attestation never
+  resolves `refs/heads/*`. Maintenance branches, when a backport actually needs one, are named
+  `release/<major>.<minor>`; `refs/heads/v*` is reserved for version tags and rejected.
 - `Release-Date` is fixed `yyyy-MM-dd`; canonical output must not use the current clock.
 - `Base-Stable-Tag` and `Previous-Published-Tag` are explicit `v<major>.<minor>.<patch>` tags.
 - `Release-Range` repeats those exact refs and fixes their full lowercase SHA-1 or SHA-256 object IDs. Short IDs, path-like refs, mismatches, missing fields, and unknown keys fail closed; Task 3.1 will resolve and verify the objects against Git.

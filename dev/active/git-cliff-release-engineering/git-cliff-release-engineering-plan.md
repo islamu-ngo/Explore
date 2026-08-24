@@ -3,20 +3,22 @@
 
 # Git-Cliff Release Engineering - Implementation Plan
 
-Last Updated: 2026-08-19 Europe/Brussels
+Last Updated: 2026-08-23 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Implement the CTO-reviewed git-cliff design for automated, highly curated changelogs on governed release lines while remaining independent of any Git hosting provider.
 - **Task directory:** `dev/active/git-cliff-release-engineering/`
-- **Planning status:** Draft; ready for user review before implementation.
+- **Planning status:** Implemented through Phase 8 except the operator-blocked Task 8.2 and the deliberately deferred Task 8.4.
 - **Primary intent:** `ci-cd-change` from `.agents/contract/intents.yaml`.
 - **Cross-cutting guardrail:** `ip-clean-room`, required by the CI/CD intent because git-cliff is a third-party build dependency.
 - **Planning skill:** `implementation-plan`.
+- **Islamic value-sensitive design:** [`islamic-value-sensitive-design/i-vsd-release-governance.md`](../../../islamic-value-sensitive-design/i-vsd-release-governance.md) — public-record truthfulness (Task 8.3), embargo disclosure timing (Task 3.3), contributor recognition versus privacy (Task 3.2), and offline tag verifiability as a stakeholder guarantee (Phase 7).
 - **Future implementation guidance:** `ip-clean-room`, `conventional-commit`, `.agents/rules/ip-clean-room.md`, and the amended `ci-cd-change` contract created by Task 1.1.
 - **Primary layers:** DevOps/build tooling, release governance, documentation, and tests. Product Domain, Application, Persistence, API, and Blazor runtime behavior are out of scope.
-- **Complexity:** XL. The work spans a trusted-tool bootstrap, Git object and signature validation, deterministic cross-platform serialization, SemVer and parallel release-line policy, restricted security-release handling, a third-party renderer, evidence integration, forge adapters, automated release-line provisioning, and multi-forge asset publishing.
-- **Estimated delivery:** Seven reviewable phases, approximately 14-20 focused engineering days plus release-key, artifact-store, and forge configuration approvals.
+- **Complexity:** XL. The work spans a trusted-tool bootstrap, Git object and signature validation, deterministic cross-platform serialization, SemVer and parallel release-line policy, restricted security-release handling, a third-party renderer, evidence integration, forge adapters, tag-anchored attestation, and a noncanonical publication projection.
+- **Estimated delivery:** Eight reviewable phases, approximately 16-22 focused engineering days plus release-key, artifact-store, and forge configuration approvals.
+- **Review status:** Senior CTO review on 2026-08-23 re-anchored release identity from mutable branch refs to immutable tag objects. Phase 7 delivered that correction: `GitReleaseValidationRequest` now accepts only immutable inputs, `releaseBranchRef` and `releaseLineHeadOid` are gone from `release-candidate.v1.json` and `release-evidence.v1.json`, `prepare` derives its range end from the checked-out `HEAD`, `verify-main` forward-port validation derives its target from the release tag, and a new `ReleaseRefNamespacePolicy` reserves `refs/heads/v*` for version tags while `release/<major>.<minor>` becomes the maintenance grammar.
 
 ### Contract drift discovered during planning
 
@@ -26,13 +28,25 @@ Last Updated: 2026-08-19 Europe/Brussels
 
 ISLAMU Event will gain a small, tested .NET release-engineering CLI that owns release policy and emits a sanitized, versioned `release-context.v1.json`. A pinned git-cliff binary will consume that context only to render Markdown. Final release attestation will run with a previously promoted release-engine bundle, not code or policy supplied by the candidate branch.
 
-The release model is:
+The release model is **tag-anchored**. A release is a signed annotated tag object, not a branch position:
 
-- `develop` remains the default integration branch and receives no continuously generated changelog.
-- `v<major>.<minor>` branches own release lines.
-- `main` identifies the exact commit of the newest stable release.
-- stable tags use `v<major>.<minor>.<patch>`; prereleases may use `-alpha.N`, `-beta.N`, or `-rc.N` under the policy defined in Phase 2.
-- every release ends at one reviewed preparation commit `B`; the release branch head, candidate attestation, signed tag target, committed release note, and stable `main` update all identify `B`.
+- **The tag is the release.** `refs/tags/v<major>.<minor>.<patch>` is the sole immutable release identity. Prereleases may use `-alpha.N`, `-beta.N`, or `-rc.N` under the policy defined in Phase 2. Every canonical fact about a release is reachable from the tag object alone: tag object ID, signer, target commit `B`, and the `release.yaml`, `summary.md`, `release-notes.md`, and `release-context.v1.json` committed at `B`.
+- **Branches are workspaces, never identity.** A branch is a place to build `B` and, later, a place to build the next patch. It carries no information that the tag does not already fix. Any branch on a released line is fully reconstructible with `git switch -c release/<major>.<minor> v<major>.<minor>.<patch>`, so it may be deleted and recreated without weakening any release.
+- **`develop`** remains the default integration branch and receives no continuously generated changelog.
+- **Maintenance lines are lazy.** No `release/<major>.<minor>` branch is created at release time. One is opened only when a backport to an already-released line is actually required, and its only legal source is a verified signed stable tag on that line. This keeps the ref namespace proportional to real maintenance demand instead of growing one permanent branch per minor version.
+- **`main` is a derived convenience pointer, not authority.** The newest stable release is a pure function of the tag set (the highest non-prerelease SemVer tag). `main` exists so that forge landing pages and shallow clones show released code, and it is verified as a fast-forward to that computed target. It is never an input to attestation, and it is never the answer to "which commit is release X".
+- Every release still ends at one reviewed preparation commit `B`, and the candidate attestation, signed tag target, and committed release note all identify `B`. The release-line branch head is deliberately **not** part of that identity set.
+
+### Attestation and mutation are separate authorities
+
+This split is the load-bearing correction of the model:
+
+| Concern | Reads | May read mutable refs |
+|---|---|---|
+| **Attestation** (`verify-candidate`, `verify-tag`, `verify-release`) | Tag object, commit `B`, tree contents at `B`, ancestry from the base tag | **No.** Reading `refs/heads/*` is a defect. |
+| **Mutation** (`verify-main`, adapter push/publish actions) | Observed remote ref plus the computed target | Yes, and only as an expected-old/expected-new compare-and-swap on the action itself. |
+
+The consequence is the property the whole workstream exists to provide: **any release can be re-verified, byte for byte, years later, on a clone that fetched only that tag** — with the line branch moved, deleted, or never created.
 
 Each canonical release note has three layers:
 
@@ -202,7 +216,10 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 
 1. Final release validation must never execute candidate-controlled code, templates, policy, or trust roots.
 2. Canonical generation must be provider-neutral, offline, and free of provider API tokens or metadata.
-3. The reviewed release commit, release-line head, signed tag target, committed note, and candidate evidence must identify the same full Git commit object `B`.
+3. The reviewed release commit, signed tag target, committed note, and candidate evidence must identify the same full Git commit object `B`. The release-line branch head is explicitly excluded from this identity set.
+3a. Attestation commands must resolve a release exclusively from immutable objects: the tag object, its target commit `B`, the tree at `B`, and ancestry from the recorded base tag. An attestation path that reads `refs/heads/*` is a defect, because it makes a valid past release unverifiable once the branch moves, is deleted, or was never fetched.
+3b. Compare-and-swap on a mutable ref is permitted only as a precondition of a mutating action (`main` fast-forward, adapter push). It must never be a precondition of verifying an existing release.
+3c. Release version tags own the `v*` ref glob. No branch may be named to match `refs/heads/v*`, so that no branch can ever become ambiguous with a version tag.
 4. git-cliff renders normalized context; it does not decide inclusion, impacts, grouping authority, version compatibility, tag selection, or release approval.
 5. `summary.md` is the only public narrative source. `release-notes.md` and tag text are generated from repository-owned sources and are not edited independently.
 6. Release policy, renderer config, git-cliff, trust roots, and the release engine are pinned inside a separately promoted trusted bundle.
@@ -282,19 +299,45 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 - **Consequences:** An operator-created `changelog-baseline-YYYY-MM-DD` tag marks the prospective cutover. `v0.1.0` is the first official release, capturing historical scope in `summary.md` and only release-line diffs in `release-notes.md`. Future releases (`v0.2.0`, `v1.0.0`) automate changelog diffs seamlessly.
 - **Files/layers affected:** `docs/releases/v0.1.0/`, `docs/releases/baselines/`, `BaselineCommand.cs`, `docs/RELEASE_POLICY.md`.
 
-### Decision 11: Automated `v<major>.<minor>` release line branch provisioning & preservation
+### Decision 11: Lazily opened `release/<major>.<minor>` maintenance branches, never eager provisioning
 
-- **Why:** A release line branch (`refs/heads/v<major>.<minor>`) must preserve the state of the release line for maintenance and hotfixes (e.g. `v0.1.1`) while `develop` continues integration.
-- **Alternatives considered:** Manual branch creation; one branch per patch tag (`release/v0.1.0`).
-- **Consequences:** An idempotent `cut-release-line` workflow provisions `v<major>.<minor>` branches from `develop` on demand, validates SemVer patterns, prevents force-push overwrites, and scaffolds `docs/releases/<version>/release.yaml`.
-- **Files/layers affected:** `.github/workflows/cut-release-line.yml`, `.ci/providers/forgejo-codeberg/cut-release-line.yml`, `docs/RELEASE_RUNBOOK.md`.
+This decision **supersedes** the earlier "automated `v<major>.<minor>` release line branch provisioning" design, which was rejected in the 2026-08-23 CTO review.
 
-### Decision 12: Multi-forge release publishing and complete asset orchestration
+- **Why:** A maintenance branch carries no information a tag does not already fix. `git switch -c release/0.1 v0.1.3` reconstructs it exactly, at any time, from immutable objects. Creating one permanent branch per minor release therefore buys nothing and costs a ref namespace that grows without bound — the failure mode visible in mature forge repositories that accumulate hundreds of branches against a much smaller, meaningful set of tags. Branch count should track *active maintenance demand*, which for a pre-v1 project is normally zero.
+- **Alternatives considered:**
+  - *Eager `v<major>.<minor>` branch cut from `develop` at release time (the rejected prior design).* Rejected twice over. It is **unsound**: a branch cut from `develop` after `B` was tagged contains commits that were never in the release, so any hotfix built on it ships unreviewed integration work under a patch version. It is also **unnecessary**, per the reconstruction argument above.
+  - *One branch per patch tag (`release/v0.1.0`).* Rejected: strictly worse ref growth for strictly less value than the tag already provides.
+  - *No maintenance branches at all.* Rejected only because a real backport needs somewhere to accumulate more than one commit before the next patch tag.
+- **Consequences:**
+  - Nothing is provisioned at release time. The default state after `v0.1.0` is: one tag, zero new branches.
+  - `open-maintenance-line` is an operator-invoked, idempotent runbook action. Its **only** legal source is a verified signed stable tag on the target line; `develop`, `main`, and arbitrary commits are rejected.
+  - The branch is named `release/<major>.<minor>` — no `v` prefix — so version tags keep sole ownership of the `v*` glob (Constraint 3c).
+  - The branch is disposable. Deleting a maintenance branch after its final patch is a supported, non-destructive cleanup, because every release on it remains fully verifiable from its tag.
+- **Files/layers affected:** `docs/RELEASE_RUNBOOK.md`, `docs/RELEASE_POLICY.md`, `eng/release/src/ISLAMU.ReleaseEngineering/GitRepositoryValidator.cs`, `ReleaseInputPolicy.cs`.
 
-- **Why:** Self-hosters and open-source contributors across GitHub, Codeberg/Forgejo, and Tangled need consistent release pages, automatic source code archives (`.zip` / `.tar.gz`), and verifiable enterprise evidence bundles.
-- **Alternatives considered:** Single-forge release script; manual release publishing.
-- **Consequences:** The trusted final lane automatically publishes canonical `release-notes.md` to GitHub, Codeberg, and Tangled release pages, attaches `release-evidence.v1.json`, `artifacts.sha256`, Docker container image digests, and SBOM, and links native forge `.zip`/`.tar.gz` source archives.
-- **Files/layers affected:** `.github/workflows/release-publish.yml`, `.ci/providers/**`, `.ci/scripts/generate-release-evidence-bundle.cs`.
+### Decision 12: Forge release pages are a noncanonical projection with drift detection, not a synchronized copy
+
+- **Why:** Self-hosters and contributors across GitHub, Codeberg/Forgejo, and Tangled benefit from populated release pages with archives and evidence. But a forge release body is **mutable, unsigned, and editable by any maintainer or by the forge itself**. Any acceptance criterion of the form "published bodies match canonical notes" is unenforceable by construction, and asserting it would make the weakest surface in the system look like an invariant.
+- **Alternatives considered:** Treat published bodies as canonical (rejected: unsigned mutable state cannot be release truth); refuse all publication (rejected: real ergonomic loss for self-hosters); best-effort publish with no verification (rejected: silent divergence is exactly the failure being guarded against).
+- **Consequences:**
+  - Publication is explicitly a **derived, noncanonical view**. Canonical truth remains the signed tag plus the notes committed at `B`.
+  - Each published page must carry the canonical `release-notes.md` hash and a pointer to the tag, so any reader can verify the page against the repository.
+  - A `report-publication-drift` check compares each published body against the canonical hash and **reports**; it does not attempt automated repair, and drift never invalidates the release.
+  - Assets (`release-evidence.v1.json`, `artifacts.sha256`, container image digests, SBOM) are attached because they are self-verifying; forge-generated `.zip`/`.tar.gz` archives are linked but never treated as reproducible artifacts.
+- **Files/layers affected:** `.ci/providers/**`, `.ci/release/adapter-contract.md`, `.ci/scripts/generate-release-evidence-bundle.cs`.
+
+### Decision 13: Attestation reads only immutable objects; mutation owns compare-and-swap
+
+- **Why:** The workstream's core promise is that a release can be verified offline, provider-independently, and indefinitely. That promise fails the moment verification depends on a ref that a later release is *supposed* to move. The current implementation resolves `refs/heads/<line>` inside `GitRepositoryValidator` and re-checks it in `CandidateCommand`, so `v0.1.0` stops verifying as soon as `v0.1.1` is prepared, and never verifies at all on a tag-only clone.
+- **Alternatives considered:** Record the branch head in the manifest and compare it later (rejected: still fails on a moved or absent branch, and the recorded value proves nothing a tag does not); relax the check to a warning (rejected: fail-open in a trust boundary).
+- **Consequences:** `verify-candidate` and `verify-tag` drop all `refs/heads/*` reads. Branch-head compare-and-swap survives only inside the mutating step — the `main` fast-forward proposal and adapter push preconditions — where a stale ref genuinely is a race.
+- **Files/layers affected:** `GitRepositoryValidator.cs`, `CandidateCommand.cs`, `TagCommand.cs`, `MainCommand.cs`, and their fixtures.
+
+### Decision 14: `main` is derived from tags and verified as drift, not stored as identity
+
+- **Why:** "Newest stable release" is already a total function of the tag set. Storing it additionally in a mutable branch creates a second value that can disagree with the first, and then requires its own race detection, backward-movement rules, and reconciliation task to keep the copy honest.
+- **Alternatives considered:** Drop `main` entirely (rejected: forge default-branch and shallow-clone ergonomics are real); keep `main` authoritative (rejected: it is the duplicate, not the source).
+- **Consequences:** `verify-main` computes the expected target from the highest reachable stable tag, then proposes a fast-forward with explicit expected-old and expected-new OIDs. It reports drift; it never defines which commit a release is. Prereleases and older-line patches continue to leave `main` untouched, but now because they do not change the computed newest-stable tag, not because of a separately maintained rule.
 
 ## 6. Implementation Phases
 
@@ -579,12 +622,12 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 - **Effort:** M
 - **Required Skills/Rules:** `ci-cd-change`, `ip-clean-room`.
 
-### Phase 6: Provider Adapters, Prospective Cutover, And Activation
+### Phase 6: Provider Adapters And Prospective Cutover
 
-- **Goal:** Expose one provider-neutral command contract, add the selected non-GitHub adapter, establish the signed baseline, and activate the release-only workflow without changing `develop` behavior.
+- **Goal:** Expose one provider-neutral command contract, add the selected forge adapters, and establish the signed prospective baseline. Activation moved to Phase 8 because it must dry-run the corrected tag-anchored model, not the superseded branch-anchored one.
 - **Depends on:** Phase 5 and maintainer selection of a forge before Task 6.1 finishes.
 - **Related skills/rules:** `ci-cd-change`, `ip-clean-room`, `conventional-commit`.
-- **Acceptance criteria:** Two adapters/local invocations can produce identical canonical checksums from the same Git objects; the signed non-release baseline is approved; release branches have always-present gates; `develop` remains free of generated changelog writes.
+- **Acceptance criteria:** Two adapters/local invocations can produce identical canonical checksums from the same Git objects; the signed non-release baseline is approved.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
@@ -620,74 +663,143 @@ The first bundle uses a documented genesis promotion: independent review, clean-
 - **Effort:** M
 - **Required Skills/Rules:** release policy ADR.
 
-#### Task 6.3: Activate Contributor And Release Gates Through An Advisory Dry Run
+> Task 6.3 (advisory activation dry run) moved to Task 8.1. It must exercise the corrected tag-anchored model delivered in Phase 7; running it against the superseded branch-anchored flow would certify the wrong invariants.
 
-- **Type:** modify/create
-- **Layer:** DevOps / Docs
-- **Files:** existing `docs/CONTRIBUTING.md`, `.agents/skills/conventional-commit/SKILL.md`, `docs/RELEASE_CHECKLIST.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, provider adapter definition, and architecture tests; new synthetic/advisory evidence under the active workstream as allowed by clean-room policy.
-- **Description:** Align contributor scopes, fragments, skip reasons, breaking metadata, and backport identity. Run the complete candidate-at-`B`, signed test tag, final evidence, and main-verification flow against a synthetic or disposable local repository first. Promote the release-branch check from advisory to required only after deterministic evidence and protected provider settings are recorded. Do not generate changelogs on ordinary `develop` pushes.
+> **Delivered addition (Task 8.3):** provider definitions gained a machine-checked `publicationWorkflows` field alongside `discoveryWorkflows`. Publication is a separate surface from adapter transport discovery, and stating its contract in prose alone would leave the weakest surface in the system unchecked. `.ci/release/provider-definition.schema.json` and `.ci/scripts/validate-release-provider-adapters.cs` now enforce trusted origin, canonical-hash and tag-reference presence, self-verifying assets, pinned actions, and an evidenced recorded no-op for providers without a release API.
+
+### Phase 7: Tag-Anchored Release Identity Correction
+
+- **Goal:** Remove mutable-branch reads from every attestation path so that any release verifies from its tag object alone, indefinitely, on a clone that fetched only that tag.
+- **Depends on:** Phase 5 (the code being corrected) and Phase 6 Task 6.1.
+- **Related skills/rules:** release policy ADR, `ci-cd-change`.
+- **Acceptance criteria:** A release verifies after its line branch has moved, after the branch has been deleted, and on a tag-only clone; branch compare-and-swap survives only in mutating steps; no branch may occupy `refs/heads/v*`.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** The correction is confined to the unreleased release engine and its policy docs. No published tag, ref, or release exists yet, so rollback is a revert of the owning commits.
+
+#### Task 7.1 (Red Phase): Author Failing Tag-Anchored Re-Verification Specifications
+
+- **Type:** create
+- **Layer:** Tests
+- **Files:** new `eng/release/tests/ISLAMU.ReleaseEngineering.Tests/TagAnchoredReVerificationTests.cs`; extend existing signed-tag and candidate fixtures.
+- **Description:** Author failing specification tests, before touching production code, that pin the durability property the model is supposed to have. Each test builds a disposable repository, produces and signs a release, then mutates the *branch* environment and requires verification to still succeed. These must fail against current `HEAD` for the documented reasons (`git_candidate_not_release_branch_head`, `git_missing_object:release_branch_head`), proving they test the defect and not the implementation.
 - **Acceptance Criteria:**
-  - [ ] All mandatory CTO verification cases are represented in release-engine or architecture fixtures.
-  - [ ] Required checks remain always present or have a documented no-op path.
-  - [ ] Release branch/tag/main protections and signer roles have retained provider settings evidence.
-  - [ ] The manual release checklist remains the approval source; automation removes no governance gate.
-- **Dependencies:** 6.1, 6.2.
+  - [ ] `verify-tag` and `verify-candidate` succeed for release `N` after release `N+1` has advanced the line branch.
+  - [ ] Both succeed after the line branch is deleted outright.
+  - [ ] Both succeed in a clone created with tag-only fetch, where `refs/heads/<line>` never existed.
+  - [ ] Both still fail closed on the real defects: wrong tag target, unsigned/unauthorized/recreated tag, note or context drift at `B`, non-ancestor base tag, non-linear range, and a terminal commit lacking the governed release-metadata skip.
+  - [ ] A branch named `v0.1` alongside tag `v0.1.0` is rejected by policy rather than resolved ambiguously.
+  - [ ] Cases are asserted in both SHA-1 and SHA-256 repositories.
+- **Dependencies:** 5.1, 5.2.
+- **Effort:** M
+- **Required Skills/Rules:** release policy ADR.
+
+#### Task 7.2 (Green Phase): Remove Branch Reads From Attestation
+
+- **Type:** modify
+- **Layer:** DevOps / Security
+- **Files:** existing `eng/release/src/ISLAMU.ReleaseEngineering/GitRepositoryValidator.cs`, `CandidateCommand.cs`, `TagCommand.cs`, `MainCommand.cs`.
+- **Description:** Split `GitReleaseValidationRequest` into an attestation request that accepts only immutable inputs (candidate OID, base tag ref, previous published tag ref, selected version, line label) and a separate mutation precondition that carries observed ref state. Delete `ReleaseBranchRef`/`ReleaseLineHeadOid` from the attestation path and from `release-candidate.v1.json`; delete the `git_candidate_not_release_branch_head` re-checks in `CandidateCommand` and the live line read in `MainCommand.ValidateForwardPort`. Replace the removed topology coverage with equivalent immutable checks: ancestry from the base tag, linearity of the range, terminal-commit contract at `B`, and the line label matching the selected version's major/minor.
+- **Acceptance Criteria:**
+  - [ ] No attestation code path invokes `rev-parse`, `for-each-ref`, or `merge-base` against `refs/heads/*`.
+  - [ ] `release-candidate.v1.json` and `release-evidence.v1.json` contain no branch ref or branch head OID field.
+  - [ ] Task 7.1 specifications pass; every pre-existing fail-closed case still fails closed.
+  - [ ] Forward-port validation derives its target from the release's own tag rather than the line branch.
+  - [ ] `verify-main` retains expected-old/expected-new compare-and-swap and still never pushes.
+- **Dependencies:** 7.1.
 - **Effort:** L
-- **Required Skills/Rules:** `conventional-commit`, `ci-cd-change`, `ip-clean-room`.
+- **Required Skills/Rules:** release policy ADR, trusted bundle contract.
 
-### Phase 7: Automated Release-Line Lifecycle, Multi-Forge Publishing, And Asset Orchestration
+#### Task 7.3: Re-Baseline Ref Namespace, Policy, And Runbook
 
-- **Goal:** Automate `v<major>.<minor>` release-line branch provisioning, multi-forge release page publishing (GitHub, Codeberg/Forgejo, Tangled), and the durable asset packaging pipeline (`.zip`, `.tar.gz`, `release-evidence.v1.json`, container digests, checksums).
-- **Depends on:** Phase 6.
+- **Type:** modify
+- **Layer:** Docs / DevOps
+- **Files:** existing `docs/RELEASE_POLICY.md`, `docs/RELEASE_RUNBOOK.md`, `docs/adr/ADR-025-provider-neutral-release-governance.md`, `docs/CI_CD_GOVERNANCE.md`, `eng/release/src/ISLAMU.ReleaseEngineering/ReleaseInputPolicy.cs`, `.ci/release/adapter-contract.md`.
+- **Description:** Correct the normative statement in `docs/RELEASE_POLICY.md` that currently requires the release-line head to equal `B`. Rename the branch grammar from `v<major>.<minor>` to `release/<major>.<minor>`, keep the `Line` descriptor field as a pure version-line *label* rather than a branch reference, and record the protected-ref rule reserving `refs/heads/v*` against creation. Document in the runbook that maintenance branches are opened on demand from a verified tag and may be deleted afterwards.
+- **Acceptance Criteria:**
+  - [ ] `docs/RELEASE_POLICY.md` states that the tag object is the sole release identity and that attestation must not read mutable refs.
+  - [ ] The `Line` descriptor field is documented as a label; nothing derives a branch ref from it.
+  - [ ] A protected-ref rule rejecting `refs/heads/v*` is recorded with the provider settings evidence.
+  - [ ] The runbook documents opening and deleting a maintenance line, including the "reconstruct from tag" command.
+  - [ ] ADR-025 records the superseded branch-anchored model and why it was replaced.
+- **Dependencies:** 7.2.
+- **Effort:** M
+- **Required Skills/Rules:** release policy ADR, `ci-cd-change`.
+
+### Phase 8: Activation, First Governed Release, And Publication Projection
+
+- **Goal:** Dry-run the corrected model, ship the first governed release `v0.1.0` from the runbook, and only then automate publication and lazy maintenance lines.
+- **Depends on:** Phase 7.
 - **Related skills/rules:** `ci-cd-change`, `conventional-commit`, provider adapter contract.
-- **Acceptance criteria:** On-demand release-line branch creation is automated and idempotent; forge release pages ingest canonical Markdown notes; release assets include verified cryptographic evidence and checksum manifests; standard forge source archives (`.zip` / `.tar.gz`) are linked.
+- **Acceptance criteria:** The synthetic flow passes end to end against tag-anchored verification; `v0.1.0` exists as a signed tag with deterministic three-layer notes and is verifiable offline without any branch; publication is a reporting projection that cannot alter canonical checksums.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** If automated branch provisioning or multi-forge publishing fails, operators retain manual branch-cut and tag-verification capabilities as documented in `docs/RELEASE_RUNBOOK.md`.
+- **Rollback / failure handling:** Publication and maintenance-line automation are additive and independently disableable. If either fails, the release itself is unaffected because it is already closed by its signed tag.
 
-#### Task 7.1: Automated Release-Line Branch Provisioning (`cut-release-line`)
+#### Task 8.1: Activate Contributor And Release Gates Through An Advisory Dry Run
 
-- **Type:** create/modify
-- **Layer:** DevOps / CI-CD
-- **Files:** new `.github/workflows/cut-release-line.yml`, `.ci/providers/forgejo-codeberg/cut-release-line.yml`, updates to `docs/RELEASE_RUNBOOK.md`.
-- **Description:** Implement an idempotent workflow to provision `v<major>.<minor>` release-line branches from `develop` on demand. Validate that target versions strictly conform to `LinePattern` (`^v[0-9]+\.[0-9]+$`), reject invalid or existing remote branches without force-pushing, and scaffold the initial release directory metadata (`docs/releases/<version>/release.yaml`).
+- **Type:** modify/create
+- **Layer:** DevOps / Docs
+- **Files:** existing `docs/CONTRIBUTING.md`, `.agents/skills/conventional-commit/SKILL.md`, `docs/RELEASE_CHECKLIST.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, provider adapter definitions, architecture tests; new synthetic/advisory evidence under the active workstream as allowed by clean-room policy.
+- **Description:** Align contributor scopes, fragments, skip reasons, breaking metadata, and backport identity. Run the complete candidate-at-`B`, signed test tag, final evidence, and main-verification flow against a synthetic or disposable local repository, **including the Task 7.1 durability cases**. Promote checks from advisory to required only after deterministic evidence and protected provider settings are recorded. Do not generate changelogs on ordinary `develop` pushes.
 - **Acceptance Criteria:**
-  - [ ] Workflow accurately computes `v<major>.<minor>` from SemVer input.
-  - [ ] Existing remote branches are detected safely without clobbering or overwriting history.
-  - [ ] Scaffolding creates compliant `release.yaml` structure without writing unreviewed notes to `develop`.
-- **Dependencies:** 6.1, 6.3.
-- **Effort:** M
-- **Required Skills/Rules:** `ci-cd-change`.
-
-#### Task 7.2: Multi-Forge Automated Release Publishing And Asset Attachment
-
-- **Type:** create/modify
-- **Layer:** DevOps / CI-CD
-- **Files:** new `.github/workflows/release-publish.yml`, `.ci/providers/forgejo-codeberg/release-publish.yml`, `.ci/providers/tangled/`, `docs/RELEASE_RUNBOOK.md`.
-- **Description:** Implement the final release publishing automation across GitHub, Forgejo/Codeberg, and Tangled. Feed generated `release-notes.md` into release descriptions, attach canonical assets (`release-evidence.v1.json`, `artifacts.sha256`, published container image digests, SBOM), and ensure forge-provided source archives (`Source code .zip` / `.tar.gz`) are linked.
-- **Acceptance Criteria:**
-  - [ ] Published release bodies match canonical `release-notes.md` across all configured forges.
-  - [ ] Attached assets include `release-evidence.v1.json`, `artifacts.sha256`, and Docker image digests.
-  - [ ] Publication runs only in the trusted final lane and cannot be triggered by unprivileged candidate code.
-- **Dependencies:** 6.1, 7.1.
+  - [ ] All mandatory verification cases are represented in release-engine or architecture fixtures.
+  - [ ] The dry run re-verifies an earlier synthetic release after the line branch has moved and after it has been deleted.
+  - [ ] Required checks remain always present or have a documented no-op path.
+  - [ ] Tag/`main` protections, the `refs/heads/v*` rejection rule, and signer roles have retained provider settings evidence.
+  - [ ] The manual release checklist remains the approval source; automation removes no governance gate.
+- **Dependencies:** 6.2, 7.3.
 - **Effort:** L
-- **Required Skills/Rules:** `ci-cd-change`, provider adapter contract.
+- **Required Skills/Rules:** `conventional-commit`, `ci-cd-change`, `ip-clean-room`.
 
-#### Task 7.3: First Governed Milestone (`v0.1.0`) Execution And Verification
+#### Task 8.2: First Governed Milestone (`v0.1.0`) Execution And Verification
 
 - **Type:** operator action / verify
 - **Layer:** Operations / Governance
-- **Files:** `docs/releases/v0.1.0/release.yaml`, `docs/releases/v0.1.0/summary.md`, `docs/releases/baselines/changelog-baseline-*.v1.json`, `docs/RELEASE_RUNBOOK.md`.
-- **Description:** Execute the prospective baseline cutover (`changelog-baseline-YYYY-MM-DD`) on the `v0.1` release line, author the comprehensive 11-month milestone summary for `v0.1.0`, run `prepare`, `verify-candidate`, `verify-tag`, and `verify-main`, and verify published release pages and asset bundles.
+- **Files:** new `docs/releases/v0.1.0/release.yaml`, `docs/releases/v0.1.0/summary.md`, `docs/releases/baselines/changelog-baseline-*.v1.json`; existing `docs/RELEASE_RUNBOOK.md`.
+- **Description:** Execute the prospective baseline cutover, author the milestone summary for `v0.1.0`, and run `prepare`, `verify-candidate`, `verify-tag`, and `verify-main` from the runbook. **No publication automation and no maintenance branch are required to complete this task** — the release is closed by its signed tag.
 - **Acceptance Criteria:**
   - [ ] `changelog-baseline-YYYY-MM-DD` is verified and recorded in baseline evidence.
-  - [ ] `v0.1.0` release preparation produces deterministic `release-notes.md` with all 3 layers.
-  - [ ] Release candidate `B` passes full attestation without errors.
-  - [ ] GitHub, Codeberg, and Tangled release pages display verified notes and assets.
-- **Dependencies:** 6.2, 7.1, 7.2.
+  - [ ] `v0.1.0` preparation produces deterministic `release-notes.md` with all three layers.
+  - [ ] Candidate `B` passes full attestation with no branch input.
+  - [ ] The tag re-verifies in a fresh tag-only clone, offline, with no forge API involved.
+  - [ ] No `release/0.1` branch is created, proving lazy maintenance lines are genuinely optional.
+- **Dependencies:** 6.2, 8.1.
 - **Effort:** M
 - **Required Skills/Rules:** `conventional-commit`, release policy ADR.
+
+#### Task 8.3: Publication Projection And Drift Reporting
+
+- **Type:** create/modify
+- **Layer:** DevOps / CI-CD
+- **Files:** new `.github/workflows/release-publish.yml`, `.ci/providers/forgejo-codeberg/release-publish.yml`, `.ci/providers/tangled/` publication definition; existing `docs/RELEASE_RUNBOOK.md`, `.ci/release/adapter-contract.md`.
+- **Description:** Publish the canonical `release-notes.md` to GitHub, Forgejo/Codeberg, and Tangled release pages as an explicitly noncanonical projection, attach self-verifying assets, and link forge-provided source archives. Add `report-publication-drift`, which compares each published body against the canonical notes hash and reports.
+- **Acceptance Criteria:**
+  - [ ] Every published page carries the canonical notes hash and its tag reference.
+  - [ ] Attached assets include `release-evidence.v1.json`, `artifacts.sha256`, container image digests, and SBOM.
+  - [ ] Publication runs only in the trusted final lane and cannot be triggered by unprivileged candidate code.
+  - [ ] Drift is reported, never auto-repaired, and never invalidates the release.
+  - [ ] A forge outage or a provider lacking release APIs degrades to a recorded no-op with operator evidence, not a failed release.
+- **Dependencies:** 6.1, 8.2.
+- **Effort:** L
+- **Required Skills/Rules:** `ci-cd-change`, provider adapter contract.
+
+#### Task 8.4 (Deferred Until Demanded): Lazy Maintenance-Line Opening
+
+- **Type:** create/modify
+- **Layer:** DevOps / CI-CD
+- **Files:** new `open-maintenance-line` runbook procedure and optional provider workflow; existing `docs/RELEASE_RUNBOOK.md`.
+- **Description:** Implement the idempotent `open-maintenance-line` action described in Decision 11. **Do not implement this task until a real backport to an already-released line is required.** Until then the documented manual command in the runbook is the complete solution.
+- **Acceptance Criteria:**
+  - [ ] The only accepted source is a verified signed stable tag on the target line; `develop`, `main`, and arbitrary commits are rejected.
+  - [ ] The created branch is named `release/<major>.<minor>` and never matches `refs/heads/v*`.
+  - [ ] Re-running against an existing branch is a no-op and never force-updates.
+  - [ ] Deleting the branch afterwards leaves every release on that line fully verifiable.
+- **Dependencies:** 8.2, plus a real backport requirement.
+- **Effort:** M
+- **Required Skills/Rules:** `ci-cd-change`.
 
 ## 7. Testing Strategy
 
@@ -701,6 +813,8 @@ Required case families include:
 - Markdown/HTML/control/bidi/length attacks and short-ID collisions;
 - candidate engine/config/policy/trust changes that cannot affect trusted attestation;
 - candidate `B` preservation, branch movement races, squash/merge/rebase replacement, and exact regeneration;
+- **tag-anchored durability:** re-verifying release `N` after release `N+1` moved the line branch, after the branch was deleted, and in a tag-only clone where the branch never existed;
+- **branch/tag namespace safety:** a branch matching `refs/heads/v*` is rejected rather than resolved ambiguously;
 - authorized/unauthorized/replaced signed tags and candidate-to-final evidence chaining;
 - newest-stable versus older-line `main` behavior;
 - Linux/Windows byte equality and different wall clocks;
@@ -800,6 +914,11 @@ No background process, metrics endpoint, trace pipeline, or health check is just
 | Selected forge lacks required protected-ref or artifact features | Unknown | High | Keep core local/offline; record compensating control before adapter activation | Provider capability assessment fails | 6.1 |
 | Signing key is lost or revoked | Low | Critical | Rotation history, multiple authorized release roles, explicit revocation procedure | Signer verification/availability failure | 3.3 |
 | Dirty worktree causes unrelated edits to be overwritten | High in current checkout | High | Implementation agents touch only task-owned paths and record unrelated dirty files in each handoff | `git status --short` drift outside scope | All phases |
+| Past release becomes unverifiable once its line branch moves, is deleted, or was never fetched | Certain in current code | Critical | Attestation reads only tag object, `B`, tree at `B`, and ancestry; branch CAS confined to mutating steps | `git_candidate_not_release_branch_head` or `git_missing_object:release_branch_head` on a valid release | 7.1, 7.2 |
+| Branch named `v0.1` becomes ambiguous with tag `v0.1` | Low but permanent once it happens | High | Reserve `refs/heads/v*` by protected-ref rule; maintenance branches use `release/<major>.<minor>` | `git_ambiguous_ref` diagnostic; forge ref-picker confusion | 7.3 |
+| Maintenance branch cut from `develop` ships unreleased work under a patch version | Medium under prior design | Critical | Only a verified signed stable tag may source a maintenance line | Branch base is not the tag's target commit | 8.4 |
+| Ref namespace grows one permanent branch per minor release | High under prior design | Medium | Lazy opening on real backport demand; branches are disposable and tag-reconstructible | Branch count outgrowing active maintenance lines | 8.4 |
+| Published forge release body silently diverges from canonical notes | Medium | Medium | Publication is a declared noncanonical projection carrying the canonical hash; drift is reported | `report-publication-drift` mismatch | 8.3 |
 
 ## 14. Success Metrics And Definition Of Done
 
@@ -808,16 +927,19 @@ The workstream is complete only when:
 1. `release-context.v1.json`, `release-notes.md`, candidate manifest, tag message, and final evidence are deterministic for the same inputs.
 2. Windows and Linux fixture checksums match.
 3. Candidate release-engine/config/policy/trust changes cannot influence authoritative attestation until separately promoted.
-4. Commit `B`, release-line head, signed tag target, committed note, and candidate/final evidence agree on the full object ID.
+4. Commit `B`, signed tag target, committed note, and candidate/final evidence agree on the full object ID. The release-line branch head is excluded by design.
+4a. Every released tag re-verifies byte for byte after its line branch has moved, after that branch has been deleted, and in a clone that fetched only the tag. No attestation path reads `refs/heads/*`.
+4b. No branch occupies `refs/heads/v*`, so a version tag can never be shadowed by a branch of the same name.
 5. Every breaking/high-impact change is represented and no breaking change can be skipped.
 6. The selected version satisfies ISLAMU SemVer, prerelease, and release-line policy independently of git-cliff.
 7. An authorized SSH signature and immutable tag object ID are verified locally without forge APIs.
-8. `main` can advance only by normal fast-forward to the newest stable tag commit and never for prereleases or older-line patches.
+8. `main` can advance only by normal fast-forward to the commit computed from the highest reachable stable tag, and never for prereleases or older-line patches. `main` is reported as drift against that computed target, never consulted as release identity.
 9. Canonical checksums are identical through the local reference and selected non-GitHub adapter.
 10. Existing evidence bundling consumes one canonical release identity rather than creating another.
 11. `develop` receives no generated Unreleased changelog writes.
 12. The exact git-cliff dependency, license obligations, checksums, notices, and promotion evidence are retained.
-13. All seven phase gates pass, task/context ledgers are current, and the final release runbook is usable without GitHub-specific assumptions.
+13. All eight phase gates pass, task/context ledgers are current, and the final release runbook is usable without GitHub-specific assumptions.
+14. A dated `islamic-value-sensitive-design/i-vsd-release-governance.md` is linked from `plan.md`, `context.md`, and `tasks.md`, covering public-record truthfulness, embargo disclosure timing, and the contributor-attribution trade-off.
 
 ## 15. Implementation Agent Contract - KEEP DEV DOCS CURRENT
 
@@ -850,4 +972,8 @@ Docs updated: tasks yes/no; context/plan updated or unchanged with reason
 
 ## 17. Potential Risks & Unknowns
 
-The hardest part is the trusted release-engine bootstrap, not Markdown generation. A final job is trustworthy only if the executable, policy, renderer config, git-cliff pin, and allowed signers all come from a promotion boundary the candidate cannot rewrite. The first implementation review should challenge that boundary before investing in templates or forge YAML. The only future user decision that blocks the last phase is which non-GitHub forge will host the first adapter; it does not block Phases 1-5.
+The hardest part is the trusted release-engine bootstrap, not Markdown generation. A final job is trustworthy only if the executable, policy, renderer config, git-cliff pin, and allowed signers all come from a promotion boundary the candidate cannot rewrite. The first implementation review should challenge that boundary before investing in templates or forge YAML.
+
+The second-hardest part, and the one the 2026-08-23 CTO review caught after implementation had already shipped 16 tasks, is subtler: **it is easy to build a system with perfect immutable evidence and then gate that evidence behind a mutable ref.** Phases 1-6 produce genuinely deterministic, signed, provider-neutral artifacts — and then `GitRepositoryValidator` refuses to confirm them unless a branch happens to still point at the right commit. Durability of verification is a distinct property from determinism of generation, and it has to be tested by *mutating the environment after the fact*, which no amount of golden-fixture testing will surface.
+
+The remaining user decisions are: approval of the first governed version, real signer principals and custody, and whether any maintenance line is ever needed (Task 8.4 stays unbuilt until one is).

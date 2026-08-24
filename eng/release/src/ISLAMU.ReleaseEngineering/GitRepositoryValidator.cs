@@ -1,5 +1,5 @@
 // ABOUTME: Validates release Git objects through bounded provider-neutral Git CLI calls.
-// ABOUTME: Resolves descriptor-selected tags and preparation refs without mutating repository state.
+// ABOUTME: Reads only immutable tag objects, commits, and ancestry; never resolves a mutable branch ref.
 
 using System.Diagnostics;
 using System.Globalization;
@@ -7,15 +7,19 @@ using System.Text.RegularExpressions;
 
 namespace ISLAMU.ReleaseEngineering;
 
+/// <summary>
+/// Attestation inputs. Every member names an object that cannot change once written: a full candidate
+/// object ID, annotated tag refs under <c>refs/tags/</c>, and the version-line label the release claims.
+/// A branch ref is deliberately absent — a release must stay verifiable after the branch that carried
+/// its commits has moved on, been deleted, or never existed in the consumer's clone.
+/// </summary>
 public sealed record GitReleaseValidationRequest(
     string RepositoryPath,
     string ReleaseLine,
     string SelectedVersion,
     string BaseStableRef,
     string PreviousPublishedRef,
-    string ReleaseBranchRef,
-    string CandidateRef,
-    string? StableMainRef = null,
+    string CandidateOid,
     IReadOnlyDictionary<string, string>? ExpectedTagObjectOids = null);
 
 public sealed record GitReleaseValidationResult(
@@ -32,9 +36,7 @@ public sealed record GitRepositoryObjectIdentity(
     string PreviousPublishedTag,
     string PreviousPublishedCommitOid,
     string PreviousPublishedTagObjectOid,
-    string ReleaseBranchHeadOid,
-    string CandidateOid,
-    string? StableMainOid);
+    string CandidateOid);
 
 public static class GitRepositoryValidator
 {
@@ -79,14 +81,8 @@ public static class GitRepositoryValidator
 
         bool promisorRepository = ValidateRepositoryState(git, diagnostics);
         bool selectedValid = ParseSelected(request, diagnostics, out SemanticVersion selected);
-        if (!string.Equals(request.ReleaseBranchRef, $"refs/heads/{request.ReleaseLine}", StringComparison.Ordinal))
-        {
-            diagnostics.Add("git_release_branch_line_mismatch");
-        }
 
-        string candidateOid = ResolveCommit(git, request.CandidateRef, oidLength, "candidate", diagnostics, requireFullOid: true);
-        string releaseHeadOid = ResolveCommit(git, request.ReleaseBranchRef, oidLength, "release_branch_head", diagnostics, requireFullOid: false);
-        string? stableMainOid = request.StableMainRef is null ? null : ResolveCommit(git, request.StableMainRef, oidLength, "stable_main", diagnostics, requireFullOid: false);
+        string candidateOid = ResolveCandidate(git, request.CandidateOid, oidLength, diagnostics);
         GitResolvedTag? baseStable = ResolveAnnotatedTag(git, request.BaseStableRef, oidLength, diagnostics);
         GitResolvedTag? previousPublished = ResolveAnnotatedTag(git, request.PreviousPublishedRef, oidLength, diagnostics);
 
@@ -94,16 +90,6 @@ public static class GitRepositoryValidator
         ValidateExpectedTagObject(request, previousPublished, oidLength, diagnostics);
         bool baseline = IsBaselineTagRef(request.BaseStableRef) || IsBaselineTagRef(request.PreviousPublishedRef);
         ValidateDescriptorVersions(request, selectedValid ? selected : default, baseStable, previousPublished, diagnostics);
-
-        if (candidateOid.Length != 0 && releaseHeadOid.Length != 0 && !string.Equals(candidateOid, releaseHeadOid, StringComparison.Ordinal))
-        {
-            diagnostics.Add("git_candidate_not_release_branch_head");
-        }
-
-        if (candidateOid.Length != 0 && stableMainOid is not null && stableMainOid.Length != 0 && !string.Equals(candidateOid, stableMainOid, StringComparison.Ordinal))
-        {
-            diagnostics.Add("git_candidate_not_stable_main_head");
-        }
 
         if (candidateOid.Length != 0 && previousPublished is not null)
         {
@@ -128,7 +114,7 @@ public static class GitRepositoryValidator
 
         if (candidateOid.Length != 0 && baseline)
         {
-            ValidateNoReachableStableTags(git, request, candidateOid, oidLength, diagnostics);
+            ValidateNoReachableStableTags(git, request, selectedValid ? selected : null, candidateOid, oidLength, diagnostics);
         }
 
         if (candidateOid.Length != 0 && selectedValid && previousPublished is not null && previousPublished.Version is not null)
@@ -155,9 +141,7 @@ public static class GitRepositoryValidator
             previousPublished.Name,
             previousPublished.CommitOid,
             previousPublished.TagObjectOid,
-            releaseHeadOid,
-            candidateOid,
-            stableMainOid);
+            candidateOid);
         return new GitReleaseValidationResult(true, identity, []);
     }
 
@@ -263,7 +247,15 @@ public static class GitRepositoryValidator
         }
     }
 
-    private static void ValidateNoReachableStableTags(Git git, GitReleaseValidationRequest request, string candidateOid, int oidLength, List<string> diagnostics)
+    /// <summary>
+    /// A baseline lower bound is legal only before any governed stable SemVer release exists.
+    /// The release currently being closed is explicitly not such a release: once its own tag is
+    /// created, <c>verify-tag</c> re-runs this validation, and counting that tag would make the
+    /// first governed release impossible to close and impossible to re-verify afterwards. The tag
+    /// is skipped only when it names the selected version *and* points at the candidate commit, so
+    /// a same-named tag on any other commit still fails closed.
+    /// </summary>
+    private static void ValidateNoReachableStableTags(Git git, GitReleaseValidationRequest request, SemanticVersion? selected, string candidateOid, int oidLength, List<string> diagnostics)
     {
         string output = git.RunScalar(diagnostics, "git_tag_scan_failed", "for-each-ref", "--format=%(refname)", "refs/tags");
         foreach (string tagRef in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -277,10 +269,17 @@ public static class GitRepositoryValidator
             }
 
             GitResolvedTag? resolved = ResolveAnnotatedTag(git, tagRef, oidLength, diagnostics);
-            if (resolved is not null && git.IsSuccess("merge-base", "--is-ancestor", resolved.CommitOid, candidateOid))
+            if (resolved is null || !git.IsSuccess("merge-base", "--is-ancestor", resolved.CommitOid, candidateOid))
             {
-                diagnostics.Add($"git_baseline_stable_tag_exists:{tag}");
+                continue;
             }
+
+            if (selected is not null && version.CompareTo(selected.Value) == 0 && string.Equals(resolved.CommitOid, candidateOid, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            diagnostics.Add($"git_baseline_stable_tag_exists:{tag}");
         }
     }
 
@@ -305,7 +304,7 @@ public static class GitRepositoryValidator
         }
 
         string tagObjectOid = ResolveObject(git, tagRef, oidLength, $"tag:{tag}", diagnostics);
-        string commitOid = ResolveCommit(git, tagRef, oidLength, $"tag_target:{tag}", diagnostics, requireFullOid: false);
+        string commitOid = ResolveTagCommit(git, tagRef, oidLength, $"tag_target:{tag}", diagnostics);
         SemanticVersion? resolvedVersion = TryParseTagRef(tagRef, out _, out SemanticVersion parsed) ? parsed : null;
         return tagObjectOid.Length == 0 || commitOid.Length == 0 ? null : new GitResolvedTag(tag, resolvedVersion, commitOid, tagObjectOid);
     }
@@ -368,29 +367,22 @@ public static class GitRepositoryValidator
 
     private static bool IsBaselineTagRef(string tagRef) => TryParseBaselineTagRef(tagRef, out _);
 
-    private static string ResolveCommit(Git git, string reference, int oidLength, string label, List<string> diagnostics, bool requireFullOid)
+    private static string ResolveCandidate(Git git, string candidateOid, int oidLength, List<string> diagnostics)
     {
-        if (IsAmbiguous(git, reference))
+        if (!IsFullOid(candidateOid, oidLength))
         {
-            diagnostics.Add($"git_ambiguous_ref:{reference}");
-        }
-
-        if (requireFullOid && !IsFullOid(reference, oidLength))
-        {
-            diagnostics.Add($"git_object_id_not_full:{label}");
+            diagnostics.Add("git_object_id_not_full:candidate");
             return string.Empty;
         }
 
-        return ResolveObject(git, $"{reference}^{{commit}}", oidLength, label, diagnostics);
+        return ResolveObject(git, $"{candidateOid}^{{commit}}", oidLength, "candidate", diagnostics);
     }
+
+    private static string ResolveTagCommit(Git git, string tagRef, int oidLength, string label, List<string> diagnostics) =>
+        ResolveObject(git, $"{tagRef}^{{commit}}", oidLength, label, diagnostics);
 
     private static string ResolveObject(Git git, string reference, int oidLength, string label, List<string> diagnostics)
     {
-        if (IsAmbiguous(git, reference))
-        {
-            diagnostics.Add($"git_ambiguous_ref:{reference}");
-        }
-
         string oid = git.RunScalar(diagnostics, $"git_missing_object:{label}", "rev-parse", "--verify", "--end-of-options", reference);
         if (oid.Length == 0)
         {
@@ -404,17 +396,6 @@ public static class GitRepositoryValidator
         }
 
         return oid;
-    }
-
-    private static bool IsAmbiguous(Git git, string reference)
-    {
-        if (reference.StartsWith("refs/", StringComparison.Ordinal) || IsFullOid(reference, 40) || IsFullOid(reference, 64))
-        {
-            return false;
-        }
-
-        string output = git.RunScalar([], string.Empty, "for-each-ref", "--format=%(refname)", $"refs/heads/{reference}", $"refs/tags/{reference}");
-        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal).Skip(1).Any();
     }
 
     private static bool IsObservedOid(string value) => value.Length is >= 32 and <= 128 && value.Length % 2 == 0 && value.All(IsLowerHex);

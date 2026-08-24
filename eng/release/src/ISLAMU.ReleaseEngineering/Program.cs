@@ -66,9 +66,19 @@ public static class Program
             return BaselineCommand.Run(args, output, Environment.CurrentDirectory, ProcessTimeout);
         }
 
+        if (string.Equals(args[0], "open-maintenance-line", StringComparison.Ordinal))
+        {
+            return MaintenanceLineCommand.Run(args, output, Environment.CurrentDirectory, GetPlatform(), ProcessTimeout);
+        }
+
+        if (string.Equals(args[0], "activate-trust", StringComparison.Ordinal))
+        {
+            return TrustActivationCommand.Run(args, output, Environment.CurrentDirectory);
+        }
+
         if (!string.Equals(args[0], "verify-tools", StringComparison.Ordinal))
         {
-            output.WriteLine("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, verify-baseline, and verify-tools");
+            output.WriteLine("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, verify-baseline, open-maintenance-line, activate-trust, and verify-tools");
             return UsageError;
         }
 
@@ -232,7 +242,7 @@ public static class Program
 
     private static int WriteUsage(TextWriter output)
     {
-        output.WriteLine("usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid> | verify-baseline <baseline-ref> <target-oid> <tag-object-oid>");
+        output.WriteLine("usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid> | verify-baseline <baseline-ref> <target-oid> <tag-object-oid> | open-maintenance-line <release-directory> <tag-object-oid> | activate-trust --release-principal <name> --release-key <public-key> --promotion-principal <name> --promotion-key <public-key> --valid-from <yyyy-MM-dd> --valid-until <yyyy-MM-dd> --output <trust-directory> [--replace]");
         return UsageError;
     }
 

@@ -1,0 +1,68 @@
+# ABOUTME: Publishes the canonical release notes to the GitHub release page as a noncanonical projection.
+# ABOUTME: Runs only in the trusted environment-approved final lane and reports publication drift without repairing it.
+
+name: Release Publish Projection
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Governed release version, for example 1.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-publish:
+    name: release-publish
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout trusted default branch only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # A forge release body is mutable, unsigned, and editable by any maintainer or by the forge
+      # itself. It can therefore never be release truth. Every page states the canonical notes hash
+      # and the tag it projects so a reader can check the page against the repository.
+      - name: Declare the publication projection contract
+        run: |
+          printf '%s\n' 'release-publish: noncanonical projection of the signed tag'
+          printf '%s\n' 'page-header: canonical-notes-sha256 and tag-reference are required on every published body'
+          printf '%s\n' 'assets: release-evidence.v1.json artifacts.sha256 container-image-digests sbom'
+          printf '%s\n' 'canonical-truth: refs/tags/v<version> plus release-notes.md committed at B'
+
+      - name: Report publication drift without repairing it
+        env:
+          RestorePackagesWithLockFile: "false"
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          case "$RELEASE_VERSION" in
+            *[!0-9.a-z-]* | "" )
+              printf '%s\n' 'release-publish: rejected, version input is not a governed version'
+              exit 1
+              ;;
+          esac
+          if [ ! -f "publication-projection.v1.json" ]; then
+            printf '%s\n' 'release-publish: recorded-no-op, no publication projection supplied'
+            exit 0
+          fi
+          dotnet run --file .ci/scripts/report-publication-drift.cs -- \
+            --release-directory "docs/releases/$RELEASE_VERSION" \
+            --projections publication-projection.v1.json \
+            --output publication-drift

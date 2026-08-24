@@ -488,7 +488,7 @@ public sealed class TrustedReleasePolicyTests
             "policy-v1",
             "config-v1",
             "trust-v1")
-            { ExpectedManifestDigest = ManifestDigest };
+        { ExpectedManifestDigest = ManifestDigest };
 
         public TrustedBundleResult Verify(TrustedBundleVerificationRequest? request = null, string? trustedPromotionRootPath = null)
         {
