@@ -463,6 +463,8 @@ Listmonk integration API.
 
 Quartz `integration-sync-drain` uses the existing `IntegrationSyncProcessor` section; the name is retained to avoid a configuration rename, not because a hosted processor still exists. `Enabled` registers or removes the owned job, `PollingIntervalSeconds` controls its interval, `BatchSize` bounds one pass, `ProcessingLeaseTimeoutSeconds` controls stale-claim recovery, and the retry-delay/max-attempt keys remain Infrastructure state-machine controls. An unkeyed Listmonk request with an uncertain outcome is parked and requires evidence-based operator recovery; changing retry settings never makes it eligible for blind replay.
 
+`IntegrationSyncProcessor:HealthDueWarningThreshold` defaults to `1000`; `HealthStaleWarningThreshold` and `HealthAmbiguousWarningThreshold` default to `1`. These positive bounded thresholds drive the aggregate `queue-drains` readiness check and never expose tenant, subscriber, or provider identity.
+
 Static no-TMS/fallback bundles are written to
 `{ContentRoot}/App_Data/Localization/Bundles/{code}.json`. That path is local
 filesystem storage unless the deployment mounts it to a shared persistent
@@ -565,6 +567,9 @@ ATProto login and ATProto Events are independent. The effective administrator ca
 | `Atproto:PdsSync:BatchSize` | `20` | 1–100 fenced claims per pass. |
 | `Atproto:PdsSync:MaxConcurrency` | `10` | 1 through the configured batch size. |
 | `Atproto:PdsSync:LeaseDurationSeconds` | `90` | 30–900 seconds. Expired processing claims are reclaimable. |
+| `Atproto:PdsSync:HealthDueWarningThreshold` | `1000` | Aggregate due-row readiness threshold. |
+| `Atproto:PdsSync:HealthStaleWarningThreshold` | `1` | Aggregate expired-lease readiness threshold. |
+| `Atproto:PdsSync:HealthDeadLetterWarningThreshold` | `1` | Aggregate terminal-row readiness threshold. |
 | `Atproto:Jetstream:Endpoint` | `https://jetstream1.us-east.bsky.network` | Fixed HTTPS origin without credentials, path, query, or fragment. |
 | `Atproto:Jetstream:MaxMessageSizeBytes` | `2113536` | Bounded near the verified community-record maximum; startup validation accepts 2,097,152–2,162,688 bytes. |
 | `Atproto:Jetstream:LeaseDurationSeconds` | `60` | One shared canonical consumer lease; startup validation accepts 15–300 seconds. |
@@ -666,6 +671,10 @@ Svix cloud service or provider-native replay:
 | `WebhookBulkReplay:MaximumItemsPerOperation` | `100` | Runtime ceiling per operation; must be from 1 through the hard 1000-item ceiling. |
 | `WebhookBulkReplay:MaximumReservedItemsPerTenant` | `500` | Queued/executing requested-item capacity per tenant; must be at least the per-operation ceiling. |
 | `WebhookBulkReplay:MaximumFilterWindowDays` | `30` | Maximum explicit preview/schedule window, from 1 through 365 days. |
+| `WebhookBulkReplay:HealthQueuedWarningThreshold` | `100` | Aggregate queued-operation readiness threshold. |
+| `WebhookBulkReplay:HealthExecutingWarningThreshold` | `100` | Aggregate executing-operation readiness threshold. |
+
+`WebhookProviderPublicationProcessor:HealthDueWarningThreshold` defaults to `1000`; `HealthStaleWarningThreshold` and `HealthUnknownWarningThreshold` default to `1`. All three feed the aggregate `queue-drains` readiness check only when provider publication is enabled.
 
 Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; both remain intentionally empty while Local is selected. Development seeding creates missing instance secret bindings only when values are configured. See [WEBHOOKS.md](WEBHOOKS.md) for provider behavior and runbooks.
 
@@ -790,6 +799,8 @@ The pointer drain shares the bounded incoming-processing options below. Set `Ena
 | `Webhooks:IncomingProcessing:PollIntervalSeconds` | `5` | Quartz interval for both drains. Range `1..3600`. |
 | `Webhooks:IncomingProcessing:EffectBacklogWarningThreshold` | `500` | `/health/webhooks/coop-effects` degrades when due work reaches this safe aggregate count. |
 | `Webhooks:IncomingProcessing:EffectStaleLeaseWarningThreshold` | `1` | Coop-effect readiness degrades when stale claims reach this safe aggregate count. |
+| `Webhooks:IncomingProcessing:IntakeBacklogWarningThreshold` | `500` | Aggregate incoming-intake readiness threshold. |
+| `Webhooks:IncomingProcessing:IntakeStaleLeaseWarningThreshold` | `1` | Aggregate expired intake-lease readiness threshold. |
 
 Local report-intake keys are application-layer submission controls:
 
