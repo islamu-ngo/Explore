@@ -34,6 +34,8 @@
 - Every task includes observable acceptance criteria, dependencies, effort, and required guidance.
 - Phases are reviewable slices with rollback or failure-diagnosis guidance.
 - **Test-First Invariant Sequencing**: Every behavioral slice sequences task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), preventing post-hoc test tautology.
+- **Clean Architecture Slicing**: Verification strictly targets the touched layer (e.g., Blazor UI tests for UI changes; Application unit tests for CQRS changes). Never include irrelevant or cross-layer integration suites in unit-level slices.
+- **Subtask Verification**: Subtasks specify targeted TUnit tree-node filtering (`--treenode-filter "/*/*/*<TestClass>/*"`) for active iteration rather than full-project or solution-wide test commands.
 - Tests are specified against public contracts (MediatR requests, HTTP routes, ProblemDetails RFC 7807, database states) rather than private implementation details.
 - Every phase ends with exactly one Release build and at most one fastest relevant non-browser project test.
 - The plan contains no app startup, Playwright, browser automation, Chrome DevTools MCP, visual QA, E2E, Docker/Aspire startup, live-service smoke, or manual runtime walkthrough.

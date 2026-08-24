@@ -115,7 +115,10 @@ When a task touches a topic covered by docs, skills, or rules, retrieve the **sm
 
 Before the first product edit, establish the green baseline once for code changes. Do not rerun an unchanged baseline; every PR touching product code must still leave the build and minimum tests green.
 
-**Scope Discipline:** For documentation, agent context, markdown-only, or comment changes (Tier 4), DO NOT run `dotnet build` or .NET test suites. Verification for documentation tasks is strictly scoped to markdown formatting, link integrity, and schema checks.
+**Scope & Layer Discipline:**
+- **Tier 4 (Docs / Agent Context):** For documentation, agent context, markdown-only, or comment changes, DO NOT run `dotnet build` or .NET test suites. Verification is strictly scoped to markdown formatting, link integrity, and schema checks.
+- **Layer-Bounded Execution:** Never run test suites belonging to unrelated architectural layers (e.g., no database integration tests for UI changes; no Blazor tests for CQRS handlers).
+- **TUnit Slicing:** During active development, run ONLY the target test class using `--treenode-filter "/*/*/*<TestClass>/*"` (~1.5s). Full project runs (`--project`) are reserved for phase exits or PR completion.
 
 **Build Command (Code Changes Only):**
 ```bash

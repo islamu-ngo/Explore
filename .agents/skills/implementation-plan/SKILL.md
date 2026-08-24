@@ -51,6 +51,9 @@ design slices -> write and cross-check plan/context/tasks (linking I-VSD)
 ```
 
 ```text
+Fast subtask verification (TUnit sliced):
+dotnet run --project <one-relevant-project>.csproj --no-build -- --treenode-filter "/*/*/*<TargetTestClass>/*"
+
 Phase-end verification only:
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet

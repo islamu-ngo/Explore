@@ -83,6 +83,32 @@ Context budgets dynamically adapt based on the task's criticality tier resolved 
 | **Tier 3: Domain State** | Bounded caller/callee tracing of target aggregate/handler | Standard Q&A (only if requirements are ambiguous) | Behavioral CQRS unit and integration tests | Peer Review (`backend-engineer-agent`) |
 | **Tier 4: Standard** | Local surface reading (target razor/css/doc file only) | Autonomous defaults (zero unnecessary interruptions) | Affordance & component render tests | Lightweight Self-Check (`presentation-engineer-agent`) |
 
+## In-Session Test Economy & Clean Architecture Scoping
+
+To prevent test execution sprawl, excessive token usage, and slow feedback loops during interactive coding sessions, agents MUST adhere to Clean Architecture layer scoping:
+
+### 1. Layer-Bounded Test Scoping
+Run ONLY the test project that directly protects the modified layer:
+
+| Modified Source Path | Permitted Test Suites | Strictly Forbidden Suites (Sprawl) |
+|---|---|---|
+| `docs/**`, `.agents/**`, `dev/**`, `*.md` | **None** (Markdown/lint checks only) | All `dotnet build` & `.csproj` test runs |
+| `src/Explore.Blazor.Client/**` | `Explore.Blazor.Client.Tests`<br/>`Event.Architecture.Tests` | `Event.Application.UnitTests`, `Event.Domain.UnitTests`, `Event.Persistence.IntegrationTests`, `Event.API.IntegrationTests` |
+| `src/Explore.Blazor/**` (BFF) | `Explore.Blazor.IntegrationTests`<br/>`Event.Architecture.Tests` | Persistence, Domain, Application, Quartz integration tests |
+| `src/Explore.Application/**` | `Event.Application.UnitTests`<br/>`Event.Architecture.Tests` | Blazor Client tests, Persistence/DB container tests (unless repository port changed) |
+| `src/Explore.Domain/**` | `Event.Domain.UnitTests`<br/>`Event.Application.UnitTests` | Blazor UI tests, BFF tests, Quartz integration tests |
+| `src/Explore.Persistence/**` | `Event.Persistence.IntegrationTests`<br/>`Event.Architecture.Tests` | Blazor UI tests, BFF tests, Secrets unit tests |
+| `src/Explore.API/**` | `Event.API.IntegrationTests`<br/>`Event.Architecture.Tests` | Blazor Client UI tests, Secrets unit tests |
+| `src/Explore.Secrets/**` | `Explore.Secrets.UnitTests` | All other test suites |
+
+### 2. Fast-Loop TUnit Slicing (`--treenode-filter`)
+During active development of a task or handler, agents must NEVER run the entire test project. Use TUnit's `--treenode-filter` to run ONLY the target test class:
+```bash
+# ✅ Fast Loop (~1.5s, clean output):
+dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --no-build -- --treenode-filter "/*/*/*<TargetTestClassName>/*"
+```
+Full project-level test runs (`dotnet test --project <path>.csproj`) are reserved strictly for the **Phase Exit Gate** or PR completion.
+
 ## Research Boundary
 
 Repository research stays local first. Official documentation or external research is loaded only for a named unresolved framework, protocol, dependency, standard, or advisory question. Search results are summarized into repository-relevant facts and source handles; raw external content never enters implementation context.
