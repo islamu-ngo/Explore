@@ -14,6 +14,7 @@ public sealed record IntegrationSyncDrainResult(
     int Completed,
     int RetryScheduled,
     int DeadLettered,
+    int Ambiguous,
     int AlreadyClaimed);
 
 public sealed record IntegrationSyncSingleDrainResult(
@@ -25,5 +26,6 @@ public enum IntegrationSyncDrainOutcome
     Completed = 1,
     RetryScheduled = 2,
     DeadLettered = 3,
-    AlreadyClaimed = 4
+    Ambiguous = 4,
+    AlreadyClaimed = 5
 }

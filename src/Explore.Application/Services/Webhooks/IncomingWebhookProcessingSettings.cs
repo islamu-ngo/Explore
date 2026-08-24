@@ -37,4 +37,10 @@ public sealed class IncomingWebhookProcessingSettings
 
     [Range(1, 1000000)]
     public int EffectStaleLeaseWarningThreshold { get; set; } = 1;
+
+    [Range(1, 1000000)]
+    public int IntakeBacklogWarningThreshold { get; set; } = 500;
+
+    [Range(1, 1000000)]
+    public int IntakeStaleLeaseWarningThreshold { get; set; } = 1;
 }

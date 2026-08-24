@@ -17,11 +17,11 @@ This document records the legal contribution gate decision and automation threat
 |---|---|
 | Legal posture | CLA only. Every non-bot contributor must sign the ISLAMU Event CLA. |
 | Inbound scope | Broad copyright and patent license grant to the ISLAMU project steward so ISLAMU Event can be maintained, provided, sold, sublicensed, or relicensed under alternative terms when sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, or social-impact needs require it. |
-| Enforcing workflow | `.github/workflows/cla.yml` validates pull request and issue-comment metadata with `contributor-assistant/github-action`, pinned to a full commit SHA. |
+| Enforcing workflow | `.github/workflows/cla.yml` validates pull request and issue-comment metadata with `contributor-assistant/github-action`, pinned to a full commit SHA. A pre-flight `actions/github-script` step (also SHA-pinned) short-circuits the full action when all commit authors are already signed or allowlisted. |
 | Approved legal document | `legal/CLA.md` is the active CLA v1.0 operational draft, pending final legal review. |
-| Signature storage | Same-repository signature JSON at `signatures/v1.0/cla.json` on `develop`, plus GitHub PR/comment audit trail. |
+| Signature storage | Same-repository signature JSON at `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch, plus GitHub PR/comment audit trail. |
 | Token model | Default `GITHUB_TOKEN` with explicit write scopes for same-repository signature storage, pull-request comments, issue comments, and statuses. |
-| Bot allowlist | Explicit only: `dependabot[bot]` and `github-actions[bot]`. Broad patterns such as `bot*` are not approved. |
+| Bot allowlist | `dependabot[bot]`, `github-actions[bot]`, `renovate[bot]`, `codecov[bot]`, `*[bot]` (GitHub App bot suffix convention — safe because all GitHub App accounts use `[bot]` suffix), and `web-flow` (GitHub Web UI commit identity). The prefix pattern `bot*` remains not approved. |
 
 ## Research Summary
 
@@ -104,9 +104,9 @@ Repository rule:
 - Do not checkout repository code from the pull request head.
 - Do not run build, test, restore, cache, package, or script commands from untrusted contributions.
 - Use least-privilege permissions; raise `contents` only if approved signature storage requires it.
-- Do not write signatures outside the approved `signatures/<cla-version>/cla.json` path on the configured signature branch.
+- Do not write signatures outside the approved `signatures/<cla-version>/cla.json` path on the configured signature branch (`cla-signatures`).
 - Pin every external action to a full commit SHA with same-line version comment.
-- Avoid wildcard bot allowlists.
+- Avoid prefix-based wildcard bot allowlists (such as `bot*`); the suffix pattern `*[bot]` is approved because it matches only GitHub's standard App-account naming convention.
 - Write a clear PR status/check named `Contributor License Agreement` that can later be required by branch protection.
 
 ## Current Contributor Instructions

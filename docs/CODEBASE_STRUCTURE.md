@@ -334,14 +334,14 @@ Explore.API/
 │   └── HalSchemaFilter.cs         — Swashbuckle transition HAL schema shaping
 ├── Scheduling/                    — Quartz.NET jobs and scheduler surface (the periodic-work authority)
 │   ├── MaintenanceSweepJobs.cs    — The eight retention/cleanup/reconciliation sweeps; one pass each
+│   ├── *DrainJob.cs               — Payload-free queue triggers; durable claims and side effects stay below API
 │   ├── QuartzSchedulerKeys.cs     — Job/trigger keys derived from ScheduledJobNames
 │   ├── QuartzSchemaInitializer.cs — Embedded, idempotent ADO job-store DDL per provider
 │   └── QuartzSchedulerStatusEndpoint.cs — Instance-admin-only, read-only scheduler status
 ├── BackgroundServices/            — Hosted workers that are NOT periodic sweeps
 │   ├── OutboxProcessor.cs         — Durable side-effect authority; fencing coupled to its own loop
-│   ├── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
 │   ├── ManagedControlPlaneRegistrationWorker.cs — Retry-until-registered bootstrap; returns on success
-│   └── WebhookDeliveryProcessor.cs — Outgoing product webhooks delivery worker (queue drain)
+│   └── CerbosPolicyBootSyncWorker.cs — Boot-time policy synchronization wrapper
 ├── Static/                        — Static file serving configuration
 ├── schemas/openapi_islamu-event.json — Generated OpenAPI specification
 └── Properties/

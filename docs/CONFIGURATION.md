@@ -155,6 +155,7 @@ Commonly consumed sections in code:
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
 - `Reporting:*` (local event-report submission limits, evidence retention, and provider runtime mode)
 - `Listmonk:*` (deployment bootstrap for subscriber synchronization defaults and credentials)
+- `IntegrationSyncProcessor:*` (`integration-sync-drain` cadence, lease recovery, batches, and retries)
 - `Webhooks:*` (outgoing webhook provider mode, LocalProvider delivery limits, and Svix server-side integration)
 - `Mcp:*` (optional Model Context Protocol adapter posture)
 - `Persistence:*` (database runtime options)
@@ -460,6 +461,8 @@ Browser/admin DTOs expose only `ApiUsernameConfigured` and `ApiKeyConfigured`
 flags, never raw credential values. Rotate credentials through the authorized
 Listmonk integration API.
 
+Quartz `integration-sync-drain` uses the existing `IntegrationSyncProcessor` section; the name is retained to avoid a configuration rename, not because a hosted processor still exists. `Enabled` registers or removes the owned job, `PollingIntervalSeconds` controls its interval, `BatchSize` bounds one pass, `ProcessingLeaseTimeoutSeconds` controls stale-claim recovery, and the retry-delay/max-attempt keys remain Infrastructure state-machine controls. An unkeyed Listmonk request with an uncertain outcome is parked and requires evidence-based operator recovery; changing retry settings never makes it eligible for blind replay.
+
 Static no-TMS/fallback bundles are written to
 `{ContentRoot}/App_Data/Localization/Bundles/{code}.json`. That path is local
 filesystem storage unless the deployment mounts it to a shared persistent
@@ -557,7 +560,7 @@ ATProto login and ATProto Events are independent. The effective administrator ca
 
 | Static key | Default | Bounds / purpose |
 |---|---:|---|
-| `Atproto:PdsSync:Enabled` | `true` | Enables the post-commit PDS worker; it never changes governance or user consent. |
+| `Atproto:PdsSync:Enabled` | `true` | Registers Quartz `pds-sync-drain`; it never changes governance or user consent. |
 | `Atproto:PdsSync:PollingIntervalSeconds` | `5` | 1–300 seconds. |
 | `Atproto:PdsSync:BatchSize` | `20` | 1–100 fenced claims per pass. |
 | `Atproto:PdsSync:MaxConcurrency` | `10` | 1 through the configured batch size. |
@@ -649,7 +652,9 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `Webhooks:Svix:AppPortalEnabled` | `true` | Enables backend-only App Portal access URL generation. |
 | `Webhooks:Svix:SyncEventTypesOnStartup` | `true` | Syncs the canonical event catalog to Svix when provider mode is `Svix` or `Composite`. |
 
-`WebhookBulkReplay:*` controls the tenant-safe Local replay management worker. It does not enable a
+The existing `WebhookDeliveryProcessor` section now configures Quartz `local-webhook-delivery-drain`: `Enabled`, `InitialDelaySeconds`, and `PollingIntervalSeconds` control registration and cadence, while batch, concurrency, fairness, lease, and health keys still configure the Infrastructure drain. `WebhookProviderPublicationProcessor` similarly configures `webhook-provider-publication-drain`; it remains disabled by default, and its provider-identity, unknown-outcome, retry, and reconciliation settings are unchanged.
+
+`WebhookBulkReplay:*` controls Quartz `webhook-bulk-replay-drain`. It does not enable a
 Svix cloud service or provider-native replay:
 
 | Key | Default | Description |
@@ -771,18 +776,18 @@ Coop adapter keys live under `Reporting:Coop:*`. The adapter is Infrastructure-o
 
 Coop callbacks are accepted at `POST /api/integrations/moderation/coop/callback`. The endpoint requires platform API-key authentication plus timestamped HMAC-SHA256 verification over `timestamp + "." + rawBody`. Verified bytes are retained in `incoming_webhook_messages`, and one durable `IncomingWebhookEffectOutbox` pointer is created in the same transaction. A separate worker loads the retained callback and dispatches `ProcessCoopDecisionCallbackCommand`; the pointer completes only after command success and an applied-effect receipt commit together.
 
-The pointer worker shares the bounded incoming-processing options below. Set `Enabled=false` and restart the API to pause both incoming processing loops during an incident; callback intake remains available and durable work accumulates. Increase limits only after checking PostgreSQL and command-handler capacity.
+The pointer drain shares the bounded incoming-processing options below. Set `Enabled=false` and restart the API to remove both owned Quartz drains during an incident; callback intake remains available and durable work accumulates. Increase limits only after checking PostgreSQL and command-handler capacity.
 
 | Key | Default | Description |
 |---|---:|---|
-| `Webhooks:IncomingProcessing:Enabled` | `true` | Enables incoming webhook and Coop effect background processing. Disabling pauses drain work without deleting retained callbacks or pointers. |
+| `Webhooks:IncomingProcessing:Enabled` | `true` | Registers `incoming-webhook-intake-drain` and `incoming-webhook-effect-drain`. Disabling pauses work without deleting retained callbacks or pointers. |
 | `Webhooks:IncomingProcessing:BatchSize` | `50` | Maximum effect pointers claimed in one bounded batch. Range `1..1000`. |
 | `Webhooks:IncomingProcessing:MaxConcurrentItems` | `8` | Maximum concurrent claims executed by one process. Range `1..128`. |
 | `Webhooks:IncomingProcessing:LeaseSeconds` | `120` | Fenced claim lease duration. Active workers renew at approximately one third of this duration. Range `5..3600`. |
 | `Webhooks:IncomingProcessing:MaxAttempts` | `8` | Attempt ceiling before terminal dead-letter. Range `1..100`. |
 | `Webhooks:IncomingProcessing:InitialRetryDelaySeconds` | `30` | Initial bounded retry delay. Range `1..86400`. |
 | `Webhooks:IncomingProcessing:MaxRetryDelaySeconds` | `3600` | Maximum bounded retry delay. Range `1..86400`. |
-| `Webhooks:IncomingProcessing:PollIntervalSeconds` | `5` | Background drain polling interval. Range `1..3600`. |
+| `Webhooks:IncomingProcessing:PollIntervalSeconds` | `5` | Quartz interval for both drains. Range `1..3600`. |
 | `Webhooks:IncomingProcessing:EffectBacklogWarningThreshold` | `500` | `/health/webhooks/coop-effects` degrades when due work reaches this safe aggregate count. |
 | `Webhooks:IncomingProcessing:EffectStaleLeaseWarningThreshold` | `1` | Coop-effect readiness degrades when stale claims reach this safe aggregate count. |
 
@@ -976,7 +981,7 @@ Quartz host settings bind from `Scheduler:Quartz`:
 
 | Key | Default | Description |
 |---|---:|---|
-| `Enabled` | `true` | Enables the Quartz scheduler host when `EmailDispatchProcessor:Mode=Quartz`. If this is `false` while EmailDispatch is in `Quartz` mode, `email-dispatch` readiness is unhealthy. |
+| `Enabled` | `true` | Enables the Quartz scheduler host for all platform jobs. Disabling it stops every queue drain, retention sweep, reconciliation job, and deadline trigger; EmailDispatch readiness is unhealthy when its mode is `Quartz`. |
 | `SchedulerName` | `islamu-event-scheduler` | Logical scheduler identity recorded in the persistent store. Keep it stable for a deployment; give co-located instances distinct names when they share one database. |
 | `InstanceId` | `AUTO` | `AUTO` lets Quartz generate a unique per-process id. Clustering requires `AUTO`. |
 | `MaxConcurrency` | processor count | Maximum scheduler worker concurrency. Must be greater than zero. |

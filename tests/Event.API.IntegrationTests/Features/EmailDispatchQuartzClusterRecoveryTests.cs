@@ -56,6 +56,7 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
 
         string clusterName = $"email-recovery-{Guid.CreateVersion7():N}";
         JobKey jobKey = new($"email-dispatch-{Guid.CreateVersion7():N}", "tests");
+        JobKey recoveryJobKey = new($"email-recovery-{Guid.CreateVersion7():N}", "tests");
         JobKey secondJobKey = new($"email-dispatch-{Guid.CreateVersion7():N}", "tests");
         await using ServiceProvider firstNode = BuildClusteredNode(clusterName, coordinator, transport, logs);
         await using ServiceProvider secondNode = BuildClusteredNode(clusterName, coordinator, transport, logs);
@@ -75,6 +76,17 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
             await accepted;
 
             await AssertRefusalProbesAsync(dispatch);
+            coordinator.ReleaseTransportReturn();
+            await coordinator.SettlementEntered.Task.WaitAsync(SignalTimeout);
+            coordinator.ReleaseSettlementLoss();
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => coordinator.JobFailed.Task.WaitAsync(SignalTimeout));
+
+            await secondScheduler.AddJob(
+                JobBuilder.Create<EmailDispatchRecoveryScanJob>().WithIdentity(recoveryJobKey).StoreDurably().Build(),
+                replace: false);
+            await secondScheduler.ScheduleJob(CreateEmptyTrigger(recoveryJobKey, "recovery"));
+            await coordinator.RecoveryCompleted.Task.WaitAsync(SignalTimeout);
 
             await secondScheduler.AddJob(
                 JobBuilder.Create<EmailDispatchDrainJob>().WithIdentity(secondJobKey).StoreDurably().Build(),
@@ -186,6 +198,13 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
             RecipientTenantUser = tenantUser,
             CreatedAt = now
         };
+
+        context.Tenants.Add(tenant);
+        context.Users.Add(user);
+        context.TenantUsers.Add(tenantUser);
+        context.NotificationIntents.Add(intent);
+        await context.SaveChangesAsync();
+
         var dispatch = new EmailDispatchOutbox
         {
             Id = Guid.CreateVersion7(),
@@ -232,10 +251,6 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
         };
         intent.Deliveries.Add(delivery);
 
-        context.Tenants.Add(tenant);
-        context.Users.Add(user);
-        context.TenantUsers.Add(tenantUser);
-        context.NotificationIntents.Add(intent);
         context.EmailDispatchOutbox.Add(dispatch);
         context.NotificationDeliveries.Add(delivery);
         await context.SaveChangesAsync();
@@ -300,6 +315,24 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
     private static async Task<EmailDispatchOutbox> SeedCancellationDispatchAsync(ExploreDbContext context, Guid tenantId)
     {
         EmailDispatchOutbox template = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking().FirstAsync();
+        NotificationIntent templateIntent = await context.NotificationIntents.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == template.NotificationIntentId);
+        var intent = new NotificationIntent
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            CategoryId = templateIntent.CategoryId,
+            OwnershipTypeId = templateIntent.OwnershipTypeId,
+            RecipientKindId = templateIntent.RecipientKindId,
+            StatusId = templateIntent.StatusId,
+            TemplateKey = templateIntent.TemplateKey,
+            DeduplicationKey = $"cluster-cancellation:{Guid.CreateVersion7():N}",
+            RecipientUserId = template.RecipientUserId,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.NotificationIntents.Add(intent);
+        await context.SaveChangesAsync();
+
         var row = new EmailDispatchOutbox
         {
             Id = Guid.CreateVersion7(),
@@ -308,6 +341,8 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
             Kind = template.Kind,
             SourceType = "cancellation_probe",
             SourceId = Guid.CreateVersion7(),
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
             RecipientUserId = template.RecipientUserId,
             RecipientAddressSource = template.RecipientAddressSource,
             RecipientEmail = template.RecipientEmail,
@@ -498,8 +533,24 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
             return new EmailDispatchDrainResult(1, 1, 1, 0, 0, 0, 0, 0, 0);
         }
 
-        public Task<EmailDispatchRecoveryResult> RecoverStaleProcessingAsync(CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
+        public async Task<EmailDispatchRecoveryResult> RecoverStaleProcessingAsync(CancellationToken cancellationToken)
+        {
+            await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+            IEmailDispatchOutboxRepository repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
+            DateTime recoveredAt = DateTime.UtcNow;
+            EmailDispatchStaleRecoveryResult result = await repository.RecoverStaleProcessing(
+                new EmailDispatchStaleRecoveryRequest(
+                    recoveredAt,
+                    recoveredAt,
+                    "processing_lease_released",
+                    "Email dispatch processing lease expired before provider handoff and was released for retry.",
+                    "processing_lease_expired",
+                    "Email dispatch processing lease expired after provider handoff and requires reconciliation.",
+                    10),
+                cancellationToken);
+            coordinator.RecoveryCompleted.TrySetResult();
+            return new EmailDispatchRecoveryResult(result.RecoveredCount, recoveredAt);
+        }
 
         public Task<EmailDispatchSingleDrainResult> ProcessSingleAsync(Guid tenantId, Guid publishEventId, string consumerId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
@@ -566,6 +617,7 @@ public sealed class EmailDispatchQuartzClusterRecoveryTests(QuartzPostgreSqlSche
         public TaskCompletionSource TransportReturnReleased { get; } = NewSignal();
         public TaskCompletionSource SettlementEntered { get; } = NewSignal();
         public TaskCompletionSource SettlementLossReleased { get; } = NewSignal();
+        public TaskCompletionSource RecoveryCompleted { get; } = NewSignal();
 
         public void ReleaseTransportReturn() => TransportReturnReleased.TrySetResult();
         public void ReleaseSettlementLoss() => SettlementLossReleased.TrySetResult();

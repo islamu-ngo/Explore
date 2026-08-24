@@ -27,7 +27,11 @@ public sealed class RegistrationProviderSubscriptionStateRepository(ExploreDbCon
         TimeSpan leaseDuration,
         CancellationToken cancellationToken) => ClaimAsync(
         "registration-provider-subscription-state-claim",
-        rows => rows.Where(value => value.WatchExpiresAt <= renewBefore && (value.NextRenewalAttemptAt == null || value.NextRenewalAttemptAt <= claimedAt)),
+        rows => rows.Where(value =>
+            value.WatchExpiresAt <= renewBefore &&
+            value.FailureCategory != RegistrationProviderSubscriptionState.RenewalInDoubtFailureCategory &&
+            value.FailureCategory != RegistrationProviderSubscriptionState.RenewalRejectedFailureCategory &&
+            (value.NextRenewalAttemptAt == null || value.NextRenewalAttemptAt <= claimedAt)),
         rows => rows.OrderBy(value => value.WatchExpiresAt).ThenBy(value => value.Id),
         batchSize,
         claimedAt,

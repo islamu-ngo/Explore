@@ -50856,6 +50856,104 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/integrations/listmonk/queue/{outboxId}/resolve": {
+      "post": {
+        "tags": [
+          "ListmonkIntegrationSettings"
+        ],
+        "summary": "Resolve Ambiguous Integration Sync",
+        "description": "Applies an evidence-based accepted, definitely-not-accepted, or dead-letter decision without blind provider replay.",
+        "operationId": "ResolveIntegrationSyncAmbiguity",
+        "parameters": [
+          {
+            "name": "outboxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIntegrationSyncAmbiguityDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIntegrationSyncAmbiguityDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIntegrationSyncAmbiguityDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/admin/localization/test-connection": {
       "post": {
         "tags": [
@@ -126191,6 +126289,9 @@
           }
         }
       },
+      "IntegrationSyncRecoveryDecision": {
+        "type": "integer"
+      },
       "KeycloakBootstrapMode": {
         "enum": [
           "PatchExistingRealm",
@@ -140675,6 +140776,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ResolveIntegrationSyncAmbiguityDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/IntegrationSyncRecoveryDecision"
+          },
+          "evidenceReference": {
+            "type": "string"
           }
         }
       },

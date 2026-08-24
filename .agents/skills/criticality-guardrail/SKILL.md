@@ -34,10 +34,10 @@ priority: critical
 
 ## High-Leverage Testing Done Right
 
-High-criticality tasks explicitly reject shallow unit tests and mock assertions. Agents must deliver:
-1. **Concurrency Race Tests**: Simulate simultaneous requests (e.g. hold expiration racing against payment capture, double check-ins).
-2. **Real Database Integration Tests**: Run against real PostgreSQL / multi-provider test containers to verify transaction boundaries, row-level locking, and unique constraint idempotency.
-3. **Exploit Invariant Tests**: Verify that tampering with tenant headers, negative amounts, or expired tokens immediately fails closed with RFC 7807 ProblemDetails.
+High-criticality tasks explicitly reject shallow unit tests and mock assertions. Consult [resources/adversarial-archetypes.md](resources/adversarial-archetypes.md) for concrete recipes:
+1. **Concurrency Race Tests**: Simulate simultaneous requests (e.g. hold expiration racing against payment capture).
+2. **Real Database Integration Tests**: Run against real PostgreSQL / multi-provider test containers to verify transaction boundaries, row-level locking, and idempotency.
+3. **Exploit Invariant Tests**: Verify that tampering with tenant headers, negative amounts, or expired tokens fails closed with RFC 7807 ProblemDetails.
 4. **Log Sink PII Scans**: Assert that execution traces and logs contain zero plaintext emails, cards, or tokens.
 
 ## Workflow

@@ -102,7 +102,7 @@ public static class ApiHostApplicationExtensions
     private static void UseApiHostScheduler(WebApplication app, ApiHostCompositionState state)
     {
         if (!state.IsOpenApiGeneration &&
-            state.UseQuartzEmailDispatch &&
+            state.UseQuartzScheduler &&
             QuartzSchedulerExtensions.IsQuartzSchedulerEnabled(app.Configuration, app.Environment))
         {
             app.UseApiQuartzScheduler();
@@ -132,7 +132,7 @@ public static class ApiHostApplicationExtensions
 
         app.MapControllers();
         if (!state.IsOpenApiGeneration &&
-            state.UseQuartzEmailDispatch &&
+            state.UseQuartzScheduler &&
             QuartzSchedulerExtensions.IsQuartzSchedulerEnabled(app.Configuration, app.Environment))
         {
             app.MapApiQuartzSchedulerEndpoints();

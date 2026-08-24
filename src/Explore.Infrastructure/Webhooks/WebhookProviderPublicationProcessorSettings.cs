@@ -20,6 +20,9 @@ public sealed class WebhookProviderPublicationProcessorSettings
     public int UnknownReconciliationDelaySeconds { get; set; } = 30;
     public int ReconciliationRetryDelaySeconds { get; set; } = 30;
     public int ReconciliationLookupPageLimit { get; set; } = 100;
+    public int HealthDueWarningThreshold { get; set; } = 1000;
+    public int HealthStaleWarningThreshold { get; set; } = 1;
+    public int HealthUnknownWarningThreshold { get; set; } = 1;
 }
 
 public sealed class WebhookProviderPublicationProcessorSettingsValidator
@@ -81,6 +84,18 @@ public sealed class WebhookProviderPublicationProcessorSettingsValidator
         if (options.ReconciliationLookupPageLimit is < 1 or > 1000)
         {
             failures.Add("WebhookProviderPublicationProcessor:ReconciliationLookupPageLimit must be between 1 and 1000.");
+        }
+        if (options.HealthDueWarningThreshold is < 1 or > 1_000_000)
+        {
+            failures.Add("WebhookProviderPublicationProcessor:HealthDueWarningThreshold must be between 1 and 1000000.");
+        }
+        if (options.HealthStaleWarningThreshold is < 1 or > 100_000)
+        {
+            failures.Add("WebhookProviderPublicationProcessor:HealthStaleWarningThreshold must be between 1 and 100000.");
+        }
+        if (options.HealthUnknownWarningThreshold is < 1 or > 100_000)
+        {
+            failures.Add("WebhookProviderPublicationProcessor:HealthUnknownWarningThreshold must be between 1 and 100000.");
         }
 
         return failures.Count == 0

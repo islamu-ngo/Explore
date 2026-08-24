@@ -127,7 +127,7 @@ increase(explore_webhooks_retention_cleanup_runs_total{outcome=~"failed|partial_
    queue/cache must be healthy before Svix.
 2. Generate the self-hosted bearer token from the running container with
    `svix-server jwt generate`; store it in the configured secret source. Never print or commit it.
-3. Enable `WebhookProviderPublicationProcessor` and select `Svix` or `Composite`.
+3. Set `WebhookProviderPublicationProcessor:Enabled=true` and select `Svix` or `Composite`; Quartz then owns the `webhook-provider-publication-drain` cadence.
 4. Require both `/health/webhooks/local` and `/health/webhooks/svix` to return their expected
    independent state, then require aggregate `/health` before traffic admission.
 5. On outage, stop provider-mode changes and credential rotation. Preserve stable publication

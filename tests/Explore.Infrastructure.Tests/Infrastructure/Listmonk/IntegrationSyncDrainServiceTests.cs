@@ -28,9 +28,9 @@ public sealed class IntegrationSyncDrainServiceTests
     {
         var outbox = CreateOutbox();
         var fixture = new Fixture(_ => JsonResponse(HttpStatusCode.OK, "{\"data\":{\"id\":123}}"));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureActiveClaim(outbox);
 
@@ -38,8 +38,8 @@ public sealed class IntegrationSyncDrainServiceTests
 
         await Assert.That(result.Completed).IsEqualTo(1);
         await Assert.That(result.RetryScheduled).IsEqualTo(0);
-        await fixture.Repository.Received(1).MarkAsCompleted(outbox.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+        await fixture.Repository.Received(1).CompleteAsync(Arg.Any<IntegrationSyncClaimIdentity>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await fixture.Repository.DidNotReceiveWithAnyArgs().FailAsync(default!, default!, default, default, default, default, default);
     }
 
     [Test]
@@ -47,17 +47,17 @@ public sealed class IntegrationSyncDrainServiceTests
     {
         var outbox = CreateOutbox();
         var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
         await Assert.That(result.AlreadyClaimed).IsEqualTo(1);
         await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsCompleted(default, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().FailAsync(default!, default!, default, default, default, default, default);
     }
 
     [Test]
@@ -65,9 +65,9 @@ public sealed class IntegrationSyncDrainServiceTests
     {
         var outbox = CreateOutbox();
         var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureMissingActiveClaim(outbox);
 
@@ -76,8 +76,8 @@ public sealed class IntegrationSyncDrainServiceTests
         await Assert.That(result.AlreadyClaimed).IsEqualTo(1);
         await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
         await fixture.PrivacyErasureStateRepository.DidNotReceiveWithAnyArgs().GetBySubjectAsync(default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsCompleted(default, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().FailAsync(default!, default!, default, default, default, default, default);
     }
 
     [Test]
@@ -85,9 +85,9 @@ public sealed class IntegrationSyncDrainServiceTests
     {
         var outbox = CreateOutbox();
         var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureActiveClaim(outbox);
         fixture.PrivacyErasureStateRepository.GetBySubjectAsync(outbox.UserId!.Value, Arg.Any<CancellationToken>())
@@ -98,11 +98,37 @@ public sealed class IntegrationSyncDrainServiceTests
         await Assert.That(result.DeadLettered).IsEqualTo(1);
         await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
         await fixture.PrivacyErasureStateRepository.Received(1).GetBySubjectAsync(outbox.UserId.Value, Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkAsFailed(
-            outbox.Id,
+        await fixture.Repository.Received(1).FailAsync(
+            Arg.Any<IntegrationSyncClaimIdentity>(),
             "Integration sync was not sent because the subscriber is subject to privacy erasure.",
             false,
             Arg.Any<TimeSpan>(),
+            5,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessBatchAsync_WhenClaimHasNoUser_DeadLettersWithoutListmonkCall()
+    {
+        var outbox = CreateOutbox();
+        outbox.UserId = null;
+        var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([outbox]);
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
+
+        IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.DeadLettered).IsEqualTo(1);
+        await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
+        await fixture.Repository.Received(1).FailAsync(
+            Arg.Any<IntegrationSyncClaimIdentity>(),
+            "Integration sync has no durable user identity.",
+            false,
+            TimeSpan.Zero,
             5,
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
@@ -115,9 +141,9 @@ public sealed class IntegrationSyncDrainServiceTests
         var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureActiveClaim(outbox);
         fixture.PrivacyErasureStateRepository.GetBySubjectAsync(outbox.UserId!.Value, Arg.Any<CancellationToken>())
@@ -127,30 +153,53 @@ public sealed class IntegrationSyncDrainServiceTests
             fixture.Service.ProcessBatchAsync(cancellation.Token));
 
         await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsCompleted(default, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().FailAsync(default!, default!, default, default, default, default, default);
     }
 
     [Test]
-    public async Task ProcessBatchAsync_WhenListmonkReturnsRetryableFailure_SchedulesRetry()
+    public async Task ProcessBatchAsync_WhenListmonkOutcomeIsAmbiguous_ParksWithoutRetry()
     {
         var outbox = CreateOutbox();
         var fixture = new Fixture(_ => JsonResponse(HttpStatusCode.InternalServerError, "{\"error\":\"down\"}"));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureActiveClaim(outbox);
 
         IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
-        await Assert.That(result.RetryScheduled).IsEqualTo(1);
-        await fixture.Repository.Received(1).MarkAsFailed(
-            outbox.Id,
-            Arg.Any<string>(),
-            true,
-            Arg.Is<TimeSpan>(delay => delay > TimeSpan.Zero),
-            5,
+        await Assert.That(result.Ambiguous).IsEqualTo(1);
+        await fixture.Repository.Received(1).ParkAmbiguousAsync(
+            Arg.Any<IntegrationSyncClaimIdentity>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessBatchAsync_WhenStaleProviderHandoffIsInDoubt_ParksWithoutProviderReplay()
+    {
+        var outbox = CreateOutbox();
+        outbox.Status = IntegrationSyncStatus.Processing;
+        outbox.ProcessingLeaseToken = Guid.CreateVersion7();
+        outbox.ProcessingStartedAt = DateTime.UtcNow.AddMinutes(-10);
+        outbox.LastError = IntegrationSyncFailureCodes.ProviderHandoffInDoubt;
+        var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([outbox]);
+
+        IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.Ambiguous).IsEqualTo(1);
+        await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryClaimAsync(default!, default);
+        await fixture.Repository.Received(1).ParkAmbiguousAsync(
+            Arg.Is<IntegrationSyncClaimIdentity>(claim =>
+                claim.TenantId == outbox.TenantId &&
+                claim.OutboxId == outbox.Id &&
+                claim.LeaseToken == outbox.ProcessingLeaseToken!.Value &&
+                claim.ProcessingStartedAt == outbox.ProcessingStartedAt!.Value),
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
     }
@@ -160,9 +209,9 @@ public sealed class IntegrationSyncDrainServiceTests
     {
         var outbox = CreateOutbox("{");
         var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
-        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns([outbox]);
-        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        fixture.Repository.TryClaimAsync(Arg.Any<IntegrationSyncClaimRequest>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.ConfigureActiveClaim(outbox);
 
@@ -170,8 +219,8 @@ public sealed class IntegrationSyncDrainServiceTests
 
         await Assert.That(result.DeadLettered).IsEqualTo(1);
         await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
-        await fixture.Repository.Received(1).MarkAsFailed(
-            outbox.Id,
+        await fixture.Repository.Received(1).FailAsync(
+            Arg.Any<IntegrationSyncClaimIdentity>(),
             Arg.Any<string>(),
             false,
             Arg.Any<TimeSpan>(),
@@ -232,17 +281,33 @@ public sealed class IntegrationSyncDrainServiceTests
             PrivacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
             PrivacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .Returns((PrivacyErasureSaga?)null);
-            Repository.MarkAsCompleted(Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-                .Returns(Task.CompletedTask);
-            Repository.MarkAsFailed(
-                    Arg.Any<Guid>(),
+            Repository.CompleteAsync(Arg.Any<IntegrationSyncClaimIdentity>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+            Repository.FailAsync(
+                    Arg.Any<IntegrationSyncClaimIdentity>(),
                     Arg.Any<string>(),
                     Arg.Any<bool>(),
                     Arg.Any<TimeSpan>(),
                     Arg.Any<int>(),
                     Arg.Any<DateTime>(),
                     Arg.Any<CancellationToken>())
-                .Returns(Task.CompletedTask);
+                .Returns(true);
+            Repository.MarkProviderHandoffStartedAsync(
+                    Arg.Any<IntegrationSyncClaimIdentity>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            Repository.ParkAmbiguousAsync(
+                    Arg.Any<IntegrationSyncClaimIdentity>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            Repository.ParkMalformedProcessingAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
 
             var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
             settingsResolver.ResolveAsync<string>(
@@ -285,6 +350,7 @@ public sealed class IntegrationSyncDrainServiceTests
             services.AddSingleton(settingsResolver);
             services.AddSingleton(secretResolver);
             services.AddSingleton(httpClientFactory);
+            services.AddSingleton(Substitute.For<ITenantContextAccessor>());
             services.AddSingleton<ILogger<ListmonkSyncService>>(NullLogger<ListmonkSyncService>.Instance);
             services.AddScoped<ListmonkSyncService>();
             ServiceProvider = services.BuildServiceProvider();
@@ -309,21 +375,20 @@ public sealed class IntegrationSyncDrainServiceTests
 
         public void ConfigureActiveClaim(IntegrationSyncOutbox outbox)
         {
-            Repository.GetActiveClaimAsync(
-                    outbox.TenantId,
-                    outbox.Id,
-                    Arg.Any<Guid>(),
-                    Arg.Any<CancellationToken>())
-                .Returns(outbox);
+            Repository.GetActiveClaimAsync(Arg.Any<IntegrationSyncClaimIdentity>(), Arg.Any<CancellationToken>())
+                .Returns(callInfo =>
+                {
+                    var claim = callInfo.ArgAt<IntegrationSyncClaimIdentity>(0);
+                    outbox.Status = IntegrationSyncStatus.Processing;
+                    outbox.ProcessingLeaseToken = claim.LeaseToken;
+                    outbox.ProcessingStartedAt = claim.ProcessingStartedAt;
+                    return outbox;
+                });
         }
 
         public void ConfigureMissingActiveClaim(IntegrationSyncOutbox outbox)
         {
-            Repository.GetActiveClaimAsync(
-                    outbox.TenantId,
-                    outbox.Id,
-                    Arg.Any<Guid>(),
-                    Arg.Any<CancellationToken>())
+            Repository.GetActiveClaimAsync(Arg.Any<IntegrationSyncClaimIdentity>(), Arg.Any<CancellationToken>())
                 .Returns((IntegrationSyncOutbox?)null);
         }
     }

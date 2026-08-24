@@ -39,6 +39,7 @@ using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Payments.Stripe;
 using Explore.Infrastructure.Payments.Stripe.Checkout;
+using Explore.Infrastructure.Payments.Stripe.Refunds;
 using Explore.Infrastructure.Registration;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -94,6 +95,11 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAtprotoPublicationPayloadBuilder, AtprotoPublicationPayloadBuilder>();
         services.AddScoped<IAtprotoPdsDeliveryGateway, AtprotoPdsDeliveryGateway>();
         services.AddSingleton<IAtprotoPdsSnapshotGateway, AtprotoPdsSnapshotGateway>();
+        services.AddOptions<PdsSyncSettings>()
+            .Bind(configuration.GetSection(PdsSyncSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<PdsSyncSettings>, PdsSyncSettingsValidator>();
+        services.AddSingleton<IPdsSyncDrainService, PdsSyncDrainService>();
 
         services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
         services.AddScoped<IPrivacyErasureProviderLocatorProtector, PrivacyErasureProviderLocatorProtector>();
@@ -129,6 +135,19 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IHostedCheckoutSessionRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddScoped<IPaymentIntentRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddScoped<IPaymentProviderDescriptor>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
+        services.AddHttpClient(StripeRefundAdapter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<StripeRefundAdapter>();
+        services.AddScoped<IRefundCreator>(provider => provider.GetRequiredService<StripeRefundAdapter>());
+        services.AddScoped<IRefundRetriever>(provider => provider.GetRequiredService<StripeRefundAdapter>());
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
@@ -661,6 +680,7 @@ public static class InfrastructureServicesRegistration
         services.AddOptions<IntegrationSyncProcessorSettings>()
             .Bind(configuration.GetSection(IntegrationSyncProcessorSettings.SectionName))
             .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<IntegrationSyncProcessorSettings>, IntegrationSyncProcessorSettingsValidator>();
         services.AddSingleton<IIntegrationSyncDrainService, IntegrationSyncDrainService>();
         services.AddHttpClient(ListmonkSyncService.HttpClientName, client =>
         {

@@ -88,6 +88,9 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
     private readonly Counter<long> _webhookEndpointAutoPauses;
     private readonly Counter<long> _webhookProviderHealthChecks;
     private readonly Histogram<double> _webhookPublicationUnknownAge;
+    private readonly Counter<long> _queueDrainHealthChecks;
+    private readonly Histogram<long> _queueDrainBacklog;
+    private readonly Histogram<long> _queueDrainStaleWork;
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
@@ -450,6 +453,19 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
             "explore.webhooks.publication_unknown_age",
             unit: "s",
             description: "Age in seconds of provider publications observed in an uncertain state");
+
+        _queueDrainHealthChecks = meter.CreateCounter<long>(
+            "explore.queue_drains.health_checks",
+            unit: "{check}",
+            description: "Readiness outcomes for scheduler-owned durable queue drains");
+        _queueDrainBacklog = meter.CreateHistogram<long>(
+            "explore.queue_drains.backlog",
+            unit: "{item}",
+            description: "Tenant-free due backlog observed for scheduler-owned durable queue drains");
+        _queueDrainStaleWork = meter.CreateHistogram<long>(
+            "explore.queue_drains.stale_work",
+            unit: "{item}",
+            description: "Tenant-free stale or ambiguous work observed for scheduler-owned durable queue drains");
 
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
@@ -1166,6 +1182,29 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
         _webhookPublicationUnknownAge.Record(
             Math.Max(0, unknownAge.TotalSeconds),
             new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)));
+    }
+
+    public void RecordQueueDrainHealth(string jobName, string outcome, int backlog, int staleWork)
+    {
+        if (!ScheduledJobNames.All.Contains(jobName))
+        {
+            return;
+        }
+
+        string boundedOutcome = outcome switch
+        {
+            "healthy" => "healthy",
+            "degraded" => "degraded",
+            "disabled" => "disabled",
+            _ => "unhealthy"
+        };
+        KeyValuePair<string, object?> jobTag = new("job_name", jobName);
+        _queueDrainHealthChecks.Add(
+            1,
+            jobTag,
+            new KeyValuePair<string, object?>("outcome", boundedOutcome));
+        _queueDrainBacklog.Record(Math.Max(0, backlog), jobTag);
+        _queueDrainStaleWork.Record(Math.Max(0, staleWork), jobTag);
     }
 
     public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)

@@ -74,6 +74,8 @@ Every change must answer these eight questions **before editing any file**:
 6. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit/Delete) by checking `_links` presence, never local role/claim inspection.
 7. **EF Core migrations are generated artifacts**: Never hand-edit migration or model-snapshot files. Fix entities/configurations or the migration generator, then delete and regenerate an unapplied development migration with `dotnet ef migrations`.
 8. **IP, clean-room, and outbound-license protection**: Never ingest third-party copyleft, source-available, proprietary, or otherwise incompatible source code, snippets, ASTs, SQL, migrations, tests, comments, or assets into implementation context or copy them into this repository. Externally informed work must pass through a source-free functional specification and use independently designed project-native structure, sequence, and organization. A dependency is forbidden unless its terms preserve every intended ISLAMU outbound licensing path or the Project Steward has documented separate licensing and distribution approval. See [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md).
+9. **Agent tooling and execution boundary (No Python/JS scripts)**: Agents must NEVER run or generate ad-hoc Python (`python`, `python3`, `python -c`) or JavaScript/Node (`node`, `npm`, `node -e`) helper scripts. File edits must use native agent editing tools (`apply_patch`, `replace_file_content`, `write_to_file`). Shell tasks must use standard POSIX Bash commands. Creating scripts is an absolute last resort (only when there is overwhelming, lasting ROI); any persistent repo tool belongs in `eng/` (e.g. `eng/scripts/` or `eng/tools/`) as a C# file-based script (`dotnet run eng/.../*.cs`) or Bash script. Never put dev tools in `.ci/scripts/` (strictly for CI/CD pipelines).
+10. **Secrets Isolation & Source of Truth (Infisical or `.env` only)**: Secrets, passwords, API tokens, connection strings, and encryption keys must NEVER be hard-coded, embedded, or defined in `Explore.AppHost` (`AppHost.cs`), test files/fixtures, controllers, appsettings, or anywhere in source code. Secrets originate strictly from **Infisical** or **`.env`** (with template keys/schema documented in **`.env.example`**). Tests and local hosting must bind dynamically via environment variables or secret provider mocks—never inline plaintext credentials.
 
 **Full list:** [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md)
 
@@ -103,6 +105,7 @@ When a task touches a topic covered by docs, skills, or rules, retrieve the **sm
 - Resolve only the matching entry from [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml); never load the full registry into task context.
 - Load only the required headings from relevant `docs/*.md`, the matching skill routers, and matching path rules.
 - Prefer graph, outline, symbol, heading, and diff retrieval over full-file reads.
+- **Zero-Turn Blast Radius**: For multi-layer or high-criticality tasks, perform pre-flight impact analysis on Turn 1 via `code-review-graph` MCP tools (`get_impact_radius_tool`, `get_affected_flows_tool`) to inject a bounded structural context slice (Callers, Callees, Impacted Flows, Tests) into intake/planning before exploring files.
 - Reuse an in-session `path + heading/symbol + revision` ledger. Reread only after the source changes, a concrete decision lacks evidence, or contradictory evidence appears.
 - Before external functional research, third-party design analysis, or dependency selection, load the relevant sections of [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md); do not load the full legal chain for ordinary official framework documentation.
 
@@ -110,9 +113,11 @@ When a task touches a topic covered by docs, skills, or rules, retrieve the **sm
 
 ## 8. Verification Baseline
 
-Before the first product edit, establish the green baseline once. Do not rerun an unchanged baseline; every PR must still leave the build and minimum tests green.
+Before the first product edit, establish the green baseline once for code changes. Do not rerun an unchanged baseline; every PR touching product code must still leave the build and minimum tests green.
 
-**Build Command:**
+**Scope Discipline:** For documentation, agent context, markdown-only, or comment changes (Tier 4), DO NOT run `dotnet build` or .NET test suites. Verification for documentation tasks is strictly scoped to markdown formatting, link integrity, and schema checks.
+
+**Build Command (Code Changes Only):**
 ```bash
 dotnet build --configuration Release --verbosity quiet
 ```
@@ -123,6 +128,7 @@ dotnet build --configuration Release --verbosity quiet
 
 ## 9. Agent Operational Baseline
 
+- **Tooling & Execution**: Prohibit ad-hoc Python/Node scripts. Default to native agent edit tools and POSIX Bash. Keep persistent engineering tools in `eng/`; keep `.ci/scripts/` dedicated to CI/CD pipelines.
 - **Subagents**: Use the lowest-cost capable model. Broad read-only discovery goes to economical scouts with the bounded output contract in [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md); the main agent keeps decisions and synthesis. Do not delegate atomic lookups. Index: [`.agents/agents/README.md`](.agents/agents/README.md).
 - **Memory**: Resume substantial work from its task-owned `*-context.md`; do not automatically load plan/context/tasks together. Durable findings live in `dev/_journal/`.
 - **Todos**: Create immediately for multi-step tasks.

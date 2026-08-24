@@ -42,7 +42,7 @@ public sealed class QuartzSchemaInitializer(
     public async Task ApplyAsync(PrimaryDatabaseProvider provider, CancellationToken cancellationToken)
     {
         var schedulerOptions = options.Value;
-        if (!schedulerOptions.Enabled || !schedulerOptions.UsePersistentStore)
+        if (!schedulerOptions.UsePersistentStore)
         {
             logger.LogInformation(
                 "Skipping Quartz scheduler schema initialization because the persistent store is not in use.");

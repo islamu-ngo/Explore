@@ -16,7 +16,8 @@ public enum ScheduledJobScheduleKind
 {
     Cron = 1,
     Time = 2,
-    Operator = 3
+    Operator = 3,
+    Interval = 4
 }
 
 public enum ScheduledJobPayloadKind

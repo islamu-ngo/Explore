@@ -34,6 +34,8 @@ public static class QuartzSchedulerKeys
     /// <summary>Matches the ten-second cadence of the polling worker this job replaced.</summary>
     public const string RegistrationFinalizationDrainCron = "*/10 * * * * ?";
     public const string PaymentReconciliationDrainCron = "*/30 * * * * ?";
+    public const string RegistrationProviderSubmissionWriteDrainCron = "*/10 * * * * ?";
+    public const string RegistrationProviderSubscriptionLifecycleDrainCron = "*/30 * * * * ?";
 
     public static readonly JobKey EmailDispatchDrain =
         new(ScheduledJobNames.EmailDispatchDrain, RecurringGroup);
@@ -79,6 +81,55 @@ public static class QuartzSchedulerKeys
 
     public static readonly JobKey PaymentReconciliationDrain =
         new(ScheduledJobNames.PaymentReconciliationDrain, RecurringGroup);
+    public static readonly JobKey RegistrationProviderSubmissionWriteDrain =
+        new(ScheduledJobNames.RegistrationProviderSubmissionWriteDrain, RecurringGroup);
+    public static readonly JobKey RegistrationProviderSubscriptionLifecycleDrain =
+        new(ScheduledJobNames.RegistrationProviderSubscriptionLifecycleDrain, RecurringGroup);
+    public static readonly JobKey IntegrationSyncDrain =
+        new(ScheduledJobNames.IntegrationSyncDrain, RecurringGroup);
+    public static readonly JobKey PdsSyncDrain =
+        new(ScheduledJobNames.PdsSyncDrain, RecurringGroup);
+    public static readonly JobKey LocalWebhookDeliveryDrain =
+        new(ScheduledJobNames.LocalWebhookDeliveryDrain, RecurringGroup);
+    public static readonly JobKey IncomingWebhookIntakeDrain =
+        new(ScheduledJobNames.IncomingWebhookIntakeDrain, RecurringGroup);
+    public static readonly JobKey IncomingWebhookEffectDrain =
+        new(ScheduledJobNames.IncomingWebhookEffectDrain, RecurringGroup);
+    public static readonly JobKey WebhookBulkReplayDrain =
+        new(ScheduledJobNames.WebhookBulkReplayDrain, RecurringGroup);
+    public static readonly JobKey WebhookProviderPublicationDrain =
+        new(ScheduledJobNames.WebhookProviderPublicationDrain, RecurringGroup);
+
+    /// <summary>
+    /// Exact recurring identities owned by this host. The retired key stays here so disabling or upgrading
+    /// removes only our stale definitions while preserving every foreign scheduler entry.
+    /// </summary>
+    public static readonly IReadOnlySet<JobKey> OwnedRecurringJobs = new HashSet<JobKey>
+    {
+        EmailDispatchDrain,
+        EmailDispatchRecoveryScan,
+        IdempotencyCleanup,
+        AiRetentionCleanup,
+        EmailDispatchRetentionCleanup,
+        WebhookRetentionCleanup,
+        PrivacyErasureCredentialCleanup,
+        StorageReconciliation,
+        RegistrationRetentionCleanup,
+        OrganizerPaymentReadinessReconciliation,
+        InventoryHoldExpiryReconciliation,
+        RegistrationFinalizationDrain,
+        PaymentReconciliationDrain,
+        RegistrationProviderSubmissionWriteDrain,
+        RegistrationProviderSubscriptionLifecycleDrain,
+        IntegrationSyncDrain,
+        PdsSyncDrain,
+        LocalWebhookDeliveryDrain,
+        IncomingWebhookIntakeDrain,
+        IncomingWebhookEffectDrain,
+        WebhookBulkReplayDrain,
+        WebhookProviderPublicationDrain,
+        new("general-outbox-drain", RecurringGroup),
+    };
 
     public static TriggerKey RecurringTriggerFor(JobKey jobKey)
     {

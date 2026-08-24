@@ -38,6 +38,10 @@ Priority order (highest wins):
 - Inline completions that only fit `AGENTS.md §5` rules (e.g., ABOUTME header, file-scoped namespace, manual validator instantiation) are safe defaults.
 - For any change that crosses a layer (Domain → Application, Application → Persistence, etc.), stop and load the relevant skill before continuing.
 - Do not suggest:
+  - Defining or hard-coding secrets, passwords, or tokens in `AppHost.cs`, tests, controllers, or code; secrets belong exclusively in Infisical or `.env` / `.env.example`.
+  - Ad-hoc Python (`python -c ...`) or Node/JS scripts for repository tasks, inspections, or text transformations.
+  - Creating temporary/scratch scripts when standard Bash or native edit tools suffice.
+  - Adding developer/agent helper scripts into `.ci/scripts/` (which is reserved exclusively for CI/CD pipelines; persistent repo tools belong in `eng/`).
   - `as any` / `@ts-ignore` / `@ts-expect-error` equivalents (n/a here, but stated for completeness).
   - Backward-compatibility shims — the repo is in active development mode.
   - `rm`, `mv`, or overwrite redirection (`>`) in shell output — see `AGENTS.md` Appendix.

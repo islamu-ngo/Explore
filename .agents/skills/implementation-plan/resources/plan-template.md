@@ -31,6 +31,26 @@ State what will change, why it matters, the intended user/business/platform outc
 
 ## 2. Source-Grounded Current State Report
 
+### 2.0 Pre-Flight Structural Context (Blast Radius)
+
+Inject bounded Turn 1 knowledge-graph impact slice:
+
+```yaml
+# Injected Structural Context (Pre-Flight Blast Radius)
+Target: <Namespace.ClassName.MethodName>
+Callers (Upstream):
+  - <Controller.Action> (Route: <route_template>)
+  - <Blazor.Component.Handler>
+Callees (Downstream):
+  - <Repository.Method>
+  - <Outbox.EnqueueAsync> (Event: <DomainEventName>)
+Impacted Flows:
+  - Flow: <BusinessFlowName> (Criticality: <Tier>)
+Test Coverage:
+  - <PathToUnitTests>
+  - <PathToIntegrationTests>
+```
+
 ### 2.1 Evidence Log
 
 Use a table with `Claim`, `Evidence`, `Confidence`, and `Notes`.

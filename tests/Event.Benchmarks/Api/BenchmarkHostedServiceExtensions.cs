@@ -13,7 +13,6 @@ internal static class BenchmarkHostedServiceExtensions
         "JwtAuthorityWarmupHostedService",
         "LookupDataCacheInitializer",
         "SecretRefreshService",
-        "PdsSyncWorker",
         "OutboxProcessor",
         "EmailDispatchProcessor",
         "CerbosPolicyBootSyncWorker"

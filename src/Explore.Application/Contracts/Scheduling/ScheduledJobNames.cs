@@ -8,7 +8,6 @@ namespace Explore.Application.Contracts.Scheduling;
 public static class ScheduledJobNames
 {
     public const string EmailDispatchDrain = "email-dispatch-drain";
-    public const string GeneralOutboxDrain = "general-outbox-drain";
     public const string PdsSyncDrain = "pds-sync-drain";
     public const string EmailDispatchRecoveryScan = "email-dispatch-recovery-scan";
     public const string DeadLetterSummary = "dead-letter-summary";
@@ -36,6 +35,14 @@ public static class ScheduledJobNames
     /// <summary>Bounded drain migration: the timer moved to the scheduler, the claim semantics did not.</summary>
     public const string RegistrationFinalizationDrain = "registration-finalization-drain";
     public const string PaymentReconciliationDrain = "payment-reconciliation-drain";
+    public const string RegistrationProviderSubmissionWriteDrain = "registration-provider-submission-write-drain";
+    public const string RegistrationProviderSubscriptionLifecycleDrain = "registration-provider-subscription-lifecycle-drain";
+    public const string IntegrationSyncDrain = "integration-sync-drain";
+    public const string LocalWebhookDeliveryDrain = "local-webhook-delivery-drain";
+    public const string IncomingWebhookIntakeDrain = "incoming-webhook-intake-drain";
+    public const string IncomingWebhookEffectDrain = "incoming-webhook-effect-drain";
+    public const string WebhookBulkReplayDrain = "webhook-bulk-replay-drain";
+    public const string WebhookProviderPublicationDrain = "webhook-provider-publication-drain";
 
     /// <summary>
     /// Every catalog name, used to bound telemetry label cardinality. Metric labels are exported and
@@ -45,7 +52,6 @@ public static class ScheduledJobNames
     public static readonly FrozenSet<string> All = new[]
     {
         EmailDispatchDrain,
-        GeneralOutboxDrain,
         PdsSyncDrain,
         EmailDispatchRecoveryScan,
         DeadLetterSummary,
@@ -64,6 +70,14 @@ public static class ScheduledJobNames
         InventoryHoldExpiryReconciliation,
         RegistrationFinalizationDrain,
         PaymentReconciliationDrain,
+        RegistrationProviderSubmissionWriteDrain,
+        RegistrationProviderSubscriptionLifecycleDrain,
+        IntegrationSyncDrain,
+        LocalWebhookDeliveryDrain,
+        IncomingWebhookIntakeDrain,
+        IncomingWebhookEffectDrain,
+        WebhookBulkReplayDrain,
+        WebhookProviderPublicationDrain,
     }.ToFrozenSet(StringComparer.Ordinal);
 }
 

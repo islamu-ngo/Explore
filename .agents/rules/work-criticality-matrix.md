@@ -48,6 +48,7 @@ related_intents:
 - `AGENTS.md` — Section 3 Cold-Start Flow & Dynamic Criticality Alignment.
 - `docs/QUICK_REFERENCE.md` — Canonical hard invariants and multi-tenancy rules.
 - `.agents/rules/payments-commerce.md` — Tier 0 Sovereign financial invariants.
+- `.agents/skills/criticality-guardrail/resources/adversarial-archetypes.md` — Invariant-Breaker adversarial test recipes (concurrency, spoofing, replay, PII).
 - `.agents/rules/auth-trust-boundaries.md` — Tier 1 Security trust boundaries.
 - `.agents/rules/privacy-and-pii.md` — Tier 2 Privacy and erasure rules.
 

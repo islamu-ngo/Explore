@@ -68,7 +68,7 @@ Before opening a PR:
 
 Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](../legal/CLA.md) by posting the exact CLA signature comment on the pull request. The CLA gives the ISLAMU project steward broad inbound rights to maintain, provide, sell, sublicense, and relicense ISLAMU Event under alternative terms when sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, or social-impact needs require it.
 
-The `Contributor License Agreement` workflow records v1.0 signatures in `signatures/v1.0/cla.json` on the `develop` branch. It uses `pull_request_target` and `issue_comment` metadata only; it must not checkout, build, test, cache, restore packages, or execute pull-request head code.
+The `Contributor License Agreement` workflow records v1.0 signatures in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch. A pre-flight script short-circuits the full action when all commit authors are already signed or allowlisted. It uses `pull_request_target` and `issue_comment` metadata only; it must not checkout, build, test, cache, restore packages, or execute pull-request head code.
 
 ## Branch And Commit
 

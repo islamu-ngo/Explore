@@ -17,6 +17,8 @@ public sealed class WebhookBulkReplaySettings
     public int MaximumItemsPerOperation { get; set; } = 100;
     public int MaximumReservedItemsPerTenant { get; set; } = 500;
     public int MaximumFilterWindowDays { get; set; } = 30;
+    public int HealthQueuedWarningThreshold { get; set; } = 100;
+    public int HealthExecutingWarningThreshold { get; set; } = 100;
 }
 
 public sealed class WebhookBulkReplaySettingsValidator : IValidateOptions<WebhookBulkReplaySettings>
@@ -40,6 +42,8 @@ public sealed class WebhookBulkReplaySettingsValidator : IValidateOptions<Webhoo
             nameof(settings.MaximumReservedItemsPerTenant),
             failures);
         ValidateRange(settings.MaximumFilterWindowDays, 1, 365, nameof(settings.MaximumFilterWindowDays), failures);
+        ValidateRange(settings.HealthQueuedWarningThreshold, 1, 100_000, nameof(settings.HealthQueuedWarningThreshold), failures);
+        ValidateRange(settings.HealthExecutingWarningThreshold, 1, 100_000, nameof(settings.HealthExecutingWarningThreshold), failures);
 
         if (settings.MaximumReservedItemsPerTenant < settings.MaximumItemsPerOperation)
         {

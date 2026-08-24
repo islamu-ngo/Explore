@@ -2,6 +2,7 @@
 // ABOUTME: Keeps provider I/O outside claim transactions while settling fenced subscription state.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Services.Webhooks;
@@ -18,6 +19,7 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
     IRegistrationProviderSubscriptionStateRepository stateRepository,
     IRegistrationProviderRepository providerRepository,
     IRegistrationProviderRegistry providerRegistry,
+    ITenantContextAccessor tenantContextAccessor,
     IRegistrationProviderCallbackUriBuilder callbackUriBuilder,
     IIncomingWebhookMessageRepository messageRepository,
     IIncomingWebhookEffectOutboxRepository pointerRepository,
@@ -45,7 +47,7 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
             cancellationToken);
         foreach (RegistrationProviderSubscriptionState state in renewals)
         {
-            await ProcessRenewalAsync(state, cancellationToken);
+            await ProcessInTenantAsync(state.TenantId, () => ProcessRenewalAsync(state, cancellationToken));
             processed++;
         }
 
@@ -56,7 +58,7 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
             cancellationToken);
         foreach (RegistrationProviderSubscriptionState state in sweeps)
         {
-            await ProcessSweepAsync(state, cancellationToken);
+            await ProcessInTenantAsync(state.TenantId, () => ProcessSweepAsync(state, cancellationToken));
             processed++;
         }
 
@@ -91,12 +93,23 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
                 return;
             }
 
+            state.BeginRenewalHandoff(leaseToken, generation, now);
+            await stateRepository.SaveChangesAsync(cancellationToken);
+
             RegistrationProviderSubscriptionResult result = await manager.EnsureSubscriptionAsync(new(
                 state.TenantId,
                 binding,
                 binding.Connection,
                 tuple,
                 callbackUriBuilder.Build(binding.Connection.ProviderCode, binding.Id)), cancellationToken);
+            if (!result.IsActive)
+            {
+                state.RejectRenewal(leaseToken, generation, now);
+                await stateRepository.SaveChangesAsync(cancellationToken);
+                metrics.RecordRegistrationProviderSubscriptionOperation("renewal", "rejected");
+                return;
+            }
+
             DateTime expiresAt = DateTime.SpecifyKind(result.ExpiresAtUtc ?? now.AddDays(6), DateTimeKind.Utc);
             state.MarkRenewalSuccess(leaseToken, generation, result.ProviderSubscriptionId ?? state.WatchId, expiresAt, now);
             await stateRepository.SaveChangesAsync(cancellationToken);
@@ -104,9 +117,9 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            state.Fail(RegistrationProviderSubscriptionOperation.Renewal, leaseToken, generation, "renewal_failed", NextBackoff(now, state.RenewalFailureCount), now);
+            state.ParkRenewalInDoubt(leaseToken, generation, now);
             await stateRepository.SaveChangesAsync(cancellationToken);
-            metrics.RecordRegistrationProviderSubscriptionOperation("renewal", "failure");
+            metrics.RecordRegistrationProviderSubscriptionOperation("renewal", "in_doubt");
         }
     }
 
@@ -170,6 +183,27 @@ public sealed class RegistrationProviderSubscriptionLifecycleService(
         connection.ConformanceEvidenceRevision);
 
     private static DateTime NextBackoff(DateTime now, int failures) => now.Add(TimeSpan.FromMinutes(Math.Min(60, Math.Pow(2, Math.Min(5, failures)))));
+
+    private async Task ProcessInTenantAsync(Guid tenantId, Func<Task> operation)
+    {
+        Guid? previousTenantId = tenantContextAccessor.TenantId;
+        tenantContextAccessor.SetTenant(tenantId);
+        try
+        {
+            await operation();
+        }
+        finally
+        {
+            if (previousTenantId is { } previous)
+            {
+                tenantContextAccessor.SetTenant(previous);
+            }
+            else
+            {
+                tenantContextAccessor.Clear();
+            }
+        }
+    }
 
     private static bool IsContinuationCursor(string? value) => value?.StartsWith("registration-provider-cursor:", StringComparison.Ordinal) == true;
 

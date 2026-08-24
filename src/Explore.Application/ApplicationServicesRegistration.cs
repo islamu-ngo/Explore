@@ -307,6 +307,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<RegistrationPaymentContractService>();
         services.AddScoped<RegistrationPaymentCheckoutDispatchService>();
         services.AddScoped<RegistrationPaymentReconciliationService>();
+        services.AddScoped<RefundDispatchService>();
+        services.AddScoped<RefundReconciliationService>();
         services.AddScoped<RegistrationParticipantCommandService>();
         services.AddScoped<IRegistrationOrderLifecycleService>(provider => provider.GetRequiredService<RegistrationOrderLifecycleService>());
         services.AddScoped<IRegistrationOrderStarter, CreateOrderWithHoldCommandHandler>();

@@ -9,6 +9,8 @@ public enum RegistrationProviderSubscriptionOperation { Renewal = 1, Sweep = 2 }
 
 public sealed class RegistrationProviderSubscriptionState : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    public const string RenewalRejectedFailureCategory = "renewal_rejected";
+    public const string RenewalInDoubtFailureCategory = "renewal_in_doubt";
     public const int MaxProviderEventTypeLength = 120;
     public const int MaxWatchIdLength = 200;
     public const int MaxResponseCheckpointLength = 1024;
@@ -128,6 +130,24 @@ public sealed class RegistrationProviderSubscriptionState : ITenantEntity, IAudi
         Touch(attemptedAt);
     }
 
+    public void BeginRenewalHandoff(Guid leaseToken, long generation, DateTime startedAt)
+    {
+        EnsureClaim(leaseToken, generation, startedAt);
+        FailureCategory = RenewalInDoubtFailureCategory;
+        NextRenewalAttemptAt = null;
+        Touch(startedAt);
+    }
+
+    public void ParkRenewalInDoubt(Guid leaseToken, long generation, DateTime parkedAt)
+    {
+        EnsureClaim(leaseToken, generation, parkedAt);
+        FailureCategory = RenewalInDoubtFailureCategory;
+        RenewalFailureCount = checked(RenewalFailureCount + 1);
+        NextRenewalAttemptAt = null;
+        ClearLease();
+        Touch(parkedAt);
+    }
+
     public void MarkRenewalSuccess(Guid leaseToken, long generation, string watchId, DateTime watchExpiresAt, DateTime renewedAt)
     {
         EnsureClaim(leaseToken, generation, renewedAt);
@@ -143,6 +163,16 @@ public sealed class RegistrationProviderSubscriptionState : ITenantEntity, IAudi
         NextRenewalAttemptAt = null;
         ClearLease();
         Touch(renewedAt);
+    }
+
+    public void RejectRenewal(Guid leaseToken, long generation, DateTime rejectedAt)
+    {
+        EnsureClaim(leaseToken, generation, rejectedAt);
+        FailureCategory = RenewalRejectedFailureCategory;
+        RenewalFailureCount = checked(RenewalFailureCount + 1);
+        NextRenewalAttemptAt = null;
+        ClearLease();
+        Touch(rejectedAt);
     }
 
     public void Fail(RegistrationProviderSubscriptionOperation operation, Guid leaseToken, long generation, string failureCategory, DateTime nextAttemptAt, DateTime failedAt)

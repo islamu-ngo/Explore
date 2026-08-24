@@ -85,10 +85,6 @@ public class ApiLiabilityRatchetTests
             ["CerbosPolicyBootSyncRunner.cs"] = "Boot-time policy sync with backoff; evaluated in Phase 5.2.",
             ["CerbosPolicyBootSyncWorker.cs"] = "Boot-time policy sync wrapper; evaluated in Phase 5.2.",
             ["EmailDispatchProcessor.cs"] = "Legacy in-process dispatch loop retained while Quartz owns dispatch drain; removed in Phase 5.3.",
-            ["IntegrationSyncProcessor.cs"] = "Periodic integration outbox drain; migrates to a Quartz cron job in Phase 5.3.",
-            ["PdsSyncWorker.cs"] = "Periodic PDS outbox drain; migrates to a Quartz cron job in Phase 5.3.",
-            ["WebhookBulkReplayProcessor.cs"] = "Periodic bulk replay drain; migrates to a Quartz cron job in Phase 5.3.",
-            ["WebhookDeliveryProcessor.cs"] = "Periodic webhook delivery drain; migrates to a Quartz cron job in Phase 5.3.",
         };
 
     /// <summary>

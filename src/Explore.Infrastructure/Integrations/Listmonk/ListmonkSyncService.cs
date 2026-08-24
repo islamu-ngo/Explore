@@ -27,11 +27,12 @@ public sealed class ListmonkSyncService(
 
     public async Task<ListmonkSyncResult> SyncSubscriberAsync(
         IntegrationSyncOutbox outbox,
+        Func<CancellationToken, Task<bool>> beginProviderHandoff,
         CancellationToken cancellationToken)
     {
         if (outbox.Kind != IntegrationKind.Listmonk)
         {
-            return ListmonkSyncResult.Failed("Integration outbox row is not a Listmonk sync.", isRetryable: false);
+            return ListmonkSyncResult.DefiniteFailure("Integration outbox row is not a Listmonk sync.");
         }
 
         var settingContext = new SettingContext(TenantId: outbox.TenantId);
@@ -42,7 +43,7 @@ public sealed class ListmonkSyncService(
 
         if (string.IsNullOrWhiteSpace(instanceUrl))
         {
-            return ListmonkSyncResult.Failed("Listmonk instance URL is not configured.", isRetryable: true);
+            return ListmonkSyncResult.Retryable("Listmonk instance URL is not configured.");
         }
 
         var username = await secretResolver.ResolveAsync(
@@ -57,46 +58,59 @@ public sealed class ListmonkSyncService(
         if (username is null || string.IsNullOrWhiteSpace(username.Value) ||
             apiKey is null || string.IsNullOrWhiteSpace(apiKey.Value))
         {
-            return ListmonkSyncResult.Failed("Listmonk API credentials are not configured.", isRetryable: true);
+            return ListmonkSyncResult.Retryable("Listmonk API credentials are not configured.");
         }
-
-        var client = httpClientFactory.CreateClient(HttpClientName);
-        client.BaseAddress = NormalizeApiBaseUri(instanceUrl);
-        client.DefaultRequestHeaders.Accept.Clear();
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        client.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(username.Value, apiKey.Value);
 
         try
         {
+            var client = httpClientFactory.CreateClient(HttpClientName);
+            client.BaseAddress = NormalizeApiBaseUri(instanceUrl);
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(username.Value, apiKey.Value);
             var apiClient = new ListmonkApiClient(client);
             var subscriber = BuildSubscriber(outbox);
+            if (!await beginProviderHandoff(cancellationToken))
+            {
+                return ListmonkSyncResult.LostClaim();
+            }
+
             await apiClient.CreateSubscriberAsync(subscriber, cancellationToken);
             return ListmonkSyncResult.Success();
         }
         catch (ApiException ex)
         {
-            var retryable = IsRetryableStatusCode(ex.StatusCode);
             logger.LogWarning(
-                ex,
-                "Listmonk subscriber sync failed for outbox {OutboxId} with status {StatusCode}",
-                outbox.Id,
+                "Listmonk subscriber sync failed. StatusCode={StatusCode}",
                 ex.StatusCode);
-            return ListmonkSyncResult.Failed($"Listmonk API returned HTTP {ex.StatusCode}.", retryable);
+            if (ex.StatusCode == 408 || ex.StatusCode >= 500)
+            {
+                return ListmonkSyncResult.Ambiguous($"Listmonk API returned HTTP {ex.StatusCode}.");
+            }
+
+            return ex.StatusCode == 429
+                ? ListmonkSyncResult.Retryable("Listmonk API rate limit rejected the request.")
+                : ListmonkSyncResult.DefiniteFailure($"Listmonk API returned HTTP {ex.StatusCode}.");
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Listmonk subscriber sync transport failed for outbox {OutboxId}", outbox.Id);
-            return ListmonkSyncResult.Failed("Listmonk API request failed.", isRetryable: true);
+            logger.LogWarning("Listmonk subscriber sync transport failed. FailureType={FailureType}", ex.GetType().Name);
+            return ListmonkSyncResult.Ambiguous("Listmonk API request outcome is uncertain.");
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Listmonk subscriber sync timed out for outbox {OutboxId}", outbox.Id);
-            return ListmonkSyncResult.Failed("Listmonk API request timed out.", isRetryable: true);
+            logger.LogWarning("Listmonk subscriber sync timed out. FailureType={FailureType}", ex.GetType().Name);
+            return ListmonkSyncResult.Ambiguous("Listmonk API request outcome is uncertain.");
         }
         catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Listmonk subscriber payload is invalid for outbox {OutboxId}", outbox.Id);
-            return ListmonkSyncResult.Failed("Listmonk subscriber payload is invalid.", isRetryable: false);
+            logger.LogWarning("Listmonk subscriber payload is invalid. FailureType={FailureType}", ex.GetType().Name);
+            return ListmonkSyncResult.DefiniteFailure("Listmonk subscriber payload is invalid.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning("Listmonk subscriber configuration is invalid. FailureType={FailureType}", ex.GetType().Name);
+            return ListmonkSyncResult.DefiniteFailure("Listmonk subscriber configuration is invalid.");
         }
     }
 
@@ -146,16 +160,25 @@ public sealed class ListmonkSyncService(
         return builder.Uri;
     }
 
-    private static bool IsRetryableStatusCode(int statusCode)
-    {
-        return statusCode == 408 || statusCode == 429 || statusCode >= 500;
-    }
 }
 
-public sealed record ListmonkSyncResult(bool Succeeded, bool IsRetryable, string? ErrorMessage)
+public sealed record ListmonkSyncResult(ListmonkSyncOutcome Outcome, string? ErrorMessage)
 {
-    public static ListmonkSyncResult Success() => new(true, false, null);
+    public bool Succeeded => Outcome == ListmonkSyncOutcome.Succeeded;
+    public bool IsRetryable => Outcome == ListmonkSyncOutcome.Retryable;
 
-    public static ListmonkSyncResult Failed(string errorMessage, bool isRetryable) =>
-        new(false, isRetryable, errorMessage);
+    public static ListmonkSyncResult Success() => new(ListmonkSyncOutcome.Succeeded, null);
+    public static ListmonkSyncResult Retryable(string errorMessage) => new(ListmonkSyncOutcome.Retryable, errorMessage);
+    public static ListmonkSyncResult DefiniteFailure(string errorMessage) => new(ListmonkSyncOutcome.DefiniteFailure, errorMessage);
+    public static ListmonkSyncResult Ambiguous(string errorMessage) => new(ListmonkSyncOutcome.Ambiguous, errorMessage);
+    public static ListmonkSyncResult LostClaim() => new(ListmonkSyncOutcome.LostClaim, null);
+}
+
+public enum ListmonkSyncOutcome
+{
+    Succeeded = 1,
+    Retryable = 2,
+    DefiniteFailure = 3,
+    Ambiguous = 4,
+    LostClaim = 5
 }

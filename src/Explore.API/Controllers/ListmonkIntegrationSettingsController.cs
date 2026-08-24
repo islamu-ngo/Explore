@@ -36,6 +36,11 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         "Listmonk integration connection validation failed",
         "Listmonk integration connection test failed.");
 
+    private static readonly ApiValidationProblemDescriptor RecoveryValidationProblem = new(
+        "integrationSyncRecovery",
+        "Integration sync recovery validation failed",
+        "Integration sync recovery failed.");
+
     [HttpGet("settings", Name = RouteNames.GetListmonkIntegrationSettings)]
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
@@ -103,5 +108,23 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, TestConnectionValidationProblem);
+    }
+
+    [HttpPost("queue/{outboxId:guid}/resolve", Name = RouteNames.ResolveIntegrationSyncAmbiguity)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EndpointSummary("Resolve Ambiguous Integration Sync")]
+    [EndpointDescription("Applies an evidence-based accepted, definitely-not-accepted, or dead-letter decision without blind provider replay.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ResolveAmbiguity(
+        Guid outboxId,
+        [FromBody] ResolveIntegrationSyncAmbiguityDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponse<Guid> result = await mediator.Send(
+            new ResolveIntegrationSyncAmbiguityCommand(outboxId, dto),
+            cancellationToken);
+        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, RecoveryValidationProblem);
     }
 }

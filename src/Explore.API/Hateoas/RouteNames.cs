@@ -234,6 +234,7 @@ public static class RouteNames
     public const string RegistrationProviderCallback = "RegistrationProviderCallback";
 
     public const string GetListmonkIntegrationSettings = "GetListmonkIntegrationSettings";
+    public const string ResolveIntegrationSyncAmbiguity = "ResolveIntegrationSyncAmbiguity";
     public const string UpdateListmonkIntegrationSettings = "UpdateListmonkIntegrationSettings";
     public const string RotateListmonkIntegrationCredentials = "RotateListmonkIntegrationCredentials";
     public const string TestListmonkIntegrationConnection = "TestListmonkIntegrationConnection";

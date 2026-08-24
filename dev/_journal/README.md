@@ -7,13 +7,28 @@
 >
 > **Not for**: Short-term TODOs, tentative ideas, or anything you would not want to read again in six months.
 
-Last Updated: 2026-04-24
+Last Updated: 2026-08-24
 
 ---
 
-## 1. When to Record a Finding
+## 1. Structure & Domain Ledgers
 
-Open `journal.md` and append an entry when you:
+Findings are organized by domain under `dev/_journal/domains/` to minimize agent context overhead:
+
+| Domain | File Path | Focus Area |
+|---|---|---|
+| **Persistence** | [`domains/persistence-and-db.md`](domains/persistence-and-db.md) | EF Core, migrations, query filters, Postgres/SQLite, Quartz ADO. |
+| **Auth & Tenancy** | [`domains/auth-and-tenancy.md`](domains/auth-and-tenancy.md) | Keycloak, Cerbos policies, BFF cookies, tenant isolation, role grants. |
+| **Presentation** | [`domains/presentation-and-blazor.md`](domains/presentation-and-blazor.md) | MudBlazor v9, CSS isolation, HAL affordance gating, Dock Layout. |
+| **Application** | [`domains/application-and-messaging.md`](domains/application-and-messaging.md) | MediatR/CQRS handlers, Outbox dispatch, RabbitMQ/MQContract, EAV. |
+| **Testing** | [`domains/testing-and-environment.md`](domains/testing-and-environment.md) | TUnit runner, WebApplicationFactory, Podman/Docker, SDK workloads. |
+| **Index & Recent** | [`journal.md`](journal.md) | Central index and recent cross-cutting stream (last 30 days). |
+
+---
+
+## 2. When to Record a Finding
+
+Open the matching domain ledger under `domains/` (or `journal.md` for cross-cutting insights) and append an entry when you:
 
 1. Discover a **non-obvious behavior** (e.g., middleware ordering that breaks rate limiting, EF Core soft-delete interceptor behavior, MudBlazor v9 runtime quirks).
 2. Fix a **bug whose root cause is not visible from the fix alone** (the "what you really needed to know" insight).
@@ -24,70 +39,35 @@ If your finding is a **system-wide decision** (changes layer boundaries, affects
 
 ---
 
-## 2. How to Record a Finding
+## 3. How to Record a Finding
 
-Append to [`journal.md`](journal.md) using [`FINDING_TEMPLATE.md`](FINDING_TEMPLATE.md). Enforcement checks:
+Append to the relevant domain ledger under `domains/` or [`journal.md`](journal.md) using [`FINDING_TEMPLATE.md`](FINDING_TEMPLATE.md):
 
 - Date prefix in the form `[YYYY-MM-DD Europe/Brussels]`.
 - One blank line between entries.
 - At least one referenced file path or commit SHA.
-- No speculation: findings must be grounded in something testable or observed.
-
-```bash
-# Append a new finding
-cat dev/_journal/FINDING_TEMPLATE.md >> dev/_journal/journal.md
-```
-
-Then edit the appended block to fill it in. Commit alongside the change it describes.
+- Grounded in testable, observed evidence.
 
 ---
 
-## 3. Promotion Rules (Journal → Canonical Docs)
+## 4. Promotion Rules (Journal → Canonical Docs)
 
 A finding is not meant to live in the journal forever. See [`PROMOTION_RULES.md`](PROMOTION_RULES.md) for the promotion policy.
 
-At a glance:
-
 | Signal | Promote To |
 |---|---|
-| Rule that applies to new code going forward | `docs/QUICK_REFERENCE.md` (non-inferable rule) OR new `.claude/rules/*.md` entry |
+| Rule that applies to new code going forward | `docs/QUICK_REFERENCE.md` (non-inferable rule) OR `.agents/rules/*.md` entry |
 | Pattern that teaches a way of working | `.agents/skills/*/SKILL.md` |
 | Architectural decision | `docs/MAJOR_DECISIONS.md` + ADR under `docs/adr/` |
 | Discovery that informs governance / conventions | `docs/GOVERNANCE.md` |
-| One-off debugging lesson | **Stays in journal** — no promotion needed |
-
-The goal: the journal should shrink as a fraction of active findings over time, because stable findings graduate.
+| One-off debugging lesson | **Stays in domain journal** — no promotion needed |
 
 ---
 
-## 4. Reading the Journal Effectively
+## 5. Related
 
-When investigating a problem, **search the journal before re-researching**. Most "weird" behaviors are documented.
-
-```bash
-# Example: find anything about tenant resolution
-grep -n -i "tenant" dev/_journal/journal.md
-
-# Example: find findings from the last month
-grep -n "^\[2026-04" dev/_journal/journal.md
-```
-
-Cold-start agents are instructed to do this via `/bootstrap` and `AGENTS.md §8`.
-
----
-
-## 5. Housekeeping
-
-- **Do not** delete old findings. They are durable evidence, even when superseded.
-- **Do** append a follow-up finding referencing the original (`Related: 2026-03-12 entry`).
-- **Do** promote a finding when it meets promotion criteria, then leave the journal entry as a historical record with a `Promoted → docs/QUICK_REFERENCE.md` annotation.
-
----
-
-## 6. Related
-
-- [`journal.md`](journal.md) — chronological findings log.
+- [`journal.md`](journal.md) — central index & recent findings.
 - [`MAJOR_DECISIONS.md`](MAJOR_DECISIONS.md) — system-wide decisions.
 - [`FINDING_TEMPLATE.md`](FINDING_TEMPLATE.md) — canonical entry format.
 - [`PROMOTION_RULES.md`](PROMOTION_RULES.md) — journal-to-docs promotion policy.
-- [`AGENTS.md`](../../AGENTS.md) §8 — Memory & Findings (high-level).
+- [`AGENTS.md`](../../AGENTS.md) §8 — Memory & Findings.

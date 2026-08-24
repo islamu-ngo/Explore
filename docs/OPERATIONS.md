@@ -894,10 +894,19 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `inventory-hold-expiry` | One-off time trigger, per order | Pointer-only IDs | The order's earliest `RegistrationInventoryHold.ExpiresAt` |
 | `inventory-hold-expiry-reconciliation` | Cron `0 */5 * * * ?` (every 5 minutes) | None | Expired active holds and hold-expiry recovery targets |
 | `registration-finalization-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | Durable registration-finalization effect claims |
+| `integration-sync-drain` | Interval, `IntegrationSyncProcessor:PollingIntervalSeconds` | None | Tenant-bound integration synchronization and ambiguity parking |
+| `local-webhook-delivery-drain` | Interval, `WebhookDeliveryProcessor:PollingIntervalSeconds` | None | Stale recovery then Local-provider delivery |
+| `incoming-webhook-intake-drain` | Interval, `Webhooks:IncomingProcessing:PollIntervalSeconds` | None | Verified incoming webhook claims |
+| `incoming-webhook-effect-drain` | Interval, `Webhooks:IncomingProcessing:PollIntervalSeconds` | None | Durable incoming effect pointers |
+| `webhook-bulk-replay-drain` | Interval, `WebhookBulkReplay:PollingIntervalSeconds` | None | Bounded queued bulk replay |
+| `webhook-provider-publication-drain` | Interval, `WebhookProviderPublicationProcessor:PollingIntervalSeconds` | None | Provider publication then reconciliation |
+| `pds-sync-drain` | Interval, `Atproto:PdsSync:PollingIntervalSeconds` | None | Fenced AT Protocol PDS delivery |
 
-Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to Quartz until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
+Planned-only jobs are `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. General outbox remains the explicit hosted-service exception and has no Quartz catalog identity.
 
 `payment-reconciliation-drain` performs a dispatch/reconcile/dispatch pass. Missing or invalid `PublicBaseUrl` defers only new Checkout handoff; provider reconciliation still runs. Keep the scheduler enabled after disabling paid sales so retained attempts and late signed evidence can settle.
+
+For an IntegrationSync row reported as ambiguous by `/health` under `queue-drains`, establish provider evidence before acting. Use the tenant-authenticated `POST /api/integrations/listmonk/queue/{outboxId}/resolve` endpoint with an opaque incident/evidence reference. `ConfirmAccepted` settles without replay; `RetryDefinitelyNotAccepted` schedules a retry only after proof the provider did not accept the POST; `DeadLetter` preserves the terminal refusal. Never select retry from timeout or response-loss evidence alone.
 
 #### Upgrade note — maintenance sweeps moved to the scheduler
 
@@ -924,9 +933,9 @@ What changes for operators:
   on every node, which removes the duplicate-work that the old per-process loops caused in multi-node
   deployments.
 
-`OutboxProcessor` and the queue-driven webhook, integration-sync, and PDS processors were deliberately **not**
-migrated: their fencing and retry semantics are coupled to their own loops, and moving them is gated on the
-multi-node proof required above.
+`OutboxProcessor` remains deliberately hosted. Queue-driven webhook, integration-sync, and PDS cadence now
+runs under Quartz; their fencing, retry, tenant, ambiguity, and settlement semantics remain in the same
+scheduler-neutral services and durable repositories.
 
 #### Upgrade note — registration finalization drain moved to the scheduler
 
@@ -1359,7 +1368,7 @@ Admin settings management:
 
 AT Protocol event federation is disabled by governance by default. Before enabling `federation.atproto_events_enabled`, verify migrations are current and the Jetstream worker bounds match [CONFIGURATION.md](CONFIGURATION.md); leave `AllowedDids` empty for public exact-collection discovery or configure it for curated ingress. Inbound discovery does not require ATProto authentication. For outbound publication, verify the OAuth health check is ready; each owner must still opt in through `federation.atproto_publish_my_events`.
 
-`Explore.API` hosts both runtime loops. `PdsSyncWorker` polls committed `PdsSyncOutbox` rows every 5 seconds by default, claims at most 20 with 90-second fenced leases, and processes at most 10 concurrently in fresh scopes. `AtprotoJetstreamSubscriber` is implemented in Infrastructure but hosted by the API; it opens one capability-aware global stream, renews its 60-second lease every 20 seconds, and cancels the stream immediately when renewal is fenced or fails. Jetstream never opens per-tenant streams.
+`Explore.API` hosts Quartz `pds-sync-drain` and the Jetstream subscriber. The job invokes one Infrastructure drain pass every 5 seconds by default, claims at most 20 rows with 90-second fenced leases, and processes at most 10 concurrently in fresh scopes. `AtprotoJetstreamSubscriber` opens one capability-aware global stream, renews its 60-second lease every 20 seconds, and cancels the stream immediately when renewal is fenced or fails. Jetstream never opens per-tenant streams.
 
 Operational signals are intentionally bounded:
 
@@ -1370,7 +1379,7 @@ Operational signals are intentionally bounded:
 | `atproto.jetstream.envelopes` | Jetstream connection, replay, fencing, materialization, quarantine, and lease outcomes; the optional `collection` tag is normalized to `event`, `rsvp`, or `unsupported`. |
 | `atproto-authentication` health check | BFF readiness for canonical public URL/callback, signing material, state/session stores, and provider configuration; failure detail is reduced to a stable code. |
 | `atproto-jetstream` health check | API readiness for capability resolution and public or DID-curated exact-collection subscription; dormant disabled capability is also healthy. |
-| `PdsSyncWorker` structured logs | Per-claim completion or bounded `FailureCode`/`FailureDisposition`; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
+| `pds-sync-drain` structured logs | Aggregate claimed/delivered/failed/claim-lost counts only; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
 
 For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.
 

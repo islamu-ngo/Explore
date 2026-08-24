@@ -46,7 +46,7 @@ namespace Explore.API.Hosting;
 
 public sealed record ApiHostCompositionState(
     bool IsOpenApiGeneration,
-    bool UseQuartzEmailDispatch,
+    bool UseQuartzScheduler,
     bool HttpsRedirectionEnabled);
 
 public static class ApiHostServiceCollectionExtensions
@@ -162,27 +162,19 @@ public static class ApiHostServiceCollectionExtensions
         var emailDispatchProcessorSettings = builder.Configuration
             .GetSection(EmailDispatchProcessorSettings.SectionName)
             .Get<EmailDispatchProcessorSettings>() ?? new EmailDispatchProcessorSettings();
-        var webhookDeliveryProcessorSettings = builder.Configuration
-            .GetSection(WebhookDeliveryProcessorSettings.SectionName)
-            .Get<WebhookDeliveryProcessorSettings>() ?? new WebhookDeliveryProcessorSettings();
-        var incomingWebhookProcessingSettings = builder.Configuration
-            .GetSection(IncomingWebhookProcessingSettings.SectionName)
-            .Get<IncomingWebhookProcessingSettings>() ?? new IncomingWebhookProcessingSettings();
         var emailDispatchRabbitMqSettings = builder.Configuration
             .GetSection(EmailDispatchRabbitMqSettings.SectionName)
             .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
-        var integrationSyncProcessorSettings = builder.Configuration
-            .GetSection(IntegrationSyncProcessorSettings.SectionName)
-            .Get<IntegrationSyncProcessorSettings>() ?? new IntegrationSyncProcessorSettings();
         var useQuartzEmailDispatch = emailDispatchProcessorSettings.Enabled &&
             emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.Quartz;
+        var useQuartzScheduler = !isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing");
 
         builder.Services.AddSingleton<EmailDispatchHostedDrainRunner>();
-        builder.Services.AddSingleton<IntegrationSyncHostedDrainRunner>();
         builder.Services.AddApiQuartzScheduler(
             builder.Configuration,
             builder.Environment,
-            enabled: useQuartzEmailDispatch && !isOpenApiGeneration);
+            enabled: useQuartzScheduler,
+            useQuartzEmailDispatch);
 
         var skipDbContext = builder.Environment.IsEnvironment("Testing") || isOpenApiGeneration;
         builder.Services.ConfigurePersistenceServices(
@@ -281,28 +273,9 @@ public static class ApiHostServiceCollectionExtensions
             options.AddOperationTransformer<EventOpenGraphImageResponseTransformer>();
         });
 
-        builder.Services.AddOptions<PdsSyncWorkerOptions>()
-            .Bind(builder.Configuration.GetSection(PdsSyncWorkerOptions.SectionName))
-            .Validate(
-                options => options.PollingIntervalSeconds is >= 1 and <= 300,
-                "ATProto PDS polling interval must be between 1 and 300 seconds.")
-            .Validate(
-                options => options.BatchSize is >= 1 and <= 100,
-                "ATProto PDS batch size must be between 1 and 100.")
-            .Validate(
-                options => options.MaxConcurrency >= 1 && options.MaxConcurrency <= options.BatchSize,
-                "ATProto PDS concurrency must be between 1 and the batch size.")
-            .Validate(
-                options => options.LeaseDurationSeconds is >= 30 and <= 900,
-                "ATProto PDS lease duration must be between 30 and 900 seconds.")
-            .ValidateOnStart();
-
         builder.AddApiBackgroundProcessing(
             isOpenApiGeneration,
             emailDispatchProcessorSettings,
-            integrationSyncProcessorSettings,
-            webhookDeliveryProcessorSettings,
-            incomingWebhookProcessingSettings,
             emailDispatchRabbitMqSettings);
 
         builder.Services.AddApiCors(builder.Configuration);
@@ -404,6 +377,10 @@ public static class ApiHostServiceCollectionExtensions
                 "webhook-coop-effects",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready", "webhooks", "coop", "infrastructure", "webhook-coop-effect-readiness"])
+            .AddCheck<QueueDrainReadinessHealthCheck>(
+                "queue-drains",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "scheduler", "background", "infrastructure", "queue-drain-readiness"])
             .AddCheck<PaymentReconciliationHealthCheck>(
                 "payment-reconciliation",
                 failureStatus: HealthStatus.Unhealthy,
@@ -461,7 +438,7 @@ public static class ApiHostServiceCollectionExtensions
 
         return new ApiHostCompositionState(
             isOpenApiGeneration,
-            useQuartzEmailDispatch,
+            useQuartzScheduler,
             httpsRedirectionEnabled);
     }
 
@@ -484,9 +461,6 @@ public static class ApiHostServiceCollectionExtensions
         this WebApplicationBuilder builder,
         bool isOpenApiGeneration,
         EmailDispatchProcessorSettings emailDispatchProcessorSettings,
-        IntegrationSyncProcessorSettings integrationSyncProcessorSettings,
-        WebhookDeliveryProcessorSettings webhookDeliveryProcessorSettings,
-        IncomingWebhookProcessingSettings incomingWebhookProcessingSettings,
         EmailDispatchRabbitMqSettings emailDispatchRabbitMqSettings)
     {
         var isTesting = builder.Environment.IsEnvironment("Testing");
@@ -494,7 +468,6 @@ public static class ApiHostServiceCollectionExtensions
         if (!isOpenApiGeneration && !isTesting)
         {
             builder.Services.AddHostedService<Explore.Infrastructure.Services.Federation.AtprotoJetstreamSubscriber>();
-            builder.Services.AddHostedService<PdsSyncWorker>();
         }
 
         builder.Services.AddSingleton<IAiAssistantRunQueue, AiAssistantRunQueue>();
@@ -509,9 +482,6 @@ public static class ApiHostServiceCollectionExtensions
         if (!isTesting)
         {
             builder.Services.AddHostedService<NotificationFanoutProcessor>();
-            builder.Services.AddHostedService<RegistrationProviderSubmissionWriteWorker>();
-            builder.Services.AddHostedService<RegistrationProviderSubscriptionLifecycleWorker>();
-            builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
             builder.Services.AddHostedService<WebhookEventTypeCatalogSyncWorker>();
             builder.Services.AddHostedService<SvixWebhookEventTypeSyncWorker>();
             builder.Services.AddHostedService<ManagedControlPlaneRegistrationWorker>();
@@ -526,22 +496,6 @@ public static class ApiHostServiceCollectionExtensions
             emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
         {
             builder.Services.AddHostedService<EmailDispatchProcessor>();
-        }
-
-        if (!isTesting && integrationSyncProcessorSettings.Enabled)
-        {
-            builder.Services.AddHostedService<IntegrationSyncProcessor>();
-        }
-
-        if (!isTesting && webhookDeliveryProcessorSettings.Enabled)
-        {
-            builder.Services.AddHostedService<WebhookDeliveryProcessor>();
-        }
-
-        if (!isTesting && incomingWebhookProcessingSettings.Enabled)
-        {
-            builder.Services.AddHostedService<IncomingWebhookProcessor>();
-            builder.Services.AddHostedService<IncomingWebhookEffectProcessor>();
         }
 
         if (!emailDispatchRabbitMqSettings.Enabled)

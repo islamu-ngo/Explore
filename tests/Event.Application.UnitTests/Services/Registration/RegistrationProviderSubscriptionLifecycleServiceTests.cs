@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Services.Registration;
 using Explore.Application.Telemetry;
@@ -16,6 +17,110 @@ namespace Event.Application.UnitTests.Services.Registration;
 public sealed class RegistrationProviderSubscriptionLifecycleServiceTests
 {
     private static readonly DateTime Now = new(2026, 8, 11, 12, 0, 0, DateTimeKind.Utc);
+
+    [Test]
+    public async Task DrainOnceAsync_BindsClaimTenantAndRejectsInactiveRenewal()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid previousTenantId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), tenantId, "Formbricks", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.SelfHosted, "FORMBRICKS", "SELF_HOSTED", "v1",
+            "ISLAMU_EVENT_FORMBRICKS_V1", "2026-08-11", "https://forms.example.test",
+            "https://forms.example.test", "tenant", Guid.CreateVersion7(), null, Now.AddDays(-1));
+        RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
+            tenantId, connection.Id, Guid.CreateVersion7(), Guid.CreateVersion7(),
+            RegistrationProviderPresentationModeEnum.Embed,
+            RegistrationProviderCollectionModeEnum.ProviderHosted,
+            RegistrationProviderCompletionModeEnum.Callback,
+            RegistrationProviderTrustLevelEnum.CompletionOnly,
+            null,
+            Now.AddDays(-1));
+        typeof(RegistrationProviderBinding).GetProperty(nameof(RegistrationProviderBinding.Connection))!.SetValue(binding, connection);
+        RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+            tenantId, binding.Id, "RESPONSES", "watch-1", Now.AddHours(1), null, Now.AddDays(-1));
+        state.Claim(Guid.CreateVersion7(), Now.AddMinutes(2), Now);
+
+        IRegistrationProviderSubscriptionStateRepository states = Substitute.For<IRegistrationProviderSubscriptionStateRepository>();
+        states.GetExpiringAsync(Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        states.ClaimDueRenewalsAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>()).Returns([state]);
+        states.ClaimDueSweepsAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>()).Returns([]);
+        IRegistrationProviderRepository providers = Substitute.For<IRegistrationProviderRepository>();
+        providers.GetBindingAsync(tenantId, binding.Id, Arg.Any<CancellationToken>()).Returns(binding);
+        var tenantAccessor = new RecordingTenantContextAccessor(previousTenantId);
+        var descriptor = new RenewalDescriptor(
+            connection,
+            tenantAccessor,
+            new(false, "watch-1", ExpiresAtUtc: Now.AddDays(5)));
+        IRegistrationProviderRegistry registry = Substitute.For<IRegistrationProviderRegistry>();
+        registry.TryResolve(Arg.Any<RegistrationProviderTuple>()).Returns(descriptor);
+
+        await new RegistrationProviderSubscriptionLifecycleService(
+            states,
+            providers,
+            registry,
+            tenantAccessor,
+            Substitute.For<IRegistrationProviderCallbackUriBuilder>(),
+            Substitute.For<IIncomingWebhookMessageRepository>(),
+            Substitute.For<IIncomingWebhookEffectOutboxRepository>(),
+            Substitute.For<IRegistrationProviderCallbackReceiptProtector>(),
+            new ImmediateUnitOfWork(),
+            CreateMetrics(),
+            new FixedTimeProvider(Now)).DrainOnceAsync(CancellationToken.None);
+
+        await Assert.That(descriptor.ObservedTenantId).IsEqualTo(tenantId);
+        await Assert.That(tenantAccessor.TenantId).IsEqualTo(previousTenantId);
+        await Assert.That(state.FailureCategory).IsEqualTo("renewal_rejected");
+        await Assert.That(state.LastRenewalSuccessAt).IsNull();
+    }
+
+    [Test]
+    public async Task DrainOnceAsync_WhenRenewalOutcomeIsUncertainParksWithoutAutomaticRetry()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), tenantId, "Formbricks", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.SelfHosted, "FORMBRICKS", "SELF_HOSTED", "v1",
+            "ISLAMU_EVENT_FORMBRICKS_V1", "2026-08-11", "https://forms.example.test",
+            "https://forms.example.test", "tenant", Guid.CreateVersion7(), null, Now.AddDays(-1));
+        RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
+            tenantId, connection.Id, Guid.CreateVersion7(), Guid.CreateVersion7(),
+            RegistrationProviderPresentationModeEnum.Embed,
+            RegistrationProviderCollectionModeEnum.ProviderHosted,
+            RegistrationProviderCompletionModeEnum.Callback,
+            RegistrationProviderTrustLevelEnum.CompletionOnly,
+            null,
+            Now.AddDays(-1));
+        typeof(RegistrationProviderBinding).GetProperty(nameof(RegistrationProviderBinding.Connection))!.SetValue(binding, connection);
+        RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+            tenantId, binding.Id, "RESPONSES", "watch-1", Now.AddHours(1), null, Now.AddDays(-1));
+        state.Claim(Guid.CreateVersion7(), Now.AddMinutes(2), Now);
+        IRegistrationProviderSubscriptionStateRepository states = Substitute.For<IRegistrationProviderSubscriptionStateRepository>();
+        states.GetExpiringAsync(Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        states.ClaimDueRenewalsAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>()).Returns([state]);
+        states.ClaimDueSweepsAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>()).Returns([]);
+        IRegistrationProviderRepository providers = Substitute.For<IRegistrationProviderRepository>();
+        providers.GetBindingAsync(tenantId, binding.Id, Arg.Any<CancellationToken>()).Returns(binding);
+        IRegistrationProviderRegistry registry = Substitute.For<IRegistrationProviderRegistry>();
+        registry.TryResolve(Arg.Any<RegistrationProviderTuple>()).Returns(new ThrowingRenewalDescriptor(connection));
+
+        await new RegistrationProviderSubscriptionLifecycleService(
+            states,
+            providers,
+            registry,
+            new RecordingTenantContextAccessor(null),
+            Substitute.For<IRegistrationProviderCallbackUriBuilder>(),
+            Substitute.For<IIncomingWebhookMessageRepository>(),
+            Substitute.For<IIncomingWebhookEffectOutboxRepository>(),
+            Substitute.For<IRegistrationProviderCallbackReceiptProtector>(),
+            new ImmediateUnitOfWork(),
+            CreateMetrics(),
+            new FixedTimeProvider(Now)).DrainOnceAsync(CancellationToken.None);
+
+        await Assert.That(state.FailureCategory).IsEqualTo("renewal_in_doubt");
+        await Assert.That(state.NextRenewalAttemptAt).IsNull();
+        await Assert.That(state.LastRenewalSuccessAt).IsNull();
+    }
 
     [Test]
     public async Task DrainOnceAsync_ProcessesPeriodicMissedNotificationSweepAndSchedulesNextSweep()
@@ -48,6 +153,7 @@ public sealed class RegistrationProviderSubscriptionLifecycleServiceTests
             states,
             providers,
             registry,
+            Substitute.For<ITenantContextAccessor>(),
             Substitute.For<IRegistrationProviderCallbackUriBuilder>(),
             Substitute.For<IIncomingWebhookMessageRepository>(),
             Substitute.For<IIncomingWebhookEffectOutboxRepository>(),
@@ -235,6 +341,7 @@ public sealed class RegistrationProviderSubscriptionLifecycleServiceTests
             setup.States,
             setup.Providers,
             registry,
+            Substitute.For<ITenantContextAccessor>(),
             Substitute.For<IRegistrationProviderCallbackUriBuilder>(),
             messages,
             pointers ?? Substitute.For<IIncomingWebhookEffectOutboxRepository>(),
@@ -262,6 +369,54 @@ public sealed class RegistrationProviderSubscriptionLifecycleServiceTests
             ReconcileCalls++;
             return Task.FromResult(result ?? new RegistrationProviderReconciliationResult(0, false, [], "2026-08-11T12:01:00.0000000Z"));
         }
+    }
+
+    private sealed class RenewalDescriptor(
+        RegistrationProviderConnection connection,
+        ITenantContextAccessor tenantAccessor,
+        RegistrationProviderSubscriptionResult result)
+        : IRegistrationProviderDescriptor, IRegistrationProviderSubscriptionManager
+    {
+        public Guid? ObservedTenantId { get; private set; }
+        public RegistrationProviderTuple Tuple { get; } = new(
+            connection.ProviderCode,
+            connection.ProviderDeploymentCode,
+            connection.ApiVersion,
+            connection.AdapterPolicyVersion,
+            connection.ConformanceEvidenceRevision);
+        public RegistrationProviderCapabilitySet ProvenCapabilities => RegistrationProviderCapabilitySet.None;
+
+        public Task<RegistrationProviderSubscriptionResult> EnsureSubscriptionAsync(
+            RegistrationProviderSubscriptionRequest request,
+            CancellationToken cancellationToken)
+        {
+            ObservedTenantId = tenantAccessor.TenantId;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class ThrowingRenewalDescriptor(RegistrationProviderConnection connection)
+        : IRegistrationProviderDescriptor, IRegistrationProviderSubscriptionManager
+    {
+        public RegistrationProviderTuple Tuple { get; } = new(
+            connection.ProviderCode,
+            connection.ProviderDeploymentCode,
+            connection.ApiVersion,
+            connection.AdapterPolicyVersion,
+            connection.ConformanceEvidenceRevision);
+        public RegistrationProviderCapabilitySet ProvenCapabilities => RegistrationProviderCapabilitySet.None;
+
+        public Task<RegistrationProviderSubscriptionResult> EnsureSubscriptionAsync(
+            RegistrationProviderSubscriptionRequest request,
+            CancellationToken cancellationToken) => throw new HttpRequestException("response lost");
+    }
+
+    private sealed class RecordingTenantContextAccessor(Guid? tenantId) : ITenantContextAccessor
+    {
+        public Guid? TenantId { get; private set; } = tenantId;
+        public bool IsResolved => TenantId.HasValue;
+        public void SetTenant(Guid value) => TenantId = value;
+        public void Clear() => TenantId = null;
     }
 
     private sealed record Setup(

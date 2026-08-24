@@ -179,7 +179,7 @@ Please read [Contribution Guidelines][contribution-guidelines] for details on th
 
 ### ✍️ Contributor License Agreement
 
-Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase for the current CLA version. The v1.0 signature is recorded in `signatures/v1.0/cla.json` together with your GitHub username, user ID, pull request number, signing comment ID, comment body, and timestamp. See the CLA document for the current version and the full legal text.
+Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase for the current CLA version. The v1.0 signature is recorded in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch together with your GitHub username, user ID, pull request number, signing comment ID, comment body, and timestamp. See the CLA document for the current version and the full legal text.
 
 ## 📚 Documentation
 
@@ -327,7 +327,7 @@ ISLAMU Event inbound contributions are governed by the [ISLAMU Contributor Licen
 
 **Why a CLA alongside AGPL-3.0-or-later?** ISLAMU Event remains publicly available under AGPL-3.0-or-later. The CLA gives the ISLAMU project steward an additional inbound license from contributors so the future nonprofit can also offer ISLAMU-owned material under alternative terms for sustainability, enterprise adoption, public-sector procurement, hosted-service, nonprofit, humanitarian, or special social-impact deployments. It does not override any third-party license.
 
-The CLA is versioned. The current version and full legal text live in [`legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1.0/cla.json` on the `develop` branch and are committed automatically by the CLA workflow.
+The CLA is versioned. The current version and full legal text live in [`legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch and are committed automatically by the CLA workflow.
 
 <div align="right">
 

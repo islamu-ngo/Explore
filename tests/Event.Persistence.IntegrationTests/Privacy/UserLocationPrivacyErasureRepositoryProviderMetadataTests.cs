@@ -681,6 +681,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         seedContext.AddRange(tenantA, tenantB, owner);
 
         Guid activeLeaseToken = Guid.CreateVersion7();
+        DateTime activeStartedAt = DateTime.UtcNow;
         IntegrationSyncOutbox activeRow = CreateIntegrationSync(
             tenantA,
             owner,
@@ -689,6 +690,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             "{\"email\":\"owner@example.invalid\"}");
         activeRow.Status = IntegrationSyncStatus.Processing;
         activeRow.ProcessingLeaseToken = activeLeaseToken;
+        activeRow.ProcessingStartedAt = activeStartedAt;
 
         IntegrationSyncOutbox pendingRow = CreateIntegrationSync(
             tenantB,
@@ -704,24 +706,16 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         var repository = new IntegrationSyncOutboxRepository(runtimeContext);
 
         IntegrationSyncOutbox? activeClaim = await repository.GetActiveClaimAsync(
-            tenantA.Id,
-            activeRow.Id,
-            activeLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantA.Id, activeRow.Id, activeLeaseToken, activeStartedAt),
             CancellationToken.None);
         IntegrationSyncOutbox? wrongTenant = await repository.GetActiveClaimAsync(
-            tenantB.Id,
-            activeRow.Id,
-            activeLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantB.Id, activeRow.Id, activeLeaseToken, activeStartedAt),
             CancellationToken.None);
         IntegrationSyncOutbox? staleLease = await repository.GetActiveClaimAsync(
-            tenantA.Id,
-            activeRow.Id,
-            Guid.CreateVersion7(),
+            new IntegrationSyncClaimIdentity(tenantA.Id, activeRow.Id, Guid.CreateVersion7(), activeStartedAt),
             CancellationToken.None);
         IntegrationSyncOutbox? pendingClaim = await repository.GetActiveClaimAsync(
-            tenantB.Id,
-            pendingRow.Id,
-            activeLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantB.Id, pendingRow.Id, activeLeaseToken, activeStartedAt),
             CancellationToken.None);
 
         await Assert.That(activeClaim?.Id).IsEqualTo(activeRow.Id);
@@ -731,7 +725,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
     }
 
     [Test]
-    public async Task IntegrationSyncActiveClaim_AfterExactUserErasureReloadIsAbsentAndUnrelatedClaimRemains()
+    public async Task IntegrationSyncActiveClaim_AfterExactUserErasureReloadHasNoUserAndUnrelatedClaimRemains()
     {
         await using var seedContext = fixture.CreateDbContext();
         var tenantA = CreateTenant("integration-sync-erasure-a");
@@ -741,6 +735,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         seedContext.AddRange(tenantA, tenantB, owner, unrelated);
 
         Guid ownerLeaseToken = Guid.CreateVersion7();
+        DateTime ownerStartedAt = DateTime.UtcNow;
         IntegrationSyncOutbox ownerRow = CreateIntegrationSync(
             tenantA,
             owner,
@@ -749,8 +744,10 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             "{\"email\":\"owner-erasure@example.invalid\"}");
         ownerRow.Status = IntegrationSyncStatus.Processing;
         ownerRow.ProcessingLeaseToken = ownerLeaseToken;
+        ownerRow.ProcessingStartedAt = ownerStartedAt;
 
         Guid unrelatedLeaseToken = Guid.CreateVersion7();
+        DateTime unrelatedStartedAt = ownerStartedAt.AddTicks(1);
         IntegrationSyncOutbox unrelatedRow = CreateIntegrationSync(
             tenantB,
             unrelated,
@@ -759,6 +756,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             "{\"email\":\"unrelated-erasure@example.invalid\"}");
         unrelatedRow.Status = IntegrationSyncStatus.Processing;
         unrelatedRow.ProcessingLeaseToken = unrelatedLeaseToken;
+        unrelatedRow.ProcessingStartedAt = unrelatedStartedAt;
         seedContext.IntegrationSyncOutbox.AddRange(ownerRow, unrelatedRow);
         await seedContext.SaveChangesAsync();
 
@@ -767,24 +765,18 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         var erasureRepository = new UserLocationPrivacyErasureRepository(runtimeContext);
 
         IntegrationSyncOutbox? claimBeforeErasure = await outboxRepository.GetActiveClaimAsync(
-            tenantA.Id,
-            ownerRow.Id,
-            ownerLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantA.Id, ownerRow.Id, ownerLeaseToken, ownerStartedAt),
             CancellationToken.None);
         await erasureRepository.EraseProviderBackedLocalUserMetadataAsync(owner.Id, CancellationToken.None);
         IntegrationSyncOutbox? claimAfterErasure = await outboxRepository.GetActiveClaimAsync(
-            tenantA.Id,
-            ownerRow.Id,
-            ownerLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantA.Id, ownerRow.Id, ownerLeaseToken, ownerStartedAt),
             CancellationToken.None);
         IntegrationSyncOutbox? unrelatedClaim = await outboxRepository.GetActiveClaimAsync(
-            tenantB.Id,
-            unrelatedRow.Id,
-            unrelatedLeaseToken,
+            new IntegrationSyncClaimIdentity(tenantB.Id, unrelatedRow.Id, unrelatedLeaseToken, unrelatedStartedAt),
             CancellationToken.None);
 
         await Assert.That(claimBeforeErasure?.Id).IsEqualTo(ownerRow.Id);
-        await Assert.That(claimAfterErasure).IsNull();
+        await Assert.That(claimAfterErasure?.UserId).IsNull();
         await Assert.That(unrelatedClaim?.Id).IsEqualTo(unrelatedRow.Id);
     }
 

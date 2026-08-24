@@ -169,7 +169,7 @@ Not fully implemented today:
 3. `Explore.Application` owns effective capability and self-consent resolution, exhaustive public event/RSVP snapshots, deterministic untruncated description rendering, durable publication planning, and the fenced delivery processor. For inbound events it also owns `ImportAtprotoFederatedEventCommand`, manual FluentValidation, semantic import-plan mapping, and optional thumbnail staging orchestration.
 4. `Explore.Persistence` owns encrypted-session metadata persistence, immutable `PdsSyncOutbox` intent, fenced lease/settlement state, globally canonical Jetstream record/quarantine/presentation/cursor state, and atomic synchronization of tenant-local `Event`, implicit `EventSession`, and optional `StorageObject` rows.
 5. `Explore.Infrastructure` owns the hardened CarpaNet OAuth/PDS adapters, encrypted session envelope protection, generated-record mapping/validation, the fixed-endpoint two-collection Jetstream client, and CID/MIME/size-verified `com.atproto.sync.getBlob` acquisition through registered storage.
-6. The API-hosted `PdsSyncWorker` drains committed outbound intent; the API-hosted Infrastructure `AtprotoJetstreamSubscriber` holds one global fenced lease for canonical inbound materialization.
+6. Quartz `pds-sync-drain` invokes the Infrastructure one-pass drain for committed outbound intent; the API-hosted Infrastructure `AtprotoJetstreamSubscriber` holds one global fenced lease for canonical inbound materialization.
 7. `Explore.Blazor.Client` consumes generated safe DTOs. HAL link presence gates Edit/Delete, federated source/RSVP/retry/sync, and instance-governance actions. Generic tenant-setting controls instead use server-derived `EffectiveSettingDto.CanEdit` and `Reason` metadata for writability and explanation. Neither mechanism inspects local roles or claims, and resource actions are never inferred from source type.
 
 Outbound delivery remains database-first: capability, self-consent, linked session, source version, and `EventLocationDisclosurePurpose.Public` are rechecked immediately before remote I/O. Remote failure changes only delivery state; it never rolls back or deletes the committed local event.
@@ -223,7 +223,7 @@ Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
 - `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. The selected primary database owns delivery state; Quartz schedules drain execution on every provider, with HostedService available as a scheduler-free trigger. SMTP/RabbitMQ are transports only.
-- `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
+- `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; Quartz invokes the Infrastructure drain, whose tenant-qualified lease token and observed start time fence every settlement. An unkeyed provider call that may have been accepted is parked for operator recovery instead of retried.
 - `WebPushDispatchOutbox` — VAPID web push notification dispatch queue (Endpoint, P256dh, Auth, Retries).
 - `IncomingWebhookEffectOutbox` — provider incoming webhook effect reconciliation outbox for Coop callback repairs.
 
@@ -242,15 +242,15 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | Service | Purpose | Polling |
 |---|---|---|
 | `OutboxProcessor` | General outbox message dispatch with retry/dead-letter | Configurable (default 5s) |
-| `PdsSyncWorker` | Fenced, bounded-parallel AT Protocol event/RSVP delivery from committed `PdsSyncOutbox` rows, including retry/reconciliation and URI/CID settlement | Configurable, default 5s |
+| Quartz `pds-sync-drain` | Fenced, bounded-parallel AT Protocol event/RSVP delivery from committed `PdsSyncOutbox` rows, including retry/reconciliation and URI/CID settlement | Configurable interval, default 5s |
 | `AtprotoJetstreamSubscriber` | One globally leased, allowlisted consumer for canonical community event/RSVP materialization, tombstones, quarantine, and cursor advancement | Capability-aware reconnect loop with bounded backoff |
 | Quartz `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron `*/10 * * * * ?`, every 10s |
 | `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
 | `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |
 | `EmailDispatchRabbitMqPointerPublisherService` | Optional RabbitMQ producer loop that publishes pointer-only messages for due `EmailDispatchOutbox` rows after durable storage exists | Configurable polling, default 5s |
-| `IntegrationSyncDrainService` | Claims due `IntegrationSyncOutbox` rows and dispatches Listmonk subscription synchronization through Infrastructure clients | Configurable polling/backoff |
+| Quartz `integration-sync-drain` | Invokes `IntegrationSyncDrainService` for tenant-bound Listmonk synchronization with stale-lease recovery and provider-outcome parking | Configurable interval, default 5s |
 | `NotificationFanoutProcessor` | Durable in-app notification fanout for event publication | Configurable polling |
-| `WebhookDeliveryProcessor` | Processes outgoing product webhooks to external endpoints (Local, Svix, Composite) | Configurable queue drain |
+| Quartz webhook drains | `local-webhook-delivery-drain`, incoming intake/effect, bulk replay, and provider publication each invoke one bounded durable-service pass | Existing feature intervals |
 
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 

@@ -17,6 +17,7 @@ using Explore.Application.Configuration;
 using Explore.Infrastructure;
 using Explore.Infrastructure.Webhooks;
 using Explore.Application.Features.OrganizerPaymentConnections;
+using Explore.Application.Services.Webhooks;
 
 namespace Explore.API.Extensions;
 
@@ -30,7 +31,8 @@ public static class QuartzSchedulerExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         IWebHostEnvironment environment,
-        bool enabled)
+        bool enabled,
+        bool useQuartzEmailDispatch)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -52,7 +54,7 @@ public static class QuartzSchedulerExtensions
         // attempted privileged operation and must leave a record.
         services.TryAddSingleton<ISchedulerAdminAuditSink, LoggingSchedulerAdminAuditSink>();
 
-        if (!enabled || !settings.Enabled || environment.IsEnvironment("Testing"))
+        if (!enabled || environment.IsEnvironment("Testing"))
         {
             services.TryAddSingleton<ISchedulerOperations, UnavailableSchedulerOperations>();
             return services;
@@ -61,11 +63,22 @@ public static class QuartzSchedulerExtensions
         var runtimeDatabase = PrimaryDatabaseConfiguration.BindRuntime(configuration);
         var connectionString = PrimaryDatabaseConfiguration.BuildConnectionString(runtimeDatabase).ConnectionString;
 
-        services.RemoveAll<IScheduledDeadlineDispatcher>();
-        services.AddScoped<IScheduledDeadlineDispatcher, QuartzScheduledDeadlineDispatcher>();
+        if (settings.Enabled)
+        {
+            services.RemoveAll<IScheduledDeadlineDispatcher>();
+            services.AddScoped<IScheduledDeadlineDispatcher, QuartzScheduledDeadlineDispatcher>();
+        }
         services.AddSingleton<QuartzSchemaInitializer>();
-        services.TryAddSingleton<ISchedulerOperations, QuartzSchedulerOperations>();
+        if (settings.Enabled)
+        {
+            services.TryAddSingleton<ISchedulerOperations, QuartzSchedulerOperations>();
+        }
+        else
+        {
+            services.TryAddSingleton<ISchedulerOperations, UnavailableSchedulerOperations>();
+        }
 
+        var desiredRecurringJobs = new HashSet<JobKey>();
         services.AddQuartz(quartz =>
         {
             quartz.SchedulerName = settings.SchedulerName;
@@ -82,9 +95,12 @@ public static class QuartzSchedulerExtensions
                 quartz.UseInMemoryStore();
             }
 
-            RegisterRecurringJobs(quartz, settings);
-            RegisterMaintenanceSweeps(quartz, configuration);
-            RegisterOnDemandJobs(quartz);
+            if (settings.Enabled)
+            {
+                RegisterRecurringJobs(quartz, configuration, useQuartzEmailDispatch, desiredRecurringJobs);
+                RegisterMaintenanceSweeps(quartz, configuration, desiredRecurringJobs);
+                RegisterOnDemandJobs(quartz);
+            }
 
             // One listener observes every job, including jobs added later that forget to report themselves.
             // It is resolved from the container so it can reach BusinessMetrics; its own faults are
@@ -94,11 +110,19 @@ public static class QuartzSchedulerExtensions
         });
 
         // WaitForJobsToComplete keeps a mid-flight dispatch batch from being torn off during container shutdown.
-        services.AddQuartzServer(quartzServer =>
+        if (settings.Enabled)
         {
-            quartzServer.WaitForJobsToComplete = true;
-            quartzServer.AwaitApplicationStarted = true;
-        });
+            services.AddQuartzServer(quartzServer =>
+            {
+                quartzServer.WaitForJobsToComplete = true;
+                quartzServer.AwaitApplicationStarted = true;
+            });
+        }
+
+        services.AddSingleton(new QuartzRecurringJobManifest(
+            QuartzSchedulerKeys.OwnedRecurringJobs,
+            desiredRecurringJobs));
+        services.AddHostedService<QuartzOwnedRecurringJobReconciler>();
 
         return services;
     }
@@ -191,11 +215,6 @@ public static class QuartzSchedulerExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        if (!IsQuartzSchedulerEnabled(app.Configuration, app.Environment))
-        {
-            return;
-        }
-
         var initializer = app.Services.GetService<QuartzSchemaInitializer>();
         if (initializer is null)
         {
@@ -277,19 +296,26 @@ public static class QuartzSchedulerExtensions
 
     private static void RegisterRecurringJobs(
         IServiceCollectionQuartzConfigurator quartz,
-        QuartzSchedulerSettings settings)
+        IConfiguration configuration,
+        bool useQuartzEmailDispatch,
+        ISet<JobKey> desiredRecurringJobs)
     {
-        AddCronJob<EmailDispatchDrainJob>(
-            quartz,
-            QuartzSchedulerKeys.EmailDispatchDrain,
-            QuartzSchedulerKeys.EmailDispatchDrainCron,
-            "Claims due EmailDispatchOutbox rows and executes approved dispatch transports.");
+        if (useQuartzEmailDispatch)
+        {
+            AddCronJob<EmailDispatchDrainJob>(
+                quartz,
+                QuartzSchedulerKeys.EmailDispatchDrain,
+                QuartzSchedulerKeys.EmailDispatchDrainCron,
+                "Claims due EmailDispatchOutbox rows and executes approved dispatch transports.",
+                desiredRecurringJobs);
 
-        AddCronJob<EmailDispatchRecoveryScanJob>(
-            quartz,
-            QuartzSchedulerKeys.EmailDispatchRecoveryScan,
-            QuartzSchedulerKeys.EmailDispatchRecoveryScanCron,
-            "Marks stale EmailDispatchOutbox processing leases as Unknown for operator review.");
+            AddCronJob<EmailDispatchRecoveryScanJob>(
+                quartz,
+                QuartzSchedulerKeys.EmailDispatchRecoveryScan,
+                QuartzSchedulerKeys.EmailDispatchRecoveryScanCron,
+                "Marks stale EmailDispatchOutbox processing leases as Unknown for operator review.",
+                desiredRecurringJobs);
+        }
 
         // The safety net behind the per-order hold-expiry deadline. It is registered unconditionally because
         // correctness rests on it, not on the deadline trigger: pre-existing holds, lost triggers, and
@@ -298,21 +324,115 @@ public static class QuartzSchedulerExtensions
             quartz,
             QuartzSchedulerKeys.InventoryHoldExpiryReconciliation,
             QuartzSchedulerKeys.InventoryHoldExpiryReconciliationCron,
-            "Releases expired registration capacity holds and recovers orders no hold deadline covered.");
+            "Releases expired registration capacity holds and recovers orders no hold deadline covered.",
+            desiredRecurringJobs);
 
         AddCronJob<RegistrationFinalizationDrainJob>(
             quartz,
             QuartzSchedulerKeys.RegistrationFinalizationDrain,
             QuartzSchedulerKeys.RegistrationFinalizationDrainCron,
-            "Drains durable registration-finalization effects under the shared fenced claim.");
+            "Drains durable registration-finalization effects under the shared fenced claim.",
+            desiredRecurringJobs);
 
         AddCronJob<PaymentReconciliationDrainJob>(
             quartz,
             QuartzSchedulerKeys.PaymentReconciliationDrain,
             QuartzSchedulerKeys.PaymentReconciliationDrainCron,
-            "Drains durable Checkout dispatch and retrieves authoritative provider payment state.");
+            "Drains durable Checkout dispatch and retrieves authoritative provider payment state.",
+            desiredRecurringJobs);
 
-        _ = settings;
+        AddCronJob<RegistrationProviderSubmissionWriteDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.RegistrationProviderSubmissionWriteDrain,
+            QuartzSchedulerKeys.RegistrationProviderSubmissionWriteDrainCron,
+            "Drains fenced outbound registration-provider submission effects.",
+            desiredRecurringJobs);
+
+        AddCronJob<RegistrationProviderSubscriptionLifecycleDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.RegistrationProviderSubscriptionLifecycleDrain,
+            QuartzSchedulerKeys.RegistrationProviderSubscriptionLifecycleDrainCron,
+            "Renews provider subscriptions and reconciles response checkpoints.",
+            desiredRecurringJobs);
+
+        var integrationSync = Bind<IntegrationSyncProcessorSettings>(
+            configuration,
+            IntegrationSyncProcessorSettings.SectionName);
+        AddSweepJob<IntegrationSyncDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.IntegrationSyncDrain,
+            "Drains tenant-bound integration sync rows with fenced provider handoff settlement.",
+            integrationSync.Enabled,
+            initialDelaySeconds: 5,
+            TimeSpan.FromSeconds(integrationSync.PollingIntervalSeconds),
+            desiredRecurringJobs);
+
+        var pdsSync = Bind<PdsSyncSettings>(configuration, PdsSyncSettings.SectionName);
+        AddSweepJob<PdsSyncDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.PdsSyncDrain,
+            "Drains durable AT Protocol PDS work with fenced leases and bounded concurrency.",
+            pdsSync.Enabled,
+            initialDelaySeconds: 0,
+            TimeSpan.FromSeconds(pdsSync.PollingIntervalSeconds),
+            desiredRecurringJobs);
+
+        var localWebhook = Bind<WebhookDeliveryProcessorSettings>(
+            configuration,
+            WebhookDeliveryProcessorSettings.SectionName);
+        AddSweepJob<LocalWebhookDeliveryDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.LocalWebhookDeliveryDrain,
+            "Recovers stale Local-provider leases and drains durable HTTP delivery attempts.",
+            localWebhook.Enabled,
+            localWebhook.InitialDelaySeconds,
+            TimeSpan.FromSeconds(localWebhook.PollingIntervalSeconds),
+            desiredRecurringJobs);
+
+        var incomingWebhook = Bind<IncomingWebhookProcessingSettings>(
+            configuration,
+            IncomingWebhookProcessingSettings.SectionName);
+        AddSweepJob<IncomingWebhookIntakeDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.IncomingWebhookIntakeDrain,
+            "Claims and processes durable incoming webhook messages in their tenant context.",
+            incomingWebhook.Enabled,
+            initialDelaySeconds: 0,
+            TimeSpan.FromSeconds(incomingWebhook.PollIntervalSeconds),
+            desiredRecurringJobs);
+        AddSweepJob<IncomingWebhookEffectDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.IncomingWebhookEffectDrain,
+            "Executes durable incoming-webhook effect pointers with fenced settlement.",
+            incomingWebhook.Enabled,
+            initialDelaySeconds: 0,
+            TimeSpan.FromSeconds(incomingWebhook.PollIntervalSeconds),
+            desiredRecurringJobs);
+
+        var bulkReplay = Bind<WebhookBulkReplaySettings>(
+            configuration,
+            WebhookBulkReplaySettings.SectionName);
+        AddSweepJob<WebhookBulkReplayDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.WebhookBulkReplayDrain,
+            "Processes bounded queued bulk-replay operations.",
+            bulkReplay.Enabled,
+            bulkReplay.InitialDelaySeconds,
+            TimeSpan.FromSeconds(bulkReplay.PollingIntervalSeconds),
+            desiredRecurringJobs);
+
+        var providerPublication = Bind<WebhookProviderPublicationProcessorSettings>(
+            configuration,
+            WebhookProviderPublicationProcessorSettings.SectionName);
+        AddSweepJob<WebhookProviderPublicationDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.WebhookProviderPublicationDrain,
+            "Dispatches and reconciles durable provider-publication work.",
+            providerPublication.Enabled,
+            initialDelaySeconds: 0,
+            TimeSpan.FromSeconds(providerPublication.PollingIntervalSeconds),
+            desiredRecurringJobs);
+
     }
 
     /// <summary>
@@ -339,7 +459,8 @@ public static class QuartzSchedulerExtensions
     /// </summary>
     private static void RegisterMaintenanceSweeps(
         IServiceCollectionQuartzConfigurator quartz,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISet<JobKey> desiredRecurringJobs)
     {
         var idempotency = Bind<IdempotencyCleanupSettings>(configuration, IdempotencyCleanupSettings.SectionName);
         AddSweepJob<IdempotencyCleanupJob>(
@@ -348,7 +469,8 @@ public static class QuartzSchedulerExtensions
             "Removes expired idempotency replay-cache rows.",
             idempotency.Enabled,
             idempotency.InitialDelaySeconds,
-            idempotency.PollingIntervalMinutes);
+            idempotency.PollingIntervalMinutes,
+            desiredRecurringJobs);
 
         var aiRetention = Bind<AiRetentionCleanupSettings>(configuration, AiRetentionCleanupSettings.SectionName);
         AddSweepJob<AiRetentionCleanupJob>(
@@ -357,7 +479,8 @@ public static class QuartzSchedulerExtensions
             "Applies AI conversation retention policy across tenants.",
             aiRetention.Enabled,
             aiRetention.InitialDelaySeconds,
-            aiRetention.PollingIntervalMinutes);
+            aiRetention.PollingIntervalMinutes,
+            desiredRecurringJobs);
 
         var emailRetention = Bind<EmailDispatchRetentionSettings>(configuration, EmailDispatchRetentionSettings.SectionName);
         AddSweepJob<EmailDispatchRetentionCleanupJob>(
@@ -366,7 +489,8 @@ public static class QuartzSchedulerExtensions
             "Applies email dispatch outbox and receipt retention policy.",
             emailRetention.Enabled,
             emailRetention.InitialDelaySeconds,
-            emailRetention.PollingIntervalMinutes);
+            emailRetention.PollingIntervalMinutes,
+            desiredRecurringJobs);
 
         var webhookRetention = Bind<WebhookRetentionSettings>(configuration, WebhookRetentionSettings.SectionName);
         AddSweepJob<WebhookRetentionCleanupJob>(
@@ -375,7 +499,8 @@ public static class QuartzSchedulerExtensions
             "Applies webhook message and delivery-attempt retention policy across tenants.",
             webhookRetention.Enabled,
             webhookRetention.InitialDelaySeconds,
-            webhookRetention.PollingIntervalMinutes);
+            webhookRetention.PollingIntervalMinutes,
+            desiredRecurringJobs);
 
         var storage = Bind<StorageReconciliationSettings>(configuration, StorageReconciliationSettings.SectionName);
         AddSweepJob<StorageReconciliationJob>(
@@ -384,7 +509,8 @@ public static class QuartzSchedulerExtensions
             "Reconciles storage object state against the configured provider.",
             storage.Enabled,
             storage.InitialDelaySeconds,
-            storage.PollingIntervalMinutes);
+            storage.PollingIntervalMinutes,
+            desiredRecurringJobs);
 
         // Registration retention has no settings section: its cadence is fixed by the immutable-deadline
         // policy rather than being operator-tunable, so the schedule is stated here rather than bound.
@@ -394,7 +520,8 @@ public static class QuartzSchedulerExtensions
             "Applies registration answer and PII retention deadlines for every active tenant.",
             enabled: true,
             initialDelaySeconds: 300,
-            TimeSpan.FromDays(1));
+            TimeSpan.FromDays(1),
+            desiredRecurringJobs);
 
         var organizerPayment = Bind<OrganizerPaymentReadinessReconciliationOptions>(
             configuration,
@@ -405,7 +532,8 @@ public static class QuartzSchedulerExtensions
             "Refreshes stale organizer payment provider readiness state.",
             organizerPayment.Enabled,
             organizerPayment.InitialDelaySeconds,
-            TimeSpan.FromSeconds(Math.Max(5, organizerPayment.PollingIntervalSeconds)));
+            TimeSpan.FromSeconds(Math.Max(5, organizerPayment.PollingIntervalSeconds)),
+            desiredRecurringJobs);
 
         // Privacy erasure credential cleanup keeps its own settings shape: its cadence is expressed as a
         // TimeSpan poll interval shared with the provider lease machinery rather than as whole minutes.
@@ -416,7 +544,8 @@ public static class QuartzSchedulerExtensions
             "Expires privacy-erasure provider credentials and locators past their retention horizon.",
             privacyErasure.RetentionCleanupEnabled,
             initialDelaySeconds: 0,
-            privacyErasure.ProviderPollingInterval);
+            privacyErasure.ProviderPollingInterval,
+            desiredRecurringJobs);
     }
 
     private static TSettings Bind<TSettings>(IConfiguration configuration, string sectionName)
@@ -429,9 +558,10 @@ public static class QuartzSchedulerExtensions
         string description,
         bool enabled,
         int initialDelaySeconds,
-        int intervalMinutes)
+        int intervalMinutes,
+        ISet<JobKey> desiredRecurringJobs)
         where TJob : IJob
-        => AddSweepJob<TJob>(quartz, jobKey, description, enabled, initialDelaySeconds, TimeSpan.FromMinutes(Math.Max(1, intervalMinutes)));
+        => AddSweepJob<TJob>(quartz, jobKey, description, enabled, initialDelaySeconds, TimeSpan.FromMinutes(Math.Max(1, intervalMinutes)), desiredRecurringJobs);
 
     /// <summary>
     /// A disabled sweep is simply not registered, which keeps a turned-off feature out of the persistent
@@ -443,13 +573,16 @@ public static class QuartzSchedulerExtensions
         string description,
         bool enabled,
         int initialDelaySeconds,
-        TimeSpan interval)
+        TimeSpan interval,
+        ISet<JobKey> desiredRecurringJobs)
         where TJob : IJob
     {
         if (!enabled)
         {
             return;
         }
+
+        desiredRecurringJobs.Add(jobKey);
 
         quartz.AddJob<TJob>(job => job
             .WithIdentity(jobKey)
@@ -472,9 +605,11 @@ public static class QuartzSchedulerExtensions
         IServiceCollectionQuartzConfigurator quartz,
         JobKey jobKey,
         string cronExpression,
-        string description)
+        string description,
+        ISet<JobKey> desiredRecurringJobs)
         where TJob : IJob
     {
+        desiredRecurringJobs.Add(jobKey);
         quartz.AddJob<TJob>(job => job
             .WithIdentity(jobKey)
             .WithDescription(description)

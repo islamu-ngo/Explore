@@ -1,8 +1,8 @@
 # ABOUTME: Enforces the ISLAMU Contributor License Agreement via cla-assistant/github-action.
-# ABOUTME: Metadata-only legal/status workflow on pull_request_target + issue_comment; no PR-head code execution.
+# ABOUTME: Features pre-flight signature check, isolated cla-signatures branch, expanded bot allowlist, and GitHub Actions summary.
 name: Contributor License Agreement
 on:
-  pull_request_target: # zizmor: ignore[dangerous-triggers] Metadata-only CLA legal-record workflow: no PR-head checkout, write token used only for signature JSON commit on base branch, PR comments, and status checks.
+  pull_request_target: # zizmor: ignore[dangerous-triggers] Metadata-only CLA legal-record workflow: no PR-head checkout, write token used only for signature JSON commit on cla-signatures branch, PR comments, and status checks.
     types: [opened, edited, synchronize, reopened, closed, ready_for_review]
   issue_comment: # zizmor: ignore[dangerous-triggers] Comment-driven signing only: the action matches the fixed sign phrase and `recheck`; it does not execute comment-supplied code.
     types: [created]
@@ -20,8 +20,127 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Check stored CLA signatures
+        id: cla_state
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const signaturePath = "signatures/v1.0/cla.json";
+            const signatureBranch = "cla-signatures";
+            const allowlist = [
+              "dependabot[bot]",
+              "github-actions[bot]",
+              "renovate[bot]",
+              "codecov[bot]",
+              "*[bot]",
+              "web-flow",
+            ];
+
+            const matchesAllowlist = (login) => {
+              const normalizedLogin = login.toLowerCase();
+
+              return allowlist.some((entry) => {
+                const pattern = entry.toLowerCase();
+
+                if (pattern.startsWith("*")) {
+                  return normalizedLogin.endsWith(pattern.slice(1));
+                }
+
+                if (pattern.endsWith("*")) {
+                  return normalizedLogin.startsWith(pattern.slice(0, -1));
+                }
+
+                return normalizedLogin === pattern;
+              });
+            };
+
+            const { owner, repo } = context.repo;
+            const pullNumber = context.payload.pull_request.number;
+
+            try {
+              const [signatureFile, commits] = await Promise.all([
+                github.rest.repos.getContent({
+                  owner,
+                  repo,
+                  path: signaturePath,
+                  ref: signatureBranch,
+                }),
+                github.paginate(github.rest.pulls.listCommits, {
+                  owner,
+                  repo,
+                  pull_number: pullNumber,
+                  per_page: 100,
+                }),
+              ]);
+
+              if (Array.isArray(signatureFile.data) || signatureFile.data.type !== "file") {
+                core.info(`${signaturePath} is not a file on ${signatureBranch}; falling back to full CLA action.`);
+                core.setOutput("needs_cla_action", "true");
+                return;
+              }
+
+              const signatureContent = Buffer.from(
+                signatureFile.data.content,
+                signatureFile.data.encoding,
+              ).toString("utf8");
+              const signatures = JSON.parse(signatureContent);
+              const signedContributors = Array.isArray(signatures.signedContributors)
+                ? signatures.signedContributors
+                : [];
+              const signedIds = new Set(
+                signedContributors
+                  .map((contributor) => Number(contributor.id))
+                  .filter((id) => Number.isFinite(id)),
+              );
+              const signedNames = new Set(
+                signedContributors
+                  .map((contributor) => String(contributor.name || "").toLowerCase())
+                  .filter(Boolean),
+              );
+
+              const contributors = new Map();
+              for (const commit of commits) {
+                if (commit.author?.login && commit.author?.id) {
+                  contributors.set(commit.author.login, {
+                    id: commit.author.id,
+                    login: commit.author.login,
+                  });
+                }
+              }
+
+              const unsigned = [...contributors.values()].filter((contributor) => {
+                const login = contributor.login.toLowerCase();
+
+                return (
+                  !matchesAllowlist(contributor.login) &&
+                  !signedIds.has(contributor.id) &&
+                  !signedNames.has(login)
+                );
+              });
+
+              core.setOutput("needs_cla_action", unsigned.length > 0 ? "true" : "false");
+
+              if (unsigned.length > 0) {
+                core.info(
+                  `CLA action needed for unsigned contributors: ${unsigned
+                    .map((contributor) => contributor.login)
+                    .join(", ")}`,
+                );
+              } else {
+                core.info("All linked commit authors already signed the CLA or are allowlisted.");
+              }
+            } catch (err) {
+              core.warning(`Pre-flight signature check encountered an error: ${err.message}. Falling back to full CLA action.`);
+              core.setOutput("needs_cla_action", "true");
+            }
+
       - name: CLA Assistant
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.') || github.event_name == 'pull_request_target'
+        if: >-
+          (github.event_name == 'issue_comment' &&
+            (github.event.comment.body == 'recheck' ||
+              github.event.comment.body == 'I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.')) ||
+          steps.cla_state.outputs.needs_cla_action == 'true'
         uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # zizmor: ignore[archived-uses] Pinned metadata-only CLA action; no PR-head code execution. # v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,13 +150,42 @@ jobs:
         with:
           path-to-signatures: "signatures/v1.0/cla.json"
           path-to-document: "https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md"
-          branch: "develop"
-          allowlist: "dependabot[bot],github-actions[bot]"
-          custom-notsigned-prcomment: "Thank you for your contribution to ISLAMU Event. Before we can review or merge this pull request, every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement v1.0](https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md).<br><br>To sign, post a new comment on this pull request with the exact text:<br><br>```<br>I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.<br>```<br><br>To re-run the check after signing, post a comment with `recheck`."
-          custom-allsigned-prcomment: "All contributors have signed the ISLAMU Contributor License Agreement. Thank you!"
+          branch: "cla-signatures"
+          allowlist: "dependabot[bot],github-actions[bot],renovate[bot],codecov[bot],*[bot],web-flow"
+          custom-notsigned-prcomment: |
+            Thank you for your contribution to ISLAMU Event! Before we can review or merge this pull request, every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement v1.0](https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md).
+
+            **To sign the CLA**, post a new comment on this pull request with the exact text:
+            ```text
+            I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it.
+            ```
+
+            To re-run the check after signing, post a comment with `recheck`.
+          custom-allsigned-prcomment: |
+            All contributors have signed the ISLAMU Contributor License Agreement. Thank you! ✅
           custom-pr-sign-comment: "I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, and I confirm that I have the right to submit my contribution under it."
           create-file-commit-message: "chore(cla): create signatures file v1.0"
           signed-commit-message: "chore(cla): $contributorName signed the CLA in PR #$pullRequestNo"
           signed-empty-commit-message: "chore(cla): $contributorName re-signed the CLA in PR #$pullRequestNo"
           lock-pullrequest-aftermerge: true
           suggest-recheck: true
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## ⚖️ CLA Assistant Verification"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| **Status** | \`${{ job.status }}\` |"
+            echo "| **Event** | \`${{ github.event_name }}\` |"
+            echo "| **Pre-flight Result** | \`${{ steps.cla_state.outputs.needs_cla_action || 'N/A (comment event)' }}\` |"
+            echo
+            echo "### Legal Document"
+            echo "- [ISLAMU Event CLA v1.0](https://github.com/islamu-ngo/Event/blob/develop/legal/CLA.md)"
+            echo
+            echo "### What this job checks"
+            echo "- Pre-flight: checks stored CLA signatures to skip the full action when all commit authors are already signed or allowlisted."
+            echo "- CLA Assistant: runs only when unsigned contributors are detected or a signing/recheck comment is posted."
+          } >> "$GITHUB_STEP_SUMMARY"

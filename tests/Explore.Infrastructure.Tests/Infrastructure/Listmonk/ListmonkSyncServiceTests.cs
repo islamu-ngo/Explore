@@ -27,7 +27,7 @@ public sealed class ListmonkSyncServiceTests
         var fixture = new Fixture(handler);
         var outbox = CreateOutbox();
 
-        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(outbox, CancellationToken.None);
+        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(outbox, BeginHandoff, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(handler.CallCount).IsEqualTo(1);
@@ -45,15 +45,15 @@ public sealed class ListmonkSyncServiceTests
     }
 
     [Test]
-    public async Task SyncSubscriberAsync_WhenListmonkReturnsServerError_FailsAsRetryable()
+    public async Task SyncSubscriberAsync_WhenListmonkReturnsServerError_IsAmbiguous()
     {
         var handler = new RecordingMessageHandler(_ => JsonResponse(HttpStatusCode.InternalServerError, "{\"error\":\"down\"}"));
         var fixture = new Fixture(handler);
 
-        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), CancellationToken.None);
+        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), BeginHandoff, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
-        await Assert.That(result.IsRetryable).IsTrue();
+        await Assert.That(result.Outcome).IsEqualTo(ListmonkSyncOutcome.Ambiguous);
         await Assert.That(handler.CallCount).IsEqualTo(1);
     }
 
@@ -63,7 +63,7 @@ public sealed class ListmonkSyncServiceTests
         var handler = new RecordingMessageHandler(_ => JsonResponse(HttpStatusCode.Unauthorized, "{\"error\":\"unauthorized\"}"));
         var fixture = new Fixture(handler);
 
-        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), CancellationToken.None);
+        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), BeginHandoff, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.IsRetryable).IsFalse();
@@ -75,7 +75,7 @@ public sealed class ListmonkSyncServiceTests
         var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
         var fixture = new Fixture(handler);
 
-        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox("{"), CancellationToken.None);
+        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox("{"), BeginHandoff, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.IsRetryable).IsFalse();
@@ -88,7 +88,7 @@ public sealed class ListmonkSyncServiceTests
         var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
         var fixture = new Fixture(handler, configureSecrets: false);
 
-        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), CancellationToken.None);
+        ListmonkSyncResult result = await fixture.Service.SyncSubscriberAsync(CreateOutbox(), BeginHandoff, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.IsRetryable).IsTrue();
@@ -111,6 +111,8 @@ public sealed class ListmonkSyncServiceTests
             PreconfirmSubscriptions = true
         };
     }
+
+    private static Task<bool> BeginHandoff(CancellationToken cancellationToken) => Task.FromResult(true);
 
     private static string DecodeBasicAuth(AuthenticationHeaderValue header)
     {

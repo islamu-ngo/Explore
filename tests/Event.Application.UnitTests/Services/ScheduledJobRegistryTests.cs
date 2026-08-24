@@ -88,18 +88,36 @@ public sealed class ScheduledJobRegistryTests
     }
 
     [Test]
-    public async Task PlannedOutboxAndPdsJobsRemainCatalogedButNotImplemented()
+    public async Task GeneralOutboxIsNotPromisedAsAQuartzJob()
     {
         var registry = new ScheduledJobRegistry();
 
-        var generalOutbox = registry.FindByName(ScheduledJobNames.GeneralOutboxDrain);
-        var pdsSync = registry.FindByName(ScheduledJobNames.PdsSyncDrain);
+        await Assert.That(ScheduledJobNames.All).DoesNotContain("general-outbox-drain");
+        await Assert.That(registry.ListJobs().Select(job => job.Name)).DoesNotContain("general-outbox-drain");
+    }
 
-        await Assert.That(generalOutbox).IsNotNull();
-        await Assert.That(generalOutbox!.Status).IsEqualTo(ScheduledJobOperationalStatus.Planned);
-        await Assert.That(generalOutbox.PayloadKind).IsEqualTo(ScheduledJobPayloadKind.None);
-        await Assert.That(pdsSync).IsNotNull();
-        await Assert.That(pdsSync!.Status).IsEqualTo(ScheduledJobOperationalStatus.Planned);
-        await Assert.That(pdsSync.PayloadKind).IsEqualTo(ScheduledJobPayloadKind.None);
+    [Test]
+    public async Task QueueDrivenMigrationsAreCatalogedAsPayloadFreeIntervals()
+    {
+        var registry = new ScheduledJobRegistry();
+        string[] names =
+        [
+            ScheduledJobNames.IntegrationSyncDrain,
+            ScheduledJobNames.LocalWebhookDeliveryDrain,
+            ScheduledJobNames.IncomingWebhookIntakeDrain,
+            ScheduledJobNames.IncomingWebhookEffectDrain,
+            ScheduledJobNames.WebhookBulkReplayDrain,
+            ScheduledJobNames.WebhookProviderPublicationDrain,
+            ScheduledJobNames.PdsSyncDrain,
+        ];
+
+        foreach (string name in names)
+        {
+            ScheduledJobDescriptor? job = registry.FindByName(name);
+            await Assert.That(job).IsNotNull();
+            await Assert.That(job!.Status).IsEqualTo(ScheduledJobOperationalStatus.Implemented);
+            await Assert.That(job.ScheduleKind).IsEqualTo(ScheduledJobScheduleKind.Interval);
+            await Assert.That(job.PayloadKind).IsEqualTo(ScheduledJobPayloadKind.None);
+        }
     }
 }

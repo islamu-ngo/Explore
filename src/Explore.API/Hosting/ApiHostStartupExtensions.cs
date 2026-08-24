@@ -91,7 +91,7 @@ public static class ApiHostStartupExtensions
                         "Application and Data Protection migrations are owned by Event.MigrationService outside Development.");
                 }
 
-                if (state.UseQuartzEmailDispatch)
+                if (state.UseQuartzScheduler)
                 {
                     logger.LogInformation("Applying Quartz scheduler schema...");
                     await app.ApplyQuartzSchedulerSchemaAsync(shutdownCts.Token);

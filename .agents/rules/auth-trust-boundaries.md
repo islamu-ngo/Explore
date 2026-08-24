@@ -31,6 +31,7 @@ related_intents: [bff-auth-bug, cerbos-policy-change, add-write-endpoint]
 | 4 | **BFF Anti-Spoofing** | Trust tenant and user headers only from the verified BFF gateway; strip incoming client `X-Tenant-Slug` on public edge. | Trusting caller-supplied tenancy or identity headers from browser clients. |
 | 5 | **Server-Side Action Authority** | Gate actual mutation authority server-side in handlers/policies; client HAL links are affordances for UI visibility only. | Checking roles or permissions in client Blazor code to authorise actions. |
 | 6 | **Air-Gapped Fallback** | Wrap external OAuth and identity provider communication in circuit breakers with offline/local fallback support. | Creating synchronous hard dependencies on external cloud identity services. |
+| 7 | **Secrets Source of Truth** | Sourced strictly from Infisical or `.env` (documented in `.env.example`). | Hard-coding credentials/keys in `AppHost.cs`, test fixtures, or code. |
 
 ## Must Read
 - [docs/AUTHORIZATION.md](../../docs/AUTHORIZATION.md)

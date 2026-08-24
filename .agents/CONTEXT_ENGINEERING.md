@@ -26,6 +26,31 @@ The main agent keeps a short in-session ledger of loaded evidence using `path + 
 
 Raw full-file reads are a fallback for small files with no structural retrieval path. Never use a broad read when an outline, symbol, heading, diff, or graph query can answer the question.
 
+## Automated Blast Radius & Pre-Flight Graph Injection
+
+To achieve zero-turn dependency discovery and eliminate multi-turn manual exploration, agents utilize pre-flight blast radius analysis on Turn 1. Using the repository's `code-review-graph` MCP tools (`get_impact_radius_tool`, `get_affected_flows_tool`), the agent injects a compact, bounded ~1 KB structural context slice into the intake notes or implementation plan:
+
+```yaml
+# Injected Structural Context (Pre-Flight Blast Radius)
+Target: <Namespace.ClassName.MethodName>
+Callers (Upstream):
+  - <Controller.Action> (Route: <route_template>)
+  - <Blazor.Component.Handler>
+Callees (Downstream):
+  - <Repository.Method>
+  - <Outbox.EnqueueAsync> (Event: <DomainEventName>)
+Impacted Flows:
+  - Flow: <BusinessFlowName> (Criticality: <Tier>)
+Test Coverage:
+  - <PathToUnitTests>
+  - <PathToIntegrationTests>
+```
+
+### Protocol Invariants:
+1. **Zero-Turn Context**: Map the full vertical dependency chain (API Route $\rightarrow$ MediatR Handler $\rightarrow$ Outbox Event $\rightarrow$ DB Repository $\rightarrow$ Tests) on Turn 1 before authoring changes.
+2. **Side-Effect Prevention**: Ensure downstream side effects (Outbox events, cache invalidation, UI links) are captured upfront.
+3. **Context Budget Economy**: Replace multi-step manual file traversal with a single structured graph query.
+
 ## Default Budgets
 
 The machine-readable limits live once in [`benchmarks/cold-start-tasks.yaml`](benchmarks/cold-start-tasks.yaml) under `context_budget`. They cover additional repository bootstrap after already-injected `AGENTS.md`, one retrieval result, the initial discovery result, scout output, duplicate unchanged bytes, and full-registry reads.
@@ -61,6 +86,18 @@ Context budgets dynamically adapt based on the task's criticality tier resolved 
 ## Research Boundary
 
 Repository research stays local first. Official documentation or external research is loaded only for a named unresolved framework, protocol, dependency, standard, or advisory question. Search results are summarized into repository-relevant facts and source handles; raw external content never enters implementation context.
+
+## Tooling & Execution Environment Boundary
+
+Agents and subagents must operate strictly within the repository's native environment and toolset:
+
+- **Prohibited Runtimes**: Never run or generate ad-hoc Python (`python`, `python3`, `pip`, `python -c`) or JavaScript/Node.js (`node`, `npm`, `npx`, `node -e`) scripts for file inspection, text extraction, data transformation, or scratch automation.
+- **Allowed Edit Tools**: Use native agent file manipulation tools (`apply_patch`, `replace_file_content`, `write_to_file`) or built-in IDE diff mechanisms.
+- **Allowed Shell Utilities**: Use standard POSIX Bash commands (`grep`, `sed`, `awk`, `find`, `jq`, `git`, `dotnet`).
+- **Scripting is a Last Resort (High-ROI Only)**: Do not create temporary or scratch scripts for one-off tasks. If a persistent developer automation tool provides indispensable, lasting architectural value, it MUST reside under `eng/` (e.g. `eng/scripts/` or `eng/tools/`) as a file-based C# script (`*.cs` runnable via `dotnet run`) or Bash script.
+- **CI/CD Isolation**: Scripts under `.ci/scripts/` are strictly dedicated to CI/CD pipeline automation (e.g. release bundle verification, license policy enforcement) and must never be repurposed for agent/dev scratch tasks.
+- **Secrets Source of Truth**: Secrets, connection strings, API tokens, passwords, and encryption keys must strictly reside in **Infisical** or **`.env`** (with schema/keys documented in **`.env.example`**). NEVER hard-code, define, or embed secrets in `AppHost.cs`, test fixtures, classes, or configuration files.
+- **Verification Scoping Discipline**: Documentation, agent contract, and markdown-only changes (Tier 4) must NEVER run full `dotnet build` or .NET test suites. Verification for documentation tasks is strictly scoped to file format, schema validation, and link integrity.
 
 ## Workstream And Handoff State
 
