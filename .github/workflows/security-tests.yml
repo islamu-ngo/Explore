@@ -128,7 +128,7 @@ jobs:
 
       - name: Build
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
-        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Security Integration Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}

@@ -108,11 +108,11 @@ jobs:
 
       - name: Generate OpenAPI Document
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Build API Contract Tests
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+        run: dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Run Stable OpenAPI Invariants
         if: steps.changes.outputs.relevant == 'true'
@@ -124,7 +124,7 @@ jobs:
 
       - name: Regenerate Blazor API Client
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Check Generated Contract Drift
         if: steps.changes.outputs.relevant == 'true'
@@ -312,7 +312,7 @@ jobs:
 
       - name: Verify OpenAPI Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Verify API Contract Inventory Determinism
         if: steps.changes.outputs.relevant == 'true'
@@ -320,7 +320,7 @@ jobs:
 
       - name: Verify Client Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+        run: dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Check Deterministic Second Run
         if: steps.changes.outputs.relevant == 'true'

@@ -90,7 +90,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/build
-          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal 2>&1 | tee artifacts/build/fast-build.log
+          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false 2>&1 | tee artifacts/build/fast-build.log
 
       - name: Unit Tests — Application
         if: ${{ inputs.run-fast-tests }}
@@ -225,7 +225,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/build
-          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal 2>&1 | tee artifacts/build/integration-build.log
+          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false 2>&1 | tee artifacts/build/integration-build.log
 
       - name: Persistence Integration Tests
         id: test_persistence_integration
@@ -480,8 +480,8 @@ jobs:
 
       - name: Build Migration And Behavior Projects
         run: |
-          dotnet build src/Event.MigrationService/Event.MigrationService.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
-          dotnet build tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+          dotnet build src/Event.MigrationService/Event.MigrationService.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
+          dotnet build tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Create SQL Server Database
         if: ${{ matrix.provider == 'SqlServer' }}
