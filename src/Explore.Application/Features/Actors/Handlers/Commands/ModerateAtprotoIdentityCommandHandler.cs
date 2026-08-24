@@ -191,10 +191,10 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
         Guid identityId,
         string message,
         string? failureCode = null) => new()
-    {
-        Id = identityId,
-        Success = false,
-        Message = message,
-        FailureCode = failureCode
-    };
+        {
+            Id = identityId,
+            Success = false,
+            Message = message,
+            FailureCode = failureCode
+        };
 }

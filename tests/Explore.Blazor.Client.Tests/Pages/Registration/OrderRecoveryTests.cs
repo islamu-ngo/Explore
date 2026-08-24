@@ -1047,18 +1047,18 @@ public sealed class OrderRecoveryTests : IDisposable
         string statusCode,
         string statusName,
         params string[] relations) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        RegistrationOrderId = Guid.CreateVersion7(),
-        StatusCode = statusCode,
-        StatusName = statusName,
-        LastUpdatedAt = DateTimeOffset.UtcNow,
-        _links = relations.ToDictionary(
+        {
+            Id = Guid.CreateVersion7(),
+            RegistrationOrderId = Guid.CreateVersion7(),
+            StatusCode = statusCode,
+            StatusName = statusName,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            _links = relations.ToDictionary(
             relation => relation,
             relation => new HalLink
             {
                 Href = relation == "checkout-redirect" ? "bff/registration-payments/events/018e4e5c-7f00-7000-8000-000000000001/orders/018e4e5c-7f00-7000-8000-000000000002/checkout-ticket" : $"/api/payments/{relation}",
                 Method = relation == "payment-status" ? "GET" : "POST"
             })
-    };
+        };
 }

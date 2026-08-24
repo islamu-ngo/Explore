@@ -72,21 +72,21 @@ public sealed class EventLifecycleHateoasPolicyTests
         var failures = new List<string>();
 
         foreach (var status in Enum.GetValues<EventStatusEnum>())
-        foreach (var isEligible in new[] { false, true })
-        {
-            var dto = CreateEventDto(status);
-            dto.IsUnmoderationEligible = isEligible;
-            var links = new EventDetailLinkPolicy().GetLinks(dto, user: null).ToArray();
-            var restore = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.Unmoderate);
-            var restoreExpected = EventLifecycleRules.CanRestoreAfterLightModeration(status) && isEligible;
-            RecordParityFailure(failures, $"Event {status} restore eligible={isEligible}", restore is not null, restoreExpected);
-            RecordAuthorizationFailure(failures, $"Event {status} restore", restore, RouteNames.UnmoderateEvent, AuthorizationActions.Events.Unmoderate, ResourceKinds.Event);
+            foreach (var isEligible in new[] { false, true })
+            {
+                var dto = CreateEventDto(status);
+                dto.IsUnmoderationEligible = isEligible;
+                var links = new EventDetailLinkPolicy().GetLinks(dto, user: null).ToArray();
+                var restore = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.Unmoderate);
+                var restoreExpected = EventLifecycleRules.CanRestoreAfterLightModeration(status) && isEligible;
+                RecordParityFailure(failures, $"Event {status} restore eligible={isEligible}", restore is not null, restoreExpected);
+                RecordAuthorizationFailure(failures, $"Event {status} restore", restore, RouteNames.UnmoderateEvent, AuthorizationActions.Events.Unmoderate, ResourceKinds.Event);
 
-            var heavy = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.ModerateHeavy);
-            var heavyExpected = status != EventStatusEnum.Moderated || isEligible;
-            RecordParityFailure(failures, $"Event {status} heavy moderation eligible={isEligible}", heavy is not null, heavyExpected);
-            RecordAuthorizationFailure(failures, $"Event {status} heavy moderation", heavy, RouteNames.ModerateEventHeavy, AuthorizationActions.Events.ModerateHeavy, ResourceKinds.Event);
-        }
+                var heavy = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.ModerateHeavy);
+                var heavyExpected = status != EventStatusEnum.Moderated || isEligible;
+                RecordParityFailure(failures, $"Event {status} heavy moderation eligible={isEligible}", heavy is not null, heavyExpected);
+                RecordAuthorizationFailure(failures, $"Event {status} heavy moderation", heavy, RouteNames.ModerateEventHeavy, AuthorizationActions.Events.ModerateHeavy, ResourceKinds.Event);
+            }
 
         await Assert.That(failures).IsEmpty().Because(string.Join(Environment.NewLine, failures));
     }
@@ -110,17 +110,17 @@ public sealed class EventLifecycleHateoasPolicyTests
         };
 
         foreach (var current in Enum.GetValues<EventSessionStatusEnum>())
-        foreach (var parent in Enum.GetValues<EventStatusEnum>())
-        foreach (var schedule in schedules)
-        {
-            var detailDto = CreateSessionDto(current, parent, schedule.Start, schedule.End, schedule.Type);
-            var listDto = CreateSessionListDto(current, parent, schedule.Start, schedule.End, schedule.Type);
-            var detailLinks = new EventSessionDetailLinkPolicy().GetLinks(detailDto, user: null).ToArray();
-            var listLinks = new EventSessionCollectionLinkPolicy().GetItemLinks(listDto, user: null).ToArray();
+            foreach (var parent in Enum.GetValues<EventStatusEnum>())
+                foreach (var schedule in schedules)
+                {
+                    var detailDto = CreateSessionDto(current, parent, schedule.Start, schedule.End, schedule.Type);
+                    var listDto = CreateSessionListDto(current, parent, schedule.Start, schedule.End, schedule.Type);
+                    var detailLinks = new EventSessionDetailLinkPolicy().GetLinks(detailDto, user: null).ToArray();
+                    var listLinks = new EventSessionCollectionLinkPolicy().GetItemLinks(listDto, user: null).ToArray();
 
-            RecordSessionParityFailures(failures, "detail", current, parent, schedule, detailLinks);
-            RecordSessionParityFailures(failures, "list", current, parent, schedule, listLinks);
-        }
+                    RecordSessionParityFailures(failures, "detail", current, parent, schedule, detailLinks);
+                    RecordSessionParityFailures(failures, "list", current, parent, schedule, listLinks);
+                }
 
         await Assert.That(failures).IsEmpty().Because(string.Join(Environment.NewLine, failures));
     }
@@ -148,19 +148,19 @@ public sealed class EventLifecycleHateoasPolicyTests
         DateTimeOffset? startTime,
         DateTimeOffset? endTime,
         SessionEndTimeType endTimeType) => new()
-    {
-        Id = Guid.NewGuid(),
-        EventId = Guid.NewGuid(),
-        EventTitle = "Lifecycle Event",
-        Title = "Lifecycle Session",
-        EventSessionStatusId = (int)status,
-        ParentEventStatusId = (int)parentStatus,
-        StartTime = startTime,
-        EndTime = endTime,
-        EndTimeType = endTimeType,
-        IsScheduled = startTime is not null,
-        TenantId = Guid.NewGuid()
-    };
+        {
+            Id = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            EventTitle = "Lifecycle Event",
+            Title = "Lifecycle Session",
+            EventSessionStatusId = (int)status,
+            ParentEventStatusId = (int)parentStatus,
+            StartTime = startTime,
+            EndTime = endTime,
+            EndTimeType = endTimeType,
+            IsScheduled = startTime is not null,
+            TenantId = Guid.NewGuid()
+        };
 
     private static EventSessionListDto CreateSessionListDto(
         EventSessionStatusEnum status,
@@ -168,19 +168,19 @@ public sealed class EventLifecycleHateoasPolicyTests
         DateTimeOffset? startTime,
         DateTimeOffset? endTime,
         SessionEndTimeType endTimeType) => new()
-    {
-        Id = Guid.NewGuid(),
-        EventId = Guid.NewGuid(),
-        EventTitle = "Lifecycle Event",
-        Title = "Lifecycle Session",
-        EventSessionStatusId = (int)status,
-        ParentEventStatusId = (int)parentStatus,
-        StartTime = startTime,
-        EndTime = endTime,
-        EndTimeType = endTimeType,
-        IsScheduled = startTime is not null,
-        TenantId = Guid.NewGuid()
-    };
+        {
+            Id = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            EventTitle = "Lifecycle Event",
+            Title = "Lifecycle Session",
+            EventSessionStatusId = (int)status,
+            ParentEventStatusId = (int)parentStatus,
+            StartTime = startTime,
+            EndTime = endTime,
+            EndTimeType = endTimeType,
+            IsScheduled = startTime is not null,
+            TenantId = Guid.NewGuid()
+        };
 
     private static void RecordSessionParityFailures(
         List<string> failures,

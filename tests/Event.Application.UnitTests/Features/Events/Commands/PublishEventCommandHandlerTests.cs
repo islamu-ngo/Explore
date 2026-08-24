@@ -474,26 +474,26 @@ public class PublishEventCommandHandlerTests
         EventStatusEnum status = EventStatusEnum.Draft,
         Guid? id = null,
         Guid? tenantId = null) => new(status)
-    {
-        Id = id ?? Guid.CreateVersion7(),
-        Title = "Draft Event",
-        ActorId = Guid.CreateVersion7(),
-        Actor = new Actor
         {
-            ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
-            Pii = new ActorPii { DisplayName = "Publisher" }
-        },
-        TenantId = tenantId ?? Guid.CreateVersion7(),
-        Tenant = CreateTenant(),
-        VisibilityTypeId = 1,
-        VisibilityType = new VisibilityType { Id = 1, FullName = "Public", MasterCode = "public" },
-        EventStatus = new EventStatus { Id = (int)EventStatusEnum.Draft, FullName = "Draft", MasterCode = "draft" },
-        EventFormatId = 1,
-        EventFormat = new EventFormat { Id = 1, FullName = "In person", MasterCode = "in_person" },
-        FirstSessionStartUtc = DateTimeOffset.UtcNow.AddDays(1),
-        LastSessionStartUtc = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
-        ConcurrencyStamp = concurrencyStamp
-    };
+            Id = id ?? Guid.CreateVersion7(),
+            Title = "Draft Event",
+            ActorId = Guid.CreateVersion7(),
+            Actor = new Actor
+            {
+                ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
+                Pii = new ActorPii { DisplayName = "Publisher" }
+            },
+            TenantId = tenantId ?? Guid.CreateVersion7(),
+            Tenant = CreateTenant(),
+            VisibilityTypeId = 1,
+            VisibilityType = new VisibilityType { Id = 1, FullName = "Public", MasterCode = "public" },
+            EventStatus = new EventStatus { Id = (int)EventStatusEnum.Draft, FullName = "Draft", MasterCode = "draft" },
+            EventFormatId = 1,
+            EventFormat = new EventFormat { Id = 1, FullName = "In person", MasterCode = "in_person" },
+            FirstSessionStartUtc = DateTimeOffset.UtcNow.AddDays(1),
+            LastSessionStartUtc = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+            ConcurrencyStamp = concurrencyStamp
+        };
 
     private static Tenant CreateTenant() => new()
     {

@@ -84,9 +84,19 @@ public sealed class RegistrationAnswerPersistenceContractTests
         context.SaveChanges();
         Explore.Domain.Event @event = new(EventStatusEnum.Draft)
         {
-            Id = Guid.CreateVersion7(), Title = "Analytics", ActorId = actor.Id, Actor = null!, TenantId = tenant.Id, Tenant = null!,
-            EventStatus = null!, EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = 1,
-            VisibilityTypeId = 1, VisibilityType = null!, ConcurrencyStamp = Guid.CreateVersion7()
+            Id = Guid.CreateVersion7(),
+            Title = "Analytics",
+            ActorId = actor.Id,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            EventProvenanceTypeId = 1,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.Events.Add(@event);
         context.SaveChanges();

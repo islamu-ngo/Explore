@@ -117,9 +117,9 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             return;
         }
 
-            var decisions = (await _authorizationProvider.AuthorizeBatchAsync(checks, cancellationToken))
-                .Select(decision => decision.IsAllowed)
-                .ToArray();
+        var decisions = (await _authorizationProvider.AuthorizeBatchAsync(checks, cancellationToken))
+            .Select(decision => decision.IsAllowed)
+            .ToArray();
         if (decisions.Any(isAllowed => !isAllowed))
         {
             throw new AuthorizationException(ResourceKinds.Actor, AuthorizationActions.Update);

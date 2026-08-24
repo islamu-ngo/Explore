@@ -329,9 +329,9 @@ public class OrganizationController : ExploreControllerBase
 
         if (!result.Success)
         {
-        return result.FailureCode == FailureCodes.NotFound
-                ? this.ToNotFoundProblem(OrganizationNotFoundProblem)
-                : this.ToCommandValidationProblem(result, UpdateValidationProblem);
+            return result.FailureCode == FailureCodes.NotFound
+                    ? this.ToNotFoundProblem(OrganizationNotFoundProblem)
+                    : this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }
 
         return Ok(result);

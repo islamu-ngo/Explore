@@ -98,11 +98,11 @@ public sealed partial class RegistrationPaymentAttemptRepository
         }
 
         return await (from effect in ActiveClaim(claim, observedAt).AsNoTracking()
-            join attempt in dbContext.PaymentAttempts
-                    .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
-                    .AsNoTracking()
-                on new { effect.TenantId, Id = effect.PaymentAttemptId } equals new { attempt.TenantId, attempt.Id }
-            select attempt).SingleOrDefaultAsync(cancellationToken);
+                      join attempt in dbContext.PaymentAttempts
+                              .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
+                              .AsNoTracking()
+                          on new { effect.TenantId, Id = effect.PaymentAttemptId } equals new { attempt.TenantId, attempt.Id }
+                      select attempt).SingleOrDefaultAsync(cancellationToken);
     }
 
     public async Task<bool> MarkCheckoutDispatchPendingAsync(

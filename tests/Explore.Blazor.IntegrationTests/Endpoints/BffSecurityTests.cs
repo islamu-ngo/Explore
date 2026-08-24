@@ -232,9 +232,9 @@ public class BffSecurityTests : IAsyncDisposable
 
         var setCookieHeaders = response.Headers.GetValues("Set-Cookie").ToList();
 
-            await Assert.That(setCookieHeaders).Contains(c =>
-                c.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal) &&
-                c.Contains("expires=")).Because("signout should expire the authentication cookie");
+        await Assert.That(setCookieHeaders).Contains(c =>
+            c.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal) &&
+            c.Contains("expires=")).Because("signout should expire the authentication cookie");
     }
 
     #endregion

@@ -320,16 +320,16 @@ public class GetEventListRequestHandlerTests
         string title,
         Guid tenantId,
         EventStatusEnum status = EventStatusEnum.Draft) => new(status)
-    {
-        Title = title,
-        Actor = null!,
-        ActorId = actorId,
-        TenantId = tenantId,
-        Tenant = null!,
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormat = null!
-    };
+        {
+            Title = title,
+            Actor = null!,
+            ActorId = actorId,
+            TenantId = tenantId,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
 
     private static EventListDto CreateEventListDto(Explore.Domain.Event @event) => new()
     {

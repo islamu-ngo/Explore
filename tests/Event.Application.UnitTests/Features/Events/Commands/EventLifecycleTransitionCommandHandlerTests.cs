@@ -493,18 +493,18 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         Guid? id = null,
         Guid? tenantId = null,
         Guid? concurrencyStamp = null) => new(status)
-    {
-        Id = id ?? Guid.CreateVersion7(),
-        Title = "Lifecycle event",
-        ActorId = Guid.CreateVersion7(),
-        Actor = null!,
-        TenantId = tenantId ?? Guid.CreateVersion7(),
-        Tenant = null!,
-        VisibilityTypeId = (int)VisibilityTypeEnum.Public,
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormatId = (int)EventFormatEnum.Local,
-        EventFormat = null!,
-        ConcurrencyStamp = concurrencyStamp ?? Guid.CreateVersion7()
-    };
+        {
+            Id = id ?? Guid.CreateVersion7(),
+            Title = "Lifecycle event",
+            ActorId = Guid.CreateVersion7(),
+            Actor = null!,
+            TenantId = tenantId ?? Guid.CreateVersion7(),
+            Tenant = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Local,
+            EventFormat = null!,
+            ConcurrencyStamp = concurrencyStamp ?? Guid.CreateVersion7()
+        };
 }

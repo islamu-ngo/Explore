@@ -58,11 +58,18 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
 
         return new RegistrationProviderBinding
         {
-            Id = Guid.CreateVersion7(), TenantId = tenantId, RegistrationProviderConnectionId = connectionId,
-            RegistrationFormId = formId, RegistrationFormVersionId = formVersionId, PresentationModeId = (int)presentationMode,
-            CollectionModeId = (int)collectionMode, CompletionModeId = (int)completionMode, TrustLevelId = (int)trustLevel,
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            RegistrationProviderConnectionId = connectionId,
+            RegistrationFormId = formId,
+            RegistrationFormVersionId = formVersionId,
+            PresentationModeId = (int)presentationMode,
+            CollectionModeId = (int)collectionMode,
+            CompletionModeId = (int)completionMode,
+            TrustLevelId = (int)trustLevel,
             WebhookSecretBindingId = webhookSecretBindingId,
-            DriftClassId = (int)RegistrationProviderDriftClassEnum.NoDrift, StateId = (int)RegistrationProviderBindingStateEnum.Draft,
+            DriftClassId = (int)RegistrationProviderDriftClassEnum.NoDrift,
+            StateId = (int)RegistrationProviderBindingStateEnum.Draft,
             CreatedAt = RegistrationProviderConnection.EnsureUtc(createdAt, nameof(createdAt))
         };
     }

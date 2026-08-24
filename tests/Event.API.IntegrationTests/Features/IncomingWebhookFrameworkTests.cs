@@ -625,12 +625,12 @@ public sealed class IncomingWebhookFrameworkTests
         }),
         CreateMetrics(),
         NullLogger<IncomingWebhooksController>.Instance)
-    {
-        ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext()
-        }
-    };
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
 
     private static BusinessMetrics CreateMetrics()
     {

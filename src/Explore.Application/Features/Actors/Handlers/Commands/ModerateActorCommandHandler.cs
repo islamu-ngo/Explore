@@ -188,10 +188,10 @@ public sealed class ModerateActorCommandHandler(
         Guid actorId,
         string message,
         string? failureCode = null) => new()
-    {
-        Id = actorId,
-        Success = false,
-        Message = message,
-        FailureCode = failureCode
-    };
+        {
+            Id = actorId,
+            Success = false,
+            Message = message,
+            FailureCode = failureCode
+        };
 }

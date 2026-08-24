@@ -440,22 +440,22 @@ public sealed class FormbricksRegistrationProviderAdapter(
 
         using (response)
         {
-        string body = await ReadBoundedStringAsync(response, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            if (method == HttpMethod.Post)
+            string body = await ReadBoundedStringAsync(response, cancellationToken);
+            if (!response.IsSuccessStatusCode)
             {
-                throw new RegistrationProviderSubmissionDeliveryException(
-                    (int)response.StatusCode is 400 or 401 or 403 or 404 or 409 or 422
-                        ? RegistrationProviderSubmissionDeliveryFailureKind.PermanentBeforeHandoff
-                        : RegistrationProviderSubmissionDeliveryFailureKind.RetryableBeforeHandoff,
-                    $"formbricks_http_{(int)response.StatusCode}");
+                if (method == HttpMethod.Post)
+                {
+                    throw new RegistrationProviderSubmissionDeliveryException(
+                        (int)response.StatusCode is 400 or 401 or 403 or 404 or 409 or 422
+                            ? RegistrationProviderSubmissionDeliveryFailureKind.PermanentBeforeHandoff
+                            : RegistrationProviderSubmissionDeliveryFailureKind.RetryableBeforeHandoff,
+                        $"formbricks_http_{(int)response.StatusCode}");
+                }
+
+                throw new HttpRequestException($"Formbricks management request failed with HTTP {(int)response.StatusCode}.");
             }
 
-            throw new HttpRequestException($"Formbricks management request failed with HTTP {(int)response.StatusCode}.");
-        }
-
-        return JsonDocument.Parse(body);
+            return JsonDocument.Parse(body);
         }
     }
 

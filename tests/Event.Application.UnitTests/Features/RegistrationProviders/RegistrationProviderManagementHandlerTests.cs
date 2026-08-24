@@ -1253,8 +1253,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         public List<RegistrationSubmissionIssue> Issues { get; } = [];
         public List<RegistrationProviderConnection> Connections { get; } = connection is null ? [] : [connection];
         public List<RegistrationForm> Forms { get; } = [];
-      public List<RegistrationProviderSchemaRevision> Revisions { get; } = [];
-      public RegistrationProviderBinding? AddedBinding { get; private set; }
+        public List<RegistrationProviderSchemaRevision> Revisions { get; } = [];
+        public RegistrationProviderBinding? AddedBinding { get; private set; }
         public int SaveCount { get; private set; }
 
         public Task<RegistrationProviderConnection?> GetConnectionAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken) => Task.FromResult(Connections.SingleOrDefault(connection => tenantId == connection.TenantId && connectionId == connection.Id));
@@ -1296,7 +1296,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         public Task<RegistrationSubmission?> GetParkedSubmissionAsync(Guid tenantId, Guid requestedEventId, Guid submissionId, CancellationToken cancellationToken) => Task.FromResult(submission is not null && tenantId == submission.TenantId && requestedEventId == submission.EventId && submissionId == submission.Id ? submission : null);
         public Task AddSubmissionIssueAsync(RegistrationSubmissionIssue issue, CancellationToken cancellationToken) { Issues.Add(issue); return Task.CompletedTask; }
         public Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken) { Connections.Add(connection); return Task.CompletedTask; }
-      public Task AddBindingAsync(RegistrationProviderBinding registrationBinding, CancellationToken cancellationToken) { AddedBinding = registrationBinding; return Task.CompletedTask; }
+        public Task AddBindingAsync(RegistrationProviderBinding registrationBinding, CancellationToken cancellationToken) { AddedBinding = registrationBinding; return Task.CompletedTask; }
         public Task AddFormAsync(RegistrationForm form, CancellationToken cancellationToken) { Forms.Add(form); return Task.CompletedTask; }
         public Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
         public Task AddSchemaRevisionAsync(RegistrationProviderSchemaRevision revision, CancellationToken cancellationToken) { Revisions.Add(revision); return Task.CompletedTask; }

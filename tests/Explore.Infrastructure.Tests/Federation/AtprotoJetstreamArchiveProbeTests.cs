@@ -248,12 +248,12 @@ public sealed class AtprotoJetstreamArchiveProbeTests
         string did,
         string collection,
         JetstreamSegmentRowKind kind = JetstreamSegmentRowKind.Create) => new()
-    {
-        Did = did,
-        Collection = collection,
-        Kind = kind,
-        Rkey = "3m-remote"
-    };
+        {
+            Did = did,
+            Collection = collection,
+            Kind = kind,
+            Rkey = "3m-remote"
+        };
 
     private sealed class FakeArchiveClient : IAtprotoJetstreamArchiveClient
     {

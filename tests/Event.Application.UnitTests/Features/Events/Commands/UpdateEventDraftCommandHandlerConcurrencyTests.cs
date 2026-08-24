@@ -193,19 +193,19 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
         Guid eventId,
         Guid concurrencyStamp,
         EventStatusEnum status = EventStatusEnum.Draft) => new(status)
-    {
-        Id = eventId,
-        Title = "Original title",
-        Actor = null!,
-        Tenant = null!,
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormat = null!,
-        TenantId = Guid.NewGuid(),
-        VisibilityTypeId = 1,
-        EventFormatId = 1,
-        ConcurrencyStamp = concurrencyStamp
-    };
+        {
+            Id = eventId,
+            Title = "Original title",
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            TenantId = Guid.NewGuid(),
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            ConcurrencyStamp = concurrencyStamp
+        };
 
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
     {

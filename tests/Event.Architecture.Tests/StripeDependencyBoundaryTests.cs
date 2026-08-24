@@ -71,9 +71,9 @@ public sealed class StripeDependencyBoundaryTests
     [Test]
     public async Task StripeReferenceScanner_RejectsUnknownSdkTypesWithoutMatchingCommentsOrStrings()
     {
-        await Assert.That(ContainsStripeReference("global::Stripe.FutureNamespace.FutureType value = null!;" )).IsTrue();
-        await Assert.That(ContainsStripeReference("using Stripe.FutureNamespace;" )).IsTrue();
-        await Assert.That(ContainsStripeReference("var text = \"Stripe.FutureNamespace.FutureType\"; // Stripe.Other" )).IsFalse();
+        await Assert.That(ContainsStripeReference("global::Stripe.FutureNamespace.FutureType value = null!;")).IsTrue();
+        await Assert.That(ContainsStripeReference("using Stripe.FutureNamespace;")).IsTrue();
+        await Assert.That(ContainsStripeReference("var text = \"Stripe.FutureNamespace.FutureType\"; // Stripe.Other")).IsFalse();
     }
 
     private static bool ContainsStripeReference(string source)

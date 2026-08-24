@@ -221,17 +221,17 @@ public class EventListCacheInvalidationCommandHandlerTests
         Guid eventId,
         Guid tenantId,
         Explore.Domain.Enums.EventStatusEnum status = Explore.Domain.Enums.EventStatusEnum.Draft) => new(status)
-    {
-        Id = eventId,
-        Title = "Tenant Event",
-        Actor = null!,
-        TenantId = tenantId,
-        Tenant = CreateTenant(tenantId),
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormat = null!,
-        ConcurrencyStamp = Guid.CreateVersion7()
-    };
+        {
+            Id = eventId,
+            Title = "Tenant Event",
+            Actor = null!,
+            TenantId = tenantId,
+            Tenant = CreateTenant(tenantId),
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
 
     private static Actor CreateActor(Guid actorId, Guid tenantId, Guid userId) => new()
     {

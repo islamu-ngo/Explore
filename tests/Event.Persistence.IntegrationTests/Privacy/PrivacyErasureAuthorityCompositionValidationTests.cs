@@ -475,18 +475,18 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         string database,
         string username,
         string password) => new()
-    {
-        ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
-        ["PrivacyErasureAuthorityDatabase:Host"] = host,
-        ["PrivacyErasureAuthorityDatabase:Port"] = "5432",
-        ["PrivacyErasureAuthorityDatabase:Database"] = database,
-        ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
-        ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = "false",
-        ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = username,
-        ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = password,
-        ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
-        ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-canary",
-    };
+        {
+            ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+            ["PrivacyErasureAuthorityDatabase:Host"] = host,
+            ["PrivacyErasureAuthorityDatabase:Port"] = "5432",
+            ["PrivacyErasureAuthorityDatabase:Database"] = database,
+            ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+            ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = "false",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = username,
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = password,
+            ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-canary",
+        };
 
     private static PrimaryDatabaseConnectionOptions CreatePrimaryOptions(
         PrimaryDatabaseProvider provider,

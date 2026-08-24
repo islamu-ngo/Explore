@@ -202,13 +202,13 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
                 {
                     options.RequireHttpsMetadata = false;
                     options.BackchannelHttpHandler = new SocketsHttpHandler
+                    {
+                        SslOptions = new SslClientAuthenticationOptions
                         {
-                            SslOptions = new SslClientAuthenticationOptions
-                            {
-                                RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
-                                    sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
-                            }
-                        };
+                            RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
+                        }
+                    };
                 });
             });
         }

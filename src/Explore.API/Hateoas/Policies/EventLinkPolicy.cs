@@ -579,7 +579,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     .RequirePermission(
                         AuthorizationActions.Create,
                         ResourceKinds.RegistrationOrder,
-                        dto.Id.ToString(),                        scope: ResourceDescriptors.Event.GetScope(dto),
+                        dto.Id.ToString(), scope: ResourceDescriptors.Event.GetScope(dto),
                         facts: ResourceDescriptors.Event.GetFacts(dto));
                 }
                 else if (dto.ParticipationConfiguration?.IdentityAccessModeId is

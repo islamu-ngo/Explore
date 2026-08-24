@@ -17,11 +17,11 @@ public sealed partial class RegistrationPaymentAttemptRepository
         CancellationToken cancellationToken)
     {
         var row = await (from attempt in dbContext.PaymentAttempts
-                join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
-                    equals new { effect.TenantId, effect.PaymentAttemptId }
-                where attempt.TenantId == tenantId && attempt.RegistrationOrderId == registrationOrderId
-                orderby attempt.CreatedAt descending
-                select new { attempt, effect })
+                         join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
+                             equals new { effect.TenantId, effect.PaymentAttemptId }
+                         where attempt.TenantId == tenantId && attempt.RegistrationOrderId == registrationOrderId
+                         orderby attempt.CreatedAt descending
+                         select new { attempt, effect })
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? null : (row.attempt, row.effect);
     }
@@ -32,12 +32,12 @@ public sealed partial class RegistrationPaymentAttemptRepository
         CancellationToken cancellationToken)
     {
         var row = await (from attempt in dbContext.PaymentAttempts
-                join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
-                    equals new { effect.TenantId, effect.PaymentAttemptId }
-                where attempt.TenantId == tenantId &&
-                      attempt.RegistrationOrderId == registrationOrderId &&
-                      attempt.ActiveUniquenessSlot == PaymentAttempt.ActiveUniquenessSlotValue
-                select new { attempt, effect })
+                         join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
+                             equals new { effect.TenantId, effect.PaymentAttemptId }
+                         where attempt.TenantId == tenantId &&
+                               attempt.RegistrationOrderId == registrationOrderId &&
+                               attempt.ActiveUniquenessSlot == PaymentAttempt.ActiveUniquenessSlotValue
+                         select new { attempt, effect })
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? null : (row.attempt, row.effect);
     }
@@ -49,13 +49,13 @@ public sealed partial class RegistrationPaymentAttemptRepository
         CancellationToken cancellationToken)
     {
         var row = await (from attempt in dbContext.PaymentAttempts
-                join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
-                    equals new { effect.TenantId, effect.PaymentAttemptId }
-                where attempt.TenantId == tenantId &&
-                      attempt.RegistrationOrderId == registrationOrderId &&
-                      attempt.CompositionRevision == compositionRevision
-                orderby attempt.CreatedAt descending, attempt.Id descending
-                select new { attempt, effect })
+                         join effect in dbContext.CheckoutDispatchEffects on new { attempt.TenantId, PaymentAttemptId = attempt.Id }
+                             equals new { effect.TenantId, effect.PaymentAttemptId }
+                         where attempt.TenantId == tenantId &&
+                               attempt.RegistrationOrderId == registrationOrderId &&
+                               attempt.CompositionRevision == compositionRevision
+                         orderby attempt.CreatedAt descending, attempt.Id descending
+                         select new { attempt, effect })
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? null : (row.attempt, row.effect);
     }
@@ -177,12 +177,12 @@ public sealed partial class RegistrationPaymentAttemptRepository
         }
 
         int rows = await (from effect in dbContext.CheckoutDispatchEffects
-                join attempt in dbContext.PaymentAttempts on new { effect.TenantId, effect.PaymentAttemptId }
-                    equals new { attempt.TenantId, PaymentAttemptId = attempt.Id }
-                where effect.TenantId == tenantId && effect.PaymentAttemptId == paymentAttemptId &&
-                      effect.Status == OutboxMessageStatus.DeadLettered && attempt.ProviderCheckoutSessionId == null &&
-                      attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.DispatchPending
-                select effect)
+                          join attempt in dbContext.PaymentAttempts on new { effect.TenantId, effect.PaymentAttemptId }
+                              equals new { attempt.TenantId, PaymentAttemptId = attempt.Id }
+                          where effect.TenantId == tenantId && effect.PaymentAttemptId == paymentAttemptId &&
+                                effect.Status == OutboxMessageStatus.DeadLettered && attempt.ProviderCheckoutSessionId == null &&
+                                attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.DispatchPending
+                          select effect)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(value => value.Status, OutboxMessageStatus.Failed)
                 .SetProperty(value => value.NextAttemptAt, requestedAt)

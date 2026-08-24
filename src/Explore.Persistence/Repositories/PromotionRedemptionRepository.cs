@@ -114,13 +114,13 @@ public sealed class PromotionRedemptionRepository(ExploreDbContext dbContext) : 
     public async Task<int> GetVerifiedPurchaserActiveOrConsumedCountAsync(Guid tenantId, Guid promotionDefinitionVersionId, VerifiedPurchaserIdentity purchaser, CancellationToken cancellationToken)
     {
         var query = from reservation in dbContext.PromotionReservations
-            join order in dbContext.RegistrationOrders on new { reservation.TenantId, reservation.RegistrationOrderId } equals new { order.TenantId, RegistrationOrderId = order.Id }
-            join pii in dbContext.RegistrationOrderPii on new { reservation.TenantId, reservation.RegistrationOrderId } equals new { pii.TenantId, pii.RegistrationOrderId } into piiRows
-            from pii in piiRows.DefaultIfEmpty()
-            where reservation.TenantId == tenantId
-                  && reservation.PromotionDefinitionVersionId == promotionDefinitionVersionId
-                  && ActiveOrConsumedStatuses.Contains(reservation.PromotionReservationStatusId)
-            select new { order, pii };
+                    join order in dbContext.RegistrationOrders on new { reservation.TenantId, reservation.RegistrationOrderId } equals new { order.TenantId, RegistrationOrderId = order.Id }
+                    join pii in dbContext.RegistrationOrderPii on new { reservation.TenantId, reservation.RegistrationOrderId } equals new { pii.TenantId, pii.RegistrationOrderId } into piiRows
+                    from pii in piiRows.DefaultIfEmpty()
+                    where reservation.TenantId == tenantId
+                          && reservation.PromotionDefinitionVersionId == promotionDefinitionVersionId
+                          && ActiveOrConsumedStatuses.Contains(reservation.PromotionReservationStatusId)
+                    select new { order, pii };
 
         return purchaser.Kind switch
         {

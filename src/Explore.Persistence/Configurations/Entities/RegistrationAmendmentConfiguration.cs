@@ -32,15 +32,15 @@ public sealed class RegistrationAmendmentConfiguration : IEntityTypeConfiguratio
         builder.HasIndex(amendment => new { amendment.TenantId, amendment.RegistrationOrderId, amendment.Source, amendment.LineageKey });
         builder.HasIndex(amendment => new { amendment.TenantId, amendment.RegistrationOrderLineId, amendment.Ordinal });
         builder.HasIndex(amendment => new
-            {
-                amendment.TenantId,
-                amendment.EventId,
-                amendment.RegistrationOrderId,
-                amendment.Source,
-                amendment.LineageKey,
-                amendment.RegistrationOrderLineId,
-                amendment.Ordinal
-            })
+        {
+            amendment.TenantId,
+            amendment.EventId,
+            amendment.RegistrationOrderId,
+            amendment.Source,
+            amendment.LineageKey,
+            amendment.RegistrationOrderLineId,
+            amendment.Ordinal
+        })
             .IsUnique();
     }
 }

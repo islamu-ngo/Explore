@@ -26,10 +26,15 @@ public sealed class RegistrationProviderCapability : ITenantEntity
         binding.EnsureDraft();
         return new()
         {
-            Id = Guid.CreateVersion7(), TenantId = binding.TenantId, RegistrationProviderBindingId = binding.Id,
-            ProviderCode = Normalize(providerCode, nameof(providerCode), 100), DeploymentKind = Normalize(deploymentKind, nameof(deploymentKind), 100),
-            ApiVersion = Normalize(apiVersion, nameof(apiVersion), 100), AdapterPolicyVersion = Normalize(adapterPolicyVersion, nameof(adapterPolicyVersion), 100),
-            ConformanceEvidenceRevision = Normalize(conformanceEvidenceRevision, nameof(conformanceEvidenceRevision), 200), CapabilityCode = Normalize(capabilityCode, nameof(capabilityCode), 100)
+            Id = Guid.CreateVersion7(),
+            TenantId = binding.TenantId,
+            RegistrationProviderBindingId = binding.Id,
+            ProviderCode = Normalize(providerCode, nameof(providerCode), 100),
+            DeploymentKind = Normalize(deploymentKind, nameof(deploymentKind), 100),
+            ApiVersion = Normalize(apiVersion, nameof(apiVersion), 100),
+            AdapterPolicyVersion = Normalize(adapterPolicyVersion, nameof(adapterPolicyVersion), 100),
+            ConformanceEvidenceRevision = Normalize(conformanceEvidenceRevision, nameof(conformanceEvidenceRevision), 200),
+            CapabilityCode = Normalize(capabilityCode, nameof(capabilityCode), 100)
         };
     }
     private static string Normalize(string value, string parameterName, int max) => (value?.Trim() ?? string.Empty) is { Length: > 0 } text && text.Length <= max ? text : throw new ArgumentException($"Value must be non-blank and at most {max} characters.", parameterName);
@@ -111,11 +116,15 @@ public sealed class RegistrationProviderSchemaRevision : ITenantEntity, IAuditab
         if (providerSnapshotSha256Hash.Length != 64 || providerSnapshotSha256Hash.Any(value => !Uri.IsHexDigit(value))) throw new ArgumentException("Provider snapshot hash must be canonical lowercase SHA-256 hex.", nameof(providerSnapshotSha256Hash));
         return new()
         {
-            Id = Guid.CreateVersion7(), TenantId = tenantId, RegistrationProviderConnectionId = connectionId,
-            SchemaAuthorityId = (int)authority, RevisionHash = revisionHash,
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            RegistrationProviderConnectionId = connectionId,
+            SchemaAuthorityId = (int)authority,
+            RevisionHash = revisionHash,
             ProviderSurveyId = Normalize(providerSurveyId, nameof(providerSurveyId), 200),
             ProviderSurveyRevisionId = string.IsNullOrWhiteSpace(providerSurveyRevisionId) ? null : Normalize(providerSurveyRevisionId, nameof(providerSurveyRevisionId), 200),
-            ProviderSnapshotJson = providerSnapshotJson, ProviderSnapshotSha256Hash = providerSnapshotSha256Hash.ToLowerInvariant(),
+            ProviderSnapshotJson = providerSnapshotJson,
+            ProviderSnapshotSha256Hash = providerSnapshotSha256Hash.ToLowerInvariant(),
             DriftClassId = (int)driftClass,
             ObservedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt)),
             CreatedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt))

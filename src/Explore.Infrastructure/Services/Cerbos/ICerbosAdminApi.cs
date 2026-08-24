@@ -60,7 +60,7 @@ internal interface ICerbosAdminApi
     [Get("/admin/policy")]
     Task<ApiResponse<CerbosPolicyFetchResponse>> GetPoliciesAsync(
         [Header("Authorization")] string authorization,
-        [AliasAs("id")] [Query(CollectionFormat.Multi)] IEnumerable<string> policyIds,
+        [AliasAs("id")][Query(CollectionFormat.Multi)] IEnumerable<string> policyIds,
         CancellationToken cancellationToken = default);
 }
 

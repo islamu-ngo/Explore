@@ -279,21 +279,21 @@ public sealed class EventTeamHateoasTests
         Guid eventId,
         int roleId = 42,
         bool isEffective = true) => new()
-    {
-        TenantId = tenantId,
-        EventId = eventId,
-        AssignmentId = Guid.CreateVersion7(),
-        UserId = Guid.CreateVersion7(),
-        UserEmail = "member@example.test",
-        UserFullName = "Event Team Member",
-        RoleId = roleId,
-        RoleName = "Event Manager",
-        RoleMasterCode = "EVENT_MANAGER",
-        Status = EventRoleAssignmentStatus.Active,
-        StartsAtUtc = DateTime.UtcNow.AddMinutes(-1),
-        IsEffective = isEffective,
-        CreatedAt = DateTime.UtcNow.AddMinutes(-2)
-    };
+        {
+            TenantId = tenantId,
+            EventId = eventId,
+            AssignmentId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7(),
+            UserEmail = "member@example.test",
+            UserFullName = "Event Team Member",
+            RoleId = roleId,
+            RoleName = "Event Manager",
+            RoleMasterCode = "EVENT_MANAGER",
+            Status = EventRoleAssignmentStatus.Active,
+            StartsAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            IsEffective = isEffective,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+        };
 
     private static bool IsManageTeamCheck(AuthorizationRequest check, Guid tenantId, Guid eventId) =>
         check.ResourceKind == ResourceKinds.Event
