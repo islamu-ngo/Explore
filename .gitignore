@@ -566,7 +566,7 @@ inbox
 # .NET RUNTIME patch (not the SDK), making the lock file non-portable across
 # environments with different runtime patches (local 10.0.8 vs CI 10.0.9).
 # Without a tracked lock file, --locked-mode restores normally for this project.
-Explore.Blazor.Client/packages.lock.json
+src/Explore.Blazor.Client/packages.lock.json
 
 # Plane Compose ! reason is it shares too much information !
 # already sharing project management with the "Public" Roadmap ! wich only shows what it should be showing !
