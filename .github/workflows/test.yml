@@ -25,6 +25,12 @@ jobs:
     timeout-minutes: 5
     outputs:
       run-tests: ${{ steps.changes.outputs.run-tests }}
+      run-app-tests: ${{ steps.changes.outputs.run-app-tests }}
+      run-domain-tests: ${{ steps.changes.outputs.run-domain-tests }}
+      run-architecture-tests: ${{ steps.changes.outputs.run-architecture-tests }}
+      run-infrastructure-tests: ${{ steps.changes.outputs.run-infrastructure-tests }}
+      run-blazor-tests: ${{ steps.changes.outputs.run-blazor-tests }}
+      run-secrets-tests: ${{ steps.changes.outputs.run-secrets-tests }}
 
     steps:
       - name: Checkout
@@ -50,6 +56,13 @@ jobs:
             esac
           }
 
+          is_global_dependency() {
+            case "$1" in
+              Directory.Build.props|Directory.Packages.props|global.json|.ci/*|Explore.slnx|packages.lock.json|.github/workflows/*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           base_sha=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
@@ -67,10 +80,16 @@ jobs:
 
           if [ -z "$changed_files" ]; then
             echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-app-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-domain-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-architecture-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-infrastructure-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-blazor-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-secrets-tests=true" >> "$GITHUB_OUTPUT"
             {
               echo "## Build & Test Change Detection"
               echo
-              echo "Could not determine changed files; running the full build/test lane."
+              echo "Could not determine changed files; running all subsystem test suites."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -84,30 +103,124 @@ jobs:
             fi
           done <<< "$changed_files"
 
-          if [ -n "$relevant_files" ]; then
-            echo "run-tests=true" >> "$GITHUB_OUTPUT"
-            {
-              echo "## Build & Test Change Detection"
-              echo
-              echo "Build/test-relevant changes detected; running the full fast lane."
-              echo
-              echo '```text'
-              printf '%s' "$relevant_files"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
+          if [ -z "$relevant_files" ]; then
             echo "run-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-app-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-domain-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-architecture-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-infrastructure-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-blazor-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-secrets-tests=false" >> "$GITHUB_OUTPUT"
             {
               echo "## Build & Test Change Detection"
               echo
               echo "Only paths owned by dedicated or documentation workflows changed; Build & Test will report an intentional no-op pass."
             } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
+
+          echo "run-tests=true" >> "$GITHUB_OUTPUT"
+
+          run_app="false"
+          run_domain="false"
+          run_arch="false"
+          run_infra="false"
+          run_blazor="false"
+          run_secrets="false"
+
+          all_subsystems="false"
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if is_global_dependency "$file"; then
+              all_subsystems="true"
+              break
+            fi
+          done <<< "$relevant_files"
+
+          if [ "$all_subsystems" = "true" ]; then
+            run_app="true"
+            run_domain="true"
+            run_arch="true"
+            run_infra="true"
+            run_blazor="true"
+            run_secrets="true"
+          else
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              case "$file" in
+                src/Explore.Domain/*|tests/Event.Domain.UnitTests/*)
+                  run_domain="true"
+                  run_app="true"
+                  run_arch="true"
+                  run_infra="true"
+                  ;;
+                src/Explore.Application/*|tests/Event.Application.UnitTests/*)
+                  run_app="true"
+                  run_arch="true"
+                  run_infra="true"
+                  ;;
+                src/Explore.Infrastructure/*|src/Explore.Persistence/*|src/Explore.Atproto.Transport/*|tests/Explore.Infrastructure.Tests/*|tests/Event.Persistence.IntegrationTests/*)
+                  run_infra="true"
+                  run_arch="true"
+                  ;;
+                src/Explore.Secrets/*|tests/Explore.Secrets.UnitTests/*)
+                  run_secrets="true"
+                  run_infra="true"
+                  run_arch="true"
+                  ;;
+                src/Explore.Blazor/*|src/Explore.Blazor.Client/*|src/Event.Web.BffHosting/*|tests/Explore.Blazor.Client.Tests/*|tests/Explore.Blazor.IntegrationTests/*)
+                  run_blazor="true"
+                  ;;
+                tests/Event.Architecture.Tests/*)
+                  run_arch="true"
+                  ;;
+                src/*)
+                  run_app="true"
+                  run_domain="true"
+                  run_arch="true"
+                  run_infra="true"
+                  run_blazor="true"
+                  run_secrets="true"
+                  ;;
+              esac
+            done <<< "$relevant_files"
+          fi
+
+          echo "run-app-tests=$run_app" >> "$GITHUB_OUTPUT"
+          echo "run-domain-tests=$run_domain" >> "$GITHUB_OUTPUT"
+          echo "run-architecture-tests=$run_arch" >> "$GITHUB_OUTPUT"
+          echo "run-infrastructure-tests=$run_infra" >> "$GITHUB_OUTPUT"
+          echo "run-blazor-tests=$run_blazor" >> "$GITHUB_OUTPUT"
+          echo "run-secrets-tests=$run_secrets" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Build & Test Subsystem Routing"
+            echo
+            echo "| Subsystem Lane | Run Status |"
+            echo "|---|---|"
+            echo "| Application Unit Tests | $run_app |"
+            echo "| Domain Unit Tests | $run_domain |"
+            echo "| Architecture Tests | $run_arch |"
+            echo "| Infrastructure Tests | $run_infra |"
+            echo "| Blazor UI Tests | $run_blazor |"
+            echo "| Secrets Tests | $run_secrets |"
+            echo
+            echo "### Changed Relevant Files"
+            echo '```text'
+            printf '%s' "$relevant_files"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   run-tests:
     needs: detect-build-test-changes
     uses: ./.github/workflows/_build-test.yml
     with:
       run-fast-tests: ${{ needs.detect-build-test-changes.outputs.run-tests == 'true' }}
+      run-app-tests: ${{ needs.detect-build-test-changes.outputs.run-app-tests == 'true' }}
+      run-domain-tests: ${{ needs.detect-build-test-changes.outputs.run-domain-tests == 'true' }}
+      run-architecture-tests: ${{ needs.detect-build-test-changes.outputs.run-architecture-tests == 'true' }}
+      run-infrastructure-tests: ${{ needs.detect-build-test-changes.outputs.run-infrastructure-tests == 'true' }}
+      run-blazor-tests: ${{ needs.detect-build-test-changes.outputs.run-blazor-tests == 'true' }}
+      run-secrets-tests: ${{ needs.detect-build-test-changes.outputs.run-secrets-tests == 'true' }}
       run-integration-tests: false
       configuration: Release
