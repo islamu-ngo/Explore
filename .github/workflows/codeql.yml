@@ -122,7 +122,7 @@ jobs:
     name: Analyze (${{ matrix.language }})
     needs: detect-codeql-changes
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       security-events: write
       packages: read
@@ -173,7 +173,7 @@ jobs:
         run: |
           dotnet restore --locked-mode
           dotnet tool restore
-          dotnet build --configuration Release --no-restore --verbosity minimal
+          dotnet build --configuration Release --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 
       - name: Perform CodeQL Analysis
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}

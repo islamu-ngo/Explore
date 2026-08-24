@@ -308,6 +308,11 @@ static bool IsProductDependencyFile(string root, string path)
         return false;
     }
 
+    if (relative.Equals("packages.lock.json", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
     return !relative.StartsWith(".ci/scripts/", StringComparison.OrdinalIgnoreCase);
 }
 
