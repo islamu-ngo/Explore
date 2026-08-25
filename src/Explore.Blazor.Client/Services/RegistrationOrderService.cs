@@ -159,6 +159,30 @@ public sealed class RegistrationOrderService(
                 eventId, orderId, NewIdempotencyKey(), cancellationToken: cancellationToken))
             : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
 
+    public async Task<HalResourceOfRegistrationPaymentDto?> RequestCurrentRefundAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationPaymentDto payment,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasLink(payment._links, "request-refund"))
+        {
+            return null;
+        }
+
+        HalResourceOfRegistrationRefundDto? requested = await ExecuteAsync(() =>
+            apiClient.RequestAuthenticatedRegistrationRefundAsync(
+                eventId,
+                orderId,
+                NewIdempotencyKey(),
+                new RegistrationRefundRequestDto { ReasonCode = "event_cancelled" },
+                cancellationToken: cancellationToken));
+        return requested is null
+            ? null
+            : await ExecuteAsync(() => apiClient.GetAuthenticatedRegistrationPaymentAsync(
+                eventId, orderId, cancellationToken: cancellationToken));
+    }
+
     public async Task<string?> IssueCurrentPaymentCheckoutTicketAsync(
         string path,
         CancellationToken cancellationToken = default) =>
@@ -468,6 +492,103 @@ public sealed class RegistrationOrderService(
             ? ExecuteAsync(() => apiClient.GetStudioRegistrationPaymentAsync(eventId, orderId, cancellationToken: cancellationToken))
             : Task.FromResult<HalResourceOfRegistrationPaymentDto?>(null);
 
+    public async Task<HalResourceOfRegistrationPaymentDto?> CreateStudioRefundAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationPaymentDto payment,
+        long? amountMinor,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasLink(payment._links, "create-refund"))
+        {
+            return null;
+        }
+
+        HalResourceOfRegistrationRefundDto? created = await ExecuteAsync(() =>
+            apiClient.CreateStudioRegistrationRefundAsync(
+                eventId,
+                orderId,
+                NewIdempotencyKey(),
+                new RegistrationRefundRequestDto { AmountMinor = amountMinor, ReasonCode = "organizer_refund" },
+                cancellationToken: cancellationToken));
+        return created is null
+            ? null
+            : await ExecuteAsync(() => apiClient.GetStudioRegistrationPaymentAsync(
+                eventId, orderId, cancellationToken: cancellationToken));
+    }
+
+    public async Task<HalResourceOfRegistrationPaymentDto?> RetryStudioRefundAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationPaymentDto payment,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetRefundAttemptId(payment._links, "retry-refund", out Guid refundAttemptId))
+        {
+            return null;
+        }
+
+        HalResourceOfRegistrationRefundDto? retried = await ExecuteAsync(() =>
+            apiClient.RetryStudioRegistrationRefundAsync(
+                eventId, orderId, refundAttemptId, NewIdempotencyKey(), cancellationToken: cancellationToken));
+        return retried is null
+            ? null
+            : await ExecuteAsync(() => apiClient.GetStudioRegistrationPaymentAsync(
+                eventId, orderId, cancellationToken: cancellationToken));
+    }
+
+    public async Task<HalResourceOfRegistrationPaymentDto?> RespondCurrentMaterialChangeAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationPaymentDto payment,
+        Guid campaignId,
+        string choiceCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasLink(payment._links, "respond-material-change") ||
+            choiceCode is not ("accept_new_terms" or "request_refund"))
+        {
+            return null;
+        }
+
+        HalResourceOfRegistrationMaterialChangeChoiceDto? response = await ExecuteAsync(() =>
+            apiClient.RespondAuthenticatedRegistrationMaterialChangeAsync(
+                eventId,
+                orderId,
+                NewIdempotencyKey(),
+                new RegistrationMaterialChangeChoiceRequestDto
+                {
+                    CampaignId = campaignId,
+                    ChoiceCode = choiceCode
+                },
+                cancellationToken: cancellationToken));
+        return response is null
+            ? null
+            : await ExecuteAsync(() => apiClient.GetAuthenticatedRegistrationPaymentAsync(
+                eventId, orderId, cancellationToken: cancellationToken));
+    }
+
+    public Task<HalCollectionResourceOfRefundCampaignDto?> GetRefundCampaignsAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(() => apiClient.GetRefundCampaignsAsync(eventId, cancellationToken: cancellationToken));
+
+    public async Task<HalCollectionResourceOfRefundCampaignDto?> ResumeRefundCampaignAsync(
+        Guid eventId,
+        HalResourceOfRefundCampaignDto campaign,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasLink(campaign._links, "resume-refund-campaign") || campaign.Id is not { } campaignId)
+        {
+            return null;
+        }
+        HalResourceOfRefundCampaignDto? resumed = await ExecuteAsync(() => apiClient.ResumeRefundCampaignAsync(
+            eventId, campaignId, NewIdempotencyKey(), cancellationToken: cancellationToken));
+        return resumed is null
+            ? null
+            : await GetRefundCampaignsAsync(eventId, cancellationToken);
+    }
+
     private async Task<T?> ExecuteAsync<T>(Func<Task<T>> execute)
         where T : class
     {
@@ -483,6 +604,27 @@ public sealed class RegistrationOrderService(
     }
 
     private static string NewIdempotencyKey() => Guid.CreateVersion7().ToString("D");
+
+    private static bool TryGetRefundAttemptId(
+        IDictionary<string, HalLink>? links,
+        string relation,
+        out Guid refundAttemptId)
+    {
+        refundAttemptId = Guid.Empty;
+        if (links is null || !links.TryGetValue(relation, out HalLink? link) ||
+            !string.Equals(link.Method, HttpMethod.Post.Method, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(link.Href))
+        {
+            return false;
+        }
+
+        string[] segments = link.Href.Split(['?', '#'], 2)[0]
+            .TrimEnd('/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length >= 2 &&
+               string.Equals(segments[^1], "retry", StringComparison.Ordinal) &&
+               Guid.TryParse(segments[^2], out refundAttemptId);
+    }
 
     private static bool HasLink(IDictionary<string, HalLink>? links, string relation) =>
         links?.ContainsKey(relation) == true;

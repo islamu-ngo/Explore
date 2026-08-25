@@ -67,7 +67,7 @@ tests:
     input:
       principals: ["account_owner"]
       resources: ["account_order"]
-      actions: ["view", "cancel", "continue", "finalize"]
+      actions: ["view", "cancel", "continue", "finalize", "request_refund", "respond_material_change"]
     expected:
       - principal: "account_owner"
         resource: "account_order"
@@ -76,12 +76,14 @@ tests:
           cancel: EFFECT_ALLOW
           continue: EFFECT_ALLOW
           finalize: EFFECT_ALLOW
+          request_refund: EFFECT_ALLOW
+          respond_material_change: EFFECT_ALLOW
 
   - name: "Unrelated accounts cannot view or use lifecycle actions"
     input:
       principals: ["other_account"]
       resources: ["account_order"]
-      actions: ["view", "cancel", "continue", "finalize"]
+      actions: ["view", "cancel", "continue", "finalize", "request_refund", "respond_material_change"]
     expected:
       - principal: "other_account"
         resource: "account_order"
@@ -90,12 +92,14 @@ tests:
           cancel: EFFECT_DENY
           continue: EFFECT_DENY
           finalize: EFFECT_DENY
+          request_refund: EFFECT_DENY
+          respond_material_change: EFFECT_DENY
 
   - name: "Registration managers may inspect but not mutate buyer orders"
     input:
       principals: ["registration_manager"]
       resources: ["account_order"]
-      actions: ["view", "cancel", "continue", "finalize"]
+      actions: ["view", "cancel", "continue", "finalize", "request_refund", "respond_material_change"]
     expected:
       - principal: "registration_manager"
         resource: "account_order"
@@ -104,12 +108,14 @@ tests:
           cancel: EFFECT_DENY
           continue: EFFECT_DENY
           finalize: EFFECT_DENY
+          request_refund: EFFECT_DENY
+          respond_material_change: EFFECT_DENY
 
   - name: "Platform and tenant administration do not grant order authority"
     input:
       principals: ["tenant_admin", "instance_admin"]
       resources: ["account_order"]
-      actions: ["view", "cancel", "continue", "finalize"]
+      actions: ["view", "cancel", "continue", "finalize", "request_refund", "respond_material_change"]
     expected:
       - principal: "tenant_admin"
         resource: "account_order"
@@ -118,6 +124,8 @@ tests:
           cancel: EFFECT_DENY
           continue: EFFECT_DENY
           finalize: EFFECT_DENY
+          request_refund: EFFECT_DENY
+          respond_material_change: EFFECT_DENY
       - principal: "instance_admin"
         resource: "account_order"
         actions:
@@ -125,3 +133,5 @@ tests:
           cancel: EFFECT_DENY
           continue: EFFECT_DENY
           finalize: EFFECT_DENY
+          request_refund: EFFECT_DENY
+          respond_material_change: EFFECT_DENY

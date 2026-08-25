@@ -367,6 +367,16 @@ Delivery services call the effective notification preference resolver before cre
 
 ## Messaging and Reliability
 
+### RefundAttempt, RefundCampaign, And Material-Change Choice
+
+`RefundAttempt` is the tenant-qualified, provider-neutral refund truth. It pins the captured `PaymentAttempt`, immutable `PaidOrderAcceptanceSnapshot`, original connected account/payment/currency, accepted refund policy, stable non-PII provider idempotency key, authority/reason audit, and independent asynchronous status. Allocation is computed as the delta between cumulative captured-component allocations while the payment lock is held, so sequential partial refunds consume organizer, fee, contribution, and per-line minor units exactly once. Buyer-refund success and exact application-fee settlement are persisted separately: buyer totals follow proven main-refund evidence, while the operation remains action-required or unknown until its platform-fee leg is exact. Every state except definitive `Failed` or `Cancelled` reserves captured capacity; an open dispute blocks ordinary new reservation. PostgreSQL locks the exact payment row and other providers use the repository's transaction-scoped named lock, so concurrent partial/full requests cannot over-reserve.
+
+`RefundCampaign` is the bounded event-cancellation or material-change fanout aggregate. Event cancellation stops sales and creates the campaign plus one outbox trigger in the lifecycle transaction. Payment-attempt creation assigns a tenant-scoped persisted `long` campaign cursor under the existing relational named lock; a fenced worker pages that immutable pre-decision cohort in batches of at most 100. Durable refund attempts and choices are the counter authority, so resume may rescan idempotently without double-counting. Captured cancellation rows become full remaining refund intents; uncaptured rows cancel locally before provider handoff or use idempotent provider-cancellation work. Late capture returns to the same campaign refund key. Definitive provider blocks stop automatic mutation retries; the authorized campaign resume action explicitly requeues the existing attempt.
+
+`RegistrationMaterialChangeChoice` pins one paid order, payment, accepted snapshot, and material-change campaign. A buyer may transition once from `Pending` to `AcceptedNewTerms` or `RefundRequested`; contradictory decisions fail closed. A protected pre-capture choice becomes terminal `NotApplicable` if its pinned payment later fails or is cancelled, and projections never attach an older payment's choice to a newer attempt. Refund choice and refund reservation/outbox creation commit atomically. Published session/timezone changes create material-change campaigns alongside immutable attendee-change notification evidence. Events with paid acceptance or succeeded payment evidence cannot be deleted.
+
+`PaymentDispute` remains independent provider evidence. Multiple inquiries/formal disputes may exist for one payment; provider stage/status/money/deadline observations advance monotonically and never manufacture refund success.
+
 ### OutboxMessage
 
 Transactional outbox entity for reliable asynchronous event dispatch (at-least-once delivery):
@@ -407,6 +417,10 @@ Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (govern
 - `EventReportEvidence`: Reporter-text evidence rows require encrypted text; content hashes are optional but non-blank when present; retention and content-hash indexes support cleanup/deduplication without exposing raw evidence.
 - `EventReportDecision`: Local decisions require `ModeratorUserId`; provider decisions may use external decision IDs with a tenant/source uniqueness guard.
 - `EventReportExternalLink` and `EventReportSignal`: Provider correlation/external IDs are unique per tenant/provider and store bounded failure categories only.
+- `RefundAttempt`: unique tenant/provider idempotency and campaign/payment/acceptance reservation keys; accepted snapshot, original account/payment, currency, and per-line allocation use tenant-qualified restrictive foreign keys.
+- `RefundCampaign`: indexed tenant/status/lease and stable cursor ordering; optimistic concurrency plus lease token/fence rejects stale workers.
+- `RegistrationMaterialChangeChoice`: unique `(TenantId, RefundCampaignId, PaymentAttemptId, PaidOrderAcceptanceSnapshotId)` and restrictive tenant-qualified campaign/payment/acceptance foreign keys.
+- `PaymentDispute`: unique tenant/provider dispute identity with indexed payment/status projection and optional provider response deadline.
 
 ## Related
 - [ARCHITECTURE.md](ARCHITECTURE.md)

@@ -1,6 +1,8 @@
 @* ABOUTME: Bounded read-only Studio payment projection for one registration order. *@
-@* ABOUTME: Loads and renders payment state only when the order advertises the exact Studio HAL relation. *@
+@* ABOUTME: Renders refund actions only from exact payment HAL relations and confirms financial mutations. *@
+@using Explore.Blazor.Client.Helpers
 @inject IRegistrationOrderService RegistrationOrderService
+@inject IDialogService Dialogs
 @implements IDisposable
 
 @if (_payment is not null)
@@ -30,6 +32,60 @@
                 <div><dt>Reconciliation outcome</dt><dd>@BoundedOutcome(_payment.FailureCode)</dd></div>
             }
         </dl>
+
+        @if (_payment.Refunds is { Count: > 0 })
+        {
+            <section aria-labelledby="@RefundHeadingId" class="studio-payment-status__refunds">
+                <MudText Id="@RefundHeadingId" Typo="Typo.subtitle2" HtmlTag="h5">Refunds</MudText>
+                <ul>
+                    @foreach (RegistrationRefundDto refund in _payment.Refunds)
+                    {
+                        <li data-testid="studio-refund-status">
+                            <span>@refund.StatusName</span>
+                            <span>@RegistrationOrderMoneyFormatter.Format(refund.AmountMinor ?? 0, refund.CurrencyCode ?? _payment.CurrencyCode)</span>
+                            @if (!string.IsNullOrWhiteSpace(refund.FailureCode))
+                            {
+                                <span>Attention required (@refund.FailureCode)</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+        @if (_payment.Disputes is { Count: > 0 })
+        {
+            <section aria-labelledby="@DisputeHeadingId" class="studio-payment-status__disputes">
+                <MudText Id="@DisputeHeadingId" Typo="Typo.subtitle2" HtmlTag="h5">Disputes</MudText>
+                <ul>
+                    @foreach (RegistrationPaymentDisputeDto dispute in _payment.Disputes)
+                    {
+                        <li data-testid="studio-dispute-status">
+                            @dispute.StageCode — @dispute.StatusCode
+                            @if (dispute.StatusCode == "Open" && dispute.ResponseDueAt is { } dueAt)
+                            {
+                                <span>Respond by @dueAt.ToLocalTime().ToString("g")</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+        @if (_payment._links?.ContainsKey("create-refund") == true)
+        {
+            <AppButton Variant="Variant.Outlined" Disabled="_isRefunding" OnClick="CreateRefundAsync" data-testid="studio-create-refund">
+                Refund remaining amount
+            </AppButton>
+        }
+        @if (_payment._links?.ContainsKey("retry-refund") == true)
+        {
+            <AppButton Variant="Variant.Outlined" Disabled="_isRefunding" OnClick="RetryRefundAsync" data-testid="studio-retry-refund">
+                Retry refund settlement
+            </AppButton>
+        }
+        @if (_actionMessage is not null)
+        {
+            <div class="studio-payment-status__action-message" role="@(_actionFailed ? "alert" : "status")" aria-live="@(_actionFailed ? "assertive" : "polite")" tabindex="-1">@_actionMessage</div>
+        }
     </section>
 }
 
@@ -41,7 +97,12 @@
     private HalResourceOfRegistrationPaymentDto? _payment;
     private long _loadGeneration;
     private bool _disposed;
+    private bool _isRefunding;
+    private string? _actionMessage;
+    private bool _actionFailed;
     private string HeadingId => $"studio-payment-status-heading-{Order.Id:N}";
+    private string RefundHeadingId => $"studio-payment-refunds-heading-{Order.Id:N}";
+    private string DisputeHeadingId => $"studio-payment-disputes-heading-{Order.Id:N}";
     private bool IsAttention => string.Equals(_payment?.StatusCode, "NeedsReconciliation", StringComparison.Ordinal);
 
     protected override async Task OnParametersSetAsync()
@@ -90,6 +151,78 @@
         "PAYMENT_START_FAILED" => "Payment could not be started",
         _ => "Review required"
     };
+
+    private async Task CreateRefundAsync()
+    {
+        if (_payment?._links?.ContainsKey("create-refund") != true || Order.Id is not { } orderId || _isRefunding)
+        {
+            return;
+        }
+
+        long remaining = Math.Max(0, (_payment.CapturedAmountMinor ?? 0) -
+            (_payment.RefundedAmountMinor ?? 0) - (_payment.RefundPendingAmountMinor ?? 0));
+        bool? confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Confirm refund",
+            $"Refund the remaining {RegistrationOrderMoneyFormatter.Format(remaining, _payment.CurrencyCode)}? Provider confirmation may take time.",
+            yesText: "Create refund",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _isRefunding = true;
+        _actionMessage = null;
+        try
+        {
+            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationOrderService.CreateStudioRefundAsync(
+                EventId, orderId, _payment, remaining, CancellationToken.None);
+            _payment = refreshed ?? _payment;
+            _actionFailed = refreshed is null;
+            _actionMessage = refreshed is null
+                ? "The refund could not be created. Refresh before trying again."
+                : "The refund was requested. Provider confirmation is pending.";
+        }
+        finally
+        {
+            _isRefunding = false;
+        }
+    }
+
+    private async Task RetryRefundAsync()
+    {
+        if (_payment?._links?.ContainsKey("retry-refund") != true || Order.Id is not { } orderId || _isRefunding)
+        {
+            return;
+        }
+
+        bool? confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Retry refund settlement",
+            "Recheck this refund with the payment provider? This reuses the existing refund and does not create another buyer refund.",
+            yesText: "Retry settlement",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _isRefunding = true;
+        _actionMessage = null;
+        try
+        {
+            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationOrderService.RetryStudioRefundAsync(
+                EventId, orderId, _payment, CancellationToken.None);
+            _payment = refreshed ?? _payment;
+            _actionFailed = refreshed is null;
+            _actionMessage = refreshed is null
+                ? "The settlement retry could not be scheduled. Refresh before trying again."
+                : "The existing refund was queued for provider reconciliation.";
+        }
+        finally
+        {
+            _isRefunding = false;
+        }
+    }
 
     public void Dispose()
     {

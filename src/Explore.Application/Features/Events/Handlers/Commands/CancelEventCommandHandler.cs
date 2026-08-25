@@ -11,6 +11,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
@@ -29,6 +30,7 @@ public sealed class CancelEventCommandHandler(
     AtprotoEventPublicationPlanner atprotoPublicationPlanner,
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
     IEventLifecycleScheduler eventLifecycleScheduler,
+    IRefundCampaignRepository refundCampaignRepository,
     TimeProvider timeProvider) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_cancel_concurrency_conflict";
@@ -70,6 +72,7 @@ public sealed class CancelEventCommandHandler(
         Guid federationOutboxId = Guid.CreateVersion7();
         Guid occurrenceId = Guid.CreateVersion7();
         Guid pointerOutboxMessageId = Guid.CreateVersion7();
+        Guid refundCampaignId = Guid.CreateVersion7();
         DateTime occurredAt = timeProvider.GetUtcNow().UtcDateTime;
         Guid? tenantIdToInvalidate = null;
         bool mutationAttempted = false;
@@ -102,6 +105,17 @@ public sealed class CancelEventCommandHandler(
             mutationAttempted = true;
 
             await eventRepository.Update(attemptEvent);
+            RefundCampaign refundCampaign = RefundCampaign.CreateCancellation(
+                refundCampaignId,
+                attemptEvent.TenantId,
+                attemptEvent.Id,
+                currentUserId,
+                "Organizer cancelled the event.",
+                occurredAt);
+            await refundCampaignRepository.CreateAsync(
+                refundCampaign,
+                RefundOutboxMessageFactory.CreateCampaignProcess(refundCampaign, occurredAt),
+                token);
             await atprotoPublicationPlanner.PlanEventAsync(
                 new AtprotoEventPublicationInput(
                     attemptEvent.TenantId,

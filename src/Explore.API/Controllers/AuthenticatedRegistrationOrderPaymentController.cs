@@ -101,4 +101,56 @@ public sealed class AuthenticatedRegistrationOrderPaymentController(IMediator me
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RegistrationPaymentCheckoutTargetDto>> GetCheckoutTarget(Guid eventId, Guid orderId, CancellationToken cancellationToken = default) =>
         TargetOrNotFound(await Mediator.Send(new GetAuthenticatedRegistrationPaymentCheckoutTargetQuery(eventId, orderId), cancellationToken));
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [ProtectIdempotencyReplay("Cache-Control", "Location")]
+    [PrivateNoStore]
+    [HttpPost("{orderId:guid}/payment/refunds", Name = RouteNames.RequestAuthenticatedRegistrationRefund)]
+    [ProducesResponseType(typeof(HalResource<RegistrationRefundDto>), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<HalResource<RegistrationRefundDto>>> RequestRefund(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = IdempotencyKeyHeader)] string idempotencyKey,
+        [FromBody] RegistrationRefundRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        MapRefundResult(
+            await Mediator.Send(new RequestAuthenticatedRegistrationRefundCommand(
+                eventId, orderId, request, idempotencyKey), cancellationToken),
+            eventId,
+            orderId,
+            RouteNames.GetAuthenticatedRegistrationPayment);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [ProtectIdempotencyReplay("Cache-Control", "Location")]
+    [PrivateNoStore]
+    [HttpPost("{orderId:guid}/payment/material-change-choice", Name = RouteNames.RespondAuthenticatedRegistrationMaterialChange)]
+    [ProducesResponseType(typeof(HalResource<RegistrationMaterialChangeChoiceDto>), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<HalResource<RegistrationMaterialChangeChoiceDto>>> RespondMaterialChange(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = IdempotencyKeyHeader)] string idempotencyKey,
+        [FromBody] RegistrationMaterialChangeChoiceRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        _ = idempotencyKey;
+        return MapMaterialChangeResult(
+            await Mediator.Send(new RespondAuthenticatedRegistrationMaterialChangeCommand(
+                eventId, orderId, request), cancellationToken),
+            eventId,
+            orderId);
+    }
 }

@@ -20,6 +20,7 @@ public sealed class PaymentAttemptConfiguration : IEntityTypeConfiguration<Payme
                 "ck_payment_attempts_amounts",
                 "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor");
             table.HasCheckConstraint("ck_payment_attempts_active_slot", $"(payment_attempt_status_id IN ({(int)PaymentAttemptStatusEnum.Failed}, {(int)PaymentAttemptStatusEnum.Cancelled}) AND active_uniqueness_slot <> '{PaymentAttempt.ActiveUniquenessSlotValue}') OR active_uniqueness_slot = '{PaymentAttempt.ActiveUniquenessSlotValue}'");
+            table.HasCheckConstraint("ck_payment_attempts_campaign_cursor", "campaign_cursor > 0");
         });
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.ProviderCode).IsRequired().HasMaxLength(40);
@@ -66,6 +67,7 @@ public sealed class PaymentAttemptConfiguration : IEntityTypeConfiguration<Payme
         builder.HasIndex(value => new { value.ActiveScopeKey, value.ActiveUniquenessSlot }).IsUnique();
         builder.HasIndex(value => value.ProviderIdempotencyKey).IsUnique();
         builder.HasIndex(value => new { value.TenantId, value.RegistrationOrderId, value.PaymentAttemptStatusId });
+        builder.HasIndex(value => new { value.TenantId, value.CampaignCursor });
     }
 }
 

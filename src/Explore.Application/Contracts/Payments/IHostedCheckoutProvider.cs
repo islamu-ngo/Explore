@@ -20,6 +20,59 @@ public interface IPaymentIntentRetriever
         CancellationToken cancellationToken);
 }
 
+public interface IPaymentCancellationProvider
+{
+    Task<PaymentCancellationProviderResult> CancelAsync(
+        PaymentCancellationRequest request,
+        CancellationToken cancellationToken);
+}
+
+public sealed record PaymentCancellationRequest(
+    string ProviderCode,
+    string ExternalAccountId,
+    string? ProviderCheckoutSessionId,
+    string? ProviderPaymentId,
+    string ProviderIdempotencyKey)
+{
+    public static PaymentCancellationRequest Create(
+        string providerCode,
+        string externalAccountId,
+        string? providerCheckoutSessionId,
+        string? providerPaymentId,
+        string providerIdempotencyKey)
+    {
+        if (string.IsNullOrWhiteSpace(providerCheckoutSessionId) && string.IsNullOrWhiteSpace(providerPaymentId))
+        {
+            throw new ArgumentException("Provider checkout or payment identity is required.");
+        }
+        return new(
+            HostedCheckoutCreateRequest.NormalizeIdentifier(providerCode, nameof(providerCode), 80),
+            HostedCheckoutCreateRequest.NormalizeIdentifier(externalAccountId, nameof(externalAccountId), 200),
+            NormalizeOptional(providerCheckoutSessionId, nameof(providerCheckoutSessionId)),
+            NormalizeOptional(providerPaymentId, nameof(providerPaymentId)),
+            HostedCheckoutCreateRequest.NormalizeIdentifier(providerIdempotencyKey, nameof(providerIdempotencyKey), 160));
+    }
+
+    private static string? NormalizeOptional(string? value, string parameterName) =>
+        string.IsNullOrWhiteSpace(value)
+            ? null
+            : HostedCheckoutCreateRequest.NormalizeIdentifier(value, parameterName, 200);
+}
+
+public enum PaymentCancellationProviderOutcome
+{
+    Cancelled = 0,
+    Captured = 1,
+    Failed = 2,
+    Unknown = 3
+}
+
+public sealed record PaymentCancellationProviderResult(
+    PaymentCancellationProviderOutcome Outcome,
+    string? ProviderRequestId,
+    string? FailureCode = null,
+    bool ProviderHandoffStarted = true);
+
 public interface IPaymentProviderDescriptor
 {
     PaymentProviderDescriptor Describe();

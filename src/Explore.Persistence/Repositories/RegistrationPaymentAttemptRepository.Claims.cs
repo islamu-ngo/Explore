@@ -5,7 +5,9 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Explore.Persistence.Repositories;
 
@@ -87,20 +89,34 @@ public sealed partial class RegistrationPaymentAttemptRepository
                 value => value.TenantId == persistedAcceptance.TenantId && value.Id == persistedAcceptance.Id,
                 cancellationToken);
 
-        await dbContext.PaymentAttempts.AddAsync(claim.Attempt, cancellationToken);
-        await dbContext.CheckoutDispatchEffects.AddAsync(claim.DispatchEffect, cancellationToken);
-        if (acceptanceAlreadyExists)
-        {
-            dbContext.Entry(persistedAcceptance!).State = EntityState.Unchanged;
-            foreach (PaidOrderAcceptanceLine line in persistedAcceptance!.Lines)
-            {
-                dbContext.Entry(line).State = EntityState.Unchanged;
-            }
-        }
         try
         {
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return new(claim.Attempt, claim.DispatchEffect, Created: true);
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable, cancellationToken);
+                await using IAsyncDisposable cursorLock = await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext, $"payment-attempt-cursor:{claim.Attempt.TenantId:N}", cancellationToken);
+                long lastCursor = await dbContext.PaymentAttempts
+                    .Where(value => value.TenantId == claim.Attempt.TenantId)
+                    .MaxAsync(value => (long?)value.CampaignCursor, cancellationToken) ?? 0;
+                claim.Attempt.AssignCampaignCursor(checked(lastCursor + 1));
+                await dbContext.PaymentAttempts.AddAsync(claim.Attempt, cancellationToken);
+                await dbContext.CheckoutDispatchEffects.AddAsync(claim.DispatchEffect, cancellationToken);
+                if (acceptanceAlreadyExists)
+                {
+                    dbContext.Entry(persistedAcceptance!).State = EntityState.Unchanged;
+                    foreach (PaidOrderAcceptanceLine line in persistedAcceptance!.Lines)
+                    {
+                        dbContext.Entry(line).State = EntityState.Unchanged;
+                    }
+                }
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return new RegistrationPaymentAttemptClaimOutcome(
+                    claim.Attempt, claim.DispatchEffect, Created: true);
+            });
         }
         catch (DbUpdateException)
         {
@@ -162,6 +178,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
         {
             _ = attempt.MarkCancelled(cancelledAt, null);
             _ = attempt.TryReleaseActiveSlot(cancelledAt.AddTicks(1));
+            await ClosePendingMaterialChangeChoicesAsync(attempt, cancelledAt, cancellationToken);
             await dbContext.CheckoutDispatchEffects
                 .Where(value => value.TenantId == tenantId && value.Id == effect.Id &&
                                 value.ProcessingLeaseToken == null &&
@@ -177,6 +194,40 @@ public sealed partial class RegistrationPaymentAttemptRepository
 
         await EnsureReconciliationDueAsync(attempt, null, cancelledAt, cancellationToken);
         return PaymentCancellationDisposition.RequiresReconciliation;
+    }
+
+    public Task<PaymentAttempt?> GetByIdForCancellationAsync(
+        Guid tenantId,
+        Guid paymentAttemptId,
+        CancellationToken cancellationToken) =>
+        dbContext.PaymentAttempts
+            .AsNoTracking()
+            .Include(value => value.AcceptanceSnapshot)!
+            .ThenInclude(value => value.Lines)
+            .SingleOrDefaultAsync(value => value.TenantId == tenantId && value.Id == paymentAttemptId, cancellationToken);
+
+    public async Task<bool> MarkCancelledAfterProviderAsync(
+        Guid tenantId,
+        Guid paymentAttemptId,
+        Guid actorId,
+        DateTime cancelledAt,
+        string? providerRequestId,
+        CancellationToken cancellationToken)
+    {
+        PaymentAttempt? attempt = await dbContext.PaymentAttempts.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.Id == paymentAttemptId,
+            cancellationToken);
+        if (attempt is null || attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded)
+        {
+            return false;
+        }
+
+        _ = attempt.MarkCancelled(cancelledAt, providerRequestId);
+        _ = attempt.TryReleaseActiveSlot(cancelledAt.AddTicks(1));
+        await ClosePendingMaterialChangeChoicesAsync(attempt, cancelledAt, cancellationToken);
+        attempt.UpdatedBy = actorId;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> RetryParkedPreHandoffAsync(

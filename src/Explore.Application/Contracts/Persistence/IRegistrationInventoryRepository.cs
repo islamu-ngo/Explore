@@ -43,6 +43,11 @@ public interface IRegistrationInventoryRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<bool> HasPaidEvidenceAsync(
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
         Guid tenantId,
         Guid eventId,

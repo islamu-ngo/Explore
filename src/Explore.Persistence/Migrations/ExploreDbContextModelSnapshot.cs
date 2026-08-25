@@ -16697,6 +16697,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("TenantId", "PaidOrderAcceptanceSnapshotId", "Ordinal")
                         .HasName("pk_paid_order_acceptance_lines");
 
+                    b.HasAlternateKey("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
+                        .HasName("ak_paid_order_acceptance_lines_tenant_id_paid_order_acceptance");
+
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
                         .IsUnique()
                         .HasDatabaseName("ix_paid_order_acceptance_lines_tenant_id_paid_order_acceptance");
@@ -17200,6 +17203,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("authoritative_status_floor_id");
 
+                    b.Property<long>("CampaignCursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("campaign_cursor");
+
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelled_at");
@@ -17360,6 +17367,9 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_payment_attempts_active_scope_key_active_uniqueness_slot");
 
+                    b.HasIndex("TenantId", "CampaignCursor")
+                        .HasDatabaseName("ix_payment_attempts_tenant_id_campaign_cursor");
+
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
                         .HasDatabaseName("ix_payment_attempts_tenant_id_paid_order_acceptance_snapshot_id");
 
@@ -17373,6 +17383,8 @@ namespace Explore.Persistence.Migrations
                             t.HasCheckConstraint("ck_payment_attempts_amounts", "organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor");
 
                             t.HasCheckConstraint("ck_payment_attempts_authoritative_status_floor", "authoritative_status_floor_id BETWEEN 1 AND 8");
+
+                            t.HasCheckConstraint("ck_payment_attempts_campaign_cursor", "campaign_cursor > 0");
 
                             t.HasCheckConstraint("ck_payment_attempts_status", "payment_attempt_status_id BETWEEN 1 AND 8");
                         });
@@ -17409,6 +17421,96 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_payment_attempt_statuses_master_code");
 
                     b.ToTable("payment_attempt_statuses", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaymentDispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTime>("LastObservedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_observed_at");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<string>("ProviderDisputeId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_dispute_id");
+
+                    b.Property<DateTime?>("ResponseDueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("response_due_at");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer")
+                        .HasColumnName("stage");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment_disputes");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_payment_disputes_tenant_id_id");
+
+                    b.HasIndex("TenantId", "ProviderDisputeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payment_disputes_tenant_id_provider_dispute_id");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId", "Status")
+                        .HasDatabaseName("ix_payment_disputes_tenant_id_payment_attempt_id_status");
+
+                    b.ToTable("payment_disputes", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_payment_disputes_amount", "amount_minor > 0");
+
+                            t.HasCheckConstraint("ck_payment_disputes_stage", "stage BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_payment_disputes_status", "status BETWEEN 1 AND 5");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.PaymentReconciliationEffect", b =>
@@ -18837,6 +18939,375 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_promotion_reservation_statuses_master_code");
 
                     b.ToTable("promotion_reservation_statuses", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ApplicationFeeRefundedAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("application_fee_refunded_amount_minor");
+
+                    b.Property<string>("AuthorityCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("authority_code");
+
+                    b.Property<DateTime?>("BuyerRefundSucceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("buyer_refund_succeeded_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("ExternalAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_account_id");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<DateTime>("LastObservedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_observed_at");
+
+                    b.Property<string>("LastProviderRequestId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("last_provider_request_id");
+
+                    b.Property<Guid>("PaidOrderAcceptanceSnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_order_acceptance_snapshot_id");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderIdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("provider_idempotency_key");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_payment_id");
+
+                    b.Property<string>("ProviderRefundId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_refund_id");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("RefundPolicyLanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)")
+                        .HasColumnName("refund_policy_language_tag");
+
+                    b.Property<string>("RefundPolicyText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_policy_text");
+
+                    b.Property<int>("RefundPolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("refund_policy_version");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<string>("ReservationSourceKey")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("reservation_source_key");
+
+                    b.Property<Guid?>("SourceCampaignId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_campaign_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SucceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("succeeded_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refund_attempts");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_refund_attempts_tenant_id_id");
+
+                    b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_paid_order_acceptance_snapshot_id");
+
+                    b.HasIndex("TenantId", "ProviderIdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_provider_idempotency_key");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId", "Status")
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_payment_attempt_id_status");
+
+                    b.HasIndex("TenantId", "SourceCampaignId", "Status")
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_source_campaign_id_status");
+
+                    b.HasIndex("TenantId", "ProviderCode", "ExternalAccountId", "ProviderRefundId")
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_provider_code_external_account_id");
+
+                    b.HasIndex("TenantId", "ReservationSourceKey", "PaymentAttemptId", "PaidOrderAcceptanceSnapshotId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_reservation_source_key_payment_at");
+
+                    b.ToTable("refund_attempts", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_refund_attempts_allocation", "allocation_organizer_amount_minor >= 0 AND allocation_platform_fee_minor >= 0 AND allocation_platform_contribution_minor >= 0 AND allocation_total_minor > 0 AND allocation_platform_fee_minor <= allocation_organizer_amount_minor AND allocation_total_minor = allocation_organizer_amount_minor + allocation_platform_contribution_minor");
+
+                            t.HasCheckConstraint("ck_refund_attempts_buyer_success_capacity", "buyer_refund_succeeded_at IS NULL OR status NOT IN (7, 8)");
+
+                            t.HasCheckConstraint("ck_refund_attempts_fee_refund", "application_fee_refunded_amount_minor >= 0");
+
+                            t.HasCheckConstraint("ck_refund_attempts_policy_version", "refund_policy_version > 0");
+
+                            t.HasCheckConstraint("ck_refund_attempts_status", "status BETWEEN 1 AND 8");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundCampaign", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("Cursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cursor");
+
+                    b.Property<DateTime>("DecisionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decision_at");
+
+                    b.Property<string>("DecisionReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_reason");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_count");
+
+                    b.Property<int>("GeneratedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("generated_count");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("OperatorCaseCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("operator_case_count");
+
+                    b.Property<int>("PendingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("pending_count");
+
+                    b.Property<long>("ProcessingFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_lease_expires_at");
+
+                    b.Property<Guid?>("ProcessingLeaseOwner")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processing_lease_owner");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("SucceededCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("succeeded_count");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("TotalPaymentCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_payment_count");
+
+                    b.Property<int>("UnknownCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("unknown_count");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refund_campaigns");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_refund_campaigns_tenant_id_id");
+
+                    b.HasIndex("Status", "ProcessingLeaseExpiresAt", "DecisionAt", "Id")
+                        .HasDatabaseName("ix_refund_campaigns_status_processing_lease_expires_at_decisio");
+
+                    b.HasIndex("TenantId", "EventId", "Kind", "DecisionAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refund_campaigns_tenant_id_event_id_kind_decision_at");
+
+                    b.ToTable("refund_campaigns", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_refund_campaigns_counts", "total_payment_count >= 0 AND generated_count >= 0 AND pending_count >= 0 AND succeeded_count >= 0 AND failed_count >= 0 AND unknown_count >= 0 AND operator_case_count >= 0 AND generated_count <= total_payment_count");
+
+                            t.HasCheckConstraint("ck_refund_campaigns_cursor", "cursor >= 0");
+
+                            t.HasCheckConstraint("ck_refund_campaigns_kind", "kind BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_refund_campaigns_status", "status BETWEEN 1 AND 4");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundLineAllocation", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("RefundAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_attempt_id");
+
+                    b.Property<Guid>("OrderLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_line_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<long>("OrganizerAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("organizer_amount_minor");
+
+                    b.Property<Guid>("PaidOrderAcceptanceSnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_order_acceptance_snapshot_id");
+
+                    b.Property<long>("PlatformContributionMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_contribution_minor");
+
+                    b.Property<long>("PlatformFeeMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_fee_minor");
+
+                    b.Property<long>("TotalMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_minor");
+
+                    b.HasKey("TenantId", "RefundAttemptId", "OrderLineId")
+                        .HasName("pk_refund_line_allocations");
+
+                    b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
+                        .HasDatabaseName("ix_refund_line_allocations_tenant_id_paid_order_acceptance_sna");
+
+                    b.HasIndex("TenantId", "RefundAttemptId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refund_line_allocations_tenant_id_refund_attempt_id_ordinal");
+
+                    b.ToTable("refund_line_allocations", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_refund_line_allocations_money", "ordinal >= 0 AND organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
@@ -21135,6 +21606,84 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_inventory_hold_statuses_master_code");
 
                     b.ToTable("registration_inventory_hold_statuses", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationMaterialChangeChoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid>("PaidOrderAcceptanceSnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_order_acceptance_snapshot_id");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<Guid>("RefundCampaignId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_campaign_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_material_change_choices");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_material_change_choices_tenant_id_id");
+
+                    b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasDatabaseName("ix_registration_material_change_choices_tenant_id_paid_order_a");
+
+                    b.HasIndex("TenantId", "PaymentAttemptId")
+                        .HasDatabaseName("ix_registration_material_change_choices_tenant_id_payment_atte");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "Status")
+                        .HasDatabaseName("ix_registration_material_change_choices_tenant_id_registration");
+
+                    b.HasIndex("TenantId", "RefundCampaignId", "PaymentAttemptId", "PaidOrderAcceptanceSnapshotId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_material_change_choices_tenant_id_refund_campa");
+
+                    b.ToTable("registration_material_change_choices", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -35523,6 +36072,24 @@ namespace Explore.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Explore.Domain.PaymentDispute", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_disputes_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_disputes_payment_attempts_tenant_id_payment_attempt");
+                });
+
             modelBuilder.Entity("Explore.Domain.PaymentReconciliationEffect", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", null)
@@ -37953,6 +38520,118 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_promotion_reservations_registration_orders_tenant_id_regist");
                 });
 
+            modelBuilder.Entity("Explore.Domain.RefundAttempt", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_attempts_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_attempts_paid_order_acceptance_snapshots_tenant_id_p");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_attempts_payment_attempts_tenant_id_payment_attempt_");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_attempts_registration_orders_tenant_id_registration_");
+
+                    b.HasOne("Explore.Domain.RefundCampaign", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceCampaignId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_refund_attempts_refund_campaigns_tenant_id_source_campaign_");
+
+                    b.OwnsOne("Explore.Domain.RefundAllocation", "Allocation", b1 =>
+                        {
+                            b1.Property<Guid>("RefundAttemptId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<long>("OrganizerAmountMinor")
+                                .HasColumnType("bigint")
+                                .HasColumnName("allocation_organizer_amount_minor");
+
+                            b1.Property<long>("PlatformContributionMinor")
+                                .HasColumnType("bigint")
+                                .HasColumnName("allocation_platform_contribution_minor");
+
+                            b1.Property<long>("PlatformFeeMinor")
+                                .HasColumnType("bigint")
+                                .HasColumnName("allocation_platform_fee_minor");
+
+                            b1.Property<long>("TotalMinor")
+                                .HasColumnType("bigint")
+                                .HasColumnName("allocation_total_minor");
+
+                            b1.HasKey("RefundAttemptId");
+
+                            b1.ToTable("refund_attempts", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RefundAttemptId")
+                                .HasConstraintName("fk_refund_attempts_refund_attempts_id");
+                        });
+
+                    b.Navigation("Allocation")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundCampaign", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_campaigns_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_campaigns_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundLineAllocation", b =>
+                {
+                    b.HasOne("Explore.Domain.RefundAttempt", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TenantId", "RefundAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_line_allocations_refund_attempts_tenant_id_refund_at");
+
+                    b.HasOne("Explore.Domain.PaidOrderAcceptanceLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
+                        .HasPrincipalKey("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refund_line_allocations_paid_order_acceptance_lines_tenant_");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", null)
@@ -38558,6 +39237,33 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_registration_inventory_holds_event_ticket_types_tenant_id_t");
 
                     b.Navigation("RegistrationInventoryHoldStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationMaterialChangeChoice", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_material_change_choices_paid_order_acceptance_");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_material_change_choices_payment_attempts_tenan");
+
+                    b.HasOne("Explore.Domain.RefundCampaign", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundCampaignId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_material_change_choices_refund_campaigns_tenan");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
@@ -41778,6 +42484,11 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.PlatformFeePolicy", b =>
                 {
                     b.Navigation("FixedCharges");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RefundAttempt", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>

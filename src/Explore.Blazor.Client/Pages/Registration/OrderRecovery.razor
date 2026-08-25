@@ -45,6 +45,8 @@
                                 Load="@(CanLoadPayment ? LoadPaymentAsync : null)"
                                  Refresh="RefreshPaymentAsync"
                                  Retry="RetryPaymentAsync"
+                                 RequestRefund="RequestRefundAsync"
+                                 RespondMaterialChange="RespondMaterialChangeAsync"
                                  IssueCheckoutTicket="IssueCheckoutTicketAsync"
                                  Succeeded="ReloadAfterPaymentAsync"
                                  Expired="ReloadAfterPaymentAsync"
@@ -219,6 +221,15 @@
         RegistrationOrderService.RefreshCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RetryPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
         RegistrationOrderService.RetryCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RequestRefundAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
+        RegistrationOrderService.RequestCurrentRefundAsync(EventId, OrderId, payment, cancellationToken);
+    private Task<HalResourceOfRegistrationPaymentDto?> RespondMaterialChangeAsync(
+        HalResourceOfRegistrationPaymentDto payment,
+        Guid campaignId,
+        string choiceCode,
+        CancellationToken cancellationToken) =>
+        RegistrationOrderService.RespondCurrentMaterialChangeAsync(
+            EventId, OrderId, payment, campaignId, choiceCode, cancellationToken);
     private Task<string?> IssueCheckoutTicketAsync(string path, CancellationToken cancellationToken) =>
         RegistrationOrderService.IssueCurrentPaymentCheckoutTicketAsync(path, cancellationToken);
     private Task ReloadAfterPaymentAsync() => LoadAsync();

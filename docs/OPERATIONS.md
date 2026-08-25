@@ -608,6 +608,20 @@ Current counters include:
 
 Payment reconciliation currently uses the bounded `/health` projection and structured aggregate job log rather than dedicated `Explore.Business` counters. Alert on `payment-reconciliation` Degraded/Unhealthy and the scheduler's bounded claimed/succeeded/nonterminal/unknown/parked/stale counts; do not derive labels from order, account, provider object, or request identifiers.
 
+### Refund Reconciliation And Campaign Recovery
+
+Readiness exposes `refund-reconciliation` with aggregate `pending`, `unknown`, `requiresAction`, `failed`, `campaignsRequiringOperator`, `disputesDueSoon`, `disputesDueWithin72Hours`, `disputesOverdue`, and `oldestNonTerminalAtUtc` facts only. `failed` covers definitive failures observed within the last 24 hours; older terminal history does not keep readiness degraded forever. It degrades immediately for ambiguity, provider action, recent definitive failure, operator-required campaigns, any open dispute deadline within 72 hours or overdue, or non-terminal work older than 15 minutes. The `explore.refunds.operations` and `explore.refunds.campaign_operations` counters admit only closed operation/kind/status/outcome labels; tenant, event, order, payment, refund, amount, provider request, and personal-data labels are forbidden.
+
+Alert and recovery policy:
+
+- page immediately for any `unknown`, account restriction/configuration failure, `requiresAction`, or `campaignsRequiringOperator` value above zero;
+- warn when non-terminal work reaches 10 minutes and page at the 15-minute readiness threshold;
+- warn when a completed campaign has non-zero failed/unknown/operator counters or its generated count does not reach a closed buyer outcome;
+- monitor pending balance by database aggregation grouped by bounded currency as a value, never by adding amount or identifiers as metric labels;
+- treat dispute response deadlines inside 72 hours as urgent and inside 24 hours as paging; provider dispute responses remain external-provider operations and webhook observations remain authoritative locally;
+- stop new refund initiation before recovery, preserve campaign/refund/outbox rows, inspect original-account routing and outbox dead letters, then use the campaign resource's `resume-refund-campaign` action. Resume requeues the existing provider-blocked attempt with its stable idempotency key; never set `Succeeded` manually;
+- communicate `Pending`, `RequiresAction`, or `Unknown` verbatim to buyers. Say `Refunded` only after provider-proven success. If cancellation races with capture, allow payment reconciliation to settle, then let the stable campaign key create the refund exactly once.
+
 - `explore.events.created` (`tenant_id`, `event_type`)
 - `explore.events.published` (`tenant_id`)
 - `explore.registrations.created` (`tenant_id`)

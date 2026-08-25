@@ -378,6 +378,13 @@ public static class RouteNames
     public const string RetryAuthenticatedRegistrationPayment = "RetryAuthenticatedRegistrationPayment";
     public const string GetAuthenticatedRegistrationPaymentCheckoutTarget = "GetAuthenticatedRegistrationPaymentCheckoutTarget";
     public const string GetStudioRegistrationPayment = "GetStudioRegistrationPayment";
+    public const string RequestAuthenticatedRegistrationRefund = "RequestAuthenticatedRegistrationRefund";
+    public const string RespondAuthenticatedRegistrationMaterialChange = "RespondAuthenticatedRegistrationMaterialChange";
+    public const string CreateStudioRegistrationRefund = "CreateStudioRegistrationRefund";
+    public const string RetryStudioRegistrationRefund = "RetryStudioRegistrationRefund";
+    public const string GetRefundCampaigns = "GetRefundCampaigns";
+    public const string GetRefundCampaign = "GetRefundCampaign";
+    public const string ResumeRefundCampaign = "ResumeRefundCampaign";
     public const string GetStudioContext = "GetStudioContext";
 
     #endregion

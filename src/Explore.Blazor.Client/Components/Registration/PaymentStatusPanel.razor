@@ -9,6 +9,7 @@
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService Focus
 @inject NavigationManager Navigation
+@inject IDialogService Dialogs
 
 <section class="payment-status" aria-labelledby="payment-status-heading" data-testid="payment-status" lang="@Translations.CurrentLanguage" dir="@Direction">
     <MudText Id="payment-status-heading" Typo="Typo.h5" HtmlTag="h2">@T("payment.heading", "Payment")</MudText>
@@ -92,6 +93,74 @@
             </div>
         </div>
 
+        @if (_payment.Refunds is { Count: > 0 })
+        {
+            <section class="payment-status__refunds" aria-labelledby="payment-refunds-heading" data-testid="payment-refunds">
+                <MudText Id="payment-refunds-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.refunds.heading", "Refunds")</MudText>
+                <ul>
+                    @foreach (RegistrationRefundDto refund in _payment.Refunds)
+                    {
+                        <li data-testid="payment-refund">
+                            <span>@refund.StatusName</span>
+                            <span>@FormatRefundMoney(refund.AmountMinor ?? 0, refund.CurrencyCode ?? _payment.CurrencyCode ?? "")</span>
+                            <span>@T("payment.refunds.policy", "Accepted policy version") @refund.AcceptedRefundPolicyVersion</span>
+                            @if (!string.IsNullOrWhiteSpace(refund.FailureCode))
+                            {
+                                <span>@T("payment.refunds.attention", "Attention required") (@refund.FailureCode)</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        @if (_payment.Disputes is { Count: > 0 })
+        {
+            <section class="payment-status__disputes" aria-labelledby="payment-disputes-heading" data-testid="payment-disputes">
+                <MudText Id="payment-disputes-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.disputes.heading", "Payment disputes")</MudText>
+                <ul>
+                    @foreach (RegistrationPaymentDisputeDto dispute in _payment.Disputes)
+                    {
+                        <li data-testid="payment-dispute">
+                            @dispute.StageCode — @dispute.StatusCode
+                            @if (dispute.StatusCode == "Open" && dispute.ResponseDueAt is { } dueAt)
+                            {
+                                <span>@T("payment.disputes.respondBy", "Respond by") @dueAt.ToLocalTime().ToString("g", Culture)</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        @if (_payment.MaterialChangeChoices is { Count: > 0 })
+        {
+            <section class="payment-status__material-changes" aria-labelledby="payment-material-changes-heading" data-testid="payment-material-changes">
+                <MudText Id="payment-material-changes-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.materialChange.heading", "Event changes")</MudText>
+                <ul>
+                    @foreach (var choice in _payment.MaterialChangeChoices)
+                    {
+                        <li data-testid="payment-material-change-choice">
+                            <span>@(choice.StatusCode == "Pending"
+                                ? T("payment.materialChange.pending", "Choose whether to accept the new event terms or request a refund.")
+                                : choice.StatusCode)</span>
+                            @if (choice.StatusCode == "Pending" && choice.CampaignId.HasValue && CanRespondMaterialChange)
+                            {
+                                <div class="payment-status__choice-actions">
+                                    <AppButton Disabled="_isBusy" Variant="Variant.Outlined"
+                                               OnClick="@(() => RespondMaterialChangeAsync(choice.CampaignId.Value, "accept_new_terms"))"
+                                               data-testid="accept-material-change">@T("payment.materialChange.accept", "Accept new terms")</AppButton>
+                                    <AppButton Disabled="_isBusy" Variant="Variant.Outlined"
+                                               OnClick="@(() => RespondMaterialChangeAsync(choice.CampaignId.Value, "request_refund"))"
+                                               data-testid="refund-material-change">@T("payment.materialChange.refund", "Request refund")</AppButton>
+                                </div>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
         @if (!_isExpired)
         {
         <div class="payment-status__actions">
@@ -110,6 +179,10 @@
             {
                 <AppButton Disabled="_isBusy" Variant="Variant.Outlined" OnClick="RetryAsync" data-testid="retry-payment">@T("payment.retry", "Retry payment")</AppButton>
             }
+            @if (CanRequestRefund)
+            {
+                <AppButton Disabled="_isBusy" Variant="Variant.Outlined" OnClick="RequestRefundAsync" data-testid="request-refund">@T("payment.refund.request", "Request remaining refund")</AppButton>
+            }
         </div>
         }
     }
@@ -121,6 +194,8 @@
     [Parameter] public Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Load { get; set; }
     [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Refresh { get; set; }
     [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? Retry { get; set; }
+    [Parameter] public Func<HalResourceOfRegistrationPaymentDto, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? RequestRefund { get; set; }
+    [Parameter] public Func<HalResourceOfRegistrationPaymentDto, Guid, string, CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? RespondMaterialChange { get; set; }
     [Parameter] public Func<string, CancellationToken, Task<string?>>? IssueCheckoutTicket { get; set; }
     [Parameter] public EventCallback Succeeded { get; set; }
     [Parameter] public EventCallback Expired { get; set; }
@@ -145,8 +220,12 @@
 
     private string StatusCode => _payment?.StatusCode ?? "Unknown";
     private bool CanRetry => !_isExpired && _payment?._links?.ContainsKey("retry-payment") == true && Retry is not null;
+    private bool CanRequestRefund => !_isExpired && _payment?._links?.ContainsKey("request-refund") == true && RequestRefund is not null;
+    private bool CanRespondMaterialChange => !_isExpired && _payment?._links?.ContainsKey("respond-material-change") == true && RespondMaterialChange is not null;
+    private bool HasNonterminalRefund => _payment?.Refunds?.Any(refund =>
+        refund.StatusCode is "Requested" or "DispatchPending" or "Pending" or "RequiresAction" or "Unknown") == true;
     private bool ShouldPoll => !_isExpired && _payment?._links?.ContainsKey("payment-status") == true &&
-        StatusCode is "Created" or "Processing" or "RequiresAction" or "Unknown";
+        (StatusCode is "Created" or "Processing" or "RequiresAction" or "Unknown" || HasNonterminalRefund);
     private bool IsAttention => _isExpired || StatusCode is "Failed" or "Cancelled" or "NeedsReconciliation";
     private bool IsActionableError => StatusCode == "Failed" && CanRetry;
     private string StatusClass => IsAttention ? "payment-status__message--attention" : "payment-status__message--progress";
@@ -261,6 +340,50 @@
     private Task RetryAsync() => Retry is null || _payment is null
         ? Task.CompletedTask
         : ExecuteAsync(cancellationToken => Retry(_payment, cancellationToken));
+
+    private async Task RequestRefundAsync()
+    {
+        if (!CanRequestRefund || _payment is null)
+        {
+            return;
+        }
+
+        bool? confirmed = await Dialogs.ShowMessageBoxAsync(
+            T("payment.refund.confirm.title", "Confirm refund request"),
+            T("payment.refund.confirm.body", "Request a refund for the remaining captured amount? The provider result may take time."),
+            yesText: T("payment.refund.confirm.yes", "Request refund"),
+            cancelText: T("common.cancel", "Cancel"));
+        if (confirmed == true)
+        {
+            await ExecuteAsync(cancellationToken => RequestRefund(_payment, cancellationToken));
+        }
+    }
+
+    private async Task RespondMaterialChangeAsync(Guid campaignId, string choiceCode)
+    {
+        if (!CanRespondMaterialChange || _payment is null || RespondMaterialChange is null)
+        {
+            return;
+        }
+
+        bool refund = choiceCode == "request_refund";
+        bool? confirmed = await Dialogs.ShowMessageBoxAsync(
+            refund
+                ? T("payment.materialChange.refundConfirmTitle", "Confirm refund request")
+                : T("payment.materialChange.acceptConfirmTitle", "Confirm new event terms"),
+            refund
+                ? T("payment.materialChange.refundConfirmBody", "Request a refund instead of accepting the changed event terms?")
+                : T("payment.materialChange.acceptConfirmBody", "Accept the changed event terms for this registration?"),
+            yesText: refund
+                ? T("payment.materialChange.refund", "Request refund")
+                : T("payment.materialChange.accept", "Accept new terms"),
+            cancelText: T("common.cancel", "Cancel"));
+        if (confirmed == true)
+        {
+            await ExecuteAsync(cancellationToken =>
+                RespondMaterialChange(_payment, campaignId, choiceCode, cancellationToken));
+        }
+    }
 
     private async Task ExecuteAsync(Func<CancellationToken, Task<HalResourceOfRegistrationPaymentDto?>>? operation)
     {
@@ -529,6 +652,14 @@
         return Culture.NumberFormat.CurrencyPositivePattern is 1 or 3
             ? $"{number} {disclosure.CurrencyCode}"
             : $"{disclosure.CurrencyCode} {number}";
+    }
+
+    private string FormatRefundMoney(long minorAmount, string currencyCode)
+    {
+        int digits = _payment?.CurrencyCode == currencyCode ? _payment.CurrencyMinorUnitDigits ?? 2 : 2;
+        decimal divisor = 1m;
+        for (int index = 0; index < digits; index++) divisor *= 10m;
+        return $"{currencyCode} {(minorAmount / divisor).ToString($"N{digits}", Culture)}";
     }
 
     private string FormatSchedule(PaidOrderAcceptanceDisclosureDto disclosure)

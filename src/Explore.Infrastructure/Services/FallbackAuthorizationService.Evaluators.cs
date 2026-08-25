@@ -385,7 +385,9 @@ public partial class FallbackAuthorizationService
         if (action is not (AuthorizationActions.RegistrationOrders.View
             or AuthorizationActions.RegistrationOrders.Cancel
             or AuthorizationActions.RegistrationOrders.Continue
-            or AuthorizationActions.RegistrationOrders.Finalize) ||
+            or AuthorizationActions.RegistrationOrders.Finalize
+            or AuthorizationActions.RegistrationOrders.RequestRefund
+            or AuthorizationActions.RegistrationOrders.RespondMaterialChange) ||
             !TryResolveEventContext(ResourceKinds.RegistrationOrder, resourceId, resourceAttributes, out var tenantId, out var eventId) ||
             tenantId != _tenantContext.TenantId)
         {

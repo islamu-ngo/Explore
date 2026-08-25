@@ -21,6 +21,7 @@ public sealed class RegistrationPaymentContractServiceTests
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
     private readonly IHostedCheckoutSessionRetriever _retriever = Substitute.For<IHostedCheckoutSessionRetriever>();
     private readonly IPaidOrderAcceptanceFreshnessService _freshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
+    private readonly IRefundAttemptRepository _refunds = Substitute.For<IRefundAttemptRepository>();
 
     [Test]
     public async Task ResolveCheckoutTargetAsync_RequiresExactOpenUnpaidUnexpiredMatchingSession()
@@ -155,6 +156,55 @@ public sealed class RegistrationPaymentContractServiceTests
     }
 
     [Test]
+    public async Task GetAsync_UsesRefundedLabelOnlyForProviderProvenSuccess()
+    {
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt payment = CreateRequiresActionAttempt();
+        payment.MarkSucceeded("pi_refund_status", UtcNow.AddSeconds(3), "req_paid");
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(payment, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((payment, effect));
+        _finalization.GetSucceededPaymentAsync(_tenantId, _orderId, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Missing());
+        RefundAttempt pending = RefundAttempt.Create(
+            Guid.CreateVersion7(), _tenantId, payment.Id, payment.AcceptanceSnapshot!, "acct_123",
+            "pi_refund_status", "refund:pending", 100, UtcNow.AddMinutes(1));
+        pending.MarkDispatchPending(UtcNow.AddMinutes(1).AddSeconds(1), null);
+        pending.MarkPending("re_pending", UtcNow.AddMinutes(1).AddSeconds(2), null);
+        RefundAttempt succeeded = RefundAttempt.Create(
+            Guid.CreateVersion7(), _tenantId, payment.Id, payment.AcceptanceSnapshot!, "acct_123",
+            "pi_refund_status", "refund:succeeded", 200, UtcNow.AddMinutes(2));
+        succeeded.MarkSucceeded("re_succeeded", UtcNow.AddMinutes(2).AddSeconds(1), null);
+        RegistrationPaymentContractService service = CreateService();
+        _refunds.GetByPaymentAsync(_tenantId, payment.Id, Arg.Any<CancellationToken>()).Returns([pending, succeeded]);
+        _refunds.GetDisputesAsync(_tenantId, payment.Id, Arg.Any<CancellationToken>()).Returns([]);
+
+        RegistrationPaymentDto? result = await service.GetAsync(order, CancellationToken.None);
+
+        await Assert.That(result!.Refunds.Single(value => value.Id == pending.Id).StatusName).IsEqualTo("Pending");
+        await Assert.That(result.Refunds.Single(value => value.Id == succeeded.Id).StatusName).IsEqualTo("Refunded");
+        await Assert.That(result.RefundedAmountMinor).IsEqualTo(200);
+        await Assert.That(result.RefundPendingAmountMinor).IsEqualTo(100);
+    }
+
+    [Test]
+    public async Task GetAsync_DoesNotAdvertiseRefundOrCapturedMoneyBeforeProviderProof()
+    {
+        RegistrationOrder order = CreateOrder();
+        PaymentAttempt attempt = CreateRequiresActionAttempt();
+        CheckoutDispatchEffect effect = CheckoutDispatchEffect.Create(attempt, UtcNow);
+        _attempts.GetLatestByOrderAsync(_tenantId, _orderId, Arg.Any<CancellationToken>()).Returns((attempt, effect));
+        _finalization.GetSucceededPaymentAsync(_tenantId, _orderId, Arg.Any<CancellationToken>())
+            .Returns(SucceededPaymentLookupResult.Missing());
+
+        RegistrationPaymentDto? result = await CreateService().GetAsync(
+            order, CancellationToken.None, buyerRefundAllowed: true, organizerRefundAllowed: true);
+
+        await Assert.That(result!.CapturedAmountMinor).IsEqualTo(0);
+        await Assert.That(result.BuyerRefundRequestAvailable).IsFalse();
+        await Assert.That(result.OrganizerRefundAvailable).IsFalse();
+    }
+
+    [Test]
     public async Task PublicBaseUrl_NormalizesSubpathAndRejectsAuthorityContamination()
     {
         bool valid = HostedCheckoutReturnUrls.TryNormalizePublicBaseUrl("https://events.example.test/events", out Uri normalized);
@@ -171,6 +221,10 @@ public sealed class RegistrationPaymentContractServiceTests
 
     private RegistrationPaymentContractService CreateService()
     {
+        _refunds.GetByPaymentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _refunds.GetDisputesAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        var materialChangeChoices = Substitute.For<IRegistrationMaterialChangeChoiceRepository>();
+        materialChangeChoices.GetByPaymentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         var claimFreshness = Substitute.For<IPaidOrderAcceptanceFreshnessService>();
         claimFreshness.IsCurrentAsync(Arg.Any<PaymentAttempt>(), Arg.Any<CancellationToken>()).Returns(true);
         var claimService = new RegistrationPaymentAttemptClaimService(
@@ -198,6 +252,8 @@ public sealed class RegistrationPaymentContractServiceTests
             claimService,
             acceptanceService,
             _freshness,
+            _refunds,
+            materialChangeChoices,
             _retriever,
             new FixedTimeProvider(UtcNow));
     }

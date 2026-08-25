@@ -15,6 +15,8 @@ public sealed class RegistrationPaymentContractService(
     RegistrationPaymentAttemptClaimService claims,
     IPaidOrderAcceptanceService acceptances,
     IPaidOrderAcceptanceFreshnessService acceptanceFreshness,
+    IRefundAttemptRepository refunds,
+    IRegistrationMaterialChangeChoiceRepository materialChangeChoices,
     IHostedCheckoutSessionRetriever checkoutRetriever,
     TimeProvider timeProvider)
 {
@@ -49,7 +51,11 @@ public sealed class RegistrationPaymentContractService(
         return Success(Map(order, result.Attempt, result.DispatchEffect));
     }
 
-    public async Task<RegistrationPaymentDto?> GetAsync(RegistrationOrder order, CancellationToken cancellationToken)
+    public async Task<RegistrationPaymentDto?> GetAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken,
+        bool buyerRefundAllowed = false,
+        bool organizerRefundAllowed = false)
     {
         (PaymentAttempt Attempt, CheckoutDispatchEffect DispatchEffect)? row = await attempts.GetLatestByOrderAsync(
             order.TenantId, order.Id, cancellationToken);
@@ -64,13 +70,49 @@ public sealed class RegistrationPaymentContractService(
         bool retryAvailable = !conflict &&
             CanRetry(order, row.Value.Attempt, row.Value.DispatchEffect, timeProvider.GetUtcNow().UtcDateTime) &&
             await acceptanceFreshness.IsCurrentAsync(row.Value.Attempt, cancellationToken);
-        return Map(
+        RegistrationPaymentDto result = Map(
             order,
             row.Value.Attempt,
             row.Value.DispatchEffect,
             retryAvailable,
             failureCode: conflict ? SucceededPaymentLookupResult.DuplicateCode : null,
             needsReconciliation: conflict);
+        IReadOnlyList<RefundAttempt> refundAttempts = await refunds.GetByPaymentAsync(
+            order.TenantId, row.Value.Attempt.Id, cancellationToken);
+        IReadOnlyList<PaymentDispute> disputes = await refunds.GetDisputesAsync(
+            order.TenantId, row.Value.Attempt.Id, cancellationToken);
+        result.Refunds = refundAttempts.Select(MapRefund).ToArray();
+        result.Disputes = disputes.Select(dispute => new RegistrationPaymentDisputeDto
+        {
+            Id = dispute.Id,
+            StageCode = dispute.Stage.ToString(),
+            StatusCode = dispute.Status.ToString(),
+            AmountMinor = dispute.AmountMinor,
+            CurrencyCode = dispute.CurrencyCode,
+            LastObservedAt = dispute.LastObservedAt,
+            ResponseDueAt = dispute.ResponseDueAt
+        }).ToArray();
+        result.MaterialChangeChoices = (await materialChangeChoices.GetByPaymentAsync(
+            order.TenantId, row.Value.Attempt.Id, cancellationToken)).Select(MapMaterialChangeChoice).ToArray();
+        result.RefundedAmountMinor = refundAttempts
+            .Where(attempt => attempt.BuyerRefundSucceededAt.HasValue)
+            .Sum(attempt => attempt.Allocation.TotalMinor);
+        result.RefundPendingAmountMinor = refundAttempts
+            .Where(attempt => attempt.ReservesCapacity && !attempt.BuyerRefundSucceededAt.HasValue)
+            .Sum(attempt => attempt.Allocation.TotalMinor);
+        bool providerProvenCapture = row.Value.Attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded &&
+            row.Value.Attempt.HasImmutableAcceptance &&
+            !string.IsNullOrWhiteSpace(row.Value.Attempt.ProviderPaymentId);
+        if (!providerProvenCapture)
+        {
+            result.MaterialChangeChoices = [];
+        }
+        bool refundCapacityAvailable = providerProvenCapture &&
+            checked(result.RefundedAmountMinor + result.RefundPendingAmountMinor) < row.Value.Attempt.TotalMinor;
+        bool refundBlockedByDispute = disputes.Any(dispute => dispute.IsOpen);
+        result.BuyerRefundRequestAvailable = buyerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute;
+        result.OrganizerRefundAvailable = organizerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute;
+        return result;
     }
 
     public async Task<RegistrationPaymentCommandResultDto> RetryAsync(RegistrationOrder order, CancellationToken cancellationToken)
@@ -191,7 +233,12 @@ public sealed class RegistrationPaymentContractService(
             FailureCode = failureCode ?? (statusCode == "Failed" ? dispatch.LastFailureCode : null),
             CreatedAt = attempt.CreatedAt,
             LastUpdatedAt = attempt.UpdatedAt ?? attempt.LastStatusObservedAt,
-            ExpiresAt = attempt.ExpiresAt
+            ExpiresAt = attempt.ExpiresAt,
+            CapturedAmountMinor = attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded
+                ? attempt.TotalMinor
+                : 0,
+            CurrencyCode = attempt.CurrencyCode,
+            CurrencyMinorUnitDigits = Explore.Domain.ValueObjects.CurrencyMetadata.Get(attempt.CurrencyCode).MinorUnitDigits
         };
     }
 
@@ -242,4 +289,42 @@ public sealed class RegistrationPaymentContractService(
 
     private static RegistrationPaymentCommandResultDto Failure(string code, string? message) =>
         new() { FailureCode = code, Message = message };
+
+    internal static RegistrationRefundDto MapRefund(RefundAttempt attempt)
+    {
+        bool buyerRefunded = attempt.BuyerRefundSucceededAt.HasValue;
+        string code = buyerRefunded ? nameof(RefundAttemptStatusEnum.Succeeded) : attempt.Status.ToString();
+        return new()
+        {
+            Id = attempt.Id,
+            StatusCode = code,
+            StatusName = code switch
+            {
+                nameof(RefundAttemptStatusEnum.DispatchPending) => "Processing",
+                nameof(RefundAttemptStatusEnum.RequiresAction) => "Requires action",
+                nameof(RefundAttemptStatusEnum.Succeeded) => "Refunded",
+                _ => code
+            },
+            FailureCode = buyerRefunded ? null : attempt.FailureCode,
+            SettlementRetryAvailable = attempt.SourceCampaignId is null &&
+                                       attempt.Status == RefundAttemptStatusEnum.RequiresAction &&
+                                       attempt.FailureCode is not null,
+            AmountMinor = attempt.Allocation.TotalMinor,
+            CurrencyCode = attempt.CurrencyCode,
+            AcceptedRefundPolicyVersion = attempt.RefundPolicyVersion,
+            CreatedAt = attempt.CreatedAt,
+            LastObservedAt = attempt.LastObservedAt,
+            SucceededAt = attempt.BuyerRefundSucceededAt
+        };
+    }
+
+    internal static RegistrationMaterialChangeChoiceDto MapMaterialChangeChoice(
+        RegistrationMaterialChangeChoice choice) => new()
+        {
+            Id = choice.Id,
+            CampaignId = choice.RefundCampaignId,
+            StatusCode = choice.Status.ToString(),
+            CreatedAt = choice.CreatedAt,
+            DecidedAt = choice.DecidedAt
+        };
 }

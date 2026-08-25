@@ -1,5 +1,5 @@
-/* ABOUTME: Scoped bounded payment facts within a Studio registration-order row. */
-/* ABOUTME: Uses the existing token scale and logical layout without elevated or mutating affordances. */
+/* ABOUTME: Scoped payment, refund, dispute, and confirmed financial-action states in Studio. */
+/* ABOUTME: Uses semantic tokens, logical properties, and accessible status messaging. */
 
 .studio-payment-status {
     display: grid;
@@ -37,4 +37,31 @@
     display: flex;
     align-items: center;
     gap: var(--isl-space-2);
+}
+
+.studio-payment-status__refunds,
+.studio-payment-status__disputes {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.studio-payment-status__refunds ul,
+.studio-payment-status__disputes ul {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.studio-payment-status__refunds li,
+.studio-payment-status__disputes li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.studio-payment-status__action-message:focus-visible {
+    outline: 2px solid var(--isl-color-focus);
+    outline-offset: 2px;
 }

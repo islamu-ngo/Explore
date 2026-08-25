@@ -54,11 +54,23 @@ public sealed class RegistrationOrderFallbackAuthorizationTests
             _orderId.ToString("D"),
             AuthorizationActions.RegistrationOrders.Finalize,
             Attributes());
+        bool canRequestRefund = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.RequestRefund,
+            Attributes());
+        bool canRespondMaterialChange = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.RespondMaterialChange,
+            Attributes());
 
         await Assert.That(canView).IsTrue();
         await Assert.That(canCancel).IsTrue();
         await Assert.That(canContinue).IsTrue();
         await Assert.That(canFinalize).IsTrue();
+        await Assert.That(canRequestRefund).IsTrue();
+        await Assert.That(canRespondMaterialChange).IsTrue();
     }
 
     [Test]
@@ -166,11 +178,23 @@ public sealed class RegistrationOrderFallbackAuthorizationTests
             _orderId.ToString("D"),
             AuthorizationActions.RegistrationOrders.Finalize,
             Attributes());
+        bool canRequestRefund = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.RequestRefund,
+            Attributes());
+        bool canRespondMaterialChange = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.RespondMaterialChange,
+            Attributes());
 
         await Assert.That(canView).IsTrue();
         await Assert.That(canCancel).IsFalse();
         await Assert.That(canContinue).IsFalse();
         await Assert.That(canFinalize).IsFalse();
+        await Assert.That(canRequestRefund).IsFalse();
+        await Assert.That(canRespondMaterialChange).IsFalse();
     }
 
     private FallbackAuthorizationService CreateService()

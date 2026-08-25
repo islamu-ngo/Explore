@@ -38,6 +38,10 @@
         {
             <section class="studio-orders__event" aria-labelledby="@($"orders-{eventId:N}")">
                 <MudText Id="@($"orders-{eventId:N}")" Typo="Typo.h5" HtmlTag="h2">Event orders</MudText>
+                @if (_refundCampaignEventIds.Contains(eventId))
+                {
+                    <StudioRefundCampaigns EventId="eventId" />
+                }
                 <StudioOrderList EventId="eventId" />
             </section>
         }
@@ -46,6 +50,7 @@
 
 @code {
     private readonly List<Guid> _eventIds = [];
+    private readonly HashSet<Guid> _refundCampaignEventIds = [];
     private bool _authorized;
     private bool _isLoading;
     private string? _error;
@@ -68,6 +73,9 @@
                 : await EventService.GetMyEventsPagedAsync(1, 100);
             _eventIds.AddRange(events.Items
                 .Where(item => item.Id.HasValue && item.HasHalLink("view-registration-orders"))
+                .Select(item => item.Id!.Value));
+            _refundCampaignEventIds.UnionWith(events.Items
+                .Where(item => item.Id.HasValue && item.HasHalLink("refund-campaigns"))
                 .Select(item => item.Id!.Value));
         }
         catch (Exception)

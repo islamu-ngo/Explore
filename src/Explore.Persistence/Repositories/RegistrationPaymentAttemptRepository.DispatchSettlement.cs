@@ -251,6 +251,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
             PaymentAttempt attempt = await LoadClaimedAttemptAsync(claim, token)
                 ?? throw new InvalidOperationException("Claimed checkout dispatch attempt is missing.");
             _ = settleAttempt(attempt);
+            await ClosePendingMaterialChangeChoicesAsync(attempt, observedAt, token);
             if (attempt.ProviderCheckoutSessionId is not null || attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Unknown)
             {
                 PaymentReconciliationEffect? reconciliation = await dbContext.PaymentReconciliationEffects

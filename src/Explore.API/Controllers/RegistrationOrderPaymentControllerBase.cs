@@ -39,6 +39,27 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
             "paid_sale_control_uninitialized",
             "payment_activation_invalid",
             "payment_activation_unavailable");
+    private protected static readonly CommandFailurePolicy RefundFailures = CommandFailurePolicy
+        .ValidatedBy(PaymentValidationProblem)
+        .NotFound(PaymentNotFoundProblem, "registration_order_not_found")
+        .Conflict(
+            "Refund unavailable",
+            "The requested refund is not available.",
+            "refund_payment_not_captured",
+            "refund_capacity_exceeded",
+            "refund_open_dispute",
+            "refund_authority_mismatch");
+    private protected static readonly CommandFailurePolicy MaterialChangeFailures = CommandFailurePolicy
+        .ValidatedBy(PaymentValidationProblem)
+        .NotFound(PaymentNotFoundProblem, "registration_order_not_found", "material_change_choice_not_found")
+        .Conflict(
+            "Material-change choice unavailable",
+            "The requested material-change choice is not available.",
+            "material_change_choice_invalid",
+            "refund_payment_not_captured",
+            "refund_capacity_exceeded",
+            "refund_open_dispute",
+            "refund_authority_mismatch");
 
     protected ActionResult<HalResource<RegistrationPaymentDto>> MapResult(
         RegistrationPaymentCommandResultDto result,
@@ -77,8 +98,50 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
         {
             resource.WithLink(LinkRelations.RetryPayment, HalLink.CreateAction(Url.Link(retryRoute, values)!, HttpMethods.Post));
         }
+        if (!guest && payment.BuyerRefundRequestAvailable)
+        {
+            resource.WithLink(LinkRelations.RequestRefund, HalLink.CreateAction(
+                Url.Link(RouteNames.RequestAuthenticatedRegistrationRefund, values)!, HttpMethods.Post));
+        }
+        if (!guest && payment.MaterialChangeChoices.Any(choice => choice.StatusCode == "Pending"))
+        {
+            resource.WithLink(LinkRelations.RespondMaterialChange, HalLink.CreateAction(
+                Url.Link(RouteNames.RespondAuthenticatedRegistrationMaterialChange, values)!, HttpMethods.Post));
+        }
 
         return resource;
+    }
+
+    protected ActionResult<HalResource<RegistrationRefundDto>> MapRefundResult(
+        RegistrationRefundCommandResultDto result,
+        Guid eventId,
+        Guid orderId,
+        string statusRoute)
+    {
+        if (!result.Success || result.Refund is null)
+        {
+            return RefundFailures.Map(this, result);
+        }
+
+        var resource = new HalResource<RegistrationRefundDto>(result.Refund)
+            .WithLink(LinkRelations.PaymentStatus, HalLink.Create(
+                Url.Link(statusRoute, new { eventId, orderId })!));
+        return Accepted(resource);
+    }
+
+    protected ActionResult<HalResource<RegistrationMaterialChangeChoiceDto>> MapMaterialChangeResult(
+        RegistrationMaterialChangeChoiceCommandResultDto result,
+        Guid eventId,
+        Guid orderId)
+    {
+        if (!result.Success || result.Choice is null)
+        {
+            return MaterialChangeFailures.Map(this, result);
+        }
+
+        return Accepted(new HalResource<RegistrationMaterialChangeChoiceDto>(result.Choice)
+            .WithLink(LinkRelations.PaymentStatus, HalLink.Create(
+                Url.Link(RouteNames.GetAuthenticatedRegistrationPayment, new { eventId, orderId })!)));
     }
 
     protected ActionResult<RegistrationPaymentCheckoutTargetDto> TargetOrNotFound(RegistrationPaymentCheckoutTargetDto? target) =>

@@ -309,6 +309,10 @@ public static class ApplicationServicesRegistration
         services.AddScoped<RegistrationPaymentReconciliationService>();
         services.AddScoped<RefundDispatchService>();
         services.AddScoped<RefundReconciliationService>();
+        services.AddScoped<RefundCampaignProcessor>();
+        services.AddScoped<RegistrationRefundService>();
+        services.AddScoped<RegistrationMaterialChangeChoiceService>();
+        services.AddScoped<RegistrationPaymentCancellationService>();
         services.AddScoped<RegistrationParticipantCommandService>();
         services.AddScoped<IRegistrationOrderLifecycleService>(provider => provider.GetRequiredService<RegistrationOrderLifecycleService>());
         services.AddScoped<IRegistrationOrderStarter, CreateOrderWithHoldCommandHandler>();

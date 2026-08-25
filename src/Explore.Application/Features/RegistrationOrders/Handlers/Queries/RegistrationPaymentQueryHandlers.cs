@@ -37,6 +37,7 @@ public sealed class GetGuestRegistrationPaymentQueryHandler(
 
 public sealed class GetAuthenticatedRegistrationPaymentQueryHandler(
     IRegistrationInventoryRepository inventory,
+    IEventRepository events,
     ITenantContext tenant,
     ICurrentUserService currentUser,
     RegistrationPaymentContractService payments)
@@ -52,7 +53,13 @@ public sealed class GetAuthenticatedRegistrationPaymentQueryHandler(
 
         RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
             inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken);
-        return order is null ? null : await payments.GetAsync(order, cancellationToken);
+        Explore.Domain.Event? @event = order is null ? null : await events.GetById(request.EventId);
+        return order is null || @event?.TenantId != tenant.TenantId
+            ? null
+            : await payments.GetAsync(
+                order,
+                cancellationToken,
+                buyerRefundAllowed: @event.EventStatusId == (int)Explore.Domain.Enums.EventStatusEnum.Cancelled);
     }
 }
 
@@ -152,6 +159,8 @@ public sealed class GetStudioRegistrationPaymentQueryHandler(
     public async Task<RegistrationPaymentDto?> Handle(GetStudioRegistrationPaymentQuery request, CancellationToken cancellationToken)
     {
         RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(request.OrderId, tenant.TenantId, cancellationToken);
-        return order?.EventId != request.EventId ? null : await payments.GetAsync(order, cancellationToken);
+        return order?.EventId != request.EventId
+            ? null
+            : await payments.GetAsync(order, cancellationToken, organizerRefundAllowed: true);
     }
 }

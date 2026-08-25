@@ -336,6 +336,66 @@ public sealed class PaymentStatusPanelTests : IDisposable
     }
 
     [Test]
+    public async Task RefundAndDisputeTruthRendersWhileRequestAffordanceRequiresExactHalRelation()
+    {
+        var payment = CreatePayment("Succeeded", "payment-status", "request-refund");
+        payment.CurrencyCode = "EUR";
+        payment.CurrencyMinorUnitDigits = 2;
+        payment.Refunds =
+        [
+            new RegistrationRefundDto { StatusCode = "Pending", StatusName = "Pending", AmountMinor = 100, CurrencyCode = "EUR", AcceptedRefundPolicyVersion = 7 },
+            new RegistrationRefundDto { StatusCode = "Succeeded", StatusName = "Refunded", AmountMinor = 200, CurrencyCode = "EUR", AcceptedRefundPolicyVersion = 7 }
+        ];
+        payment.Disputes =
+        [
+            new RegistrationPaymentDisputeDto { StageCode = "Formal", StatusCode = "Open", AmountMinor = 300, CurrencyCode = "EUR" }
+        ];
+
+        var cut = _ctx.RenderMudComponent<PaymentStatusPanel>(parameters => parameters
+            .Add(component => component.Load, _ => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(payment))
+            .Add(component => component.RequestRefund, (value, _) => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(value)));
+
+        cut.WaitForElement("[data-testid='payment-refunds']");
+        await Assert.That(cut.FindAll("[data-testid='payment-refund']").Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll("[data-testid='payment-dispute']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='request-refund']").Count).IsEqualTo(1);
+
+        payment._links!.Remove("request-refund");
+        cut.Render();
+        await Assert.That(cut.FindAll("[data-testid='request-refund']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task MaterialChangeChoiceRendersButActionsRequireExactHalRelation()
+    {
+        var payment = CreatePayment("Succeeded", "payment-status", "respond-material-change");
+        payment.MaterialChangeChoices =
+        [
+            new RegistrationMaterialChangeChoiceDto
+            {
+                Id = Guid.CreateVersion7(),
+                CampaignId = Guid.CreateVersion7(),
+                StatusCode = "Pending",
+                CreatedAt = DateTimeOffset.UtcNow
+            }
+        ];
+
+        var cut = _ctx.RenderMudComponent<PaymentStatusPanel>(parameters => parameters
+            .Add(component => component.Load, _ => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(payment))
+            .Add(component => component.RespondMaterialChange,
+                (value, _, _, _) => Task.FromResult<HalResourceOfRegistrationPaymentDto?>(value)));
+
+        cut.WaitForElement("[data-testid='payment-material-changes']");
+        await Assert.That(cut.FindAll("[data-testid='accept-material-change']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='refund-material-change']").Count).IsEqualTo(1);
+
+        payment._links!.Remove("respond-material-change");
+        cut.Render();
+        await Assert.That(cut.FindAll("[data-testid='accept-material-change']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='refund-material-change']")).IsEmpty();
+    }
+
+    [Test]
     public async Task Polling_UsesProgressiveCappedBackoffAndOneTrackedNonOverlappingTask()
     {
         var now = DateTimeOffset.Parse("2026-08-21T12:00:00Z");

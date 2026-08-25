@@ -97,3 +97,35 @@
     flex-wrap: wrap;
     gap: var(--isl-space-3);
 }
+
+.payment-status__choice-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+}
+
+.payment-status__refunds,
+.payment-status__disputes {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.payment-status__refunds ul,
+.payment-status__disputes ul {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.payment-status__refunds li,
+.payment-status__disputes li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-3);
+    padding: var(--isl-space-2);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}

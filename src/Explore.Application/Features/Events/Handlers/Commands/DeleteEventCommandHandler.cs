@@ -33,6 +33,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IRegistrationInventoryRepository _registrationInventoryRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
@@ -46,6 +47,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
     public DeleteEventCommandHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
+        IRegistrationInventoryRepository registrationInventoryRepository,
         IActorRepository actorRepository,
         IOrganizationMemberRepository organizationMemberRepository,
         ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
@@ -58,6 +60,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
+        _registrationInventoryRepository = registrationInventoryRepository;
         _actorRepository = actorRepository;
         _organizationMemberRepository = organizationMemberRepository;
         _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
@@ -95,6 +98,13 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
                 "Delete event failed: User {UserId} not authorized to delete event {EventId}",
                 userId.Value,
                 request.Id);
+            return false;
+        }
+
+        if (await _registrationInventoryRepository.HasPaidEvidenceAsync(
+                @event.Id, @event.TenantId, cancellationToken))
+        {
+            _logger.LogWarning("Delete event rejected because paid evidence exists for event {EventId}", request.Id);
             return false;
         }
 

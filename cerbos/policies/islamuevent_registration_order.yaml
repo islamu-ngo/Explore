@@ -13,7 +13,7 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_registration_order.json
   rules:
-    - actions: ["view", "cancel", "continue", "finalize"]
+    - actions: ["view", "cancel", "continue", "finalize", "request_refund", "respond_material_change"]
       effect: EFFECT_ALLOW
       roles:
         - islamuevent_authenticated_user

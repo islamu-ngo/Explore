@@ -1,0 +1,123 @@
+@* ABOUTME: Displays event refund/material-change campaign progress and HAL-authorized recovery. *@
+@* ABOUTME: Shows only bounded counters and confirms durable resume without exposing provider identifiers. *@
+@inject IRegistrationOrderService RegistrationOrderService
+@inject IDialogService Dialogs
+
+@if (_isLoading)
+{
+    <div role="status" data-testid="studio-refund-campaigns-loading">Loading refund campaigns…</div>
+}
+else if (_failed)
+{
+    <div role="alert" tabindex="-1" data-testid="studio-refund-campaigns-error">
+        @_message
+    </div>
+}
+else if (_campaigns is { Count: > 0 })
+{
+    <section class="studio-refund-campaigns" aria-labelledby="@HeadingId" data-testid="studio-refund-campaigns">
+        <MudText Id="@HeadingId" Typo="Typo.h6" HtmlTag="h3">Refund and event-change campaigns</MudText>
+        <ul>
+            @foreach (HalResourceOfRefundCampaignDto campaign in _campaigns)
+            {
+                <li data-testid="studio-refund-campaign">
+                    <MudText Typo="Typo.subtitle2">@CampaignTitle(campaign)</MudText>
+                    <dl>
+                        <dt>Status</dt><dd>@campaign.StatusCode</dd>
+                        <dt>Processed payments</dt><dd>@(campaign.TotalPaymentCount ?? 0)</dd>
+                        <dt>Generated</dt><dd>@(campaign.GeneratedCount ?? 0)</dd>
+                        <dt>Pending</dt><dd>@(campaign.PendingCount ?? 0)</dd>
+                        <dt>Succeeded</dt><dd>@(campaign.SucceededCount ?? 0)</dd>
+                        <dt>Failed</dt><dd>@(campaign.FailedCount ?? 0)</dd>
+                        <dt>Unknown</dt><dd>@(campaign.UnknownCount ?? 0)</dd>
+                        <dt>Operator cases</dt><dd>@(campaign.OperatorCaseCount ?? 0)</dd>
+                    </dl>
+                    @if (campaign._links?.ContainsKey("resume-refund-campaign") == true)
+                    {
+                        <AppButton Variant="Variant.Outlined" Disabled="_isBusy"
+                                   OnClick="@(() => ResumeAsync(campaign))"
+                                   data-testid="resume-refund-campaign">Resume campaign</AppButton>
+                    }
+                </li>
+            }
+        </ul>
+        @if (_message is not null)
+        {
+            <div role="@(_failed ? "alert" : "status")" tabindex="-1">@_message</div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+
+    private IReadOnlyList<HalResourceOfRefundCampaignDto> _campaigns = [];
+    private bool _isLoading;
+    private bool _isBusy;
+    private bool _failed;
+    private string? _message;
+    private string HeadingId => $"refund-campaigns-{EventId:N}";
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _failed = false;
+        _message = null;
+        try
+        {
+            HalCollectionResourceOfRefundCampaignDto? collection = await RegistrationOrderService
+                .GetRefundCampaignsAsync(EventId);
+            _failed = collection is null;
+            _message = _failed ? "Refund campaign status is currently unavailable." : null;
+            _campaigns = collection?._embedded?.Items?.ToArray() ?? [];
+        }
+        catch (Exception)
+        {
+            _failed = true;
+            _message = "Refund campaign status is currently unavailable.";
+            _campaigns = [];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ResumeAsync(HalResourceOfRefundCampaignDto campaign)
+    {
+        bool? confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Resume refund campaign",
+            "Resume durable processing from its stored cursor? Existing refund identities will be reused.",
+            yesText: "Resume",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        try
+        {
+            HalCollectionResourceOfRefundCampaignDto? refreshed = await RegistrationOrderService
+                .ResumeRefundCampaignAsync(EventId, campaign);
+            _failed = refreshed is null;
+            _message = refreshed is null
+                ? "Campaign resume was unavailable. Refresh before trying again."
+                : "Campaign processing was resumed.";
+            _campaigns = refreshed?._embedded?.Items?.ToArray() ?? _campaigns;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static string CampaignTitle(HalResourceOfRefundCampaignDto campaign) => campaign.KindCode switch
+    {
+        "EventCancellation" => "Event cancellation",
+        "MaterialChange" => "Material change",
+        _ => "Refund campaign"
+    };
+}

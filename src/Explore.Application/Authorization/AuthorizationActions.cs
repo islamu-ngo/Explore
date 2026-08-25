@@ -156,6 +156,8 @@ public static class AuthorizationActions
         public const string Cancel = "cancel";
         public const string Continue = "continue";
         public const string Finalize = "finalize";
+        public const string RequestRefund = "request_refund";
+        public const string RespondMaterialChange = "respond_material_change";
     }
 
     public static class SupportAccessSessions

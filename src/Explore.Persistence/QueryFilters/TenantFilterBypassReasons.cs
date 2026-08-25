@@ -71,6 +71,9 @@ public static class TenantFilterBypassReasons
     public const string RegistrationFinalizationWorkerCrossTenantQueue =
         "Registration finalization worker polls and settles tenant-owned effects across tenants using explicit id/status/fence predicates.";
 
+    public const string RefundReconciliationHealthCrossTenantQueue =
+        "Refund readiness aggregates bounded non-identifying status counts across tenant-owned refund attempts and campaigns.";
+
     public const string RegistrationProviderSubmissionWriteWorkerCrossTenantQueue =
         "Registration provider submission write worker polls and settles tenant-owned effects across tenants using explicit id/status/fence predicates.";
 

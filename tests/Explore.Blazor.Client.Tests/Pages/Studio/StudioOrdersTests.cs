@@ -84,6 +84,7 @@ public sealed class StudioOrdersTests : IDisposable
         await Assert.That(cut.FindAll(".studio-orders__event")).Count().IsEqualTo(1);
         await _studioContextService.Received(1).GetEventOrdersAsync(linkedEventId, Arg.Any<CancellationToken>());
         await _studioContextService.DidNotReceive().GetEventOrdersAsync(unlinkedEventId, Arg.Any<CancellationToken>());
+        await _registrationOrderService.DidNotReceive().GetRefundCampaignsAsync(linkedEventId, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -276,6 +277,108 @@ public sealed class StudioOrdersTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='studio-payment-status'][role='alert']").Count).IsEqualTo(2);
     }
 
+    [Test]
+    public async Task StudioPaymentStatusRendersRefundAndDisputeTruthAndGatesMutationByPaymentHal()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        HalResourceOfRegistrationOrderDto order = CreateOrder("studio-payment-status");
+        var payment = new HalResourceOfRegistrationPaymentDto
+        {
+            StatusCode = "Succeeded",
+            StatusName = "Succeeded",
+            CurrencyCode = "EUR",
+            CapturedAmountMinor = 1_000,
+            Refunds = [new RegistrationRefundDto
+            {
+                StatusCode = "Pending",
+                StatusName = "Pending",
+                AmountMinor = 400,
+                CurrencyCode = "EUR"
+            }],
+            Disputes = [new RegistrationPaymentDisputeDto { StageCode = "Formal", StatusCode = "Open" }],
+            _links = new Dictionary<string, HalLink>
+            {
+                ["create-refund"] = new() { Href = "/api/refund", Method = "POST" },
+                ["retry-refund"] = new()
+                {
+                    Href = $"/api/events/{eventId:D}/registration-orders/{order.Id:D}/payment/studio/refunds/{Guid.CreateVersion7():D}/retry",
+                    Method = "POST"
+                }
+            }
+        };
+        _registrationOrderService.GetStudioPaymentAsync(eventId, order.Id!.Value, order, Arg.Any<CancellationToken>())
+            .Returns(payment);
+
+        var cut = _ctx.RenderMudComponent<StudioPaymentStatus>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.Order, order));
+
+        cut.WaitForElement("[data-testid='studio-refund-status']");
+        await Assert.That(cut.FindAll("[data-testid='studio-dispute-status']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='studio-create-refund']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='studio-retry-refund']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task RefundCampaignRecoveryRendersOnlyFromCampaignHal()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        var campaign = new HalResourceOfRefundCampaignDto
+        {
+            Id = Guid.CreateVersion7(),
+            KindCode = "EventCancellation",
+            StatusCode = "RequiresOperator",
+            OperatorCaseCount = 1,
+            _links = new Dictionary<string, HalLink>
+            {
+                ["resume-refund-campaign"] = new() { Href = "/api/refund-campaign/resume", Method = "POST" }
+            }
+        };
+        _registrationOrderService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfRefundCampaignDto
+            {
+                _embedded = new HalCollectionEmbeddedOfRefundCampaignDto { Items = [campaign] }
+            });
+
+        var cut = _ctx.RenderMudComponent<StudioRefundCampaigns>(parameters => parameters
+            .Add(component => component.EventId, eventId));
+
+        cut.WaitForElement("[data-testid='studio-refund-campaign']");
+        await Assert.That(cut.FindAll("[data-testid='resume-refund-campaign']").Count).IsEqualTo(1);
+
+        campaign._links!.Clear();
+        cut.Render();
+        await Assert.That(cut.FindAll("[data-testid='resume-refund-campaign']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task ActorOrders_LoadsCampaignsOnlyWhenEventAdvertisesCampaignRelation()
+    {
+        Guid actorId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        _shellState.ReconcileActiveActors([new ManagedActorDto { ActorId = actorId, DisplayName = "Community" }], actorId);
+        _studioContextService.GetContextAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HalResourceOfStudioContextDto
+        {
+            _links = new Dictionary<string, HalLink>
+            {
+                ["view-registration-orders"] = new() { Href = "/api/studio/context", Method = "GET" }
+            }
+        });
+        _eventService.GetManagedEventsByActorAsync(actorId, Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateResult([CreateEvent(eventId, hasOrderLink: true, hasRefundCampaignLink: true)])));
+        _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfRegistrationOrderDto>>([]));
+        _registrationOrderService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfRefundCampaignDto
+            {
+                _embedded = new HalCollectionEmbeddedOfRefundCampaignDto { Items = [] }
+            });
+
+        _ctx.RenderMudComponent<StudioOrders>().WaitForElement("[data-testid='studio-orders-empty']");
+
+        await _registrationOrderService.Received(1).GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>());
+    }
+
     private static HalResourceOfRegistrationOrderDto CreateOrder(params string[] relations) => new()
     {
         Id = Guid.CreateVersion7(),
@@ -287,16 +390,23 @@ public sealed class StudioOrdersTests : IDisposable
             relation => new HalLink { Href = $"/api/orders/payment/{relation}", Method = "GET" })
     };
 
-    private static EventListDto CreateEvent(Guid eventId, bool hasOrderLink = false)
+    private static EventListDto CreateEvent(
+        Guid eventId,
+        bool hasOrderLink = false,
+        bool hasRefundCampaignLink = false)
     {
         var item = new EventListDto { Id = eventId, Title = "Community event" };
+        var links = new Dictionary<string, object>();
+        if (hasOrderLink)
+        {
+            links["view-registration-orders"] = new { href = $"/api/events/{eventId}/registration-orders" };
+        }
+        if (hasRefundCampaignLink)
+        {
+            links["refund-campaigns"] = new { href = $"/api/events/{eventId}/refund-campaigns" };
+        }
         item.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
-            hasOrderLink
-                ? new Dictionary<string, object>
-                {
-                    ["view-registration-orders"] = new { href = $"/api/events/{eventId}/registration-orders" }
-                }
-                : new Dictionary<string, object>());
+            links);
         return item;
     }
 

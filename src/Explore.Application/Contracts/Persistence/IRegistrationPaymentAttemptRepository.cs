@@ -109,6 +109,19 @@ public interface IRegistrationPaymentAttemptRepository
         DateTime cancelledAt,
         CancellationToken cancellationToken);
 
+    Task<PaymentAttempt?> GetByIdForCancellationAsync(
+        Guid tenantId,
+        Guid paymentAttemptId,
+        CancellationToken cancellationToken);
+
+    Task<bool> MarkCancelledAfterProviderAsync(
+        Guid tenantId,
+        Guid paymentAttemptId,
+        Guid actorId,
+        DateTime cancelledAt,
+        string? providerRequestId,
+        CancellationToken cancellationToken);
+
     Task<bool> RetryParkedPreHandoffAsync(
         Guid tenantId,
         Guid paymentAttemptId,

@@ -2204,6 +2204,7 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 ---
 
 ### Phase 19: Refunds, Cancellation Campaigns, Rescheduling, Disputes, And Buyer Protection
+- **Progress (2026-08-25):** Complete. Required Stripe/EF research used Context7 and official web documentation, with sanitized provenance in `phase19-clean-room-evidence.md`. Tasks 19.0–19.5 deliver provider-neutral refund/dispute truth, checked cumulative component allocation, constrained remaining-organizer line allocation, atomic tenant-qualified reservation, bounded campaigns, Stripe dispatch/webhooks/reconciliation, buyer and Studio HAL/Blazor recovery, privacy-safe operations, generated contracts, and five EF-generated provider migration chains. Focused SQLite persistence is 9/9, real PostgreSQL constraint/concurrency is 2/2, the expanded three-file Stryker score is 85.11%, and terminal money/security/provider-operations reviews approve. The broad Persistence project runner remains a separately recorded no-output harness follow-up; no Phase 19 behavior remains incomplete.
 - **Goal:** Implement bounded, concurrency-safe refund reservation and truthful asynchronous financial closure for paid events.
 - **Depends on:** Phase 18C.
 - **Authority:** the two linked I-VSD reports, ADR-022/024, and current official Stripe refund, dispute, direct-charge, and idempotency behavior captured as source-free functional requirements.

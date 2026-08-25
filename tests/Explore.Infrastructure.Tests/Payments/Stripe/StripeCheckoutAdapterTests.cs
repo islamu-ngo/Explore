@@ -143,6 +143,45 @@ public sealed class StripeCheckoutAdapterTests
     }
 
     [Test]
+    public async Task CancelAsync_SucceededPaymentReturnsCapturedWithoutMutation()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.OK, """
+            {"id":"pi_captured","object":"payment_intent","amount":1000,"currency":"eur","status":"succeeded"}
+            """, "req_captured"));
+
+        PaymentCancellationProviderResult result = await Adapter(handler).CancelAsync(
+            PaymentCancellationRequest.Create("stripe", "acct_original", null, "pi_captured", "cancel:stable"),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(PaymentCancellationProviderOutcome.Captured);
+        await Assert.That(handler.Requests).Count().IsEqualTo(1);
+        await Assert.That(handler.Requests.Single().Method).IsEqualTo(HttpMethod.Get);
+        await Assert.That(handler.Requests.Single().StripeAccount).IsEqualTo("acct_original");
+    }
+
+    [Test]
+    public async Task CancelAsync_UncapturedPaymentUsesOriginalAccountAndStableIdempotency()
+    {
+        var handler = new RecordingHandler(request => request.Method == HttpMethod.Get
+            ? Json(HttpStatusCode.OK, """
+                {"id":"pi_cancel","object":"payment_intent","amount":1000,"currency":"eur","status":"requires_action"}
+                """, "req_get_cancel")
+            : Json(HttpStatusCode.OK, """
+                {"id":"pi_cancel","object":"payment_intent","amount":1000,"currency":"eur","status":"canceled"}
+                """, "req_cancel"));
+
+        PaymentCancellationProviderResult result = await Adapter(handler).CancelAsync(
+            PaymentCancellationRequest.Create("stripe", "acct_original", null, "pi_cancel", "cancel:stable"),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(PaymentCancellationProviderOutcome.Cancelled);
+        await Assert.That(handler.Requests).Count().IsEqualTo(2);
+        RecordedRequest mutation = handler.Requests.Single(request => request.Method == HttpMethod.Post);
+        await Assert.That(mutation.StripeAccount).IsEqualTo("acct_original");
+        await Assert.That(mutation.IdempotencyKey).IsEqualTo("cancel:stable");
+    }
+
+    [Test]
     public async Task CreateAsync_TimeoutAfterHandoffReturnsUnknownWithoutApplicationRetry()
     {
         var handler = new RecordingHandler(_ => throw new OperationCanceledException());

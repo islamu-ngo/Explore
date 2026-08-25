@@ -2,6 +2,7 @@
 // ABOUTME: Applies explicit groups, preserves schedule projections, and saves session/aspect atomically.
 
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
@@ -11,6 +12,7 @@ using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
@@ -36,6 +38,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly HybridCache _cache;
     private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
     private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
+    private readonly IRefundCampaignRepository _refundCampaignRepository;
+    private readonly IUserContext _userContext;
     private readonly TimeProvider _timeProvider;
 
     public UpdateEventSessionCommandHandler(
@@ -54,6 +58,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         HybridCache cache,
         NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
         IEventLifecycleScheduler eventLifecycleScheduler,
+        IRefundCampaignRepository refundCampaignRepository,
+        IUserContext userContext,
         TimeProvider timeProvider)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -71,6 +77,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _cache = cache;
         _fanoutCoordinator = fanoutCoordinator;
         _eventLifecycleScheduler = eventLifecycleScheduler;
+        _refundCampaignRepository = refundCampaignRepository;
+        _userContext = userContext;
         _timeProvider = timeProvider;
     }
 
@@ -273,6 +281,13 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                             occurredAt,
                             "event_session_update_command",
                             eventSession.Id),
+                        token);
+                    RefundCampaign materialChange = RefundCampaign.CreateMaterialChange(
+                        Guid.CreateVersion7(), eventSession.TenantId, parentEvent.Id,
+                        _userContext.GetRequiredUserId(), "Published event session terms changed.", occurredAt);
+                    await _refundCampaignRepository.CreateAsync(
+                        materialChange,
+                        RefundOutboxMessageFactory.CreateCampaignProcess(materialChange, occurredAt),
                         token);
                     if (previousStartTime != eventSession.StartTime)
                     {

@@ -36,6 +36,8 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
     private readonly Counter<long> _registrationProviderManagementActions;
     private readonly Counter<long> _registrationProviderSubscriptionOperations;
     private readonly Histogram<long> _registrationProviderSubscriptionWatches;
+    private readonly Counter<long> _refundOperations;
+    private readonly Counter<long> _refundCampaignOperations;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
     private readonly Histogram<double> _authorizationDecisionDuration;
@@ -191,6 +193,16 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
             "explore.registration_providers.subscription_watches",
             unit: "{watch}",
             description: "Registration-provider subscription watch counts by bounded watch status");
+
+        _refundOperations = meter.CreateCounter<long>(
+            "explore.refunds.operations",
+            unit: "{operation}",
+            description: "Refund dispatch and reconciliation operations by bounded operation, status, and outcome");
+
+        _refundCampaignOperations = meter.CreateCounter<long>(
+            "explore.refunds.campaign_operations",
+            unit: "{operation}",
+            description: "Refund campaign processing operations by bounded kind, status, and outcome");
 
         _organizationsCreated = meter.CreateCounter<long>(
             "explore.organizations.created",
@@ -752,6 +764,20 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
         _registrationProviderSubscriptionWatches.Record(Math.Max(0, count),
             new KeyValuePair<string, object?>("status", NormalizeRegistrationProviderWatchStatus(status)));
     }
+
+    public void RecordRefundOperation(string? operation, string? status, string? outcome) =>
+        _refundOperations.Add(
+            1,
+            new KeyValuePair<string, object?>("operation", NormalizeRefundOperation(operation)),
+            new KeyValuePair<string, object?>("status", NormalizeRefundStatus(status)),
+            new KeyValuePair<string, object?>("outcome", NormalizeRefundOutcome(outcome)));
+
+    public void RecordRefundCampaignOperation(string? kind, string? status, string? outcome) =>
+        _refundCampaignOperations.Add(
+            1,
+            new KeyValuePair<string, object?>("kind", NormalizeRefundCampaignKind(kind)),
+            new KeyValuePair<string, object?>("status", NormalizeRefundCampaignStatus(status)),
+            new KeyValuePair<string, object?>("outcome", NormalizeRefundOutcome(outcome)));
 
     public void RecordOrganizationCreated(string? tenantId = null)
     {
@@ -1467,6 +1493,49 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
     {
         "expiring" => "expiring",
         "expired" => "expired",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRefundOperation(string? operation) => NormalizeTag(operation) switch
+    {
+        "dispatch" => "dispatch",
+        "reconcile" => "reconcile",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRefundStatus(string? status) => NormalizeTag(status) switch
+    {
+        "requested" => "requested",
+        "dispatchpending" => "dispatch_pending",
+        "pending" => "pending",
+        "requiresaction" => "requires_action",
+        "succeeded" => "succeeded",
+        "failed" => "failed",
+        "unknown" => "unknown",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRefundOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        "completed" => "completed",
+        "retry" => "retry",
+        "failed" => "failed",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRefundCampaignKind(string? kind) => NormalizeTag(kind) switch
+    {
+        "eventcancellation" => "event_cancellation",
+        "materialchange" => "material_change",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRefundCampaignStatus(string? status) => NormalizeTag(status) switch
+    {
+        "pending" => "pending",
+        "processing" => "processing",
+        "completed" => "completed",
+        "requiresoperator" => "requires_operator",
         _ => "unknown"
     };
 

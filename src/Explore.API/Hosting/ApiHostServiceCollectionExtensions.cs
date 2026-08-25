@@ -385,6 +385,10 @@ public static class ApiHostServiceCollectionExtensions
                 "payment-reconciliation",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready", "payments", "reconciliation", "infrastructure"])
+            .AddCheck<RefundReconciliationHealthCheck>(
+                "refund-reconciliation",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "payments", "refunds", "reconciliation", "infrastructure"])
             .AddCheck<SvixWebhookProviderHealthCheck>(
                 "webhook-svix-provider",
                 failureStatus: HealthStatus.Unhealthy,

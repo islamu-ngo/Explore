@@ -49,6 +49,7 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
         PaymentAttemptStatusId = (int)PaymentAttemptStatusEnum.Created;
         AuthoritativeStatusFloorId = (int)PaymentAttemptStatusEnum.Created;
         CreatedAt = createdAt;
+        CampaignCursor = createdAt.Ticks;
         LastStatusObservedAt = createdAt;
         ExpiresAt = expiresAt;
         ConcurrencyStamp = Guid.CreateVersion7();
@@ -122,6 +123,8 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
 
     public DateTime CreatedAt { get; set; }
 
+    public long CampaignCursor { get; private set; }
+
     public Guid? CreatedBy { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
@@ -187,6 +190,20 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
             normalizedIdempotencyKey,
             timestamp,
             expiry);
+    }
+
+    public void AssignCampaignCursor(long cursor)
+    {
+        if (cursor <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(cursor));
+        }
+        if (CampaignCursor != CreatedAt.Ticks && CampaignCursor != cursor)
+        {
+            throw new InvalidOperationException("Payment campaign cursor is immutable after persistence assignment.");
+        }
+
+        CampaignCursor = cursor;
     }
 
     public void AttachAcceptance(PaidOrderAcceptanceSnapshot acceptance)

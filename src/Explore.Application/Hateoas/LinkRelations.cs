@@ -86,6 +86,12 @@ public static class LinkRelations
     public const string CheckoutRedirect = "checkout-redirect";
     public const string RetryPayment = "retry-payment";
     public const string StudioPaymentStatus = "studio-payment-status";
+    public const string RequestRefund = "request-refund";
+    public const string RespondMaterialChange = "respond-material-change";
+    public const string CreateRefund = "create-refund";
+    public const string RetryRefund = "retry-refund";
+    public const string RefundCampaigns = "refund-campaigns";
+    public const string ResumeRefundCampaign = "resume-refund-campaign";
     public const string StopPaidSales = "stop-paid-sales";
     public const string RequestPaidSalesResume = "request-paid-sales-resume";
     public const string ReviewPaidSalesResume = "review-paid-sales-resume";

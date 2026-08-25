@@ -1288,6 +1288,15 @@ The generated contract now includes `ImportEvent`, `CreateDraftEventSession`, `S
 
 Before v1.0, intentional breaking API contract changes may be accepted when they make the API, HAL affordances, or generated OpenAPI contract cleaner. They still require an entry in [API_CHANGELOG.md](API_CHANGELOG.md), regenerated OpenAPI/inventory/generated-client artifacts through the documented workflow when applicable, and retained contract-governance evidence. Do not hand-edit `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, or generated NSwag client output. At v1.0, breaking schema diffs become blocking per governance.
 
+## Registration Refunds And Event-Change Protection
+
+- Account buyers read the private payment projection at `GET /api/events/{eventId}/registration-orders/{orderId}/payment`. `refundedAmountMinor` follows exact provider-proven buyer-refund evidence even if platform-fee settlement still needs operator action; an individual operation is named `Refunded` only after both legs are exact. Requested, pending, action-required, unknown, failed, and cancelled outcomes remain distinct.
+- `POST .../{orderId}/payment/refunds` is an authenticated, account-owner-authorized, rate-limited, idempotent event-cancellation refund request. The `request-refund` HAL relation is its UI authority.
+- `POST .../{orderId}/payment/material-change-choice` records the account owner's closed-set `accept_new_terms` or `request_refund` response. The `respond-material-change` relation appears only while a pending durable choice exists.
+- Studio reads `GET .../{orderId}/payment/studio` and may create a bounded refund with `POST .../{orderId}/payment/studio/refunds` only through `manage_paid_event_commerce` and the `create-refund` relation. A definitively provider-blocked settlement exposes `retry-refund`; `POST .../{orderId}/payment/studio/refunds/{refundAttemptId}/retry` requeues that same attempt for authoritative reconciliation without creating another buyer refund.
+- Event-authorized campaign operations are `GET /api/events/{eventId}/refund-campaigns`, `GET /api/events/{eventId}/refund-campaigns/{campaignId}`, and idempotent `POST .../{campaignId}/resume`. Campaign resources expose only bounded progress counters, omit free-text decision reasons, and emit `resume-refund-campaign` only for resumable state. Resume explicitly requeues provider-blocked attempts; automatic reconciliation never repeats a definitive provider rejection.
+- Every response is private/no-store. Provider account, payment/refund IDs, idempotency material, request IDs, raw provider errors, and purchaser PII are not part of the contract.
+
 ---
 
 ## Related Docs

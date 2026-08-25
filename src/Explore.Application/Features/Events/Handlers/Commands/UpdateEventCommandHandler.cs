@@ -17,6 +17,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
@@ -44,6 +45,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
     private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
     private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
+    private readonly IRefundCampaignRepository _refundCampaignRepository;
     private readonly TimeProvider _timeProvider;
 
     public UpdateEventCommandHandler(
@@ -63,6 +65,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         AtprotoEventPublicationPlanner atprotoPublicationPlanner,
         NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
         IEventLifecycleScheduler eventLifecycleScheduler,
+        IRefundCampaignRepository refundCampaignRepository,
         TimeProvider timeProvider)
     {
         _eventRepository = eventRepository;
@@ -81,6 +84,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
         _fanoutCoordinator = fanoutCoordinator;
         _eventLifecycleScheduler = eventLifecycleScheduler;
+        _refundCampaignRepository = refundCampaignRepository;
         _timeProvider = timeProvider;
     }
 
@@ -250,6 +254,13 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                             occurredAt,
                             "event_timezone_update_command",
                             eventEntity.Id),
+                        token);
+                    RefundCampaign materialChange = RefundCampaign.CreateMaterialChange(
+                        Guid.CreateVersion7(), eventEntity.TenantId, eventEntity.Id, currentUserId,
+                        "Published event timezone changed.", occurredAt);
+                    await _refundCampaignRepository.CreateAsync(
+                        materialChange,
+                        RefundOutboxMessageFactory.CreateCampaignProcess(materialChange, occurredAt),
                         token);
                 }
 

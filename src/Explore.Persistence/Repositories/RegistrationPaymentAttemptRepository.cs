@@ -14,6 +14,28 @@ public sealed partial class RegistrationPaymentAttemptRepository(ExploreDbContex
 {
     public Task SaveChangesAsync(CancellationToken cancellationToken) => dbContext.SaveChangesAsync(cancellationToken);
 
+    private async Task ClosePendingMaterialChangeChoicesAsync(
+        PaymentAttempt attempt,
+        DateTime observedAt,
+        CancellationToken cancellationToken)
+    {
+        if (attempt.PaymentAttemptStatusId != (int)PaymentAttemptStatusEnum.Failed &&
+            attempt.PaymentAttemptStatusId != (int)PaymentAttemptStatusEnum.Cancelled)
+        {
+            return;
+        }
+
+        List<RegistrationMaterialChangeChoice> choices = await dbContext.RegistrationMaterialChangeChoices
+            .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)
+            .Where(value => value.TenantId == attempt.TenantId && value.PaymentAttemptId == attempt.Id &&
+                            value.Status == MaterialChangeChoiceStatusEnum.Pending)
+            .ToListAsync(cancellationToken);
+        foreach (RegistrationMaterialChangeChoice choice in choices)
+        {
+            choice.MarkNotApplicable(observedAt);
+        }
+    }
+
     private Task<bool> ExecuteFencedTransactionAsync(
         Func<CancellationToken, Task<bool>> operation,
         CancellationToken cancellationToken) =>

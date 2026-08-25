@@ -16,6 +16,7 @@ public sealed class StripeCheckoutAdapter(
     IHostedCheckoutSessionCreator,
     IHostedCheckoutSessionRetriever,
     IPaymentIntentRetriever,
+    IPaymentCancellationProvider,
     IPaymentProviderDescriptor
 {
     public const string HttpClientName = "Payments.StripeCheckout";
@@ -27,6 +28,99 @@ public sealed class StripeCheckoutAdapter(
         global::Stripe.StripeConfiguration.ApiVersion,
         options.Value.ExpectsLiveMode ? "live" : "test",
         "instance-operator");
+
+    public async Task<PaymentCancellationProviderResult> CancelAsync(
+        PaymentCancellationRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!IsStripe(request.ProviderCode))
+        {
+            return new(PaymentCancellationProviderOutcome.Failed, null, "payment_cancellation_provider_unsupported", false);
+        }
+
+        bool handedOff = false;
+        try
+        {
+            global::Stripe.StripeClient client = await CreateClientAsync(cancellationToken);
+            var requestOptions = new global::Stripe.RequestOptions
+            {
+                StripeAccount = request.ExternalAccountId,
+                IdempotencyKey = request.ProviderIdempotencyKey
+            };
+            if (request.ProviderPaymentId is not null)
+            {
+                return await CancelPaymentIntentAsync(
+                    client, request.ProviderPaymentId, requestOptions, cancellationToken, () => handedOff = true);
+            }
+
+            handedOff = true;
+            global::Stripe.Checkout.Session session = await client.V1.Checkout.Sessions.GetAsync(
+                request.ProviderCheckoutSessionId!, options: null,
+                new global::Stripe.RequestOptions { StripeAccount = request.ExternalAccountId }, cancellationToken);
+            if (string.Equals(session.PaymentStatus, "paid", StringComparison.Ordinal) && session.PaymentIntentId is not null)
+            {
+                return await CancelPaymentIntentAsync(
+                    client, session.PaymentIntentId, requestOptions, cancellationToken, static () => { });
+            }
+            if (string.Equals(session.Status, "expired", StringComparison.Ordinal))
+            {
+                return new(PaymentCancellationProviderOutcome.Cancelled, RequestId(session.StripeResponse));
+            }
+
+            global::Stripe.Checkout.Session expired = await client.V1.Checkout.Sessions.ExpireAsync(
+                session.Id, options: null, requestOptions, cancellationToken);
+            return string.Equals(expired.Status, "expired", StringComparison.Ordinal)
+                ? new(PaymentCancellationProviderOutcome.Cancelled, RequestId(expired.StripeResponse))
+                : new(PaymentCancellationProviderOutcome.Unknown, RequestId(expired.StripeResponse),
+                    "payment_cancellation_provider_incomplete");
+        }
+        catch (OperationCanceledException) when (!handedOff && cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (MapFailure(exception) is { } failure)
+        {
+            return new(
+                IsAmbiguous(failure) ? PaymentCancellationProviderOutcome.Unknown : PaymentCancellationProviderOutcome.Failed,
+                failure.ProviderRequestId,
+                "payment_cancellation_provider_failed",
+                handedOff);
+        }
+    }
+
+    private static async Task<PaymentCancellationProviderResult> CancelPaymentIntentAsync(
+        global::Stripe.StripeClient client,
+        string paymentIntentId,
+        global::Stripe.RequestOptions requestOptions,
+        CancellationToken cancellationToken,
+        Action markHandoff)
+    {
+        markHandoff();
+        global::Stripe.PaymentIntent current = await client.V1.PaymentIntents.GetAsync(
+            paymentIntentId, options: null,
+            new global::Stripe.RequestOptions { StripeAccount = requestOptions.StripeAccount }, cancellationToken);
+        if (string.Equals(current.Status, "succeeded", StringComparison.Ordinal))
+        {
+            return new(PaymentCancellationProviderOutcome.Captured, RequestId(current.StripeResponse));
+        }
+        if (string.Equals(current.Status, "canceled", StringComparison.Ordinal))
+        {
+            return new(PaymentCancellationProviderOutcome.Cancelled, RequestId(current.StripeResponse));
+        }
+
+        global::Stripe.PaymentIntent cancelled = await client.V1.PaymentIntents.CancelAsync(
+            paymentIntentId,
+            new global::Stripe.PaymentIntentCancelOptions { CancellationReason = "abandoned" },
+            requestOptions,
+            cancellationToken);
+        return string.Equals(cancelled.Status, "canceled", StringComparison.Ordinal)
+            ? new(PaymentCancellationProviderOutcome.Cancelled, RequestId(cancelled.StripeResponse))
+            : string.Equals(cancelled.Status, "succeeded", StringComparison.Ordinal)
+                ? new(PaymentCancellationProviderOutcome.Captured, RequestId(cancelled.StripeResponse))
+                : new(PaymentCancellationProviderOutcome.Unknown, RequestId(cancelled.StripeResponse),
+                    "payment_cancellation_provider_incomplete");
+    }
 
     public async Task<HostedCheckoutCreateResult> CreateAsync(
         HostedCheckoutCreateRequest request,

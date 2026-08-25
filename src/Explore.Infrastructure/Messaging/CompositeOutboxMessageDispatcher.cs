@@ -11,7 +11,9 @@ using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Application.Services.Registration;
+using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Infrastructure.Services.Moderation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,13 @@ public sealed class CompositeOutboxMessageDispatcher(
     LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
     PrivacyErasureCacheInvalidationDispatcher privacyErasureCacheInvalidationDispatcher,
     IOutboxRepository outboxRepository,
+    IRefundCampaignRepository refundCampaignRepository,
+    RefundCampaignProcessor refundCampaignProcessor,
+    RefundDispatchService refundDispatchService,
+    RefundReconciliationService refundReconciliationService,
+    RegistrationPaymentCancellationService paymentCancellationService,
+    BusinessMetrics businessMetrics,
+    TimeProvider timeProvider,
     IMediator mediator,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
 {
@@ -69,6 +78,31 @@ public sealed class CompositeOutboxMessageDispatcher(
                 logger.LogInformation("Recorded registration-order lifecycle outbox message {MessageId} after commit.", message.Id);
                 return;
 
+            case RefundOutboxMessageFactory.CampaignProcessRequested:
+                RefundCampaignProcessPayload campaign = RefundOutboxMessageFactory.ReadCampaign(message);
+                RefundCampaign? processed = await refundCampaignProcessor.ProcessBatchAsync(
+                    campaign.TenantId, campaign.CampaignId, message.Id, ct);
+                businessMetrics.RecordRefundCampaignOperation(
+                    processed?.Kind.ToString(), processed?.Status.ToString(), "completed");
+                return;
+
+            case RefundOutboxMessageFactory.DispatchRequested:
+                await DispatchRefundAsync(message, ct);
+                return;
+
+            case RefundOutboxMessageFactory.ReconciliationRequested:
+                await ReconcileRefundAsync(message, ct);
+                return;
+
+            case RefundOutboxMessageFactory.PaymentCancellationRequested:
+                PaymentCancellationProcessPayload cancellation = RefundOutboxMessageFactory.ReadPaymentCancellation(message);
+                if (!await paymentCancellationService.CancelAsync(
+                        cancellation.TenantId, cancellation.CampaignId, cancellation.PaymentAttemptId, ct))
+                {
+                    throw new InvalidOperationException("Provider payment cancellation remains ambiguous and will be retried idempotently.");
+                }
+                return;
+
             case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
                 await mediator.Send(
                     new ProcessManagedTenantProvisioningOperationCommand(message.AggregateId, message.Id),
@@ -81,6 +115,68 @@ public sealed class CompositeOutboxMessageDispatcher(
                     $"Add a route in {nameof(CompositeOutboxMessageDispatcher)}.");
         }
     }
+
+    private async Task DispatchRefundAsync(OutboxMessage message, CancellationToken cancellationToken)
+    {
+        RefundAttemptProcessPayload payload = RefundOutboxMessageFactory.ReadAttempt(message);
+        RefundAttempt? attempt = await refundDispatchService.DispatchAsync(
+            payload.TenantId, payload.RefundAttemptId, cancellationToken);
+        if (attempt is null)
+        {
+            return;
+        }
+
+        if (attempt.Status == RefundAttemptStatusEnum.DispatchPending)
+        {
+            businessMetrics.RecordRefundOperation("dispatch", attempt.Status.ToString(), "retry");
+            throw new InvalidOperationException("Refund dispatch remains safely retryable before provider handoff.");
+        }
+        businessMetrics.RecordRefundOperation("dispatch", attempt.Status.ToString(), "completed");
+        await ScheduleReconciliationAsync(attempt, cancellationToken);
+        if (attempt.Status == RefundAttemptStatusEnum.RequiresAction && attempt.SourceCampaignId.HasValue)
+        {
+            await refundCampaignRepository.RequireOperatorAsync(
+                attempt.TenantId,
+                attempt.SourceCampaignId.Value,
+                timeProvider.GetUtcNow().UtcDateTime,
+                cancellationToken);
+        }
+        await RefreshCampaignAsync(attempt, cancellationToken);
+    }
+
+    private async Task ReconcileRefundAsync(OutboxMessage message, CancellationToken cancellationToken)
+    {
+        RefundAttemptProcessPayload payload = RefundOutboxMessageFactory.ReadAttempt(message);
+        RefundAttempt? attempt = await refundReconciliationService.ReconcileAsync(
+            payload.TenantId, payload.RefundAttemptId, cancellationToken);
+        if (attempt is null)
+        {
+            return;
+        }
+
+        businessMetrics.RecordRefundOperation("reconcile", attempt.Status.ToString(), "completed");
+        await ScheduleReconciliationAsync(attempt, cancellationToken);
+        await RefreshCampaignAsync(attempt, cancellationToken);
+    }
+
+    private Task ScheduleReconciliationAsync(RefundAttempt attempt, CancellationToken cancellationToken)
+    {
+        if (attempt.Status is not (RefundAttemptStatusEnum.Pending or RefundAttemptStatusEnum.RequiresAction or RefundAttemptStatusEnum.Unknown) ||
+            attempt.Status == RefundAttemptStatusEnum.RequiresAction && attempt.FailureCode is not null)
+        {
+            return Task.CompletedTask;
+        }
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        return outboxRepository.Create(
+            RefundOutboxMessageFactory.CreateReconciliation(attempt, now, now.AddMinutes(1)));
+    }
+
+    private Task RefreshCampaignAsync(RefundAttempt attempt, CancellationToken cancellationToken) =>
+        attempt.SourceCampaignId.HasValue
+            ? refundCampaignRepository.RefreshOutcomeCountersAsync(
+                attempt.TenantId, attempt.SourceCampaignId.Value, timeProvider.GetUtcNow().UtcDateTime, cancellationToken)
+            : Task.CompletedTask;
 
     public async Task ReconcileDeadLetterAsync(
         OutboxMessage message,
@@ -102,6 +198,13 @@ public sealed class CompositeOutboxMessageDispatcher(
 
             case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:
                 await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
+                return;
+
+            case RefundOutboxMessageFactory.CampaignProcessRequested:
+            case RefundOutboxMessageFactory.DispatchRequested:
+            case RefundOutboxMessageFactory.ReconciliationRequested:
+            case RefundOutboxMessageFactory.PaymentCancellationRequested:
+                await DispatchAsync(message, ct);
                 return;
 
             default:

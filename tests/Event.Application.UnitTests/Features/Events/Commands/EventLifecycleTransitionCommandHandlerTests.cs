@@ -12,6 +12,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
@@ -176,6 +177,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
         bool transactionCompleted = false;
         bool occurrenceCreatedBeforeCommit = false;
+        bool campaignCreatedBeforeCommit = false;
         bool cacheObservedCommit = false;
         var unitOfWork = CreateUnitOfWork(() => transactionCompleted = true);
         cache.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -185,6 +187,13 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
                 return ValueTask.CompletedTask;
             });
         var fanout = new FanoutFixture(() => occurrenceCreatedBeforeCommit = !transactionCompleted);
+        var campaigns = Substitute.For<IRefundCampaignRepository>();
+        campaigns.CreateAsync(Arg.Any<RefundCampaign>(), Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                campaignCreatedBeforeCommit = !transactionCompleted;
+                return call.Arg<RefundCampaign>();
+            });
         var handler = new CancelEventCommandHandler(
             eventRepository,
             unitOfWork,
@@ -193,6 +202,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
+            campaigns,
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -213,6 +223,12 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         await Assert.That(occurrence.TemplateKey).IsEqualTo(NotificationFanoutRecipientTemplateFactory.EventCancelledTemplateKey);
         await Assert.That(occurrence.AggregateVersion).IsEqualTo(expectedConcurrencyStamp);
         await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(campaignCreatedBeforeCommit).IsTrue();
+        await campaigns.Received(1).CreateAsync(
+            Arg.Is<RefundCampaign>(campaign =>
+                campaign.TenantId == eventEntity.TenantId && campaign.EventId == eventEntity.Id),
+            Arg.Is<OutboxMessage>(message => message.EventType == RefundOutboxMessageFactory.CampaignProcessRequested),
+            Arg.Any<CancellationToken>());
         await Assert.That(occurrenceCreatedBeforeCommit).IsTrue();
         await Assert.That(cacheObservedCommit).IsTrue();
         await cache.Received(1).RemoveAsync($"event:detail:{eventEntity.Id}", Arg.Any<CancellationToken>());
@@ -238,6 +254,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
+            Substitute.For<IRefundCampaignRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -354,14 +371,17 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, retryEvent);
         var cache = Substitute.For<HybridCache>();
         var fanout = new FanoutFixture();
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
         var handler = new CancelEventCommandHandler(
             eventRepository,
             CreateTwoAttemptUnitOfWork(),
             cache,
-            Substitute.For<IUserContext>(),
+            userContext,
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
+            Substitute.For<IRefundCampaignRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -391,14 +411,17 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, committedEvent);
         var cache = Substitute.For<HybridCache>();
         var fanout = new FanoutFixture();
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
         var handler = new CancelEventCommandHandler(
             eventRepository,
             CreateTwoAttemptUnitOfWork(),
             cache,
-            Substitute.For<IUserContext>(),
+            userContext,
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
+            Substitute.For<IRefundCampaignRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand

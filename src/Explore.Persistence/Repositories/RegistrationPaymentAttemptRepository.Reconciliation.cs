@@ -254,6 +254,7 @@ public sealed partial class RegistrationPaymentAttemptRepository
                 await dbContext.SaveChangesAsync(token);
                 return true;
             }
+            await ClosePendingMaterialChangeChoicesAsync(attempt, decision.ObservedAt, token);
             if (decision.Disposition == PaymentReconciliationDisposition.Complete &&
                 decision.Status is PaymentAttemptStatusEnum.Failed or PaymentAttemptStatusEnum.Cancelled &&
                 attempt.PaymentAttemptStatusId == (int)decision.Status)

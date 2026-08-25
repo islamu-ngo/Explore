@@ -2,6 +2,7 @@
 // ABOUTME: Verifies event-session updates, event-day movement, and Islamic aspect invariants.
 
 using Event.Application.UnitTests.Common;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
@@ -11,6 +12,7 @@ using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Models.Common;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
@@ -39,6 +41,7 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
     private readonly FanoutFixture _fanout;
+    private readonly IRefundCampaignRepository _refundCampaignRepository;
     private readonly UpdateEventSessionCommandHandler _handler;
 
     public UpdateEventSessionCommandHandlerTests()
@@ -59,6 +62,9 @@ public class UpdateEventSessionCommandHandlerTests
             Guid.NewGuid());
         _cache = Substitute.For<HybridCache>();
         _fanout = new FanoutFixture();
+        _refundCampaignRepository = Substitute.For<IRefundCampaignRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
         _unitOfWork
             .ExecuteSerializableAsync(
                 Arg.Any<Func<CancellationToken, Task<bool>>>(),
@@ -85,6 +91,8 @@ public class UpdateEventSessionCommandHandlerTests
             _cache,
             _fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
+            _refundCampaignRepository,
+            userContext,
             new FixedTimeProvider(Now)
         );
     }
@@ -239,6 +247,11 @@ public class UpdateEventSessionCommandHandlerTests
         await Assert.That(template.Before.EndsAt).IsEqualTo(previousEnd);
         await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
         await Assert.That(template.After.EndsAt).IsEqualTo(newEnd);
+        await _refundCampaignRepository.Received(1).CreateAsync(
+            Arg.Is<RefundCampaign>(campaign => campaign.EventId == eventId &&
+                campaign.Kind == RefundCampaignKind.MaterialChange),
+            Arg.Is<OutboxMessage>(message => message.EventType == RefundOutboxMessageFactory.CampaignProcessRequested),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

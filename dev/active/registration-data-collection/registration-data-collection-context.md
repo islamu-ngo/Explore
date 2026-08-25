@@ -3,13 +3,15 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-24 Europe/Brussels
+Last Updated: 2026-08-25 Europe/Brussels
 
-## PHASE 19+ RE-BASELINED / PHASE 18C NEXT (2026-08-24 Europe/Brussels)
+## PHASE 19 COMPLETE / BROAD PERSISTENCE HARNESS FOLLOW-UP (2026-08-25 Europe/Brussels)
 
 ### Current Outcome
 
-Phase 18 remains complete and its six checked tasks/evidence are unchanged. A Senior CTO and I-VSD audit found that the future sequence was not safe to execute: paid Checkout exists before the complete immutable buyer-acceptance/operator snapshot now required; the old plan clustered tests after production work; cancellation fanout mixed bounded paging with one unbounded transaction; refund caps omitted ambiguous reservations; activation controls were deferred to Phase 25; and Phases 20–23 lacked direct I-VSD traceability.
+Phase 18C is complete and unchanged. Phase 19 Tasks 19.0–19.5 are complete: provider-neutral refund/dispute truth, cumulative lock-scoped component allocation, constrained remaining-capacity line allocation, durable bounded campaigns, Stripe refund/dispute execution and reconciliation, buyer/organizer HAL, Blazor recovery surfaces, privacy-safe observability, generated contracts, and five EF-generated provider migration chains are present. Buyer-refund truth is persisted separately from application-fee settlement. Definitive provider blocks require explicit authorized recovery instead of automatic mutation retry: campaign attempts use campaign resume, while non-campaign attempts reuse the same refund through Studio `retry-refund`.
+
+Final adversarial repairs cover arbitrary released rounding fragments, nonnegative organizer/contribution convergence, per-attempt and per-line `fee <= organizer`, the three-line `[1,1,1]` fee/organizer tie, irreversible buyer success, late buyer-success webhooks after a fee block, and non-campaign retry isolation. The three-file money mutation campaign (`RefundAllocation`, `RefundLineAllocation`, and `RefundReservationRules`) passes at **85.11%** with 160 killed and 26 surviving mutants, no timeout, and no error. The terminal money, security, and provider-operations MAD reviewers all approve with no remaining Critical, High, or Medium finding.
 
 The plan is now append-only for completed work and execution-grade from the correction boundary onward:
 
@@ -21,25 +23,24 @@ The plan is now append-only for completed work and execution-grade from the corr
 - **Phase 24** allows research after Phase 18C but keeps all runtime work blocked until dated provider, legal, qualified Islamic scholarly, reserve, complaint, dispute, and accountable-operator approvals exist. Missing evidence means disabled.
 - **Phase 25** is recovery, provider/capability fixtures, release/changelog, canonical docs/contracts, and deployment-status closeout; activation controls no longer wait until closeout.
 
-The execution ledger is now **110/157 implementation tasks complete; 47 remain unchecked**. Every Phase 18C–25 behavioral slice has an explicit Red Phase that must fail for the intended missing behavior before Green production work. Phase-end verification remains one Release build plus at most one selected non-browser project.
+Every Phase 18C–25 behavioral slice retains an explicit Red Phase that must fail for the intended missing behavior before Green production work. Phase-end verification remains one Release build plus at most one selected non-browser project.
 
 ### Authority And Research
 
 - [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md) is the Phase 18C–25 provider-responsibility traceability report.
 - [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md) remains the detailed payment-risk authority; it is not a legal opinion, fatwa, or certification.
-- Official Stripe documentation was checked for idempotent requests, refunds, disputes, and Connect direct charges. Official Microsoft documentation was checked for EF Core concurrency/transactions, ASP.NET Core partitioned rate limits, and self-hosted Data Protection key management. Facts were reduced to source-free functional requirements; no third-party source/code was ingested.
-- AnySearch and Context7 MCPs were not available in this session. No claim is made that either was used; available web research tools supplied official documentation instead.
+- Official Stripe documentation was checked for idempotent requests, refunds, disputes, application-fee return, and Connect direct charges. Context7 confirmed current Stripe.net and EF public API behavior. Facts were reduced to source-free functional requirements in `phase19-clean-room-evidence.md`; no third-party source/code was ingested.
 
 ### Next
 
-1. Obtain explicit implementation approval for **Task 18C.1 Red Phase** only.
-2. Record failing buyer-acceptance, activation, tenant, HAL, and recovery specifications before any production edit.
-3. Keep paid Checkout unavailable until Phase 18C completes; do not start Phase 19 or later Green work early.
+1. Diagnose the full `Event.Persistence.IntegrationTests` TUnit harness hang as a separate test-harness follow-up; Phase 19-focused persistence is green.
+2. Do not alter the EF-generated migrations or snapshots; all five providers currently report no pending model changes.
+3. Start Phase 20 only after an explicit implementation request.
 
 ### Current Blockers And Unknowns
 
-- No Phase 19+ runtime implementation exists. `RefundAttempt`, admission credential, check-in, transfer, waitlist offer, add-on, and protected payout types remain planned.
-- Existing Phase 18 attempts lack the complete accepted commercial/operator snapshot. The plan forbids synthetic historical acceptance.
+- The full persistence project is not green or red: two runs emitted no test identity/result, including a four-worker run that exceeded its declared 15-minute TUnit timeout. Phase 19-focused SQLite persistence is 9/9 and the real PostgreSQL constraint/concurrency class is 2/2; the broad harness gate remains unchecked.
+- Existing Phase 18 attempts that predate Phase 18C lack the complete accepted commercial/operator snapshot. The plan forbids synthetic historical acceptance and ordinary refund initiation must fail closed for those attempts.
 - Database-application and restore evidence remains deployment-specific; model/migration parity is not rollout proof.
 - `ProtectedDelayedPayout` lacks the approvals required by ADR-024 and both I-VSD reports, so it remains disabled.
 - Legal, consumer/payment-services, provider-controller/loss-liability, qualified Islamic scholarly, accessibility, privacy, and staffed operational evidence remain external gates where named.
@@ -686,3 +687,24 @@ For Phase 18C onward, each behavioral phase begins with a focused RED selector t
 - **Workspace note:** unrelated shared changes remain untouched. The two generated API `.received.json` snapshots were restored to canonical content, but `apply_patch` necessarily normalized their missing final newline; only that byte-level newline difference remains.
 - **Next task:** Phase 19 Task 19.0 — write failing refund, cancellation, material-change, dispute, idempotency, tenant-isolation, capability, and HAL specifications before implementing refund behavior.
 - **Phase 19 constraint:** refunds are not currently implemented. Do not infer refund liability, collection authority, reserve ownership, or platform protection; fail closed until the Phase 19 authority and operating model is explicit.
+
+### Handoff — 2026-08-25 Europe/Brussels (Phase 19 domain and persistence foundation in progress)
+
+- **Status:** Phase 19 is in progress. Research/intake, the first RED domain boundary, deterministic money allocation, provider-neutral refund/dispute truth, and atomic persistence are complete; campaigns, provider execution, API/HAL/Blazor/Ops, migrations, and final verification remain.
+- **Confirmed policy:** ordinary partial refunds allocate exact integer minor units proportionally across organizer amount and platform contribution using deterministic largest remainder; the platform-fee suballocation is derived proportionally from the organizer share. Organizer cancellation refunds the full event-related attendee payment, including event-tied platform amounts by default. This preserves the existing immutable hard floor and allows only more-generous future policy versions.
+- **Domain:** `RefundAttempt` pins tenant, payment/order, provider, original connected account, currency, provider payment identity, stable idempotency, exact `RefundAllocation`, timestamps, and concurrency. `Requested`, `DispatchPending`, `Pending`, `RequiresAction`, `Unknown`, and `Succeeded` reserve capacity; only `Failed` and `Cancelled` release it. `PaymentDispute` is independent and supports multiple provider dispute identities per payment. Only provider-proven success is terminal refunded truth.
+- **Persistence:** `IRefundAttemptRepository` and `RefundAttemptRepository` serialize reservations on the tenant-qualified payment authority. PostgreSQL takes `FOR UPDATE` on the payment row in a read-committed transaction; other supported relational providers use the existing transaction-scoped named lock under serializable isolation. Duplicate, captured-state, pinned-authority, open-dispute, cumulative-capacity, and insert decisions occur under the same lock. No provider I/O occurs in that transaction.
+- **Tests:** the initial focused Domain run failed compilation because Phase 19 types were absent, satisfying the first RED gate. The implemented domain suite passes 4/4. SQLite refund persistence passes 3/3, and the independent-DbContext PostgreSQL collision passes 1/1 with exactly one 750-minor winner against 1,000 captured minor units.
+- **Baseline:** the pre-edit Release build passed with 0 errors and 4,093 pre-existing warnings. The persistence project Release build is clean. The complete Persistence test project currently contains seven unrelated stale four-argument `GetActiveClaimAsync` calls in `UserLocationPrivacyErasureRepositoryProviderMetadataTests.cs`; Phase 19-focused tests were run without modifying that concurrent work.
+- **Research/provenance:** official Stripe direct-charge refund, dispute, status, and idempotency behavior was reduced to source-free functional requirements; Context7 supplied current stripe-dotnet and EF API facts. AnySearch is not connected in this session; code-review-graph, Context7, and websearch were available. No external source expression, SDK type outside Infrastructure, dependency, or migration edit was introduced.
+- **Review finding / next action:** duplicate dispute observations currently return the persisted projection without applying later provider evidence. The provider/webhook slice must add monotonic inquiry/formal and open/won/lost/withdrawn updates, then implement stable-idempotency Stripe dispatch/retrieval outside transactions before campaign and HTTP/client surfaces.
+
+### Handoff — 2026-08-25 Europe/Brussels (Phase 19 Task 19.2 complete; provider slice partial)
+
+- **Status:** Task 19.2 is complete. Tasks 19.0, 19.1, 19.3, 19.4, and 19.5 remain open; no Phase 19 completion or buyer/operator refund surface is claimed.
+- **Dispute truth:** duplicate observations now apply later provider evidence under the payment lock without creating another projection. Inquiry cannot erase a formal stage, stale evidence cannot regress a later observation, equal-time conflicts fail closed, and current Stripe `prevented` evidence is preserved as a distinct non-open terminal outcome.
+- **Provider boundary:** Application persists `DispatchPending` before provider I/O and uses only the attempt's pinned account/payment/currency/amount/idempotency. Infrastructure creates and retrieves refunds in the original connected-account context, explicitly returns proportional application fees when the immutable allocation contains platform-directed money, maps only bounded provider-neutral results, and retains normalized refund/dispute webhook evidence without PII or SDK leakage.
+- **Persistence:** generated application migrations are PostgreSQL `20260824232456`, SQLite `20260824232513`, SQL Server `20260824232527`, MariaDB `20260824232543`, and MySQL `20260824232557`. All five `has-pending-model-changes` checks report clean; migration and snapshot files were generated and inspected, never hand-edited.
+- **Verification:** focused Domain 4/4, Application 9/9, Stripe Infrastructure 9/9, SQLite persistence 5/5, and real PostgreSQL reservation race 1/1 pass. The migration host builds with zero errors. Phase-end Release build and full Persistence project remain deferred to the single Phase 19 closeout gate.
+- **Research/provenance:** Context7 confirmed current Stripe.net and EF public API behavior; official Stripe refund, idempotency, direct-charge, and dispute documentation supplied only sanitized interoperability facts. The audit record is `phase19-clean-room-evidence.md`; no dependency changed.
+- **Next action:** finish Task 19.1 accepted-snapshot/per-line authority and uncaptured-cancellation behavior, then author the failing cancellation/material-change campaign restart and bounded-fanout specifications before Task 19.3 production work.

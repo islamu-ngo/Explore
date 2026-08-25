@@ -2,8 +2,10 @@
 // ABOUTME: Verifies retired broker events fail closed while local fanout and provider sync still route.
 
 using System.Text.Json;
+using System.Diagnostics.Metrics;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
@@ -11,6 +13,8 @@ using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
@@ -471,6 +475,10 @@ public sealed class CompositeOutboxMessageDispatcherTests
     {
         HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
+        var refundRepository = Substitute.For<IRefundAttemptRepository>();
+        var refundCampaignRepository = Substitute.For<IRefundCampaignRepository>();
+        var refundCreator = Substitute.For<IRefundCreator>();
+        var refundRetriever = Substitute.For<IRefundRetriever>();
         correctionPlanner.PlanLocationPrivacyCorrectionAsync(
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
                 Arg.Any<CancellationToken>())
@@ -488,8 +496,27 @@ public sealed class CompositeOutboxMessageDispatcherTests
                 EventLocationPrivacyMetricsFactory.Create()),
             new PrivacyErasureCacheInvalidationDispatcher(selectedCache),
             outboxRepository ?? Substitute.For<IOutboxRepository>(),
+            refundCampaignRepository,
+            new RefundCampaignProcessor(
+                refundCampaignRepository, refundRepository,
+                Substitute.For<IRegistrationMaterialChangeChoiceRepository>(),
+                Substitute.For<IRegistrationPaymentAttemptRepository>(), TimeProvider.System),
+            new RefundDispatchService(refundRepository, refundCreator, TimeProvider.System),
+            new RefundReconciliationService(refundRepository, refundCreator, refundRetriever, TimeProvider.System),
+            new RegistrationPaymentCancellationService(
+                Substitute.For<IRegistrationPaymentAttemptRepository>(), refundRepository,
+                refundCampaignRepository, Substitute.For<IPaymentCancellationProvider>(), TimeProvider.System),
+            CreateMetrics(),
+            TimeProvider.System,
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
+    }
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
     }
 
     private static NotificationFanoutOccurrence CreateOccurrence()

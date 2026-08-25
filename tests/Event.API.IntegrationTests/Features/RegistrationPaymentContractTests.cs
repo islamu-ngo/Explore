@@ -34,6 +34,14 @@ public sealed class RegistrationPaymentContractTests
             AuthorizationActions.RegistrationOrders.View);
         await AssertSecureRequest<GetAuthenticatedRegistrationPaymentCheckoutTargetQuery>(
             AuthorizationActions.RegistrationOrders.View);
+        await AssertSecureRequest<RequestAuthenticatedRegistrationRefundCommand>(
+            AuthorizationActions.RegistrationOrders.RequestRefund);
+        await AssertSecureRequest<RespondAuthenticatedRegistrationMaterialChangeCommand>(
+            AuthorizationActions.RegistrationOrders.RespondMaterialChange);
+        AuthorizeResourceAttribute studioRefund = typeof(CreateStudioRegistrationRefundCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(studioRefund.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(studioRefund.Action).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
     }
 
     [Test]
@@ -90,6 +98,16 @@ public sealed class RegistrationPaymentContractTests
             nameof(AuthenticatedRegistrationOrderPaymentController.GetAcceptance), "{orderId:guid}/payment/acceptance", RouteNames.GetAuthenticatedPaidOrderAcceptance, EndpointClass.Authenticated, false);
         await AssertEndpoint<StudioRegistrationOrderPaymentController, HttpGetAttribute>(
             nameof(StudioRegistrationOrderPaymentController.GetStatus), "{orderId:guid}/payment/studio", RouteNames.GetStudioRegistrationPayment, EndpointClass.Authenticated, false);
+        await AssertEndpoint<AuthenticatedRegistrationOrderPaymentController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderPaymentController.RequestRefund), "{orderId:guid}/payment/refunds", RouteNames.RequestAuthenticatedRegistrationRefund, EndpointClass.Authenticated, true);
+        await AssertEndpoint<AuthenticatedRegistrationOrderPaymentController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderPaymentController.RespondMaterialChange), "{orderId:guid}/payment/material-change-choice", RouteNames.RespondAuthenticatedRegistrationMaterialChange, EndpointClass.Authenticated, true);
+        await AssertEndpoint<StudioRegistrationOrderPaymentController, HttpPostAttribute>(
+            nameof(StudioRegistrationOrderPaymentController.CreateRefund), "{orderId:guid}/payment/studio/refunds", RouteNames.CreateStudioRegistrationRefund, EndpointClass.Authenticated, true);
+        await AssertEndpoint<RefundCampaignController, HttpGetAttribute>(
+            nameof(RefundCampaignController.GetList), null!, RouteNames.GetRefundCampaigns, EndpointClass.Authenticated, false);
+        await AssertEndpoint<RefundCampaignController, HttpPostAttribute>(
+            nameof(RefundCampaignController.Resume), "{campaignId:guid}/resume", RouteNames.ResumeRefundCampaign, EndpointClass.Authenticated, true);
     }
 
     private static async Task AssertEndpoint<TController, THttpAttribute>(

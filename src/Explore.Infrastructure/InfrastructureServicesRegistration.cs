@@ -134,6 +134,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IHostedCheckoutSessionCreator>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddScoped<IHostedCheckoutSessionRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddScoped<IPaymentIntentRetriever>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
+        services.AddScoped<IPaymentCancellationProvider>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddScoped<IPaymentProviderDescriptor>(provider => provider.GetRequiredService<StripeCheckoutAdapter>());
         services.AddHttpClient(StripeRefundAdapter.HttpClientName, client =>
         {
@@ -401,6 +402,8 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IIncomingWebhookVerifier, StripeConnectIncomingWebhookVerifier>();
         services.AddScoped<IIncomingWebhookHandler, StripeConnectIncomingWebhookHandler>();
         services.AddScoped<IIncomingWebhookHandler, StripePaymentIncomingWebhookHandler>();
+        services.AddScoped<IIncomingWebhookHandler, StripeRefundIncomingWebhookHandler>();
+        services.AddScoped<IIncomingWebhookHandler, StripeDisputeIncomingWebhookHandler>();
         services.AddOptions<IncomingWebhookProcessingSettings>()
             .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
             .ValidateDataAnnotations()

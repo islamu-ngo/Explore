@@ -1,0 +1,26 @@
+/* ABOUTME: Keeps Studio refund campaign facts readable with logical, token-based spacing. */
+/* ABOUTME: Uses responsive grid flow without introducing campaign-specific colors. */
+
+.studio-refund-campaigns > ul {
+    display: grid;
+    gap: var(--space-3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.studio-refund-campaigns li {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+
+.studio-refund-campaigns dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-2);
+}
+
+.studio-refund-campaigns dd {
+    margin-inline-start: 0;
+}

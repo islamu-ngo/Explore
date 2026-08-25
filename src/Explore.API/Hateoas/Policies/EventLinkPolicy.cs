@@ -286,6 +286,15 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
 
                 yield return new LinkDefinition(
+                    LinkRelations.RefundCampaigns,
+                    RouteNames.GetRefundCampaigns,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "Refund campaigns",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Events.ManagePaidEventCommerce, ResourceDescriptors.Event, dto);
+
+                yield return new LinkDefinition(
                     LinkRelations.ViewParticipants,
                     RouteNames.GetEventRegistrationOrders,
                     new { eventId = dto.Id },

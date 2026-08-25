@@ -9,6 +9,8 @@ using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Validators;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using FluentValidation.Results;
 using MediatR;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers.Commands;
@@ -101,6 +103,152 @@ public sealed class RetryAuthenticatedRegistrationPaymentCommandHandler(
             inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, timeProvider, cancellationToken);
         return order is null ? PaymentNotFound.Result() : await payments.RetryAsync(order, cancellationToken);
     }
+}
+
+public sealed class RequestAuthenticatedRegistrationRefundCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IEventRepository events,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    RegistrationRefundService refunds)
+    : IRequestHandler<RequestAuthenticatedRegistrationRefundCommand, RegistrationRefundCommandResultDto>
+{
+    public async Task<RegistrationRefundCommandResultDto> Handle(
+        RequestAuthenticatedRegistrationRefundCommand request,
+        CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await new RegistrationRefundRequestDtoValidator()
+            .ValidateAsync(request.Request, cancellationToken);
+        if (!validation.IsValid || request.Request.ReasonCode != "event_cancelled")
+        {
+            return RefundCommandFailures.Invalid();
+        }
+
+        RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
+            inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken);
+        Explore.Domain.Event? @event = order is null ? null : await events.GetById(request.EventId);
+        if (order is null || @event is null || @event.TenantId != tenant.TenantId ||
+            @event.EventStatusId != (int)EventStatusEnum.Cancelled || !currentUser.UserId.HasValue)
+        {
+            return RefundCommandFailures.NotFound();
+        }
+
+        return await refunds.InitiateAsync(
+            order, request.Request.AmountMinor, request.IdempotencyKey, currentUser.UserId.Value,
+            "buyer", request.Request.ReasonCode, cancellationToken);
+    }
+}
+
+public sealed class CreateStudioRegistrationRefundCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    RegistrationRefundService refunds)
+    : IRequestHandler<CreateStudioRegistrationRefundCommand, RegistrationRefundCommandResultDto>
+{
+    public async Task<RegistrationRefundCommandResultDto> Handle(
+        CreateStudioRegistrationRefundCommand request,
+        CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await new RegistrationRefundRequestDtoValidator()
+            .ValidateAsync(request.Request, cancellationToken);
+        if (!validation.IsValid || !currentUser.UserId.HasValue)
+        {
+            return RefundCommandFailures.Invalid();
+        }
+
+        RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(
+            request.OrderId, tenant.TenantId, cancellationToken);
+        if (order?.EventId != request.EventId)
+        {
+            return RefundCommandFailures.NotFound();
+        }
+
+        return await refunds.InitiateAsync(
+            order, request.Request.AmountMinor, request.IdempotencyKey, currentUser.UserId.Value,
+            "organizer", request.Request.ReasonCode, cancellationToken);
+    }
+}
+
+public sealed class RespondAuthenticatedRegistrationMaterialChangeCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    RegistrationMaterialChangeChoiceService choices)
+    : IRequestHandler<RespondAuthenticatedRegistrationMaterialChangeCommand, RegistrationMaterialChangeChoiceCommandResultDto>
+{
+    public async Task<RegistrationMaterialChangeChoiceCommandResultDto> Handle(
+        RespondAuthenticatedRegistrationMaterialChangeCommand request,
+        CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await new RegistrationMaterialChangeChoiceRequestDtoValidator()
+            .ValidateAsync(request.Request, cancellationToken);
+        if (!validation.IsValid || !currentUser.UserId.HasValue)
+        {
+            return new() { FailureCode = "material_change_choice_invalid", Message = "Material-change choice is invalid." };
+        }
+
+        RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
+            inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken);
+        return order is null
+            ? new() { FailureCode = "registration_order_not_found", Message = "Registration order was not found." }
+            : await choices.RespondAsync(
+                order, request.Request.CampaignId, request.Request.ChoiceCode,
+                currentUser.UserId.Value, cancellationToken);
+    }
+}
+
+public sealed class RetryStudioRegistrationRefundCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IRefundAttemptRepository refunds,
+    ITenantContext tenant,
+    TimeProvider timeProvider)
+    : IRequestHandler<RetryStudioRegistrationRefundCommand, RegistrationRefundCommandResultDto>
+{
+    public async Task<RegistrationRefundCommandResultDto> Handle(
+        RetryStudioRegistrationRefundCommand request,
+        CancellationToken cancellationToken)
+    {
+        RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(
+            request.OrderId, tenant.TenantId, cancellationToken);
+        RefundAttempt? attempt = await refunds.GetByIdAsync(
+            tenant.TenantId, request.RefundAttemptId, cancellationToken);
+        if (order?.EventId != request.EventId || attempt?.RegistrationOrderId != request.OrderId ||
+            attempt.SourceCampaignId is not null)
+        {
+            return RefundCommandFailures.NotFound();
+        }
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool retried = await refunds.RetryProviderBlockedAndScheduleAsync(
+            attempt,
+            RefundOutboxMessageFactory.CreateReconciliation(attempt, now, now),
+            now,
+            cancellationToken);
+        return retried
+            ? new RegistrationRefundCommandResultDto
+            {
+                Success = true,
+                Id = attempt.Id,
+                Refund = RegistrationPaymentContractService.MapRefund(attempt)
+            }
+            : RefundCommandFailures.Invalid();
+    }
+}
+
+file static class RefundCommandFailures
+{
+    public static RegistrationRefundCommandResultDto Invalid() => new()
+    {
+        FailureCode = "refund_request_invalid",
+        Message = "Refund request is invalid."
+    };
+
+    public static RegistrationRefundCommandResultDto NotFound() => new()
+    {
+        FailureCode = "registration_order_not_found",
+        Message = "Registration order was not found."
+    };
 }
 
 file static class PaymentNotFound

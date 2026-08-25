@@ -275,6 +275,9 @@ public partial class ExploreDbContext
     public DbSet<PaymentReconciliationEffect> PaymentReconciliationEffects { get; set; }
     public DbSet<PaymentSucceededObservation> PaymentSucceededObservations { get; set; }
     public DbSet<RefundAttempt> RefundAttempts { get; set; }
+    public DbSet<RefundLineAllocation> RefundLineAllocations { get; set; }
+    public DbSet<RefundCampaign> RefundCampaigns { get; set; }
+    public DbSet<RegistrationMaterialChangeChoice> RegistrationMaterialChangeChoices { get; set; }
     public DbSet<PaymentDispute> PaymentDisputes { get; set; }
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }
     public DbSet<PlatformFeeFixedCharge> PlatformFeeFixedCharges { get; set; }

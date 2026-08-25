@@ -78,6 +78,19 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             .OrderBy(hold => hold.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<bool> HasPaidEvidenceAsync(
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        (from payment in dbContext.PaymentAttempts.AsNoTracking()
+         join order in dbContext.RegistrationOrders.AsNoTracking()
+             on new { payment.TenantId, payment.RegistrationOrderId }
+             equals new { order.TenantId, RegistrationOrderId = order.Id }
+         where payment.TenantId == tenantId && order.EventId == eventId &&
+               (payment.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded ||
+                payment.PaidOrderAcceptanceSnapshotId != null)
+         select payment.Id).AnyAsync(cancellationToken);
+
     public async Task<IReadOnlyList<RegistrationInventoryHold>> GetActiveHoldsForUpdateAsync(
         Guid orderId,
         Guid tenantId,

@@ -90,6 +90,7 @@ public class EventListCacheInvalidationCommandHandlerTests
                 outboxRepository,
                 new NotificationFanoutRecipientTemplateFactory()),
             Substitute.For<IEventLifecycleScheduler>(),
+            Substitute.For<IRefundCampaignRepository>(),
             new FixedTimeProvider(at));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new UpdateEventCommand
@@ -157,6 +158,7 @@ public class EventListCacheInvalidationCommandHandlerTests
                 Substitute.For<IOutboxRepository>(),
                 new NotificationFanoutRecipientTemplateFactory()),
             Substitute.For<IEventLifecycleScheduler>(),
+            Substitute.For<IRefundCampaignRepository>(),
             TimeProvider.System);
 
         var result = await handler.Handle(new UpdateEventCommand
@@ -174,7 +176,9 @@ public class EventListCacheInvalidationCommandHandlerTests
     }
 
     [Test]
-    public async Task DeleteEvent_WhenEventIsDeleted_InvalidatesTenantEventListTag()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task DeleteEvent_PaidEvidenceControlsDeletionAndCacheInvalidation(bool hasPaidEvidence)
     {
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
@@ -182,6 +186,7 @@ public class EventListCacheInvalidationCommandHandlerTests
         var actorId = Guid.CreateVersion7();
         var eventRepository = Substitute.For<IEventRepository>();
         var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var inventoryRepository = Substitute.For<IRegistrationInventoryRepository>();
         var actorRepository = Substitute.For<IActorRepository>();
         var currentUserService = Substitute.For<ICurrentUserService>();
         var cache = Substitute.For<HybridCache>();
@@ -192,11 +197,14 @@ public class EventListCacheInvalidationCommandHandlerTests
         sessionRepository.GetSessionsByEvent(eventId).Returns([]);
         actorRepository.GetById(actorId).Returns(CreateActor(actorId, tenantId, userId));
         currentUserService.UserId.Returns(userId);
+        inventoryRepository.HasPaidEvidenceAsync(eventId, tenantId, Arg.Any<CancellationToken>())
+            .Returns(hasPaidEvidence);
         var unitOfWork = ImmediateUnitOfWork();
 
         var handler = new DeleteEventCommandHandler(
             eventRepository,
             sessionRepository,
+            inventoryRepository,
             actorRepository,
             Substitute.For<IOrganizationMemberRepository>(),
             Substitute.For<ITenantUserRoleGrantRepository>(),
@@ -213,8 +221,16 @@ public class EventListCacheInvalidationCommandHandlerTests
             UserId = userId.ToString()
         }, CancellationToken.None);
 
-        await Assert.That(result).IsTrue();
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
+        await Assert.That(result).IsEqualTo(!hasPaidEvidence);
+        if (hasPaidEvidence)
+        {
+            await eventRepository.DidNotReceive().Delete(Arg.Any<Explore.Domain.Event>());
+            await cache.DidNotReceive().RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
+        }
     }
 
     private static Explore.Domain.Event CreateEvent(
