@@ -5,22 +5,22 @@ using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventSessionGroup;
 
-public class EventSessionGroupDto
+public sealed record EventSessionGroupDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public string? EventTitle { get; set; }
-    public required string Name { get; set; }
-    public string? Slug { get; set; }
-    public string? Description { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public string? EventTitle { get; init; }
+    public required string Name { get; init; }
+    public string? Slug { get; init; }
+    public string? Description { get; init; }
     public Guid? LocationId { get; set; }
     public string? LocationName { get; set; }
     public Guid? RoomId { get; set; }
     public string? RoomName { get; set; }
     public EventLocationPublicDto? EventLocation { get; set; }
-    public string? Color { get; set; }
-    public int SortOrder { get; set; }
-    public bool IsPublished { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public string? Color { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsPublished { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

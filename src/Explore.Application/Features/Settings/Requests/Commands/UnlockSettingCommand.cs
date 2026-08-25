@@ -12,7 +12,7 @@ using MediatR;
 /// Restores cascade resolution — previously suppressed lower-scope overrides become effective again.
 /// Requires administrator privileges for the target scope.
 /// </summary>
-public class UnlockSettingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UnlockSettingCommand : IRequest<BaseCommandResponse<Guid>>
 {
     /// <summary>
     /// Fully qualified setting key to unlock. Must currently be locked at the specified scope.

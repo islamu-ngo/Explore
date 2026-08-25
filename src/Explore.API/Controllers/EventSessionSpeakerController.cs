@@ -114,8 +114,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
             return this.ToNotFoundProblem(EventSessionNotFoundProblem);
         }
 
-        speaker.EventSessionId = eventSessionId;
-        speaker.TenantId = context.TenantId;
+        speaker = speaker with { EventSessionId = eventSessionId };
 
         var response = await _mediator.Send(new CreateEventSessionSpeakerCommand
         {

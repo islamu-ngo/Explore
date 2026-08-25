@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.AiAssistant.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.AiConversation, AuthorizationActions.AiConversations.Create)]
-public sealed class CreateAiConversationCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateAiConversationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public CreateAiConversationRequestDto Conversation { get; set; } = new();
+    public CreateAiConversationRequestDto Conversation { get; init; } = new();
 }

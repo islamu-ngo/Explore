@@ -585,7 +585,7 @@ public class ExternalApiKeyObservabilityTests
             metrics,
             logger);
 
-        var result = await handler.Handle(new RevokeExternalApiKeyCommand { Id = externalApiKey.Id }, CancellationToken.None);
+        var result = await handler.Handle(new RevokeExternalApiKeyCommand(externalApiKey.Id), CancellationToken.None);
 
         await Assert.That(result).IsTrue();
 

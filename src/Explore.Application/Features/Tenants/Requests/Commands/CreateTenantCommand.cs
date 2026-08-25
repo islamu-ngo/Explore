@@ -13,12 +13,12 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Returns the ID of the created tenant.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Create)]
-public class CreateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>
     /// DTO containing the tenant data to create.
     /// </summary>
-    public CreateTenantDto TenantDto { get; set; } = null!;
+    public CreateTenantDto TenantDto { get; init; } = null!;
 
     /// <summary>
     /// The authenticated user making the request. Set by the controller from the JWT claims.

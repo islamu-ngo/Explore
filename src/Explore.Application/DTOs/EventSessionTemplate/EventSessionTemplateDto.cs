@@ -3,22 +3,22 @@
 
 namespace Explore.Application.DTOs.EventSessionTemplate;
 
-public class EventSessionTemplateDto
+public sealed record EventSessionTemplateDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid EventTemplateId { get; set; }
-    public Guid TenantId { get; set; }
-    public string SessionTemplateKey { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int Version { get; set; }
-    public bool IsPublished { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public string? CreatedBy { get; set; }
-    public DateTimeOffset? UpdatedAt { get; set; }
-    public string? UpdatedBy { get; set; }
-    public List<EventSessionTemplateDefinitionDto> Definitions { get; set; } = [];
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid EventTemplateId { get; init; }
+    public Guid TenantId { get; init; }
+    public string SessionTemplateKey { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public int Version { get; init; }
+    public bool IsPublished { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
+    public string? UpdatedBy { get; init; }
+    public List<EventSessionTemplateDefinitionDto> Definitions { get; init; } = [];
 }

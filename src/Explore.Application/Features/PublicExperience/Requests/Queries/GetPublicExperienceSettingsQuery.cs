@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.PublicExperience.Requests.Queries;
 
-public class GetPublicExperienceSettingsQuery : IRequest<PublicExperienceSettingsDto>
+public sealed record GetPublicExperienceSettingsQuery : IRequest<PublicExperienceSettingsDto>
 {
 }

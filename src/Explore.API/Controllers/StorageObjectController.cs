@@ -151,7 +151,7 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPublicImage(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetPublicImageRequest { StorageObjectId = id }, cancellationToken);
+        var result = await _mediator.Send(new GetPublicImageRequest(id), cancellationToken);
 
         if (result is null)
         {

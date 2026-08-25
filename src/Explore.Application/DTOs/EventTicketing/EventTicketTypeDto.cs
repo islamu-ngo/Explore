@@ -2,7 +2,7 @@
 // ABOUTME: Includes persisted identifiers for HAL/API management responses.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class EventTicketTypeDto
+public sealed record EventTicketTypeDto
 {
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;

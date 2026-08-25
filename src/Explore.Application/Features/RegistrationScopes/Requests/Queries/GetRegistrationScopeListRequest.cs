@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.RegistrationScopes.Requests.Queries;
 
-public class GetRegistrationScopeListRequest : IRequest<List<RegistrationScopeListDto>>
+public sealed record GetRegistrationScopeListRequest : IRequest<List<RegistrationScopeListDto>>
 {
 }

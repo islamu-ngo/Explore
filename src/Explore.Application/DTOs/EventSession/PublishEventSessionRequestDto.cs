@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
-public sealed class PublishEventSessionRequestDto
+public sealed record PublishEventSessionRequestDto
 {
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

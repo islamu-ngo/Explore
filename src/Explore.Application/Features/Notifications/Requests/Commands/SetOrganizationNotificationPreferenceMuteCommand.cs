@@ -8,10 +8,10 @@ using MediatR;
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Update)]
-public sealed class SetOrganizationNotificationPreferenceMuteCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record SetOrganizationNotificationPreferenceMuteCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid OrganizationId { get; set; }
-    public bool IsMuted { get; set; }
+    public Guid OrganizationId { get; init; }
+    public bool IsMuted { get; init; }
 
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
 }

@@ -3,56 +3,56 @@
 
 namespace Explore.Application.DTOs.Ai;
 
-public sealed class AiAssistantBootstrapDto
+public sealed record AiAssistantBootstrapDto
 {
-    public Guid TenantId { get; set; }
-    public bool Enabled { get; set; }
-    public bool Available { get; set; }
-    public string? DisabledReason { get; set; }
-    public string Provider { get; set; } = "none";
-    public string? DefaultModelId { get; set; }
-    public IReadOnlyList<AiAssistantActorContextDto> ActorContexts { get; set; } = [];
-    public IReadOnlyList<AiAssistantModelDto> Models { get; set; } = [];
-    public AiAssistantFeatureFlagsDto Features { get; set; } = new();
-    public AiAssistantLimitsDto Limits { get; set; } = new();
-    public int RetentionDays { get; set; }
+    public Guid TenantId { get; init; }
+    public bool Enabled { get; init; }
+    public bool Available { get; init; }
+    public string? DisabledReason { get; init; }
+    public string Provider { get; init; } = "none";
+    public string? DefaultModelId { get; init; }
+    public IReadOnlyList<AiAssistantActorContextDto> ActorContexts { get; init; } = [];
+    public IReadOnlyList<AiAssistantModelDto> Models { get; init; } = [];
+    public AiAssistantFeatureFlagsDto Features { get; init; } = new();
+    public AiAssistantLimitsDto Limits { get; init; } = new();
+    public int RetentionDays { get; init; }
 }
 
-public sealed class AiAssistantActorContextDto
+public sealed record AiAssistantActorContextDto
 {
-    public Guid ActorId { get; set; }
-    public Guid? ScopeId { get; set; }
-    public string ActorType { get; set; } = string.Empty;
-    public string ActorDisplayName { get; set; } = string.Empty;
+    public Guid ActorId { get; init; }
+    public Guid? ScopeId { get; init; }
+    public string ActorType { get; init; } = string.Empty;
+    public string ActorDisplayName { get; init; } = string.Empty;
 }
 
-public sealed class AiAssistantModelDto
+public sealed record AiAssistantModelDto
 {
-    public string Id { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public int? MaxInputTokens { get; set; }
-    public int? MaxOutputTokens { get; set; }
-    public bool SupportsToolProposals { get; set; }
-    public bool SupportsStreaming { get; set; }
+    public string Id { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public int? MaxInputTokens { get; init; }
+    public int? MaxOutputTokens { get; init; }
+    public bool SupportsToolProposals { get; init; }
+    public bool SupportsStreaming { get; init; }
 }
 
-public sealed class AiAssistantModelDiscoveryRequestDto
+public sealed record AiAssistantModelDiscoveryRequestDto
 {
-    public string EndpointUrl { get; set; } = string.Empty;
-    public string? ApiKey { get; set; }
+    public string EndpointUrl { get; init; } = string.Empty;
+    public string? ApiKey { get; init; }
 }
 
-public sealed class AiAssistantFeatureFlagsDto
+public sealed record AiAssistantFeatureFlagsDto
 {
-    public bool ToolProposalsEnabled { get; set; }
-    public bool StreamingEnabled { get; set; }
+    public bool ToolProposalsEnabled { get; init; }
+    public bool StreamingEnabled { get; init; }
 }
 
-public sealed class AiAssistantLimitsDto
+public sealed record AiAssistantLimitsDto
 {
-    public int MaxInputTokens { get; set; }
-    public int MaxOutputTokens { get; set; }
-    public decimal Temperature { get; set; }
-    public int TimeoutSeconds { get; set; }
-    public int DailyMessageLimit { get; set; }
+    public int MaxInputTokens { get; init; }
+    public int MaxOutputTokens { get; init; }
+    public decimal Temperature { get; init; }
+    public int TimeoutSeconds { get; init; }
+    public int DailyMessageLimit { get; init; }
 }

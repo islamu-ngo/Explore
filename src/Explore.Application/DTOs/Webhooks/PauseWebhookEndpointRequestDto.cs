@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class PauseWebhookEndpointRequestDto
+public sealed record PauseWebhookEndpointRequestDto
 {
-    public long ExpectedDeliveryStateVersion { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
+    public long ExpectedDeliveryStateVersion { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
 }

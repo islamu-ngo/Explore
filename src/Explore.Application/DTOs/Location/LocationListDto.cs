@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.Location;
 
-public class LocationListDto
+public sealed record LocationListDto
 {
-    public Guid Id { get; set; }
-    public required string FullName { get; set; }
-    public required string Address { get; set; }
-    public required string City { get; set; }
-    public required string Country { get; set; }
-    public string? Timezone { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public required string FullName { get; init; }
+    public required string Address { get; init; }
+    public required string City { get; init; }
+    public required string Country { get; init; }
+    public string? Timezone { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

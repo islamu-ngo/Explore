@@ -5,49 +5,49 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class EventPublicActionDto
+public sealed record EventPublicActionDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public int KindId { get; set; }
-    public string? KindCode { get; set; }
-    public string? KindName { get; set; }
-    public int HealthStateId { get; set; }
-    public string? HealthStateCode { get; set; }
-    public string? HealthStateName { get; set; }
-    public required string Url { get; set; }
-    public required string DestinationDomain { get; set; }
-    public string? Label { get; set; }
-    public int SortOrder { get; set; }
-    public bool IsPrimary { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public int KindId { get; init; }
+    public string? KindCode { get; init; }
+    public string? KindName { get; init; }
+    public int HealthStateId { get; init; }
+    public string? HealthStateCode { get; init; }
+    public string? HealthStateName { get; init; }
+    public required string Url { get; init; }
+    public required string DestinationDomain { get; init; }
+    public string? Label { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsPrimary { get; init; }
     public bool OpenInNewTab => true;
     public string Rel => "noopener noreferrer";
 
     [JsonIgnore]
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     [JsonIgnore]
-    public Guid EventActorId { get; set; }
+    public Guid EventActorId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorUserId { get; set; }
+    public Guid? EventActorUserId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorOrganizationId { get; set; }
+    public Guid? EventActorOrganizationId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorGroupId { get; set; }
+    public Guid? EventActorGroupId { get; init; }
 
     [JsonIgnore]
-    public int EventProvenanceTypeId { get; set; }
+    public int EventProvenanceTypeId { get; init; }
 
     [JsonIgnore]
-    public string? EventProvenanceTypeCode { get; set; }
+    public string? EventProvenanceTypeCode { get; init; }
 
     [JsonIgnore]
-    public Guid? EventOrganizerActorId { get; set; }
+    public Guid? EventOrganizerActorId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventSubmittedByUserId { get; set; }
+    public Guid? EventSubmittedByUserId { get; init; }
 }

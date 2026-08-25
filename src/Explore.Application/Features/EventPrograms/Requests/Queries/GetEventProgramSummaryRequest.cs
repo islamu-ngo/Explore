@@ -7,15 +7,12 @@ using MediatR;
 
 namespace Explore.Application.Features.EventPrograms.Requests.Queries;
 
-public class GetEventProgramSummaryRequest : IRequest<EventProgramSummaryDto?>
-{
-    public Guid EventId { get; set; }
-}
+public sealed record GetEventProgramSummaryRequest(Guid EventId) : IRequest<EventProgramSummaryDto?>;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventProgramSummaryRequest : IRequest<EventProgramSummaryDto?>, ISecureRequest
+public sealed record GetManagedEventProgramSummaryRequest : IRequest<EventProgramSummaryDto?>, ISecureRequest
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

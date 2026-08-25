@@ -3,27 +3,27 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
-public sealed class ControlPlaneOperationsDto
+public sealed record ControlPlaneOperationsDto
 {
-    public DateTime GeneratedAtUtc { get; set; }
-    public IReadOnlyList<ControlPlaneOperationStatusDto> Statuses { get; set; } = [];
-    public IReadOnlyList<ControlPlaneWarningDto> Warnings { get; set; } = [];
+    public DateTime GeneratedAtUtc { get; init; }
+    public IReadOnlyList<ControlPlaneOperationStatusDto> Statuses { get; init; } = [];
+    public IReadOnlyList<ControlPlaneWarningDto> Warnings { get; init; } = [];
 }
 
-public sealed class ControlPlaneOperationStatusDto
+public sealed record ControlPlaneOperationStatusDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
-    public string? Message { get; set; }
-    public IReadOnlyList<ControlPlaneOperationMetricDto> Metrics { get; set; } = [];
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string Severity { get; init; } = string.Empty;
+    public string? Message { get; init; }
+    public IReadOnlyList<ControlPlaneOperationMetricDto> Metrics { get; init; } = [];
 }
 
-public sealed class ControlPlaneOperationMetricDto
+public sealed record ControlPlaneOperationMetricDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public long Value { get; set; }
-    public bool IsCapped { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public long Value { get; init; }
+    public bool IsCapped { get; init; }
 }

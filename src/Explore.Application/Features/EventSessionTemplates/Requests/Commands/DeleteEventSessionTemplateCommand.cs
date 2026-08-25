@@ -7,9 +7,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class DeleteEventSessionTemplateCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteEventSessionTemplateCommand : IRequest<bool>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

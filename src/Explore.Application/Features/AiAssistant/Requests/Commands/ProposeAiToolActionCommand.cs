@@ -8,12 +8,12 @@ using MediatR;
 namespace Explore.Application.Features.AiAssistant.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ProposeAction)]
-public sealed class ProposeAiToolActionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ProposeAiToolActionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid ConversationId { get; set; }
-    public string ToolName { get; set; } = string.Empty;
-    public string PayloadJson { get; set; } = string.Empty;
-    public string? Summary { get; set; }
+    public Guid ConversationId { get; init; }
+    public string ToolName { get; init; } = string.Empty;
+    public string PayloadJson { get; init; } = string.Empty;
+    public string? Summary { get; init; }
 
     string? ISecureRequest.ResourceId => ConversationId == Guid.Empty ? null : ConversationId.ToString();
 }

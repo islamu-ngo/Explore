@@ -3,17 +3,17 @@
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public class EventTemplateListDto
+public sealed record EventTemplateListDto
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-    public string TemplateKey { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int? EventTypeId { get; set; }
-    public int Version { get; set; }
-    public bool IsPublished { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
-    public int DefinitionCount { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
+    public string TemplateKey { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public int? EventTypeId { get; init; }
+    public int Version { get; init; }
+    public bool IsPublished { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
+    public int DefinitionCount { get; init; }
 }

@@ -9,13 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.EventSeries.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Actor, AuthorizationActions.Update)]
-public class UpdateEventSeriesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventSeriesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid EventSeriesId { get; set; }
-    public Guid ActorId { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
-    public required UpdateEventSeriesDto EventSeriesDto { get; set; }
+    public Guid EventSeriesId { get; init; }
+    public Guid ActorId { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public required UpdateEventSeriesDto EventSeriesDto { get; init; }
 
     string? ISecureRequest.ResourceId => ActorId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 
-public class RevokeExternalApiKeyCommand : IRequest<bool>
-{
-    public Guid Id { get; set; }
-}
+public sealed record RevokeExternalApiKeyCommand(Guid Id = default) : IRequest<bool>;

@@ -3,14 +3,14 @@
 
 namespace Explore.Application.DTOs.Integrations;
 
-public sealed class ListmonkIntegrationSettingsDto
+public sealed record ListmonkIntegrationSettingsDto
 {
-    public bool Enabled { get; set; }
-    public string? InstanceUrl { get; set; }
-    public int DefaultListId { get; set; }
-    public bool PreconfirmSubscriptions { get; set; }
-    public bool SyncOnRegistration { get; set; }
-    public bool ApiUsernameConfigured { get; set; }
-    public bool ApiKeyConfigured { get; set; }
-    public bool CanEdit { get; set; }
+    public bool Enabled { get; init; }
+    public string? InstanceUrl { get; init; }
+    public int DefaultListId { get; init; }
+    public bool PreconfirmSubscriptions { get; init; }
+    public bool SyncOnRegistration { get; init; }
+    public bool ApiUsernameConfigured { get; init; }
+    public bool ApiKeyConfigured { get; init; }
+    public bool CanEdit { get; init; }
 }

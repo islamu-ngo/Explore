@@ -2,14 +2,14 @@ using System;
 
 namespace Explore.Application.DTOs.Tenant;
 
-public class CreateTenantDto
+public sealed record CreateTenantDto
 {
-    public required string FullName { get; set; }
-    public required string Slug { get; set; }
-    public bool IsActive { get; set; }
+    public required string FullName { get; init; }
+    public required string Slug { get; init; }
+    public bool IsActive { get; init; }
     /// <summary>
     /// When true, the requesting user is automatically added as a tenant administrator of the newly created tenant.
     /// Has no effect if the request is unauthenticated or the tenant.admin role cannot be resolved.
     /// </summary>
-    public bool AssignCurrentUserAsTenantAdmin { get; set; }
+    public bool AssignCurrentUserAsTenantAdmin { get; init; }
 }

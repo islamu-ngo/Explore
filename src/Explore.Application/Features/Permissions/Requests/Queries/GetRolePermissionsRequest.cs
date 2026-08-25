@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Permissions.Requests.Queries;
 
-public class GetRolePermissionsRequest : IRequest<List<RolePermissionDto>>
-{
-    public int RoleId { get; set; }
-}
+public sealed record GetRolePermissionsRequest(int RoleId = default) : IRequest<List<RolePermissionDto>>;

@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Queries;
 
-public class GetPublicImageRequest : IRequest<StorageObjectContentResult?>
-{
-    public Guid StorageObjectId { get; set; }
-}
+public sealed record GetPublicImageRequest(Guid StorageObjectId) : IRequest<StorageObjectContentResult?>;

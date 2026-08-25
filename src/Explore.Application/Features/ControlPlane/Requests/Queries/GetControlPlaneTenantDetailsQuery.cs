@@ -8,11 +8,17 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetControlPlaneTenantDetailsQuery(Guid tenantId) : IRequest<ControlPlaneTenantDetailDto?>, ISecureRequest
+public sealed record GetControlPlaneTenantDetailsQuery
+    : IRequest<ControlPlaneTenantDetailDto?>, ISecureRequest
 {
+    public GetControlPlaneTenantDetailsQuery(Guid tenantId)
+    {
+        TenantId = tenantId;
+    }
+
     public const string SettingKey = "control-plane.tenants";
 
-    public Guid TenantId { get; } = tenantId;
+    public Guid TenantId { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

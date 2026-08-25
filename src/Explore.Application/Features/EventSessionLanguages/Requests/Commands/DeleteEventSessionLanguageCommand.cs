@@ -6,11 +6,11 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public class DeleteEventSessionLanguageCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteEventSessionLanguageCommand : IRequest<bool>, ISecureRequest
 {
-    public int Id { get; set; }
+    public int Id { get; init; }
 
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
 

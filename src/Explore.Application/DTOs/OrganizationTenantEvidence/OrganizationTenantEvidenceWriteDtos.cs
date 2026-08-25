@@ -3,23 +3,23 @@
 
 namespace Explore.Application.DTOs.OrganizationTenantEvidence;
 
-public sealed class CreateOrganizationTenantEvidenceUploadSessionDto
+public sealed record CreateOrganizationTenantEvidenceUploadSessionDto
 {
-    public required string FileName { get; set; }
-    public required string ContentType { get; set; }
-    public long ExpectedSizeBytes { get; set; }
+    public required string FileName { get; init; }
+    public required string ContentType { get; init; }
+    public long ExpectedSizeBytes { get; init; }
 }
 
-public sealed class SubmitOrganizationTenantEvidenceDto
+public sealed record SubmitOrganizationTenantEvidenceDto
 {
-    public Guid DocumentStorageObjectId { get; set; }
+    public Guid DocumentStorageObjectId { get; init; }
 }
 
-public sealed class ReviewOrganizationTenantEvidenceDto
+public sealed record ReviewOrganizationTenantEvidenceDto
 {
-    public OrganizationTenantEvidenceReviewDecisionDto Decision { get; set; }
-    public string? Notes { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public OrganizationTenantEvidenceReviewDecisionDto Decision { get; init; }
+    public string? Notes { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }
 
 public enum OrganizationTenantEvidenceReviewDecisionDto

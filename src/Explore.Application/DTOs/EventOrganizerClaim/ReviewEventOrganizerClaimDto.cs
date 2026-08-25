@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.EventOrganizerClaim;
 
-public sealed class ReviewEventOrganizerClaimDto
+public sealed record ReviewEventOrganizerClaimDto
 {
-    public EventOrganizerClaimReviewDecisionDto Decision { get; set; }
-    public required string ReasonCode { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public EventOrganizerClaimReviewDecisionDto Decision { get; init; }
+    public required string ReasonCode { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }
 
 public enum EventOrganizerClaimReviewDecisionDto

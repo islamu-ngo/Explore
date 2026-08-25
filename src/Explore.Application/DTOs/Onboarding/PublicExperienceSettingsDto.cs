@@ -5,63 +5,63 @@ using Explore.Application.DTOs.Footer;
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class PublicExperienceSettingsDto
+public sealed record PublicExperienceSettingsDto
 {
-    public Guid TenantId { get; set; }
-    public Explore.Application.Models.PublicExperienceMode Mode { get; set; } = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric;
-    public string DeploymentMode { get; set; } = "SingleTenant";
-    public string PreferredHomePage { get; set; } = "EventList";
-    public string BrandDisplayName { get; set; } = string.Empty;
-    public string BrandLogoUrl { get; set; } = string.Empty;
-    public string BrandFaviconUrl { get; set; } = string.Empty;
-    public string BrandCustomCssUrl { get; set; } = string.Empty;
-    public string InstanceBaseDomain { get; set; } = string.Empty;
-    public string Subdomain { get; set; } = string.Empty;
-    public string CustomDomain { get; set; } = string.Empty;
-    public bool IsIslamicModuleEnabled { get; set; }
-    public bool IsTechModuleEnabled { get; set; }
-    public bool AllowUserSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
-    public bool AllowGroupSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSelfRegistration { get; set; } = true;
-    public bool AllowGroupSelfRegistration { get; set; } = true;
-    public bool EventCardClickOpensDetailPage { get; set; }
-    public bool AnnouncementBarEnabled { get; set; }
-    public string AnnouncementBarMessage { get; set; } = string.Empty;
-    public string AnnouncementBarLinkText { get; set; } = string.Empty;
-    public string AnnouncementBarLinkUrl { get; set; } = string.Empty;
-    public int AnnouncementBarRevision { get; set; }
-    public string CommunityGuidelinesContent { get; set; } = string.Empty;
-    public List<string> EnabledModules { get; set; } = new();
-    public string AnalyticsProvider { get; set; } = "none";
-    public bool AnalyticsEnabled { get; set; }
-    public string AnalyticsConsentMode { get; set; } = "pseudonymous";
-    public string AnalyticsTransportMode { get; set; } = "direct";
-    public bool AnalyticsAllowIdentify { get; set; }
-    public string AnalyticsPublicApiKey { get; set; } = string.Empty;
-    public string AnalyticsEndpointUrl { get; set; } = string.Empty;
-    public AnalyticsConsentBootstrapDto? AnalyticsConsent { get; set; }
-    public int RenderPolicyVersion { get; set; } = 1;
-    public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
-    public bool EnableAdvancedRenderPolicyOverrides { get; set; }
-    public string GlobalRenderMode { get; set; } = "InteractiveServer";
-    public bool GlobalPrerenderEnabled { get; set; }
-    public string PublicSeoRenderMode { get; set; } = "InteractiveServer";
-    public bool PublicSeoPrerenderEnabled { get; set; }
-    public string OperationalRenderMode { get; set; } = "InteractiveServer";
-    public bool OperationalPrerenderEnabled { get; set; }
-    public string AdminRenderMode { get; set; } = "InteractiveServer";
-    public bool AdminPrerenderEnabled { get; set; }
-    public string OnboardingRenderMode { get; set; } = "InteractiveServer";
-    public bool OnboardingPrerenderEnabled { get; set; }
-    public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
-    public bool IsAiAssistantEnabled { get; set; }
-    public bool IsAiAssistantAvailable { get; set; }
-    public bool AiAssistantAllowAnonymousAccess { get; set; }
-    public FooterConfigDto FooterConfig { get; set; } = new();
-    public Guid? DefaultThemeId { get; set; }
-    public string ThemeMode { get; set; } = "system";
-    public string Direction { get; set; } = "auto";
-    public string Language { get; set; } = "en";
-    public bool ClientPickerEnabled { get; set; } = true;
+    public Guid TenantId { get; init; }
+    public Explore.Application.Models.PublicExperienceMode Mode { get; init; } = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric;
+    public string DeploymentMode { get; init; } = "SingleTenant";
+    public string PreferredHomePage { get; init; } = "EventList";
+    public string BrandDisplayName { get; init; } = string.Empty;
+    public string BrandLogoUrl { get; init; } = string.Empty;
+    public string BrandFaviconUrl { get; init; } = string.Empty;
+    public string BrandCustomCssUrl { get; init; } = string.Empty;
+    public string InstanceBaseDomain { get; init; } = string.Empty;
+    public string Subdomain { get; init; } = string.Empty;
+    public string CustomDomain { get; init; } = string.Empty;
+    public bool IsIslamicModuleEnabled { get; init; }
+    public bool IsTechModuleEnabled { get; init; }
+    public bool AllowUserSubmittedEvents { get; init; } = true;
+    public bool AllowOrganizationSubmittedEvents { get; init; } = true;
+    public bool AllowGroupSubmittedEvents { get; init; } = true;
+    public bool AllowOrganizationSelfRegistration { get; init; } = true;
+    public bool AllowGroupSelfRegistration { get; init; } = true;
+    public bool EventCardClickOpensDetailPage { get; init; }
+    public bool AnnouncementBarEnabled { get; init; }
+    public string AnnouncementBarMessage { get; init; } = string.Empty;
+    public string AnnouncementBarLinkText { get; init; } = string.Empty;
+    public string AnnouncementBarLinkUrl { get; init; } = string.Empty;
+    public int AnnouncementBarRevision { get; init; }
+    public string CommunityGuidelinesContent { get; init; } = string.Empty;
+    public List<string> EnabledModules { get; init; } = new();
+    public string AnalyticsProvider { get; init; } = "none";
+    public bool AnalyticsEnabled { get; init; }
+    public string AnalyticsConsentMode { get; init; } = "pseudonymous";
+    public string AnalyticsTransportMode { get; init; } = "direct";
+    public bool AnalyticsAllowIdentify { get; init; }
+    public string AnalyticsPublicApiKey { get; init; } = string.Empty;
+    public string AnalyticsEndpointUrl { get; init; } = string.Empty;
+    public AnalyticsConsentBootstrapDto? AnalyticsConsent { get; init; }
+    public int RenderPolicyVersion { get; init; } = 1;
+    public string RenderPolicyPreset { get; init; } = "AllInteractiveServer";
+    public bool EnableAdvancedRenderPolicyOverrides { get; init; }
+    public string GlobalRenderMode { get; init; } = "InteractiveServer";
+    public bool GlobalPrerenderEnabled { get; init; }
+    public string PublicSeoRenderMode { get; init; } = "InteractiveServer";
+    public bool PublicSeoPrerenderEnabled { get; init; }
+    public string OperationalRenderMode { get; init; } = "InteractiveServer";
+    public bool OperationalPrerenderEnabled { get; init; }
+    public string AdminRenderMode { get; init; } = "InteractiveServer";
+    public bool AdminPrerenderEnabled { get; init; }
+    public string OnboardingRenderMode { get; init; } = "InteractiveServer";
+    public bool OnboardingPrerenderEnabled { get; init; }
+    public bool DisallowInteractiveServerOnOnboarding { get; init; } = true;
+    public bool IsAiAssistantEnabled { get; init; }
+    public bool IsAiAssistantAvailable { get; init; }
+    public bool AiAssistantAllowAnonymousAccess { get; init; }
+    public FooterConfigDto FooterConfig { get; init; } = new();
+    public Guid? DefaultThemeId { get; init; }
+    public string ThemeMode { get; init; } = "system";
+    public string Direction { get; init; } = "auto";
+    public string Language { get; init; } = "en";
+    public bool ClientPickerEnabled { get; init; } = true;
 }

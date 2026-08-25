@@ -140,7 +140,7 @@ public sealed class WebPushSubscriptionHandlerTests
             .Returns(true);
         var handler = new UnsubscribeCurrentUserWebPushSubscriptionCommandHandler(_repository, _tenantContext, _currentUserService);
 
-        var result = await handler.Handle(new UnsubscribeCurrentUserWebPushSubscriptionCommand { SubscriptionId = subscriptionId }, CancellationToken.None);
+        var result = await handler.Handle(new UnsubscribeCurrentUserWebPushSubscriptionCommand(subscriptionId), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await _repository.Received(1).UnsubscribeAsync(TenantId, UserId, subscriptionId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());

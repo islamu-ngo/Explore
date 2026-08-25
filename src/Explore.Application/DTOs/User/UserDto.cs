@@ -5,33 +5,33 @@ using System;
 
 namespace Explore.Application.DTOs.User;
 
-public class UserDto
+public sealed record UserDto
 {
-    public Guid Id { get; set; }
-    public required string Email { get; set; }
-    public required string FirstName { get; set; }
-    public required string LastName { get; set; }
+    public Guid Id { get; init; }
+    public required string Email { get; init; }
+    public required string FirstName { get; init; }
+    public required string LastName { get; init; }
     // Actor
-    public Guid ActorId { get; set; }
-    public string? ActorDisplayName { get; set; }
-    public string? ActorHandle { get; set; }
+    public Guid ActorId { get; init; }
+    public string? ActorDisplayName { get; init; }
+    public string? ActorHandle { get; init; }
 
     // Actor Appearance
-    public string? ActorBackgroundColor { get; set; }
-    public string? ActorBackgroundEffect { get; set; }
-    public string? ActorBannerColor { get; set; }
-    public Guid? ActorBannerPictureId { get; set; }
-    public string? ActorBannerPictureUri { get; set; }
-    public Guid? ActorBackgroundImageId { get; set; }
-    public string? ActorBackgroundImageUri { get; set; }
+    public string? ActorBackgroundColor { get; init; }
+    public string? ActorBackgroundEffect { get; init; }
+    public string? ActorBannerColor { get; init; }
+    public Guid? ActorBannerPictureId { get; init; }
+    public string? ActorBannerPictureUri { get; init; }
+    public Guid? ActorBackgroundImageId { get; init; }
+    public string? ActorBackgroundImageUri { get; init; }
 
     // Auth
-    public string? AuthProvider { get; set; }
-    public string? AuthProviderId { get; set; }
-    public bool? EmailVerified { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public string? AuthProvider { get; init; }
+    public string? AuthProviderId { get; init; }
+    public bool? EmailVerified { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 
     // Profile image key (S3 object key) and URI for preview
-    public string? ProfileImageKey { get; set; }
+    public string? ProfileImageKey { get; init; }
     public string? ProfileImageUri { get; set; }
 }

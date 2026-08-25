@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.EventSessionCustomProperty;
 
-public class SetEventSessionCustomPropertyMultiValuesDto
+public sealed record SetEventSessionCustomPropertyMultiValuesDto
 {
-    public Guid DefinitionId { get; set; }
-    public Guid EventSessionId { get; set; }
-    public List<SetEventSessionCustomPropertyValueDto> Values { get; set; } = [];
+    public Guid DefinitionId { get; init; }
+    public Guid EventSessionId { get; init; }
+    public List<SetEventSessionCustomPropertyValueDto> Values { get; init; } = [];
 }

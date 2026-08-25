@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.ContactShareConsent;
 
-public class SharedContactExportResultDto
+public sealed record SharedContactExportResultDto
 {
-    public Guid ExportId { get; set; }
-    public int RowCount { get; set; }
-    public string Format { get; set; } = string.Empty;
-    public byte[] FileContent { get; set; } = [];
-    public string FileName { get; set; } = string.Empty;
-    public string ContentType { get; set; } = string.Empty;
+    public Guid ExportId { get; init; }
+    public int RowCount { get; init; }
+    public string Format { get; init; } = string.Empty;
+    public byte[] FileContent { get; init; } = [];
+    public string FileName { get; init; } = string.Empty;
+    public string ContentType { get; init; } = string.Empty;
 }

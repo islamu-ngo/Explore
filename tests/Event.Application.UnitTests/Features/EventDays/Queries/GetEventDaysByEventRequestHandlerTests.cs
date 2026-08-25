@@ -35,7 +35,7 @@ public class GetEventDaysByEventRequestHandlerTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var request = new GetEventDaysByEventRequest { EventId = eventId };
+        var request = new GetEventDaysByEventRequest(eventId);
         ConfigurePublicEvent(eventId);
 
         var eventDays = new List<EventDay>
@@ -66,7 +66,7 @@ public class GetEventDaysByEventRequestHandlerTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var request = new GetEventDaysByEventRequest { EventId = eventId };
+        var request = new GetEventDaysByEventRequest(eventId);
         ConfigurePublicEvent(eventId);
 
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns(new List<EventDay>());
@@ -84,7 +84,7 @@ public class GetEventDaysByEventRequestHandlerTests
     public async Task Handle_WhenParentEventIsNotCentrallyPubliclyEligible_ReturnsEmptyWithoutReadingDays()
     {
         var eventId = Guid.NewGuid();
-        var request = new GetEventDaysByEventRequest { EventId = eventId };
+        var request = new GetEventDaysByEventRequest(eventId);
         var parentEvent = ConfigurePublicEvent(eventId);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
 

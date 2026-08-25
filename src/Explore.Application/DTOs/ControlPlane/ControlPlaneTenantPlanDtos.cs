@@ -6,70 +6,70 @@ namespace Explore.Application.DTOs.ControlPlane;
 using System.Text.Json.Serialization;
 using Explore.Application.Hateoas;
 
-public sealed class ControlPlaneTenantPlanListItemDto
+public sealed record ControlPlaneTenantPlanListItemDto
 {
-    public Guid Id { get; set; }
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int LatestVersionNumber { get; set; }
-    public int? PublishedVersionNumber { get; set; }
-    public decimal PriceAmount { get; set; }
-    public string CurrencyCode { get; set; } = string.Empty;
-    public string BillingPeriod { get; set; } = string.Empty;
-    public bool IsActiveForProvisioning { get; set; }
+    public Guid Id { get; init; }
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public int LatestVersionNumber { get; init; }
+    public int? PublishedVersionNumber { get; init; }
+    public decimal PriceAmount { get; init; }
+    public string CurrencyCode { get; init; } = string.Empty;
+    public string BillingPeriod { get; init; } = string.Empty;
+    public bool IsActiveForProvisioning { get; init; }
 }
 
-public sealed class ControlPlaneTenantPlanDetailDto
+public sealed record ControlPlaneTenantPlanDetailDto
 {
-    public Guid Id { get; set; }
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public IReadOnlyList<ControlPlaneTenantPlanVersionDto> Versions { get; set; } = [];
+    public Guid Id { get; init; }
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public IReadOnlyList<ControlPlaneTenantPlanVersionDto> Versions { get; init; } = [];
 }
 
-public sealed class ControlPlaneTenantPlanVersionDto
+public sealed record ControlPlaneTenantPlanVersionDto
 {
-    public Guid Id { get; set; }
-    public int VersionNumber { get; set; }
-    public int StatusId { get; set; }
-    public string StatusCode { get; set; } = string.Empty;
-    public decimal PriceAmount { get; set; }
-    public string CurrencyCode { get; set; } = string.Empty;
-    public string BillingPeriod { get; set; } = string.Empty;
-    public bool IsActiveForProvisioning { get; set; }
-    public IReadOnlyList<ControlPlaneTenantPlanSettingDto> Settings { get; set; } = [];
-    public IReadOnlyList<ControlPlaneTenantPlanQuotaDto> Quotas { get; set; } = [];
+    public Guid Id { get; init; }
+    public int VersionNumber { get; init; }
+    public int StatusId { get; init; }
+    public string StatusCode { get; init; } = string.Empty;
+    public decimal PriceAmount { get; init; }
+    public string CurrencyCode { get; init; } = string.Empty;
+    public string BillingPeriod { get; init; } = string.Empty;
+    public bool IsActiveForProvisioning { get; init; }
+    public IReadOnlyList<ControlPlaneTenantPlanSettingDto> Settings { get; init; } = [];
+    public IReadOnlyList<ControlPlaneTenantPlanQuotaDto> Quotas { get; init; } = [];
 
     [JsonPropertyName("_links")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, HalLink>? Links { get; set; }
 }
 
-public sealed class ControlPlaneTenantPlanSettingDto
+public sealed record ControlPlaneTenantPlanSettingDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string JsonValue { get; set; } = string.Empty;
-    public bool IsLocked { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public string JsonValue { get; init; } = string.Empty;
+    public bool IsLocked { get; init; }
 }
 
-public sealed class ControlPlaneTenantPlanQuotaDto
+public sealed record ControlPlaneTenantPlanQuotaDto
 {
-    public string Key { get; set; } = string.Empty;
-    public long Limit { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public long Limit { get; init; }
 }
 
-public sealed class ControlPlaneTenantPlanAssignmentDto
+public sealed record ControlPlaneTenantPlanAssignmentDto
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid PlanId { get; set; }
-    public string PlanKey { get; set; } = string.Empty;
-    public Guid PlanVersionId { get; set; }
-    public int VersionNumber { get; set; }
-    public int StatusId { get; set; }
-    public string StatusCode { get; set; } = string.Empty;
-    public DateTime AssignedAt { get; set; }
-    public Guid? AssignedByUserId { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid PlanId { get; init; }
+    public string PlanKey { get; init; } = string.Empty;
+    public Guid PlanVersionId { get; init; }
+    public int VersionNumber { get; init; }
+    public int StatusId { get; init; }
+    public string StatusCode { get; init; } = string.Empty;
+    public DateTime AssignedAt { get; init; }
+    public Guid? AssignedByUserId { get; init; }
 }

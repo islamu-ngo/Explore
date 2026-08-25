@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
-public sealed class ScheduleEventSessionRequestDto
+public sealed record ScheduleEventSessionRequestDto
 {
-    public Guid ExpectedConcurrencyStamp { get; set; }
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
 }

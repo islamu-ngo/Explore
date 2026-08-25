@@ -258,29 +258,29 @@ public sealed record EventLocationDisclosurePolicyDto(
     int FullDetailsAudienceId,
     DateTime? RevealFullDetailsFromUtc);
 
-public sealed class UpdateEventLocationDisclosureDto
+public sealed record UpdateEventLocationDisclosureDto
 {
-    public int ExpectedPolicyVersion { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
-    public UpdateEventLocationDisclosureFieldsDto? Fields { get; set; }
-    public UpdateEventLocationDisclosureAudienceDto? Audience { get; set; }
+    public int ExpectedPolicyVersion { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public UpdateEventLocationDisclosureFieldsDto? Fields { get; init; }
+    public UpdateEventLocationDisclosureAudienceDto? Audience { get; init; }
 }
 
-public sealed class UpdateEventLocationDisclosureFieldsDto
+public sealed record UpdateEventLocationDisclosureFieldsDto
 {
-    public bool? ShowVenueName { get; set; }
-    public bool? ShowCity { get; set; }
-    public bool? ShowCountry { get; set; }
-    public bool? ShowRoomName { get; set; }
-    public bool? ShowStreetAddress { get; set; }
-    public bool? ShowPostcode { get; set; }
-    public bool? ShowCoordinates { get; set; }
+    public bool? ShowVenueName { get; init; }
+    public bool? ShowCity { get; init; }
+    public bool? ShowCountry { get; init; }
+    public bool? ShowRoomName { get; init; }
+    public bool? ShowStreetAddress { get; init; }
+    public bool? ShowPostcode { get; init; }
+    public bool? ShowCoordinates { get; init; }
 }
 
-public sealed class UpdateEventLocationDisclosureAudienceDto
+public sealed record UpdateEventLocationDisclosureAudienceDto
 {
-    public int? FullDetailsAudienceId { get; set; }
-    public OptionalUpdate<DateTime?> RevealFullDetailsFromUtc { get; set; }
+    public int? FullDetailsAudienceId { get; init; }
+    public OptionalUpdate<DateTime?> RevealFullDetailsFromUtc { get; init; }
         = OptionalUpdate<DateTime?>.Unspecified();
 }
 

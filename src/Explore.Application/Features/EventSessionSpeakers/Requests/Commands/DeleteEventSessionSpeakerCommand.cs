@@ -8,12 +8,12 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public class DeleteEventSessionSpeakerCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteEventSessionSpeakerCommand : IRequest<bool>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public Guid EventSessionId { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid EventId { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventSessionId { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
 

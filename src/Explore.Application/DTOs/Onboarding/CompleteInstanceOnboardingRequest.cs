@@ -6,7 +6,7 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public sealed class CompleteInstanceOnboardingRequest
+public sealed record CompleteInstanceOnboardingRequest
 {
     public const string EmbeddedAdministrationAccess = "Embedded";
     public const string DedicatedAdminHostAdministrationAccess = "DedicatedAdminHost";
@@ -14,8 +14,8 @@ public sealed class CompleteInstanceOnboardingRequest
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public DeploymentMode DeploymentMode { get; set; } = DeploymentMode.SingleTenant;
-    public SelfHostOnboardingProfileDto SiteProfile { get; set; } = new();
-    public string AdministrationAccessMode { get; set; } = EmbeddedAdministrationAccess;
-    public string? AdminHost { get; set; }
-    public string? InstanceName { get; set; }
+    public SelfHostOnboardingProfileDto SiteProfile { get; init; } = new();
+    public string AdministrationAccessMode { get; init; } = EmbeddedAdministrationAccess;
+    public string? AdminHost { get; init; }
+    public string? InstanceName { get; init; }
 }

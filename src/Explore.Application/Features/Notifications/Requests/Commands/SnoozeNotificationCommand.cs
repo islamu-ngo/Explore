@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public class SnoozeNotificationCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record SnoozeNotificationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid Id { get; set; }
-    public DateTime? SnoozedUntil { get; set; }
+    public Guid Id { get; init; }
+    public DateTime? SnoozedUntil { get; init; }
 }

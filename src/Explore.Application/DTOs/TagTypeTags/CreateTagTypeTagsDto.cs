@@ -2,9 +2,9 @@ using System;
 
 namespace Explore.Application.DTOs.TagTypeTags;
 
-public class CreateTagTypeTagsDto
+public sealed record CreateTagTypeTagsDto
 {
-    public Guid TagId { get; set; }
-    public int TagTypeId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid TagId { get; init; }
+    public int TagTypeId { get; init; }
+    public Guid TenantId { get; init; }
 }

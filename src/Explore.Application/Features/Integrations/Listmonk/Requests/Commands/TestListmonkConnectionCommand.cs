@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Integrations.Listmonk.Requests.Commands;
 
-public sealed class TestListmonkConnectionCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record TestListmonkConnectionCommand : IRequest<BaseCommandResponse<Guid>>
 {
 }

@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
 
-public class GetEventSessionSpeakerDetailsRequest : IRequest<EventSessionSpeakerDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetEventSessionSpeakerDetailsRequest(Guid Id = default) : IRequest<EventSessionSpeakerDto>;

@@ -23,7 +23,7 @@ public sealed class GetMyEventsRequestHandlerTests
         Guid publishedEventId = Guid.CreateVersion7();
         var failedEvent = EventDto(failedEventId);
         var publishedEvent = EventDto(publishedEventId);
-        publishedEvent.AtprotoRecordId = Guid.CreateVersion7();
+        publishedEvent = publishedEvent with { AtprotoRecordId = Guid.CreateVersion7() };
         var events = new List<Explore.Domain.Event>();
         var delivery = Delivery(failedEventId, PdsSyncStatus.DeadLettered, "session_unavailable");
         IEventRepository eventRepository = Substitute.For<IEventRepository>();

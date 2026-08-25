@@ -5,9 +5,9 @@ using System;
 
 namespace Explore.Application.DTOs.User;
 
-public class UserTenantRedirectionDto
+public sealed record UserTenantRedirectionDto
 {
-    public Guid? TenantId { get; set; }
-    public string? TenantSlug { get; set; }
-    public bool HasMultipleTenants { get; set; }
+    public Guid? TenantId { get; init; }
+    public string? TenantSlug { get; init; }
+    public bool HasMultipleTenants { get; init; }
 }

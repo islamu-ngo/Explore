@@ -5,10 +5,10 @@ using Explore.Application.DTOs.Tag;
 
 namespace Explore.Application.DTOs.TagType;
 
-public class TagTypeWithTagsDto
+public sealed record TagTypeWithTagsDto
 {
-    public int Id { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
-    public List<TagListDto> Tags { get; set; } = [];
+    public int Id { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
+    public List<TagListDto> Tags { get; init; } = [];
 }

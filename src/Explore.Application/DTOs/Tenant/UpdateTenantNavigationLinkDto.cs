@@ -10,30 +10,30 @@ namespace Explore.Application.DTOs.Tenant;
 /// <summary>
 /// DTO for partially updating an existing tenant navigation link.
 /// </summary>
-public class UpdateTenantNavigationLinkDto
+public sealed record UpdateTenantNavigationLinkDto
 {
-    public UpdateTenantNavigationLinkLabelDto? Label { get; set; }
-    public UpdateTenantNavigationLinkUrlDto? Url { get; set; }
-    public UpdateTenantNavigationLinkIconDto? Icon { get; set; }
-    public UpdateTenantNavigationLinkOpenInNewTabDto? OpenInNewTab { get; set; }
+    public UpdateTenantNavigationLinkLabelDto? Label { get; init; }
+    public UpdateTenantNavigationLinkUrlDto? Url { get; init; }
+    public UpdateTenantNavigationLinkIconDto? Icon { get; init; }
+    public UpdateTenantNavigationLinkOpenInNewTabDto? OpenInNewTab { get; init; }
 }
 
-public class UpdateTenantNavigationLinkLabelDto
+public sealed record UpdateTenantNavigationLinkLabelDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateTenantNavigationLinkUrlDto
+public sealed record UpdateTenantNavigationLinkUrlDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateTenantNavigationLinkIconDto
+public sealed record UpdateTenantNavigationLinkIconDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateTenantNavigationLinkOpenInNewTabDto
+public sealed record UpdateTenantNavigationLinkOpenInNewTabDto
 {
-    public bool? Value { get; set; }
+    public bool? Value { get; init; }
 }

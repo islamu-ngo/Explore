@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventReporting.Requests.Queries;
 
-public sealed class GetEventReportOptionsRequest : IRequest<EventReportOptionsDto?>
+public sealed record GetEventReportOptionsRequest : IRequest<EventReportOptionsDto?>
 {
     public Guid EventId { get; init; }
 }

@@ -5,31 +5,31 @@ using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventAgendaItem;
 
-public class EventAgendaItemDto
+public sealed record EventAgendaItemDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public string? EventTitle { get; set; }
-    public Guid? EventDayId { get; set; }
-    public required string Title { get; set; }
-    public string? Description { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public string? EventTitle { get; init; }
+    public Guid? EventDayId { get; init; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
 
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
 
-    public DateOnly LocalStartDate { get; set; }
-    public DateOnly LocalEndDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
-    public int LocalStartMinuteOfDay { get; set; }
-    public int LocalEndMinuteOfDay { get; set; }
+    public DateOnly LocalStartDate { get; init; }
+    public DateOnly LocalEndDate { get; init; }
+    public TimeOnly LocalStartTime { get; init; }
+    public TimeOnly LocalEndTime { get; init; }
+    public int LocalStartMinuteOfDay { get; init; }
+    public int LocalEndMinuteOfDay { get; init; }
 
     public Guid? LocationId { get; set; }
     public Guid? RoomId { get; set; }
     public EventLocationPublicDto? EventLocation { get; set; }
-    public int? KindId { get; set; }
-    public string? KindFullName { get; set; }
-    public int SortOrder { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public int? KindId { get; init; }
+    public string? KindFullName { get; init; }
+    public int SortOrder { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

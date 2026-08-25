@@ -5,19 +5,19 @@ using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventAgendaItem;
 
-public class EventAgendaItemListDto
+public sealed record EventAgendaItemListDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public required string Title { get; set; }
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
-    public DateOnly LocalStartDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
-    public int? KindId { get; set; }
-    public string? KindFullName { get; set; }
-    public int SortOrder { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public required string Title { get; init; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
+    public DateOnly LocalStartDate { get; init; }
+    public TimeOnly LocalStartTime { get; init; }
+    public TimeOnly LocalEndTime { get; init; }
+    public int? KindId { get; init; }
+    public string? KindFullName { get; init; }
+    public int SortOrder { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
     public EventLocationPublicDto? EventLocation { get; set; }
 }

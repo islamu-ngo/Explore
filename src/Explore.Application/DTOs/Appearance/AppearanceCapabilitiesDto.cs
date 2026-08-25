@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public sealed class AppearanceCapabilitiesDto
+public sealed record AppearanceCapabilitiesDto
 {
-    public bool CanEditProfile { get; set; }
-    public bool CanCreateCustomProfile { get; set; }
-    public bool CanClonePreset { get; set; }
-    public bool CanDeleteProfile { get; set; }
+    public bool CanEditProfile { get; init; }
+    public bool CanCreateCustomProfile { get; init; }
+    public bool CanClonePreset { get; init; }
+    public bool CanDeleteProfile { get; init; }
 }

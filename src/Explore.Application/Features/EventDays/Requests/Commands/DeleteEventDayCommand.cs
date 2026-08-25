@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.EventDays.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventDay, AuthorizationActions.Delete)]
-public class DeleteEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record DeleteEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

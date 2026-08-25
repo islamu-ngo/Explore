@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.TagTypeTags;
 
-public class UpdateTagTypeTagsDto
+public sealed record UpdateTagTypeTagsDto
 {
-    public UpdateTagTypeTagsRelationshipDto? Relationship { get; set; }
+    public UpdateTagTypeTagsRelationshipDto? Relationship { get; init; }
 }
 
-public sealed class UpdateTagTypeTagsRelationshipDto
+public sealed record UpdateTagTypeTagsRelationshipDto
 {
-    public Guid? TagId { get; set; }
-    public int? TagTypeId { get; set; }
+    public Guid? TagId { get; init; }
+    public int? TagTypeId { get; init; }
 }

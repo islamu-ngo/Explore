@@ -7,7 +7,7 @@ using Explore.Application.DTOs.Appearance;
 using Explore.Application.Responses;
 using MediatR;
 
-public class CreateUiThemeCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateUiThemeCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required CreateUiThemeDto UiThemeDto { get; set; }
+    public required CreateUiThemeDto UiThemeDto { get; init; }
 }

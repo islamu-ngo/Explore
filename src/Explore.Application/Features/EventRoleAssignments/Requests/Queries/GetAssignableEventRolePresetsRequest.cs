@@ -9,11 +9,11 @@ using MediatR;
 namespace Explore.Application.Features.EventRoleAssignments.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTeam)]
-public sealed class GetAssignableEventRolePresetsRequest : IRequest<List<EventRolePresetDto>>, ISecureRequest
+public sealed record GetAssignableEventRolePresetsRequest : IRequest<List<EventRolePresetDto>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid AssignerUserId { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid AssignerUserId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 

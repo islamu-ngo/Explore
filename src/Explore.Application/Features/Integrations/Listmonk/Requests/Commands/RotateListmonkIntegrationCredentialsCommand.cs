@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Integrations.Listmonk.Requests.Commands;
 
-public sealed class RotateListmonkIntegrationCredentialsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record RotateListmonkIntegrationCredentialsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public RotateListmonkIntegrationCredentialsDto Dto { get; set; } = new();
+    public RotateListmonkIntegrationCredentialsDto Dto { get; init; } = new();
 }

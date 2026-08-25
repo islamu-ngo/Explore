@@ -7253,6 +7253,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -26947,6 +26964,46 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -31539,6 +31596,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -51459,6 +51533,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -76370,6 +76461,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -89830,10 +89938,6 @@
               "string"
             ],
             "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -91118,10 +91222,6 @@
               "string"
             ],
             "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -91441,10 +91541,6 @@
                 "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
               }
             ]
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -91520,10 +91616,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -91535,10 +91627,6 @@
             "format": "uuid"
           },
           "eventSessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
             "type": "string",
             "format": "uuid"
           }
@@ -92314,10 +92402,6 @@
               "null",
               "string"
             ]
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -92626,10 +92710,6 @@
           },
           "fullName": {
             "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -123931,7 +124011,6 @@
       "ImportEventRequestDto": {
         "required": [
           "title",
-          "tenantId",
           "ownerActorId",
           "provenanceSource",
           "provenanceExternalId",
@@ -123947,10 +124026,6 @@
               "null",
               "string"
             ]
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           },
           "ownerActorId": {
             "type": "string",

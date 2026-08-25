@@ -7,11 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
 
-public class GetManagedEventsByActorRequest : IRequest<PaginatedResult<EventListDto>>
+public sealed record GetManagedEventsByActorRequest : IRequest<PaginatedResult<EventListDto>>
 {
-    public Guid ActorId { get; set; }
-
-    public int PageNumber { get; set; } = 1;
-
-    public int PageSize { get; set; } = 20;
+    public Guid ActorId { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }

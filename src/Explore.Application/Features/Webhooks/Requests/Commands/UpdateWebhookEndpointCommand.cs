@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Update)]
-public sealed class UpdateWebhookEndpointCommand
+public sealed record UpdateWebhookEndpointCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid EndpointId { get; init; }

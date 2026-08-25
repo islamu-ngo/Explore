@@ -13,13 +13,13 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Returns the ID of the updated tenant.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>
     /// DTO containing the tenant data to update.
     /// </summary>
-    public Guid TenantId { get; set; }
-    public UpdateTenantDto Update { get; set; } = null!;
+    public Guid TenantId { get; init; }
+    public UpdateTenantDto Update { get; init; } = null!;
 
     string? ISecureRequest.ResourceId => TenantId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

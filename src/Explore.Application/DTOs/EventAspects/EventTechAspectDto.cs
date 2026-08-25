@@ -9,65 +9,65 @@ using Explore.Domain;
 /// <summary>
 /// DTO representing the Tech aspect of an event.
 /// </summary>
-public class EventTechAspectDto
+public sealed record EventTechAspectDto
 {
-    public string? GithubRepoUrl { get; set; }
-    public string? HackathonTrack { get; set; }
-    public SkillLevel SkillLevel { get; set; }
+    public string? GithubRepoUrl { get; init; }
+    public string? HackathonTrack { get; init; }
+    public SkillLevel SkillLevel { get; init; }
     public string SkillLevelName => SkillLevel.ToString();
-    public string? TechStackTags { get; set; }
-    public bool RequiresLaptop { get; set; }
-    public bool IsCodingCompetition { get; set; }
-    public int? MaxTeamSize { get; set; }
-    public decimal? PrizePool { get; set; }
-    public string? PrizeCurrencyCode { get; set; }
+    public string? TechStackTags { get; init; }
+    public bool RequiresLaptop { get; init; }
+    public bool IsCodingCompetition { get; init; }
+    public int? MaxTeamSize { get; init; }
+    public decimal? PrizePool { get; init; }
+    public string? PrizeCurrencyCode { get; init; }
 }
 
 /// <summary>
 /// DTO for creating or updating the Tech aspect of an event.
 /// </summary>
-public class CreateUpdateTechAspectDto
+public sealed record CreateUpdateTechAspectDto
 {
-    public string? GithubRepoUrl { get; set; }
-    public string? HackathonTrack { get; set; }
-    public SkillLevel SkillLevel { get; set; } = SkillLevel.AllLevels;
-    public string? TechStackTags { get; set; }
-    public bool RequiresLaptop { get; set; }
-    public bool IsCodingCompetition { get; set; }
-    public int? MaxTeamSize { get; set; }
-    public decimal? PrizePool { get; set; }
-    public string? PrizeCurrencyCode { get; set; }
+    public string? GithubRepoUrl { get; init; }
+    public string? HackathonTrack { get; init; }
+    public SkillLevel SkillLevel { get; init; } = SkillLevel.AllLevels;
+    public string? TechStackTags { get; init; }
+    public bool RequiresLaptop { get; init; }
+    public bool IsCodingCompetition { get; init; }
+    public int? MaxTeamSize { get; init; }
+    public decimal? PrizePool { get; init; }
+    public string? PrizeCurrencyCode { get; init; }
 }
 
-public sealed class UpdateEventTechAspectDto
+public sealed record UpdateEventTechAspectDto
 {
-    public UpdateEventTechRepositoryDto? Repository { get; set; }
-    public UpdateEventTechClassificationDto? Classification { get; set; }
-    public UpdateEventTechParticipationDto? Participation { get; set; }
-    public UpdateEventTechPrizeDto? Prize { get; set; }
+    public UpdateEventTechRepositoryDto? Repository { get; init; }
+    public UpdateEventTechClassificationDto? Classification { get; init; }
+    public UpdateEventTechParticipationDto? Participation { get; init; }
+    public UpdateEventTechPrizeDto? Prize { get; init; }
 }
 
-public sealed class UpdateEventTechRepositoryDto
+public sealed record UpdateEventTechRepositoryDto
 {
-    public OptionalUpdate<string?> GithubRepoUrl { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> GithubRepoUrl { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventTechClassificationDto
+public sealed record UpdateEventTechClassificationDto
 {
-    public OptionalUpdate<string?> HackathonTrack { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public SkillLevel? SkillLevel { get; set; }
-    public OptionalUpdate<string?> TechStackTags { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> HackathonTrack { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public SkillLevel? SkillLevel { get; init; }
+    public OptionalUpdate<string?> TechStackTags { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventTechParticipationDto
+public sealed record UpdateEventTechParticipationDto
 {
-    public bool? RequiresLaptop { get; set; }
-    public bool? IsCodingCompetition { get; set; }
+    public bool? RequiresLaptop { get; init; }
+    public bool? IsCodingCompetition { get; init; }
 }
 
-public sealed class UpdateEventTechPrizeDto
+public sealed record UpdateEventTechPrizeDto
 {
-    public OptionalUpdate<int?> MaxTeamSize { get; set; } = OptionalUpdate<int?>.Unspecified();
-    public OptionalUpdate<decimal?> PrizePool { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-    public OptionalUpdate<string?> PrizeCurrencyCode { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<int?> MaxTeamSize { get; init; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<decimal?> PrizePool { get; init; } = OptionalUpdate<decimal?>.Unspecified();
+    public OptionalUpdate<string?> PrizeCurrencyCode { get; init; } = OptionalUpdate<string?>.Unspecified();
 }

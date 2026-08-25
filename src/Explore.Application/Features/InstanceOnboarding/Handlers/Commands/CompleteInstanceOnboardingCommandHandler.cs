@@ -149,7 +149,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             await PersistAdministrationAccessSettingsAsync(request.Settings, isSingleTenant);
 
             await EnsurePlatformAdministratorRoleAsync(request.UserId);
-            _logger.LogInformation("Onboarding: Assigned Platform Admin role to user {UserId}", request.UserId);
+            _logger.LogInformation("Onboarding: Assigned Platform Admin role");
 
             if (isSingleTenant && defaultTenantId.HasValue)
             {
@@ -158,7 +158,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
                     siteProfile.SiteName,
                     ct);
                 await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, user);
-                _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant {TenantId} to user {UserId}", defaultTenantId, request.UserId);
+                _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant");
             }
 
             var selectedMode = deploymentMode.ToString();

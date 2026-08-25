@@ -152,7 +152,6 @@ public sealed class CreateSessionTests : IDisposable
 
         await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
             dto.EventId == eventId
-            && dto.TenantId == tenantId
             && dto.Title == "Opening talk"
             && dto.Description == "A focused opening session."
             && dto.LocationId == locationId

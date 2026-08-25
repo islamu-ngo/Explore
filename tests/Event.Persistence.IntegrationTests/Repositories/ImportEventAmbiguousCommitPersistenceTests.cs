@@ -90,7 +90,6 @@ public sealed class ImportEventAmbiguousCommitPersistenceTests(PostgreSqlContain
         var request = new ImportEventRequestDto
         {
             Title = "Committed import",
-            TenantId = tenant.Id,
             OwnerActorId = actor.Id,
             ProvenanceSource = "integration-test",
             ProvenanceExternalId = Guid.NewGuid().ToString("N"),
@@ -101,7 +100,7 @@ public sealed class ImportEventAmbiguousCommitPersistenceTests(PostgreSqlContain
             }
         };
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = tenant.Id }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(await context.Events.CountAsync(entity => entity.Id == result.Id)).IsEqualTo(1);

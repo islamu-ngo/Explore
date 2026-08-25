@@ -5,12 +5,12 @@ using System;
 
 namespace Explore.Application.DTOs.EventSeries;
 
-public class CreateEventSeriesDto
+public sealed record CreateEventSeriesDto
 {
-    public required string Title { get; set; }
-    public string? Description { get; set; }
-    public string? Slug { get; set; }
-    public Guid? FeaturedImageId { get; set; }
-    public Guid ActorId { get; set; }
-    public bool IsPublished { get; set; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
+    public string? Slug { get; init; }
+    public Guid? FeaturedImageId { get; init; }
+    public Guid ActorId { get; init; }
+    public bool IsPublished { get; init; }
 }

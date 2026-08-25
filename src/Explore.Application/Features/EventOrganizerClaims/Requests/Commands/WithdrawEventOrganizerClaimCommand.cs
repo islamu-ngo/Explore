@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventOrganizerClaim, AuthorizationActions.Events.WithdrawOrganizerClaim)]
-public sealed class WithdrawEventOrganizerClaimCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record WithdrawEventOrganizerClaimCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid ClaimId { get; init; }

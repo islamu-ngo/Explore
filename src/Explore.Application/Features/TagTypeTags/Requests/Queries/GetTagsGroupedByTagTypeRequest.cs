@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.TagTypeTags.Requests.Queries;
 
-public class GetTagsGroupedByTagTypeRequest : IRequest<List<TagTypeWithTagsDto>>
+public sealed record GetTagsGroupedByTagTypeRequest : IRequest<List<TagTypeWithTagsDto>>
 {
 }

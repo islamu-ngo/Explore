@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public class GetSpeakersBySessionRequest : IRequest<List<EventSessionSpeakerListDto>>, ISecureRequest
+public sealed record GetSpeakersBySessionRequest : IRequest<List<EventSessionSpeakerListDto>>, ISecureRequest
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
 }

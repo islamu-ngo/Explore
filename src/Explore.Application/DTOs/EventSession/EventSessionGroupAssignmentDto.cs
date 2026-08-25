@@ -5,17 +5,17 @@ using System;
 
 namespace Explore.Application.DTOs.EventSession;
 
-public class EventSessionGroupAssignmentDto
+public sealed record EventSessionGroupAssignmentDto
 {
-    public Guid EventSessionGroupId { get; set; }
+    public Guid EventSessionGroupId { get; init; }
 
-    public required string Name { get; set; }
+    public required string Name { get; init; }
 
-    public string? Slug { get; set; }
+    public string? Slug { get; init; }
 
-    public string? Color { get; set; }
+    public string? Color { get; init; }
 
-    public bool IsPrimary { get; set; }
+    public bool IsPrimary { get; init; }
 
-    public int SortOrder { get; set; }
+    public int SortOrder { get; init; }
 }

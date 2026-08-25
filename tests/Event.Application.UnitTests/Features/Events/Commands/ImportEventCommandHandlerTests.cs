@@ -20,6 +20,7 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 public sealed class ImportEventCommandHandlerTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 20, 12, 0, 0, TimeSpan.Zero);
+    private static readonly Guid TenantId = Guid.NewGuid();
 
     [Test]
     public async Task Handle_WhenImportOmitsPublicationFields_CreatesDraftWithStructuralDefaults()
@@ -43,12 +44,13 @@ public sealed class ImportEventCommandHandlerTests
             TimeProvider.System);
 
         var request = CreateValidRequest();
-        request.VisibilityTypeId = null;
-        request.EventFormatId = null;
+        request = request with { VisibilityTypeId = null };
+        request = request with { EventFormatId = null };
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Event imported successfully.");
         await eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.EventStatusId == (int)EventStatusEnum.Draft
             && entity.VisibilityTypeId == (int)VisibilityTypeEnum.Private
@@ -59,7 +61,7 @@ public sealed class ImportEventCommandHandlerTests
             && entity.ParticipationConfiguration != null
             && entity.ParticipationConfiguration.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.InformationOnly
             && entity.ParticipationConfiguration.AdvanceRegistrationObligationId == (int)AdvanceRegistrationObligationEnum.NotApplicable));
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -84,7 +86,7 @@ public sealed class ImportEventCommandHandlerTests
             new EventLifecycleReadinessEvaluator(),
             TimeProvider.System);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(new ImportEventCommand { Request = CreateValidRequest() }, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(new ImportEventCommand { Request = CreateValidRequest(), TenantId = TenantId }, CancellationToken.None));
 
         await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -117,13 +119,15 @@ public sealed class ImportEventCommandHandlerTests
             policyProvider,
             new EventLifecycleReadinessEvaluator(),
             TimeProvider.System);
-        var request = CreateValidRequest();
+        var request = CreateValidRequest() with { VisibilityTypeId = (int)VisibilityTypeEnum.Public };
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(cacheObservedCommit).IsTrue();
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+        await eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.VisibilityTypeId == (int)VisibilityTypeEnum.Public));
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -162,7 +166,7 @@ public sealed class ImportEventCommandHandlerTests
             new FixedTimeProvider(Now));
         var request = CreateValidRequest();
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(createdEntities).HasCount().EqualTo(2);
@@ -175,7 +179,7 @@ public sealed class ImportEventCommandHandlerTests
         await Assert.That(createdEntities[0].ParticipationConfiguration!.CreatedAt).IsEqualTo(Now.UtcDateTime);
         await Assert.That(createdEntities[0].ParticipationConfiguration!.CreatedAt)
             .IsEqualTo(createdEntities[1].ParticipationConfiguration!.CreatedAt);
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -236,15 +240,16 @@ public sealed class ImportEventCommandHandlerTests
             new EventLifecycleReadinessEvaluator(),
             new FixedTimeProvider(Now));
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Event imported successfully.");
         await Assert.That(result.Id).IsEqualTo(capturedEventId);
         await Assert.That(committedEvent!.Id).IsEqualTo(capturedEventId);
-        await Assert.That(committedEvent.TenantId).IsEqualTo(request.TenantId);
+        await Assert.That(committedEvent.TenantId).IsEqualTo(TenantId);
         await eventRepository.Received(2).GetById(capturedEventId);
         await eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -316,7 +321,7 @@ public sealed class ImportEventCommandHandlerTests
             new EventLifecycleReadinessEvaluator(),
             new FixedTimeProvider(Now));
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_validation_failed");
@@ -340,9 +345,9 @@ public sealed class ImportEventCommandHandlerTests
             TimeProvider.System);
 
         var request = CreateValidRequest();
-        request.ProvenanceSource = "";
+        request = request with { ProvenanceSource = "" };
 
-        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_validation_failed");
@@ -366,7 +371,7 @@ public sealed class ImportEventCommandHandlerTests
             new EventLifecycleReadinessEvaluator(),
             TimeProvider.System);
 
-        var result = await handler.Handle(new ImportEventCommand { Request = CreateValidRequest() }, CancellationToken.None);
+        var result = await handler.Handle(new ImportEventCommand { Request = CreateValidRequest(), TenantId = TenantId }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_readiness_failed");
@@ -390,7 +395,6 @@ public sealed class ImportEventCommandHandlerTests
     private static ImportEventRequestDto CreateValidRequest() => new()
     {
         Title = "Imported event",
-        TenantId = Guid.NewGuid(),
         OwnerActorId = Guid.NewGuid(),
         ProvenanceSource = "legacy-system",
         ProvenanceExternalId = "legacy-123",

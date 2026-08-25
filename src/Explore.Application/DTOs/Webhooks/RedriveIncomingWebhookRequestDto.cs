@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class RedriveIncomingWebhookRequestDto
+public sealed record RedriveIncomingWebhookRequestDto
 {
-    public int ExpectedProcessingGeneration { get; set; }
+    public int ExpectedProcessingGeneration { get; init; }
 
-    public string Reason { get; set; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
 }

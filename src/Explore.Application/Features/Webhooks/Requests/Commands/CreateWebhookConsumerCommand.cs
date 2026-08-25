@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Create)]
-public sealed class CreateWebhookConsumerCommand
+public sealed record CreateWebhookConsumerCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookOwnerScopedRequest
 {
     public Guid? OwnerId { get; init; }

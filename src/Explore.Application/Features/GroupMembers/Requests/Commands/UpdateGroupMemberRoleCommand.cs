@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.GroupMembers.Requests.Commands;
 
-public class UpdateGroupMemberRoleCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateGroupMemberRoleCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required UpdateGroupMemberRoleDto UpdateGroupMemberRoleDto { get; set; }
-    public string? RequesterUserId { get; set; }
+    public required UpdateGroupMemberRoleDto UpdateGroupMemberRoleDto { get; init; }
+    public string? RequesterUserId { get; init; }
 }

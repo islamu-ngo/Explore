@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookConsumerDto
+public sealed record WebhookConsumerDto
 {
     public Guid Id { get; init; }
 
@@ -54,7 +54,7 @@ public sealed class WebhookConsumerDto
     public DateTime? UpdatedAt { get; init; }
 }
 
-public sealed class WebhookProviderCapabilityDto
+public sealed record WebhookProviderCapabilityDto
 {
     public int CapabilityId { get; init; }
 

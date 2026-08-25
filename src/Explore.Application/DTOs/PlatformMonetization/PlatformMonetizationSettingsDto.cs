@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.PlatformMonetization;
 
-public sealed class PlatformMonetizationSettingsDto
+public sealed record PlatformMonetizationSettingsDto
 {
     public bool FeeEnabled { get; init; }
     public int FeeBasisPoints { get; init; }
@@ -16,7 +16,7 @@ public sealed class PlatformMonetizationSettingsDto
     public int ContributionVersion { get; init; }
 }
 
-public sealed class UpdatePlatformMonetizationSettingsDto
+public sealed record UpdatePlatformMonetizationSettingsDto
 {
     public bool FeeEnabled { get; init; }
     public int FeeBasisPoints { get; init; }
@@ -29,13 +29,13 @@ public sealed class UpdatePlatformMonetizationSettingsDto
     public int ExpectedContributionVersion { get; init; }
 }
 
-public sealed class PlatformFeeFixedChargeDto
+public sealed record PlatformFeeFixedChargeDto
 {
     public string CurrencyCode { get; init; } = string.Empty;
     public long AmountMinor { get; init; }
 }
 
-public sealed class PlatformContributionOptionDto
+public sealed record PlatformContributionOptionDto
 {
     public int ContributionBasisPoints { get; init; }
     public int SortOrder { get; init; }

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class OspreySignalCallbackRequestDto
+public sealed record OspreySignalCallbackRequestDto
 {
     public Guid TenantId { get; init; }
     public Guid ReportId { get; init; }

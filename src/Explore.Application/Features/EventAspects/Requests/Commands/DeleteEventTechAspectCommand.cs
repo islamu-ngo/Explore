@@ -11,12 +11,12 @@ using MediatR;
 /// Command to delete the Tech aspect from an event.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public class DeleteEventTechAspectCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteEventTechAspectCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>
     /// The event ID to remove the Tech aspect from.
     /// </summary>
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

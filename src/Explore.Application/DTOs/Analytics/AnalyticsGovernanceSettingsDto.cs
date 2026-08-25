@@ -5,31 +5,31 @@ using Explore.Domain.Enums.Analytics;
 
 namespace Explore.Application.DTOs.Analytics;
 
-public sealed class AnalyticsGovernanceSettingsDto
+public sealed record AnalyticsGovernanceSettingsDto
 {
     // Provider & basic config (read-only context from environment/secrets)
-    public string Provider { get; set; } = "none";
-    public bool Enabled { get; set; }
-    public string? EndpointUrl { get; set; }
-    public bool HasApiKey { get; set; }
+    public string Provider { get; init; } = "none";
+    public bool Enabled { get; init; }
+    public string? EndpointUrl { get; init; }
+    public bool HasApiKey { get; init; }
 
     // Cookie consent & storage governance (admin-editable)
-    public bool CookieConsentEnabled { get; set; }
-    public DeclineBehavior DeclineBehavior { get; set; } = DeclineBehavior.Cookieless;
-    public int ConsentCookieLifetimeDays { get; set; } = 180;
-    public bool GlobalDisableClientTracking { get; set; }
+    public bool CookieConsentEnabled { get; init; }
+    public DeclineBehavior DeclineBehavior { get; init; } = DeclineBehavior.Cookieless;
+    public int ConsentCookieLifetimeDays { get; init; } = 180;
+    public bool GlobalDisableClientTracking { get; init; }
 
     // PostHog privacy & feature controls (admin-editable)
-    public PosthogCookielessMode PosthogCookielessMode { get; set; } = PosthogCookielessMode.OnReject;
-    public PosthogPersonProfiles PosthogPersonProfiles { get; set; } = PosthogPersonProfiles.IdentifiedOnly;
-    public bool PosthogSessionReplay { get; set; }
-    public bool PosthogAutocapture { get; set; }
-    public bool PosthogHeatmaps { get; set; }
-    public bool PosthogToolbar { get; set; }
+    public PosthogCookielessMode PosthogCookielessMode { get; init; } = PosthogCookielessMode.OnReject;
+    public PosthogPersonProfiles PosthogPersonProfiles { get; init; } = PosthogPersonProfiles.IdentifiedOnly;
+    public bool PosthogSessionReplay { get; init; }
+    public bool PosthogAutocapture { get; init; }
+    public bool PosthogHeatmaps { get; init; }
+    public bool PosthogToolbar { get; init; }
 
     // Computed advisory info (read-only, computed by resolver)
-    public bool CookieBannerRequired { get; set; }
-    public bool CanRunBeforeConsent { get; set; }
-    public string StorageProfile { get; set; } = "Unknown";
-    public List<string> ResolveReasons { get; set; } = [];
+    public bool CookieBannerRequired { get; init; }
+    public bool CanRunBeforeConsent { get; init; }
+    public string StorageProfile { get; init; } = "Unknown";
+    public List<string> ResolveReasons { get; init; } = [];
 }

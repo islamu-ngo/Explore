@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomProperties.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class SetEventCustomPropertyValueCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record SetEventCustomPropertyValueCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required SetEventCustomPropertyValueDto ValueDto { get; set; }
+    public required SetEventCustomPropertyValueDto ValueDto { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

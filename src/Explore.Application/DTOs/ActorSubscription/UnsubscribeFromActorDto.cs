@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.ActorSubscription;
 
-public class UnsubscribeFromActorDto
+public sealed record UnsubscribeFromActorDto
 {
-    public Guid TargetActorId { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid TargetActorId { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

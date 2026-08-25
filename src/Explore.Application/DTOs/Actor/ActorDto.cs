@@ -10,15 +10,15 @@ namespace Explore.Application.DTOs.Actor;
 /// Full Actor details with navigation properties
 /// Used for GET /api/actor/{id}
 /// </summary>
-public class ActorDto
+public sealed record ActorDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 
     // ActorType relationship with i18n support
-    public int ActorTypeId { get; set; }
-    public string? ActorTypeMasterCode { get; set; } // For i18n with Tolgee
-    public string? ActorTypeFullName { get; set; } // Fallback default
+    public int ActorTypeId { get; init; }
+    public string? ActorTypeMasterCode { get; init; } // For i18n with Tolgee
+    public string? ActorTypeFullName { get; init; } // Fallback default
 
     [JsonIgnore]
     public Guid TenantId { get; set; }
@@ -27,14 +27,14 @@ public class ActorDto
     /// The User ID this Actor belongs to (if User actor).
     /// </summary>
     [JsonIgnore]
-    public Guid? UserId { get; set; }
+    public Guid? UserId { get; init; }
 
     /// <summary>
     /// The Organization ID this Actor belongs to (if Organization actor).
     /// </summary>
-    public Guid? OrganizationId { get; set; }
+    public Guid? OrganizationId { get; init; }
 
-    public Guid? GroupId { get; set; }
+    public Guid? GroupId { get; init; }
 
     [JsonIgnore]
     public bool IsLocallyDiscoverable { get; set; }
@@ -43,32 +43,32 @@ public class ActorDto
 
     // ProfilePicture relationship (optional)
     [JsonIgnore]
-    public Guid? ProfilePictureId { get; set; }
-    public string? ProfilePictureCid { get; set; }
+    public Guid? ProfilePictureId { get; init; }
+    public string? ProfilePictureCid { get; init; }
     public string? ProfilePictureUri { get; set; }
 
     // Federation identifiers (ATProto/ActivityPub)
-    public string? Did { get; set; } // Decentralized identifier (e.g., did:plc:xxx)
-    public string? Handle { get; set; } // Human-readable handle (e.g., user.bsky.social)
+    public string? Did { get; init; } // Decentralized identifier (e.g., did:plc:xxx)
+    public string? Handle { get; init; } // Human-readable handle (e.g., user.bsky.social)
 
     // DidCustodyType relationship with i18n support (optional)
-    public int? DidCustodyTypeId { get; set; }
-    public string? DidCustodyTypeMasterCode { get; set; } // For i18n with Tolgee
-    public string? DidCustodyTypeFullName { get; set; } // Fallback default
+    public int? DidCustodyTypeId { get; init; }
+    public string? DidCustodyTypeMasterCode { get; init; } // For i18n with Tolgee
+    public string? DidCustodyTypeFullName { get; init; } // Fallback default
 
     // Appearance
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public string? BannerColor { get; set; }
     [JsonIgnore]
-    public Guid? BannerPictureId { get; set; }
+    public Guid? BannerPictureId { get; init; }
     public string? BannerPictureUri { get; set; }
     [JsonIgnore]
-    public Guid? BackgroundImageId { get; set; }
+    public Guid? BackgroundImageId { get; init; }
     public string? BackgroundImageUri { get; set; }
 
     // Federation metadata
-    public string? PdsHost { get; set; } // Personal Data Server host
+    public string? PdsHost { get; init; } // Personal Data Server host
     public string? Description { get; set; }
-    public DateTime? IndexedAt { get; set; }
+    public DateTime? IndexedAt { get; init; }
 }

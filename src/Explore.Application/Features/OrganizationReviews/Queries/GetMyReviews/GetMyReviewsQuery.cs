@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.OrganizationReviews.Queries.GetMyReviews;
 
-public class GetMyReviewsQuery : IRequest<List<OrganizationReviewDto>>
-{
-    public Guid UserId { get; set; }
-}
+public sealed record GetMyReviewsQuery(Guid UserId = default) : IRequest<List<OrganizationReviewDto>>;

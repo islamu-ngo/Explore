@@ -46,7 +46,7 @@ public sealed class InstanceSettingGroupApiTests
                 query.Category == AtprotoFederationSettingDefinitions.Category
                 && query.Scope == SettingScope.Instance
                 && query.IncludedKeys != null
-                && query.IncludedKeys.SetEquals(AtprotoFederationSettingDefinitions.AdministratorKeys)),
+                && query.IncludedKeys.SequenceEqual(AtprotoFederationSettingDefinitions.AdministratorKeys)),
             Arg.Any<CancellationToken>());
         await assembler.Received(1).ToResource(settings, Arg.Any<HttpContext>());
     }

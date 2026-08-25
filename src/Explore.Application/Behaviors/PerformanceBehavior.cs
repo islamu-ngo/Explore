@@ -1,3 +1,6 @@
+// ABOUTME: Logs bounded metadata for MediatR requests that exceed the slow-operation threshold.
+// ABOUTME: Keeps request payloads and generated record string representations out of logs.
+
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -29,10 +32,10 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
 
         if (elapsedMs > 500)
         {
-            var requestName = typeof(TRequest).Name;
+            var requestType = typeof(TRequest).Name;
             _logger.LogWarning(
-                "Long Running Request: {Name} ({ElapsedMilliseconds}ms) {@Request}",
-                requestName, elapsedMs, request);
+                "Long Running Request: {RequestType} ({ElapsedMilliseconds}ms)",
+                requestType, elapsedMs);
         }
 
         return response;

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Notification;
 
-public class UnreadCountDto
+public sealed record UnreadCountDto
 {
-    public int UnreadCount { get; set; }
+    public int UnreadCount { get; init; }
 }

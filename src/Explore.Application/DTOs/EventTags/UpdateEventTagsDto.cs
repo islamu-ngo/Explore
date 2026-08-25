@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.EventTags;
 
-public class UpdateEventTagsDto
+public sealed record UpdateEventTagsDto
 {
-    public UpdateEventTagsEventDto? Event { get; set; }
-    public UpdateEventTagsTagDto? Tag { get; set; }
+    public UpdateEventTagsEventDto? Event { get; init; }
+    public UpdateEventTagsTagDto? Tag { get; init; }
 }
 
-public class UpdateEventTagsEventDto
+public sealed record UpdateEventTagsEventDto
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 }
 
-public class UpdateEventTagsTagDto
+public sealed record UpdateEventTagsTagDto
 {
-    public Guid TagId { get; set; }
+    public Guid TagId { get; init; }
 }

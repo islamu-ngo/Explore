@@ -8,7 +8,7 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 > This document defines naming conventions, organizational patterns, and architectural decisions.
 > For code examples and implementation patterns, see the relevant skills in `.agents/skills/`.
 
-**Last Updated**: 2026-04-19
+**Last Updated**: 2026-08-24
 
 ---
 
@@ -21,8 +21,9 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 5. [Design Principles](#design-principles)
 6. [Pattern Selection Guide](#pattern-selection-guide)
 7. [Decision Framework](#decision-framework)
-8. [API Contract Rules](#api-contract-rules)
-9. [CI/CD Governance](#cicd-governance)
+8. [Canonical Record-Selection Policy](#canonical-record-selection-policy)
+9. [API Contract Rules](#api-contract-rules)
+10. [CI/CD Governance](#cicd-governance)
 
 ---
 
@@ -276,6 +277,34 @@ Explore.Persistence/
 | Repository method | Standard queries, reusable |
 | Handler-specific query | One-off, optimized for use case |
 | Specification pattern | Complex, composable filters |
+
+---
+
+## Canonical Record-Selection Policy
+
+Use records for handwritten contracts whose meaning is immutable data with value equality. Apply this policy by horizontal Clean Architecture ownership only: Domain, then Application, then API/OpenAPI, then generated client/Blazor; do not organize the migration as feature vertical slices.
+
+### Selection
+
+- A concrete handwritten MediatR request defaults to a sealed record. A retained class needs a current, reasoned shrinking-baseline entry.
+- Use a positional record for a short, stable contract with semantically distinct parameters. Use a nominal record with `init`/`required` members for long or optional contracts, named-construction safety, attributes, or PATCH presence semantics.
+- Use a `readonly record struct` only for a small, self-contained value with correct copy/value semantics; use a sealed record class for reference-bearing value data when appropriate.
+
+### Intentional Classes
+
+Retain classes for generated NSwag contracts; EF entities and outbox lifecycle entities; services, handlers, controllers, and validators; mutable Blazor edit/component state; and `BaseCommandResponse<T>`. Framework population, custom conversion, or inheritance retains class semantics only when a verified binding/framework constraint requires it; record-compatible abstract/concrete inheritance hierarchies remain record candidates. These are exclusions by semantics or ownership, not record-policy debt.
+
+### Immutability, Equality, and Logging
+
+Records are shallowly immutable. A contract that promises immutable collection data must expose serializer-compatible read-only members and defensively copy mutable inputs. Record equality does not make array or list contents sequence-equal; test sequence semantics explicitly where they matter. Never log, interpolate, or destructure a whole record; log only bounded, approved scalar diagnostics.
+
+### Trusted Authority
+
+`UserId` and `TenantId` that represent the current caller or current tenant are never body authority. Introduce them from established server principal, tenant, route, or trusted-adapter context only when the request's authorization or business intent uses them. A body may carry a legitimate target ID only for an operation that manages that target, and the server must authorize it independently.
+
+### Ratchet and TDD
+
+The record-contract and body-authority baselines are exact shrinking inventories: missing new debt and stale or resolved entries both fail. Before a behavioral conversion, write focused tests for consumed equality, one-fact `with` variants, JSON construction, PATCH omitted/clear/replacement behavior, and authority trust boundaries; test machine-consumed behavior rather than generated record prose.
 
 ---
 

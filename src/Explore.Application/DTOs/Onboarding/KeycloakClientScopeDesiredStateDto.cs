@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakClientScopeDesiredStateDto
+public sealed record KeycloakClientScopeDesiredStateDto
 {
-    public string Name { get; set; } = string.Empty;
-    public string Protocol { get; set; } = "openid-connect";
+    public string Name { get; init; } = string.Empty;
+    public string Protocol { get; init; } = "openid-connect";
     public IReadOnlyList<string> RealmRoleMappings { get; set; } = [];
 }

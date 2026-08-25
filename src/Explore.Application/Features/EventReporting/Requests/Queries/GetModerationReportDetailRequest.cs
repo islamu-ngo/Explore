@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.EventReporting.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetModerationReportDetailRequest : IRequest<ModerationReportDetailDto?>, ISecureRequest
+public sealed record GetModerationReportDetailRequest : IRequest<ModerationReportDetailDto?>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid ReportId { get; init; }

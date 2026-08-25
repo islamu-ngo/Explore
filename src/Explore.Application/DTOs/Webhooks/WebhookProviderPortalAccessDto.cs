@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookProviderPortalAccessDto
+public sealed record WebhookProviderPortalAccessDto
 {
     public required string Url { get; init; }
 

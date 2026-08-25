@@ -52,26 +52,34 @@ public sealed class UpdateEventCategoriesCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithMismatchedRouteContext_UsesPersistedAuthorizationContextBeforeMutation()
+    public async Task Handle_WithForgedContext_UsesPersistedContextWithoutMutatingOriginalRequest()
     {
         var entity = CreateEventCategory();
         _repository.GetById(entity.Id).Returns(entity);
         _eventRepository.GetById(entity.EventId).Returns(CreateEvent(entity.EventId, entity.TenantId));
         var newCategoryId = Guid.NewGuid();
+        var forgedEventId = Guid.NewGuid();
+        var forgedTenantId = Guid.NewGuid();
         _categoryRepository.GetById(newCategoryId).Returns(CreateCategory(newCategoryId, entity.TenantId));
         _repository.GetByEventAndCategory(entity.EventId, newCategoryId, entity.Id).Returns((Explore.Domain.EventCategories?)null);
         var command = CreateCommand(entity, new UpdateEventCategoriesDto
         {
             Category = new UpdateEventCategoriesCategoryDto { CategoryId = newCategoryId }
-        });
-        command.EventId = Guid.NewGuid();
+        }) with
+        {
+            EventId = forgedEventId,
+            TenantId = forgedTenantId,
+        };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(command.EventId).IsEqualTo(entity.EventId);
-        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await Assert.That(command.EventId).IsEqualTo(forgedEventId);
+        await Assert.That(command.TenantId).IsEqualTo(forgedTenantId);
+        await _repository.Received(1).GetByEventAndCategory(entity.EventId, newCategoryId, entity.Id);
         await _repository.Received(1).Update(entity);
+        await _cache.Received(1).RemoveAsync($"event:detail:{entity.EventId}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(entity.TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -85,7 +93,7 @@ public sealed class UpdateEventCategoriesCommandHandlerTests
         {
             Category = new UpdateEventCategoriesCategoryDto { CategoryId = Guid.NewGuid() }
         });
-        command.ExpectedConcurrencyStamp = Guid.NewGuid();
+        command = command with { ExpectedConcurrencyStamp = Guid.NewGuid() };
 
         await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
             .Throws<ConcurrencyConflictException>();

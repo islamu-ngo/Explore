@@ -8,9 +8,8 @@ using MediatR;
 
 namespace Explore.Application.Features.CustomPropertyDefinitions.Requests.Queries;
 
-public class GetCustomPropertyDefinitionListRequest : IRequest<PaginatedResult<CustomPropertyDefinitionListDto>>
-{
-    public EntityTypeName EntityTypeName { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = PaginatedResult<CustomPropertyDefinitionListDto>.DefaultPageSize;
-}
+public sealed record GetCustomPropertyDefinitionListRequest(
+    EntityTypeName EntityTypeName = default,
+    int PageNumber = 1,
+    int PageSize = PaginatedResult<CustomPropertyDefinitionListDto>.DefaultPageSize
+) : IRequest<PaginatedResult<CustomPropertyDefinitionListDto>>;

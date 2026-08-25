@@ -4,8 +4,8 @@ using System.Text;
 
 namespace Explore.Application.DTOs.Event;
 
-public class EventSpecificDto
+public sealed record EventSpecificDto
 {
-    public int EventTypeId { get; set; }
-    public required string EventTypeFullName { get; set; }
+    public int EventTypeId { get; init; }
+    public required string EventTypeFullName { get; init; }
 }

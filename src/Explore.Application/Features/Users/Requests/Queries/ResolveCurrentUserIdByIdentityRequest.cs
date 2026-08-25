@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Queries;
 
-public class ResolveCurrentUserIdByIdentityRequest : IRequest<Guid?>
+public sealed record ResolveCurrentUserIdByIdentityRequest : IRequest<Guid?>
 {
     public required string Provider { get; init; }
     public required string ProviderId { get; init; }

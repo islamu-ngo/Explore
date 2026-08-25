@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionStatuses.Requests.Queries;
 
-public class GetEventSessionStatusDetailsRequest : IRequest<EventSessionStatusDto>
+public sealed record GetEventSessionStatusDetailsRequest : IRequest<EventSessionStatusDto>
 {
-    public int Id { get; set; }
+    public int Id { get; init; }
 }

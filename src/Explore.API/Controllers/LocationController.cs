@@ -139,9 +139,10 @@ public class LocationController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationDto location, CancellationToken cancellationToken = default)
     {
-        var command = new CreateLocationCommand { LocationDto = location };
+        var command = new CreateLocationCommand { LocationDto = location, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

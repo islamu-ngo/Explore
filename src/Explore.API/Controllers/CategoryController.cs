@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Category;
 using Explore.Application.Features.Categories.Requests.Commands;
 using Explore.Application.Features.Categories.Requests.Queries;
@@ -46,15 +47,18 @@ public class CategoryController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<CategoryController> _logger;
     private readonly IResourceAssembler<CategoryDto, CategoryListDto> _resourceAssembler;
+    private readonly ITenantContext _tenantContext;
 
     public CategoryController(
         IMediator mediator,
         ILogger<CategoryController> logger,
-        IResourceAssembler<CategoryDto, CategoryListDto> resourceAssembler)
+        IResourceAssembler<CategoryDto, CategoryListDto> resourceAssembler,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
         _logger = logger;
         _resourceAssembler = resourceAssembler;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -126,9 +130,10 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateCategoryDto category, CancellationToken cancellationToken = default)
     {
-        var command = new CreateCategoryCommand { CategoryDto = category };
+        var command = new CreateCategoryCommand { CategoryDto = category, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

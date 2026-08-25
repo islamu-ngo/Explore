@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Integrations.Listmonk.Requests.Commands;
 
-public sealed class UpdateListmonkIntegrationSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateListmonkIntegrationSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public UpdateListmonkIntegrationSettingsDto Dto { get; set; } = new();
+    public UpdateListmonkIntegrationSettingsDto Dto { get; init; } = new();
 }

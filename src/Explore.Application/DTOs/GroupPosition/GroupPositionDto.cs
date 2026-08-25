@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.GroupPosition;
 
-public class GroupPositionDto
+public sealed record GroupPositionDto
 {
-    public int Id { get; set; }
-    public required string MasterCode { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
+    public int Id { get; init; }
+    public required string MasterCode { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
 }

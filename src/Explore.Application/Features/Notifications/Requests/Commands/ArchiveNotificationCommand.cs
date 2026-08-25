@@ -6,8 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public class ArchiveNotificationCommand : IRequest<BaseCommandResponse<Guid>>
-{
-    public Guid Id { get; set; }
-    public bool Archive { get; set; } = true;
-}
+public sealed record ArchiveNotificationCommand(Guid Id = default, bool Archive = true) : IRequest<BaseCommandResponse<Guid>>;

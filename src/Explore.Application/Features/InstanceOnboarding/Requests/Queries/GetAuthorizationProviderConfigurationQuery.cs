@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetAuthorizationProviderConfigurationQuery : IRequest<AuthorizationProviderConfigurationDto>
+public sealed record GetAuthorizationProviderConfigurationQuery : IRequest<AuthorizationProviderConfigurationDto>
 {
 }

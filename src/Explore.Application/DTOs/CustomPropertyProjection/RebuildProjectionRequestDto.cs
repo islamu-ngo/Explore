@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class RebuildProjectionRequestDto
+public sealed record RebuildProjectionRequestDto
 {
-    public Guid TenantId { get; set; }
-    public int? BatchSize { get; set; }
+    public Guid TenantId { get; init; }
+    public int? BatchSize { get; init; }
 }

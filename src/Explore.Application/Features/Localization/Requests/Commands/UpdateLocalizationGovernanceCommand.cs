@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Commands;
 
-public class UpdateLocalizationGovernanceCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateLocalizationGovernanceCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public UpdateLocalizationGovernanceDto Dto { get; set; } = new();
+    public UpdateLocalizationGovernanceDto Dto { get; init; } = new();
 }

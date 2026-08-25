@@ -10,13 +10,13 @@ using MediatR;
 namespace Explore.Application.Features.Actors.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Actor, AuthorizationActions.Update)]
-public class UpdateActorCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateActorCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid ActorId { get; set; }
+    public Guid ActorId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateActorDto UpdateActorDto { get; set; }
+    public required UpdateActorDto UpdateActorDto { get; init; }
 
     string? ISecureRequest.ResourceId => ActorId.ToString();
 }

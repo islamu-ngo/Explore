@@ -5,40 +5,40 @@ using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.Agenda;
 
-public class AgendaScheduleEntryDto
+public sealed record AgendaScheduleEntryDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     /// <summary>
     /// Discriminator: "Session" or "AgendaItem".
     /// </summary>
-    public required string EntryType { get; set; }
+    public required string EntryType { get; init; }
 
-    public required string Title { get; set; }
-    public string? Description { get; set; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
 
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
 
-    public DateOnly LocalStartDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
-    public int LocalStartMinuteOfDay { get; set; }
-    public int LocalEndMinuteOfDay { get; set; }
+    public DateOnly LocalStartDate { get; init; }
+    public TimeOnly LocalStartTime { get; init; }
+    public TimeOnly LocalEndTime { get; init; }
+    public int LocalStartMinuteOfDay { get; init; }
+    public int LocalEndMinuteOfDay { get; init; }
 
-    public Guid? RoomId { get; set; }
-    public Guid? LocationId { get; set; }
-    public EventLocationPublicDto? EventLocation { get; set; }
+    public Guid? RoomId { get; init; }
+    public Guid? LocationId { get; init; }
+    public EventLocationPublicDto? EventLocation { get; init; }
 
     // Session-specific fields (null for agenda items)
-    public int? MaxAudienceAttendees { get; set; }
-    public int? CurrentAudienceAttendees { get; set; }
-    public int? RegistrationModeId { get; set; }
-    public string? RegistrationModeFullName { get; set; }
+    public int? MaxAudienceAttendees { get; init; }
+    public int? CurrentAudienceAttendees { get; init; }
+    public int? RegistrationModeId { get; init; }
+    public string? RegistrationModeFullName { get; init; }
 
     // AgendaItem-specific fields (null for sessions)
-    public int? KindId { get; set; }
-    public string? KindFullName { get; set; }
+    public int? KindId { get; init; }
+    public string? KindFullName { get; init; }
 
-    public int SortOrder { get; set; }
+    public int SortOrder { get; init; }
 }

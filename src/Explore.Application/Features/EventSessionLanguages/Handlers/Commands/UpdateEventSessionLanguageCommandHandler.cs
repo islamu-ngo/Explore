@@ -55,7 +55,7 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
-        request.EventSessionId = eventSessionLanguage.EventSessionId;
+        request = request with { EventSessionId = eventSessionLanguage.EventSessionId };
 
         if (eventSessionLanguage.EventSessionId != request.EventSessionId)
         {

@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class AbandonWebhookProviderPublicationRequestDto
+public sealed record AbandonWebhookProviderPublicationRequestDto
 {
-    public long ExpectedConcurrencyVersion { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
+    public long ExpectedConcurrencyVersion { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
 }

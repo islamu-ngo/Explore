@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.SupportAccess.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.SupportAccessSession, AuthorizationActions.SupportAccessSessions.Start)]
-public sealed class StartSupportAccessSessionCommand : IRequest<SupportAccessSessionCommandResponseDto>, ISecureRequest
+public sealed record StartSupportAccessSessionCommand : IRequest<SupportAccessSessionCommandResponseDto>, ISecureRequest
 {
     public Guid TargetTenantId { get; init; }
     public Guid? TargetTenantUserId { get; init; }

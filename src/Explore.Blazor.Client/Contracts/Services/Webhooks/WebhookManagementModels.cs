@@ -81,17 +81,43 @@ public static class WebhookHal
         links?.ContainsKey(relation) == true;
 }
 
-public sealed class WebhookManagementSnapshot
+public sealed record WebhookManagementSnapshot
 {
-    public IReadOnlyList<WebhookEventTypeDto> EventTypes { get; init; } = [];
+    private IReadOnlyList<WebhookEventTypeDto> _eventTypes = Array.Empty<WebhookEventTypeDto>();
+    private IReadOnlyList<HalResourceOfWebhookConsumerDto> _consumers = Array.Empty<HalResourceOfWebhookConsumerDto>();
+    private IReadOnlyList<HalResourceOfWebhookEndpointDto> _endpoints = Array.Empty<HalResourceOfWebhookEndpointDto>();
+    private IReadOnlyList<HalResourceOfWebhookMessageDto> _messages = Array.Empty<HalResourceOfWebhookMessageDto>();
+    private IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto> _deliveryAttempts = Array.Empty<HalResourceOfWebhookDeliveryAttemptDto>();
 
-    public IReadOnlyList<HalResourceOfWebhookConsumerDto> Consumers { get; init; } = [];
+    public IReadOnlyList<WebhookEventTypeDto> EventTypes
+    {
+        get => _eventTypes;
+        init => _eventTypes = Snapshot(value);
+    }
 
-    public IReadOnlyList<HalResourceOfWebhookEndpointDto> Endpoints { get; init; } = [];
+    public IReadOnlyList<HalResourceOfWebhookConsumerDto> Consumers
+    {
+        get => _consumers;
+        init => _consumers = Snapshot(value);
+    }
 
-    public IReadOnlyList<HalResourceOfWebhookMessageDto> Messages { get; init; } = [];
+    public IReadOnlyList<HalResourceOfWebhookEndpointDto> Endpoints
+    {
+        get => _endpoints;
+        init => _endpoints = Snapshot(value);
+    }
 
-    public IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto> DeliveryAttempts { get; init; } = [];
+    public IReadOnlyList<HalResourceOfWebhookMessageDto> Messages
+    {
+        get => _messages;
+        init => _messages = Snapshot(value);
+    }
+
+    public IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto> DeliveryAttempts
+    {
+        get => _deliveryAttempts;
+        init => _deliveryAttempts = Snapshot(value);
+    }
 
     public bool CanCreateConsumer { get; init; }
 
@@ -111,6 +137,9 @@ public sealed class WebhookManagementSnapshot
             IsSuccess = false,
             ErrorMessage = message
         };
+
+    private static IReadOnlyList<T> Snapshot<T>(IEnumerable<T> values) =>
+        Array.AsReadOnly(values.ToArray());
 }
 
 public sealed record WebhookActionResult(
@@ -130,9 +159,15 @@ public sealed record WebhookPortalResult(
     string Message,
     string? Url = null);
 
-public sealed class WebhookProviderPublicationSnapshot
+public sealed record WebhookProviderPublicationSnapshot
 {
-    public IReadOnlyList<HalResourceOfWebhookProviderPublicationDto> Publications { get; init; } = [];
+    private IReadOnlyList<HalResourceOfWebhookProviderPublicationDto> _publications = Array.Empty<HalResourceOfWebhookProviderPublicationDto>();
+
+    public IReadOnlyList<HalResourceOfWebhookProviderPublicationDto> Publications
+    {
+        get => _publications;
+        init => _publications = Array.AsReadOnly(value.ToArray());
+    }
 
     public bool IsSuccess { get; init; } = true;
 
@@ -146,9 +181,15 @@ public sealed class WebhookProviderPublicationSnapshot
         };
 }
 
-public sealed class WebhookBulkReplaySnapshot
+public sealed record WebhookBulkReplaySnapshot
 {
-    public IReadOnlyList<HalResourceOfWebhookBulkReplayOperationDto> Operations { get; init; } = [];
+    private IReadOnlyList<HalResourceOfWebhookBulkReplayOperationDto> _operations = Array.Empty<HalResourceOfWebhookBulkReplayOperationDto>();
+
+    public IReadOnlyList<HalResourceOfWebhookBulkReplayOperationDto> Operations
+    {
+        get => _operations;
+        init => _operations = Array.AsReadOnly(value.ToArray());
+    }
 
     public bool CanPreview { get; init; }
 

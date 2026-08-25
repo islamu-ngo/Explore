@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Groups.Requests.Commands;
 
-public class DeleteGroupCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record DeleteGroupCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid Id { get; set; }
-    public required string UserId { get; set; }
+    public Guid Id { get; init; }
+    public required string UserId { get; init; }
 }

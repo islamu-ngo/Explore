@@ -5,9 +5,9 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Actor;
 
-public class UpdateActorAppearanceDto
+public sealed record UpdateActorAppearanceDto
 {
-    public OptionalUpdate<string?> BackgroundColor { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<string?> BackgroundEffect { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<string?> BannerColor { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> BackgroundColor { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> BackgroundEffect { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> BannerColor { get; init; } = OptionalUpdate<string?>.Unspecified();
 }

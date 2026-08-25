@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.GroupMember;
 
-public class GroupMemberListDto
+public sealed record GroupMemberListDto
 {
-    public Guid Id { get; set; }
-    public Guid GroupId { get; set; }
-    public string? GroupFullName { get; set; }
-    public Guid UserId { get; set; }
-    public string? UserEmail { get; set; }
-    public string? UserFullName { get; set; }
-    public int RoleId { get; set; }
-    public string? RoleName { get; set; }
+    public Guid Id { get; init; }
+    public Guid GroupId { get; init; }
+    public string? GroupFullName { get; init; }
+    public Guid UserId { get; init; }
+    public string? UserEmail { get; init; }
+    public string? UserFullName { get; init; }
+    public int RoleId { get; init; }
+    public string? RoleName { get; init; }
 
     // Position
-    public int? GroupPositionId { get; set; }
-    public string? GroupPositionFullName { get; set; }
+    public int? GroupPositionId { get; init; }
+    public string? GroupPositionFullName { get; init; }
 }

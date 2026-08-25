@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public sealed class ClonePresetRequestDto
+public sealed record ClonePresetRequestDto
 {
     /// <summary>Optional name override for the cloned profile. Defaults to the preset's display name.</summary>
-    public string? Name { get; set; }
+    public string? Name { get; init; }
 }

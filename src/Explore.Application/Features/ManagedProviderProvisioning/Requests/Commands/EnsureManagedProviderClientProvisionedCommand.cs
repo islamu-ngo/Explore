@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.ManagedProviderProvisioning.Requests.Commands;
 
-public class EnsureManagedProviderClientProvisionedCommand : IRequest<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>>
+public sealed record EnsureManagedProviderClientProvisionedCommand : IRequest<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>>
 {
     public ManagedProviderClientProvisioningDto ProvisioningDto { get; init; } = null!;
     public ManagementTenantProvisioningRequestDto? ManagementRequest { get; init; }

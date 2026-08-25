@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class OpenSvixAppPortalRequestDto
+public sealed record OpenSvixAppPortalRequestDto
 {
-    public Guid ConsumerId { get; set; }
+    public Guid ConsumerId { get; init; }
 
-    public int? ExpiresInSeconds { get; set; }
+    public int? ExpiresInSeconds { get; init; }
 }

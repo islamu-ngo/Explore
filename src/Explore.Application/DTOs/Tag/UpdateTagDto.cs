@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.Tag;
 
-public class UpdateTagDto
+public sealed record UpdateTagDto
 {
-    public UpdateTagMasterCodeDto? MasterCode { get; set; }
-    public UpdateTagFullNameDto? FullName { get; set; }
+    public UpdateTagMasterCodeDto? MasterCode { get; init; }
+    public UpdateTagFullNameDto? FullName { get; init; }
 }
 
-public class UpdateTagMasterCodeDto
+public sealed record UpdateTagMasterCodeDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateTagFullNameDto
+public sealed record UpdateTagFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }

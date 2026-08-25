@@ -7,10 +7,10 @@ using MediatR;
 namespace Explore.Application.Features.Users.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.User, AuthorizationActions.Delete)]
-public class DeleteUserCommand : IRequest<PrivacyErasureStartDto>, ISecureRequest
+public sealed record DeleteUserCommand : IRequest<PrivacyErasureStartDto>, ISecureRequest
 {
-    public Guid UserId { get; set; }
-    public Guid IntentId { get; set; }
+    public Guid UserId { get; init; }
+    public Guid IntentId { get; init; }
 
     string? ISecureRequest.ResourceId => UserId.ToString();
 }

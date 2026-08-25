@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.BulkReplay)]
-public sealed class PreviewWebhookBulkReplayQuery : IRequest<WebhookBulkReplayPreviewResult>, ISecureRequest
+public sealed record PreviewWebhookBulkReplayQuery : IRequest<WebhookBulkReplayPreviewResult>, ISecureRequest
 {
     public Guid TenantId { get; init; }
     public DateTime FromUtc { get; init; }

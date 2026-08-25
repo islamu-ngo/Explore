@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.OrganizationMembers.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.OrganizationMember, AuthorizationActions.Update)]
-public class UpdateOrganizationMemberRoleCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateOrganizationMemberRoleCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateOrganizationMemberRoleDto UpdateOrganizationMemberRoleDto { get; set; }
-    public required string RequesterUserId { get; set; }
+    public required UpdateOrganizationMemberRoleDto UpdateOrganizationMemberRoleDto { get; init; }
+    public required string RequesterUserId { get; init; }
 
     string? ISecureRequest.ResourceId => UpdateOrganizationMemberRoleDto.Id.ToString();
 }

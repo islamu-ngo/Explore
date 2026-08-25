@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.RegistrationOrders.Requests.Commands;
 
-public sealed class CreateRegistrationOrderWithHoldCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateRegistrationOrderWithHoldCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid EventId { get; init; }
 
@@ -26,7 +26,14 @@ public sealed class CreateRegistrationOrderWithHoldCommand : IRequest<BaseComman
 
     public int? PlatformContributionBasisPoints { get; init; }
 
-    public required IReadOnlyList<RegistrationOrderLineSelection> Lines { get; init; }
+    private IReadOnlyList<RegistrationOrderLineSelection> _lines =
+        Array.AsReadOnly(Array.Empty<RegistrationOrderLineSelection>());
+
+    public required IReadOnlyList<RegistrationOrderLineSelection> Lines
+    {
+        get => _lines;
+        init => _lines = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record RegistrationOrderLineSelection(

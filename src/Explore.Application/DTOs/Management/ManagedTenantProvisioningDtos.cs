@@ -7,7 +7,7 @@ using Explore.Domain.Enums;
 namespace Explore.Application.DTOs.Management;
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantProvisioningRequestDto
+public sealed record ManagementTenantProvisioningRequestDto
 {
     public const int CurrentSchemaVersion = 1;
 
@@ -26,14 +26,14 @@ public sealed class ManagementTenantProvisioningRequestDto
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantAdministratorDto
+public sealed record ManagementTenantAdministratorDto
 {
     public ManagementTenantExternalIdentityDto? ExternalIdentity { get; init; }
     public ManagementTenantAdministratorInvitationDto? Invitation { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantExternalIdentityDto
+public sealed record ManagementTenantExternalIdentityDto
 {
     public required string IdentityProvider { get; init; }
     public required string Subject { get; init; }
@@ -45,7 +45,7 @@ public sealed class ManagementTenantExternalIdentityDto
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantAdministratorInvitationDto
+public sealed record ManagementTenantAdministratorInvitationDto
 {
     public required string Email { get; init; }
     public required string FirstName { get; init; }
@@ -54,7 +54,7 @@ public sealed class ManagementTenantAdministratorInvitationDto
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantPlanDto
+public sealed record ManagementTenantPlanDto
 {
     public required string Key { get; init; }
     public Guid VersionId { get; init; }
@@ -65,14 +65,14 @@ public sealed class ManagementTenantPlanDto
 public sealed record ManagementTenantQuotaDto(string Key, long Limit);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantDomainIntentDto
+public sealed record ManagementTenantDomainIntentDto
 {
     public string? Subdomain { get; init; }
     public string? CustomDomain { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantBrandingIntentDto
+public sealed record ManagementTenantBrandingIntentDto
 {
     public string? DisplayName { get; init; }
     public string? LogoUrl { get; init; }
@@ -84,7 +84,7 @@ public sealed class ManagementTenantBrandingIntentDto
 public sealed record ManagementTenantInitialSettingDto(string Key, string JsonValue);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantCallbackMetadataDto
+public sealed record ManagementTenantCallbackMetadataDto
 {
     public string? CorrelationId { get; init; }
     public string? CallbackReference { get; init; }

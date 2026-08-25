@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public sealed class CustomPropertyFilterCriterion
+public sealed record CustomPropertyFilterCriterion
 {
     public required string Namespace { get; init; }
 

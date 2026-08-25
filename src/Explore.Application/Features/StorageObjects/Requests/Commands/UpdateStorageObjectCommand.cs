@@ -8,10 +8,10 @@ using MediatR;
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Update)]
-public class UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid StorageObjectId { get; init; }
-    public required UpdateStorageObjectDto StorageObjectDto { get; set; }
+    public required UpdateStorageObjectDto StorageObjectDto { get; init; }
 
     string? ISecureRequest.ResourceId => StorageObjectId.ToString("D");
 }

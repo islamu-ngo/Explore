@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionCustomProperties.Requests.Queries;
 
-public class GetEventSessionCustomPropertyDefinitionDetailsRequest : IRequest<EventSessionCustomPropertyDefinitionDto>
+public sealed record GetEventSessionCustomPropertyDefinitionDetailsRequest : IRequest<EventSessionCustomPropertyDefinitionDto>
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 }

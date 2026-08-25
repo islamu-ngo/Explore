@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.OrganizerPaymentConnections;
 
-public sealed class EventOrganizerPaymentConnectionManagementDto
+public sealed record EventOrganizerPaymentConnectionManagementDto
 {
     public Guid EventId { get; init; }
     public OrganizerPaymentConnectionDto? Connection { get; init; }

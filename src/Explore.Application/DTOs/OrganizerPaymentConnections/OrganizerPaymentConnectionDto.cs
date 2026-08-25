@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.OrganizerPaymentConnections;
 
-public sealed class OrganizerPaymentConnectionDto
+public sealed record OrganizerPaymentConnectionDto
 {
     public int StatusId { get; init; }
     public string? MerchantCountryCode { get; init; }

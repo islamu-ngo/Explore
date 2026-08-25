@@ -75,7 +75,7 @@ public class EventAgendaItemController : ControllerBase
     [ProducesResponseType(typeof(HalCollectionResource<EventAgendaItemListDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<HalCollectionResource<EventAgendaItemListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
     {
-        var items = await _mediator.Send(new GetEventAgendaItemsByEventRequest { EventId = eventId }, cancellationToken);
+        var items = await _mediator.Send(new GetEventAgendaItemsByEventRequest(eventId), cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             items,
@@ -98,7 +98,7 @@ public class EventAgendaItemController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<EventAgendaItemDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var item = await _mediator.Send(new GetEventAgendaItemDetailRequest { Id = id }, cancellationToken);
+        var item = await _mediator.Send(new GetEventAgendaItemDetailRequest(id), cancellationToken);
         if (item == null)
             return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
 

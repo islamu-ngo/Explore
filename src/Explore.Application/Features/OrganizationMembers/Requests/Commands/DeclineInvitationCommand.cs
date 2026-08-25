@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.OrganizationMembers.Requests.Commands;
 
-public class DeclineInvitationCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record DeclineInvitationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid InvitationId { get; set; }
-    public Guid UserId { get; set; }
+    public Guid InvitationId { get; init; }
+    public Guid UserId { get; init; }
 }

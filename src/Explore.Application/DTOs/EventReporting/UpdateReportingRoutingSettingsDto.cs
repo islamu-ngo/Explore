@@ -6,29 +6,29 @@ using Explore.Application.Settings.Groups;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class UpdateReportingRoutingSettingsDto
+public sealed record UpdateReportingRoutingSettingsDto
 {
-    public ReportingRoutingPolicyUpdateDto? Policy { get; set; }
-    public ReportingProviderRoutingUpdateDto? Osprey { get; set; }
-    public ReportingProviderRoutingUpdateDto? Coop { get; set; }
+    public ReportingRoutingPolicyUpdateDto? Policy { get; init; }
+    public ReportingProviderRoutingUpdateDto? Osprey { get; init; }
+    public ReportingProviderRoutingUpdateDto? Coop { get; init; }
 }
 
-public sealed class ReportingRoutingPolicyUpdateDto
+public sealed record ReportingRoutingPolicyUpdateDto
 {
-    public bool ExternalSyncEnabled { get; set; }
-    public EventReportProviderEvidenceMode EvidenceMode { get; set; } = EventReportProviderEvidenceMode.MetadataOnly;
+    public bool ExternalSyncEnabled { get; init; }
+    public EventReportProviderEvidenceMode EvidenceMode { get; init; } = EventReportProviderEvidenceMode.MetadataOnly;
 }
 
-public sealed class ReportingProviderRoutingUpdateDto
+public sealed record ReportingProviderRoutingUpdateDto
 {
-    public bool Enabled { get; set; }
-    public string RoutingMode { get; set; } = ReportingRoutingMode.Both;
-    public string? EndpointUrl { get; set; }
-    public ReportingProviderCredentialsUpdateDto? Credentials { get; set; }
+    public bool Enabled { get; init; }
+    public string RoutingMode { get; init; } = ReportingRoutingMode.Both;
+    public string? EndpointUrl { get; init; }
+    public ReportingProviderCredentialsUpdateDto? Credentials { get; init; }
 }
 
-public sealed class ReportingProviderCredentialsUpdateDto
+public sealed record ReportingProviderCredentialsUpdateDto
 {
-    public string? ApiKey { get; set; }
-    public string? WebhookSecret { get; set; }
+    public string? ApiKey { get; init; }
+    public string? WebhookSecret { get; init; }
 }

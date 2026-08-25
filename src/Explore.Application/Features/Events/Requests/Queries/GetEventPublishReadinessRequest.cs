@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public class GetEventPublishReadinessRequest : IRequest<EventPublishReadinessDto?>, ISecureRequest
+public sealed record GetEventPublishReadinessRequest : IRequest<EventPublishReadinessDto?>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 

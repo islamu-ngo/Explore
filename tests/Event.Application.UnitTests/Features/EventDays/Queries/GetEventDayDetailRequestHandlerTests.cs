@@ -35,7 +35,7 @@ public class GetEventDayDetailRequestHandlerTests
     {
         // Arrange
         var eventDayId = Guid.NewGuid();
-        var request = new GetEventDayDetailRequest { Id = eventDayId };
+        var request = new GetEventDayDetailRequest(eventDayId);
 
         var eventDay = DataBuilder.EventDay.Generate();
         eventDay.Id = eventDayId;
@@ -67,7 +67,7 @@ public class GetEventDayDetailRequestHandlerTests
     {
         // Arrange
         var eventDayId = Guid.NewGuid();
-        var request = new GetEventDayDetailRequest { Id = eventDayId };
+        var request = new GetEventDayDetailRequest(eventDayId);
 
         _eventDayRepository.GetById(eventDayId).Returns((EventDay?)null);
 
@@ -90,7 +90,7 @@ public class GetEventDayDetailRequestHandlerTests
         _eventRepository.IsPubliclyEligibleAsync(eventDay.TenantId, eventDay.EventId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _handler.Handle(
-            new GetEventDayDetailRequest { Id = eventDayId },
+            new GetEventDayDetailRequest(eventDayId),
             CancellationToken.None);
 
         await Assert.That(result).IsNull();

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Commands;
 
-public class ExportFromTmsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record ExportFromTmsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required string LanguageCode { get; set; }
+    public required string LanguageCode { get; init; }
 }

@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class UpdateAuthProviderConfigurationCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateAuthProviderConfigurationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchAuthProviderConfigurationDto Patch { get; set; } = new();
+    public Guid UserId { get; init; }
+    public required PatchAuthProviderConfigurationDto Patch { get; init; } = new();
 }

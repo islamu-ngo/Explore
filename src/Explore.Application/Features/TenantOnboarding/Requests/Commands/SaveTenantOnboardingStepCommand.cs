@@ -5,10 +5,16 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantOnboarding.Requests.Commands;
 
-public class SaveTenantOnboardingStepCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record SaveTenantOnboardingStepCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public int CurrentStep { get; set; }
-    public int TotalSteps { get; set; }
-    public string[] CompletedSteps { get; set; } = Array.Empty<string>();
+    public Guid UserId { get; init; }
+    public int CurrentStep { get; init; }
+    public int TotalSteps { get; init; }
+    private IReadOnlyList<string> _completedSteps = Array.AsReadOnly(Array.Empty<string>());
+
+    public IReadOnlyList<string> CompletedSteps
+    {
+        get => _completedSteps;
+        init => _completedSteps = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }

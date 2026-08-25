@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 
-public class GetEventSessionLanguageDetailsRequest : IRequest<EventSessionLanguageDto>
+public sealed record GetEventSessionLanguageDetailsRequest : IRequest<EventSessionLanguageDto>
 {
-    public int Id { get; set; }
+    public int Id { get; init; }
 }

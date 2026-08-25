@@ -5,40 +5,40 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public class CreateEventTemplateDefinitionDto
+public record CreateEventTemplateDefinitionDto
 {
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public PropertyType PropertyType { get; set; }
-    public bool IsRequired { get; set; }
-    public bool IsMulti { get; set; }
-    public bool IsActive { get; set; } = true;
-    public int SortOrder { get; set; }
-    public ExposureLevel ExposureLevel { get; set; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public PropertyType PropertyType { get; init; }
+    public bool IsRequired { get; init; }
+    public bool IsMulti { get; init; }
+    public bool IsActive { get; init; } = true;
+    public int SortOrder { get; init; }
+    public ExposureLevel ExposureLevel { get; init; }
 
-    public bool IsSearchable { get; set; }
-    public bool IsFilterable { get; set; }
-    public bool IsExportable { get; set; }
-    public bool IsModerationRelevant { get; set; }
-    public bool IsAnalyticsRelevant { get; set; }
-    public bool IsSystemOwned { get; set; }
+    public bool IsSearchable { get; init; }
+    public bool IsFilterable { get; init; }
+    public bool IsExportable { get; init; }
+    public bool IsModerationRelevant { get; init; }
+    public bool IsAnalyticsRelevant { get; init; }
+    public bool IsSystemOwned { get; init; }
 
-    public string? DefaultTextValue { get; set; }
-    public decimal? DefaultNumberValue { get; set; }
-    public bool? DefaultBooleanValue { get; set; }
-    public DateTimeOffset? DefaultDateTimeValue { get; set; }
-    public Guid? DefaultOptionId { get; set; }
+    public string? DefaultTextValue { get; init; }
+    public decimal? DefaultNumberValue { get; init; }
+    public bool? DefaultBooleanValue { get; init; }
+    public DateTimeOffset? DefaultDateTimeValue { get; init; }
+    public Guid? DefaultOptionId { get; init; }
 
-    public int? MinLength { get; set; }
-    public int? MaxLength { get; set; }
-    public string? RegexPattern { get; set; }
-    public decimal? MinNumber { get; set; }
-    public decimal? MaxNumber { get; set; }
-    public DateTimeOffset? MinDateTime { get; set; }
-    public DateTimeOffset? MaxDateTime { get; set; }
-    public string? AllowedUrlSchemes { get; set; }
+    public int? MinLength { get; init; }
+    public int? MaxLength { get; init; }
+    public string? RegexPattern { get; init; }
+    public decimal? MinNumber { get; init; }
+    public decimal? MaxNumber { get; init; }
+    public DateTimeOffset? MinDateTime { get; init; }
+    public DateTimeOffset? MaxDateTime { get; init; }
+    public string? AllowedUrlSchemes { get; init; }
 
-    public List<CreateEventTemplateOptionDto> Options { get; set; } = [];
+    public List<CreateEventTemplateOptionDto> Options { get; init; } = [];
 }

@@ -7,15 +7,21 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Requests.Queries;
 
-public class GetEventSessionListRequest : IRequest<PaginatedResult<EventSessionListDto>>
+public sealed record GetEventSessionListRequest : IRequest<PaginatedResult<EventSessionListDto>>
 {
-    public int PageNumber { get; set; } = 1;
+    public int PageNumber { get; init; } = 1;
 
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; init; } = 20;
 
     // ===== Custom property projection filters (Layer 3 — tenant-gated) =====
 
-    public List<CustomPropertyFilterCriterion>? CustomPropertyFilters { get; set; }
+    private IReadOnlyList<CustomPropertyFilterCriterion>? _customPropertyFilters;
 
-    public string? CustomPropertySearchTerm { get; set; }
+    public IReadOnlyList<CustomPropertyFilterCriterion>? CustomPropertyFilters
+    {
+        get => _customPropertyFilters;
+        init => _customPropertyFilters = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
+
+    public string? CustomPropertySearchTerm { get; init; }
 }

@@ -36,7 +36,7 @@ public class MarkNotificationAsReadCommandHandlerTests
         _currentUserService.UserId.Returns(userId);
         _notificationRepository.MarkAsRead(notificationId, userId).Returns(true);
 
-        var command = new MarkNotificationAsReadCommand { Id = notificationId };
+        var command = new MarkNotificationAsReadCommand(notificationId);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -54,7 +54,7 @@ public class MarkNotificationAsReadCommandHandlerTests
         _currentUserService.UserId.Returns(userId);
         _notificationRepository.MarkAsRead(Arg.Any<Guid>(), userId).Returns(false);
 
-        var command = new MarkNotificationAsReadCommand { Id = Guid.NewGuid() };
+        var command = new MarkNotificationAsReadCommand(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -69,7 +69,7 @@ public class MarkNotificationAsReadCommandHandlerTests
     {
         // Arrange
         _currentUserService.UserId.Returns((Guid?)null);
-        var command = new MarkNotificationAsReadCommand { Id = Guid.NewGuid() };
+        var command = new MarkNotificationAsReadCommand(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

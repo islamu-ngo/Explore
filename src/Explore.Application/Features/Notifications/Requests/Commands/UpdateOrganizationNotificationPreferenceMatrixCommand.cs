@@ -9,10 +9,16 @@ using MediatR;
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Update)]
-public sealed class UpdateOrganizationNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateOrganizationNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid OrganizationId { get; set; }
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
+    public Guid OrganizationId { get; init; }
+    private IReadOnlyList<UpdateNotificationPreferenceCellDto>? _cells;
+
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells
+    {
+        get => _cells;
+        init => _cells = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
 }

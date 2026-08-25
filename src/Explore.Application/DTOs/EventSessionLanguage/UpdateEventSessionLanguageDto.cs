@@ -3,18 +3,18 @@
 
 namespace Explore.Application.DTOs.EventSessionLanguage;
 
-public class UpdateEventSessionLanguageDto
+public sealed record UpdateEventSessionLanguageDto
 {
-    public UpdateEventSessionLanguageSessionDto? Session { get; set; }
-    public UpdateEventSessionLanguageLanguageDto? Language { get; set; }
+    public UpdateEventSessionLanguageSessionDto? Session { get; init; }
+    public UpdateEventSessionLanguageLanguageDto? Language { get; init; }
 }
 
-public class UpdateEventSessionLanguageSessionDto
+public sealed record UpdateEventSessionLanguageSessionDto
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 }
 
-public class UpdateEventSessionLanguageLanguageDto
+public sealed record UpdateEventSessionLanguageLanguageDto
 {
-    public int LanguageId { get; set; }
+    public int LanguageId { get; init; }
 }

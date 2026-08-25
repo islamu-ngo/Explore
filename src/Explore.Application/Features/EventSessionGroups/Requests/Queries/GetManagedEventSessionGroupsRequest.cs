@@ -8,20 +8,20 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionGroups.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventSessionGroupsByEventRequest
+public sealed record GetManagedEventSessionGroupsByEventRequest
     : IRequest<List<EventSessionGroupListDto>>, ISecureRequest
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventSessionGroupDetailRequest
+public sealed record GetManagedEventSessionGroupDetailRequest
     : IRequest<EventSessionGroupDto?>, ISecureRequest
 {
-    public Guid EventId { get; set; }
-    public Guid Id { get; set; }
+    public Guid EventId { get; init; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

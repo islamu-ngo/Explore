@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public sealed class SubscribeCurrentUserWebPushSubscriptionCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record SubscribeCurrentUserWebPushSubscriptionCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public required string DeviceIdentifier { get; init; }
     public required string Endpoint { get; init; }

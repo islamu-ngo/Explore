@@ -95,9 +95,9 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
     {
         var tenantId = Guid.NewGuid();
         var dto = CreateValidDto();
-        dto.Namespace = "tenant.community";
-        dto.Key = "Madhab Id";
-        dto.DisplayName = "Madhab";
+        dto = dto with { Namespace = "tenant.community" };
+        dto = dto with { Key = "Madhab Id" };
+        dto = dto with { DisplayName = "Madhab" };
         var command = new CreateCustomPropertyDefinitionCommand
         {
             DefinitionDto = dto

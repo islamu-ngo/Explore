@@ -12,14 +12,14 @@ namespace Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNav
 /// Returns a boolean indicating success or failure.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateTenantNavLinkCommand : IRequest<BaseCommandResponse<bool>>, ISecureRequest
+public sealed record UpdateTenantNavLinkCommand : IRequest<BaseCommandResponse<bool>>, ISecureRequest
 {
     /// <summary>
     /// DTO containing the updated navigation link data.
     /// </summary>
-    public Guid NavigationLinkId { get; set; }
-    public Guid TenantId { get; set; }
-    public UpdateTenantNavigationLinkDto Update { get; set; } = null!;
+    public Guid NavigationLinkId { get; init; }
+    public Guid TenantId { get; init; }
+    public UpdateTenantNavigationLinkDto Update { get; init; } = null!;
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.ContactShareConsent;
 
-public class SharedContactDto
+public sealed record SharedContactDto
 {
-    public Guid ConsentId { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public DateTime GrantedAt { get; set; }
-    public Guid? SourceEventId { get; set; }
-    public string? SourceEventTitle { get; set; }
-    public string PurposeCode { get; set; } = string.Empty;
+    public Guid ConsentId { get; init; }
+    public string Email { get; init; } = string.Empty;
+    public DateTime GrantedAt { get; init; }
+    public Guid? SourceEventId { get; init; }
+    public string? SourceEventTitle { get; init; }
+    public string PurposeCode { get; init; } = string.Empty;
 }

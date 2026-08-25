@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class OrganizationPolicyDto
+public sealed record OrganizationPolicyDto
 {
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool AllowTenantToOmitVerification { get; set; }

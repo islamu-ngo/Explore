@@ -8,12 +8,17 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class ArchiveControlPlaneTenantPlanVersionCommand(Guid versionId)
+public sealed record ArchiveControlPlaneTenantPlanVersionCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public ArchiveControlPlaneTenantPlanVersionCommand(Guid versionId)
+    {
+        VersionId = versionId;
+    }
+
     public const string SettingKey = "control-plane.tenant-plans";
 
-    public Guid VersionId { get; } = versionId;
+    public Guid VersionId { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

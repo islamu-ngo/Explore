@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class RebuildProjectionResponseDto
+public sealed record RebuildProjectionResponseDto
 {
-    public bool LockAcquired { get; set; }
-    public long RowsProcessed { get; set; }
-    public long RowsFailed { get; set; }
-    public int DrainedDirtyScopes { get; set; }
-    public DateTimeOffset StartedAt { get; set; }
-    public DateTimeOffset CompletedAt { get; set; }
+    public bool LockAcquired { get; init; }
+    public long RowsProcessed { get; init; }
+    public long RowsFailed { get; init; }
+    public int DrainedDirtyScopes { get; init; }
+    public DateTimeOffset StartedAt { get; init; }
+    public DateTimeOffset CompletedAt { get; init; }
 }

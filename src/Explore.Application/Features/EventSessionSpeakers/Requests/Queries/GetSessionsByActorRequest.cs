@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
 
-public class GetSessionsByActorRequest : IRequest<List<EventSessionSpeakerListDto>>
+public sealed record GetSessionsByActorRequest : IRequest<List<EventSessionSpeakerListDto>>
 {
-    public Guid ActorId { get; set; }
+    public Guid ActorId { get; init; }
 }

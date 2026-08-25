@@ -10,6 +10,6 @@ namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 /// Reads the current authorization policy package status, including the revision observed in the
 /// provider's policy store and the recovery action for whatever it found.
 /// </summary>
-public sealed class GetAuthorizationPolicyPackageStatusQuery : IRequest<AuthorizationPolicyPackageStatusDto>
+public sealed record GetAuthorizationPolicyPackageStatusQuery : IRequest<AuthorizationPolicyPackageStatusDto>
 {
 }

@@ -10,9 +10,9 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
-public class RebuildEventCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<RebuildProjectionResponseDto>>, ISecureRequest
+public sealed record RebuildEventCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<RebuildProjectionResponseDto>>, ISecureRequest
 {
-    public required RebuildProjectionRequestDto RequestDto { get; set; }
+    public required RebuildProjectionRequestDto RequestDto { get; init; }
 
     private Guid TenantId => RequestDto?.TenantId ?? Guid.Empty;
 

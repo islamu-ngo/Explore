@@ -6,25 +6,25 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class EventParticipationConfigurationDto
+public sealed record EventParticipationConfigurationDto
 {
-    public Guid EventId { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid EventId { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 
-    public int ParticipationHandlingModeId { get; set; }
-    public string? ParticipationHandlingModeCode { get; set; }
-    public string? ParticipationHandlingModeName { get; set; }
+    public int ParticipationHandlingModeId { get; init; }
+    public string? ParticipationHandlingModeCode { get; init; }
+    public string? ParticipationHandlingModeName { get; init; }
 
-    public int AdvanceRegistrationObligationId { get; set; }
-    public string? AdvanceRegistrationObligationCode { get; set; }
-    public string? AdvanceRegistrationObligationName { get; set; }
+    public int AdvanceRegistrationObligationId { get; init; }
+    public string? AdvanceRegistrationObligationCode { get; init; }
+    public string? AdvanceRegistrationObligationName { get; init; }
 
-    public int? IdentityAccessModeId { get; set; }
-    public string? IdentityAccessModeCode { get; set; }
-    public string? IdentityAccessModeName { get; set; }
+    public int? IdentityAccessModeId { get; init; }
+    public string? IdentityAccessModeCode { get; init; }
+    public string? IdentityAccessModeName { get; init; }
 
-    public GuestRecoveryPolicyEnum? GuestRecoveryPolicy { get; set; }
+    public GuestRecoveryPolicyEnum? GuestRecoveryPolicy { get; init; }
 
     [JsonIgnore]
-    public bool HasValidOptionalQuestionnaire { get; set; }
+    public bool HasValidOptionalQuestionnaire { get; init; }
 }

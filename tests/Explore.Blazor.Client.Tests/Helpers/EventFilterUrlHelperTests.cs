@@ -35,4 +35,17 @@ public class EventFilterUrlHelperTests : IDisposable
         await Assert.That(url).DoesNotContain("OrganizationId=");
         await Assert.That(url).DoesNotContain("GroupId=");
     }
+
+    [Test]
+    public async Task ImmutableFilterStateSupportsVariantsAndSnapshotsInputLists()
+    {
+        var formatIds = new List<int> { 1 };
+        var original = new EventFilterUrlState { SearchTerm = "lecture", FormatIds = formatIds };
+        var revised = original with { SearchTerm = "workshop" };
+        formatIds.Add(2);
+
+        await Assert.That(original.SearchTerm).IsEqualTo("lecture");
+        await Assert.That(revised.SearchTerm).IsEqualTo("workshop");
+        await Assert.That(original.FormatIds).IsEquivalentTo([1]);
+    }
 }

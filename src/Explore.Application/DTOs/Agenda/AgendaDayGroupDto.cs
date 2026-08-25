@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.Agenda;
 
-public class AgendaDayGroupDto
+public sealed record AgendaDayGroupDto
 {
-    public Guid? EventDayId { get; set; }
-    public DateOnly LocalDate { get; set; }
-    public string? Label { get; set; }
-    public string? Description { get; set; }
-    public bool IsPublished { get; set; }
-    public int SortOrder { get; set; }
-    public bool AllowsDayScopeRegistration { get; set; }
+    public Guid? EventDayId { get; init; }
+    public DateOnly LocalDate { get; init; }
+    public string? Label { get; init; }
+    public string? Description { get; init; }
+    public bool IsPublished { get; init; }
+    public int SortOrder { get; init; }
+    public bool AllowsDayScopeRegistration { get; init; }
 
-    public List<AgendaScheduleEntryDto> Entries { get; set; } = [];
+    public List<AgendaScheduleEntryDto> Entries { get; init; } = [];
 }

@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetInstanceOnboardingStatusQuery : IRequest<InstanceOnboardingStatusDto>
+public sealed record GetInstanceOnboardingStatusQuery : IRequest<InstanceOnboardingStatusDto>
 {
 }

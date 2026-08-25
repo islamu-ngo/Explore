@@ -7,7 +7,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Queries;
 
-public class ResolveUserTenantRedirectionRequest : IRequest<UserTenantRedirectionDto>
-{
-    public Guid UserId { get; set; }
-}
+public sealed record ResolveUserTenantRedirectionRequest(Guid UserId = default) : IRequest<UserTenantRedirectionDto>;

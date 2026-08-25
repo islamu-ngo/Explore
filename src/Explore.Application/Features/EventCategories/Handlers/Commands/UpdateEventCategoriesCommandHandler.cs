@@ -57,8 +57,11 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
             return response;
         }
 
-        request.EventId = eventCategories.EventId;
-        request.TenantId = eventCategories.TenantId;
+        request = request with
+        {
+            EventId = eventCategories.EventId,
+            TenantId = eventCategories.TenantId
+        };
 
         if (eventCategories.EventId != request.EventId || eventCategories.TenantId != request.TenantId)
         {

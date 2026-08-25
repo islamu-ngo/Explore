@@ -3,31 +3,31 @@
 
 namespace Explore.Application.DTOs.StorageObject;
 
-public class StorageObjectDto
+public sealed record StorageObjectDto
 {
-    public Guid Id { get; set; }
-    public int FileTypeId { get; set; }
-    public string? FileTypeFullName { get; set; }
-    public string? FileTypeMasterCode { get; set; } // For i18n with Tolgee
-    public required string Uri { get; set; }
-    public required string Provider { get; set; }
-    public required string FullName { get; set; }
-    public required string SafeDisplayName { get; set; }
-    public required string Extension { get; set; }
-    public string? ContentType { get; set; }
-    public string? Sha256Checksum { get; set; }
-    public long Size { get; set; }
-    public required string Visibility { get; set; }
-    public required string Purpose { get; set; }
-    public required string LifecycleState { get; set; }
-    public string? OwningResourceKind { get; set; }
-    public Guid? OwningResourceId { get; set; }
-    public Guid TenantId { get; set; }
-    public string? TenantFullName { get; set; }
-    public Guid? ActorId { get; set; }
-    public string? ActorDisplayName { get; set; }
-    public bool IsDeleted { get; set; }
-    public DateTime? DeletedAt { get; set; }
-    public DateTime? QuarantinedAt { get; set; }
-    public string? QuarantineReason { get; set; }
+    public Guid Id { get; init; }
+    public int FileTypeId { get; init; }
+    public string? FileTypeFullName { get; init; }
+    public string? FileTypeMasterCode { get; init; } // For i18n with Tolgee
+    public required string Uri { get; init; }
+    public required string Provider { get; init; }
+    public required string FullName { get; init; }
+    public required string SafeDisplayName { get; init; }
+    public required string Extension { get; init; }
+    public string? ContentType { get; init; }
+    public string? Sha256Checksum { get; init; }
+    public long Size { get; init; }
+    public required string Visibility { get; init; }
+    public required string Purpose { get; init; }
+    public required string LifecycleState { get; init; }
+    public string? OwningResourceKind { get; init; }
+    public Guid? OwningResourceId { get; init; }
+    public Guid TenantId { get; init; }
+    public string? TenantFullName { get; init; }
+    public Guid? ActorId { get; init; }
+    public string? ActorDisplayName { get; init; }
+    public bool IsDeleted { get; init; }
+    public DateTime? DeletedAt { get; init; }
+    public DateTime? QuarantinedAt { get; init; }
+    public string? QuarantineReason { get; init; }
 }

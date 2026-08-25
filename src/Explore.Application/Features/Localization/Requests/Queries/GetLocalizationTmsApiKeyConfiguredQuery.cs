@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Queries;
 
-public sealed class GetLocalizationTmsApiKeyConfiguredQuery : IRequest<bool>
+public sealed record GetLocalizationTmsApiKeyConfiguredQuery : IRequest<bool>
 {
 }

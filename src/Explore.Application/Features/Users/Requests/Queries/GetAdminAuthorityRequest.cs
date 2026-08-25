@@ -10,7 +10,4 @@ namespace Explore.Application.Features.Users.Requests.Queries;
 /// Query to resolve the admin authority of a user across all hierarchy levels.
 /// Returns <see cref="AdminAuthorityDto"/> with instance, tenant, organization, and group admin status.
 /// </summary>
-public class GetAdminAuthorityRequest : IRequest<AdminAuthorityDto>
-{
-    public Guid UserId { get; set; }
-}
+public sealed record GetAdminAuthorityRequest(Guid UserId = default) : IRequest<AdminAuthorityDto>;

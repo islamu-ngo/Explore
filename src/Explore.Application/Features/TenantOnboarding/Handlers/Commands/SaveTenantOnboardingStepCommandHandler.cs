@@ -62,7 +62,7 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
                 IsCompleted = false,
                 CurrentStep = NormalizeStep(request.CurrentStep, request.TotalSteps),
                 TotalSteps = NormalizeTotalSteps(request.TotalSteps),
-                CompletedStepsJson = SerializeCompletedSteps(request.CompletedSteps),
+                CompletedStepsJson = SerializeCompletedSteps(request.CompletedSteps.ToArray()),
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -70,7 +70,7 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
         {
             onboardingState.CurrentStep = NormalizeStep(request.CurrentStep, request.TotalSteps);
             onboardingState.TotalSteps = NormalizeTotalSteps(request.TotalSteps);
-            onboardingState.CompletedStepsJson = SerializeCompletedSteps(request.CompletedSteps);
+            onboardingState.CompletedStepsJson = SerializeCompletedSteps(request.CompletedSteps.ToArray());
             await _tenantOnboardingStateRepository.Update(onboardingState);
         }
 
@@ -78,7 +78,7 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
         response.Message = "Tenant onboarding progress saved.";
         response.Id = onboardingState.Id;
 
-        await TrackStepAsync(request.UserId, onboardingState.CurrentStep, onboardingState.TotalSteps, request.CompletedSteps, cancellationToken);
+        await TrackStepAsync(request.UserId, onboardingState.CurrentStep, onboardingState.TotalSteps, request.CompletedSteps.ToArray(), cancellationToken);
 
         return response;
     }

@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessions.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public sealed class GetEventSessionAuthorizationContextRequest : IRequest<EventSessionAuthorizationContextDto?>, ISecureRequest
+public sealed record GetEventSessionAuthorizationContextRequest : IRequest<EventSessionAuthorizationContextDto?>, ISecureRequest
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
 }

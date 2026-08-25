@@ -2,9 +2,8 @@ using System;
 
 namespace Explore.Application.DTOs.EventSessionLanguage;
 
-public class CreateEventSessionLanguageDto
+public sealed record CreateEventSessionLanguageDto
 {
-    public Guid EventSessionId { get; set; }
-    public int LanguageId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid EventSessionId { get; init; }
+    public int LanguageId { get; init; }
 }

@@ -70,9 +70,12 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
             return ValidationFailure("Speaker assignment context no longer matches its persisted event session.");
         }
 
-        request.EventSessionId = speaker.EventSessionId;
-        request.EventId = previousSession.EventId;
-        request.TenantId = previousSession.TenantId;
+        request = request with
+        {
+            EventSessionId = speaker.EventSessionId,
+            EventId = previousSession.EventId,
+            TenantId = previousSession.TenantId,
+        };
 
         var targetSessionId = request.SpeakerDto.Session?.EventSessionId ?? speaker.EventSessionId;
         var targetActorId = request.SpeakerDto.Actor?.ActorId ?? speaker.ActorId;

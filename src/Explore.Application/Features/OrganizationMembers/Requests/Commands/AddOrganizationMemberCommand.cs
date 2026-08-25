@@ -8,10 +8,10 @@ using MediatR;
 namespace Explore.Application.Features.OrganizationMembers.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.OrganizationMember, AuthorizationActions.Create)]
-public class AddOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record AddOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required AddOrganizationMemberDto AddOrganizationMemberDto { get; set; }
-    public required string RequesterUserId { get; set; } // To check permissions
+    public required AddOrganizationMemberDto AddOrganizationMemberDto { get; init; }
+    public required string RequesterUserId { get; init; } // To check permissions
     public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => AddOrganizationMemberDto.OrganizationId.ToString();

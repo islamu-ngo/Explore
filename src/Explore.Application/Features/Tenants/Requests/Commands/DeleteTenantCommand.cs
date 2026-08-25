@@ -11,12 +11,12 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Returns true if the tenant was successfully deleted, false if not found.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Delete)]
-public class DeleteTenantCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteTenantCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>
     /// The ID of the tenant to delete.
     /// </summary>
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

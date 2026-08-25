@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public class UpdateUserAppearancePreferencesDto
+public sealed record UpdateUserAppearancePreferencesDto
 {
-    public UpdateAppearanceLocalizationDto? Localization { get; set; }
+    public UpdateAppearanceLocalizationDto? Localization { get; init; }
 }
 
-public sealed class UpdateAppearanceLocalizationDto
+public sealed record UpdateAppearanceLocalizationDto
 {
-    public string? Direction { get; set; }
-    public string? Language { get; set; }
+    public string? Direction { get; init; }
+    public string? Language { get; init; }
 }

@@ -3,22 +3,22 @@
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public class EventTemplateDto
+public sealed record EventTemplateDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid TenantId { get; set; }
-    public string TemplateKey { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int? EventTypeId { get; set; }
-    public int Version { get; set; }
-    public bool IsPublished { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public string? CreatedBy { get; set; }
-    public DateTimeOffset? UpdatedAt { get; set; }
-    public string? UpdatedBy { get; set; }
-    public List<EventTemplateDefinitionDto> Definitions { get; set; } = [];
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid TenantId { get; init; }
+    public string TemplateKey { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public int? EventTypeId { get; init; }
+    public int Version { get; init; }
+    public bool IsPublished { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
+    public string? UpdatedBy { get; init; }
+    public List<EventTemplateDefinitionDto> Definitions { get; init; } = [];
 }

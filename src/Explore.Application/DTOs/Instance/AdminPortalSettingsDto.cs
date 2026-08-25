@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public sealed class AdminPortalSettingsDto
+public sealed record AdminPortalSettingsDto
 {
     public bool Enabled { get; set; } = true;
     public string PublicUrl { get; set; } = string.Empty;

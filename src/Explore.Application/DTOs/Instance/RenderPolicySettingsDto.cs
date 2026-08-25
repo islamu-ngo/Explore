@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class RenderPolicySettingsDto
+public sealed record RenderPolicySettingsDto
 {
     public int RenderPolicyVersion { get; set; } = 1;
     public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";

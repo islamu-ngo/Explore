@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Commands;
 
-public sealed class RotateLocalizationTmsApiKeyCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record RotateLocalizationTmsApiKeyCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public RotateLocalizationTmsApiKeyDto Dto { get; set; } = new();
+    public RotateLocalizationTmsApiKeyDto Dto { get; init; } = new();
 }

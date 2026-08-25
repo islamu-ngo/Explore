@@ -9,11 +9,11 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Create)]
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public const string PreCreateResourceId = "create";
 
-    public required CreateEventDto EventDto { get; set; }
+    public required CreateEventDto EventDto { get; init; }
 
     string? ISecureRequest.ResourceId => PreCreateResourceId;
 

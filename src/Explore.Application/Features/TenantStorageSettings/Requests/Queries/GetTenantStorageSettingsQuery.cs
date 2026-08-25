@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 
-public sealed class GetTenantStorageSettingsQuery : IRequest<TenantStorageSettingsDto>
+public sealed record GetTenantStorageSettingsQuery : IRequest<TenantStorageSettingsDto>
 {
 }

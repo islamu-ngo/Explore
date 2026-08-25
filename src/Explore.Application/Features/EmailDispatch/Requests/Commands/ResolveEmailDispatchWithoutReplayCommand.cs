@@ -8,12 +8,12 @@ using MediatR;
 namespace Explore.Application.Features.EmailDispatch.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Resolve)]
-public sealed class ResolveEmailDispatchWithoutReplayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ResolveEmailDispatchWithoutReplayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid OutboxId { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public Guid? ChangedBy { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid OutboxId { get; init; }
+    public string Reason { get; init; } = string.Empty;
+    public Guid? ChangedBy { get; init; }
 
     string? ISecureRequest.ResourceId => OutboxId == Guid.Empty ? null : OutboxId.ToString("D");
 

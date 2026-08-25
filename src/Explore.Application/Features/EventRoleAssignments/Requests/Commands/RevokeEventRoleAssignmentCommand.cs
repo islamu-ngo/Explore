@@ -9,12 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.EventRoleAssignments.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTeam)]
-public sealed class RevokeEventRoleAssignmentCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record RevokeEventRoleAssignmentCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid AssignmentId { get; set; }
-    public Guid ActorUserId { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid AssignmentId { get; init; }
+    public Guid ActorUserId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 

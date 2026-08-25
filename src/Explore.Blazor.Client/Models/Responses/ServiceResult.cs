@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Models.Responses;
 /// Distinguishes between success (with data), empty success (no data), and failure (with error details).
 /// </summary>
 /// <typeparam name="T">The type of the data payload on success.</typeparam>
-public sealed class ServiceResult<T>
+public sealed record ServiceResult<T>
 {
     /// <summary>Whether the operation completed without error.</summary>
     public bool IsSuccess { get; private init; }
@@ -71,7 +71,7 @@ public sealed class ServiceResult<T>
 /// <summary>
 /// Non-generic result for operations that don't return data (e.g., delete, update).
 /// </summary>
-public sealed class ServiceResult
+public sealed record ServiceResult
 {
     public bool IsSuccess { get; private init; }
     public string? ErrorMessage { get; private init; }

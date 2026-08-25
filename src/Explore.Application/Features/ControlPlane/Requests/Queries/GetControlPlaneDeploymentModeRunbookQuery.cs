@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetControlPlaneDeploymentModeRunbookQuery : IRequest<ControlPlaneDeploymentModeRunbookDto>, ISecureRequest
+public sealed record GetControlPlaneDeploymentModeRunbookQuery : IRequest<ControlPlaneDeploymentModeRunbookDto>, ISecureRequest
 {
     public const string SettingKey = "control-plane.deployment-mode.runbook";
 

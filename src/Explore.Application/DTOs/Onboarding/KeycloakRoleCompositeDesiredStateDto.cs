@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRoleCompositeDesiredStateDto
+public sealed record KeycloakRoleCompositeDesiredStateDto
 {
-    public string RoleName { get; set; } = string.Empty;
+    public string RoleName { get; init; } = string.Empty;
     public IReadOnlyList<string> CompositeRoleNames { get; set; } = [];
 }

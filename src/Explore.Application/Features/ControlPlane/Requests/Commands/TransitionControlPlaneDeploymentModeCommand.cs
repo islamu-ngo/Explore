@@ -10,18 +10,26 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class TransitionControlPlaneDeploymentModeCommand(
-    DeploymentMode targetMode,
-    string? reason,
-    string? confirmationText) : IRequest<BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>>, ISecureRequest
+public sealed record TransitionControlPlaneDeploymentModeCommand
+    : IRequest<BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>>, ISecureRequest
 {
+    public TransitionControlPlaneDeploymentModeCommand(
+        DeploymentMode targetMode,
+        string? reason,
+        string? confirmationText)
+    {
+        TargetMode = targetMode;
+        Reason = reason;
+        ConfirmationText = confirmationText;
+    }
+
     public const string SettingKey = "control-plane.deployment-mode.runbook";
 
-    public DeploymentMode TargetMode { get; } = targetMode;
+    public DeploymentMode TargetMode { get; }
 
-    public string? Reason { get; } = reason;
+    public string? Reason { get; }
 
-    public string? ConfirmationText { get; } = confirmationText;
+    public string? ConfirmationText { get; }
 
     string ISecureRequest.ResourceId => SettingKey;
 

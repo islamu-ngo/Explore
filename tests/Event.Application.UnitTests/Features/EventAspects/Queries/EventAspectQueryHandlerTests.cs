@@ -31,7 +31,7 @@ public sealed class EventAspectQueryHandlerTests
                 _eventRepository,
                 _islamicAspectRepository,
                 _mapper)
-            .Handle(new GetEventIslamicAspectRequest { EventId = eventId }, CancellationToken.None);
+            .Handle(new GetEventIslamicAspectRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNull();
         await _eventRepository.Received(1).IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>());
@@ -48,7 +48,7 @@ public sealed class EventAspectQueryHandlerTests
                 _eventRepository,
                 _techAspectRepository,
                 _mapper)
-            .Handle(new GetEventTechAspectRequest { EventId = eventId }, CancellationToken.None);
+            .Handle(new GetEventTechAspectRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNull();
         await _eventRepository.Received(1).IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>());
@@ -69,7 +69,7 @@ public sealed class EventAspectQueryHandlerTests
                 _eventRepository,
                 _islamicAspectRepository,
                 _mapper)
-            .Handle(new GetEventIslamicAspectRequest { EventId = eventId }, CancellationToken.None);
+            .Handle(new GetEventIslamicAspectRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsEqualTo(dto);
     }
@@ -88,7 +88,7 @@ public sealed class EventAspectQueryHandlerTests
                 _eventRepository,
                 _techAspectRepository,
                 _mapper)
-            .Handle(new GetEventTechAspectRequest { EventId = eventId }, CancellationToken.None);
+            .Handle(new GetEventTechAspectRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsEqualTo(dto);
     }

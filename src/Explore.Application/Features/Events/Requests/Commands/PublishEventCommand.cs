@@ -9,11 +9,11 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public class PublishEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record PublishEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
-    public required PublishEventRequestDto Request { get; set; }
+    public required PublishEventRequestDto Request { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 

@@ -9,11 +9,11 @@ using MediatR;
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid GroupId { get; set; }
-    public required PatchFooterLinkGroupDto Update { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid GroupId { get; init; }
+    public required PatchFooterLinkGroupDto Update { get; init; }
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
         TenantId == Guid.Empty
@@ -22,20 +22,20 @@ public class UpdateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>,
 
 }
 
-public sealed class PatchFooterLinkGroupDto
+public sealed record PatchFooterLinkGroupDto
 {
-    public PatchFooterLinkGroupTitleDto? Title { get; set; }
-    public PatchFooterLinkGroupIsActiveDto? IsActive { get; set; }
+    public PatchFooterLinkGroupTitleDto? Title { get; init; }
+    public PatchFooterLinkGroupIsActiveDto? IsActive { get; init; }
 }
 
-public sealed class PatchFooterLinkGroupTitleDto
+public sealed record PatchFooterLinkGroupTitleDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public sealed class PatchFooterLinkGroupIsActiveDto
+public sealed record PatchFooterLinkGroupIsActiveDto
 {
-    public bool? Value { get; set; }
+    public bool? Value { get; init; }
 }
 
 public sealed class PatchFooterLinkGroupDtoValidator : AbstractValidator<PatchFooterLinkGroupDto>

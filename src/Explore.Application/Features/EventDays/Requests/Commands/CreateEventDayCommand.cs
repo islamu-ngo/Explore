@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventDays.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventDay, AuthorizationActions.Create)]
-public class CreateEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventDayDto EventDayDto { get; set; }
+    public required CreateEventDayDto EventDayDto { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

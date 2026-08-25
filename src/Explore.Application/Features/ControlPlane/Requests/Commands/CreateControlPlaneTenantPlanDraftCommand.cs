@@ -9,12 +9,17 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class CreateControlPlaneTenantPlanDraftCommand(TenantPlanDraft draft)
+public sealed record CreateControlPlaneTenantPlanDraftCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public CreateControlPlaneTenantPlanDraftCommand(TenantPlanDraft draft)
+    {
+        Draft = draft;
+    }
+
     public const string SettingKey = "control-plane.tenant-plans";
 
-    public TenantPlanDraft Draft { get; } = draft;
+    public TenantPlanDraft Draft { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

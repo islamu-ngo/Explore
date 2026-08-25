@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Queries;
 
-public sealed class GetCurrentUserWebPushSubscriptionQuery : IRequest<WebPushSubscriptionDto?>
+public sealed record GetCurrentUserWebPushSubscriptionQuery : IRequest<WebPushSubscriptionDto?>
 {
     public required string DeviceIdentifier { get; init; }
 }

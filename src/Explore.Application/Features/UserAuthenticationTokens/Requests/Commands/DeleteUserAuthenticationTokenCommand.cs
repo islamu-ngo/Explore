@@ -4,7 +4,4 @@ using MediatR;
 
 namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
 
-public class DeleteUserAuthenticationTokenCommand : IRequest
-{
-    public Guid Id { get; set; }
-}
+public sealed record DeleteUserAuthenticationTokenCommand(Guid Id = default) : IRequest;

@@ -8,8 +8,8 @@ using MediatR;
 namespace Explore.Application.Features.OrganizationReviews.Commands.CreateOrganizationReview;
 
 [AuthorizeResource(ResourceKinds.OrganizationReview, AuthorizationActions.OrganizationReviews.Create)]
-public class CreateOrganizationReviewCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateOrganizationReviewCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required CreateOrganizationReviewDto CreateOrganizationReviewDto { get; set; }
-    public Guid ReviewerUserId { get; set; }
+    public required CreateOrganizationReviewDto CreateOrganizationReviewDto { get; init; }
+    public Guid ReviewerUserId { get; init; }
 }

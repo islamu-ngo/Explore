@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class IncomingWebhookEffectStatusDto
+public sealed record IncomingWebhookEffectStatusDto
 {
     public Guid EffectOutboxId { get; init; }
     public Guid TenantId { get; init; }

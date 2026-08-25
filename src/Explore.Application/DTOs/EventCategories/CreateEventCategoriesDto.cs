@@ -2,9 +2,9 @@ using System;
 
 namespace Explore.Application.DTOs.EventCategories;
 
-public class CreateEventCategoriesDto
+public sealed record CreateEventCategoriesDto
 {
-    public Guid EventId { get; set; }
-    public Guid CategoryId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid EventId { get; init; }
+    public Guid CategoryId { get; init; }
+    public Guid TenantId { get; init; }
 }

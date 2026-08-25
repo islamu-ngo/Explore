@@ -79,8 +79,8 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         });
 
         var upload = CreateUploadDto(expectedSizeBytes: 42, originalFileName: "Report.PDF");
-        upload.OwningResourceKind = StorageOwningResourceKinds.OrganizationTenant;
-        upload.OwningResourceId = owningResourceId;
+        upload = upload with { OwningResourceKind = StorageOwningResourceKinds.OrganizationTenant };
+        upload = upload with { OwningResourceId = owningResourceId };
 
         var result = await CreateCreateHandler().Handle(
             new CreateStorageUploadSessionCommand

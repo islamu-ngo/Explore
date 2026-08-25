@@ -6,25 +6,25 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventRoleAssignment;
 
-public sealed class EventTeamMemberDto
+public sealed record EventTeamMemberDto
 {
     [JsonIgnore]
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     [JsonIgnore]
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
-    public Guid AssignmentId { get; set; }
-    public Guid UserId { get; set; }
-    public required string UserEmail { get; set; }
-    public required string UserFullName { get; set; }
-    public int RoleId { get; set; }
-    public required string RoleName { get; set; }
-    public required string RoleMasterCode { get; set; }
-    public EventRoleAssignmentStatus Status { get; set; }
-    public DateTime StartsAtUtc { get; set; }
-    public DateTime? ExpiresAtUtc { get; set; }
-    public bool IsEffective { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public Guid? CreatedBy { get; set; }
+    public Guid AssignmentId { get; init; }
+    public Guid UserId { get; init; }
+    public required string UserEmail { get; init; }
+    public required string UserFullName { get; init; }
+    public int RoleId { get; init; }
+    public required string RoleName { get; init; }
+    public required string RoleMasterCode { get; init; }
+    public EventRoleAssignmentStatus Status { get; init; }
+    public DateTime StartsAtUtc { get; init; }
+    public DateTime? ExpiresAtUtc { get; init; }
+    public bool IsEffective { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public Guid? CreatedBy { get; init; }
 }

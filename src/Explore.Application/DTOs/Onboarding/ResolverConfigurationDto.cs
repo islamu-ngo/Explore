@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class ResolverConfigurationDto
+public sealed record ResolverConfigurationDto
 {
     public bool HeaderEnabled { get; set; } = true;
 

@@ -5,24 +5,24 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventSessionTemplate;
 
-public sealed class UpdateEventSessionTemplateDto
+public sealed record UpdateEventSessionTemplateDto
 {
-    public UpdateEventSessionTemplateMetadataDto? Metadata { get; set; }
-    public UpdateEventSessionTemplateDefinitionsDto? Definitions { get; set; }
+    public UpdateEventSessionTemplateMetadataDto? Metadata { get; init; }
+    public UpdateEventSessionTemplateDefinitionsDto? Definitions { get; init; }
 }
 
-public sealed class UpdateEventSessionTemplateMetadataDto
+public sealed record UpdateEventSessionTemplateMetadataDto
 {
-    public string? SessionTemplateKey { get; set; }
-    public string? DisplayName { get; set; }
-    public OptionalUpdate<string> Description { get; set; }
-    public int? Version { get; set; }
-    public bool? IsPublished { get; set; }
-    public bool? IsActive { get; set; }
-    public int? SortOrder { get; set; }
+    public string? SessionTemplateKey { get; init; }
+    public string? DisplayName { get; init; }
+    public OptionalUpdate<string> Description { get; init; }
+    public int? Version { get; init; }
+    public bool? IsPublished { get; init; }
+    public bool? IsActive { get; init; }
+    public int? SortOrder { get; init; }
 }
 
-public sealed class UpdateEventSessionTemplateDefinitionsDto
+public sealed record UpdateEventSessionTemplateDefinitionsDto
 {
-    public List<CreateEventSessionTemplateDefinitionDto>? Items { get; set; }
+    public List<CreateEventSessionTemplateDefinitionDto>? Items { get; init; }
 }

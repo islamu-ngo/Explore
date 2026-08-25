@@ -2,10 +2,10 @@ using System;
 
 namespace Explore.Application.DTOs.Tag;
 
-public class TagDto
+public sealed record TagDto
 {
-    public Guid Id { get; set; }
-    public required string MasterCode { get; set; }
-    public required string FullName { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public required string MasterCode { get; init; }
+    public required string FullName { get; init; }
+    public Guid TenantId { get; init; }
 }

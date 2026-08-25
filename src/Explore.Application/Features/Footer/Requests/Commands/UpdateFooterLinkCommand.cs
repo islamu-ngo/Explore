@@ -10,11 +10,11 @@ using MediatR;
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateFooterLinkCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateFooterLinkCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid LinkId { get; set; }
-    public required PatchFooterLinkDto Update { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid LinkId { get; init; }
+    public required PatchFooterLinkDto Update { get; init; }
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
         TenantId == Guid.Empty
@@ -23,32 +23,32 @@ public class UpdateFooterLinkCommand : IRequest<BaseCommandResponse<Guid>>, ISec
 
 }
 
-public sealed class PatchFooterLinkDto
+public sealed record PatchFooterLinkDto
 {
-    public PatchFooterLinkLabelDto? Label { get; set; }
-    public PatchFooterLinkUrlDto? Url { get; set; }
-    public PatchFooterLinkOpenInNewTabDto? OpenInNewTab { get; set; }
-    public PatchFooterLinkIsActiveDto? IsActive { get; set; }
+    public PatchFooterLinkLabelDto? Label { get; init; }
+    public PatchFooterLinkUrlDto? Url { get; init; }
+    public PatchFooterLinkOpenInNewTabDto? OpenInNewTab { get; init; }
+    public PatchFooterLinkIsActiveDto? IsActive { get; init; }
 }
 
-public sealed class PatchFooterLinkLabelDto
+public sealed record PatchFooterLinkLabelDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public sealed class PatchFooterLinkUrlDto
+public sealed record PatchFooterLinkUrlDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public sealed class PatchFooterLinkOpenInNewTabDto
+public sealed record PatchFooterLinkOpenInNewTabDto
 {
-    public bool? Value { get; set; }
+    public bool? Value { get; init; }
 }
 
-public sealed class PatchFooterLinkIsActiveDto
+public sealed record PatchFooterLinkIsActiveDto
 {
-    public bool? Value { get; set; }
+    public bool? Value { get; init; }
 }
 
 public sealed class PatchFooterLinkDtoValidator : AbstractValidator<PatchFooterLinkDto>

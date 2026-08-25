@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Notification;
 
-public sealed class NotificationRefreshHintDto
+public sealed record NotificationRefreshHintDto
 {
     public int UnreadCount { get; init; }
 

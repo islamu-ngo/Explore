@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.CustomPropertyDefinitions.Requests.Queries;
 
-public class GetCustomPropertyDefinitionDetailsRequest : IRequest<CustomPropertyDefinitionDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetCustomPropertyDefinitionDetailsRequest(Guid Id = default) : IRequest<CustomPropertyDefinitionDto>;

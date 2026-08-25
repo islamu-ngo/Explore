@@ -5,17 +5,17 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSessionTemplate;
 
-public class EventSessionTemplateDefinitionListDto
+public sealed record EventSessionTemplateDefinitionListDto
 {
-    public Guid Id { get; set; }
-    public Guid EventSessionTemplateId { get; set; }
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public PropertyType PropertyType { get; set; }
-    public bool IsRequired { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
-    public ExposureLevel ExposureLevel { get; set; }
-    public int OptionCount { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventSessionTemplateId { get; init; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public PropertyType PropertyType { get; init; }
+    public bool IsRequired { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
+    public ExposureLevel ExposureLevel { get; init; }
+    public int OptionCount { get; init; }
 }

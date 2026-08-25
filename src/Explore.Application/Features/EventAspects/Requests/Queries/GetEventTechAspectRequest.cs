@@ -11,18 +11,12 @@ using MediatR;
 /// <summary>
 /// Request to retrieve the Tech aspect for a specific event.
 /// </summary>
-public class GetEventTechAspectRequest : IRequest<EventTechAspectDto?>
-{
-    /// <summary>
-    /// The event ID to get the Tech aspect for.
-    /// </summary>
-    public Guid EventId { get; set; }
-}
+public sealed record GetEventTechAspectRequest(Guid EventId) : IRequest<EventTechAspectDto?>;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventTechAspectRequest : IRequest<EventTechAspectDto?>, ISecureRequest
+public sealed record GetManagedEventTechAspectRequest : IRequest<EventTechAspectDto?>, ISecureRequest
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetActiveTenantCountQuery : IRequest<int>
+public sealed record GetActiveTenantCountQuery : IRequest<int>
 {
 }

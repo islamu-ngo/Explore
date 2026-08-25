@@ -5,12 +5,12 @@ using System;
 
 namespace Explore.Application.DTOs.Category;
 
-public class CategoryListDto
+public sealed record CategoryListDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public required string MasterCode { get; set; }
-    public required string FullName { get; set; }
-    public Guid? ParentId { get; set; }
-    public string? ParentFullName { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public required string MasterCode { get; init; }
+    public required string FullName { get; init; }
+    public Guid? ParentId { get; init; }
+    public string? ParentFullName { get; init; }
 }

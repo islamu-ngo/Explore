@@ -31,7 +31,7 @@ public sealed record ManagementVersionDto(string EventVersion, string Management
 
 public sealed record ManagementHealthDto(string Status, DateTime ObservedAt);
 
-public sealed class ManagementUpgradePreflightRequestDto
+public sealed record ManagementUpgradePreflightRequestDto
 {
     [Required]
     [StringLength(100, MinimumLength = 1)]
@@ -42,7 +42,7 @@ public sealed class ManagementUpgradePreflightRequestDto
     public required string TargetManagementApiVersion { get; init; }
 }
 
-public sealed class ManagementUpgradePostflightRequestDto
+public sealed record ManagementUpgradePostflightRequestDto
 {
     [Required]
     [StringLength(100, MinimumLength = 1)]

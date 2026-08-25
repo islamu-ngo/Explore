@@ -5,12 +5,12 @@ using System.Text.Json;
 
 namespace Explore.Application.DTOs.Analytics;
 
-public class RelayAnalyticsEventDto
+public sealed record RelayAnalyticsEventDto
 {
-    public string EventType { get; set; } = "pageview";
-    public string EventName { get; set; } = string.Empty;
-    public string PagePath { get; set; } = string.Empty;
-    public string DistinctId { get; set; } = string.Empty;
-    public Dictionary<string, JsonElement> Properties { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, JsonElement> Traits { get; set; } = new(StringComparer.Ordinal);
+    public string EventType { get; init; } = "pageview";
+    public string EventName { get; init; } = string.Empty;
+    public string PagePath { get; init; } = string.Empty;
+    public string DistinctId { get; init; } = string.Empty;
+    public Dictionary<string, JsonElement> Properties { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, JsonElement> Traits { get; init; } = new(StringComparer.Ordinal);
 }

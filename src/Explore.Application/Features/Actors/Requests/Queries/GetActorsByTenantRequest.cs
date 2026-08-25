@@ -5,9 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Actors.Requests.Queries;
 
-public class GetActorsByTenantRequest : IRequest<List<ActorListDto>>
-{
-    public Guid TenantId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
-}
+public sealed record GetActorsByTenantRequest(
+    Guid TenantId = default,
+    int PageNumber = 1,
+    int PageSize = 20) : IRequest<List<ActorListDto>>;

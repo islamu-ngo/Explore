@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class McpGovernanceSettingsDto
+public sealed record McpGovernanceSettingsDto
 {
     public bool Enabled { get; set; }
     public bool EnableLegacySse { get; set; }

@@ -5,22 +5,22 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.CustomPropertyGovernance;
 
-public class CustomPropertyGovernanceRowDto
+public sealed record CustomPropertyGovernanceRowDto
 {
-    public Guid TenantId { get; set; }
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string EntityScope { get; set; } = string.Empty;
-    public string PropertyType { get; set; } = string.Empty;
-    public ExposureLevel ExposureLevel { get; set; }
-    public bool IsSearchable { get; set; }
-    public bool IsFilterable { get; set; }
-    public bool IsExportable { get; set; }
-    public bool IsModerationRelevant { get; set; }
-    public bool IsAnalyticsRelevant { get; set; }
-    public bool IsSystemOwned { get; set; }
-    public int ActiveInstanceCount { get; set; }
-    public DateTime? LastUsedAt { get; set; }
-    public PromotionRecommendation Recommendation { get; set; }
+    public Guid TenantId { get; init; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string EntityScope { get; init; } = string.Empty;
+    public string PropertyType { get; init; } = string.Empty;
+    public ExposureLevel ExposureLevel { get; init; }
+    public bool IsSearchable { get; init; }
+    public bool IsFilterable { get; init; }
+    public bool IsExportable { get; init; }
+    public bool IsModerationRelevant { get; init; }
+    public bool IsAnalyticsRelevant { get; init; }
+    public bool IsSystemOwned { get; init; }
+    public int ActiveInstanceCount { get; init; }
+    public DateTime? LastUsedAt { get; init; }
+    public PromotionRecommendation Recommendation { get; init; }
 }

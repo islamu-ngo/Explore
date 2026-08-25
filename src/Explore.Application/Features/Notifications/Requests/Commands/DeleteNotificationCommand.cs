@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public class DeleteNotificationCommand : IRequest<bool>
-{
-    public Guid Id { get; set; }
-}
+public sealed record DeleteNotificationCommand(Guid Id = default) : IRequest<bool>;

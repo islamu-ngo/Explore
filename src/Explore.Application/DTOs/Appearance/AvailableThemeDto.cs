@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public class AvailableThemeDto
+public sealed record AvailableThemeDto
 {
-    public Guid Id { get; set; }
-    public string ThemeKey { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public bool IsDefault { get; set; }
-    public bool IsPlatformTheme { get; set; }
-    public int SortOrder { get; set; }
-    public required UiThemePaletteDto LightPalette { get; set; }
-    public required UiThemePaletteDto DarkPalette { get; set; }
+    public Guid Id { get; init; }
+    public string ThemeKey { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsPlatformTheme { get; init; }
+    public int SortOrder { get; init; }
+    public required UiThemePaletteDto LightPalette { get; init; }
+    public required UiThemePaletteDto DarkPalette { get; init; }
 }

@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantOnboarding.Requests.Queries;
 
-public class GetTenantOnboardingStatusQuery : IRequest<TenantOnboardingStatusDto>
+public sealed record GetTenantOnboardingStatusQuery : IRequest<TenantOnboardingStatusDto>
 {
 }

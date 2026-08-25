@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class EventPolicyDto
+public sealed record EventPolicyDto
 {
     public bool AllowUserSubmittedEvents { get; set; } = true;
     public bool AllowOrganizationSubmittedEvents { get; set; } = true;

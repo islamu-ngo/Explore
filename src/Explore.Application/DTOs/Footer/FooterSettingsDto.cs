@@ -3,14 +3,14 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterSettingsDto
+public sealed record FooterSettingsDto
 {
-    public bool Enabled { get; set; }
-    public string Template { get; set; } = "standard-3-col";
-    public bool ShowDescription { get; set; }
-    public string DescriptionText { get; set; } = string.Empty;
-    public bool ShowSocialLinks { get; set; }
-    public IReadOnlyList<FooterSocialLinkDto> SocialLinks { get; set; } = [];
-    public string CopyrightText { get; set; } = string.Empty;
-    public bool ShowCookieSettingsLink { get; set; }
+    public bool Enabled { get; init; }
+    public string Template { get; init; } = "standard-3-col";
+    public bool ShowDescription { get; init; }
+    public string DescriptionText { get; init; } = string.Empty;
+    public bool ShowSocialLinks { get; init; }
+    public IReadOnlyList<FooterSocialLinkDto> SocialLinks { get; init; } = [];
+    public string CopyrightText { get; init; } = string.Empty;
+    public bool ShowCookieSettingsLink { get; init; }
 }

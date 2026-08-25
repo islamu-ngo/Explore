@@ -5,7 +5,7 @@ namespace Explore.Application.DTOs.RegistrationOrders;
 
 using Explore.Application.Responses;
 
-public sealed class RegistrationPaymentDto
+public sealed record RegistrationPaymentDto
 {
     public Guid Id { get; init; }
     public Guid RegistrationOrderId { get; init; }
@@ -24,7 +24,7 @@ public sealed class RegistrationPaymentCommandResultDto : BaseCommandResponse<Gu
     public RegistrationPaymentDto? Payment { get; init; }
 }
 
-public sealed class RegistrationPaymentCheckoutTargetDto
+public sealed record RegistrationPaymentCheckoutTargetDto
 {
     public required string Url { get; init; }
 }

@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.EventStatuses.Requests.Queries;
 
-public class GetEventStatusListRequest : IRequest<List<EventStatusListDto>>
+public sealed record GetEventStatusListRequest : IRequest<List<EventStatusListDto>>
 {
 }

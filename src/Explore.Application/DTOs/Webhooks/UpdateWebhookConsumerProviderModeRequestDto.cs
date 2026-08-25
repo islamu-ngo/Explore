@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class UpdateWebhookConsumerProviderModeRequestDto
+public sealed record UpdateWebhookConsumerProviderModeRequestDto
 {
     public UpdateWebhookConsumerProviderModeDto? ProviderMode { get; init; }
 }
 
-public sealed class UpdateWebhookConsumerProviderModeDto
+public sealed record UpdateWebhookConsumerProviderModeDto
 {
     public int ProviderModeId { get; init; }
 

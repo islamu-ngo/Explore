@@ -5,14 +5,14 @@ using System;
 
 namespace Explore.Application.DTOs.EventCategories;
 
-public class EventCategoriesDto
+public sealed record EventCategoriesDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid EventId { get; set; }
-    public string? EventTitle { get; set; }
-    public Guid CategoryId { get; set; }
-    public string? CategoryFullName { get; set; }
-    public string? CategoryMasterCode { get; set; } // For i18n with Tolgee
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid EventId { get; init; }
+    public string? EventTitle { get; init; }
+    public Guid CategoryId { get; init; }
+    public string? CategoryFullName { get; init; }
+    public string? CategoryMasterCode { get; init; } // For i18n with Tolgee
+    public Guid TenantId { get; init; }
 }

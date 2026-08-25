@@ -4,10 +4,10 @@ using System.Text;
 
 namespace Explore.Application.DTOs.EventType;
 
-public class EventTypeListDto
+public sealed record EventTypeListDto
 {
-    public int Id { get; set; }
-    public required string FullName { get; set; }
-    public required string MasterCode { get; set; }
-    public string? Description { get; set; }
+    public int Id { get; init; }
+    public required string FullName { get; init; }
+    public required string MasterCode { get; init; }
+    public string? Description { get; init; }
 }

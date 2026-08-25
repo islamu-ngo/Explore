@@ -58,8 +58,10 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
             var today = DateOnly.FromDateTime(generatedAt.UtcDateTime);
             var areaState = await ResolveAreaStateAsync(request, operationToken);
             result.Context = MapContext(areaState);
-            var heroRequest = CreateUpcomingRequest(today, "views", sortDescending: true, HeroLimit);
-            if (ApplyContext(heroRequest, areaState))
+            var heroRequest = ApplyContext(
+                CreateUpcomingRequest(today, "views", sortDescending: true, HeroLimit),
+                areaState);
+            if (heroRequest is not null)
             {
                 result.Hero = await QuerySectionAsync(
                     "hero", heroRequest, HeroLimit, result.SectionStatuses, operationToken);
@@ -69,8 +71,10 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 result.SectionStatuses["hero"] = HomeDiscoverySectionStatus.Empty;
             }
 
-            var upcomingRequest = CreateUpcomingRequest(today, "date", sortDescending: false, UpcomingLimit);
-            if (ApplyContext(upcomingRequest, areaState))
+            var upcomingRequest = ApplyContext(
+                CreateUpcomingRequest(today, "date", sortDescending: false, UpcomingLimit),
+                areaState);
+            if (upcomingRequest is not null)
             {
                 result.UpcomingInArea = await QuerySectionAsync(
                     "upcoming", upcomingRequest, UpcomingLimit, result.SectionStatuses, operationToken);
@@ -86,9 +90,15 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
             if (areaState.Mode == HomeDiscoveryMode.Area &&
                 areaState.SelectedArea?.LocationIds is { Count: > 0 } areaLocationIds)
             {
-                var mostViewedAreaRequest = CreateUpcomingRequest(today, "views", sortDescending: true, StandardLimit);
-                mostViewedAreaRequest.LocationIds = areaLocationIds.Distinct().ToList();
-                mostViewedAreaRequest.FormatIds = [(int)EventFormatEnum.Local, (int)EventFormatEnum.Hybrid];
+                var mostViewedAreaRequest = CreateUpcomingRequest(
+                    today,
+                    "views",
+                    sortDescending: true,
+                    StandardLimit) with
+                {
+                    LocationIds = areaLocationIds.Distinct().ToList(),
+                    FormatIds = [(int)EventFormatEnum.Local, (int)EventFormatEnum.Hybrid]
+                };
                 result.MostViewedInArea = await QuerySectionAsync(
                     "most-viewed-area",
                     mostViewedAreaRequest,
@@ -101,8 +111,14 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 result.SectionStatuses["most-viewed-area"] = HomeDiscoverySectionStatus.Omitted;
             }
 
-            var mostViewedOnlineRequest = CreateUpcomingRequest(today, "views", sortDescending: true, StandardLimit);
-            mostViewedOnlineRequest.FormatIds = [.. OnlineFormatIds];
+            var mostViewedOnlineRequest = CreateUpcomingRequest(
+                today,
+                "views",
+                sortDescending: true,
+                StandardLimit) with
+            {
+                FormatIds = [.. OnlineFormatIds]
+            };
             result.MostViewedOnline = await QuerySectionAsync(
                 "most-viewed-online",
                 mostViewedOnlineRequest,
@@ -113,8 +129,10 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
             result.CuratedSections = await BuildCuratedSectionsAsync(
                 areaState, today, result.SectionStatuses, operationToken);
 
-            var recentlyAddedRequest = CreateUpcomingRequest(today, "createdat", sortDescending: true, StandardLimit);
-            if (ApplyContext(recentlyAddedRequest, areaState))
+            var recentlyAddedRequest = ApplyContext(
+                CreateUpcomingRequest(today, "createdat", sortDescending: true, StandardLimit),
+                areaState);
+            if (recentlyAddedRequest is not null)
             {
                 result.RecentlyAdded = await QuerySectionAsync(
                     "recently-added",
@@ -218,8 +236,14 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 var shell = await shellHandler.Handle(new GetPublicExperienceShellQuery(), cancellationToken);
                 if (shell.PrimaryOrganization.ActorId is { } actorId)
                 {
-                    spotlightRequest = CreateUpcomingRequest(today, "date", sortDescending: false, SpotlightLimit);
-                    spotlightRequest.ActorId = actorId;
+                    spotlightRequest = CreateUpcomingRequest(
+                        today,
+                        "date",
+                        sortDescending: false,
+                        SpotlightLimit) with
+                    {
+                        ActorId = actorId
+                    };
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -240,7 +264,8 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
             return null;
         }
 
-        if (!ApplyContext(spotlightRequest, areaState))
+        spotlightRequest = ApplyContext(spotlightRequest, areaState);
+        if (spotlightRequest is null)
         {
             statuses["spotlight"] = HomeDiscoverySectionStatus.Empty;
             return new HomeDiscoverySectionDto { Key = "spotlight", Label = label };
@@ -269,8 +294,9 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
 
             var limit = Math.Clamp(preset.Limit ?? StandardLimit, 1, StandardLimit);
             var key = $"curated:{preset.Id.Trim()}";
-            var items = ApplyContext(request, areaState)
-                ? await QuerySectionAsync(key, request, limit, statuses, cancellationToken)
+            var contextualRequest = ApplyContext(request, areaState);
+            var items = contextualRequest is not null
+                ? await QuerySectionAsync(key, contextualRequest, limit, statuses, cancellationToken)
                 : [];
             if (!statuses.ContainsKey(key))
                 statuses[key] = HomeDiscoverySectionStatus.Empty;
@@ -323,8 +349,7 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
         Dictionary<string, HomeDiscoverySectionStatus> statuses,
         CancellationToken cancellationToken)
     {
-        request.PageNumber = 1;
-        request.PageSize = limit;
+        request = request with { PageNumber = 1, PageSize = limit };
 
         try
         {
@@ -446,26 +471,27 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
         SortOrder = area.SortOrder
     };
 
-    private static bool ApplyContext(GetEventListRequest request, AreaState state)
+    private static GetEventListRequest? ApplyContext(GetEventListRequest request, AreaState state)
     {
         if (state.Mode == HomeDiscoveryMode.Online)
         {
-            request.FormatIds = request.FormatIds is { Count: > 0 }
+            var formatIds = request.FormatIds is { Count: > 0 }
                 ? request.FormatIds.Intersect(OnlineFormatIds).ToList()
                 : [.. OnlineFormatIds];
-            request.LocationIds = null;
-            return request.FormatIds.Count > 0;
+            return formatIds.Count > 0
+                ? request with { FormatIds = formatIds, LocationIds = null }
+                : null;
         }
 
         if (state.Mode == HomeDiscoveryMode.Area)
         {
             if (state.SelectedArea?.LocationIds is not { Count: > 0 } locationIds)
-                return false;
+                return null;
 
-            request.LocationIds = locationIds.Distinct().ToList();
+            return request with { LocationIds = locationIds.Distinct().ToList() };
         }
 
-        return true;
+        return request;
     }
 
     private static GetEventListRequest CreateUpcomingRequest(
@@ -497,15 +523,18 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
         if (ownerIds > 1 || preset.Filters?.CustomProperties is { Count: > 0 })
             return false;
 
-        request.ActorId = preset.Owners?.ActorIds?.SingleOrDefault();
-        request.OrganizationId = preset.Owners?.OrganizationIds?.SingleOrDefault();
-        request.GroupId = preset.Owners?.GroupIds?.SingleOrDefault();
-        request.IncludedCategoryIds = preset.Filters?.CategoryIds?.Distinct().ToList();
-        request.IncludedTagIds = preset.Filters?.TagIds?.Distinct().ToList();
-        request.AudienceGenderIds = preset.Filters?.AudienceGenderIds?.Distinct().ToList();
-        request.AudienceAgeIds = preset.Filters?.AudienceAgeIds?.Distinct().ToList();
-        request.EventTypeIds = preset.Filters?.EventTypeIds?.Distinct().ToList();
-        request.FormatIds = preset.Filters?.EventFormatIds?.Distinct().ToList();
+        request = request with
+        {
+            ActorId = preset.Owners?.ActorIds?.SingleOrDefault(),
+            OrganizationId = preset.Owners?.OrganizationIds?.SingleOrDefault(),
+            GroupId = preset.Owners?.GroupIds?.SingleOrDefault(),
+            IncludedCategoryIds = preset.Filters?.CategoryIds?.Distinct().ToList(),
+            IncludedTagIds = preset.Filters?.TagIds?.Distinct().ToList(),
+            AudienceGenderIds = preset.Filters?.AudienceGenderIds?.Distinct().ToList(),
+            AudienceAgeIds = preset.Filters?.AudienceAgeIds?.Distinct().ToList(),
+            EventTypeIds = preset.Filters?.EventTypeIds?.Distinct().ToList(),
+            FormatIds = preset.Filters?.EventFormatIds?.Distinct().ToList()
+        };
 
         if (preset.Filters?.Date is { } dateFilter)
         {
@@ -517,8 +546,11 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 if (!dateFilter.StartsOnOrAfter.HasValue && !dateFilter.StartsOnOrBefore.HasValue)
                     return false;
 
-                request.DateFrom = dateFilter.StartsOnOrAfter;
-                request.DateTo = dateFilter.StartsOnOrBefore;
+                request = request with
+                {
+                    DateFrom = dateFilter.StartsOnOrAfter,
+                    DateTo = dateFilter.StartsOnOrBefore
+                };
             }
         }
 

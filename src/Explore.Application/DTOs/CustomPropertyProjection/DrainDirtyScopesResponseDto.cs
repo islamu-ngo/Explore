@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class DrainDirtyScopesResponseDto
+public sealed record DrainDirtyScopesResponseDto
 {
-    public int DrainedCount { get; set; }
-    public DateTimeOffset DrainedAt { get; set; }
+    public int DrainedCount { get; init; }
+    public DateTimeOffset DrainedAt { get; init; }
 }

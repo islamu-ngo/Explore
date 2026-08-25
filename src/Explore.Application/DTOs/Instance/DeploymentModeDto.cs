@@ -5,7 +5,7 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Instance;
 
-public class DeploymentModeDto
+public sealed record DeploymentModeDto
 {
-    public DeploymentMode Mode { get; set; } = DeploymentMode.SingleTenant;
+    public DeploymentMode Mode { get; init; } = DeploymentMode.SingleTenant;
 }

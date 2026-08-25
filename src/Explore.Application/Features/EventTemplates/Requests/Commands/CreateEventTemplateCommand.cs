@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventTemplates.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class CreateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventTemplateDto TemplateDto { get; set; }
+    public required CreateEventTemplateDto TemplateDto { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

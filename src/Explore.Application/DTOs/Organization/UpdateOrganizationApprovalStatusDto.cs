@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Explore.Application.DTOs.Organization;
 
-public class UpdateOrganizationApprovalStatusDto
+public sealed record UpdateOrganizationApprovalStatusDto
 {
-    public int ApprovalStatusId { get; set; }
+    public int ApprovalStatusId { get; init; }
 }

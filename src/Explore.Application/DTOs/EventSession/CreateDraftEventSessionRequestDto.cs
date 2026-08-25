@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
-public sealed class CreateDraftEventSessionRequestDto
+public sealed record CreateDraftEventSessionRequestDto
 {
-    public Guid EventId { get; set; }
-    public required string Title { get; set; }
-    public string? Description { get; set; }
-    public int SortOrder { get; set; }
+    public Guid EventId { get; init; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
+    public int SortOrder { get; init; }
 }

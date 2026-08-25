@@ -122,7 +122,6 @@ internal static class EventSessionFormModelMapper
         }
 
         session.EventId = eventId;
-        session.TenantId = tenantId;
         ApplyNormalizedSchedule(session, title, startUtc, endUtc);
         return true;
     }

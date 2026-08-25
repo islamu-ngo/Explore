@@ -166,7 +166,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
         [FromBody] UnsubscribeFromActorDto dto,
         CancellationToken cancellationToken = default)
     {
-        dto.TargetActorId = targetActorId;
+        dto = dto with { TargetActorId = targetActorId };
 
         var response = await _mediator.Send(new UnsubscribeFromActorCommand { Subscription = dto }, cancellationToken);
 

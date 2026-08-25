@@ -6,25 +6,25 @@ namespace Explore.Application.DTOs.Onboarding;
 /// <summary>
 /// Response for the setup secret validation endpoint.
 /// </summary>
-public class SecretValidationResponseDto
+public sealed record SecretValidationResponseDto
 {
-    public bool Valid { get; set; }
-    public string? Error { get; set; }
+    public bool Valid { get; init; }
+    public string? Error { get; init; }
 }
 
 /// <summary>
 /// Response for storage and SMTP connection test endpoints.
 /// </summary>
-public class ConnectionTestResponseDto
+public sealed record ConnectionTestResponseDto
 {
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
+    public bool Success { get; init; }
+    public string Message { get; init; } = string.Empty;
 }
 
 /// <summary>
 /// Response for the auth provider configuration status check endpoint.
 /// </summary>
-public class AuthProviderConfiguredResponseDto
+public sealed record AuthProviderConfiguredResponseDto
 {
-    public bool Configured { get; set; }
+    public bool Configured { get; init; }
 }

@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public sealed class PatchTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record PatchTenantFooterSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid UserId { get; init; }
     public Guid TenantId { get; init; }

@@ -9,13 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSessionAgendaItem, AuthorizationActions.Update)]
-public class UpdateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid EventSessionAgendaItemId { get; set; }
-    public required UpdateEventSessionAgendaItemDto AgendaItemDto { get; set; }
-    public Guid EventSessionId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid EventSessionAgendaItemId { get; init; }
+    public required UpdateEventSessionAgendaItemDto AgendaItemDto { get; init; }
+    public Guid EventSessionId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionAgendaItemId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

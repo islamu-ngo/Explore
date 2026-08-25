@@ -5,14 +5,14 @@ using Explore.Application.DTOs.CustomPropertyDefinition;
 
 namespace Explore.Application.DTOs.EventCustomProperty;
 
-public sealed class UpdateEventCustomPropertyDefinitionDto
+public sealed record UpdateEventCustomPropertyDefinitionDto
 {
-    public UpdateCustomPropertyDefinitionMetadataDto? Metadata { get; set; }
-    public UpdateCustomPropertyDefinitionValidationDto? Validation { get; set; }
-    public UpdateEventCustomPropertyDefinitionOptionsDto? Options { get; set; }
+    public UpdateCustomPropertyDefinitionMetadataDto? Metadata { get; init; }
+    public UpdateCustomPropertyDefinitionValidationDto? Validation { get; init; }
+    public UpdateEventCustomPropertyDefinitionOptionsDto? Options { get; init; }
 }
 
-public sealed class UpdateEventCustomPropertyDefinitionOptionsDto
+public sealed record UpdateEventCustomPropertyDefinitionOptionsDto
 {
-    public List<CreateEventCustomPropertyOptionDto>? Items { get; set; }
+    public List<CreateEventCustomPropertyOptionDto>? Items { get; init; }
 }

@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class UpdateInstanceStorageSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateInstanceStorageSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchInstanceStorageSettingsDto Patch { get; set; } = new();
+    public Guid UserId { get; init; }
+    public required PatchInstanceStorageSettingsDto Patch { get; init; } = new();
 }

@@ -54,7 +54,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var aspect = await mediator.Send(new GetEventIslamicAspectRequest { EventId = id }, cancellationToken);
+        var aspect = await mediator.Send(new GetEventIslamicAspectRequest(id), cancellationToken);
 
         return Ok(aspect);
     }
@@ -190,7 +190,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var aspect = await mediator.Send(new GetEventTechAspectRequest { EventId = id }, cancellationToken);
+        var aspect = await mediator.Send(new GetEventTechAspectRequest(id), cancellationToken);
 
         return Ok(aspect);
     }

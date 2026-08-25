@@ -7,6 +7,4 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSeries.Requests.Queries;
 
-public class GetTopEventSeriesRequest : IRequest<EventSeriesDto?>
-{
-}
+public sealed record GetTopEventSeriesRequest : IRequest<EventSeriesDto?>;

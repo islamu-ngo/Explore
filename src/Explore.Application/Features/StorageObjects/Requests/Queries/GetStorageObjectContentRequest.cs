@@ -8,11 +8,11 @@ using MediatR;
 namespace Explore.Application.Features.StorageObjects.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.StorageObjects.Download)]
-public sealed class GetStorageObjectContentRequest : IRequest<StorageObjectContentResult?>, ISecureRequest
+public sealed record GetStorageObjectContentRequest : IRequest<StorageObjectContentResult?>, ISecureRequest
 {
-    public Guid StorageObjectId { get; set; }
+    public Guid StorageObjectId { get; init; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => StorageObjectId == Guid.Empty ? null : StorageObjectId.ToString("D");
 

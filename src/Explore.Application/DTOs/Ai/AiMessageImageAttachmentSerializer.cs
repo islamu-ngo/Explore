@@ -119,7 +119,7 @@ internal static class AiMessageImageAttachmentSerializer
         }
     }
 
-    private sealed class StoredAiMessageImageDto
+    private sealed record StoredAiMessageImageDto
     {
         public string MediaType { get; init; } = string.Empty;
         public string Data { get; init; } = string.Empty;

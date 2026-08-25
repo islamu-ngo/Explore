@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Commands;
 
-public class ImportLocalizationBundleCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record ImportLocalizationBundleCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public required ImportLocalizationBundleDto Dto { get; init; }
 }

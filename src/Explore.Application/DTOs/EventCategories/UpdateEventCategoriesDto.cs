@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.EventCategories;
 
-public class UpdateEventCategoriesDto
+public sealed record UpdateEventCategoriesDto
 {
-    public UpdateEventCategoriesEventDto? Event { get; set; }
-    public UpdateEventCategoriesCategoryDto? Category { get; set; }
+    public UpdateEventCategoriesEventDto? Event { get; init; }
+    public UpdateEventCategoriesCategoryDto? Category { get; init; }
 }
 
-public class UpdateEventCategoriesEventDto
+public sealed record UpdateEventCategoriesEventDto
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 }
 
-public class UpdateEventCategoriesCategoryDto
+public sealed record UpdateEventCategoriesCategoryDto
 {
-    public Guid CategoryId { get; set; }
+    public Guid CategoryId { get; init; }
 }

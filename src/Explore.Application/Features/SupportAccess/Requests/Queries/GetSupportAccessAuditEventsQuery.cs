@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.SupportAccess.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.SupportAccessSession, AuthorizationActions.SupportAccessSessions.ViewAudit)]
-public sealed class GetSupportAccessAuditEventsQuery : IRequest<PaginatedResult<SupportAccessAuditEventDto>>, ISecureRequest
+public sealed record GetSupportAccessAuditEventsQuery : IRequest<PaginatedResult<SupportAccessAuditEventDto>>, ISecureRequest
 {
     public Guid TargetTenantId { get; init; }
     public Guid SessionId { get; init; }

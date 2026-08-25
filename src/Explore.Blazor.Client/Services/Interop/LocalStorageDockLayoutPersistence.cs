@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Serialization;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services.Interop;
@@ -14,7 +15,7 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
     private const int CurrentSchemaVersion = 1;
     private const string JsModulePath = "/js/dock-layout-persistence.js";
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions JsonOptions = new(AppJsonSerializerContext.Default.Options)
     {
         Converters = { new JsonStringEnumConverter() }
     };
@@ -193,8 +194,9 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
     private static string FirstNonBlank(params string?[] values) =>
         values.First(value => !string.IsNullOrWhiteSpace(value))!;
 
-    private sealed record DockLayoutStorageEnvelope(
-        int SchemaVersion,
-        string LayoutKey,
-        DockLayoutSnapshot Snapshot);
 }
+
+public sealed record DockLayoutStorageEnvelope(
+    int SchemaVersion,
+    string LayoutKey,
+    DockLayoutSnapshot Snapshot);

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookEventTypeDto
+public sealed record WebhookEventTypeDto
 {
     public Guid? Id { get; init; }
 

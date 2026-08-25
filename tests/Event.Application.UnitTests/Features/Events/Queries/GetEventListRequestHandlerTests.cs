@@ -420,7 +420,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAll && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAll && f.Value != null && ((IEnumerable<Guid>)f.Value).SequenceEqual(tagIds))));
     }
 
     [Test]
@@ -444,7 +444,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAny && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAny && f.Value != null && ((IEnumerable<Guid>)f.Value).SequenceEqual(tagIds))));
     }
 
     [Test]
@@ -468,7 +468,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAny && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAny && f.Value != null && ((IEnumerable<Guid>)f.Value).SequenceEqual(tagIds))));
     }
 
     [Test]
@@ -492,6 +492,6 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAll && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAll && f.Value != null && ((IEnumerable<Guid>)f.Value).SequenceEqual(tagIds))));
     }
 }

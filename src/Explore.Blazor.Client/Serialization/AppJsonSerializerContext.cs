@@ -7,6 +7,8 @@ using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Interop;
 
 namespace Explore.Blazor.Client.Serialization;
 
@@ -57,6 +59,8 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(EventIslamicAspectDto))]
 [JsonSerializable(typeof(EventListDto))]
 [JsonSerializable(typeof(EventDetail.EventDetailState))]
+[JsonSerializable(typeof(DockLayoutSnapshot))]
+[JsonSerializable(typeof(DockLayoutStorageEnvelope))]
 [JsonSerializable(typeof(EventProgramDayGroupDto))]
 [JsonSerializable(typeof(EventProgramItemDto))]
 [JsonSerializable(typeof(EventProgramReadinessWarningDto))]

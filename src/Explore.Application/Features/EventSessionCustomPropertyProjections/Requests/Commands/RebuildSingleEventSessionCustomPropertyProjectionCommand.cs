@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
-public class RebuildSingleEventSessionCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record RebuildSingleEventSessionCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId == Guid.Empty ? null : EventSessionId.ToString("D");
 

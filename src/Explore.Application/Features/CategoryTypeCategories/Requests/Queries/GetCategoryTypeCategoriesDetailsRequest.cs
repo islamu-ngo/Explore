@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.CategoryTypeCategories.Requests.Queries;
 
-public class GetCategoryTypeCategoriesDetailsRequest : IRequest<CategoryTypeCategoriesDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetCategoryTypeCategoriesDetailsRequest(Guid Id = default) : IRequest<CategoryTypeCategoriesDto>;

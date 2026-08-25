@@ -5,25 +5,25 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public sealed class UpdateEventTemplateDto
+public sealed record UpdateEventTemplateDto
 {
-    public UpdateEventTemplateMetadataDto? Metadata { get; set; }
-    public UpdateEventTemplateDefinitionsDto? Definitions { get; set; }
+    public UpdateEventTemplateMetadataDto? Metadata { get; init; }
+    public UpdateEventTemplateDefinitionsDto? Definitions { get; init; }
 }
 
-public sealed class UpdateEventTemplateMetadataDto
+public sealed record UpdateEventTemplateMetadataDto
 {
-    public string? TemplateKey { get; set; }
-    public string? DisplayName { get; set; }
-    public OptionalUpdate<string> Description { get; set; }
-    public OptionalUpdate<int> EventTypeId { get; set; }
-    public int? Version { get; set; }
-    public bool? IsPublished { get; set; }
-    public bool? IsActive { get; set; }
-    public int? SortOrder { get; set; }
+    public string? TemplateKey { get; init; }
+    public string? DisplayName { get; init; }
+    public OptionalUpdate<string> Description { get; init; }
+    public OptionalUpdate<int> EventTypeId { get; init; }
+    public int? Version { get; init; }
+    public bool? IsPublished { get; init; }
+    public bool? IsActive { get; init; }
+    public int? SortOrder { get; init; }
 }
 
-public sealed class UpdateEventTemplateDefinitionsDto
+public sealed record UpdateEventTemplateDefinitionsDto
 {
-    public List<CreateEventTemplateDefinitionDto>? Items { get; set; }
+    public List<CreateEventTemplateDefinitionDto>? Items { get; init; }
 }

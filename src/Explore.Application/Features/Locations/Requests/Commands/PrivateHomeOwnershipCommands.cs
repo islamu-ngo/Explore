@@ -11,7 +11,7 @@ namespace Explore.Application.Features.Locations.Requests.Commands;
 /// Classifies a Location as a Private Home and records the authenticated actor as its consenting owner.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Update)]
-public sealed class ClassifyLocationAsPrivateHomeCommand
+public sealed record ClassifyLocationAsPrivateHomeCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid LocationId { get; init; }
@@ -32,7 +32,7 @@ public sealed class ClassifyLocationAsPrivateHomeCommand
 /// pushed by the outgoing one.
 /// </summary>
 [AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Update)]
-public sealed class AcceptPrivateHomeOwnershipCommand
+public sealed record AcceptPrivateHomeOwnershipCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid LocationId { get; init; }

@@ -5,15 +5,15 @@ using System;
 
 namespace Explore.Application.DTOs.EventSessionLanguage;
 
-public class EventSessionLanguageListDto
+public sealed record EventSessionLanguageListDto
 {
-    public int Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid EventSessionId { get; set; }
+    public int Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid EventSessionId { get; init; }
     public Guid EventId { get; set; }
     public Guid TenantId { get; set; }
-    public string? EventSessionTitle { get; set; }
-    public int LanguageId { get; set; }
-    public string? LanguageMasterCode { get; set; } // For i18n with Tolgee
-    public string? LanguageFullName { get; set; } // Fallback default
+    public string? EventSessionTitle { get; init; }
+    public int LanguageId { get; init; }
+    public string? LanguageMasterCode { get; init; } // For i18n with Tolgee
+    public string? LanguageFullName { get; init; } // Fallback default
 }

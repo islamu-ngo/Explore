@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Actors.Requests.Commands;
 
-public class CreateActorCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateActorCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required CreateActorDto ActorDto { get; set; }
+    public required CreateActorDto ActorDto { get; init; }
 }

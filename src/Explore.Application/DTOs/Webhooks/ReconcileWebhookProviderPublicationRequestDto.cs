@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class ReconcileWebhookProviderPublicationRequestDto
+public sealed record ReconcileWebhookProviderPublicationRequestDto
 {
-    public long ExpectedConcurrencyVersion { get; set; }
-    public string ExternalProviderMessageId { get; set; } = string.Empty;
-    public string ReasonCode { get; set; } = string.Empty;
+    public long ExpectedConcurrencyVersion { get; init; }
+    public string ExternalProviderMessageId { get; init; } = string.Empty;
+    public string ReasonCode { get; init; } = string.Empty;
 }

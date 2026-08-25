@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class RepairWebhookProviderBindingRequestDto
+public sealed record RepairWebhookProviderBindingRequestDto
 {
-    public string ExternalApplicationId { get; set; } = string.Empty;
+    public string ExternalApplicationId { get; init; } = string.Empty;
 
-    public string ReasonCode { get; set; } = string.Empty;
+    public string ReasonCode { get; init; } = string.Empty;
 }

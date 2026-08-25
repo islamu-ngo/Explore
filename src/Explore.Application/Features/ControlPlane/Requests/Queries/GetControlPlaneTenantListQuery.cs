@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetControlPlaneTenantListQuery : IRequest<IReadOnlyList<ControlPlaneTenantListItemDto>>, ISecureRequest
+public sealed record GetControlPlaneTenantListQuery : IRequest<IReadOnlyList<ControlPlaneTenantListItemDto>>, ISecureRequest
 {
     public const string SettingKey = "control-plane.tenants";
 

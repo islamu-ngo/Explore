@@ -1,0 +1,51 @@
+[
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.CustomPropertyProjection.DrainDirtyScopesRequestDto.TenantId",
+    "category": "legitimate-target",
+    "reason": "CustomPropertyProjectionAdminController explicitly body-binds a tenant-wide drain target; CustomPropertyProjectionAuthorizationFacts uses that exact tenant and projection scope as the server-side authorization boundary before the handler validates both fields and drains only that tenant's dirty scopes.",
+    "owner": "Application Custom Property Projections",
+    "removalTrigger": "Remove this disposition if the projection target moves to an authoritative route or server-selected operator scope, or if the command no longer performs server-side authorization for the selected tenant."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.CustomPropertyProjection.RebuildProjectionRequestDto.TenantId",
+    "category": "legitimate-target",
+    "reason": "The event and session rebuild endpoints explicitly select a tenant-wide projection target; each ISecureRequest binds the selected tenant into CustomPropertyProjectionAuthorizationFacts before the validator, quota resolver, and projection updater operate on that exact tenant.",
+    "owner": "Application Custom Property Projections",
+    "removalTrigger": "Remove this disposition if rebuild targeting moves to an authoritative route or server-selected operator scope, or if CustomPropertyProjection authorization no longer gates the selected tenant."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.EventReporting.AssignModerationReportRequestDto.AssigneeUserId",
+    "category": "legitimate-target",
+    "reason": "This field explicitly selects the moderator who will receive the route-selected report case; ModerateLight authorization gates the persisted event, while the handler derives the acting moderator from ICurrentUserService and verifies the target assignee is an active user in ITenantContext before mutation.",
+    "owner": "Application Event Reporting",
+    "removalTrigger": "Remove this disposition only if assignment becomes self-only or the assignee is selected server-side; otherwise retain the explicit target with active-current-tenant validation and event moderation authorization."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.EventReporting.OspreySignalCallbackRequestDto.TenantId",
+    "category": "legitimate-target",
+    "reason": "The Osprey payload identifies the callback subject tenant rather than the current browser tenant; the OspreyCallback API-key policy authenticates the machine boundary and the handler requires equality with trusted ITenantContext before loading the tenant/report and validating the persisted event target.",
+    "owner": "API/Application Moderation Integrations",
+    "removalTrigger": "Remove TenantId from the callback body when verified callback authentication metadata or an authoritative route supplies the subject tenant without weakening the ITenantContext and persisted-report checks."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.SupportAccess.StartSupportAccessSessionRequestDto.TargetTenantId",
+    "category": "legitimate-target",
+    "reason": "Starting support access intentionally selects a tenant other than the authenticated operator's current scope; SupportAccessSession Start authorization uses TargetTenantId as its resource and facts boundary, then the handler resolves the authenticated actor through IAdminContext and validates the target Tenant before persistence.",
+    "owner": "Application Support Access",
+    "removalTrigger": "Remove this disposition if an authoritative route or server workflow selects the support target; otherwise retain explicit target authorization, tenant existence validation, and actor-preserving audit evidence."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.SupportAccess.StartSupportAccessSessionRequestDto.TargetTenantUserId",
+    "category": "legitimate-target",
+    "reason": "This optional field narrows an authorized support session to an explicit tenant-local user target; after SupportAccessSession Start authorization on TargetTenantId, the handler loads the target TenantUser and requires its persisted TenantId to equal the authorized target tenant.",
+    "owner": "Application Support Access",
+    "removalTrigger": "Remove this disposition if user-specific support targeting is retired or selected server-side; otherwise retain the target-user-to-authorized-target-tenant equality check and mismatch coverage."
+  },
+  {
+    "fullyQualifiedMember": "Explore.Application.DTOs.TenantUserRoleGrant.CreateTenantUserRoleGrantDto.TenantUserId",
+    "category": "legitimate-target",
+    "reason": "The body explicitly selects the tenant-local user who will receive a role; the controller supplies trusted ITenantContext to TenantUserRoleGrant Create authorization, and the handler verifies the persisted target TenantUser belongs to that same current tenant and is active before creating audited authority.",
+    "owner": "Application Tenant User Role Grants",
+    "removalTrigger": "Remove this disposition if the target tenant user moves to an authoritative route or server selection; otherwise retain current-tenant authorization, persisted target membership/status checks, and duplicate-grant protection."
+  }
+]

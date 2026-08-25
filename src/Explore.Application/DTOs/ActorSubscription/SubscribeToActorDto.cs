@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.ActorSubscription;
 
-public class SubscribeToActorDto
+public sealed record SubscribeToActorDto
 {
-    public Guid TargetActorId { get; set; }
+    public Guid TargetActorId { get; init; }
 }

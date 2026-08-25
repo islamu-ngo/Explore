@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.Permission;
 
-public class RolePermissionDto
+public sealed record RolePermissionDto
 {
-    public int RoleId { get; set; }
-    public required string RoleName { get; set; }
-    public int PermissionId { get; set; }
-    public required string PermissionMasterCode { get; set; }
-    public required string PermissionFullName { get; set; }
-    public required string ResourceKind { get; set; }
-    public required string Action { get; set; }
+    public int RoleId { get; init; }
+    public required string RoleName { get; init; }
+    public int PermissionId { get; init; }
+    public required string PermissionMasterCode { get; init; }
+    public required string PermissionFullName { get; init; }
+    public required string ResourceKind { get; init; }
+    public required string Action { get; init; }
 }

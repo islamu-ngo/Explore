@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetResolverConfigurationQuery : IRequest<ResolverConfigurationDto>
+public sealed record GetResolverConfigurationQuery : IRequest<ResolverConfigurationDto>
 {
 }

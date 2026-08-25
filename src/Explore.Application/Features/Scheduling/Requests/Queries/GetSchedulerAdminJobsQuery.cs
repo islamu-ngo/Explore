@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Scheduling.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetSchedulerAdminJobsQuery : IRequest<IReadOnlyList<SchedulerAdminJobDto>>, ISecureRequest
+public sealed record GetSchedulerAdminJobsQuery : IRequest<IReadOnlyList<SchedulerAdminJobDto>>, ISecureRequest
 {
     public const string SettingKey = GetSchedulerAdminOverviewQuery.SettingKey;
 

@@ -8,8 +8,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
 
-public class GetEventDetailsRequest : IRequest<EventDto>
-{
-    // Program properties
-    public Guid Id { get; set; }
-}
+public sealed record GetEventDetailsRequest(Guid Id = default) : IRequest<EventDto>;

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class TenantModerationReportingDashboardDto
+public sealed record TenantModerationReportingDashboardDto
 {
     public Guid TenantId { get; init; }
     public DateTime GeneratedAtUtc { get; init; }
@@ -11,7 +11,7 @@ public sealed class TenantModerationReportingDashboardDto
     public TenantModerationProviderSyncHealthDto ProviderSyncHealth { get; init; } = new();
 }
 
-public sealed class TenantModerationReportQueueHealthDto
+public sealed record TenantModerationReportQueueHealthDto
 {
     public int SubmittedReports { get; init; }
     public int InReviewReports { get; init; }
@@ -23,7 +23,7 @@ public sealed class TenantModerationReportQueueHealthDto
     public int DecisionReadyCases { get; init; }
 }
 
-public sealed class TenantModerationProviderSyncHealthDto
+public sealed record TenantModerationProviderSyncHealthDto
 {
     public int PendingSyncs { get; init; }
     public int StuckPendingSyncs { get; init; }

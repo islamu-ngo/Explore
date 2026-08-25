@@ -7,62 +7,62 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class UpdateModuleSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateModuleSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchModuleSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchModuleSettingsDto Patch { get; init; }
 }
 
-public class UpdateEventPolicyCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateEventPolicyCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchEventPolicyDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchEventPolicyDto Patch { get; init; }
 }
 
-public class UpdateOrganizationPolicyCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateOrganizationPolicyCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchOrganizationPolicyDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchOrganizationPolicyDto Patch { get; init; }
 }
 
-public class UpdateBrandingSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateBrandingSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchBrandingSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchBrandingSettingsDto Patch { get; init; }
 }
 
-public class UpdateDomainSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateDomainSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchDomainSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchDomainSettingsDto Patch { get; init; }
 }
 
-public class UpdateTenantDelegationSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateTenantDelegationSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchTenantDelegationSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchTenantDelegationSettingsDto Patch { get; init; }
 }
 
-public class UpdateAdminPortalSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateAdminPortalSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchAdminPortalSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchAdminPortalSettingsDto Patch { get; init; }
 }
 
-public class UpdateMcpGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateMcpGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchMcpGovernanceSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchMcpGovernanceSettingsDto Patch { get; init; }
 }
 
-public class UpdateAiAssistantGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateAiAssistantGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchAiAssistantGovernanceSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchAiAssistantGovernanceSettingsDto Patch { get; init; }
 }
 
-public class UpdateRenderPolicySettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateRenderPolicySettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchRenderPolicySettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchRenderPolicySettingsDto Patch { get; init; }
 }

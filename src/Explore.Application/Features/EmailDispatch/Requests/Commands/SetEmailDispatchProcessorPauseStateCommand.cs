@@ -8,11 +8,11 @@ using MediatR;
 namespace Explore.Application.Features.EmailDispatch.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class SetEmailDispatchProcessorPauseStateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record SetEmailDispatchProcessorPauseStateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public bool IsPaused { get; set; }
-    public string? PauseReason { get; set; }
-    public Guid? ChangedBy { get; set; }
+    public bool IsPaused { get; init; }
+    public string? PauseReason { get; init; }
+    public Guid? ChangedBy { get; init; }
 
     string ISecureRequest.ResourceId => EmailDispatchProcessorControl.SettingKey;
 

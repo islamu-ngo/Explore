@@ -7,9 +7,9 @@ using MediatR;
 namespace Explore.Application.Features.TenantUserRoleGrants.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.TenantUserRoleGrant, AuthorizationActions.Delete)]
-public class RevokeTenantUserRoleGrantCommand : IRequest<bool>, ISecureRequest
+public sealed record RevokeTenantUserRoleGrantCommand : IRequest<bool>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     public Guid TenantId { get; init; }
 

@@ -3,39 +3,39 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
-public sealed class ControlPlaneOverviewDto
+public sealed record ControlPlaneOverviewDto
 {
-    public string Version { get; set; } = string.Empty;
-    public string DeploymentMode { get; set; } = string.Empty;
-    public string? PublicOrigin { get; set; }
-    public string? AdminOrigin { get; set; }
-    public string? InstanceBaseDomain { get; set; }
-    public int TotalTenantCount { get; set; }
-    public int ActiveTenantCount { get; set; }
-    public IReadOnlyList<ControlPlaneTenantStatusCountDto> TenantStatusCounts { get; set; } = [];
-    public IReadOnlyList<ControlPlaneProviderSummaryDto> ProviderSummaries { get; set; } = [];
-    public IReadOnlyList<ControlPlaneWarningDto> Warnings { get; set; } = [];
+    public string Version { get; init; } = string.Empty;
+    public string DeploymentMode { get; init; } = string.Empty;
+    public string? PublicOrigin { get; init; }
+    public string? AdminOrigin { get; init; }
+    public string? InstanceBaseDomain { get; init; }
+    public int TotalTenantCount { get; init; }
+    public int ActiveTenantCount { get; init; }
+    public IReadOnlyList<ControlPlaneTenantStatusCountDto> TenantStatusCounts { get; init; } = [];
+    public IReadOnlyList<ControlPlaneProviderSummaryDto> ProviderSummaries { get; init; } = [];
+    public IReadOnlyList<ControlPlaneWarningDto> Warnings { get; init; } = [];
 }
 
-public sealed class ControlPlaneTenantStatusCountDto
+public sealed record ControlPlaneTenantStatusCountDto
 {
-    public string Status { get; set; } = string.Empty;
-    public int Count { get; set; }
+    public string Status { get; init; } = string.Empty;
+    public int Count { get; init; }
 }
 
-public sealed class ControlPlaneProviderSummaryDto
+public sealed record ControlPlaneProviderSummaryDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public bool Configured { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string? Message { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public bool Configured { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string? Message { get; init; }
 }
 
-public sealed class ControlPlaneWarningDto
+public sealed record ControlPlaneWarningDto
 {
-    public string Code { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string? Remediation { get; set; }
+    public string Code { get; init; } = string.Empty;
+    public string Severity { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+    public string? Remediation { get; init; }
 }

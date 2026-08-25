@@ -7,9 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTemplates.Requests.Queries;
 
-public class GetEventTemplateListRequest : IRequest<PaginatedResult<EventTemplateListDto>>
+public sealed record GetEventTemplateListRequest : IRequest<PaginatedResult<EventTemplateListDto>>
 {
-    public int? EventTypeId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = PaginatedResult<EventTemplateListDto>.DefaultPageSize;
+    public int? EventTypeId { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = PaginatedResult<EventTemplateListDto>.DefaultPageSize;
 }

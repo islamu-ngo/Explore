@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.EventSessionGroup;
 
-public class CreateEventSessionGroupRequestDto
+public sealed record CreateEventSessionGroupRequestDto
 {
-    public Guid EventId { get; set; }
-    public required string Name { get; set; }
-    public string? Slug { get; set; }
-    public string? Description { get; set; }
-    public Guid? LocationId { get; set; }
-    public Guid? RoomId { get; set; }
-    public string? Color { get; set; }
-    public int SortOrder { get; set; }
-    public bool IsPublished { get; set; }
+    public Guid EventId { get; init; }
+    public required string Name { get; init; }
+    public string? Slug { get; init; }
+    public string? Description { get; init; }
+    public Guid? LocationId { get; init; }
+    public Guid? RoomId { get; init; }
+    public string? Color { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsPublished { get; init; }
 }

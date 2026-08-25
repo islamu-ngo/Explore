@@ -8,15 +8,15 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public class UpdateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>, ISecureRequest
+public sealed record UpdateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>, ISecureRequest
 {
-    public int EventSessionLanguageId { get; set; }
+    public int EventSessionLanguageId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
+    public required UpdateEventSessionLanguageDto EventSessionLanguageDto { get; init; }
 
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionId.ToString();
 

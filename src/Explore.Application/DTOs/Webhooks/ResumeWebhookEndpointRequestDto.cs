@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class ResumeWebhookEndpointRequestDto
+public sealed record ResumeWebhookEndpointRequestDto
 {
-    public long ExpectedDeliveryStateVersion { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
+    public long ExpectedDeliveryStateVersion { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
 }

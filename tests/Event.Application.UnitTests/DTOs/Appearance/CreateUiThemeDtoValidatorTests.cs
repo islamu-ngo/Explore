@@ -24,7 +24,7 @@ public class CreateUiThemeDtoValidatorTests
     public async Task Validate_WhenPaletteContainsInvalidHex_ReturnsFailure()
     {
         var dto = CreateValidDto();
-        dto.LightPalette.Primary = "blue";
+        dto = dto with { LightPalette = dto.LightPalette with { Primary = "blue" } };
 
         var result = await _validator.ValidateAsync(dto);
 

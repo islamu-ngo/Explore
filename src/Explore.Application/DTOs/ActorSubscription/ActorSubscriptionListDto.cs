@@ -3,21 +3,21 @@
 
 namespace Explore.Application.DTOs.ActorSubscription;
 
-public class ActorSubscriptionListDto
+public sealed record ActorSubscriptionListDto
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid TargetActorId { get; set; }
-    public int TargetActorTypeId { get; set; }
-    public string? TargetActorTypeName { get; set; }
-    public string? TargetActorName { get; set; }
-    public int StatusId { get; set; }
-    public string? StatusCode { get; set; }
-    public string? StatusName { get; set; }
-    public int NotificationLevelId { get; set; }
-    public string? NotificationLevelCode { get; set; }
-    public string? NotificationLevelName { get; set; }
-    public DateTime SubscribedAt { get; set; }
-    public DateTime? UnsubscribedAt { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid TargetActorId { get; init; }
+    public int TargetActorTypeId { get; init; }
+    public string? TargetActorTypeName { get; init; }
+    public string? TargetActorName { get; init; }
+    public int StatusId { get; init; }
+    public string? StatusCode { get; init; }
+    public string? StatusName { get; init; }
+    public int NotificationLevelId { get; init; }
+    public string? NotificationLevelCode { get; init; }
+    public string? NotificationLevelName { get; init; }
+    public DateTime SubscribedAt { get; init; }
+    public DateTime? UnsubscribedAt { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

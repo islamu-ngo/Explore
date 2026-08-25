@@ -5,32 +5,32 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventSessionAgendaItem;
 
-public class UpdateEventSessionAgendaItemDto
+public sealed record UpdateEventSessionAgendaItemDto
 {
-    public UpdateEventSessionAgendaItemRelationshipDto? Relationship { get; set; }
-    public UpdateEventSessionAgendaItemContentDto? Content { get; set; }
-    public UpdateEventSessionAgendaItemScheduleDto? Schedule { get; set; }
-    public UpdateEventSessionAgendaItemLocationDto? Location { get; set; }
+    public UpdateEventSessionAgendaItemRelationshipDto? Relationship { get; init; }
+    public UpdateEventSessionAgendaItemContentDto? Content { get; init; }
+    public UpdateEventSessionAgendaItemScheduleDto? Schedule { get; init; }
+    public UpdateEventSessionAgendaItemLocationDto? Location { get; init; }
 }
 
-public sealed class UpdateEventSessionAgendaItemRelationshipDto
+public sealed record UpdateEventSessionAgendaItemRelationshipDto
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 }
 
-public sealed class UpdateEventSessionAgendaItemContentDto
+public sealed record UpdateEventSessionAgendaItemContentDto
 {
-    public string? Title { get; set; }
-    public OptionalUpdate<string?> Description { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public string? Title { get; init; }
+    public OptionalUpdate<string?> Description { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventSessionAgendaItemScheduleDto
+public sealed record UpdateEventSessionAgendaItemScheduleDto
 {
-    public DateTimeOffset? StartTime { get; set; }
-    public DateTimeOffset? EndTime { get; set; }
+    public DateTimeOffset? StartTime { get; init; }
+    public DateTimeOffset? EndTime { get; init; }
 }
 
-public sealed class UpdateEventSessionAgendaItemLocationDto
+public sealed record UpdateEventSessionAgendaItemLocationDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }

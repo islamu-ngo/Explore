@@ -5,14 +5,14 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class SubmitEventReportDto
+public sealed record SubmitEventReportDto
 {
-    public Guid EventId { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
-    public string? SubcategoryCode { get; set; }
-    public string ReporterText { get; set; } = string.Empty;
-    public EventReportSeverityHint? SeverityHint { get; set; }
-    public required bool ReportCaseUpdatesConsent { get; set; }
-    public required bool ReportFollowUpContactConsent { get; set; }
-    public string? ReporterLocale { get; set; }
+    public Guid EventId { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
+    public string? SubcategoryCode { get; init; }
+    public string ReporterText { get; init; } = string.Empty;
+    public EventReportSeverityHint? SeverityHint { get; init; }
+    public required bool ReportCaseUpdatesConsent { get; init; }
+    public required bool ReportFollowUpContactConsent { get; init; }
+    public string? ReporterLocale { get; init; }
 }

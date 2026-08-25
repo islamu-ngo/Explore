@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public sealed class TestInstanceSmtpConnectionQuery : IRequest<EmailResult>
+public sealed record TestInstanceSmtpConnectionQuery : IRequest<EmailResult>
 {
 }

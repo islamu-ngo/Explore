@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterConfigDto
+public sealed record FooterConfigDto
 {
-    public FooterSettingsDto Settings { get; set; } = new();
-    public IReadOnlyList<FooterLinkGroupDto> LinkGroups { get; set; } = [];
+    public FooterSettingsDto Settings { get; init; } = new();
+    public IReadOnlyList<FooterLinkGroupDto> LinkGroups { get; init; } = [];
 }

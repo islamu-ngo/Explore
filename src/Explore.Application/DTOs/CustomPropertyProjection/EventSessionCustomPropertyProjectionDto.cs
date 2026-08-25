@@ -5,28 +5,28 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class EventSessionCustomPropertyProjectionDto
+public sealed record EventSessionCustomPropertyProjectionDto
 {
-    public Guid Id { get; set; }
-    public Guid EventSessionCustomPropertyDefinitionId { get; set; }
-    public Guid EventSessionCustomPropertyValueId { get; set; }
-    public Guid EventSessionId { get; set; }
-    public Guid TenantId { get; set; }
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public PropertyType PropertyType { get; set; }
-    public ExposureLevel ExposureLevel { get; set; }
-    public bool IsSearchable { get; set; }
-    public bool IsFilterable { get; set; }
-    public bool IsExportable { get; set; }
-    public bool IsModerationRelevant { get; set; }
-    public bool IsAnalyticsRelevant { get; set; }
-    public int Ordinal { get; set; }
-    public Guid? OptionId { get; set; }
-    public string? TextValue { get; set; }
-    public decimal? NumberValue { get; set; }
-    public bool? BooleanValue { get; set; }
-    public DateTimeOffset? DateTimeValue { get; set; }
-    public string? NormalizedValue { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventSessionCustomPropertyDefinitionId { get; init; }
+    public Guid EventSessionCustomPropertyValueId { get; init; }
+    public Guid EventSessionId { get; init; }
+    public Guid TenantId { get; init; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public PropertyType PropertyType { get; init; }
+    public ExposureLevel ExposureLevel { get; init; }
+    public bool IsSearchable { get; init; }
+    public bool IsFilterable { get; init; }
+    public bool IsExportable { get; init; }
+    public bool IsModerationRelevant { get; init; }
+    public bool IsAnalyticsRelevant { get; init; }
+    public int Ordinal { get; init; }
+    public Guid? OptionId { get; init; }
+    public string? TextValue { get; init; }
+    public decimal? NumberValue { get; init; }
+    public bool? BooleanValue { get; init; }
+    public DateTimeOffset? DateTimeValue { get; init; }
+    public string? NormalizedValue { get; init; }
+    public DateTime UpdatedAt { get; init; }
 }

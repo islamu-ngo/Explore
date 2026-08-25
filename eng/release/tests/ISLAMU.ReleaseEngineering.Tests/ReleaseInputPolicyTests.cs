@@ -39,6 +39,25 @@ public sealed class ReleaseInputPolicyTests
     }
 
     [Test]
+    public async Task RepositoryChangeFragmentsPassReleaseInputPolicy()
+    {
+        string changesDirectory = Path.Combine(FindRepositoryRoot(), "docs", "releases", "changes");
+        string[] fragments = Directory.GetFiles(changesDirectory, "CHG-*.yaml", SearchOption.TopDirectoryOnly)
+            .Order(StringComparer.Ordinal)
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        ReleaseInputValidationResult result = ReleaseInputPolicy.Validate(
+            ValidReleaseYaml(),
+            fragments,
+            []);
+
+        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.Diagnostics).IsEmpty();
+        await Assert.That(result.Fragments.Select(fragment => fragment.ChangeId)).Contains("CHG-2026-0010");
+    }
+
+    [Test]
     public async Task DuplicateFragmentIdsFailDeterministically()
     {
         ReleaseInputValidationResult result = ReleaseInputPolicy.Validate(
@@ -410,6 +429,22 @@ public sealed class ReleaseInputPolicyTests
             .Replace("Supersedes: []", supersedes is null ? "Supersedes: []" : $"Supersedes:\n  - {supersedes}", StringComparison.Ordinal);
 
     private static string FullOid(char value, int length = 40) => new(value, length);
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Repository root was not found.");
+    }
 
     private static string ValidFragmentYaml() =>
         """

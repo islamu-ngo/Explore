@@ -7,16 +7,16 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class CompleteInstanceOnboardingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CompleteInstanceOnboardingCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required CompleteInstanceOnboardingRequest Settings { get; set; }
+    public Guid UserId { get; init; }
+    public required CompleteInstanceOnboardingRequest Settings { get; init; }
 
-    public string? Email { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Username { get; set; }
-    public string? AuthProvider { get; set; }
-    public string? AuthProviderId { get; set; }
-    public bool? EmailVerified { get; set; }
+    public string? Email { get; init; }
+    public string? FirstName { get; init; }
+    public string? LastName { get; init; }
+    public string? Username { get; init; }
+    public string? AuthProvider { get; init; }
+    public string? AuthProviderId { get; init; }
+    public bool? EmailVerified { get; init; }
 }

@@ -7,7 +7,7 @@ using MediatR;
 namespace Explore.Application.Features.EventTicketing.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTickets)]
-public sealed class DeleteEventCapacityPoolCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record DeleteEventCapacityPoolCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid CapacityPoolId { get; init; }

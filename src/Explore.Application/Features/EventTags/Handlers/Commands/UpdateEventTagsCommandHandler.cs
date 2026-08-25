@@ -57,8 +57,11 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
             return response;
         }
 
-        request.EventId = eventTags.EventId;
-        request.TenantId = eventTags.TenantId;
+        request = request with
+        {
+            EventId = eventTags.EventId,
+            TenantId = eventTags.TenantId
+        };
 
         if (eventTags.EventId != request.EventId || eventTags.TenantId != request.TenantId)
         {

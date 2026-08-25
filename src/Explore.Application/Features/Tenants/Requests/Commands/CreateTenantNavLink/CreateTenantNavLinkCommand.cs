@@ -11,10 +11,10 @@ namespace Explore.Application.Features.Tenants.Requests.Commands.CreateTenantNav
 /// Command to create a new tenant navigation link.
 /// Returns the ID of the created navigation link.
 /// </summary>
-public class CreateTenantNavLinkCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateTenantNavLinkCommand : IRequest<BaseCommandResponse<Guid>>
 {
     /// <summary>
     /// DTO containing the navigation link data to create.
     /// </summary>
-    public CreateTenantNavigationLinkDto NavigationLinkDto { get; set; } = null!;
+    public CreateTenantNavigationLinkDto NavigationLinkDto { get; init; } = null!;
 }

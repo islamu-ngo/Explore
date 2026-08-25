@@ -9,14 +9,14 @@ using MediatR;
 namespace Explore.Application.Features.EmailDispatch.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Reconcile)]
-public sealed class ReconcileUnknownEmailDispatchCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ReconcileUnknownEmailDispatchCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid OutboxId { get; set; }
-    public EmailDispatchUnknownReconciliationOutcome Outcome { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public string? ProviderMessageId { get; set; }
-    public Guid? ChangedBy { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid OutboxId { get; init; }
+    public EmailDispatchUnknownReconciliationOutcome Outcome { get; init; }
+    public string Reason { get; init; } = string.Empty;
+    public string? ProviderMessageId { get; init; }
+    public Guid? ChangedBy { get; init; }
 
     string? ISecureRequest.ResourceId => OutboxId == Guid.Empty ? null : OutboxId.ToString("D");
 

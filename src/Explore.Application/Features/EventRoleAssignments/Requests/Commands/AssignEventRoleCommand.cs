@@ -10,16 +10,16 @@ using MediatR;
 namespace Explore.Application.Features.EventRoleAssignments.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTeam)]
-public sealed class AssignEventRoleCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record AssignEventRoleCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid TargetUserId { get; set; }
-    public int RoleId { get; set; }
-    public Guid ActorUserId { get; set; }
-    public EventRoleAssignmentStatus Status { get; set; } = EventRoleAssignmentStatus.Active;
-    public DateTime StartsAtUtc { get; set; } = DateTime.UtcNow;
-    public DateTime? ExpiresAtUtc { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid TargetUserId { get; init; }
+    public int RoleId { get; init; }
+    public Guid ActorUserId { get; init; }
+    public EventRoleAssignmentStatus Status { get; init; } = EventRoleAssignmentStatus.Active;
+    public DateTime StartsAtUtc { get; init; } = DateTime.UtcNow;
+    public DateTime? ExpiresAtUtc { get; init; }
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 

@@ -62,10 +62,10 @@ public class RotateKeycloakClientSecretCommandHandlerTests
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         var request = CreateApplicationManagedRequest();
         var configuration = CreateConfiguration();
-        configuration.KeycloakClientSecretOwnership = new()
-        {
-            Mode = "deployment-managed"
-        };
+        configuration = configuration with { KeycloakClientSecretOwnership = new() { Mode = "deployment-managed" } };
+
+
+
         _configurationService.ReadConfigurationAsync().Returns(configuration);
         _keycloakBootstrapService.RotateClientSecretAsync(
                 configuration,

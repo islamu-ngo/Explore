@@ -7,8 +7,8 @@ using Explore.Application.DTOs.Appearance;
 using Explore.Application.Responses;
 using MediatR;
 
-public class UpdateUiThemeCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateUiThemeCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid Id { get; set; }
-    public required UpdateUiThemeDto UiThemeDto { get; set; }
+    public Guid Id { get; init; }
+    public required UpdateUiThemeDto UiThemeDto { get; init; }
 }

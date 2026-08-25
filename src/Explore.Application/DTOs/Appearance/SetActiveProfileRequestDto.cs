@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public sealed class SetActiveProfileRequestDto
+public sealed record SetActiveProfileRequestDto
 {
-    public Guid ProfileId { get; set; }
-    public string? ThemeMode { get; set; }
-    public string? Direction { get; set; }
-    public string? Language { get; set; }
+    public Guid ProfileId { get; init; }
+    public string? ThemeMode { get; init; }
+    public string? Direction { get; init; }
+    public string? Language { get; init; }
 }

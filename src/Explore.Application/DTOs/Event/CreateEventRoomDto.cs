@@ -5,14 +5,14 @@ using System;
 
 namespace Explore.Application.DTOs.Event;
 
-public class CreateEventRoomDto
+public sealed record CreateEventRoomDto
 {
-    public required string TempKey { get; set; }
-    public Guid? LocationId { get; set; }
-    public string? LocationTempKey { get; set; }
-    public required string Name { get; set; }
-    public string? Slug { get; set; }
-    public string? Description { get; set; }
-    public int? Capacity { get; set; }
-    public int SortOrder { get; set; }
+    public required string TempKey { get; init; }
+    public Guid? LocationId { get; init; }
+    public string? LocationTempKey { get; init; }
+    public required string Name { get; init; }
+    public string? Slug { get; init; }
+    public string? Description { get; init; }
+    public int? Capacity { get; init; }
+    public int SortOrder { get; init; }
 }

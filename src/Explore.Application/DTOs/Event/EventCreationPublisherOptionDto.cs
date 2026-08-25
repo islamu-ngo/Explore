@@ -3,17 +3,17 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public class EventCreationPublisherOptionDto
+public sealed record EventCreationPublisherOptionDto
 {
-    public required string PublisherMode { get; set; }
+    public required string PublisherMode { get; init; }
 
-    public Guid? PublisherId { get; set; }
+    public Guid? PublisherId { get; init; }
 
-    public required string DisplayName { get; set; }
+    public required string DisplayName { get; init; }
 
-    public int? RoleId { get; set; }
+    public int? RoleId { get; init; }
 
-    public bool CanPublish { get; set; }
+    public bool CanPublish { get; init; }
 
-    public string? Reason { get; set; }
+    public string? Reason { get; init; }
 }

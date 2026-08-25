@@ -8,10 +8,10 @@ using MediatR;
 namespace Explore.Application.Features.LocationRooms.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.LocationRoom, AuthorizationActions.LocationRooms.View)]
-public class GetLocationRoomDetailRequest : IRequest<LocationRoomDto?>, ISecureRequest
+public sealed record GetLocationRoomDetailRequest : IRequest<LocationRoomDto?>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
 

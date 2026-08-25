@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.TenantUserRoleGrants.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.TenantUserRoleGrant, AuthorizationActions.Create)]
-public class CreateTenantUserRoleGrantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateTenantUserRoleGrantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateTenantUserRoleGrantDto TenantUserRoleGrantDto { get; set; }
+    public required CreateTenantUserRoleGrantDto TenantUserRoleGrantDto { get; init; }
 
     public Guid TenantId { get; init; }
 

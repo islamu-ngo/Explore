@@ -10,7 +10,7 @@ using MediatR;
 namespace Explore.Application.Features.PlatformMonetization.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class UpdatePlatformMonetizationSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdatePlatformMonetizationSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public const string SettingKey = GetPlatformMonetizationSettingsQuery.SettingKey;
 

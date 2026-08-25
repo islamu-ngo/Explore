@@ -102,15 +102,21 @@ public class UpdateEventSessionCommandHandlerTests
             DateTimeOffset.UtcNow.AddDays(1),
             DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
             "Fixed Session");
-        command.EventSessionDto.IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
+        command = command with
         {
-            Value = OptionalUpdate<EventSessionIslamicAspectDto?>.Set(
-                new EventSessionIslamicAspectDto
+            EventSessionDto = command.EventSessionDto with
+            {
+                IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
                 {
-                    StartTimeType = SessionStartTimeType.Fixed,
-                    ReferencePrayer = PrayerTime.Dhuhr,
-                    OffsetMinutes = 0
-                })
+                    Value = OptionalUpdate<EventSessionIslamicAspectDto?>.Set(
+                        new EventSessionIslamicAspectDto
+                        {
+                            StartTimeType = SessionStartTimeType.Fixed,
+                            ReferencePrayer = PrayerTime.Dhuhr,
+                            OffsetMinutes = 0
+                        })
+                }
+            }
         };
 
         _eventRepository.Exists(eventId).Returns(true);

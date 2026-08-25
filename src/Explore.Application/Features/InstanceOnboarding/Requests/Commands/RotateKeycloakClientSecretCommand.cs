@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class RotateKeycloakClientSecretCommand : IRequest<KeycloakClientSecretRotationResultDto>
+public sealed record RotateKeycloakClientSecretCommand : IRequest<KeycloakClientSecretRotationResultDto>
 {
-    public Guid UserId { get; set; }
-    public KeycloakClientSecretRotationRequestDto Request { get; set; } = new();
+    public Guid UserId { get; init; }
+    public KeycloakClientSecretRotationRequestDto Request { get; init; } = new();
 }

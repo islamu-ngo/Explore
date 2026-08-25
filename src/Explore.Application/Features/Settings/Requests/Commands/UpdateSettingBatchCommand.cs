@@ -12,7 +12,7 @@ using MediatR;
 /// locked keys are skipped and the rest applied. In Strict mode (admin), the entire batch is rejected
 /// if any key is locked.
 /// </summary>
-public class UpdateSettingBatchCommand : IRequest<BatchUpdateResponseDto>
+public sealed record UpdateSettingBatchCommand : IRequest<BatchUpdateResponseDto>
 {
     /// <summary>
     /// Setting category to scope the update (e.g., "EventList"). All keys must belong to this category.
@@ -23,7 +23,17 @@ public class UpdateSettingBatchCommand : IRequest<BatchUpdateResponseDto>
     /// Key-value pairs to update. Keys are fully qualified (e.g., "event_list.page_size").
     /// Values are plain strings — handler validates and serializes per ValueType.
     /// </summary>
-    public required Dictionary<string, string> Values { get; init; }
+    private IReadOnlyDictionary<string, string> _values =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+
+    public required IReadOnlyDictionary<string, string> Values
+    {
+        get => _values;
+        init => _values = value is null
+            ? null!
+            : new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+                new Dictionary<string, string>(value, StringComparer.Ordinal));
+    }
 
     /// <summary>
     /// The scope at which to write the overrides.

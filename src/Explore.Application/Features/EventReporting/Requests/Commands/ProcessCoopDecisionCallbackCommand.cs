@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventReporting.Requests.Commands;
 
-public sealed class ProcessCoopDecisionCallbackCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record ProcessCoopDecisionCallbackCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public required CoopDecisionCallbackRequestDto Request { get; init; }
 }

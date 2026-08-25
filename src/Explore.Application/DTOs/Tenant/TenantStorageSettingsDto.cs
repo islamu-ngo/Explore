@@ -7,41 +7,41 @@ using Explore.Domain;
 
 namespace Explore.Application.DTOs.Tenant;
 
-public sealed class PatchTenantStorageSettingsDto
+public sealed record PatchTenantStorageSettingsDto
 {
-    public PatchTenantStoragePolicyDto? Policy { get; set; }
-    public PatchTenantStorageS3Dto? S3 { get; set; }
+    public PatchTenantStoragePolicyDto? Policy { get; init; }
+    public PatchTenantStorageS3Dto? S3 { get; init; }
 }
 
-public sealed class PatchTenantStoragePolicyDto
+public sealed record PatchTenantStoragePolicyDto
 {
-    public OptionalUpdate<string> Provider { get; set; }
-    public OptionalUpdate<long> MaxUploadBytes { get; set; }
-    public OptionalUpdate<long> TenantQuotaBytes { get; set; }
-    public OptionalUpdate<List<StorageRouteSettingsDto>> Routes { get; set; }
+    public OptionalUpdate<string> Provider { get; init; }
+    public OptionalUpdate<long> MaxUploadBytes { get; init; }
+    public OptionalUpdate<long> TenantQuotaBytes { get; init; }
+    public OptionalUpdate<List<StorageRouteSettingsDto>> Routes { get; init; }
 }
 
-public sealed class PatchTenantStorageS3Dto
+public sealed record PatchTenantStorageS3Dto
 {
-    public OptionalUpdate<string> Endpoint { get; set; }
-    public OptionalUpdate<string> PublicEndpoint { get; set; }
-    public OptionalUpdate<string> BucketName { get; set; }
-    public OptionalUpdate<string> AccessKeyId { get; set; }
-    public OptionalUpdate<string> SecretAccessKey { get; set; }
-    public OptionalUpdate<string> Region { get; set; }
-    public OptionalUpdate<bool> ForcePathStyle { get; set; }
-    public OptionalUpdate<int> UploadUrlExpirationMinutes { get; set; }
+    public OptionalUpdate<string> Endpoint { get; init; }
+    public OptionalUpdate<string> PublicEndpoint { get; init; }
+    public OptionalUpdate<string> BucketName { get; init; }
+    public OptionalUpdate<string> AccessKeyId { get; init; }
+    public OptionalUpdate<string> SecretAccessKey { get; init; }
+    public OptionalUpdate<string> Region { get; init; }
+    public OptionalUpdate<bool> ForcePathStyle { get; init; }
+    public OptionalUpdate<int> UploadUrlExpirationMinutes { get; init; }
 }
 
-public class TenantStorageSettingsDto
+public sealed record TenantStorageSettingsDto
 {
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
     public string Provider { get; set; } = StorageProviders.Local;
     public long MaxUploadBytes { get; set; } = 10 * 1024 * 1024;
     public long TenantQuotaBytes { get; set; } = 1024L * 1024 * 1024;
-    public bool IsReadOnly { get; set; }
-    public bool TenantOverridesAllowed { get; set; }
-    public bool TenantStorageLocked { get; set; } = true;
+    public bool IsReadOnly { get; init; }
+    public bool TenantOverridesAllowed { get; init; }
+    public bool TenantStorageLocked { get; init; } = true;
     public List<StorageRouteSettingsDto> Routes { get; set; } = [];
 
     public string S3Endpoint { get; set; } = string.Empty;
@@ -49,37 +49,37 @@ public class TenantStorageSettingsDto
     public string S3BucketName { get; set; } = string.Empty;
     public string S3AccessKeyId { get; set; } = string.Empty;
     public string S3SecretAccessKey { get; set; } = string.Empty;
-    public bool S3AccessKeyConfigured { get; set; }
-    public bool S3SecretAccessKeyConfigured { get; set; }
+    public bool S3AccessKeyConfigured { get; init; }
+    public bool S3SecretAccessKeyConfigured { get; init; }
     public string S3Region { get; set; } = string.Empty;
     public bool S3ForcePathStyle { get; set; } = true;
     public int S3UploadUrlExpirationMinutes { get; set; } = 60;
 
-    public TenantStorageEffectivePolicyDto EffectivePolicy { get; set; } = new();
-    public TenantStorageUsageDto Usage { get; set; } = new();
+    public TenantStorageEffectivePolicyDto EffectivePolicy { get; init; } = new();
+    public TenantStorageUsageDto Usage { get; init; } = new();
 }
 
-public class TenantStorageEffectivePolicyDto
+public sealed record TenantStorageEffectivePolicyDto
 {
-    public string Provider { get; set; } = StorageProviders.Local;
-    public long MaxUploadBytes { get; set; } = 10 * 1024 * 1024;
-    public long TenantQuotaBytes { get; set; } = 1024L * 1024 * 1024;
-    public long InstanceMaxUploadBytes { get; set; } = 100L * 1024 * 1024;
-    public bool TenantOverridesAllowed { get; set; }
-    public bool TenantStorageLocked { get; set; } = true;
-    public string ProviderSource { get; set; } = "SystemDefault";
-    public string MaxUploadSource { get; set; } = "SystemDefault";
-    public string QuotaSource { get; set; } = "SystemDefault";
-    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
+    public string Provider { get; init; } = StorageProviders.Local;
+    public long MaxUploadBytes { get; init; } = 10 * 1024 * 1024;
+    public long TenantQuotaBytes { get; init; } = 1024L * 1024 * 1024;
+    public long InstanceMaxUploadBytes { get; init; } = 100L * 1024 * 1024;
+    public bool TenantOverridesAllowed { get; init; }
+    public bool TenantStorageLocked { get; init; } = true;
+    public string ProviderSource { get; init; } = "SystemDefault";
+    public string MaxUploadSource { get; init; } = "SystemDefault";
+    public string QuotaSource { get; init; } = "SystemDefault";
+    public List<StorageRouteSettingsDto> Routes { get; init; } = [];
 }
 
-public class TenantStorageUsageDto
+public sealed record TenantStorageUsageDto
 {
-    public string Provider { get; set; } = StorageProviders.Local;
-    public long UsedBytes { get; set; }
-    public long ReservedBytes { get; set; }
-    public long QuarantinedBytes { get; set; }
-    public long ObjectCount { get; set; }
-    public long AvailableBytes { get; set; }
-    public DateTime? LastRecalculatedAt { get; set; }
+    public string Provider { get; init; } = StorageProviders.Local;
+    public long UsedBytes { get; init; }
+    public long ReservedBytes { get; init; }
+    public long QuarantinedBytes { get; init; }
+    public long ObjectCount { get; init; }
+    public long AvailableBytes { get; init; }
+    public DateTime? LastRecalculatedAt { get; init; }
 }

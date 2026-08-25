@@ -6,56 +6,56 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
-public sealed class UpdateCustomPropertyDefinitionDto
+public sealed record UpdateCustomPropertyDefinitionDto
 {
-    public UpdateCustomPropertyDefinitionRelationsDto? Relations { get; set; }
-    public UpdateCustomPropertyDefinitionMetadataDto? Metadata { get; set; }
-    public UpdateCustomPropertyDefinitionValidationDto? Validation { get; set; }
-    public UpdateCustomPropertyDefinitionOptionsDto? Options { get; set; }
+    public UpdateCustomPropertyDefinitionRelationsDto? Relations { get; init; }
+    public UpdateCustomPropertyDefinitionMetadataDto? Metadata { get; init; }
+    public UpdateCustomPropertyDefinitionValidationDto? Validation { get; init; }
+    public UpdateCustomPropertyDefinitionOptionsDto? Options { get; init; }
 }
 
-public sealed class UpdateCustomPropertyDefinitionRelationsDto
+public sealed record UpdateCustomPropertyDefinitionRelationsDto
 {
-    public EntityTypeName? EntityTypeName { get; set; }
+    public EntityTypeName? EntityTypeName { get; init; }
 }
 
-public sealed class UpdateCustomPropertyDefinitionMetadataDto
+public sealed record UpdateCustomPropertyDefinitionMetadataDto
 {
-    public string? Namespace { get; set; }
-    public string? Key { get; set; }
-    public string? DisplayName { get; set; }
-    public OptionalUpdate<string?> Description { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public bool? IsActive { get; set; }
-    public int? SortOrder { get; set; }
-    public ExposureLevel? ExposureLevel { get; set; }
-    public bool? IsSearchable { get; set; }
-    public bool? IsFilterable { get; set; }
-    public bool? IsExportable { get; set; }
-    public bool? IsModerationRelevant { get; set; }
-    public bool? IsAnalyticsRelevant { get; set; }
-    public bool? IsSystemOwned { get; set; }
+    public string? Namespace { get; init; }
+    public string? Key { get; init; }
+    public string? DisplayName { get; init; }
+    public OptionalUpdate<string?> Description { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public bool? IsActive { get; init; }
+    public int? SortOrder { get; init; }
+    public ExposureLevel? ExposureLevel { get; init; }
+    public bool? IsSearchable { get; init; }
+    public bool? IsFilterable { get; init; }
+    public bool? IsExportable { get; init; }
+    public bool? IsModerationRelevant { get; init; }
+    public bool? IsAnalyticsRelevant { get; init; }
+    public bool? IsSystemOwned { get; init; }
 }
 
-public sealed class UpdateCustomPropertyDefinitionValidationDto
+public sealed record UpdateCustomPropertyDefinitionValidationDto
 {
-    public PropertyType? PropertyType { get; set; }
-    public bool? IsRequired { get; set; }
-    public bool? IsMulti { get; set; }
-    public OptionalUpdate<string?> DefaultTextValue { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<decimal?> DefaultNumberValue { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-    public OptionalUpdate<bool?> DefaultBooleanValue { get; set; } = OptionalUpdate<bool?>.Unspecified();
-    public OptionalUpdate<DateTimeOffset?> DefaultDateTimeValue { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
-    public OptionalUpdate<int?> MinLength { get; set; } = OptionalUpdate<int?>.Unspecified();
-    public OptionalUpdate<int?> MaxLength { get; set; } = OptionalUpdate<int?>.Unspecified();
-    public OptionalUpdate<string?> RegexPattern { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<decimal?> MinNumber { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-    public OptionalUpdate<decimal?> MaxNumber { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-    public OptionalUpdate<DateTimeOffset?> MinDateTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
-    public OptionalUpdate<DateTimeOffset?> MaxDateTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
-    public OptionalUpdate<string?> AllowedUrlSchemes { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public PropertyType? PropertyType { get; init; }
+    public bool? IsRequired { get; init; }
+    public bool? IsMulti { get; init; }
+    public OptionalUpdate<string?> DefaultTextValue { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<decimal?> DefaultNumberValue { get; init; } = OptionalUpdate<decimal?>.Unspecified();
+    public OptionalUpdate<bool?> DefaultBooleanValue { get; init; } = OptionalUpdate<bool?>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> DefaultDateTimeValue { get; init; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<int?> MinLength { get; init; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> MaxLength { get; init; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<string?> RegexPattern { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<decimal?> MinNumber { get; init; } = OptionalUpdate<decimal?>.Unspecified();
+    public OptionalUpdate<decimal?> MaxNumber { get; init; } = OptionalUpdate<decimal?>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> MinDateTime { get; init; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> MaxDateTime { get; init; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<string?> AllowedUrlSchemes { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateCustomPropertyDefinitionOptionsDto
+public sealed record UpdateCustomPropertyDefinitionOptionsDto
 {
-    public List<CreateCustomPropertyOptionDto>? Items { get; set; }
+    public List<CreateCustomPropertyOptionDto>? Items { get; init; }
 }

@@ -3,28 +3,28 @@
 
 namespace Explore.Application.DTOs.Notification;
 
-public class NotificationListDto
+public sealed record NotificationListDto
 {
-    public Guid Id { get; set; }
-    public int NotificationTypeId { get; set; }
-    public string? NotificationTypeName { get; set; }
-    public required string Title { get; set; }
-    public string? Body { get; set; }
-    public bool IsRead { get; set; }
-    public DateTime? ReadAt { get; set; }
-    public int? NotificationEntityTypeId { get; set; }
-    public string? NotificationEntityTypeName { get; set; }
-    public string? EntityId { get; set; }
-    public int NotificationScopeId { get; set; }
-    public string? NotificationScopeName { get; set; }
-    public Guid? SourceActorId { get; set; }
-    public string? SourceActorName { get; set; }
-    public Guid? RecipientContextActorId { get; set; }
-    public string? RecipientContextActorName { get; set; }
-    public int? NotificationReasonId { get; set; }
-    public string? NotificationReasonName { get; set; }
-    public bool IsArchived { get; set; }
-    public DateTime? ArchivedAt { get; set; }
-    public DateTime? SnoozedUntil { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public int NotificationTypeId { get; init; }
+    public string? NotificationTypeName { get; init; }
+    public required string Title { get; init; }
+    public string? Body { get; init; }
+    public bool IsRead { get; init; }
+    public DateTime? ReadAt { get; init; }
+    public int? NotificationEntityTypeId { get; init; }
+    public string? NotificationEntityTypeName { get; init; }
+    public string? EntityId { get; init; }
+    public int NotificationScopeId { get; init; }
+    public string? NotificationScopeName { get; init; }
+    public Guid? SourceActorId { get; init; }
+    public string? SourceActorName { get; init; }
+    public Guid? RecipientContextActorId { get; init; }
+    public string? RecipientContextActorName { get; init; }
+    public int? NotificationReasonId { get; init; }
+    public string? NotificationReasonName { get; init; }
+    public bool IsArchived { get; init; }
+    public DateTime? ArchivedAt { get; init; }
+    public DateTime? SnoozedUntil { get; init; }
+    public DateTime CreatedAt { get; init; }
 }

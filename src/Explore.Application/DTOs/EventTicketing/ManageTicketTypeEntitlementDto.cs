@@ -2,7 +2,7 @@
 // ABOUTME: Contains only caller-supplied scope references and quantity semantics.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class ManageTicketTypeEntitlementDto
+public sealed record ManageTicketTypeEntitlementDto
 {
     public int EntitlementScopeTypeId { get; init; }
     public Guid? EventDayId { get; init; }

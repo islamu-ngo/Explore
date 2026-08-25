@@ -130,7 +130,7 @@ public sealed class EmailDispatchAdminHateoasTests
     {
         var policy = new EmailDispatchStatusCollectionLinkPolicy();
         var dto = CreateStatus(Guid.NewGuid(), Guid.NewGuid(), "DeadLettered");
-        dto.ContentRedactedAt = DateTime.UtcNow;
+        dto = dto with { ContentRedactedAt = DateTime.UtcNow };
 
         var links = policy.GetItemLinks(dto, user: null).ToList();
 

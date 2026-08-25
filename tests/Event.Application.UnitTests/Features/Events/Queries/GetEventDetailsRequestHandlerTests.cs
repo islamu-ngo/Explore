@@ -41,7 +41,13 @@ public class GetEventDetailsRequestHandlerTests
     {
         Guid eventId = Guid.CreateVersion7();
         EventDto cachedEvent = EligibleEvent(eventId);
-        cachedEvent.ParticipationConfiguration!.HasValidOptionalQuestionnaire = false;
+        cachedEvent = cachedEvent with
+        {
+            ParticipationConfiguration = cachedEvent.ParticipationConfiguration! with
+            {
+                HasValidOptionalQuestionnaire = false
+            }
+        };
         var descriptor = new OptionalQuestionnaireDto(
             eventId,
             Guid.CreateVersion7(),

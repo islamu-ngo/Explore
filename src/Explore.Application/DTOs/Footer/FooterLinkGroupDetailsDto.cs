@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterLinkGroupDetailsDto
+public sealed record FooterLinkGroupDetailsDto
 {
-    public Guid Id { get; set; }
-    public Guid? TenantId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public int Order { get; set; }
-    public bool IsActive { get; set; }
-    public IReadOnlyList<FooterLinkItemDto> Links { get; set; } = [];
+    public Guid Id { get; init; }
+    public Guid? TenantId { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public int Order { get; init; }
+    public bool IsActive { get; init; }
+    public IReadOnlyList<FooterLinkItemDto> Links { get; init; } = [];
 }

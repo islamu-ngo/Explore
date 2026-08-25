@@ -314,7 +314,7 @@ public sealed class AiAssistantController : ControllerBase
     {
         if (!string.IsNullOrWhiteSpace(idempotencyKey))
         {
-            dto.IdempotencyKey = idempotencyKey;
+            dto = dto with { IdempotencyKey = idempotencyKey };
         }
 
         var response = await _mediator.Send(new SendAiMessageCommand

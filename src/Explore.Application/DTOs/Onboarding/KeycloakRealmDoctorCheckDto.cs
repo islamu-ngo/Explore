@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRealmDoctorCheckDto
+public sealed record KeycloakRealmDoctorCheckDto
 {
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string? Remediation { get; set; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+    public string? Remediation { get; init; }
 }

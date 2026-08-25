@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.EventSessionGroup;
 
-public class AssignSessionToGroupRequestDto
+public sealed record AssignSessionToGroupRequestDto
 {
-    public Guid EventId { get; set; }
-    public Guid EventSessionGroupId { get; set; }
-    public Guid EventSessionId { get; set; }
-    public bool IsPrimary { get; set; }
-    public int SortOrder { get; set; }
+    public Guid EventId { get; init; }
+    public Guid EventSessionGroupId { get; init; }
+    public Guid EventSessionId { get; init; }
+    public bool IsPrimary { get; init; }
+    public int SortOrder { get; init; }
 }

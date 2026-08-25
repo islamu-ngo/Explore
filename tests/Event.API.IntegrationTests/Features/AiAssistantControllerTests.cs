@@ -254,7 +254,8 @@ public sealed class AiAssistantControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<SendAiMessageCommand>(command =>
                 command.ConversationId == conversationId &&
-                command.Message == dto &&
+                command.Message.Content == dto.Content &&
+                command.Message.Mode == dto.Mode &&
                 command.Message.IdempotencyKey == "header-key"),
             Arg.Any<CancellationToken>());
     }
@@ -557,23 +558,25 @@ public sealed class AiAssistantControllerTests
     public async Task AiConversationHalResource_SerializesLinksWithSourceGeneratedContext()
     {
         var conversationId = Guid.CreateVersion7();
-        var resource = new HalResource<AiConversationDto>(CreateDetail(conversationId, "Active"));
+        var resource = new HalResource<AiConversationDto>(CreateDetail(conversationId, "Active") with
+        {
+            ProposedActions =
+            [
+                new AiProposedActionDto
+                {
+                    Id = Guid.CreateVersion7(),
+                    Kind = "CreateEventDraft",
+                    Status = "Proposed",
+                    CreatedAt = DateTime.UtcNow,
+                    Links = new Dictionary<string, HalLink>
+                    {
+                        [LinkRelations.ConfirmAction] = HalLink.CreateAction($"/api/ai/assistant/conversations/{conversationId}/proposed-actions/action/confirm", "POST")
+                    }
+                }
+            ]
+        });
         resource.WithLink(LinkRelations.Self, HalLink.Create($"/api/ai/assistant/conversations/{conversationId}"));
         resource.WithLink(LinkRelations.SendMessage, HalLink.CreateAction($"/api/ai/assistant/conversations/{conversationId}/messages", "POST"));
-        resource.Data.ProposedActions =
-        [
-            new AiProposedActionDto
-            {
-                Id = Guid.CreateVersion7(),
-                Kind = "CreateEventDraft",
-                Status = "Proposed",
-                CreatedAt = DateTime.UtcNow,
-                Links = new Dictionary<string, HalLink>
-                {
-                    [LinkRelations.ConfirmAction] = HalLink.CreateAction($"/api/ai/assistant/conversations/{conversationId}/proposed-actions/action/confirm", "POST")
-                }
-            }
-        ];
 
         var json = JsonSerializer.Serialize(resource, ExploreJsonContext.Default.Options);
 

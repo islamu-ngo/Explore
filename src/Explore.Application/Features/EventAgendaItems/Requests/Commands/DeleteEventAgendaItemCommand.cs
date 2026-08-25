@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.EventAgendaItems.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventAgendaItem, AuthorizationActions.Delete)]
-public class DeleteEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record DeleteEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

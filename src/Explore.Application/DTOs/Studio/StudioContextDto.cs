@@ -5,10 +5,10 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.Studio;
 
-public sealed class StudioContextDto
+public sealed record StudioContextDto
 {
     [JsonIgnore]
-    public Guid? SelectedActorId { get; set; }
+    public Guid? SelectedActorId { get; init; }
 
     [JsonIgnore]
     public ISet<string> AllowedLinkRelations { get; } = new HashSet<string>(StringComparer.Ordinal);

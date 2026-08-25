@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventReporting.Requests.Commands;
 
-public sealed class RecordOspreySignalCallbackCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record RecordOspreySignalCallbackCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public required OspreySignalCallbackRequestDto Request { get; init; }
 }

@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public sealed class AuthorizationPolicyPackageSyncRequestDto
+public sealed record AuthorizationPolicyPackageSyncRequestDto
 {
-    public string? AdminUsername { get; set; }
+    public string? AdminUsername { get; init; }
 
-    public string? AdminPassword { get; set; }
+    public string? AdminPassword { get; init; }
 }

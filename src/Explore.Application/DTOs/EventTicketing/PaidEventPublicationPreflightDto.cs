@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class PaidEventPublicationPreflightDto
+public sealed record PaidEventPublicationPreflightDto
 {
     public Guid EventId { get; init; }
     public Guid? CatalogId { get; init; }
@@ -41,7 +41,7 @@ public sealed class PaidEventPublicationPreflightDto
     public Guid? OrganizerGroupId { get; init; }
 }
 
-public sealed class PaidEventPublicationPreflightBlockerDto
+public sealed record PaidEventPublicationPreflightBlockerDto
 {
     public string Code { get; init; } = string.Empty;
     public string Explanation { get; init; } = string.Empty;

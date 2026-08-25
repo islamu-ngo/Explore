@@ -3,21 +3,21 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public class EventCreationContextDto
+public sealed record EventCreationContextDto
 {
-    public bool CanCreate { get; set; }
+    public bool CanCreate { get; init; }
 
-    public bool AllowPersonalPublishing { get; set; }
+    public bool AllowPersonalPublishing { get; init; }
 
-    public bool AllowOrganizationPublishing { get; set; }
+    public bool AllowOrganizationPublishing { get; init; }
 
-    public bool AllowGroupPublishing { get; set; }
+    public bool AllowGroupPublishing { get; init; }
 
-    public bool RequiresApproval { get; set; }
+    public bool RequiresApproval { get; init; }
 
-    public string? DefaultPublisherMode { get; set; }
+    public string? DefaultPublisherMode { get; init; }
 
-    public string? UnavailableReason { get; set; }
+    public string? UnavailableReason { get; init; }
 
-    public List<EventCreationPublisherOptionDto> PublisherOptions { get; set; } = [];
+    public List<EventCreationPublisherOptionDto> PublisherOptions { get; init; } = [];
 }

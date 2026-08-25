@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public class EventTemplateOptionDto
+public sealed record EventTemplateOptionDto
 {
-    public Guid Id { get; set; }
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string Value { get; set; } = string.Empty;
-    public bool IsDefault { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
+    public Guid Id { get; init; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string Value { get; init; } = string.Empty;
+    public bool IsDefault { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
 }

@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomProperties.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public sealed class PurgeEventCustomPropertyDefinitionCommand : IRequest<BaseCommandResponse<CustomPropertyPurgeResultDto>>, ISecureRequest
+public sealed record PurgeEventCustomPropertyDefinitionCommand : IRequest<BaseCommandResponse<CustomPropertyPurgeResultDto>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required string Reason { get; set; }
+    public Guid Id { get; init; }
+    public required string Reason { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

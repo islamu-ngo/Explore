@@ -7,7 +7,7 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class RegistrationOrderDto
+public sealed record RegistrationOrderDto
 {
     public Guid Id { get; init; }
     [JsonIgnore]
@@ -112,7 +112,7 @@ public sealed class RegistrationOrderDto
     };
 }
 
-public sealed class RegistrationOrderPlatformContributionDto
+public sealed record RegistrationOrderPlatformContributionDto
 {
     public string Heading { get; init; } = string.Empty;
     public string Body { get; init; } = string.Empty;
@@ -148,14 +148,14 @@ public sealed class RegistrationOrderPlatformContributionDto
     }
 }
 
-public sealed class RegistrationOrderPlatformContributionOptionDto
+public sealed record RegistrationOrderPlatformContributionOptionDto
 {
     public int ContributionBasisPoints { get; init; }
     public long AmountMinor { get; init; }
     public bool IsDefault { get; init; }
 }
 
-public sealed class RegistrationOrderLineDto
+public sealed record RegistrationOrderLineDto
 {
     public Guid Id { get; init; }
     public Guid TicketTypeId { get; init; }

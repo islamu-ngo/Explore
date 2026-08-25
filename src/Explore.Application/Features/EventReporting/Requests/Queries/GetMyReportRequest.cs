@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventReporting.Requests.Queries;
 
-public sealed class GetMyReportRequest : IRequest<MyEventReportDto?>
+public sealed record GetMyReportRequest : IRequest<MyEventReportDto?>
 {
     public Guid ReportId { get; init; }
 }

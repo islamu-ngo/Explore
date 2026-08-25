@@ -3,21 +3,21 @@
 
 namespace Explore.Application.DTOs.Integrations;
 
-public sealed class UpdateListmonkIntegrationSettingsDto
+public sealed record UpdateListmonkIntegrationSettingsDto
 {
-    public ListmonkConnectionUpdateDto? Connection { get; set; }
-    public ListmonkBehaviorUpdateDto? Behavior { get; set; }
+    public ListmonkConnectionUpdateDto? Connection { get; init; }
+    public ListmonkBehaviorUpdateDto? Behavior { get; init; }
 }
 
-public sealed class ListmonkConnectionUpdateDto
+public sealed record ListmonkConnectionUpdateDto
 {
-    public string? InstanceUrl { get; set; }
-    public int DefaultListId { get; set; }
+    public string? InstanceUrl { get; init; }
+    public int DefaultListId { get; init; }
 }
 
-public sealed class ListmonkBehaviorUpdateDto
+public sealed record ListmonkBehaviorUpdateDto
 {
-    public bool Enabled { get; set; }
-    public bool PreconfirmSubscriptions { get; set; }
-    public bool SyncOnRegistration { get; set; }
+    public bool Enabled { get; init; }
+    public bool PreconfirmSubscriptions { get; init; }
+    public bool SyncOnRegistration { get; init; }
 }

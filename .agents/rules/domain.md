@@ -18,6 +18,7 @@ related_intents: [add-ef-migration]
 - **Domain Purity**: Zero dependencies on Infrastructure, Persistence, or Presentation layers. No `using` statements pointing to other layers.
 - **Explicit Logic**: All business rules must be explicit. Do not bury logic in auto-properties; use methods for state transitions.
 - **Audit Consistency**: Ensure aggregate roots implement the expected auditing and soft-delete interfaces (e.g., `IAuditableEntity`, `ISoftDeletable`).
+- **Value Semantics**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Only a small, self-contained value may be a `readonly record struct`; use a sealed record class when reference-bearing value semantics fit. EF entities and outbox lifecycle entities remain classes.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rules #3, #4, #5, #6, #10)

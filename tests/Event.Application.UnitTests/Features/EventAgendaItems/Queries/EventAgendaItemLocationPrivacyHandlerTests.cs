@@ -31,7 +31,7 @@ public sealed class EventAgendaItemLocationPrivacyHandlerTests
             Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
-            new GetEventAgendaItemDetailRequest { Id = entity.Id },
+            new GetEventAgendaItemDetailRequest(entity.Id),
             CancellationToken.None);
 
         await Assert.That(result!.LocationId).IsNull();
@@ -53,7 +53,7 @@ public sealed class EventAgendaItemLocationPrivacyHandlerTests
             Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
-            new GetEventAgendaItemsByEventRequest { EventId = entity.EventId },
+            new GetEventAgendaItemsByEventRequest(entity.EventId),
             CancellationToken.None);
         string json = JsonSerializer.Serialize(result);
 

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookBulkReplayFilterDto
+public sealed record WebhookBulkReplayFilterDto
 {
     public DateTime FromUtc { get; init; }
 
@@ -18,7 +18,7 @@ public sealed class WebhookBulkReplayFilterDto
     public int MaxItems { get; init; } = 100;
 }
 
-public sealed class WebhookBulkReplayPreviewDto
+public sealed record WebhookBulkReplayPreviewDto
 {
     public required WebhookBulkReplayFilterDto Filter { get; init; }
 
@@ -51,7 +51,7 @@ public sealed class WebhookBulkReplayPreviewDto
     public DateTime PreviewedAt { get; init; }
 }
 
-public sealed class WebhookBulkReplayOperationDto
+public sealed record WebhookBulkReplayOperationDto
 {
     public Guid Id { get; init; }
 
@@ -94,7 +94,7 @@ public sealed class WebhookBulkReplayOperationDto
     public DateTime? FailedAt { get; init; }
 }
 
-public sealed class ScheduleWebhookBulkReplayRequestDto
+public sealed record ScheduleWebhookBulkReplayRequestDto
 {
     public Guid OperationKey { get; init; }
 
@@ -103,7 +103,7 @@ public sealed class ScheduleWebhookBulkReplayRequestDto
     public required string ReasonCode { get; init; }
 }
 
-public sealed class CancelWebhookBulkReplayRequestDto
+public sealed record CancelWebhookBulkReplayRequestDto
 {
     public long ExpectedConcurrencyVersion { get; init; }
 

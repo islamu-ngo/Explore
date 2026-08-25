@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantOnboarding.Requests.Commands;
 
-public class CompleteTenantOnboardingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CompleteTenantOnboardingCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required UpdateTenantPolicyRequest Settings { get; set; } = new();
+    public Guid UserId { get; init; }
+    public required UpdateTenantPolicyRequest Settings { get; init; } = new();
 }

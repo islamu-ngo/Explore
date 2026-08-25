@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
 
-public sealed class GetPublicEventOpenGraphImageRequest : IRequest<EventOpenGraphImageRenderResult?>
+public sealed record GetPublicEventOpenGraphImageRequest : IRequest<EventOpenGraphImageRenderResult?>
 {
     public required string SlugCode { get; init; }
 }

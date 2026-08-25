@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.ActorTypes.Requests.Queries;
 
-public class GetActorTypeDetailsRequest : IRequest<ActorTypeDto>
-{
-    public int Id { get; set; }
-}
+public sealed record GetActorTypeDetailsRequest(int Id = default) : IRequest<ActorTypeDto>;

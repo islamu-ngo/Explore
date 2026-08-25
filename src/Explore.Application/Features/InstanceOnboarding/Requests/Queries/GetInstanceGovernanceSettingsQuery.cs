@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetInstanceGovernanceSettingsQuery : IRequest<InstanceGovernanceSettings>
+public sealed record GetInstanceGovernanceSettingsQuery : IRequest<InstanceGovernanceSettings>
 {
 }

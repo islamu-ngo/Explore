@@ -12,12 +12,19 @@ namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 /// tenant settings endpoints, so instance administrators can govern any tenant.
 /// </summary>
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class SetControlPlaneTenantSettingCommand(Guid tenantId, string key, string value)
+public sealed record SetControlPlaneTenantSettingCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; } = tenantId;
-    public string Key { get; } = key;
-    public string Value { get; } = value;
+    public SetControlPlaneTenantSettingCommand(Guid tenantId, string key, string value)
+    {
+        TenantId = tenantId;
+        Key = key;
+        Value = value;
+    }
+
+    public Guid TenantId { get; }
+    public string Key { get; }
+    public string Value { get; }
 
     public const string SettingKey = "control-plane.tenant-effective-configuration";
 

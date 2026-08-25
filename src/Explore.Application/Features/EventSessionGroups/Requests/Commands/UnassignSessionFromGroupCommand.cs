@@ -8,12 +8,12 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionGroups.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSessionGroup, AuthorizationActions.Update)]
-public class UnassignSessionFromGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UnassignSessionFromGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid EventSessionGroupId { get; set; }
-    public Guid EventSessionId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid EventSessionGroupId { get; init; }
+    public Guid EventSessionId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.EventPublicAction;
 
-public sealed class ManageEventPublicActionDto
+public sealed record ManageEventPublicActionDto
 {
-    public int KindId { get; set; }
-    public required string Url { get; set; }
-    public string? Label { get; set; }
-    public int SortOrder { get; set; }
-    public bool IsPrimary { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public int KindId { get; init; }
+    public required string Url { get; init; }
+    public string? Label { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsPrimary { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

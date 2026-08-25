@@ -9,13 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.Categories.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Category, AuthorizationActions.Update)]
-public class UpdateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid CategoryId { get; set; }
+    public Guid CategoryId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateCategoryDto UpdateCategoryDto { get; set; }
+    public required UpdateCategoryDto UpdateCategoryDto { get; init; }
 
     string? ISecureRequest.ResourceId => CategoryId.ToString();
 }

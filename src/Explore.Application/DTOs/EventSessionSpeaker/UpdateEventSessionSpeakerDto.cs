@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.EventSessionSpeaker;
 
-public class UpdateEventSessionSpeakerDto
+public sealed record UpdateEventSessionSpeakerDto
 {
-    public UpdateEventSessionSpeakerSessionDto? Session { get; set; }
-    public UpdateEventSessionSpeakerActorDto? Actor { get; set; }
+    public UpdateEventSessionSpeakerSessionDto? Session { get; init; }
+    public UpdateEventSessionSpeakerActorDto? Actor { get; init; }
 }
 
-public class UpdateEventSessionSpeakerSessionDto
+public sealed record UpdateEventSessionSpeakerSessionDto
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 }
 
-public class UpdateEventSessionSpeakerActorDto
+public sealed record UpdateEventSessionSpeakerActorDto
 {
-    public Guid ActorId { get; set; }
+    public Guid ActorId { get; init; }
 }

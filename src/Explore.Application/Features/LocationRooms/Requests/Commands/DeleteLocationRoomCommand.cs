@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.LocationRooms.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.LocationRoom, AuthorizationActions.Delete)]
-public class DeleteLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record DeleteLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

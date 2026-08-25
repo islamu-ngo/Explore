@@ -1449,14 +1449,12 @@ public class EventServiceTests
     public async Task CreateSessionAsync_MapsComposerRequestToGeneratedDto()
     {
         var eventId = Guid.NewGuid();
-        var tenantId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var request = new Explore.Blazor.Client.Clients.CreateEventSessionDto
         {
             EventId = eventId,
-            TenantId = tenantId,
             Title = "Opening talk",
             Description = "Welcome session",
             Slug = "opening-talk",
@@ -1489,7 +1487,6 @@ public class EventServiceTests
         await _apiClient.Received(1).CreateEventSessionAsync(
             Arg.Is<CreateEventSessionDto>(dto =>
                 dto.EventId == eventId
-                && dto.TenantId == tenantId
                 && dto.Title == "Opening talk"
                 && dto.Description == "Welcome session"
                 && dto.Slug == "opening-talk"

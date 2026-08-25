@@ -7,9 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionTemplates.Requests.Queries;
 
-public class GetEventSessionTemplateListRequest : IRequest<PaginatedResult<EventSessionTemplateListDto>>
-{
-    public Guid EventTemplateId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = PaginatedResult<EventSessionTemplateListDto>.DefaultPageSize;
-}
+public sealed record GetEventSessionTemplateListRequest(
+    Guid EventTemplateId = default,
+    int PageNumber = 1,
+    int PageSize = PaginatedResult<EventSessionTemplateListDto>.DefaultPageSize)
+    : IRequest<PaginatedResult<EventSessionTemplateListDto>>;

@@ -3,20 +3,19 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class ImportEventRequestDto
+public sealed record ImportEventRequestDto
 {
-    public required string Title { get; set; }
-    public string? Description { get; set; }
-    public required Guid TenantId { get; set; }
-    public required Guid OwnerActorId { get; set; }
-    public required string ProvenanceSource { get; set; }
-    public required string ProvenanceExternalId { get; set; }
-    public int? EventTypeId { get; set; }
-    public int? AudienceGenderId { get; set; }
-    public int? AudienceAgeId { get; set; }
-    public int? VisibilityTypeId { get; set; }
-    public int? EventFormatId { get; set; }
-    public string? Timezone { get; set; }
-    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
-    public Guid? FeaturedImageId { get; set; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
+    public required Guid OwnerActorId { get; init; }
+    public required string ProvenanceSource { get; init; }
+    public required string ProvenanceExternalId { get; init; }
+    public int? EventTypeId { get; init; }
+    public int? AudienceGenderId { get; init; }
+    public int? AudienceAgeId { get; init; }
+    public int? VisibilityTypeId { get; init; }
+    public int? EventFormatId { get; init; }
+    public string? Timezone { get; init; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; init; }
+    public Guid? FeaturedImageId { get; init; }
 }

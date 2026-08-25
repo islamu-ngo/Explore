@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class CancelEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CancelEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required CancelEventRequestDto Request { get; set; }
+    public Guid Id { get; init; }
+    public required CancelEventRequestDto Request { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

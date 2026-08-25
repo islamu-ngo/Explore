@@ -7,7 +7,7 @@ using Explore.Application.DTOs.Appearance;
 using Explore.Application.Responses;
 using MediatR;
 
-public class UpdateCurrentUserAppearancePreferencesCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateCurrentUserAppearancePreferencesCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required UpdateUserAppearancePreferencesDto Preferences { get; set; }
+    public required UpdateUserAppearancePreferencesDto Preferences { get; init; }
 }

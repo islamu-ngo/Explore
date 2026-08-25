@@ -3,16 +3,16 @@
 
 namespace Explore.Application.DTOs.ExternalApiKey;
 
-public class ExternalApiKeyUsageReportDto
+public sealed record ExternalApiKeyUsageReportDto
 {
-    public Guid ApiKeyId { get; set; }
-    public required string ApiKeyName { get; set; }
-    public Guid? TenantId { get; set; }
-    public int ExternalApiKeyOwnerTypeId { get; set; }
-    public required string ExternalApiKeyOwnerTypeCode { get; set; }
-    public required string ExternalApiKeyOwnerTypeName { get; set; }
-    public Guid OwnerId { get; set; }
-    public long TotalRequestCount { get; set; }
-    public int TotalCreditsUsed { get; set; }
-    public int CreditLimit { get; set; }
+    public Guid ApiKeyId { get; init; }
+    public required string ApiKeyName { get; init; }
+    public Guid? TenantId { get; init; }
+    public int ExternalApiKeyOwnerTypeId { get; init; }
+    public required string ExternalApiKeyOwnerTypeCode { get; init; }
+    public required string ExternalApiKeyOwnerTypeName { get; init; }
+    public Guid OwnerId { get; init; }
+    public long TotalRequestCount { get; init; }
+    public int TotalCreditsUsed { get; init; }
+    public int CreditLimit { get; init; }
 }

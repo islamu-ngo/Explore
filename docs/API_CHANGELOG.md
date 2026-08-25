@@ -3,6 +3,11 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-25
+
+- **Breaking (pre-v1): eight create/import request bodies no longer accept current-tenant authority.** `CreateCategoryDto`, `ImportEventRequestDto`, `CreateEventSessionDto`, `CreateEventSessionAgendaItemDto`, `CreateEventSessionLanguageDto`, `CreateEventSessionSpeakerDto`, `CreateLocationDto`, and `CreateTagDto` omit `tenantId`. Controllers derive tenant identity from `ITenantContext` or the route-selected persisted session/event context; sending the removed property now fails closed as an unsupported JSON field with a 400 validation ProblemDetails response. Routes, operation IDs, HAL relations, and authorized success behavior are unchanged. Regenerated clients must stop populating these tenant properties; no compatibility alias or reader is provided.
+- **Contract metadata correction: affected authenticated create/import operations document authorization denials as 403 ProblemDetails.** Runtime behavior is unchanged; OpenAPI now accurately describes the existing fail-closed MediatR authorization path for category, tag, location, event-session agenda-item, and event-session language creation.
+
 ## 2026-08-23
 
 - **Breaking (pre-v1) contract correction: `EventLocationDisclosureState` is published with its real wire values.** The OpenAPI schema previously declared the CLR names (`ToBeAnnounced`, `PrivateVenue`, `NeedsPrivacyReview`), while the API has always serialized snake_case (`to_be_announced`, `private_venue`, `needs_privacy_review`) through a type-level converter. Any generated client therefore failed to deserialize every multi-word state. The schema now reports what the server actually sends, and the OpenAPI enum generator resolves values through the type's own converter rather than assuming CLR names, so a converter-backed enum can never ship a mismatched contract again. Regenerate from `schemas/openapi_islamu-event.json`.

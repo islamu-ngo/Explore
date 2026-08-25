@@ -39,7 +39,7 @@ public sealed class UpdateEventDraftRequestDtoValidatorTests
     public async Task Validate_WithDescriptionOver150Characters_ReturnsDescriptionError()
     {
         var request = CreateValidRequest();
-        request.Description = new string('a', 151);
+        request = request with { Description = new string('a', 151) };
 
         var result = await _validator.ValidateAsync(request);
 
@@ -51,7 +51,7 @@ public sealed class UpdateEventDraftRequestDtoValidatorTests
     public async Task Validate_WithContentOver5000Characters_ReturnsContentError()
     {
         var request = CreateValidRequest();
-        request.Content = new string('a', 5001);
+        request = request with { Content = new string('a', 5001) };
 
         var result = await _validator.ValidateAsync(request);
 
@@ -63,8 +63,8 @@ public sealed class UpdateEventDraftRequestDtoValidatorTests
     public async Task Validate_WithDescriptionAndContentAtLimits_ReturnsTrue()
     {
         var request = CreateValidRequest();
-        request.Description = new string('a', 150);
-        request.Content = new string('b', 5000);
+        request = request with { Description = new string('a', 150) };
+        request = request with { Content = new string('b', 5000) };
 
         var result = await _validator.ValidateAsync(request);
 

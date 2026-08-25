@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRealmDoctorRequestDto
+public sealed record KeycloakRealmDoctorRequestDto
 {
-    public bool UseTemporaryAdminCredentials { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
-    public string? ApiClientId { get; set; } = "islamu-event-api";
+    public bool UseTemporaryAdminCredentials { get; init; }
+    public string? BootstrapAdminUsername { get; init; }
+    public string? BootstrapAdminPassword { get; init; }
+    public string? ApiClientId { get; init; } = "islamu-event-api";
 }

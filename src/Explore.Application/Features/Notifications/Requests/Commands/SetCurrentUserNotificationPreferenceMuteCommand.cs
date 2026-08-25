@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public sealed class SetCurrentUserNotificationPreferenceMuteCommand : IRequest<BaseCommandResponse<Guid>>
-{
-    public bool IsMuted { get; set; }
-}
+public sealed record SetCurrentUserNotificationPreferenceMuteCommand(bool IsMuted = default) : IRequest<BaseCommandResponse<Guid>>;

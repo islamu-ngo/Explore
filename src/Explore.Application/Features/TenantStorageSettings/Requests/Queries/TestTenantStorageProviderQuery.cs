@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 
-public sealed class TestTenantStorageProviderQuery : IRequest<InstanceStorageProviderStatusDto>
+public sealed record TestTenantStorageProviderQuery : IRequest<InstanceStorageProviderStatusDto>
 {
 }

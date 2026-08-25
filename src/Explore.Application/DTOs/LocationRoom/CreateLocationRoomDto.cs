@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.LocationRoom;
 
-public class CreateLocationRoomDto
+public sealed record CreateLocationRoomDto
 {
-    public Guid LocationId { get; set; }
-    public required string Name { get; set; }
-    public string? Slug { get; set; }
-    public string? Description { get; set; }
-    public int? Capacity { get; set; }
-    public int SortOrder { get; set; }
+    public Guid LocationId { get; init; }
+    public required string Name { get; init; }
+    public string? Slug { get; init; }
+    public string? Description { get; init; }
+    public int? Capacity { get; init; }
+    public int SortOrder { get; init; }
 }

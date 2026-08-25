@@ -7,15 +7,15 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 
-public class GetEventSessionLanguageListRequest : IRequest<PaginatedResult<EventSessionLanguageListDto>>
+public sealed record GetEventSessionLanguageListRequest : IRequest<PaginatedResult<EventSessionLanguageListDto>>
 {
     /// <summary>
     /// Gets or sets the page number (1-based). Defaults to 1.
     /// </summary>
-    public int PageNumber { get; set; } = 1;
+    public int PageNumber { get; init; } = 1;
 
     /// <summary>
     /// Gets or sets the page size. Defaults to 20.
     /// </summary>
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; init; } = 20;
 }

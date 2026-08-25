@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class CreateWebhookConsumerRequestDto
+public sealed record CreateWebhookConsumerRequestDto
 {
-    public Guid? OwnerId { get; set; }
+    public Guid? OwnerId { get; init; }
 
-    public int ConsumerKindId { get; set; }
+    public int ConsumerKindId { get; init; }
 
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
-    public int ProviderModeId { get; set; }
+    public int ProviderModeId { get; init; }
 }

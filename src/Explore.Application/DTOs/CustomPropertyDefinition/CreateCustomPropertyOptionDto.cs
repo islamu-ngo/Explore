@@ -3,14 +3,14 @@
 
 namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
-public class CreateCustomPropertyOptionDto
+public sealed record CreateCustomPropertyOptionDto
 {
-    public required string Namespace { get; set; }
-    public required string Key { get; set; }
-    public required string DisplayName { get; set; }
-    public string? Description { get; set; }
-    public required string Value { get; set; }
-    public bool IsDefault { get; set; }
-    public bool IsActive { get; set; } = true;
-    public int SortOrder { get; set; }
+    public required string Namespace { get; init; }
+    public required string Key { get; init; }
+    public required string DisplayName { get; init; }
+    public string? Description { get; init; }
+    public required string Value { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsActive { get; init; } = true;
+    public int SortOrder { get; init; }
 }

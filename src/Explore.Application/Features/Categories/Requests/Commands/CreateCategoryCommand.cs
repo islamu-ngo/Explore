@@ -9,11 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.Categories.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Category, AuthorizationActions.Create)]
-public class CreateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateCategoryDto CategoryDto { get; set; }
+    public required CreateCategoryDto CategoryDto { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => null;
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
-        new TenantScopedAuthorizationFacts(CategoryDto.TenantId);
+        new TenantScopedAuthorizationFacts(TenantId);
 }

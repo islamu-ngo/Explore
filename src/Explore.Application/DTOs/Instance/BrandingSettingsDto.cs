@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class BrandingSettingsDto
+public sealed record BrandingSettingsDto
 {
     public string DefaultBrandDisplayName { get; set; } = string.Empty;
     public string DefaultBrandLogoUrl { get; set; } = string.Empty;

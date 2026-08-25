@@ -51,13 +51,13 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     }
 
     private static UpdateAnalyticsGovernanceSettingsCommand CreateCommand(
-        Action<AnalyticsGovernanceSettingsDto>? configure = null)
+        Func<AnalyticsGovernanceSettingsDto, AnalyticsGovernanceSettingsDto>? configure = null)
     {
         var dto = new AnalyticsGovernanceSettingsDto
         {
             ConsentCookieLifetimeDays = 180
         };
-        configure?.Invoke(dto);
+        dto = configure?.Invoke(dto) ?? dto;
 
         return new UpdateAnalyticsGovernanceSettingsCommand
         {
@@ -83,7 +83,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ConsentCookieLifetimeTooLow_ReturnsValidationError()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = 0);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = 0 });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -95,7 +95,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ConsentCookieLifetimeNegative_ReturnsValidationError()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = -1);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = -1 });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -106,7 +106,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ConsentCookieLifetimeTooHigh_ReturnsValidationError()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = 731);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = 731 });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -117,7 +117,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ConsentCookieLifetimeAtLowerBound_Succeeds()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = 1);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = 1 });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -127,7 +127,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ConsentCookieLifetimeAtUpperBound_Succeeds()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = 730);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = 730 });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -143,7 +143,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
             ("analytics.provider", "\"rudderstack\""),
             ("analytics.enabled", "true"));
 
-        var command = CreateCommand(s => s.DeclineBehavior = DeclineBehavior.Cookieless);
+        var command = CreateCommand(s => s with { DeclineBehavior = DeclineBehavior.Cookieless });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -158,7 +158,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
             ("analytics.provider", "\"posthog\""),
             ("analytics.enabled", "true"));
 
-        var command = CreateCommand(s => s.DeclineBehavior = DeclineBehavior.Cookieless);
+        var command = CreateCommand(s => s with { DeclineBehavior = DeclineBehavior.Cookieless });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -172,7 +172,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
             ("analytics.provider", "\"rudderstack\""),
             ("analytics.enabled", "false"));
 
-        var command = CreateCommand(s => s.DeclineBehavior = DeclineBehavior.Cookieless);
+        var command = CreateCommand(s => s with { DeclineBehavior = DeclineBehavior.Cookieless });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -186,7 +186,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
             ("analytics.provider", "\"rudderstack\""),
             ("analytics.enabled", "true"));
 
-        var command = CreateCommand(s => s.DeclineBehavior = DeclineBehavior.Disable);
+        var command = CreateCommand(s => s with { DeclineBehavior = DeclineBehavior.Disable });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -282,7 +282,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     [Test]
     public async Task Handle_ValidationFailed_DoesNotPersistSettings()
     {
-        var command = CreateCommand(s => s.ConsentCookieLifetimeDays = 0);
+        var command = CreateCommand(s => s with { ConsentCookieLifetimeDays = 0 });
 
         await _handler.Handle(command, CancellationToken.None);
 
@@ -362,8 +362,9 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var command = CreateCommand(s =>
         {
-            s.PosthogSessionReplay = true;
-            s.DeclineBehavior = DeclineBehavior.Disable;
+            s = s with { PosthogSessionReplay = true };
+            s = s with { DeclineBehavior = DeclineBehavior.Disable };
+            return s;
         });
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -383,8 +384,9 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var command = CreateCommand(s =>
         {
-            s.PosthogSessionReplay = true;
-            s.PosthogCookielessMode = PosthogCookielessMode.Always;
+            s = s with { PosthogSessionReplay = true };
+            s = s with { PosthogCookielessMode = PosthogCookielessMode.Always };
+            return s;
         });
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -402,7 +404,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
             ("analytics.provider", "\"plausible\""),
             ("analytics.enabled", "true"));
 
-        var command = CreateCommand(s => s.CookieConsentEnabled = true);
+        var command = CreateCommand(s => s with { CookieConsentEnabled = true });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -459,9 +461,10 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var command = CreateCommand(s =>
         {
-            s.PosthogSessionReplay = true;
-            s.PosthogCookielessMode = PosthogCookielessMode.Always;
-            s.CookieConsentEnabled = true;
+            s = s with { PosthogSessionReplay = true };
+            s = s with { PosthogCookielessMode = PosthogCookielessMode.Always };
+            s = s with { CookieConsentEnabled = true };
+            return s;
         });
 
         var result = await _handler.Handle(command, CancellationToken.None);

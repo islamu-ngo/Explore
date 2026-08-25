@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventTemplate;
 
-public class UpdateEventTemplateDefinitionDto : CreateEventTemplateDefinitionDto
+public sealed record UpdateEventTemplateDefinitionDto : CreateEventTemplateDefinitionDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 }

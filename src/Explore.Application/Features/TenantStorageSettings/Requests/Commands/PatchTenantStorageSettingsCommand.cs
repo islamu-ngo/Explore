@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantStorageSettings.Requests.Commands;
 
-public sealed class PatchTenantStorageSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record PatchTenantStorageSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchTenantStorageSettingsDto Settings { get; set; } = new();
+    public Guid UserId { get; init; }
+    public required PatchTenantStorageSettingsDto Settings { get; init; } = new();
 }

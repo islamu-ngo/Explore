@@ -7,9 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class UpdateResolverConfigurationCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateResolverConfigurationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
+    public Guid UserId { get; init; }
 
-    public required PatchResolverConfigurationDto Patch { get; set; } = new();
+    public required PatchResolverConfigurationDto Patch { get; init; } = new();
 }

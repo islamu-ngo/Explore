@@ -69,7 +69,7 @@ public class EventDayController : ControllerBase
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventDayListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
     {
-        var days = await _mediator.Send(new GetEventDaysByEventRequest { EventId = eventId }, cancellationToken);
+        var days = await _mediator.Send(new GetEventDaysByEventRequest(eventId), cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             days,
@@ -121,7 +121,7 @@ public class EventDayController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventDayDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var day = await _mediator.Send(new GetEventDayDetailRequest { Id = id }, cancellationToken);
+        var day = await _mediator.Send(new GetEventDayDetailRequest(id), cancellationToken);
         if (day == null)
             return this.ToNotFoundProblem(EventDayNotFoundProblem);
 

@@ -1,0 +1,58 @@
+[
+  {
+    "fullyQualifiedType": "Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderLifecycleResponseDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/DTOs/RegistrationOrders",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderStartDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/DTOs/RegistrationOrders",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.DTOs.RegistrationOrders.RegistrationOrderLifecycleResponseDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/DTOs/RegistrationOrders",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.DTOs.RegistrationOrders.RegistrationPaymentCommandResultDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/DTOs/RegistrationOrders",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.DTOs.SupportAccess.SupportAccessSessionCommandResponseDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/DTOs/SupportAccess",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.Features.Promotions.PromotionCodeIssuedCommandResponseDto",
+    "category": "retained-class",
+    "reason": "Two-level mutable response hierarchy derives through PromotionManagementCommandResponseDto from BaseCommandResponse<Guid>; handlers and generic new() factories populate success, failure, and payload state incrementally.",
+    "owner": "Explore/Application/Features/Promotions",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.Features.Promotions.PromotionManagementCommandResponseDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/Features/Promotions",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  },
+  {
+    "fullyQualifiedType": "Explore.Application.Features.Promotions.Requests.Commands.PromotionRedemptionResponseDto",
+    "category": "retained-class",
+    "reason": "Mutable command-response envelope derives from BaseCommandResponse<Guid>; handlers and response factories populate success, failure, error, quota, and payload state incrementally.",
+    "owner": "Explore/Application/Features/Promotions",
+    "removalTrigger": "Redesign BaseCommandResponse<Guid> and its generic new() response factories as immutable result records, migrate incremental population, then convert this response hierarchy and remove the entry."
+  }
+]
