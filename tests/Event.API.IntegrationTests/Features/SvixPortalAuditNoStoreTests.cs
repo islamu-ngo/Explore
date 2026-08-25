@@ -93,7 +93,7 @@ public sealed class SvixPortalAuditNoStoreTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(auditRequest).IsNotNull();
         await Assert.That(auditRequest!.Action).IsEqualTo(WebhookAuditAction.PortalAccessIssued);
         await Assert.That(auditRequest.SafeAfterJson).Contains(bindingId.ToString("D"), StringComparison.OrdinalIgnoreCase);
@@ -122,7 +122,7 @@ public sealed class SvixPortalAuditNoStoreTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(auditRequest).IsNotNull();
         await Assert.That(auditRequest!.SafeAfterJson).Contains("provider_failure", StringComparison.Ordinal);
         await Assert.That(auditRequest.SafeAfterJson).Contains("svix_provider_unavailable", StringComparison.Ordinal);

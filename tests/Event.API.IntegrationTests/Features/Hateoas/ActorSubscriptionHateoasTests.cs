@@ -36,7 +36,7 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         await Assert.That(subscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var commandResponse = await subscribeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(commandResponse).IsNotNull();
-        await Assert.That(commandResponse!.Success).IsTrue();
+        await Assert.That(commandResponse!.IsSuccess).IsTrue();
         await Assert.That(commandResponse.Id).IsNotEqualTo(Guid.Empty);
 
         await using (var verifyScope = _fixture.Factory.Services.CreateAsyncScope())
@@ -274,7 +274,7 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         await Assert.That(patchResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var patchCommand = await patchResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(patchCommand).IsNotNull();
-        await Assert.That(patchCommand!.Success).IsTrue();
+        await Assert.That(patchCommand!.IsSuccess).IsTrue();
         await Assert.That(patchCommand.Id).IsEqualTo(subscribeCommand.Id);
 
         await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
@@ -309,7 +309,7 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         await Assert.That(unsubscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var unsubscribeCommand = await unsubscribeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(unsubscribeCommand).IsNotNull();
-        await Assert.That(unsubscribeCommand!.Success).IsTrue();
+        await Assert.That(unsubscribeCommand!.IsSuccess).IsTrue();
         await Assert.That(unsubscribeCommand.Id).IsEqualTo(subscribeCommand.Id);
 
         await using (var verifyScope = _fixture.Factory.Services.CreateAsyncScope())
@@ -327,7 +327,7 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         await Assert.That(resubscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var resubscribeCommand = await resubscribeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(resubscribeCommand).IsNotNull();
-        await Assert.That(resubscribeCommand!.Success).IsTrue();
+        await Assert.That(resubscribeCommand!.IsSuccess).IsTrue();
         await Assert.That(resubscribeCommand.Id).IsEqualTo(subscribeCommand.Id);
 
         await using var finalScope = _fixture.Factory.Services.CreateAsyncScope();

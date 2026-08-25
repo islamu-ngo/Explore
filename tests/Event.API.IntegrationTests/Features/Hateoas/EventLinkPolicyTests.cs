@@ -607,7 +607,7 @@ public sealed class EventLinkPolicyTests
         foreach (var mode in new[] { ParticipationHandlingModeEnum.InformationOnly, ParticipationHandlingModeEnum.WalkIn })
         {
             baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)mode };
-            baseDto.PublicActions.Clear();
+            baseDto = baseDto with { PublicActions = [] };
 
             var links = new EventDetailLinkPolicy()
                 .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
@@ -691,7 +691,7 @@ public sealed class EventLinkPolicyTests
         await Assert.That(verifiedImportedLink.Title).IsEqualTo("Register on organizer website");
 
         baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged };
-        baseDto.PublicActions.Clear();
+        baseDto = baseDto with { PublicActions = [] };
 
         var platformLinks = new EventDetailLinkPolicy()
             .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))

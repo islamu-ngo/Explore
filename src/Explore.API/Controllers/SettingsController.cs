@@ -232,7 +232,7 @@ public class SettingsController : ControllerBase
             Scope = SettingScope.Tenant
         }, cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             await outputCacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
         }
@@ -414,7 +414,7 @@ public class SettingsController : ControllerBase
 
     private ActionResult<BaseCommandResponse<Guid>> HandleCommandResponse(BaseCommandResponse<Guid> response)
     {
-        if (response.Success) return Ok(response);
+        if (response.IsSuccess) return Ok(response);
 
         if (response.FailureCode == FailureCodes.AdminRequired)
         {

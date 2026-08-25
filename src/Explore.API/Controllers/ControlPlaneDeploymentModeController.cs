@@ -67,12 +67,7 @@ public sealed class ControlPlaneDeploymentModeController(
             || !Enum.IsDefined(typeof(DeploymentMode), targetMode))
         {
             var message = "A valid target deployment mode is required.";
-            return BadRequest(new BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>
-            {
-                Success = false,
-                Message = message,
-                Errors = [message]
-            });
+            return BadRequest(BaseCommandResponse.Validation<ControlPlaneDeploymentModeTransitionDto>([message], message));
         }
 
         var response = await mediator.Send(

@@ -90,12 +90,9 @@ public sealed class EventSessionAgendaItemControllerTests
             CancellationToken cancellationToken = default)
         {
             LastRequest = (UpdateEventSessionAgendaItemCommand)(object)request;
-            object response = new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = LastRequest.EventSessionAgendaItemId,
-                Message = "Agenda item updated."
-            };
+            object response = BaseCommandResponse.Success(
+                LastRequest.EventSessionAgendaItemId,
+                "Agenda item updated.");
             return Task.FromResult((TResponse)response);
         }
 

@@ -139,7 +139,7 @@ public class SetupSecretFlowTests
 
         var body = await completeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
     }
 
     [Test]

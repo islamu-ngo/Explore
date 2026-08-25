@@ -325,13 +325,11 @@ public class EventSessionControllerTests
     {
         Guid id = Guid.CreateVersion7();
         IMediator mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteEventSessionCommand>(), Arg.Any<CancellationToken>()).Returns(new BaseCommandResponse<Guid>
-        {
-            Id = id,
-            Success = false,
-            FailureCode = "event_session_ticket_entitlement_conflict",
-            Message = "Event session is referenced by a published ticket catalog."
-        });
+        mediator.Send(Arg.Any<DeleteEventSessionCommand>(), Arg.Any<CancellationToken>()).Returns(
+            BaseCommandResponse.Failure<Guid>(
+                "event_session_ticket_entitlement_conflict",
+                "Event session is referenced by a published ticket catalog.",
+                id: id));
         var controller = new EventSessionController(
             mediator,
             Substitute.For<ILogger<EventSessionController>>(),

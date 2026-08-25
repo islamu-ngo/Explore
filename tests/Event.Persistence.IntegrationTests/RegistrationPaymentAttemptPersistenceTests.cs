@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
@@ -704,11 +705,11 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         RegistrationOrder order = CreatePayableOrder(TenantId, OrderId, 1_000, 75, 125);
         PaymentAttempt first = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, OrderId, RecipientSnapshot(TenantId), "OrganizerDirect",
-            "2026-08-20.acacia", "composition-conflict-a", 1_000, 75, 125,
+            "2026-08-20.acacia", "composition-conflict-a", Money.Create(1_000, order.CurrencyCode), Money.Create(75, order.CurrencyCode), Money.Create(125, order.CurrencyCode),
             "checkout:conflict:a", UtcNow, UtcNow.AddMinutes(30));
         PaymentAttempt second = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, OrderId, RecipientSnapshot(TenantId), "OrganizerDirect",
-            "2026-08-20.acacia", "composition-conflict-b", 1_000, 75, 125,
+            "2026-08-20.acacia", "composition-conflict-b", Money.Create(1_000, order.CurrencyCode), Money.Create(75, order.CurrencyCode), Money.Create(125, order.CurrencyCode),
             "checkout:conflict:b", UtcNow, UtcNow.AddMinutes(30));
         typeof(PaymentAttempt).GetProperty(nameof(PaymentAttempt.ActiveScopeKey))!
             .SetValue(first, $"{TenantId:N}|{OrderId:N}|composition-conflict-a");
@@ -961,7 +962,7 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
     {
         OrganizerPaymentRecipientSnapshot recipient = RecipientSnapshot(tenantId, instancePolicyVersionId);
         PaymentAttempt attempt = PaymentAttempt.Create(
-            Guid.CreateVersion7(), tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", compositionRevision, 1_000, 75, 125,
+            Guid.CreateVersion7(), tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", compositionRevision, Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(125, recipient.CurrencyCode),
             $"checkout:{tenantId:N}:{orderId:N}:{compositionRevision}", UtcNow, UtcNow.AddMinutes(30));
         attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
             tenantId,

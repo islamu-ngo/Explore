@@ -168,12 +168,9 @@ public sealed class NotificationControllerTests
     [Test]
     public async Task UpdateCurrentUserPreferences_WhenCommandFails_ReturnsValidationProblemDetails()
     {
-        using var mediator = new NotificationMediatorStub(_ => new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = "Notification preference update failed.",
-            Errors = ["Category 'account-security' is required and cannot be disabled."]
-        });
+        using var mediator = new NotificationMediatorStub(_ => BaseCommandResponse.Validation<Guid>(
+            ["Category 'account-security' is required and cannot be disabled."],
+            "Notification preference update failed."));
         using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/notification/preferences/me");
@@ -275,12 +272,9 @@ public sealed class NotificationControllerTests
     [Test]
     public async Task SubscribeCurrentUserWebPushSubscription_WhenCommandFails_ReturnsValidationProblemDetails()
     {
-        using var mediator = new NotificationMediatorStub(_ => new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = "Web Push subscription validation failed.",
-            Errors = ["Endpoint is required."]
-        });
+        using var mediator = new NotificationMediatorStub(_ => BaseCommandResponse.Validation<Guid>(
+            ["Endpoint is required."],
+            "Web Push subscription validation failed."));
         using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/notification/web-push/subscriptions");
@@ -353,13 +347,8 @@ public sealed class NotificationControllerTests
         return document;
     }
 
-    private static BaseCommandResponse<Guid> NotFoundFailure(string message) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = "notification_not_found",
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> NotFoundFailure(string message) =>
+        BaseCommandResponse.Failure<Guid>("notification_not_found", message, [message]);
 
     private sealed class NotificationMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable
     {

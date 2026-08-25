@@ -40,7 +40,7 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
         await Assert.That(file).IsNotNull();
         await Assert.That(file!.ContentType).IsEqualTo("application/zip");
         await Assert.That(file.FileDownloadName).IsEqualTo("authorization-policy-package.zip");
-        await Assert.That(file.FileContents).IsEquivalentTo(archive.Content);
+        await Assert.That(file.FileContents).IsEquivalentTo(archive.Content.ToArray());
         await mediator.Received(1).Send(Arg.Any<DownloadAuthorizationPolicyPackageQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -65,7 +65,7 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
         await Assert.That(file).IsNotNull();
         await Assert.That(file!.ContentType).IsEqualTo("application/zip");
         await Assert.That(file.FileDownloadName).IsEqualTo("authorization-policy-package.zip");
-        await Assert.That(file.FileContents).IsEquivalentTo(archive.Content);
+        await Assert.That(file.FileContents).IsEquivalentTo(archive.Content.ToArray());
         await mediator.Received(1).Send(Arg.Any<DownloadAuthorizationPolicyPackageQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -109,7 +109,7 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
         return new PolicyPackageArchive(
             "authorization-policy-package.zip",
             "application/zip",
-            [1, 2, 3],
+            new byte[] { 1, 2, 3 },
             manifest);
     }
 }

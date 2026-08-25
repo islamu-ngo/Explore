@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Configuration;
@@ -315,7 +316,7 @@ public sealed class StripeRefundWebhookTests
             "BE", "EUR", Guid.CreateVersion7(), null, CreatedAt.AddMinutes(-2));
         PaymentAttempt payment = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, Guid.CreateVersion7(), recipient, "OrganizerDirect",
-            global::Stripe.StripeConfiguration.ApiVersion, "refund-webhook", 1_000, 75, 0,
+            global::Stripe.StripeConfiguration.ApiVersion, "refund-webhook", Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode),
             "payment:stable", CreatedAt.AddMinutes(-2), CreatedAt.AddMinutes(30));
         payment.MarkSucceeded("pi_original", CreatedAt.AddMinutes(-1), "req_payment");
         return payment;

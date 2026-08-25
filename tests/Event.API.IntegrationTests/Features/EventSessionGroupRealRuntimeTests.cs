@@ -50,7 +50,7 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(response.Headers.Location?.ToString()).Contains(body.Id.ToString());
 
@@ -106,7 +106,7 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsEqualTo(sectionId);
 
         await using var persistenceScope = _fixture.Factory.Services.CreateAsyncScope();
@@ -215,7 +215,7 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
 
         await using var scope = _fixture.Factory.Services.CreateAsyncScope();

@@ -2,6 +2,7 @@
 // ABOUTME: Covers provider-neutral monotonic payment status transitions without mutating registration orders.
 
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 namespace Event.Domain.UnitTests.Entities;
 
@@ -26,9 +27,9 @@ public sealed class PaymentAttemptTests
             "OrganizerDirect",
             "2026-08-20.acacia",
             "composition-a",
-            1_000,
-            75,
-            125,
+            Money.Create(1_000, "EUR"),
+            Money.Create(75, "EUR"),
+            Money.Create(125, "EUR"),
             "registration-order-claim-001",
             Now,
             Now.AddMinutes(30));
@@ -55,15 +56,17 @@ public sealed class PaymentAttemptTests
     {
         OrganizerPaymentRecipientSnapshot recipient = RecipientSnapshot();
 
-        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", 100, 101, 0, "claim", Now, null))
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", Money.Create(100, "EUR"), Money.Create(101, "EUR"), Money.Create(0, "EUR"), "claim", Now, null))
             .Throws<ArgumentException>();
-        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", long.MaxValue, 0, 1, "claim", Now, null))
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", Money.Create(long.MaxValue, "EUR"), Money.Create(0, "EUR"), Money.Create(1, "EUR"), "claim", Now, null))
             .Throws<OverflowException>();
-        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", 100, 0, 0, " ", Now, null))
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", Money.Create(100, "EUR"), Money.Create(0, "EUR"), Money.Create(0, "EUR"), " ", Now, null))
             .Throws<ArgumentException>();
-        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", 100, 0, 0, "claim", Now, Now))
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", Money.Create(100, "EUR"), Money.Create(0, "EUR"), Money.Create(0, "EUR"), "claim", Now, Now))
             .Throws<ArgumentException>();
-        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "WrongProfile", "rev", "composition-a", 100, 0, 0, "claim", Now, null))
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "WrongProfile", "rev", "composition-a", Money.Create(100, "EUR"), Money.Create(0, "EUR"), Money.Create(0, "EUR"), "claim", Now, null))
+            .Throws<ArgumentException>();
+        await Assert.That(() => PaymentAttempt.Create(Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", "rev", "composition-a", Money.Create(100, "USD"), Money.Create(0, "EUR"), Money.Create(0, "EUR"), "claim", Now, null))
             .Throws<ArgumentException>();
     }
 
@@ -81,6 +84,10 @@ public sealed class PaymentAttemptTests
         await Assert.That(dispatched).IsTrue();
         await Assert.That(requiresAction).IsTrue();
         await Assert.That(staleProcessing).IsFalse();
+        await Assert.That(attempt.OrganizerAmountMinor).IsEqualTo(1_000);
+        await Assert.That(attempt.PlatformFeeMinor).IsEqualTo(75);
+        await Assert.That(attempt.PlatformContributionMinor).IsEqualTo(125);
+        await Assert.That(attempt.TotalMinor).IsEqualTo(1_125);
         await Assert.That(processing).IsTrue();
         await Assert.That(succeeded).IsTrue();
         await Assert.That(attempt.PaymentAttemptStatusId).IsEqualTo((int)PaymentAttemptStatusEnum.Succeeded);
@@ -321,9 +328,9 @@ public sealed class PaymentAttemptTests
         "OrganizerDirect",
         "2026-08-20.acacia",
         "composition-a",
-        1_000,
-        75,
-        125,
+        Money.Create(1_000, "EUR"),
+        Money.Create(75, "EUR"),
+        Money.Create(125, "EUR"),
         "registration-order-claim-001",
         Now,
         Now.AddMinutes(30));

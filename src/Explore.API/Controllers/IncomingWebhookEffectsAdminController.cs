@@ -51,7 +51,7 @@ public sealed class IncomingWebhookEffectsAdminController(
         var result = await mediator.Send(
             new GetIncomingWebhookEffectStatusQuery { TenantId = tenantId, Limit = limit },
             cancellationToken);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return this.ToCommandValidationProblem(result, ValidationProblem);
         }
@@ -88,7 +88,7 @@ public sealed class IncomingWebhookEffectsAdminController(
                 Reason = request.Reason
             },
             cancellationToken);
-        if (result.Success)
+        if (result.IsSuccess)
         {
             return Ok(result);
         }

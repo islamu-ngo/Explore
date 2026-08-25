@@ -162,7 +162,7 @@ public sealed class EventOrganizerClaimController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SubmitValidationProblem);
         }
@@ -205,7 +205,7 @@ public sealed class EventOrganizerClaimController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, WithdrawValidationProblem);
         }
@@ -239,7 +239,7 @@ public sealed class EventOrganizerClaimController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ReviewValidationProblem);
         }

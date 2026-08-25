@@ -94,7 +94,7 @@ public class UserController : ExploreControllerBase
         var command = new SyncUserCommand { UserDto = userDto };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SyncValidationProblem);
         }
@@ -260,7 +260,7 @@ public class UserController : ExploreControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(UserNotFoundProblem)

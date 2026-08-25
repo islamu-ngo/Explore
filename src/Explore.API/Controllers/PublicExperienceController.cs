@@ -99,8 +99,9 @@ public class PublicExperienceController : ControllerBase
             HalLink? link = _linkGenerator.GenerateLink(definition, HttpContext);
             if (link is not null)
             {
-                item.AdditionalProperties["_links"] =
-                    new Dictionary<string, HalLink> { ["source"] = link };
+                item.AdditionalProperties = item.AdditionalProperties.SetItem(
+                    "_links",
+                    new Dictionary<string, HalLink> { ["source"] = link });
             }
         }
     }

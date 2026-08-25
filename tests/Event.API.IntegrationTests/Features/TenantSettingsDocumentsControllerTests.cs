@@ -366,12 +366,9 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
 
             if (!_patchSucceeds)
             {
-                return new BaseCommandResponse<TenantBrandingSettingsDocumentDto>
-                {
-                    Success = false,
-                    Message = "Tenant branding settings patch failed.",
-                    Errors = ["Rejected for test."]
-                };
+            return BaseCommandResponse.Validation<TenantBrandingSettingsDocumentDto>(
+                ["Rejected for test."],
+                "Tenant branding settings patch failed.");
             }
 
             var displayName = Apply(command.Patch.DisplayName?.Value ?? default, _document.Payload.DisplayName);
@@ -395,12 +392,9 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
                 customCssUrl,
                 CommandResponseConcurrencyStamp.Value);
 
-            return new BaseCommandResponse<TenantBrandingSettingsDocumentDto>
-            {
-                Success = true,
-                Message = "Tenant branding settings document patched.",
-                Id = commandResponseDocument
-            };
+        return BaseCommandResponse.Success(
+            commandResponseDocument,
+            "Tenant branding settings document patched.");
         }
 
         private static string? Apply(OptionalUpdate<string?> update, string? current)

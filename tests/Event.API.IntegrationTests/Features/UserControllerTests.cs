@@ -109,7 +109,7 @@ public class UserControllerTests
 
         await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(syncBody).IsNotNull();
-        await Assert.That(syncBody!.Success).IsTrue();
+        await Assert.That(syncBody!.IsSuccess).IsTrue();
 
         using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "atproto-user@example.test");
         var currentUserResponse = await client.SendAsync(currentUserRequest);
@@ -138,7 +138,7 @@ public class UserControllerTests
 
         await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(syncBody).IsNotNull();
-        await Assert.That(syncBody!.Success).IsTrue();
+        await Assert.That(syncBody!.IsSuccess).IsTrue();
 
         using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "verified-atproto-user@example.test", emailVerified: true);
         var currentUserResponse = await client.SendAsync(currentUserRequest);

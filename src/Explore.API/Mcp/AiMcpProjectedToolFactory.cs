@@ -182,7 +182,7 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
             var mediator = services.GetRequiredService<IMediator>();
             var response = await mediator.Send(command, cancellationToken);
 
-            if (response.Success)
+            if (response.IsSuccess)
             {
                 McpAdapterTelemetry.MarkSuccess(activity);
             }
@@ -195,17 +195,17 @@ public sealed class AiMcpProjectedProposalTool : McpServerTool
                 Stopwatch.GetElapsedTime(startedAt),
                 ProtocolTool.Name,
                 projected: true,
-                outcome: response.Success ? "succeeded" : "failed",
+                outcome: response.IsSuccess ? "succeeded" : "failed",
                 failureCode: response.FailureCode);
 
             return CreateResult(
                 new AiAssistantMcpTools.AiMcpCommandResultDescriptor(
-                    response.Success,
+                    response.IsSuccess,
                     response.Id == Guid.Empty ? null : response.Id,
                     response.Message,
                     response.FailureCode,
                     response.Errors ?? []),
-                isError: !response.Success);
+                isError: !response.IsSuccess);
         }
         catch (OperationCanceledException)
         {

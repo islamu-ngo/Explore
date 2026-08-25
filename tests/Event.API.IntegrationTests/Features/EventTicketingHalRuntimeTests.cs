@@ -166,13 +166,10 @@ public sealed class EventTicketingHalRuntimeTests
         await AssertProblemAsync(new TicketingFactory(
                 dto,
                 new TicketingAuthorizationProvider(),
-                new BaseCommandResponse<Guid>
-                {
-                    Id = eventId,
-                    Success = false,
-                    FailureCode = "event_ticketing_concurrency_conflict",
-                    Message = "Ticketing configuration was updated by another request."
-                }),
+                BaseCommandResponse.Failure<Guid>(
+                    "event_ticketing_concurrency_conflict",
+                    "Ticketing configuration was updated by another request.",
+                    id: eventId)),
             conflict,
             HttpStatusCode.Conflict,
             "Event ticketing conflict");
@@ -245,7 +242,7 @@ public sealed class EventTicketingHalRuntimeTests
                     new QueryHandler(queryResult));
                 services.RemoveAll<IRequestHandler<PublishEventTicketCatalogCommand, BaseCommandResponse<Guid>>>();
                 services.AddSingleton<IRequestHandler<PublishEventTicketCatalogCommand, BaseCommandResponse<Guid>>>(
-                    new PublishHandler(publishResult ?? new BaseCommandResponse<Guid> { Success = true }));
+                    new PublishHandler(publishResult ?? BaseCommandResponse.Success(Guid.Empty)));
             });
         }
     }

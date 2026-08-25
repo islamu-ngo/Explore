@@ -695,11 +695,7 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
             CancellationToken cancellationToken = default)
         {
             object response = request is ProcessCoopDecisionCallbackCommand
-                ? new BaseCommandResponse<Guid>
-                {
-                    Success = true,
-                    Id = Guid.CreateVersion7()
-                }
+                ? BaseCommandResponse.Success(Guid.CreateVersion7())
                 : throw new NotSupportedException();
             return Task.FromResult((TResponse)response);
         }

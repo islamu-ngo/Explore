@@ -118,10 +118,10 @@ public sealed class EventReportsController : ExploreControllerBase
             "Event report submission completed for event {EventId} report {ReportId} outcome {Outcome} failure {FailureCategory}",
             request.EventId,
             response.Id,
-            response.Success ? "succeeded" : "failed",
+            response.IsSuccess ? "succeeded" : "failed",
             response.FailureCode ?? "none");
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToEventReportProblem(response);
         }
@@ -211,7 +211,7 @@ public sealed class EventReportsController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToEventReportProblem(response);
         }

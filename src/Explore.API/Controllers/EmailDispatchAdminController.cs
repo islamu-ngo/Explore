@@ -62,7 +62,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             new GetEmailDispatchStatusQuery { TenantId = query.TenantId, Limit = query.Limit },
             cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return this.ToEmailDispatchValidationProblem(
                 result.Message ?? "Email dispatch status query failed.",
@@ -103,7 +103,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>
@@ -160,7 +160,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>
@@ -189,7 +189,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>
@@ -220,7 +220,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>Get sanitized instance-wide SMTP processor control state.</summary>
@@ -255,7 +255,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             PauseReason = query.GetNormalizedReason(),
             ChangedBy = CurrentUserId
         }, cancellationToken);
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>Resume SMTP dispatch admission for the instance.</summary>
@@ -274,7 +274,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             IsPaused = false,
             ChangedBy = CurrentUserId
         }, cancellationToken);
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>Set the persisted instance-wide SMTP rate-limit override.</summary>
@@ -294,7 +294,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             RateLimitPerMinute = query.RateLimitPerMinute,
             ChangedBy = CurrentUserId
         }, cancellationToken);
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>Clear the persisted SMTP rate override and restore configured rate.</summary>
@@ -313,7 +313,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             RateLimitPerMinute = null,
             ChangedBy = CurrentUserId
         }, cancellationToken);
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>Resolve an Unknown SMTP outcome as delivered or not delivered.</summary>
@@ -343,6 +343,6 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
                 : query.ProviderMessageId.Trim(),
             ChangedBy = CurrentUserId
         }, cancellationToken);
-        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+        return result.IsSuccess ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 }

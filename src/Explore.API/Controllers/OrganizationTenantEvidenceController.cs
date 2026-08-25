@@ -120,7 +120,7 @@ public sealed class OrganizationTenantEvidenceController : ExploreControllerBase
                 Upload = upload
             },
             cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SubmitValidationProblem);
         }
@@ -149,7 +149,7 @@ public sealed class OrganizationTenantEvidenceController : ExploreControllerBase
                 Evidence = evidence
             },
             cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SubmitValidationProblem);
         }
@@ -183,7 +183,7 @@ public sealed class OrganizationTenantEvidenceController : ExploreControllerBase
                 Review = review
             },
             cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ReviewValidationProblem);
         }

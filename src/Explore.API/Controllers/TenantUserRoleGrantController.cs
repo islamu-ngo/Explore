@@ -105,7 +105,7 @@ public class TenantUserRoleGrantController : ExploreControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }

@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
@@ -218,7 +219,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        sessionOne.Reschedule(start, start.AddHours(1), "Europe/Brussels", calculator);
+        sessionOne.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "Europe/Brussels", calculator);
         sessionOne.AssignEventLocation(physicalPlacement);
         sessionOne.RoomId = room.Id;
         var sessionTwo = new EventSession(EventSessionStatusEnum.Published)
@@ -234,7 +235,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             EventSessionKindId = (int)EventSessionKindEnum.Workshop,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        sessionTwo.Reschedule(start.AddDays(1), start.AddDays(1).AddHours(1), "Europe/Brussels", calculator);
+        sessionTwo.Reschedule(UtcInstantRange.Create(start.AddDays(1), start.AddDays(1).AddHours(1)), "Europe/Brussels", calculator);
         sessionTwo.AssignEventLocation(tbaPlacement);
         context.EventSessions.AddRange(sessionOne, sessionTwo);
 
@@ -271,7 +272,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        agenda.Reschedule(start.AddHours(1), start.AddHours(2), "Europe/Brussels", calculator);
+        agenda.Reschedule(UtcInstantRange.Create(start.AddHours(1), start.AddHours(2)), "Europe/Brussels", calculator);
         agenda.AssignEventLocation(physicalPlacement);
         agenda.RoomId = room.Id;
         var sessionAgenda = new EventSessionAgendaItem

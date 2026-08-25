@@ -26,7 +26,7 @@ public sealed class EventLocationGovernanceTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = Guid.CreateVersion7() });
+            .Returns(BaseCommandResponse.Success(Guid.CreateVersion7()));
         var controller = CreateController(mediator);
 
         var result = await controller.UpdateTenantSetting(

@@ -82,7 +82,7 @@ public sealed class ModerationReportingRoutingController(
             new UpdateReportingRoutingSettingsCommand(tenantContext.TenantId, userId.Value, settings),
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode is FailureCodes.ReportingTenantOverridesLocked or FailureCodes.AdminRequired)
             {
@@ -118,7 +118,7 @@ public sealed class ModerationReportingRoutingController(
             new TestReportingProviderTargetCommand(tenantContext.TenantId, userId.Value, provider),
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode is FailureCodes.ReportingTenantOverridesLocked or FailureCodes.AdminRequired)
             {

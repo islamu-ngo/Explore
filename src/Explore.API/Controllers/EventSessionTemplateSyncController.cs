@@ -75,7 +75,7 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
             new GetEventSessionTemplateDiffQuery(sessionId, templateVersion),
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, DiffValidationProblem);
         }

@@ -91,7 +91,7 @@ public sealed class InstancePresentationSettingsController : InstanceSettingsCon
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
         var response = await _mediator.Send(new UpdateBrandingSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
-        if (response.Success)
+        if (response.IsSuccess)
         {
             await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
         }

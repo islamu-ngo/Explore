@@ -8,6 +8,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -275,7 +276,7 @@ public class EventSessionVisibilityContractTests(ContractApiFixture fixture)
             ConcurrencyStamp = Guid.NewGuid()
         };
 
-        session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
         return session;
     }
 

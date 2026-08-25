@@ -144,14 +144,11 @@ public sealed class CustomPropertyProjectionAdminControllerTests
     }
 
     private static BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>> ProjectionStatusFailure(string message)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = "custom_property_projection_validation_failed",
-            Errors = [message],
-            Id = []
-        };
+        => BaseCommandResponse.Failure<IReadOnlyList<ProjectionStatusDto>>(
+            "custom_property_projection_validation_failed",
+            message,
+            [message],
+            []);
 
     private static async Task<JsonDocument> AssertProjectionValidationProblemAsync(
         HttpResponseMessage response,
@@ -265,12 +262,9 @@ public sealed class CustomPropertyProjectionAdminControllerTests
                 }
             };
 
-            return new BaseCommandResponse<IReadOnlyList<EventCustomPropertyProjectionDto>>
-            {
-                Success = true,
-                Message = "Projection rows loaded.",
-                Id = ApplyCeiling(rows, query.ExposureCeiling)
-            };
+            return BaseCommandResponse.Success<IReadOnlyList<EventCustomPropertyProjectionDto>>(
+                ApplyCeiling(rows, query.ExposureCeiling),
+                "Projection rows loaded.");
         }
 
         private BaseCommandResponse<IReadOnlyList<EventSessionCustomPropertyProjectionDto>> CreateSessionResponse(
@@ -316,21 +310,15 @@ public sealed class CustomPropertyProjectionAdminControllerTests
                 }
             };
 
-            return new BaseCommandResponse<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>
-            {
-                Success = true,
-                Message = "Projection rows loaded.",
-                Id = ApplyCeiling(rows, query.ExposureCeiling)
-            };
+            return BaseCommandResponse.Success<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>(
+                ApplyCeiling(rows, query.ExposureCeiling),
+                "Projection rows loaded.");
         }
 
         private static BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>> ProjectionStatusSuccess()
-            => new()
-            {
-                Success = true,
-                Message = "Projection status loaded.",
-                Id = []
-            };
+            => BaseCommandResponse.Success<IReadOnlyList<ProjectionStatusDto>>(
+                [],
+                "Projection status loaded.");
 
         private static IReadOnlyList<TProjection> ApplyCeiling<TProjection>(
             IEnumerable<TProjection> rows,

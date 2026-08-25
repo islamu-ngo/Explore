@@ -136,7 +136,7 @@ public class TagController : ControllerBase
         var command = new CreateTagCommand { TagDto = tag, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -170,7 +170,7 @@ public class TagController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(TagNotFoundProblem)

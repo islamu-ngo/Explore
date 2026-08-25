@@ -209,7 +209,7 @@ public sealed class ManagementController(
         var result = await mediator.Send(
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             cancellationToken);
-        if (!result.Success || result.Id is null)
+        if (!result.IsSuccess || result.Id is null)
         {
             return Conflict(Problem(
                 StatusCodes.Status409Conflict,
@@ -282,7 +282,7 @@ public sealed class ManagementController(
         var result = await mediator.Send(
             new CancelManagedTenantProvisioningOperationCommand(managedInstanceId, operationId),
             cancellationToken);
-        if (result.Success && result.Id is not null)
+        if (result.IsSuccess && result.Id is not null)
         {
             return Ok(result.Id);
         }

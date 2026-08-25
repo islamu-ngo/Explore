@@ -75,12 +75,9 @@ public sealed class TenantStorageSettingsControllerTests
         var userId = Guid.NewGuid();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.NewGuid(),
-                Message = "Tenant storage settings patched successfully."
-            });
+            .Returns(BaseCommandResponse.Success(
+                Guid.NewGuid(),
+                "Tenant storage settings patched successfully."));
         var controller = CreateController(mediator, userId);
 
         var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);
@@ -89,7 +86,7 @@ public sealed class TenantStorageSettingsControllerTests
         await Assert.That(ok).IsNotNull();
         var response = ok!.Value as BaseCommandResponse<Guid>;
         await Assert.That(response).IsNotNull();
-        await Assert.That(response!.Success).IsTrue();
+        await Assert.That(response!.IsSuccess).IsTrue();
         await mediator.Received(1).Send(
             Arg.Is<PatchTenantStorageSettingsCommand>(command => command != null && command.UserId == userId),
             Arg.Any<CancellationToken>());
@@ -100,12 +97,9 @@ public sealed class TenantStorageSettingsControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "StorageTenantOverridesLocked",
-                Message = "Tenant storage settings are locked by instance policy."
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "StorageTenantOverridesLocked",
+                "Tenant storage settings are locked by instance policy."));
         var controller = CreateController(mediator, Guid.NewGuid());
 
         var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);
@@ -123,12 +117,8 @@ public sealed class TenantStorageSettingsControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Only tenant administrators or instance administrators can update tenant storage settings.",
-                FailureCode = FailureCodes.AdminRequired
-            });
+            .Returns(BaseCommandResponse.Authorization<Guid>(
+                "Only tenant administrators or instance administrators can update tenant storage settings."));
         var controller = CreateController(mediator, Guid.NewGuid());
 
         var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);

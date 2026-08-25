@@ -80,13 +80,11 @@ public class EventDayControllerTests
     {
         Guid id = Guid.CreateVersion7();
         IMediator mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteEventDayCommand>(), Arg.Any<CancellationToken>()).Returns(new BaseCommandResponse<Guid>
-        {
-            Id = id,
-            Success = false,
-            FailureCode = "event_day_ticket_entitlement_conflict",
-            Message = "Event day is referenced by a published ticket catalog."
-        });
+        mediator.Send(Arg.Any<DeleteEventDayCommand>(), Arg.Any<CancellationToken>()).Returns(
+            BaseCommandResponse.Failure<Guid>(
+                "event_day_ticket_entitlement_conflict",
+                "Event day is referenced by a published ticket catalog.",
+                id: id));
         var controller = new EventDayController(
             mediator,
             Substitute.For<ILogger<EventDayController>>(),

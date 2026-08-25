@@ -68,7 +68,7 @@ public sealed class RegistrationAnswerFilesController(
     {
         BaseCommandResponse<Guid> response = await mediator.Send(
             new ReleaseRegistrationAnswerFileCommand(tenantContext.TenantId, id, input.Reason), cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "registration_answer_file_not_found"
                 ? this.ToNotFoundProblem(NotFoundProblem)

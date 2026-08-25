@@ -411,20 +411,11 @@ public sealed class EmailDispatchAdminControllerTests
         return await ProblemDetailsAssertions.ReadAsJsonAsync(response);
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = "Email dispatch operation completed."
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id) =>
+        BaseCommandResponse.Success(id, "Email dispatch operation completed.");
 
-    private static BaseCommandResponse<Guid> Failure(string message, string failureCode) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, string failureCode) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message, [message]);
 
     private sealed class EmailDispatchMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable
     {

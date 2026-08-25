@@ -70,7 +70,7 @@ public sealed class PromotionDefinitionCharacterizationTests
             "General admission",
             "USD",
             TicketPricingModeEnum.Fixed,
-            fixedPriceMinor,
+            Money.Create(fixedPriceMinor, "USD"),
             null,
             null,
             ParticipantDataCollectionModeEnum.None,

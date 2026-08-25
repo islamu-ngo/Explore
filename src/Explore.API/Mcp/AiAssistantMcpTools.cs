@@ -49,8 +49,8 @@ public sealed class AiAssistantMcpTools(IMediator mediator)
                 },
                 cancellationToken);
 
-            var outcome = response.Success ? "succeeded" : "failed";
-            if (response.Success)
+            var outcome = response.IsSuccess ? "succeeded" : "failed";
+            if (response.IsSuccess)
             {
                 McpAdapterTelemetry.MarkSuccess(activity);
             }
@@ -68,7 +68,7 @@ public sealed class AiAssistantMcpTools(IMediator mediator)
 
             return JsonSerializer.Serialize(
                 new AiMcpCommandResultDescriptor(
-                    response.Success,
+                    response.IsSuccess,
                     response.Id == Guid.Empty ? null : response.Id,
                     response.Message,
                     response.FailureCode,

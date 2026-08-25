@@ -4,6 +4,7 @@
 namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 public class EventAgendaItemTests
 {
@@ -66,7 +67,7 @@ public class EventAgendaItemTests
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
 
-        item.Reschedule(start, end, "Europe/Brussels", _calculator);
+        item.Reschedule(UtcInstantRange.Create(start, end), "Europe/Brussels", _calculator);
 
         await Assert.That(item.StartTime).IsEqualTo(start);
         await Assert.That(item.EndTime).IsEqualTo(end);
@@ -77,6 +78,9 @@ public class EventAgendaItemTests
         await Assert.That(item.LocalEndTime).IsEqualTo(new TimeOnly(14, 0));
         await Assert.That(item.LocalStartMinuteOfDay).IsEqualTo(720);
         await Assert.That(item.LocalEndMinuteOfDay).IsEqualTo(840);
+        await Assert.That(item.GetUtcSchedule()).IsEqualTo(UtcInstantRange.Create(start, end));
+        await Assert.That(item.GetLocalDateRange()).IsEqualTo(
+            LocalDateRange.Create(new DateOnly(2026, 6, 15), new DateOnly(2026, 6, 15)));
     }
 
     [Test]
@@ -85,8 +89,8 @@ public class EventAgendaItemTests
         var item = CreateEventAgendaItem();
         var time = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
 
-        await Assert.That(() => item.Reschedule(time, time, "Europe/Brussels", _calculator))
-            .Throws<ArgumentException>();
+        await Assert.That(() => UtcInstantRange.Create(time, time))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -96,8 +100,8 @@ public class EventAgendaItemTests
         var start = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
 
-        await Assert.That(() => item.Reschedule(start, end, "Europe/Brussels", _calculator))
-            .Throws<ArgumentException>();
+        await Assert.That(() => UtcInstantRange.Create(start, end))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -149,7 +153,7 @@ public class EventAgendaItemTests
 
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 10, 30, 0, TimeSpan.Zero);
-        item.Reschedule(start, end, "UTC", _calculator);
+        item.Reschedule(UtcInstantRange.Create(start, end), "UTC", _calculator);
 
         await Assert.That(item.Title).IsEqualTo("Agenda Item");
         await Assert.That(item.Description).IsEqualTo("Break time");

@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Configuration;
@@ -244,7 +245,7 @@ public sealed class StripePaymentWebhookOrderingTests
                 Guid.CreateVersion7(), null, UtcNow.AddHours(-2));
             PaymentAttempt attempt = PaymentAttempt.Create(
                 Guid.CreateVersion7(), TenantId, OrderId, recipient, "OrganizerDirect", global::Stripe.StripeConfiguration.ApiVersion,
-                "composition-ordering", 1_000, 75, 125, "checkout:ordering", UtcNow.AddHours(-2), UtcNow.AddHours(1));
+                "composition-ordering", Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(125, recipient.CurrencyCode), "checkout:ordering", UtcNow.AddHours(-2), UtcNow.AddHours(1));
             _ = await paymentRepository.ClaimAsync(
                 new RegistrationPaymentAttemptClaim(attempt, CheckoutDispatchEffect.Create(attempt, UtcNow.AddHours(-2))),
                 CancellationToken.None);

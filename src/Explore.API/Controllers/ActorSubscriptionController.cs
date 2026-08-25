@@ -115,7 +115,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
     {
         var response = await _mediator.Send(new SubscribeToActorCommand { Subscription = dto }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SubscribeValidationProblem);
         }
@@ -143,7 +143,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
             Patch = dto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "actor_subscription_not_found"
                 ? this.ToNotFoundProblem(ActorSubscriptionNotFoundProblem, response.Message)
@@ -170,7 +170,7 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
 
         var response = await _mediator.Send(new UnsubscribeFromActorCommand { Subscription = dto }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UnsubscribeValidationProblem);
         }

@@ -130,7 +130,7 @@ public class EventTemplateController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToQuotaProblemOrBadRequest(response);
         }
@@ -177,7 +177,7 @@ public class EventTemplateController : ControllerBase
 
         var result = await _mediator.Send(command, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventTemplateNotFoundProblem)

@@ -170,7 +170,7 @@ public sealed class PaidCheckoutGovernanceController(
         CancellationToken cancellationToken)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(request, cancellationToken);
-        return response.Success ? Ok(response) : GovernanceFailures.Map(this, response);
+        return response.IsSuccess ? Ok(response) : GovernanceFailures.Map(this, response);
     }
 
     private async Task<bool> CanMutateAsync(CancellationToken cancellationToken)

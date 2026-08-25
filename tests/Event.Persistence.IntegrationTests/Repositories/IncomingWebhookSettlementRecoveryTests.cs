@@ -329,7 +329,7 @@ public sealed class IncomingWebhookSettlementRecoveryTests(PostgreSqlContainerFi
                 Reason = "operator-confirmed-recovery"
             }, CancellationToken.None);
 
-            await Assert.That(response.Success).IsTrue();
+            await Assert.That(response.IsSuccess).IsTrue();
         }
 
         await using var verificationContext = fixture.CreateDbContext();

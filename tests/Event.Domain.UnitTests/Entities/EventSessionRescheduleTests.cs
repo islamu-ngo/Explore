@@ -4,6 +4,8 @@
 namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 public class EventSessionRescheduleTests
 {
@@ -16,10 +18,11 @@ public class EventSessionRescheduleTests
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
 
-        session.Reschedule(start, end, "Europe/Brussels", _calculator);
+        session.Reschedule(UtcInstantRange.Create(start, end), "Europe/Brussels", _calculator);
 
         await Assert.That(session.StartTime).IsEqualTo(start);
         await Assert.That(session.EndTime).IsEqualTo(end);
+        await Assert.That(session.GetUtcSchedule()).IsEqualTo(UtcInstantRange.Create(start, end));
     }
 
     [Test]
@@ -29,7 +32,7 @@ public class EventSessionRescheduleTests
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
 
-        session.Reschedule(start, end, "Europe/Brussels", _calculator);
+        session.Reschedule(UtcInstantRange.Create(start, end), "Europe/Brussels", _calculator);
 
         // 10:00 UTC = 12:00 CEST, 12:00 UTC = 14:00 CEST
         await Assert.That(session.LocalStartDate).IsEqualTo(new DateOnly(2026, 6, 15));
@@ -38,6 +41,8 @@ public class EventSessionRescheduleTests
         await Assert.That(session.LocalEndTime).IsEqualTo(new TimeOnly(14, 0));
         await Assert.That(session.LocalStartMinuteOfDay).IsEqualTo(720);
         await Assert.That(session.LocalEndMinuteOfDay).IsEqualTo(840);
+        await Assert.That(session.GetLocalDateRange()).IsEqualTo(
+            LocalDateRange.Create(new DateOnly(2026, 6, 15), new DateOnly(2026, 6, 15)));
     }
 
     [Test]
@@ -46,8 +51,8 @@ public class EventSessionRescheduleTests
         var session = CreateEventSession();
         var time = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
 
-        await Assert.That(() => session.Reschedule(time, time, "Europe/Brussels", _calculator))
-            .Throws<ArgumentException>();
+        await Assert.That(() => UtcInstantRange.Create(time, time))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -57,8 +62,8 @@ public class EventSessionRescheduleTests
         var start = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
 
-        await Assert.That(() => session.Reschedule(start, end, "Europe/Brussels", _calculator))
-            .Throws<ArgumentException>();
+        await Assert.That(() => UtcInstantRange.Create(start, end))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -69,7 +74,7 @@ public class EventSessionRescheduleTests
         var start = new DateTimeOffset(2026, 6, 15, 21, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 16, 1, 0, 0, TimeSpan.Zero);
 
-        session.Reschedule(start, end, "Europe/Brussels", _calculator);
+        session.Reschedule(UtcInstantRange.Create(start, end), "Europe/Brussels", _calculator);
 
         await Assert.That(session.LocalStartDate).IsEqualTo(new DateOnly(2026, 6, 15));
         await Assert.That(session.LocalEndDate).IsEqualTo(new DateOnly(2026, 6, 16));
@@ -125,13 +130,62 @@ public class EventSessionRescheduleTests
 
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
-        session.Reschedule(start, end, "Europe/Brussels", _calculator);
+        session.Reschedule(UtcInstantRange.Create(start, end), "Europe/Brussels", _calculator);
 
         await Assert.That(session.Title).IsEqualTo("Test Session");
         await Assert.That(session.SortOrder).IsEqualTo(5);
         await Assert.That(session.MaxAudienceAttendees).IsEqualTo(100);
     }
 
+
+    [Test]
+    public async Task ScheduleOpenEnded_WithStartOnly_NormalizesAndProjectsWithoutInventingRange()
+    {
+        var session = CreateEventSession();
+        var start = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.FromHours(2));
+
+        session.ScheduleOpenEnded(start, "Europe/Brussels", _calculator);
+
+        await Assert.That(session.StartTime).IsEqualTo(start.ToUniversalTime());
+        await Assert.That(session.EndTime).IsNull();
+        await Assert.That(session.EndTimeType).IsEqualTo(SessionEndTimeType.OpenEnded);
+        await Assert.That(session.LocalStartTime).IsEqualTo(new TimeOnly(12, 0));
+        await Assert.That(session.LocalEndTime).IsNull();
+        await Assert.That(session.GetUtcSchedule()).IsNull();
+        await Assert.That(session.GetLocalDateRange()).IsNull();
+    }
+
+    [Test]
+    public async Task ScheduleRelativeToPrayer_WithStartOnly_NormalizesAndProjectsWithoutInventingRange()
+    {
+        var session = CreateEventSession();
+        var start = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.FromHours(2));
+
+        session.ScheduleRelativeToPrayer(start, "Europe/Brussels", _calculator);
+
+        await Assert.That(session.StartTime).IsEqualTo(start.ToUniversalTime());
+        await Assert.That(session.EndTime).IsNull();
+        await Assert.That(session.EndTimeType).IsEqualTo(SessionEndTimeType.RelativeToPrayer);
+        await Assert.That(session.LocalStartDate).IsEqualTo(new DateOnly(2026, 6, 15));
+        await Assert.That(session.LocalEndDate).IsNull();
+    }
+
+    [Test]
+    public async Task Unschedule_ClearsUtcAndLocalScheduleScalars()
+    {
+        var session = CreateEventSession();
+        var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(2)), "UTC", _calculator);
+
+        session.Unschedule();
+
+        await Assert.That(session.StartTime).IsNull();
+        await Assert.That(session.EndTime).IsNull();
+        await Assert.That(session.LocalStartDate).IsNull();
+        await Assert.That(session.LocalEndDate).IsNull();
+        await Assert.That(session.LocalStartTime).IsNull();
+        await Assert.That(session.LocalEndTime).IsNull();
+    }
     private static EventSession CreateEventSession()
     {
         return new EventSession

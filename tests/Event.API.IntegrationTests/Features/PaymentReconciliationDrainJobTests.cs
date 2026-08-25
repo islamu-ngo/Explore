@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -195,7 +196,7 @@ public sealed class PaymentReconciliationDrainJobTests
             Guid.CreateVersion7(), null, UtcNow.AddMinutes(-2));
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, Guid.CreateVersion7(), recipient, "OrganizerDirect", "2026-07-29.dahlia",
-            "composition-job", 1_000, 75, 125, "checkout:job:stable", UtcNow.AddMinutes(-2), UtcNow.AddMinutes(30));
+            "composition-job", Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(125, recipient.CurrencyCode), "checkout:job:stable", UtcNow.AddMinutes(-2), UtcNow.AddMinutes(30));
         attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
             TenantId, attempt.RegistrationOrderId, Guid.CreateVersion7(), "composition-job",
             recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,

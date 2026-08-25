@@ -114,7 +114,7 @@ public class EventSeriesController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSeriesDto dto)
     {
         var response = await _mediator.Send(new CreateEventSeriesCommand { EventSeriesDto = dto });
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -158,7 +158,7 @@ public class EventSeriesController : ControllerBase
             EventSeriesDto = dto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(NotFoundProblem)
@@ -197,7 +197,7 @@ public class EventSeriesController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<bool>>> Delete(Guid id)
     {
         var response = await _mediator.Send(new DeleteEventSeriesCommand { Id = id });
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToNotFoundProblem(NotFoundProblem);
         }

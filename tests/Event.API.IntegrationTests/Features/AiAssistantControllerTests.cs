@@ -326,14 +326,11 @@ public sealed class AiAssistantControllerTests
     {
         const string underlyingError = "Selected AI actor context is not allowed to create events.";
         _mediator.Send(Arg.Any<ConfirmAiProposedActionCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Id = Guid.Empty,
-                Success = false,
-                Message = "AI proposed action confirmation failed.",
-                FailureCode = "actor_context_not_allowed",
-                Errors = [underlyingError]
-            });
+            .Returns(BaseCommandResponse.Failure(
+                "actor_context_not_allowed",
+                "AI proposed action confirmation failed.",
+                [underlyingError],
+                Guid.Empty));
         var controller = CreateController();
 
         var actionResult = await controller.ConfirmProposedAction(
@@ -625,22 +622,10 @@ public sealed class AiAssistantControllerTests
         };
 
     private static BaseCommandResponse<Guid> Success(Guid id) =>
-        new()
-        {
-            Id = id,
-            Success = true,
-            Message = "OK"
-        };
+        BaseCommandResponse.Success(id, "OK");
 
     private static BaseCommandResponse<Guid> Failure(string message, string failureCode) =>
-        new()
-        {
-            Id = Guid.Empty,
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = [message]
-        };
+        BaseCommandResponse.Failure(failureCode, message, [message], Guid.Empty);
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
     {

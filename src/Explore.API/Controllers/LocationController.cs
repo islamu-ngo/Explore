@@ -145,7 +145,7 @@ public class LocationController : ControllerBase
         var command = new CreateLocationCommand { LocationDto = location, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -192,7 +192,7 @@ public class LocationController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(LocationNotFoundProblem)
@@ -288,7 +288,7 @@ public class LocationController : ControllerBase
 
     private ActionResult<BaseCommandResponse<Guid>> ToPrivateHomeResult(BaseCommandResponse<Guid> response)
     {
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

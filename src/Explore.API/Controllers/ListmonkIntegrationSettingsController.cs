@@ -67,7 +67,7 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         CancellationToken cancellationToken = default)
     {
         var result = await mediator.Send(new UpdateListmonkIntegrationSettingsCommand { Dto = dto }, cancellationToken);
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, SettingsValidationProblem);
@@ -86,7 +86,7 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         CancellationToken cancellationToken = default)
     {
         var result = await mediator.Send(new RotateListmonkIntegrationCredentialsCommand { Dto = dto }, cancellationToken);
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, CredentialsValidationProblem);
@@ -104,7 +104,7 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         CancellationToken cancellationToken = default)
     {
         var result = await mediator.Send(new TestListmonkConnectionCommand(), cancellationToken);
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, TestConnectionValidationProblem);
@@ -125,6 +125,6 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         BaseCommandResponse<Guid> result = await mediator.Send(
             new ResolveIntegrationSyncAmbiguityCommand(outboxId, dto),
             cancellationToken);
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, RecoveryValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, RecoveryValidationProblem);
     }
 }

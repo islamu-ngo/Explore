@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
@@ -336,7 +337,7 @@ public sealed class RefundAttemptPersistenceTests
             "BE", "EUR", Guid.CreateVersion7(), null, UtcNow);
         PaymentAttempt payment = PaymentAttempt.Create(
             paymentId, tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "refund-fixture",
-            1_000, 75, 0, $"payment:{tenantId:N}:{paymentId:N}", UtcNow, UtcNow.AddMinutes(30));
+            Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), $"payment:{tenantId:N}:{paymentId:N}", UtcNow, UtcNow.AddMinutes(30));
         long lastCursor = await context.PaymentAttempts
             .Where(value => value.TenantId == tenantId)
             .MaxAsync(value => (long?)value.CampaignCursor) ?? 0;

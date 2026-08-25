@@ -50,7 +50,7 @@ public class UserExternalLoginIntegrationTests
 
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsEqualTo(existingUserId);
 
         using var scope = _fixture.Factory.Services.CreateScope();
@@ -100,7 +100,7 @@ public class UserExternalLoginIntegrationTests
 
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsEqualTo(existingUserId);
     }
 

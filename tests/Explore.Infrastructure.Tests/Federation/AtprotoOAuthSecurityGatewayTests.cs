@@ -413,8 +413,6 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var firstCiphertext = (fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored."))
             .SessionCiphertext.ToArray();
         await fixture.Gateway.PersistPreparedAsync(prepared, CancellationToken.None);
-        prepared.SessionCiphertext[0] ^= byte.MaxValue;
-
         var persisted = fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored.");
         await Assert.That(persisted.SessionCiphertext).IsEquivalentTo(firstCiphertext);
         await fixture.SecretResolver.Received(1).ResolveAsync(

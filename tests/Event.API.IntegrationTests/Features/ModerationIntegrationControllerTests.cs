@@ -77,12 +77,9 @@ public sealed class ModerationIntegrationControllerTests
             ]
         };
         _mediator.Send(Arg.Any<RecordOspreySignalCallbackCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = reportId,
-                Message = "ok"
-            });
+            .Returns(BaseCommandResponse.Success(
+                reportId,
+                "ok"));
         var controller = CreateController();
 
         var response = await controller.RecordOspreyCallback(request, CancellationToken.None);
@@ -191,7 +188,7 @@ public sealed class ModerationIntegrationControllerTests
         var ok = response.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
         var bodyResponse = ok!.Value as BaseCommandResponse<Guid>;
-        await Assert.That(bodyResponse!.Success).IsTrue();
+        await Assert.That(bodyResponse!.IsSuccess).IsTrue();
         await Assert.That(bodyResponse.Id).IsEqualTo(capturedMessageId);
         await _mediator.DidNotReceive().Send(Arg.Any<ProcessCoopDecisionCallbackCommand>(), Arg.Any<CancellationToken>());
     }

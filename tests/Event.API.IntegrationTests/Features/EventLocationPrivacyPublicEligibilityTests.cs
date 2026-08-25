@@ -8,6 +8,7 @@ using Event.Api.IntegrationTests.Seeds;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -201,7 +202,7 @@ public sealed class EventLocationPrivacyPublicEligibilityTests(RealRuntimeApiFix
             SortOrder = 1,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
 
         EventDay? eventDay = eventDayIsPublished.HasValue
             ? new EventDay
@@ -257,7 +258,7 @@ public sealed class EventLocationPrivacyPublicEligibilityTests(RealRuntimeApiFix
         };
         agendaItem.EventDayId = eventDay?.Id;
         agendaItem.EventDay = eventDay;
-        agendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", new EventScheduleProjectionCalculator());
+        agendaItem.Reschedule(UtcInstantRange.Create(start.AddHours(1), start.AddHours(2)), "UTC", new EventScheduleProjectionCalculator());
         var sessionAgendaItem = new EventSessionAgendaItem
         {
             Id = Guid.CreateVersion7(),

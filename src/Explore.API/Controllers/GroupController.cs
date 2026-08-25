@@ -200,7 +200,7 @@ public class GroupController : ExploreControllerBase
             Cells = request.Cells
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -229,7 +229,7 @@ public class GroupController : ExploreControllerBase
             IsMuted = request.IsMuted
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -261,7 +261,7 @@ public class GroupController : ExploreControllerBase
             CreatorUserId = userId.Value
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -310,7 +310,7 @@ public class GroupController : ExploreControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(GroupNotFoundProblem)
@@ -342,7 +342,7 @@ public class GroupController : ExploreControllerBase
             GroupApprovalStatusDto = approvalStatus
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ApprovalValidationProblem);
         }
@@ -371,7 +371,7 @@ public class GroupController : ExploreControllerBase
             UserId = userId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }

@@ -115,7 +115,7 @@ internal sealed class CommandFailurePolicy
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(onSuccess);
 
-        return response.Success ? onSuccess() : Map(controller, response);
+        return response.IsSuccess ? onSuccess() : Map(controller, response);
     }
 
     private CommandFailurePolicy With(Rule rule) => new(_validation, [.. _rules, rule]);

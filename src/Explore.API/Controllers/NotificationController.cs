@@ -151,7 +151,7 @@ public class NotificationController : ControllerBase
             Cells = request.Cells
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -171,7 +171,7 @@ public class NotificationController : ControllerBase
     {
         var response = await _mediator.Send(new SetCurrentUserNotificationPreferenceMuteCommand(request.IsMuted), cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -241,7 +241,7 @@ public class NotificationController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(request, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, WebPushValidationProblem);
         }
@@ -262,7 +262,7 @@ public class NotificationController : ControllerBase
     {
         var response = await _mediator.Send(new UnsubscribeCurrentUserWebPushSubscriptionCommand(subscriptionId), cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, WebPushValidationProblem);
         }
@@ -326,7 +326,7 @@ public class NotificationController : ControllerBase
         Guid id, [FromQuery] bool archive = true, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new ArchiveNotificationCommand(id, archive), cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
             return this.ToNotFoundProblem(NotificationNotFoundProblem, response.Message);
 
         return Ok(response);
@@ -343,7 +343,7 @@ public class NotificationController : ControllerBase
         Guid id, [FromQuery] DateTime? snoozedUntil = null, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new SnoozeNotificationCommand { Id = id, SnoozedUntil = snoozedUntil }, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
             return this.ToNotFoundProblem(NotificationNotFoundProblem, response.Message);
 
         return Ok(response);

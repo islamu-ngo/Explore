@@ -171,10 +171,10 @@ public class ContactShareConsentController : ExploreControllerBase
             ExportedByUserId = userId.Value
         }, cancellationToken);
 
-        if (!result.Success || result.Id == null)
+        if (!result.IsSuccess || result.Id is not { FileContent: { } fileContent } export)
             return this.ToCommandValidationProblem(result, ExportValidationProblem);
 
-        return File(result.Id.FileContent, result.Id.ContentType, result.Id.FileName);
+        return File(fileContent.ToArray(), export.ContentType, export.FileName);
     }
 
     private async Task<Guid?> ResolveOrganizationId(Guid recipientActorId)

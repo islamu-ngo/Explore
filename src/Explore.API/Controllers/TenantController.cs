@@ -133,7 +133,7 @@ public class TenantController : ExploreControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -156,7 +156,7 @@ public class TenantController : ExploreControllerBase
         var command = new UpdateTenantCommand { TenantId = id, Update = dto };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(TenantNotFoundProblem)
@@ -212,7 +212,7 @@ public class TenantController : ExploreControllerBase
         var command = new CreateTenantNavLinkCommand { NavigationLinkDto = dto };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateNavigationValidationProblem);
         }
@@ -246,7 +246,7 @@ public class TenantController : ExploreControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(NavigationNotFoundProblem)
@@ -275,7 +275,7 @@ public class TenantController : ExploreControllerBase
         var command = new DeleteTenantNavLinkCommand { Id = id };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToNotFoundProblem(NavigationNotFoundProblem);
         }
@@ -302,7 +302,7 @@ public class TenantController : ExploreControllerBase
         var command = new ReorderTenantNavLinksCommand { NavigationLinkOrders = orders };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ReorderNavigationValidationProblem);
         }

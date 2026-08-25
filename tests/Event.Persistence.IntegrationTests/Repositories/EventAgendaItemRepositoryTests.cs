@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using TUnit.Assertions;
@@ -190,8 +191,7 @@ public class EventAgendaItemRepositoryTests
 
         // Act
         item.Reschedule(
-            new DateTimeOffset(2026, 7, 2, 14, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 7, 2, 15, 30, 0, TimeSpan.Zero),
+            UtcInstantRange.Create(new DateTimeOffset(2026, 7, 2, 14, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 2, 15, 30, 0, TimeSpan.Zero)),
             "Europe/Paris",
             calculator);
         await context.SaveChangesAsync();

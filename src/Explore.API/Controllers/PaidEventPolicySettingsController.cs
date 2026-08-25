@@ -77,7 +77,7 @@ public sealed class InstancePaidEventPolicySettingsController(
         CancellationToken cancellationToken)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new ReviseInstancePaidEventPolicyCommand(policy), cancellationToken);
-        return response.Success ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
+        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
     }
 }
 
@@ -145,6 +145,6 @@ public sealed class TenantPaidEventPolicySettingsController(
         BaseCommandResponse<Guid> response = await mediator.Send(
             new ReviseTenantPaidEventPolicyCommand(tenantId, policy),
             cancellationToken);
-        return response.Success ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
+        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
     }
 }

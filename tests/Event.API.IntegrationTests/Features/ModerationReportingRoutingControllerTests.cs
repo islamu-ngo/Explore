@@ -298,12 +298,7 @@ public sealed class ModerationReportingRoutingControllerAuthorizedTests
         {
             LastCommand = command;
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = command.TenantId,
-                Message = "Updated"
-            };
+            return BaseCommandResponse.Success(command.TenantId, "Updated");
         }
 
         private BaseCommandResponse<Guid> Test(TestReportingProviderTargetCommand command)
@@ -311,18 +306,10 @@ public sealed class ModerationReportingRoutingControllerAuthorizedTests
             LastTestCommand = command;
 
             return providerTestLocked
-                ? new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    FailureCode = "ReportingTenantOverridesLocked",
-                    Message = "Tenant Osprey reporting provider tests are locked by instance policy."
-                }
-                : new BaseCommandResponse<Guid>
-                {
-                    Success = true,
-                    Id = command.TenantId,
-                    Message = "Ready"
-                };
+                ? BaseCommandResponse.Failure<Guid>(
+                    "ReportingTenantOverridesLocked",
+                    "Tenant Osprey reporting provider tests are locked by instance policy.")
+                : BaseCommandResponse.Success(command.TenantId, "Ready");
         }
     }
 }

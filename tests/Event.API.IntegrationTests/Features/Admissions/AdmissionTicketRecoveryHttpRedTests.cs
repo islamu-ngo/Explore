@@ -122,4 +122,31 @@ public sealed partial class AdmissionTicketApiRedContractTests
         await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
         await Assert.That(second.Headers.Contains("Retry-After")).IsTrue();
     }
+
+    [Test]
+    public async Task RecoveryNormalizedIdentityBudgetMapsToSafeRetryableProblem()
+    {
+        await RequireRoute(RecoveryRequest);
+        var scenario = new AdmissionApiScenario
+        {
+            RecoveryRateLimitRetryAfterSeconds = 37
+        };
+        await using var factory = new AdmissionApiFactory(scenario);
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await SendRecoveryRequest(
+            client,
+            scenario.PresentIdentity,
+            "recovery-identity-budget",
+            "203.0.113.30");
+        string body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(response.Headers.GetValues("Retry-After").Single()).IsEqualTo("37");
+        await Assert.That(body).Contains("\"code\":\"rate_limited\"");
+        await Assert.That(body).DoesNotContain(scenario.PresentIdentity);
+        await Assert.That(body).DoesNotContain("Capability");
+        await Assert.That(body).DoesNotContain("Digest");
+        await Assert.That(body).DoesNotContain("Credential");
+    }
 }

@@ -30,11 +30,11 @@ public sealed class SkiaEventOpenGraphImageRendererTests
     {
         var result = await RenderAsync(title: "Community Iftar");
 
-        await Assert.That(result.PngBytes.AsSpan(0, 8).SequenceEqual(PngSignature)).IsTrue();
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
+        await Assert.That(result.PngBytes.Span[..8].SequenceEqual(PngSignature)).IsTrue();
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(20, 4))).IsEqualTo(CanvasHeight);
 
-        var expectedHash = Convert.ToHexStringLower(SHA256.HashData(result.PngBytes));
+        var expectedHash = Convert.ToHexStringLower(SHA256.HashData(result.PngBytes.Span));
         await Assert.That(result.ETag).IsEqualTo($"\"{expectedHash}\"");
         await Assert.That(result.ETag.StartsWith("W/", StringComparison.OrdinalIgnoreCase)).IsFalse();
     }
@@ -45,8 +45,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var first = await RenderAsync(title: "Deterministic Event");
         var second = await RenderAsync(title: "Deterministic Event");
 
-        await Assert.That(second.PngBytes).IsEquivalentTo(
-            first.PngBytes, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(second.PngBytes.ToArray()).IsEquivalentTo(
+            first.PngBytes.ToArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
         await Assert.That(second.ETag).IsEqualTo(first.ETag);
     }
 
@@ -105,8 +105,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var result = await RenderAsync(title, artwork, "image/png");
 
         await Assert.That(HashArtworkPanel(result.PngBytes)).IsEqualTo(HashArtworkPanel(fallback.PngBytes));
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(20, 4))).IsEqualTo(CanvasHeight);
     }
 
     [Test]
@@ -133,8 +133,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         using var renderArtwork = new MemoryStream(jpegBytes);
         var result = await RenderAsync("Large JPEG Event", renderArtwork, "image/jpeg");
 
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(20, 4))).IsEqualTo(CanvasHeight);
     }
 
     [Test]
@@ -153,8 +153,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         using var renderArtwork = new MemoryStream(CreateSolidPng(4000, 3000, SKColors.Red));
         var result = await RenderAsync("Large PNG Event", renderArtwork, "image/png");
 
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
-        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.Span.Slice(20, 4))).IsEqualTo(CanvasHeight);
         await Assert.That(HashArtworkPanel(result.PngBytes)).IsEqualTo(HashArtworkPanel(fallback.PngBytes));
     }
 
@@ -169,7 +169,7 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             secondBoundary: 500));
 
         var result = await RenderAsync("Portrait Event", artwork, "image/png");
-        using var bitmap = SKBitmap.Decode(result.PngBytes);
+        using var bitmap = SKBitmap.Decode(result.PngBytes.ToArray());
 
         await AssertPanelCenterLineIsGreen(bitmap, vertical: true);
     }
@@ -185,7 +185,7 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             secondBoundary: 550));
 
         var result = await RenderAsync("Landscape Event", artwork, "image/png");
-        using var bitmap = SKBitmap.Decode(result.PngBytes);
+        using var bitmap = SKBitmap.Decode(result.PngBytes.ToArray());
 
         await AssertPanelCenterLineIsGreen(bitmap, vertical: false);
     }
@@ -249,15 +249,15 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             CancellationToken.None);
     }
 
-    private static string HashArtworkPanel(byte[] pngBytes)
+    private static string HashArtworkPanel(ReadOnlyMemory<byte> pngBytes)
         => HashRegion(pngBytes, ArtworkLeft, ArtworkTop, ArtworkWidth, ArtworkHeight);
 
-    private static string HashTextRegion(byte[] pngBytes)
+    private static string HashTextRegion(ReadOnlyMemory<byte> pngBytes)
         => HashRegion(pngBytes, 48, 48, 640, 534);
 
-    private static string HashRegion(byte[] pngBytes, int left, int top, int width, int height)
+    private static string HashRegion(ReadOnlyMemory<byte> pngBytes, int left, int top, int width, int height)
     {
-        using var bitmap = SKBitmap.Decode(pngBytes);
+        using var bitmap = SKBitmap.Decode(pngBytes.ToArray());
         var pixels = new byte[width * height * 4];
         var offset = 0;
         for (var y = top; y < top + height; y++)
@@ -275,9 +275,9 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         return Convert.ToHexStringLower(SHA256.HashData(pixels));
     }
 
-    private static int CountDarkPixels(byte[] pngBytes)
+    private static int CountDarkPixels(ReadOnlyMemory<byte> pngBytes)
     {
-        using var bitmap = SKBitmap.Decode(pngBytes);
+        using var bitmap = SKBitmap.Decode(pngBytes.ToArray());
         var count = 0;
         for (var y = 48; y < 582; y++)
         {

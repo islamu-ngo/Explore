@@ -37,11 +37,14 @@ public sealed class AdmissionRecoveryCapabilityServiceTests
         await Assert.That(first.Capability).DoesNotContain("=");
         await Assert.That(first.Capability).IsNotEqualTo(second.Capability);
         await Assert.That(first.LookupDigest).IsNotEqualTo(second.LookupDigest);
+        await Assert.That(first.LocatorDigest).IsNotEqualTo(second.LocatorDigest);
         await Assert.That(Convert.FromBase64String(first.LookupDigest).Length).IsEqualTo(32);
+        await Assert.That(Convert.FromBase64String(first.LocatorDigest).Length).IsEqualTo(32);
         await Assert.That(first.KeyVersion).IsEqualTo(7);
         await Assert.That(first.ExpiresAtUtc).IsEqualTo(UtcNow.AddMinutes(15));
         await Assert.That(first.ToString()).DoesNotContain(first.Capability);
         await Assert.That(first.ToString()).DoesNotContain(first.LookupDigest);
+        await Assert.That(first.ToString()).DoesNotContain(first.LocatorDigest);
     }
 
     [Test]
@@ -92,17 +95,25 @@ public sealed class AdmissionRecoveryCapabilityServiceTests
         AdmissionRecoveryCapabilityMaterial material = await original.IssueAsync(
             new(TenantId, RequestId, TicketId, AdmissionRecoveryPurpose.TicketRecovery),
             CancellationToken.None);
-        AdmissionRecoveryCapabilityService rotated = Service(resolver, activeVersion: 2);
+        AdmissionRecoveryCapabilityService rotated = Service(
+            resolver,
+            activeVersion: 2,
+            retainedVersions: [1]);
 
         AdmissionRecoveryCapabilityDigest restored = await rotated.DigestAsync(
             new(TenantId, RequestId, TicketId, AdmissionRecoveryPurpose.TicketRecovery, material.Capability, 1),
             CancellationToken.None);
+        IReadOnlyList<AdmissionRecoveryLocatorDigest> locators =
+            await rotated.DigestLocatorsAsync(material.Capability, CancellationToken.None);
         var missing = new AdmissionRecoveryCapabilityService(
             new RecoverySecretResolver(new Dictionary<int, string> { [2] = Key(2) }),
             Options.Create(new AdmissionRecoveryOptions { ActiveKeyVersion = 2, CapabilityLifetimeMinutes = 15 }),
             new FixedTimeProvider(UtcNow));
 
         await Assert.That(restored.LookupDigest).IsEqualTo(material.LookupDigest);
+        await Assert.That(locators.Select(locator => locator.KeyVersion)).IsEquivalentTo([1, 2]);
+        await Assert.That(locators.Single(locator => locator.KeyVersion == 1).LocatorDigest)
+            .IsEqualTo(material.LocatorDigest);
         await Assert.That(async () => await missing.DigestAsync(
             new(TenantId, RequestId, TicketId, AdmissionRecoveryPurpose.TicketRecovery, material.Capability, 1),
             CancellationToken.None)).Throws<InvalidOperationException>();
@@ -110,12 +121,14 @@ public sealed class AdmissionRecoveryCapabilityServiceTests
 
     private static AdmissionRecoveryCapabilityService Service(
         ISecretResolver resolver,
-        int activeVersion) =>
+        int activeVersion,
+        int[]? retainedVersions = null) =>
         new(
             resolver,
             Options.Create(new AdmissionRecoveryOptions
             {
                 ActiveKeyVersion = activeVersion,
+                RetainedKeyVersions = retainedVersions ?? [],
                 CapabilityLifetimeMinutes = 15
             }),
             new FixedTimeProvider(UtcNow));

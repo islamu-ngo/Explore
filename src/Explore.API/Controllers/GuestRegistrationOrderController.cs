@@ -98,7 +98,7 @@ public sealed class GuestRegistrationOrderController(
                 request.PlatformContributionBasisPoints),
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return GuestStartFailures.Map(this, response);
         }
@@ -448,7 +448,7 @@ public sealed class GuestRegistrationOrderController(
     {
         BaseCommandResponse<Guid> response = await mediator.Send(
             new ClaimGuestRegistrationOrderCommand(eventId, orderId, capability), cancellationToken);
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : response.FailureCode switch
             {
@@ -467,7 +467,7 @@ public sealed class GuestRegistrationOrderController(
     /// <summary>A missing order graph is not-found even without the code: the response cannot describe the resource.</summary>
     private ActionResult<GuestRegistrationOrderLifecycleResponseDto> MapGuestLifecycle(
         GuestRegistrationOrderLifecycleResponseDto response) =>
-        response.Success
+        response.IsSuccess
             ? Ok(response)
             : response.Order is null
                 ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)

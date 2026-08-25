@@ -197,7 +197,7 @@ public sealed class EventLocationController(
             },
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }
@@ -236,7 +236,7 @@ public sealed class EventLocationController(
             },
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

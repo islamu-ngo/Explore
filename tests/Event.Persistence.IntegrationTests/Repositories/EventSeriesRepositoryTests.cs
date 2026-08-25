@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Services;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
@@ -85,9 +86,9 @@ public sealed class EventSeriesRepositoryTests
             "General",
             "USD",
             TicketPricingModeEnum.Fixed,
-            fixedPriceMinor: 2500,
-            minimumPriceMinor: null,
-            suggestedPriceMinor: null,
+            fixedPrice: Money.Create(2500, "USD"),
+            minimumPrice: null,
+            suggestedPrice: null,
             ParticipantDataCollectionModeEnum.None,
             capacityPoolId: null,
             minimumAge: null,
@@ -109,9 +110,9 @@ public sealed class EventSeriesRepositoryTests
             "Deleted",
             "USD",
             TicketPricingModeEnum.Fixed,
-            fixedPriceMinor: 9900,
-            minimumPriceMinor: null,
-            suggestedPriceMinor: null,
+            fixedPrice: Money.Create(9900, "USD"),
+            minimumPrice: null,
+            suggestedPrice: null,
             ParticipantDataCollectionModeEnum.None,
             capacityPoolId: null,
             minimumAge: null,

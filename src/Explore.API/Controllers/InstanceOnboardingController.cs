@@ -113,7 +113,7 @@ public class InstanceOnboardingController : ExploreControllerBase
             Profile = profile
         }, cancellationToken);
 
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : this.ToCommandValidationProblem(response, ProfileValidationProblem);
     }
@@ -175,7 +175,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CompleteValidationProblem);
         }
@@ -275,7 +275,7 @@ public class InstanceOnboardingController : ExploreControllerBase
             new BootstrapKeycloakRealmCommand { BootstrapRequest = request },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAuthProviderProblem(response);
         }
@@ -319,7 +319,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(
             new SyncAuthorizationPolicyPackageCommand { Request = request },
             cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, AuthorizationPolicySyncValidationProblem);
         }
@@ -345,7 +345,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         try
         {
             var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
-            return File(archive.Content, archive.ContentType, archive.FileName);
+            return File(archive.Content.ToArray(), archive.ContentType, archive.FileName);
         }
         catch (PolicyPackageUnavailableException ex)
         {
@@ -377,7 +377,7 @@ public class InstanceOnboardingController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, AuthorizationProviderVerifyValidationProblem);
         }

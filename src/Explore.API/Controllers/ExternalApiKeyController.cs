@@ -85,7 +85,7 @@ public class ExternalApiKeyController(IMediator mediator) : ControllerBase
         var command = new CreateExternalApiKeyCommand { ExternalApiKeyDto = dto };
         var response = await mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -112,7 +112,7 @@ public class ExternalApiKeyController(IMediator mediator) : ControllerBase
         };
         var response = await mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == FailureCodes.NotFound)
             {

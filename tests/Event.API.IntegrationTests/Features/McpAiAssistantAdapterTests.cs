@@ -25,12 +25,9 @@ public sealed class McpAiAssistantAdapterTests
         var conversationId = Guid.CreateVersion7();
         var proposedActionId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ProposeAiToolActionCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = proposedActionId,
-                Message = "AI tool action proposed. Confirm before execution."
-            });
+            .Returns(BaseCommandResponse.Success(
+                proposedActionId,
+                "AI tool action proposed. Confirm before execution."));
 
         var tool = new AiAssistantMcpTools(_mediator);
 

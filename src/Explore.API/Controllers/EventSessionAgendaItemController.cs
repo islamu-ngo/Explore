@@ -144,7 +144,7 @@ public class EventSessionAgendaItemController : ControllerBase
         var command = new CreateEventSessionAgendaItemCommand { AgendaItemDto = agendaItem };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -176,7 +176,7 @@ public class EventSessionAgendaItemController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }

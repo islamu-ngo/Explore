@@ -112,7 +112,7 @@ public class EventLifecycleController : ExploreControllerBase
         var command = new CreateEventCommand { EventDto = draft.ToCreateEventDto() };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -141,7 +141,7 @@ public class EventLifecycleController : ExploreControllerBase
             TenantId = _tenantContext.TenantId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ImportValidationProblem);
         }
@@ -175,7 +175,7 @@ public class EventLifecycleController : ExploreControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_publish_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event publish conflict", "Event publishing conflict.")
@@ -221,7 +221,7 @@ public class EventLifecycleController : ExploreControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventNotFoundProblem)
@@ -254,7 +254,7 @@ public class EventLifecycleController : ExploreControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_archive_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event archive conflict", "Event archive conflict.")
@@ -287,7 +287,7 @@ public class EventLifecycleController : ExploreControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_cancel_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event cancel conflict", "Event cancel conflict.")

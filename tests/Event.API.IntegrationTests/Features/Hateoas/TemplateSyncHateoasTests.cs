@@ -159,11 +159,7 @@ public sealed class TemplateSyncHateoasTests
         var linkPolicy = Substitute.For<ILinkPolicy<EventTemplateSyncResource>>();
         var definitions = CreateManualDefinitions();
         mediator.Send(Arg.Is<GetEventTemplateDiffQuery>(query => query.EventId == eventId), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new BaseCommandResponse<EventTemplateDiffDto>
-            {
-                Id = CreateEventTemplateDiff(),
-                Success = true
-            }));
+            .Returns(Task.FromResult(BaseCommandResponse.Success(CreateEventTemplateDiff())));
         linkPolicy.GetLinks(Arg.Any<EventTemplateSyncResource>(), Arg.Any<ClaimsPrincipal?>()).Returns(definitions);
         authorizationEvaluator.AreLinksAllowedAsync(Arg.Is<IReadOnlyList<LinkDefinition>>(links => LinksMatchManualDefinitions(links)), Arg.Any<ClaimsPrincipal?>(), Arg.Any<HttpContext>())
             .Returns(Task.FromResult<IReadOnlyList<bool>>([true, false, true]));
@@ -191,11 +187,7 @@ public sealed class TemplateSyncHateoasTests
         var linkPolicy = Substitute.For<ILinkPolicy<EventSessionTemplateSyncResource>>();
         var definitions = CreateManualDefinitions();
         mediator.Send(Arg.Is<GetEventSessionTemplateDiffQuery>(query => query.EventSessionId == sessionId), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new BaseCommandResponse<SessionTemplateDiffDto>
-            {
-                Id = CreateSessionTemplateDiff(),
-                Success = true
-            }));
+            .Returns(Task.FromResult(BaseCommandResponse.Success(CreateSessionTemplateDiff())));
         linkPolicy.GetLinks(Arg.Any<EventSessionTemplateSyncResource>(), Arg.Any<ClaimsPrincipal?>()).Returns(definitions);
         authorizationEvaluator.AreLinksAllowedAsync(Arg.Is<IReadOnlyList<LinkDefinition>>(links => LinksMatchManualDefinitions(links)), Arg.Any<ClaimsPrincipal?>(), Arg.Any<HttpContext>())
             .Returns(Task.FromResult<IReadOnlyList<bool>>([true, false, true]));

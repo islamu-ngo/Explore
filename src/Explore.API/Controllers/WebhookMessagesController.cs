@@ -292,7 +292,7 @@ public sealed class WebhookMessagesController(
             },
             cancellationToken);
 
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : DeliveryRetryFailures.Map(this, response);
     }
@@ -323,7 +323,7 @@ public sealed class WebhookMessagesController(
             },
             cancellationToken);
 
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : IncomingRedriveFailures.Map(this, response);
     }

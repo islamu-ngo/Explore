@@ -5,6 +5,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>Event.Wire.Contracts</RootNamespace>
+    <RootNamespace>ISLAMU.Wire.Contracts</RootNamespace>
   </PropertyGroup>
 </Project>

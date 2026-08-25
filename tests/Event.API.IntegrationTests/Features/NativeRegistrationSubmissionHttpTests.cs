@@ -47,12 +47,10 @@ public sealed class NativeRegistrationSubmissionHttpTests
         var mediator = Substitute.For<IMediator>();
         Guid orderId = Guid.CreateVersion7();
         mediator.Send(Arg.Any<StartGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new GuestRegistrationOrderStartDto
-            {
-                Id = orderId,
-                Success = true,
-                GuestCapabilityToken = capability
-            });
+            .Returns(GuestRegistrationOrderStartDto.Success(
+                orderId,
+                message: null,
+                guestCapabilityToken: capability));
         await using WebApplicationFactory<Program> factory = CreateFactory(mediator);
         using HttpClient client = factory.CreateClient();
         Guid eventId = Guid.CreateVersion7();

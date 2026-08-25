@@ -43,7 +43,7 @@ public sealed class KeycloakBootstrapRealRuntimeTests
             await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
             await Assert.That(commandResponse).IsNotNull();
-            await Assert.That(commandResponse!.Success).IsTrue();
+            await Assert.That(commandResponse!.IsSuccess).IsTrue();
             await Assert.That(commandResponse.Message).DoesNotContain(payload.BootstrapAdminPassword);
             await Assert.That(commandResponse.Message).DoesNotContain(payload.BlazorClientSecret);
 

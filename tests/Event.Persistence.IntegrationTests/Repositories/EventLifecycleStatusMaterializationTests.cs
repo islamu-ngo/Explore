@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -95,7 +96,7 @@ public sealed class EventLifecycleStatusMaterializationTests(ProjectionTestConta
                 Title = "Lifecycle materialization session",
                 ConcurrencyStamp = Guid.CreateVersion7()
             };
-            session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+            session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
             seedContext.EventSessions.Add(session);
             await seedContext.SaveChangesAsync();
 
@@ -209,7 +210,7 @@ public sealed class EventLifecycleStatusSqliteMaterializationTests
                     Title = "SQLite lifecycle materialization session",
                     ConcurrencyStamp = Guid.CreateVersion7()
                 };
-                session.Reschedule(start, end, "UTC", new EventScheduleProjectionCalculator());
+                session.Reschedule(UtcInstantRange.Create(start, end), "UTC", new EventScheduleProjectionCalculator());
                 seedContext.EventSessions.Add(session);
                 await seedContext.SaveChangesAsync();
             }

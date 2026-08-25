@@ -24,6 +24,7 @@ internal sealed class GlobalExceptionHandler(
             [StatusCodes.Status404NotFound] = ApiProblemTypes.NotFound,
             [StatusCodes.Status409Conflict] = ApiProblemTypes.Conflict,
             [StatusCodes.Status422UnprocessableEntity] = ApiProblemTypes.UnprocessableEntity,
+            [StatusCodes.Status429TooManyRequests] = ApiProblemTypes.TooManyRequests,
             [StatusCodes.Status500InternalServerError] = ApiProblemTypes.InternalServerError,
         };
 
@@ -64,6 +65,11 @@ internal sealed class GlobalExceptionHandler(
                 QuotaProblemDetailsFactory.Title,
                 quotaExceededException.Message,
                 "quota_exceeded"),
+            AdmissionRecoveryRateLimitExceededException => (
+                StatusCodes.Status429TooManyRequests,
+                "Too many recovery requests",
+                "The admission recovery request budget has been exhausted.",
+                ApiProblemCodes.RateLimited),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal server error",
@@ -81,6 +87,12 @@ internal sealed class GlobalExceptionHandler(
         }
 
         httpContext.Response.StatusCode = statusCode;
+        if (exception is AdmissionRecoveryRateLimitExceededException recoveryRateLimit)
+        {
+            httpContext.Response.Headers.RetryAfter =
+                recoveryRateLimit.RetryAfterSeconds.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         var typeUri = exception is QuotaExceededException
             ? QuotaProblemDetailsFactory.Type

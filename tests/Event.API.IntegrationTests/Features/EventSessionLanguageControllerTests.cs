@@ -74,12 +74,9 @@ public sealed class EventSessionLanguageControllerTests
     {
         using var mediator = new EventSessionLanguageMediatorStub(request => request switch
         {
-            UpdateEventSessionLanguageCommand => new BaseCommandResponse<int>
-            {
-                Success = false,
-                Message = "Event Session Language update failed.",
-                Errors = ["Language not found."]
-            },
+            UpdateEventSessionLanguageCommand => BaseCommandResponse.Validation<int>(
+                ["Language not found."],
+                "Event Session Language update failed."),
             _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
         });
         await using var factory = CreateFactoryWithMediator(mediator);
@@ -110,12 +107,8 @@ public sealed class EventSessionLanguageControllerTests
     {
         using var mediator = new EventSessionLanguageMediatorStub(request => request switch
         {
-            UpdateEventSessionLanguageCommand => new BaseCommandResponse<int>
-            {
-                Success = false,
-                Message = "Event session language not found.",
-                FailureCode = FailureCodes.NotFound
-            },
+            UpdateEventSessionLanguageCommand => BaseCommandResponse.NotFound<int>(
+                "Event session language not found."),
             _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
         });
         await using var factory = CreateFactoryWithMediator(mediator);

@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
@@ -275,7 +276,7 @@ public class SchedulingConstraintTests
             TenantId = tenant.Id,
             Tenant = null!
         };
-        session.Reschedule(session.StartTime!.Value, session.EndTime!.Value, "Europe/Brussels", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(session.StartTime!.Value, session.EndTime!.Value), "Europe/Brussels", new EventScheduleProjectionCalculator());
         context.EventSessions.Add(session);
         await context.SaveChangesAsync();
 
@@ -554,7 +555,7 @@ public class SchedulingConstraintTests
             TenantId = scope.Tenant.Id,
             Tenant = null!
         };
-        session.Reschedule(startUtc, endUtc, "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(startUtc, endUtc), "UTC", new EventScheduleProjectionCalculator());
 
         return session;
     }
@@ -571,7 +572,7 @@ public class SchedulingConstraintTests
             TenantId = tenant.Id,
             Tenant = null!
         };
-        session.Reschedule(session.StartTime!.Value, session.EndTime!.Value, "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(session.StartTime!.Value, session.EndTime!.Value), "UTC", new EventScheduleProjectionCalculator());
         context.EventSessions.Add(session);
         await context.SaveChangesAsync();
         return session;

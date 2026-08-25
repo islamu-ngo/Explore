@@ -259,7 +259,7 @@ public sealed class ModerationReportController : ExploreControllerBase
         Guid eventId,
         Guid reportId)
     {
-        var outcome = response.Success ? "succeeded" : "failed";
+        var outcome = response.IsSuccess ? "succeeded" : "failed";
         var failureCategory = response.FailureCode ?? "none";
         _metrics.RecordEventReportWorkflowAction(
             GetTenantMetricTag(),
@@ -274,7 +274,7 @@ public sealed class ModerationReportController : ExploreControllerBase
             outcome,
             failureCategory);
 
-        return response.Success ? Ok(response) : this.ToEventReportProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToEventReportProblem(response);
     }
 
     private string? GetTenantMetricTag()

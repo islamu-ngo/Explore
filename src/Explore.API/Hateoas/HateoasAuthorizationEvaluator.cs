@@ -170,7 +170,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             return false;
         }
 
-        if (definition.RequiredRoles is { Length: > 0 })
+        if (definition.RequiredRoles is { Count: > 0 })
         {
             if (user?.Identity?.IsAuthenticated != true)
                 return false;

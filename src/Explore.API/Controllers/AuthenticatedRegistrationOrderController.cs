@@ -82,7 +82,7 @@ public sealed class AuthenticatedRegistrationOrderController(
                 request.Lines,
                 request.PlatformContributionBasisPoints),
             cancellationToken);
-        return response.Success
+        return response.IsSuccess
             ? CreatedAtRoute(RouteNames.GetCurrentRegistrationOrder, new { eventId, orderId = response.Id }, response)
             : AuthenticatedStartFailures.Map(this, response);
     }
@@ -299,7 +299,7 @@ public sealed class AuthenticatedRegistrationOrderController(
     {
         BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> response = await mediator.Send(
             new ImportCompanyRegistrationAssignmentsCsvCommand(eventId, orderId, request.CsvUtf8, request.LineageKey), cancellationToken);
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : response.FailureCode == "registration_order_not_found"
                 ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
@@ -435,7 +435,7 @@ public sealed class AuthenticatedRegistrationOrderController(
         Guid eventId,
         RegistrationOrderLifecycleResponseDto response)
     {
-        if (response.Success && response.Order is { } order && order.EventId == eventId)
+        if (response.IsSuccess && response.Order is { } order && order.EventId == eventId)
         {
             return await ToHalResource(order);
         }

@@ -35,6 +35,27 @@ public sealed class RecordTrustBoundaryTests
     ];
 
     [Test]
+    public async Task SaveTenantOnboardingStepDto_CopiesCompletedStepsAndPreservesArrayJson()
+    {
+        var source = new List<string> { "welcome", "branding" };
+        var dto = new TenantOnboardingController.SaveTenantOnboardingStepDto(2, 4, source);
+
+        source[0] = "forged";
+        source.Clear();
+
+        await Assert.That(dto.CompletedSteps).IsEquivalentTo(["welcome", "branding"]);
+        Assert.Throws<NotSupportedException>(() => ((ICollection<string>)dto.CompletedSteps).Clear());
+
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto, options);
+        var roundTripped = System.Text.Json.JsonSerializer.Deserialize<TenantOnboardingController.SaveTenantOnboardingStepDto>(json, options);
+
+        await Assert.That(json).Contains("\"completedSteps\":[\"welcome\",\"branding\"]");
+        await Assert.That(roundTripped).IsNotNull();
+        await Assert.That(roundTripped!.CompletedSteps).IsEquivalentTo(["welcome", "branding"]);
+    }
+
+    [Test]
     public async Task CreateCategory_ForgedBodyTenantIdFailsClosedBeforeDispatch()
     {
         var forgedTenantId = Guid.CreateVersion7();
@@ -44,12 +65,9 @@ public sealed class RecordTrustBoundaryTests
         mediator.Send(
                 Arg.Do<CreateCategoryCommand>(command => dispatched = command),
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.CreateVersion7(),
-                Message = "Category created."
-            });
+            .Returns(BaseCommandResponse.Success(
+                Guid.CreateVersion7(),
+                "Category created."));
 
         await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();

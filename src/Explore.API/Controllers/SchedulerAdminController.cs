@@ -261,13 +261,13 @@ public sealed class SchedulerAdminController : ExploreControllerBase
                 User.Identity?.Name ?? CurrentUserId?.ToString() ?? "unknown",
                 jobGroup,
                 jobName,
-                response.Success,
+                response.IsSuccess,
                 response.FailureCode,
                 HttpContext.TraceIdentifier,
                 DateTime.UtcNow),
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

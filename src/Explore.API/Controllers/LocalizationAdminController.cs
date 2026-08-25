@@ -76,7 +76,7 @@ public class LocalizationAdminController : ControllerBase
     {
         var result = await _mediator.Send(new TestTmsConnectionCommand(), cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, TestConnectionValidationProblem);
@@ -127,7 +127,7 @@ public class LocalizationAdminController : ControllerBase
             new RotateLocalizationTmsApiKeyCommand { Dto = dto },
             cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, TmsApiKeyRotationValidationProblem);
@@ -164,7 +164,7 @@ public class LocalizationAdminController : ControllerBase
             new UpdateLocalizationGovernanceCommand { Dto = dto },
             cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, GovernanceValidationProblem);
@@ -200,7 +200,7 @@ public class LocalizationAdminController : ControllerBase
             new ImportLocalizationBundleCommand { Dto = dto },
             cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, BundleImportValidationProblem);
@@ -223,7 +223,7 @@ public class LocalizationAdminController : ControllerBase
             new ExportFromTmsCommand { LanguageCode = languageCode },
             cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, ExportValidationProblem);

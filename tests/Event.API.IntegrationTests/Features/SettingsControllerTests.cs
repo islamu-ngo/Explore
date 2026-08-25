@@ -267,7 +267,7 @@ public class SettingsControllerAuthenticatedTests
             .Returns(_ =>
             {
                 calls.Add("mediator");
-                return new BaseCommandResponse<Guid> { Success = true };
+                return BaseCommandResponse.Success(Guid.Empty);
             });
         var store = Substitute.For<IOutputCacheStore>();
         store.EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>())
@@ -293,7 +293,7 @@ public class SettingsControllerAuthenticatedTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = false, Message = "failed" });
+            .Returns(BaseCommandResponse.Validation<Guid>(["failed"], "failed"));
         var store = Substitute.For<IOutputCacheStore>();
         var controller = CreateSettingsController(mediator);
 

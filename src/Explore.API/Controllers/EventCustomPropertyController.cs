@@ -143,7 +143,7 @@ public class EventCustomPropertyController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToQuotaProblemOrBadRequest(response);
         }
@@ -191,7 +191,7 @@ public class EventCustomPropertyController : ControllerBase
 
         var result = await _mediator.Send(command, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(DefinitionNotFoundProblem)
@@ -241,7 +241,7 @@ public class EventCustomPropertyController : ControllerBase
             Reason = purgeDto.Reason
         }, cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
         {
             return Ok(result);
         }
@@ -296,7 +296,7 @@ public class EventCustomPropertyController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToQuotaProblemOrBadRequest(response);
         }
@@ -330,7 +330,7 @@ public class EventCustomPropertyController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToQuotaProblemOrBadRequest(response);
         }

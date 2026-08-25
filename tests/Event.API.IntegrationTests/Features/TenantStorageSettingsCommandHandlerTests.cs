@@ -47,7 +47,7 @@ public sealed class TenantStorageSettingsCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("StorageTenantOverridesLocked");
         await storageService.DidNotReceive().ApplyPatchAsync(
             Arg.Any<Guid>(),
@@ -82,7 +82,7 @@ public sealed class TenantStorageSettingsCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(maxUploadBytes: 101), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Tenant storage settings validation failed.");
         await Assert.That(result.Errors!.Any(error => error.Contains("instance ceiling", StringComparison.OrdinalIgnoreCase))).IsTrue();
         await storageService.DidNotReceive().ApplyPatchAsync(
@@ -119,7 +119,7 @@ public sealed class TenantStorageSettingsCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Only tenant administrators");
         await storageService.DidNotReceive().ReadSettingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(0);
@@ -155,7 +155,7 @@ public sealed class TenantStorageSettingsCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors!.Any(error => error.Contains("at least one", StringComparison.OrdinalIgnoreCase))).IsTrue();
         await storageService.DidNotReceive().ApplyPatchAsync(
             Arg.Any<Guid>(),
@@ -205,7 +205,7 @@ public sealed class TenantStorageSettingsCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
         await Assert.That(calls.Count).IsEqualTo(4);
         await Assert.That(calls[0]).IsEqualTo("persisted");

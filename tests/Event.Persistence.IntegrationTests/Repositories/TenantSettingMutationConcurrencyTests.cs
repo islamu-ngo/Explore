@@ -560,12 +560,9 @@ public sealed class TenantSettingMutationConcurrencyTests(PostgreSqlContainerFix
             {
                 if (await systemRepository.IsLocked(SettingKey, cancellationToken))
                 {
-                    return new BaseCommandResponse<Guid>
-                    {
-                        Id = tenantId,
-                        Success = false,
-                        FailureCode = "setting_system_locked"
-                    };
+                    return BaseCommandResponse.Failure(
+                        "setting_system_locked",
+                        id: tenantId);
                 }
 
                 switch (mutation)
@@ -584,7 +581,7 @@ public sealed class TenantSettingMutationConcurrencyTests(PostgreSqlContainerFix
                         throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
                 }
 
-                return new BaseCommandResponse<Guid> { Id = tenantId, Success = true };
+                return BaseCommandResponse.Success(tenantId);
             },
             CancellationToken.None);
 

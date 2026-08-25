@@ -76,7 +76,7 @@ public sealed class TenantStorageSettingsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == FailureCodes.AdminRequired)
             {

@@ -123,12 +123,9 @@ public sealed class WebhookBulkReplayOperationsTests
     {
         var operationId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ScheduleWebhookBulkReplayCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Id = operationId,
-                Success = true,
-                Message = "Webhook bulk replay operation queued."
-            });
+            .Returns(BaseCommandResponse.Success(
+                operationId,
+                "Webhook bulk replay operation queued."));
         var controller = CreateController();
         var operationKey = Guid.CreateVersion7();
         var fromUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -168,12 +165,9 @@ public sealed class WebhookBulkReplayOperationsTests
     {
         var operationId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ScheduleWebhookBulkReplayCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Id = operationId,
-                Success = true,
-                Message = "Webhook bulk replay operation queued."
-            });
+            .Returns(BaseCommandResponse.Success(
+                operationId,
+                "Webhook bulk replay operation queued."));
         var controller = CreateController();
         var fromBoundary = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Unspecified);
         var toBoundary = new DateTime(2026, 7, 15, 0, 0, 0, DateTimeKind.Unspecified);

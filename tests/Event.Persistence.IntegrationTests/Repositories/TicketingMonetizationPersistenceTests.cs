@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
@@ -835,9 +836,9 @@ public sealed class TicketingMonetizationPersistenceTests
             managedTicket,
             name: "General",
             pricingMode: TicketPricingModeEnum.Free,
-            fixedPriceMinor: null,
-            minimumPriceMinor: null,
-            suggestedPriceMinor: null,
+            fixedPrice: null,
+            minimumPrice: null,
+            suggestedPrice: null,
             participantDataCollectionMode: ParticipantDataCollectionModeEnum.None,
             capacityPool: null,
             minimumAge: null,

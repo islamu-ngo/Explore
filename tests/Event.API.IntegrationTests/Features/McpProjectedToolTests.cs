@@ -512,12 +512,9 @@ public sealed class McpProjectedToolTests
         var mediator = Substitute.For<IMediator>();
         var expectedToken = new CancellationTokenSource().Token;
         mediator.Send(Arg.Any<ProposeAiToolActionCommand>(), expectedToken)
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.CreateVersion7(),
-                Message = "Confirm the proposed action before side effects."
-            });
+            .Returns(BaseCommandResponse.Success(
+                Guid.CreateVersion7(),
+                "Confirm the proposed action before side effects."));
         await using var services = new ServiceCollection()
             .AddSingleton(mediator)
             .BuildServiceProvider();

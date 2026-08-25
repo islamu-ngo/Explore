@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace Event.Wire.Contracts.Admissions;
+namespace ISLAMU.Wire.Contracts.Admissions;
 
 [DebuggerDisplay("AdmissionCredentialBearer(<redacted>)")]
 public sealed class AdmissionCredentialBearer

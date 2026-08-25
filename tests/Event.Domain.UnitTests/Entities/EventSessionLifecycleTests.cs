@@ -3,6 +3,7 @@
 
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 namespace Event.Domain.UnitTests.Entities;
 
@@ -90,8 +91,7 @@ public sealed class EventSessionLifecycleTests
         await Assert.That(Snapshot(fixedMissingEnd)).IsEqualTo(fixedMissingEndBefore);
 
         var openEnded = CreateSession(EventSessionStatusEnum.Draft, scheduled: false);
-        openEnded.StartTime = Start;
-        openEnded.EndTimeType = SessionEndTimeType.OpenEnded;
+        openEnded.ScheduleOpenEnded(Start, "UTC", _calculator);
 
         await Assert.That(openEnded.Publish(EventStatusEnum.Published, OccurredAt)).IsTrue();
 
@@ -101,8 +101,7 @@ public sealed class EventSessionLifecycleTests
         await Assert.That(fixedWithEnd.Publish(EventStatusEnum.Published, OccurredAt)).IsTrue();
 
         var relativeToPrayer = CreateSession(EventSessionStatusEnum.Draft, scheduled: false);
-        relativeToPrayer.StartTime = Start;
-        relativeToPrayer.EndTimeType = SessionEndTimeType.RelativeToPrayer;
+        relativeToPrayer.ScheduleRelativeToPrayer(Start, "UTC", _calculator);
 
         await Assert.That(relativeToPrayer.Publish(EventStatusEnum.Published, OccurredAt)).IsTrue();
     }
@@ -155,16 +154,16 @@ public sealed class EventSessionLifecycleTests
         archived.ReprojectLocalTimes("Europe/Brussels", _calculator);
         var archivedBefore = ScheduleSnapshot(archived);
 
-        await Assert.That(() => archived.Reschedule(Start.AddDays(1), End.AddDays(1), "Asia/Tokyo", _calculator))
+        await Assert.That(() => archived.Reschedule(UtcInstantRange.Create(Start.AddDays(1), End.AddDays(1)), "Asia/Tokyo", _calculator))
             .Throws<InvalidOperationException>();
         await Assert.That(ScheduleSnapshot(archived)).IsEqualTo(archivedBefore);
 
         var draft = CreateSession(EventSessionStatusEnum.Draft, scheduled: true);
-        draft.Reschedule(Start, End, "Europe/Brussels", _calculator);
+        draft.Reschedule(UtcInstantRange.Create(Start, End), "Europe/Brussels", _calculator);
         var draftBefore = ScheduleSnapshot(draft);
 
-        await Assert.That(() => draft.Reschedule(Start.AddDays(1), Start.AddDays(1), "Asia/Tokyo", _calculator))
-            .Throws<ArgumentException>();
+        await Assert.That(() => UtcInstantRange.Create(Start.AddDays(1), Start.AddDays(1)))
+            .Throws<ArgumentOutOfRangeException>();
         await Assert.That(ScheduleSnapshot(draft)).IsEqualTo(draftBefore);
     }
 

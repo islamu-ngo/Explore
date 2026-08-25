@@ -131,6 +131,7 @@ public sealed class AdmissionCompositeDispatchTests
             new LocationPrivacyCorrectionDispatcher(cache, correctionPlanner, EventLocationPrivacyMetricsFactory.Create()),
             new PrivacyErasureCacheInvalidationDispatcher(cache),
             admissionHandler,
+            Substitute.For<IAdmissionRecoveryDeliveryOutboxHandler>(),
             Substitute.For<IOutboxRepository>(),
             campaignRepository,
             new RefundCampaignProcessor(

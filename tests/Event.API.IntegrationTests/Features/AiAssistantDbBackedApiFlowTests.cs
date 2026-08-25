@@ -170,7 +170,7 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
             content,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         return body.Id;
     }
 
@@ -188,7 +188,7 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await WaitForRunStatusAsync(userId, conversationId, body.Id, "Succeeded");
         return body.Id;
     }
@@ -243,7 +243,7 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because(content);
         var body = JsonSerializer.Deserialize<BaseCommandResponse<Guid>>(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue().Because(content);
+        await Assert.That(body!.IsSuccess).IsTrue().Because(content);
         return body.Id;
     }
 

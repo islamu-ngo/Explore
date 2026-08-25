@@ -100,7 +100,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new GetEventCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return this.ToCommandValidationProblem(result, EventProjectionStatusValidationProblem);
         }
@@ -131,7 +131,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildEventCustomPropertyProjectionCommand { RequestDto = requestDto },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
+        return result.IsSuccess ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildSingleEventCustomPropertyProjectionCommand { EventId = requestDto.EventId },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, RebuildSingleEventValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, RebuildSingleEventValidationProblem);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new DrainCustomPropertyProjectionDirtyScopesCommand { RequestDto = requestDto },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, DrainDirtyScopesValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, DrainDirtyScopesValidationProblem);
     }
 
     /// <summary>
@@ -224,7 +224,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, EventProjectionLookupValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, EventProjectionLookupValidationProblem);
     }
 
     // ── Session projection endpoints ───────────────────────────────────────
@@ -245,7 +245,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new GetEventSessionCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return this.ToCommandValidationProblem(result, SessionProjectionStatusValidationProblem);
         }
@@ -276,7 +276,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildEventSessionCustomPropertyProjectionCommand { RequestDto = requestDto },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
+        return result.IsSuccess ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
     }
 
     /// <summary>
@@ -295,7 +295,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildSingleEventSessionCustomPropertyProjectionCommand { EventSessionId = requestDto.EventSessionId },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, RebuildSingleSessionValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, RebuildSingleSessionValidationProblem);
     }
 
     /// <summary>
@@ -319,6 +319,6 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : this.ToCommandValidationProblem(result, SessionProjectionLookupValidationProblem);
+        return result.IsSuccess ? Ok(result) : this.ToCommandValidationProblem(result, SessionProjectionLookupValidationProblem);
     }
 }

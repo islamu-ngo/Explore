@@ -63,7 +63,7 @@ public class UserAppearanceController : ControllerBase
             Preferences = request
         }, cancellationToken);
 
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : this.ToCommandValidationProblem(response, UpdatePreferencesValidationProblem);
     }

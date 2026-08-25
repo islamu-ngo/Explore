@@ -136,7 +136,7 @@ public sealed class InstanceAuthorizationSettingsController : InstanceSettingsCo
         try
         {
             var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
-            return File(archive.Content, archive.ContentType, archive.FileName);
+            return File(archive.Content.ToArray(), archive.ContentType, archive.FileName);
         }
         catch (PolicyPackageUnavailableException)
         {

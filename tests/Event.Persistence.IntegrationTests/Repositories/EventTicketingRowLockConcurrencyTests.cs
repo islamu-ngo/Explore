@@ -127,7 +127,7 @@ public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixtu
             lockSqlState,
             losingAssignment.FailureCode,
             retry.FailureCode,
-            deletionResult.Success && poolDeleted && !hasLiveReference
+            deletionResult.IsSuccess && poolDeleted && !hasLiveReference
                 ? "pool_deleted_no_live_ticket"
                 : "invalid",
             tenantIsolated);
@@ -180,7 +180,7 @@ public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixtu
 
         return new AssignmentWinningScenarioResult(
             lockSqlState,
-            assignmentResult.Success,
+            assignmentResult.IsSuccess,
             losingDeletion.FailureCode,
             retry.FailureCode,
             ticket?.CapacityPoolId == poolId && poolActive && hasLiveReference

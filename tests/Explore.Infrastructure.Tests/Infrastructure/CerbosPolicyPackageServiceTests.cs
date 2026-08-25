@@ -102,7 +102,7 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         await Assert.That(archiveModel.Manifest.Artifacts.Count).IsEqualTo(4);
         await Assert.That(handler.Requests).IsEmpty();
 
-        using var memoryStream = new MemoryStream(archiveModel.Content);
+        using var memoryStream = new MemoryStream(archiveModel.Content.ToArray());
         using var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Read);
         var entryNames = zipArchive.Entries.Select(entry => entry.FullName).ToArray();
 

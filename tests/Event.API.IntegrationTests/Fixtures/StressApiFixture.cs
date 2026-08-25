@@ -47,7 +47,7 @@ public class StressApiFixture : PostgreSqlApiFixtureBase
     private sealed class GatedOpenGraphImageRenderer : IEventOpenGraphImageRenderer
     {
         private static readonly EventOpenGraphImageRenderResult Result =
-            new([0x89, 0x50, 0x4E, 0x47], "\"stress\"");
+            new(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, "\"stress\"");
 
         private TaskCompletionSource<bool> _firstRenderStarted = CreateSource();
         private TaskCompletionSource<bool> _releaseFirstRender = CreateSource();

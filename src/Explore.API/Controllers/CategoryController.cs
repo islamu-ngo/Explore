@@ -136,7 +136,7 @@ public class CategoryController : ControllerBase
         var command = new CreateCategoryCommand { CategoryDto = category, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -183,7 +183,7 @@ public class CategoryController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(CategoryNotFoundProblem)

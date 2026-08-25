@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.Hosting;
@@ -274,7 +275,7 @@ public class EventListTemporalFilterTests : IAsyncDisposable
             SortOrder = 1,
             ConcurrencyStamp = Guid.NewGuid()
         };
-        session.Reschedule(startsAt, endsAt, "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(startsAt, endsAt), "UTC", new EventScheduleProjectionCalculator());
         return session;
     }
 }

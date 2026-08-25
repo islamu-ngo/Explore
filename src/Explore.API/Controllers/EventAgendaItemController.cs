@@ -198,7 +198,7 @@ public class EventAgendaItemController : ControllerBase
         var command = new CreateEventAgendaItemCommand { EventAgendaItemDto = agendaItem };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -245,7 +245,7 @@ public class EventAgendaItemController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(AgendaItemNotFoundProblem)

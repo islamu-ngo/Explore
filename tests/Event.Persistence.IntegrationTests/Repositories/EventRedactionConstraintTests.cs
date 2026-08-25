@@ -6,6 +6,7 @@ using Explore.Application.Features.Events.Moderation;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
@@ -71,8 +72,7 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Tenant = null!
         };
         eventAgendaItem.Reschedule(
-            new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 9, 1, 11, 0, 0, TimeSpan.Zero),
+            UtcInstantRange.Create(new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 9, 1, 11, 0, 0, TimeSpan.Zero)),
             "UTC",
             new EventScheduleProjectionCalculator());
         var sessionAgendaItem = new EventSessionAgendaItem

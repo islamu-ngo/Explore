@@ -222,12 +222,7 @@ public sealed class ModerationReportControllerTests
             }
         };
 
-    private static BaseCommandResponse<Guid> Success(Guid id) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = "ok"
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id) => BaseCommandResponse.Success(id, "ok");
 
     private static BusinessMetrics CreateMetrics()
     {

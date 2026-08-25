@@ -134,7 +134,7 @@ public class EventSessionTemplateController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -180,7 +180,7 @@ public class EventSessionTemplateController : ControllerBase
 
         var result = await _mediator.Send(command, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventSessionTemplateNotFoundProblem)

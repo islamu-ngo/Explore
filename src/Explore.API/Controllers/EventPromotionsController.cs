@@ -15,6 +15,7 @@ using Explore.Application.Features.Promotions;
 using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Features.Promotions.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -124,7 +125,7 @@ public sealed class EventPromotionsController(
             request.TotalRedemptionLimit,
             request.PerVerifiedPurchaserLimit,
             request.EligibleTicketTypeIds), cancellationToken);
-        return response.Success
+        return response.IsSuccess
             ? CreatedAtRoute(RouteNames.GetEventPromotion, new { eventId, promotionDefinitionId = response.Id }, response)
             : PromotionManagementFailures.Map(this, response);
     }
@@ -209,6 +210,6 @@ public sealed class EventPromotionsController(
         new RotatePromotionCodeCommand(eventId, promotionDefinitionId, request.Code), cancellationToken));
 
     private ActionResult<TResponse> MapManagementSuccess<TResponse>(TResponse response)
-        where TResponse : PromotionManagementCommandResponseDto =>
-        response.Success ? Ok(response) : PromotionManagementFailures.Map(this, response);
+        where TResponse : BaseCommandResponse<Guid> =>
+        response.IsSuccess ? Ok(response) : PromotionManagementFailures.Map(this, response);
 }

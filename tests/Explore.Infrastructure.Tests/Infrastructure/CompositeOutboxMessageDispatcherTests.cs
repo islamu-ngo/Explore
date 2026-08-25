@@ -4,6 +4,8 @@
 using System.Text.Json;
 using System.Diagnostics.Metrics;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Admissions;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
@@ -18,8 +20,12 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
+using Explore.Persistence;
+using Explore.Persistence.Services;
 using Explore.Tests.Shared.Telemetry;
 using MediatR;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -471,7 +477,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
         INotificationFanoutOccurrenceRepository? occurrenceRepository = null,
         INotificationFanoutRunRepository? runRepository = null,
         IOutboxRepository? outboxRepository = null,
-        HybridCache? cache = null)
+        HybridCache? cache = null,
+        IAdmissionCredentialDeliveryOutboxHandler? admissionDeliveryHandler = null)
     {
         HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
@@ -495,6 +502,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
                 correctionPlanner,
                 EventLocationPrivacyMetricsFactory.Create()),
             new PrivacyErasureCacheInvalidationDispatcher(selectedCache),
+            admissionDeliveryHandler ?? Substitute.For<IAdmissionCredentialDeliveryOutboxHandler>(),
+            Substitute.For<IAdmissionRecoveryDeliveryOutboxHandler>(),
             outboxRepository ?? Substitute.For<IOutboxRepository>(),
             refundCampaignRepository,
             new RefundCampaignProcessor(

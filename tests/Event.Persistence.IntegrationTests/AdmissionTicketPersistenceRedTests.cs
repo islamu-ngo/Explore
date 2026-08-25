@@ -15,6 +15,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Services;
 using Explore.Infrastructure.Services.Registration;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -352,6 +353,303 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task ConcurrentRecoveryConsumeHasExactlyOneWinner()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+            await SeedRecoveryCapabilityAsync("recovery-consume");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<AdmissionRecoveryMutationResult>[] attempts =
+        [
+            ConsumeAsync(),
+            ConsumeAsync()
+        ];
+        start.SetResult();
+        AdmissionRecoveryMutationResult[] results = await Task.WhenAll(attempts);
+
+        await Assert.That(results.Count(result =>
+            result.Outcome == AdmissionRecoveryMutationOutcome.Consumed)).IsEqualTo(1);
+        await Assert.That(results.Count(result =>
+            result.Outcome == AdmissionRecoveryMutationOutcome.Rejected)).IsEqualTo(1);
+
+        async Task<AdmissionRecoveryMutationResult> ConsumeAsync()
+        {
+            await start.Task.WaitAsync(timeout.Token);
+            await using ExploreDbContext context = TenantContext(tenantId);
+            var repository = new AdmissionRecoveryRepository(context);
+            return await repository.ConsumeAsync(
+                new AdmissionRecoveryCapabilityMutation(
+                    state.TenantId,
+                    state.RecoveryRequestId,
+                    state.AdmissionTicketId,
+                    state.Purpose,
+                    state.LookupDigest,
+                    state.ExpiresAtUtc,
+                    state.KeyVersion,
+                    state.CapabilityId,
+                    state.ConcurrencyStamp,
+                    new DateTimeOffset(UtcNow)),
+                timeout.Token);
+        }
+    }
+
+    [Test]
+    public async Task TicketWideRecoveryUniquenessRejectsSecondRequestLineage()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+            await SeedRecoveryCapabilityAsync("recovery-lineage");
+        await using ExploreDbContext context = TenantContext(tenantId);
+        var repository = new AdmissionRecoveryRepository(context);
+
+        Exception collision = await Assert.ThrowsAsync<Exception>(async () =>
+            await repository.StoreAsync(
+                new AdmissionRecoveryCapabilityRecord(
+                    tenantId,
+                    Guid.CreateVersion7(),
+                    state.AdmissionTicketId,
+                    AdmissionRecoveryPurpose.TicketRecovery,
+                    Digest(0x51),
+                    1,
+                    new DateTimeOffset(UtcNow.AddMinutes(15)),
+                    Guid.CreateVersion7(),
+                    1,
+                    new DateTimeOffset(UtcNow),
+                    Digest(0x52)),
+                CancellationToken.None));
+
+        await Assert.That(collision.GetBaseException()).IsTypeOf<PostgresException>();
+        await Assert.That(((PostgresException)collision.GetBaseException()).SqlState)
+            .IsEqualTo(PostgresErrorCodes.UniqueViolation);
+    }
+
+    [Test]
+    public async Task ConcurrentRecoveryRotationHasExactlyOneReplacementGeneration()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+            await SeedRecoveryCapabilityAsync("recovery-rotate");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        AdmissionRecoveryRotationRequest first = Rotation(0x21);
+        AdmissionRecoveryRotationRequest second = Rotation(0x31);
+
+        Task<AdmissionRecoveryMutationResult>[] attempts =
+        [
+            RotateAsync(first),
+            RotateAsync(second)
+        ];
+        start.SetResult();
+        AdmissionRecoveryMutationResult[] results = await Task.WhenAll(attempts);
+
+        await Assert.That(results.Count(result =>
+            result.Outcome == AdmissionRecoveryMutationOutcome.Rotated)).IsEqualTo(1);
+        await Assert.That(results.Count(result =>
+            result.Outcome == AdmissionRecoveryMutationOutcome.Rejected)).IsEqualTo(1);
+        await using ExploreDbContext verification = TenantContext(tenantId);
+        AdmissionRecoveryCapability[] rows = await verification.AdmissionRecoveryCapabilities
+            .AsNoTracking()
+            .OrderBy(value => value.CapabilityVersion)
+            .ToArrayAsync(timeout.Token);
+        await Assert.That(rows.Length).IsEqualTo(2);
+        await Assert.That(rows.Count(value =>
+            value.ConsumedAt is null && value.RotatedAt is null)).IsEqualTo(1);
+        await Assert.That(rows.Single(value =>
+            value.ConsumedAt is null && value.RotatedAt is null).CapabilityVersion).IsEqualTo(2);
+
+        AdmissionRecoveryRotationRequest Rotation(byte fill) => new(
+            state.TenantId,
+            state.RecoveryRequestId,
+            state.AdmissionTicketId,
+            state.Purpose,
+            state.LookupDigest,
+            Digest(fill),
+            1,
+            new DateTimeOffset(UtcNow.AddMinutes(15)),
+            state.KeyVersion,
+            state.CapabilityId,
+            Guid.CreateVersion7(),
+            state.CapabilityVersion + 1,
+            state.ConcurrencyStamp,
+            new DateTimeOffset(UtcNow),
+            Digest((byte)(fill + 1)));
+
+        async Task<AdmissionRecoveryMutationResult> RotateAsync(
+            AdmissionRecoveryRotationRequest request)
+        {
+            await start.Task.WaitAsync(timeout.Token);
+            await using ExploreDbContext context = TenantContext(tenantId);
+            var repository = new AdmissionRecoveryRepository(context);
+            return await repository.RotateAsync(request, timeout.Token);
+        }
+    }
+
+    [Test]
+    public async Task RecoveryDeliveryStagesOnlyCiphertextAndIdentifierOutboxPointer()
+    {
+        await fixture.ResetAsync();
+        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
+        SeededAssignment seed = await SeedAssignmentAsync("recovery-delivery");
+        TicketGraph graph = surface.IssueTicketGraph(
+            seed,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            1,
+            Digest(0x41));
+        await PersistTicketAsync(seed.TenantId, graph, CancellationToken.None);
+        const string recipient = "RECOVERY-DELIVERY@EXAMPLE.TEST";
+        const string capability = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        Guid requestId = Guid.CreateVersion7();
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        RegistrationOrderPii pii = RegistrationOrderPii.CreateFromVerifiedContact(
+            seed.OrderId,
+            seed.TenantId,
+            "Recovery Delivery",
+            recipient,
+            null,
+            null,
+            recipient,
+            (int)RegistrationRetentionPolicyEnum.StandardOperational,
+            UtcNow);
+        context.RegistrationOrderPii.Add(pii);
+        await context.SaveChangesAsync();
+        var protector = new AdmissionRecoveryDeliveryEnvelopeProtector(
+            new EphemeralDataProtectionProvider());
+        var service = new AdmissionRecoveryProtectedDeliveryService(
+            context,
+            protector,
+            new FixedAdmissionTimeProvider(UtcNow));
+
+        AdmissionRecoveryDeliveryResult result = await service.StageAsync(
+            new AdmissionRecoveryDeliveryRequest(
+                seed.TenantId,
+                requestId,
+                graph.TicketId,
+                AdmissionRecoveryPurpose.TicketRecovery,
+                capability),
+            CancellationToken.None);
+        context.ChangeTracker.Clear();
+        AdmissionRecoveryDeliveryIntent intent =
+            await context.AdmissionRecoveryDeliveryIntents.SingleAsync();
+        OutboxMessage outbox = await context.OutboxMessages.SingleAsync(message =>
+            message.Id == intent.Id);
+        AdmissionRecoveryDeliveryEnvelope restored = protector.Unprotect(
+            intent.ProtectedMaterial,
+            intent.ProtectionVersion);
+
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionRecoveryDeliveryOutcome.Accepted);
+        await Assert.That(intent.ProtectedMaterial).DoesNotContain(recipient);
+        await Assert.That(intent.ProtectedMaterial).DoesNotContain(capability);
+        await Assert.That(outbox.Payload).DoesNotContain(recipient);
+        await Assert.That(outbox.Payload).DoesNotContain(capability);
+        await Assert.That(outbox.EventType)
+            .IsEqualTo(AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested);
+        await Assert.That(restored).IsEqualTo(
+            new AdmissionRecoveryDeliveryEnvelope(recipient, requestId, capability));
+    }
+
+    [Test]
+    public async Task RecoveryDeliveryRejectsStaleLifecycleWriter()
+    {
+        await fixture.ResetAsync();
+        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
+        SeededAssignment seed = await SeedAssignmentAsync("recovery-delivery-concurrency");
+        TicketGraph graph = surface.IssueTicketGraph(
+            seed,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            1,
+            Digest(0x71));
+        await PersistTicketAsync(seed.TenantId, graph, CancellationToken.None);
+        Guid intentId = Guid.CreateVersion7();
+        await using (ExploreDbContext seedContext = TenantContext(seed.TenantId))
+        {
+            seedContext.AdmissionRecoveryDeliveryIntents.Add(
+                new AdmissionRecoveryDeliveryIntent(
+                    intentId,
+                    seed.TenantId,
+                    Guid.CreateVersion7(),
+                    graph.TicketId,
+                    AdmissionRecoveryPurpose.TicketRecovery.ToString(),
+                    1,
+                    "protected-test-material",
+                    1,
+                    UtcNow));
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext firstContext = TenantContext(seed.TenantId);
+        await using ExploreDbContext staleContext = TenantContext(seed.TenantId);
+        AdmissionRecoveryDeliveryIntent first =
+            await firstContext.AdmissionRecoveryDeliveryIntents.SingleAsync(value =>
+                value.Id == intentId);
+        AdmissionRecoveryDeliveryIntent stale =
+            await staleContext.AdmissionRecoveryDeliveryIntents.SingleAsync(value =>
+                value.Id == intentId);
+        Guid initialStamp = first.ConcurrencyStamp;
+
+        first.MarkRouted(UtcNow.AddSeconds(1));
+        await firstContext.SaveChangesAsync();
+        stale.MarkRouted(UtcNow.AddSeconds(2));
+        Exception collision = await Assert.ThrowsAsync<Exception>(
+            () => staleContext.SaveChangesAsync());
+
+        await Assert.That(first.ConcurrencyStamp).IsNotEqualTo(initialStamp);
+        await Assert.That(collision).IsTypeOf<DbUpdateConcurrencyException>();
+    }
+
+    [Test]
+    public async Task AccountTicketListUsesOrderAccountAuthorityAndExcludesRevoked()
+    {
+        await fixture.ResetAsync();
+        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
+        SeededAssignment seed = await SeedAssignmentAsync("account-authority");
+        TicketGraph graph = surface.IssueTicketGraph(
+            seed,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            1,
+            Digest(0x61));
+        await PersistTicketAsync(seed.TenantId, graph, CancellationToken.None);
+        Guid accountUserId = seed.Order.AccountUserId
+            ?? throw new InvalidOperationException("Seeded account order has no account authority.");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        var repository = new AdmissionTicketAccountRepository(context);
+
+        IReadOnlyList<AdmissionTicket> authorized = await repository.ListCurrentAsync(
+            seed.TenantId,
+            accountUserId,
+            CancellationToken.None);
+        IReadOnlyList<AdmissionTicket> wrongAccount = await repository.ListCurrentAsync(
+            seed.TenantId,
+            Guid.CreateVersion7(),
+            CancellationToken.None);
+        IReadOnlyList<AdmissionTicket> wrongTenant = await repository.ListCurrentAsync(
+            Guid.CreateVersion7(),
+            accountUserId,
+            CancellationToken.None);
+        await context.AdmissionTickets
+            .Where(ticket => ticket.Id == graph.TicketId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(
+                ticket => ticket.AdmissionTicketStatusId,
+                (int)AdmissionTicketStatusEnum.Revoked));
+        IReadOnlyList<AdmissionTicket> afterRevocation = await repository.ListCurrentAsync(
+            seed.TenantId,
+            accountUserId,
+            CancellationToken.None);
+
+        await Assert.That(authorized.Select(ticket => ticket.Id)).IsEquivalentTo([graph.TicketId]);
+        await Assert.That(wrongAccount).IsEmpty();
+        await Assert.That(wrongTenant).IsEmpty();
+        await Assert.That(afterRevocation).IsEmpty();
+    }
+
+    [Test]
     public async Task SameTenantDistinctAssignmentsSameDigestHaveOneCredentialWinnerAtMappedCredentialInsert()
     {
         AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
@@ -431,6 +729,49 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
 
     private static string Digest(byte fill) =>
         Convert.ToBase64String(Enumerable.Repeat(fill, 32).ToArray());
+
+    private async Task<(Guid TenantId, AdmissionRecoveryCapabilityState State)>
+        SeedRecoveryCapabilityAsync(string suffix)
+    {
+        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
+        SeededAssignment seed = await SeedAssignmentAsync(suffix);
+        TicketGraph graph = surface.IssueTicketGraph(
+            seed,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            1,
+            Digest(0x11));
+        await PersistTicketAsync(seed.TenantId, graph, CancellationToken.None);
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        var repository = new AdmissionRecoveryRepository(context);
+        Guid requestId = Guid.CreateVersion7();
+        string lookupDigest = Digest(0x12);
+        await repository.StoreAsync(
+            new AdmissionRecoveryCapabilityRecord(
+                seed.TenantId,
+                requestId,
+                graph.TicketId,
+                AdmissionRecoveryPurpose.TicketRecovery,
+                lookupDigest,
+                1,
+                new DateTimeOffset(UtcNow.AddMinutes(15)),
+                Guid.CreateVersion7(),
+                1,
+                new DateTimeOffset(UtcNow),
+                Digest(0x13)),
+            CancellationToken.None);
+        AdmissionRecoveryCapabilityState state = await repository.GetByDigestAsync(
+            new AdmissionRecoveryCapabilityLookup(
+                seed.TenantId,
+                requestId,
+                graph.TicketId,
+                AdmissionRecoveryPurpose.TicketRecovery,
+                lookupDigest,
+                1),
+            CancellationToken.None);
+        return (seed.TenantId, state);
+    }
 
     private async Task PersistTicketAsync(Guid tenantId, TicketGraph graph, CancellationToken cancellationToken)
     {

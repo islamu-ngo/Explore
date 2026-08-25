@@ -112,12 +112,9 @@ public sealed class EventSessionSpeakerControllerTests
                 EventId = eventId,
                 TenantId = tenantId
             },
-            CreateEventSessionSpeakerCommand => new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.NewGuid(),
-                Message = "Speaker assignment created successfully."
-            },
+            CreateEventSessionSpeakerCommand => BaseCommandResponse.Success(
+                Guid.NewGuid(),
+                "Speaker assignment created successfully."),
             _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
         });
         await using var factory = CreateFactoryWithMediator(mediator);

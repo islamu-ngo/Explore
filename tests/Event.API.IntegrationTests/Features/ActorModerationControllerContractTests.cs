@@ -145,13 +145,10 @@ public sealed class ActorModerationControllerContractTests
     {
         var mediator = new ModerationMediator
         {
-            Response = new BaseCommandResponse<Guid>
-            {
-                Id = Guid.CreateVersion7(),
-                Success = false,
-                Message = "Actor moderation failed validation.",
-                Errors = ["ReasonCode must not be empty."]
-            }
+            Response = BaseCommandResponse.Validation(
+                ["ReasonCode must not be empty."],
+                "Actor moderation failed validation.",
+                Guid.CreateVersion7())
         };
         using var factory = CreateFactory(mediator);
         using var client = factory.CreateClient();
@@ -172,13 +169,8 @@ public sealed class ActorModerationControllerContractTests
     {
         var mediator = new ModerationMediator
         {
-            Response = new BaseCommandResponse<Guid>
-            {
-                Id = Guid.CreateVersion7(),
-                Success = false,
-                Message = "Authenticated instance administrator context is required.",
-                FailureCode = FailureCodes.AuthenticationRequired
-            }
+            Response = BaseCommandResponse.Authentication<Guid>(
+                "Authenticated instance administrator context is required.")
         };
         using var factory = CreateFactory(mediator);
         using var client = factory.CreateClient();
@@ -199,13 +191,8 @@ public sealed class ActorModerationControllerContractTests
     {
         var mediator = new ModerationMediator
         {
-            Response = new BaseCommandResponse<Guid>
-            {
-                Id = Guid.CreateVersion7(),
-                Success = false,
-                Message = "Only instance administrators can moderate global actors.",
-                FailureCode = FailureCodes.AdminRequired
-            }
+            Response = BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can moderate global actors.")
         };
         using var factory = CreateFactory(mediator);
         using var client = factory.CreateClient();
@@ -244,12 +231,8 @@ public sealed class ActorModerationControllerContractTests
 
     private sealed class ModerationMediator : IMediator
     {
-        public BaseCommandResponse<Guid> Response { get; init; } = new()
-        {
-            Id = Guid.CreateVersion7(),
-            Success = true,
-            Message = "Moderation updated."
-        };
+        public BaseCommandResponse<Guid> Response { get; init; } =
+            BaseCommandResponse.Success(Guid.CreateVersion7(), "Moderation updated.");
 
         public ModerateActorCommand? LastActorCommand { get; private set; }
         public ModerateAtprotoIdentityCommand? LastIdentityCommand { get; private set; }

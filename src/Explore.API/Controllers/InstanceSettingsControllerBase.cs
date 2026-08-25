@@ -75,7 +75,7 @@ public abstract class InstanceSettingsControllerBase(
     {
         ArgumentNullException.ThrowIfNull(response);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

@@ -105,12 +105,9 @@ public sealed class EventParticipationControllerTests
     {
         using var mediator = new EventParticipationMediatorStub(request => request switch
         {
-            ConfigureEventParticipationCommand command => new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = command.EventId,
-                Message = "Event participation configuration updated."
-            },
+            ConfigureEventParticipationCommand command => BaseCommandResponse.Success(
+                command.EventId,
+                "Event participation configuration updated."),
             _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
         });
         await using var factory = CreateFactoryWithMediator(mediator);
@@ -143,12 +140,9 @@ public sealed class EventParticipationControllerTests
     {
         using var mediator = new EventParticipationMediatorStub(request => request switch
         {
-            ConfigureEventParticipationCommand => new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "event_participation_configuration_concurrency_conflict",
-                Message = "Event participation configuration conflict."
-            },
+            ConfigureEventParticipationCommand => BaseCommandResponse.Failure<Guid>(
+                "event_participation_configuration_concurrency_conflict",
+                "Event participation configuration conflict."),
             _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
         });
         await using var factory = CreateFactoryWithMediator(mediator);

@@ -218,17 +218,16 @@ public sealed class EventTicketingController(
         if (!TryGenerateAbsoluteRouteUrl(RouteNames.ReturnEventOrganizerPaymentOnboarding, eventId, out Uri? returnUrl)
             || !TryGenerateAbsoluteRouteUrl(RouteNames.RefreshEventOrganizerPaymentOnboarding, eventId, out Uri? refreshUrl))
         {
-            return this.ToCommandValidationProblem(new BaseCommandResponse<OrganizerPaymentOnboardingLinkResult>
-            {
-                Success = false,
-                FailureCode = "organizer_payment_onboarding_navigation_invalid",
-                Message = "Payment onboarding navigation URLs could not be generated.",
-                Errors = ["Payment onboarding navigation URLs could not be generated."]
-            }, TicketingValidationProblem);
+            return this.ToCommandValidationProblem(
+                BaseCommandResponse.Failure<OrganizerPaymentOnboardingLinkResult>(
+                    "organizer_payment_onboarding_navigation_invalid",
+                    "Payment onboarding navigation URLs could not be generated.",
+                    ["Payment onboarding navigation URLs could not be generated."]),
+                TicketingValidationProblem);
         }
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> response = await mediator.Send(new CreateOrganizerPaymentOnboardingLinkCommand(eventId, returnUrl, refreshUrl), ct);
-        return response.Success ? Ok(response) : OrganizerPaymentFailures.Map(this, response);
+        return response.IsSuccess ? Ok(response) : OrganizerPaymentFailures.Map(this, response);
     }
 
     [HttpGet("payment-connection/onboarding/return", Name = RouteNames.ReturnEventOrganizerPaymentOnboarding)]
@@ -263,7 +262,7 @@ public sealed class EventTicketingController(
         where T : IRequest<BaseCommandResponse<Guid>>
     {
         BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
-        return response.Success ? Ok(response) : TicketingFailures.Map(this, response);
+        return response.IsSuccess ? Ok(response) : TicketingFailures.Map(this, response);
     }
 
     private async Task<ActionResult<BaseCommandResponse<Guid>>> SendCreated<T>(
@@ -274,7 +273,7 @@ public sealed class EventTicketingController(
         where T : IRequest<BaseCommandResponse<Guid>>
     {
         BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
-        return response.Success ? CreatedAtRoute(route, values, response) : TicketingFailures.Map(this, response);
+        return response.IsSuccess ? CreatedAtRoute(route, values, response) : TicketingFailures.Map(this, response);
     }
 
     private bool TryGenerateAbsoluteRouteUrl(string routeName, Guid eventId, out Uri? uri)

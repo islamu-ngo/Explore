@@ -87,7 +87,7 @@ public class UiThemeAdminController(IMediator mediator) : ControllerBase
     {
         var response = await mediator.Send(new CreateUiThemeCommand { UiThemeDto = dto }, cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return CreatedAtRoute(RouteNames.GetUiThemeDetails, new { id = response.Id }, response);
         }
@@ -114,7 +114,7 @@ public class UiThemeAdminController(IMediator mediator) : ControllerBase
     {
         var response = await mediator.Send(new UpdateUiThemeCommand { Id = id, UiThemeDto = dto }, cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

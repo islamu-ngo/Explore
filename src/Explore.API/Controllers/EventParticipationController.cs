@@ -91,7 +91,7 @@ public sealed class EventParticipationController : ControllerBase
             ParticipationConfiguration = participationConfiguration
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode switch
             {
@@ -209,7 +209,7 @@ public sealed class EventParticipationController : ControllerBase
 
     private ActionResult<BaseCommandResponse<Guid>> ToRequirementResult(BaseCommandResponse<Guid> response)
     {
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

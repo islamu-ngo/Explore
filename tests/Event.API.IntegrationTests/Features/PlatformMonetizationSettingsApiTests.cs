@@ -73,7 +73,7 @@ public sealed class PlatformMonetizationSettingsApiTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<UpdatePlatformMonetizationSettingsCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Id = Guid.CreateVersion7(), Success = true });
+            .Returns(BaseCommandResponse.Success(Guid.CreateVersion7()));
         var controller = CreateController(mediator, Substitute.For<IResourceAssembler<PlatformMonetizationSettingsDto, PlatformMonetizationSettingsDto>>());
         var update = new UpdatePlatformMonetizationSettingsDto
         {

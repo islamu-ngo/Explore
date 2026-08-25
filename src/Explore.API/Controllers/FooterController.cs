@@ -112,7 +112,7 @@ public class FooterController : ExploreControllerBase
             Title = request.Title,
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, LinkGroupValidationProblem);
 
         return CreatedAtAction(nameof(GetLinkGroupById), new { id = result.Id }, result);
@@ -134,7 +134,7 @@ public class FooterController : ExploreControllerBase
             Update = request
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, LinkGroupValidationProblem);
 
         return Ok(result);
@@ -179,7 +179,7 @@ public class FooterController : ExploreControllerBase
             OrderedGroupIds = orderedGroupIds,
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, LinkGroupReorderValidationProblem);
 
         return Ok(result);
@@ -209,7 +209,7 @@ public class FooterController : ExploreControllerBase
             OpenInNewTab = request.OpenInNewTab,
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, LinkValidationProblem);
 
         return Created(string.Empty, result);
@@ -231,7 +231,7 @@ public class FooterController : ExploreControllerBase
             Update = request
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, LinkValidationProblem);
 
         return Ok(result);
@@ -300,7 +300,7 @@ public class FooterController : ExploreControllerBase
             Patch = patch
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
             return this.ToCommandValidationProblem(result, SettingsValidationProblem);
 
         return Ok(result);

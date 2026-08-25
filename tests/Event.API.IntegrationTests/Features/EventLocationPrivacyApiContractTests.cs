@@ -22,6 +22,7 @@ using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -869,7 +870,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         session.AssignEventLocation(eventLocation);
-        session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
 
         var agendaItem = new EventAgendaItem
         {
@@ -887,7 +888,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         agendaItem.AssignEventLocation(eventLocation);
-        agendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", new EventScheduleProjectionCalculator());
+        agendaItem.Reschedule(UtcInstantRange.Create(start.AddHours(1), start.AddHours(2)), "UTC", new EventScheduleProjectionCalculator());
 
         var sessionGroup = new EventSessionGroup
         {
@@ -964,7 +965,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         unrelatedSession.AssignEventLocation(unrelatedEventLocation);
-        unrelatedSession.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        unrelatedSession.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
         var unrelatedAgendaItem = new EventAgendaItem
         {
             Id = Guid.CreateVersion7(),
@@ -981,7 +982,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         unrelatedAgendaItem.AssignEventLocation(unrelatedEventLocation);
-        unrelatedAgendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", new EventScheduleProjectionCalculator());
+        unrelatedAgendaItem.Reschedule(UtcInstantRange.Create(start.AddHours(1), start.AddHours(2)), "UTC", new EventScheduleProjectionCalculator());
         var unrelatedSessionGroup = new EventSessionGroup
         {
             Id = Guid.CreateVersion7(),

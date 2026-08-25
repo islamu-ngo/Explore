@@ -229,7 +229,7 @@ public sealed class AiAssistantController : ControllerBase
     {
         var response = await _mediator.Send(new CreateAiConversationCommand { Conversation = dto }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAiAssistantProblem(response);
         }
@@ -323,7 +323,7 @@ public sealed class AiAssistantController : ControllerBase
             Message = dto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAiAssistantProblem(response);
         }
@@ -366,7 +366,7 @@ public sealed class AiAssistantController : ControllerBase
             IdempotencyKey = idempotencyKey
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAiAssistantProblem(response);
         }
@@ -396,7 +396,7 @@ public sealed class AiAssistantController : ControllerBase
             ProposedActionId = proposedActionId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAiAssistantProblem(response);
         }
@@ -460,7 +460,7 @@ public sealed class AiAssistantController : ControllerBase
             RunId = runId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToAiAssistantProblem(response);
         }

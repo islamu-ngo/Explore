@@ -100,7 +100,7 @@ public class TenantOnboardingController : ExploreControllerBase
             Settings = settings
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == FailureCodes.AdminRequired)
             {
@@ -138,7 +138,7 @@ public class TenantOnboardingController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, SaveStepValidationProblem);
         }
@@ -146,6 +146,28 @@ public class TenantOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
-    public sealed record SaveTenantOnboardingStepDto(int CurrentStep, int TotalSteps, string[] CompletedSteps);
+    public sealed record SaveTenantOnboardingStepDto
+    {
+        private IReadOnlyList<string> _completedSteps = Array.AsReadOnly(Array.Empty<string>());
+
+        public SaveTenantOnboardingStepDto(
+            int CurrentStep,
+            int TotalSteps,
+            IReadOnlyList<string> CompletedSteps)
+        {
+            this.CurrentStep = CurrentStep;
+            this.TotalSteps = TotalSteps;
+            this.CompletedSteps = CompletedSteps;
+        }
+
+        public int CurrentStep { get; init; }
+        public int TotalSteps { get; init; }
+
+        public IReadOnlyList<string> CompletedSteps
+        {
+            get => _completedSteps;
+            init => _completedSteps = Array.AsReadOnly(value.ToArray());
+        }
+    }
 
 }

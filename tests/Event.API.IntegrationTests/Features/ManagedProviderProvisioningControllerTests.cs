@@ -49,12 +49,7 @@ public sealed class ManagedProviderProvisioningControllerTests
             UserExternalLoginId = Guid.NewGuid(),
             TenantUserRoleGrantId = Guid.NewGuid(),
         };
-        var response = new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
-        {
-            Success = true,
-            Message = "Provisioned",
-            Id = resultDto,
-        };
+        var response = BaseCommandResponse.Success(resultDto, "Provisioned");
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<EnsureManagedProviderClientProvisionedCommand>(), Arg.Any<CancellationToken>())
             .Returns(response);

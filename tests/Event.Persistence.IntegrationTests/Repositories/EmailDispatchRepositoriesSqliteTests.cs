@@ -7,6 +7,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
@@ -683,8 +684,7 @@ public sealed class EmailDispatchRepositoriesSqliteTests
             CreatedAt = now
         };
         session.Reschedule(
-            new DateTimeOffset(now.AddHours(2), TimeSpan.Zero),
-            new DateTimeOffset(now.AddHours(3), TimeSpan.Zero),
+            UtcInstantRange.Create(new DateTimeOffset(now.AddHours(2), TimeSpan.Zero), new DateTimeOffset(now.AddHours(3), TimeSpan.Zero)),
             "UTC",
             new EventScheduleProjectionCalculator());
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(

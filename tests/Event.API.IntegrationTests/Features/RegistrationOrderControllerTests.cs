@@ -238,12 +238,10 @@ public sealed class RegistrationOrderControllerTests
         var token = "opaque-guest-capability";
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<StartGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new GuestRegistrationOrderStartDto
-            {
-                Id = Guid.CreateVersion7(),
-                Success = true,
-                GuestCapabilityToken = token
-            }));
+            .Returns(Task.FromResult(GuestRegistrationOrderStartDto.Success(
+                Guid.CreateVersion7(),
+                message: null,
+                guestCapabilityToken: token)));
         var controller = CreateController<GuestRegistrationOrderController>(mediator);
         var request = CreateStartRequest(platformContributionBasisPoints: 500);
         var eventId = Guid.CreateVersion7();
@@ -334,7 +332,10 @@ public sealed class RegistrationOrderControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ContinueGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new GuestRegistrationOrderLifecycleResponseDto { Id = Guid.CreateVersion7(), Success = true });
+            .Returns(GuestRegistrationOrderLifecycleResponseDto.Success(
+                Guid.CreateVersion7(),
+                message: null,
+                order: null));
         var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         await controller.ContinueGuest(
@@ -353,13 +354,11 @@ public sealed class RegistrationOrderControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<StartGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new GuestRegistrationOrderStartDto
-            {
-                Id = Guid.CreateVersion7(),
-                Success = false,
-                FailureCode = "registration_order_identity_required",
-                Message = "Registration order requires an authenticated account."
-            }));
+            .Returns(Task.FromResult(GuestRegistrationOrderStartDto.Failure(
+                BaseCommandResponse.Failure<Guid>(
+                    "registration_order_identity_required",
+                    "Registration order requires an authenticated account.",
+                    id: Guid.CreateVersion7()))));
         var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<GuestRegistrationOrderStartDto> result = await controller.StartGuest(
@@ -379,11 +378,11 @@ public sealed class RegistrationOrderControllerTests
         var resource = new HalResource<RegistrationOrderDto>(order);
         mediator.Send(Arg.Any<GetCurrentRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
         mediator.Send(Arg.Any<ContinueAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
+            RegistrationOrderLifecycleResponseDto.Success(order.Id, message: null, order: order));
         mediator.Send(Arg.Any<FinalizeAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
+            RegistrationOrderLifecycleResponseDto.Success(order.Id, message: null, order: order));
         mediator.Send(Arg.Any<CancelAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
+            RegistrationOrderLifecycleResponseDto.Success(order.Id, message: null, order: order));
         assembler.ToResource(order, Arg.Any<HttpContext>()).Returns(resource);
         var controller = CreateController<AuthenticatedRegistrationOrderController>(mediator, assembler);
 
@@ -500,13 +499,10 @@ public sealed class RegistrationOrderControllerTests
         var orderId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
         mediator.Send(Arg.Any<ClaimGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Id = orderId,
-                Success = false,
-                FailureCode = "registration_order_already_linked",
-                Message = "Registration order is already linked to another account."
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "registration_order_already_linked",
+                "Registration order is already linked to another account.",
+                id: orderId));
         var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<BaseCommandResponse<Guid>> result = await controller.ClaimGuest(eventId, orderId, "guest-token");
@@ -560,20 +556,21 @@ public sealed class RegistrationOrderControllerTests
         EventId = Guid.CreateVersion7()
     };
 
-    private static PromotionRedemptionResponseDto PromotionSuccess(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = true,
-        TotalDueMinor = 0
-    };
+    private static PromotionRedemptionResponseDto PromotionSuccess(Guid orderId) =>
+        PromotionRedemptionResponseDto.Success(
+            orderId,
+            message: null,
+            appliedPromotionDisplayLabel: null,
+            promotionDiscountTotalMinor: 0,
+            totalDueMinor: 0,
+            platformFeeTotalMinor: 0,
+            platformContributionTotalMinor: 0);
 
-    private static PromotionRedemptionResponseDto PromotionFailure(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Message = "Promotion cannot be changed for this order."
-    };
+    private static PromotionRedemptionResponseDto PromotionFailure(Guid orderId) =>
+        PromotionRedemptionResponseDto.Failure(BaseCommandResponse.Failure<Guid>(
+            PromotionRedemptionFailureCodes.Unavailable,
+            "Promotion cannot be changed for this order.",
+            id: orderId));
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {

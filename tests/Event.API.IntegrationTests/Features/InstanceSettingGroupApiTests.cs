@@ -245,9 +245,5 @@ public sealed class InstanceSettingGroupApiTests
         };
 
     private static BaseCommandResponse<Guid> SuccessfulResponse() =>
-        new()
-        {
-            Success = true,
-            Id = Guid.Empty
-        };
+        BaseCommandResponse.Success(Guid.Empty);
 }

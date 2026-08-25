@@ -51,7 +51,7 @@ public sealed class InstanceModerationReportingSettingsController(IMediator medi
             new UpdateReportingProviderLocksCommand(userId.Value, locks),
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == FailureCodes.AdminRequired)
             {

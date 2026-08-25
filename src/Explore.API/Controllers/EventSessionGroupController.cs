@@ -231,7 +231,7 @@ public class EventSessionGroupController : ControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -280,7 +280,7 @@ public class EventSessionGroupController : ControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -326,7 +326,7 @@ public class EventSessionGroupController : ControllerBase
                 TenantId = _tenantContext.TenantId
             },
             cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }
@@ -365,7 +365,7 @@ public class EventSessionGroupController : ControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, AssignmentValidationProblem);
         }
@@ -401,7 +401,7 @@ public class EventSessionGroupController : ControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UnassignmentValidationProblem);
         }

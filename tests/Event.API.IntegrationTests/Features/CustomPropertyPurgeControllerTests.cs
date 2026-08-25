@@ -168,13 +168,10 @@ public sealed class CustomPropertyPurgeControllerTests
                 dependencySummary.AuditLogCount,
                 dependencySummary.SyncProvenanceCount);
 
-            return new BaseCommandResponse<CustomPropertyPurgeResultDto>
-            {
-                Success = false,
-                Message = "Custom-property definition purge blocked by existing dependencies.",
-                Id = result,
-                Errors = ["Cannot purge while historical custom-property value rows still exist."]
-            };
+            return BaseCommandResponse.Validation(
+                ["Cannot purge while historical custom-property value rows still exist."],
+                "Custom-property definition purge blocked by existing dependencies.",
+                result);
         }
     }
 }

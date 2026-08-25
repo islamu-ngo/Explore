@@ -164,7 +164,7 @@ public class ModuleController : ControllerBase
             ModuleKey = moduleKey
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToValidationProblem(
                 EnableValidationProblem,
@@ -205,7 +205,7 @@ public class ModuleController : ControllerBase
             ModuleKey = moduleKey
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToValidationProblem(
                 DisableValidationProblem,

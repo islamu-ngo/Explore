@@ -108,7 +108,7 @@ public class GroupMemberController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, AddValidationProblem);
         }
@@ -135,7 +135,7 @@ public class GroupMemberController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -162,7 +162,7 @@ public class GroupMemberController : ExploreControllerBase
         };
 
         var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }

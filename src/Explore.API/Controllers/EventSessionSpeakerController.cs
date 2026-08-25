@@ -123,7 +123,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
             TenantId = context.TenantId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -166,7 +166,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
             ExpectedConcurrencyStamp = expectedConcurrencyStamp
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_speaker_not_found"
                 ? this.ToNotFoundProblem(EventSessionSpeakerNotFoundProblem, response.Message)

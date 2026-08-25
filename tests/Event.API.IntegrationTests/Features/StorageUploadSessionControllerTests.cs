@@ -436,11 +436,8 @@ public sealed class StorageUploadSessionControllerTests
         };
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(Guid sessionId)
-        => new()
-        {
-            Success = true,
-            Message = "ok",
-            Id = new StorageUploadSessionDto
+        => BaseCommandResponse.Success(
+            new StorageUploadSessionDto
             {
                 Id = sessionId,
                 TenantId = Guid.CreateVersion7(),
@@ -450,17 +447,14 @@ public sealed class StorageUploadSessionControllerTests
                 Purpose = StorageObjectPurposes.Attachment,
                 Visibility = StorageObjectVisibilities.PrivateOwner,
                 Status = StorageUploadSessionStates.Reserved
-            }
-        };
+            },
+            "ok");
 
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(string message, string failureCode)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = [message]
-        };
+        => BaseCommandResponse.Failure<StorageUploadSessionDto>(
+            failureCode,
+            message,
+            [message]);
 
     private sealed record StorageFailureCase(
         string FailureCode,

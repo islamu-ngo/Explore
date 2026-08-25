@@ -159,18 +159,10 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
             LastCommand = command;
 
             return allowUpdate
-                ? new BaseCommandResponse<Guid>
-                {
-                    Success = true,
-                    Id = Guid.Empty,
-                    Message = "Updated"
-                }
-                : new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = failureMessage ?? "Only instance administrators can update moderation reporting provider locks.",
-                    FailureCode = failureMessage is null ? FailureCodes.AdminRequired : null
-                };
+                ? BaseCommandResponse.Success(Guid.Empty, "Updated")
+                : failureMessage is null
+                    ? BaseCommandResponse.Authorization<Guid>("Only instance administrators can update moderation reporting provider locks.")
+                    : BaseCommandResponse.Validation<Guid>([failureMessage], failureMessage);
         }
     }
 }

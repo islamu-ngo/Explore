@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Configuration;
@@ -260,7 +261,7 @@ public sealed class StripePaymentWebhookVerifierTests
             CreatedAt.AddMinutes(-2));
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, Guid.CreateVersion7(), recipient, "OrganizerDirect",
-            global::Stripe.StripeConfiguration.ApiVersion, "composition-handler", 1_000, 75, 125,
+            global::Stripe.StripeConfiguration.ApiVersion, "composition-handler", Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(125, recipient.CurrencyCode),
             "checkout:handler", CreatedAt.AddMinutes(-2), CreatedAt.AddMinutes(30));
         attempt.MarkRequiresAction("cs_payment_1", CreatedAt.AddMinutes(-1), "req_create");
         return attempt;

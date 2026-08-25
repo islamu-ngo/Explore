@@ -172,12 +172,9 @@ public sealed class WebhooksControllerTests
         _mediator.Send(
                 Arg.Any<RepairWebhookProviderBindingCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.CreateVersion7(),
-                Message = "Webhook provider binding verified."
-            });
+            .Returns(BaseCommandResponse.Success(
+                Guid.CreateVersion7(),
+                "Webhook provider binding verified."));
         var controller = CreateController<WebhooksController>("keycloak-subject-provider-binding-repair");
         var request = new RepairWebhookProviderBindingRequestDto
         {
@@ -527,12 +524,9 @@ public sealed class WebhooksControllerTests
     {
         var consumerId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<CreateWebhookConsumerCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = consumerId,
-                Message = "Webhook consumer created."
-            });
+            .Returns(BaseCommandResponse.Success(
+                consumerId,
+                "Webhook consumer created."));
         var controller = CreateController<WebhooksController>("keycloak-subject-create-consumer");
 
         var result = await controller.CreateConsumer(
@@ -562,13 +556,10 @@ public sealed class WebhooksControllerTests
     public async Task CreateConsumer_WhenNameConflicts_ReturnsConflictProblem()
     {
         _mediator.Send(Arg.Any<CreateWebhookConsumerCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_consumer_name_conflict",
-                Message = "Webhook consumer name is already in use.",
-                Errors = ["A webhook consumer with this name already exists for the current tenant."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_consumer_name_conflict",
+                "Webhook consumer name is already in use.",
+                ["A webhook consumer with this name already exists for the current tenant."]));
         var controller = CreateController<WebhooksController>("keycloak-subject-create-conflict");
 
         var result = await controller.CreateConsumer(
@@ -676,12 +667,9 @@ public sealed class WebhooksControllerTests
         var endpointId = Guid.CreateVersion7();
         var eventTypeId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<CreateWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint created."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint created."));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-create-endpoint");
 
         var result = await controller.CreateEndpoint(
@@ -719,13 +707,10 @@ public sealed class WebhooksControllerTests
     public async Task CreateEndpoint_WhenUrlConflicts_ReturnsConflictProblem()
     {
         _mediator.Send(Arg.Any<CreateWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_endpoint_url_conflict",
-                Message = "Webhook endpoint URL is already configured for this consumer.",
-                Errors = ["Webhook endpoint URL is already configured for this consumer."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_endpoint_url_conflict",
+                "Webhook endpoint URL is already configured for this consumer.",
+                ["Webhook endpoint URL is already configured for this consumer."]));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-endpoint-conflict");
 
         var result = await controller.CreateEndpoint(
@@ -752,12 +737,9 @@ public sealed class WebhooksControllerTests
         var endpointId = Guid.CreateVersion7();
         var eventTypeId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<UpdateWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint updated."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint updated."));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-update-endpoint");
 
         var result = await controller.UpdateEndpoint(
@@ -810,12 +792,9 @@ public sealed class WebhooksControllerTests
     {
         var consumerId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<UpdateWebhookConsumerProviderModeCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = consumerId,
-                Message = "Webhook consumer provider mode changed."
-            });
+            .Returns(BaseCommandResponse.Success(
+                consumerId,
+                "Webhook consumer provider mode changed."));
         var controller = CreateController<WebhooksController>("keycloak-subject-update-consumer-provider-mode");
 
         var result = await controller.UpdateConsumerProviderMode(
@@ -850,13 +829,10 @@ public sealed class WebhooksControllerTests
     public async Task UpdateConsumerProviderMode_WhenConfigurationConflicts_ReturnsConflictProblem()
     {
         _mediator.Send(Arg.Any<UpdateWebhookConsumerProviderModeCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_consumer_configuration_conflict",
-                Message = "Webhook consumer configuration changed.",
-                Errors = ["Webhook consumer configuration changed."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_consumer_configuration_conflict",
+                "Webhook consumer configuration changed.",
+                ["Webhook consumer configuration changed."]));
         var controller = CreateController<WebhooksController>("keycloak-subject-update-consumer-provider-mode-conflict");
 
         var result = await controller.UpdateConsumerProviderMode(
@@ -904,13 +880,10 @@ public sealed class WebhooksControllerTests
     public async Task UpdateEndpoint_WhenMissing_ReturnsNotFoundProblem()
     {
         _mediator.Send(Arg.Any<UpdateWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_endpoint_not_found",
-                Message = "Webhook endpoint was not found.",
-                Errors = ["Webhook endpoint was not found."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_endpoint_not_found",
+                "Webhook endpoint was not found.",
+                ["Webhook endpoint was not found."]));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-update-missing");
 
         var result = await controller.UpdateEndpoint(
@@ -947,12 +920,9 @@ public sealed class WebhooksControllerTests
     {
         var endpointId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<RotateWebhookEndpointSecretCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint secret rotated."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint secret rotated."));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-rotate-endpoint-secret");
 
         var result = await controller.RotateEndpointSecret(
@@ -987,13 +957,10 @@ public sealed class WebhooksControllerTests
     public async Task RotateEndpointSecret_WhenEndpointMissing_ReturnsNotFoundProblem()
     {
         _mediator.Send(Arg.Any<RotateWebhookEndpointSecretCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_endpoint_not_found",
-                Message = "Webhook endpoint was not found.",
-                Errors = ["Webhook endpoint was not found."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_endpoint_not_found",
+                "Webhook endpoint was not found.",
+                ["Webhook endpoint was not found."]));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-rotate-endpoint-secret-missing");
 
         var result = await controller.RotateEndpointSecret(
@@ -1021,12 +988,9 @@ public sealed class WebhooksControllerTests
         var endpointId = Guid.CreateVersion7();
         var messageId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<TestWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = messageId,
-                Message = "Webhook endpoint test scheduled."
-            });
+            .Returns(BaseCommandResponse.Success(
+                messageId,
+                "Webhook endpoint test scheduled."));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-test-endpoint");
 
         var result = await controller.TestEndpoint(endpointId, CancellationToken.None);
@@ -1046,13 +1010,10 @@ public sealed class WebhooksControllerTests
     public async Task TestEndpoint_WhenEndpointMissing_ReturnsNotFoundProblem()
     {
         _mediator.Send(Arg.Any<TestWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_endpoint_not_found",
-                Message = "Webhook endpoint was not found.",
-                Errors = ["Webhook endpoint was not found."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_endpoint_not_found",
+                "Webhook endpoint was not found.",
+                ["Webhook endpoint was not found."]));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-test-endpoint-missing");
 
         var result = await controller.TestEndpoint(Guid.CreateVersion7(), CancellationToken.None);
@@ -1070,12 +1031,9 @@ public sealed class WebhooksControllerTests
     {
         var endpointId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ArchiveWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint archived."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint archived."));
         var controller = CreateController<WebhookEndpointsController>("keycloak-subject-delete-endpoint");
 
         var result = await controller.DeleteEndpoint(endpointId, CancellationToken.None);
@@ -1174,12 +1132,9 @@ public sealed class WebhooksControllerTests
         var endpointId = Guid.CreateVersion7();
         var actorUserId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<PauseWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint paused."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint paused."));
         var controller = CreateEndpointOperationsController(actorUserId);
 
         var result = await controller.Pause(
@@ -1228,12 +1183,9 @@ public sealed class WebhooksControllerTests
         var endpointId = Guid.CreateVersion7();
         var actorUserId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ResumeWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = endpointId,
-                Message = "Webhook endpoint resumed."
-            });
+            .Returns(BaseCommandResponse.Success(
+                endpointId,
+                "Webhook endpoint resumed."));
         var controller = CreateEndpointOperationsController(actorUserId);
 
         var result = await controller.Resume(
@@ -1695,12 +1647,9 @@ public sealed class WebhooksControllerTests
         var attemptId = Guid.CreateVersion7();
         var retryAttemptId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<RetryWebhookDeliveryAttemptCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = retryAttemptId,
-                Message = "Webhook delivery retry scheduled."
-            });
+            .Returns(BaseCommandResponse.Success(
+                retryAttemptId,
+                "Webhook delivery retry scheduled."));
         var controller = CreateController<WebhookMessagesController>("keycloak-subject-webhook-attempt-retry");
 
         var result = await controller.RetryDeliveryAttempt(attemptId, CancellationToken.None);
@@ -1721,13 +1670,10 @@ public sealed class WebhooksControllerTests
     public async Task RetryDeliveryAttempt_WhenAttemptIsNotRetryable_ReturnsConflictProblem()
     {
         _mediator.Send(Arg.Any<RetryWebhookDeliveryAttemptCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_delivery_attempt_not_retryable",
-                Message = "Webhook delivery retry cannot be scheduled for this attempt.",
-                Errors = ["Webhook delivery retry cannot be scheduled for this attempt."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_delivery_attempt_not_retryable",
+                "Webhook delivery retry cannot be scheduled for this attempt.",
+                ["Webhook delivery retry cannot be scheduled for this attempt."]));
         var controller = CreateController<WebhookMessagesController>("keycloak-subject-webhook-attempt-retry-conflict");
 
         var result = await controller.RetryDeliveryAttempt(Guid.CreateVersion7(), CancellationToken.None);
@@ -1745,12 +1691,9 @@ public sealed class WebhooksControllerTests
     {
         var messageId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<RedriveIncomingWebhookCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = messageId,
-                Message = "Incoming webhook redrive scheduled."
-            });
+            .Returns(BaseCommandResponse.Success(
+                messageId,
+                "Incoming webhook redrive scheduled."));
         var controller = CreateController<WebhookMessagesController>("keycloak-subject-incoming-webhook-redrive");
         var request = new RedriveIncomingWebhookRequestDto
         {
@@ -1775,13 +1718,10 @@ public sealed class WebhooksControllerTests
     public async Task RedriveIncomingWebhook_WhenGenerationIsStale_ReturnsConflictProblem()
     {
         _mediator.Send(Arg.Any<RedriveIncomingWebhookCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "incoming_webhook_redrive_generation_conflict",
-                Message = "Incoming webhook processing generation changed before redrive.",
-                Errors = ["Incoming webhook processing generation changed before redrive."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "incoming_webhook_redrive_generation_conflict",
+                "Incoming webhook processing generation changed before redrive.",
+                ["Incoming webhook processing generation changed before redrive."]));
         var controller = CreateController<WebhookMessagesController>("keycloak-subject-incoming-webhook-redrive-conflict");
 
         var result = await controller.RedriveIncomingWebhook(
@@ -1890,11 +1830,10 @@ public sealed class WebhooksControllerTests
             ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15)
         };
         _mediator.Send(Arg.Any<OpenSvixAppPortalCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new WebhookProviderPortalAccessCommandResponse
-            {
-                Success = true,
-                Id = responseDto
-            });
+            .Returns(WebhookProviderPortalAccessCommandResponse.Success(
+                responseDto,
+                message: null,
+                isRetryable: false));
         var controller = CreateController<WebhooksController>("keycloak-subject-1");
 
         var result = await controller.OpenSvixAppPortal(
@@ -1920,13 +1859,12 @@ public sealed class WebhooksControllerTests
     public async Task OpenSvixAppPortal_WhenConsumerMissing_ReturnsNotFoundProblem()
     {
         _mediator.Send(Arg.Any<OpenSvixAppPortalCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new WebhookProviderPortalAccessCommandResponse
-            {
-                Success = false,
-                FailureCode = "webhook_consumer_not_found",
-                Message = "Webhook consumer was not found.",
-                Errors = ["webhook_consumer_not_found"]
-            });
+            .Returns(WebhookProviderPortalAccessCommandResponse.Failure(
+                BaseCommandResponse.Failure<WebhookProviderPortalAccessDto>(
+                    "webhook_consumer_not_found",
+                    "Webhook consumer was not found.",
+                    ["webhook_consumer_not_found"]),
+                isRetryable: false));
         var controller = CreateController<WebhooksController>("keycloak-subject-2");
 
         var result = await controller.OpenSvixAppPortal(new OpenSvixAppPortalRequestDto(), CancellationToken.None);
@@ -1943,14 +1881,12 @@ public sealed class WebhooksControllerTests
     public async Task OpenSvixAppPortal_WhenProviderFailureRetryable_ReturnsServiceUnavailableProblem()
     {
         _mediator.Send(Arg.Any<OpenSvixAppPortalCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new WebhookProviderPortalAccessCommandResponse
-            {
-                Success = false,
-                FailureCode = "svix_provider_unavailable",
-                Message = "Svix is temporarily unavailable.",
-                IsRetryable = true,
-                Errors = ["SvixApi:503"]
-            });
+            .Returns(WebhookProviderPortalAccessCommandResponse.Failure(
+                BaseCommandResponse.Failure<WebhookProviderPortalAccessDto>(
+                    "svix_provider_unavailable",
+                    "Svix is temporarily unavailable.",
+                    ["SvixApi:503"]),
+                isRetryable: true));
         var controller = CreateController<WebhooksController>("keycloak-subject-3");
 
         var result = await controller.OpenSvixAppPortal(new OpenSvixAppPortalRequestDto(), CancellationToken.None);

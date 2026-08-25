@@ -102,7 +102,7 @@ public sealed class ImportEventAmbiguousCommitPersistenceTests(PostgreSqlContain
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = tenant.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(await context.Events.CountAsync(entity => entity.Id == result.Id)).IsEqualTo(1);
         await Assert.That(await context.EventParticipationConfigurations.CountAsync(configuration => configuration.Id == result.Id)).IsEqualTo(1);
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenant.Id), Arg.Any<CancellationToken>());

@@ -67,7 +67,7 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
         Guid orderId,
         bool guest)
     {
-        if (!result.Success || result.Payment is null)
+        if (!result.IsSuccess || result.Payment is null)
         {
             return PaymentFailures.Map(this, result);
         }
@@ -118,7 +118,7 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
         Guid orderId,
         string statusRoute)
     {
-        if (!result.Success || result.Refund is null)
+        if (!result.IsSuccess || result.Refund is null)
         {
             return RefundFailures.Map(this, result);
         }
@@ -134,7 +134,7 @@ public abstract class RegistrationOrderPaymentControllerBase(IMediator mediator)
         Guid eventId,
         Guid orderId)
     {
-        if (!result.Success || result.Choice is null)
+        if (!result.IsSuccess || result.Choice is null)
         {
             return MaterialChangeFailures.Map(this, result);
         }

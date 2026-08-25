@@ -14,6 +14,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -635,7 +636,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             MaxAudienceAttendees = 80,
             ConcurrencyStamp = Guid.NewGuid()
         };
-        session.Reschedule(start, start.AddHours(1), "UTC", calculator);
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", calculator);
         context.EventSessions.Add(session);
 
         var agendaItem = new EventAgendaItem
@@ -649,7 +650,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             Tenant = null!,
             ConcurrencyStamp = Guid.NewGuid()
         };
-        agendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", calculator);
+        agendaItem.Reschedule(UtcInstantRange.Create(start.AddHours(1), start.AddHours(2)), "UTC", calculator);
         context.EventAgendaItems.Add(agendaItem);
 
         var definition = new EventCustomPropertyDefinition

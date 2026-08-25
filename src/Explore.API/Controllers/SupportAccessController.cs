@@ -76,7 +76,7 @@ public sealed class SupportAccessController(
             },
             cancellationToken);
 
-        if (!response.Success || response.Session is null)
+        if (!response.IsSuccess || response.Session is null)
         {
             return this.ToCommandValidationProblem(response, SupportAccessValidationProblem);
         }
@@ -111,7 +111,7 @@ public sealed class SupportAccessController(
             },
             cancellationToken);
 
-        if (!response.Success || response.Session is null)
+        if (!response.IsSuccess || response.Session is null)
         {
             return this.ToCommandValidationProblem(response, SupportAccessValidationProblem);
         }
@@ -143,7 +143,7 @@ public sealed class SupportAccessController(
             },
             cancellationToken);
 
-        if (!response.Success || response.Session is null)
+        if (!response.IsSuccess || response.Session is null)
         {
             return this.ToCommandValidationProblem(response, SupportAccessValidationProblem);
         }

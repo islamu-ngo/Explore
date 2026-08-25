@@ -210,7 +210,7 @@ public abstract class RegistrationOrderControllerBase(
                 : JsonSerializer.SerializeToElement(answer.Value))).ToArray();
 
     protected ActionResult<BaseCommandResponse<Guid>> MapParticipantMutation(BaseCommandResponse<Guid> response) =>
-        response.Success
+        response.IsSuccess
             ? Ok(response)
             : response.FailureCode == "registration_order_not_found"
                 ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
@@ -253,5 +253,5 @@ public abstract class RegistrationOrderControllerBase(
     }
 
     protected ActionResult<PromotionRedemptionResponseDto> MapPromotionRedemption(PromotionRedemptionResponseDto response) =>
-        response.Success ? Ok(response) : this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+        response.IsSuccess ? Ok(response) : this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
 }

@@ -157,7 +157,7 @@ public sealed class WebhookProviderPublicationsController(
         BaseCommandResponse<Guid> response,
         string conflictTitle)
     {
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

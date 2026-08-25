@@ -122,7 +122,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
 
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(response.Headers.Location?.ToString()).Contains(body.Id.ToString());
 
@@ -160,7 +160,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
 
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
 
         using var verifyScope = _fixture.Factory.Services.CreateScope();

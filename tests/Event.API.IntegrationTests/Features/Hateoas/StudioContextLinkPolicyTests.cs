@@ -17,9 +17,15 @@ public sealed class StudioContextLinkPolicyTests
         var dto = new StudioContextDto { SelectedActorId = actorId };
 
         var withoutCandidate = new StudioContextLinkPolicy().GetLinks(dto, null).ToList();
-        dto.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
-        dto.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
-        var withCandidate = new StudioContextLinkPolicy().GetLinks(dto, null).ToList();
+        var withCandidateDto = dto with
+        {
+            AllowedLinkRelations = new HashSet<string>(StringComparer.Ordinal)
+            {
+                LinkRelations.ViewRegistrationOrders,
+                LinkRelations.ViewParticipants,
+            },
+        };
+        var withCandidate = new StudioContextLinkPolicy().GetLinks(withCandidateDto, null).ToList();
 
         await Assert.That(withoutCandidate.Select(link => link.Rel)).IsEquivalentTo([LinkRelations.Self]);
         var orderLink = withCandidate.Single(link => link.Rel == LinkRelations.ViewRegistrationOrders);

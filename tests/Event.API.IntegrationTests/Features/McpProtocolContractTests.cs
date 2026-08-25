@@ -476,7 +476,7 @@ public sealed class McpProtocolContractTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body!.IsSuccess).IsTrue();
         return body.Id;
     }
 

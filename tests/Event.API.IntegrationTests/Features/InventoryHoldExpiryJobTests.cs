@@ -267,7 +267,10 @@ public sealed class InventoryHoldExpiryJobTests
     {
         var lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
         lifecycle.RecoverExpiredHoldAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new RegistrationOrderLifecycleResponseDto()));
+            .Returns(Task.FromResult(RegistrationOrderLifecycleResponseDto.Success(
+                Guid.Empty,
+                message: null,
+                order: null)));
         return lifecycle;
     }
 

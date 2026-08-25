@@ -161,7 +161,7 @@ public sealed class WebhookBulkReplaysController(
                 ReasonCode = request.ReasonCode
             },
             cancellationToken);
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return AcceptedAtRoute(
                 RouteNames.GetWebhookBulkReplayById,
@@ -207,7 +207,7 @@ public sealed class WebhookBulkReplaysController(
                 ReasonCode = request.ReasonCode
             },
             cancellationToken);
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

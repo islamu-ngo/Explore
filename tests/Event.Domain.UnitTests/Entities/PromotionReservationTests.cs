@@ -377,7 +377,7 @@ public sealed class PromotionReservationTests
                 $"Ticket {index + 1}",
                 "USD",
                 TicketPricingModeEnum.Fixed,
-                fixedPrice,
+                Money.Create(fixedPrice, "USD"),
                 null,
                 null,
                 ParticipantDataCollectionModeEnum.None,

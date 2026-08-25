@@ -185,12 +185,9 @@ public sealed class EventLocationControllerTests
             CancellationToken cancellationToken = default)
         {
             Requests.Add((UpdateEventLocationPolicyCommand)(object)request);
-            object response = new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = Guid.CreateVersion7(),
-                Message = "Disclosure updated."
-            };
+            object response = BaseCommandResponse.Success(
+                Guid.CreateVersion7(),
+                "Disclosure updated.");
             return Task.FromResult((TResponse)response);
         }
 

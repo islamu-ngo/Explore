@@ -349,7 +349,7 @@ public sealed class RegistrationProviderManagementController(
         [FromBody] ResolveRegistrationProviderQueueItemRequestDto request,
         CancellationToken cancellationToken = default) => ToActionResult(await mediator.Send(new ResolveRegistrationProviderQueueItemCommand(tenantId, eventId, request.SubmissionId, request.EffectOutboxId, request.DecisionCode, request.NoteReference), cancellationToken));
 
-    private ActionResult<BaseCommandResponse<Guid>> ToActionResult(BaseCommandResponse<Guid> result) => result.Success
+    private ActionResult<BaseCommandResponse<Guid>> ToActionResult(BaseCommandResponse<Guid> result) => result.IsSuccess
         ? Ok(result)
         : this.ToCommandValidationProblem(result, ValidationProblem);
 }

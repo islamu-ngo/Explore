@@ -213,7 +213,7 @@ public class StorageObjectController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToStorageUploadProblem(response);
     }
 
     // PUT: api/storageobject/upload-sessions/{uploadSessionId}/content
@@ -256,7 +256,7 @@ public class StorageObjectController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToStorageUploadProblem(response);
     }
 
     // DELETE: api/storageobject/upload-sessions/{uploadSessionId}
@@ -288,7 +288,7 @@ public class StorageObjectController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToStorageUploadProblem(response);
     }
 
     // PATCH: api/storageobject/{id}
@@ -310,7 +310,7 @@ public class StorageObjectController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }

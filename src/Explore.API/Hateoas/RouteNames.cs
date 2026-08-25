@@ -9,6 +9,9 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    public const string RequestAdmissionTicketRecovery = "RequestAdmissionTicketRecovery";
+    public const string ConsumeAdmissionTicketRecovery = "ConsumeAdmissionTicketRecovery";
+
     #region Managed Event Routes
 
     public const string GetManagementCapabilities = "GetManagementCapabilities";

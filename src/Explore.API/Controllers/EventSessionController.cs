@@ -245,7 +245,7 @@ public class EventSessionController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -277,7 +277,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateDraftValidationProblem);
         }
@@ -311,7 +311,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode is "event_session_schedule_concurrency_conflict" or "room_schedule_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session schedule conflict", "Event session schedule conflict.")
@@ -344,7 +344,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_publish_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session publish conflict", "Event session publish conflict.")
@@ -377,7 +377,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_archive_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session archive conflict", "Event session archive conflict.")
@@ -410,7 +410,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_cancel_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session cancel conflict", "Event session cancel conflict.")
@@ -443,7 +443,7 @@ public class EventSessionController : ControllerBase
             Request = request
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_complete_concurrency_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session complete conflict", "Event session complete conflict.")
@@ -489,7 +489,7 @@ public class EventSessionController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventSessionNotFoundProblem)
@@ -516,7 +516,7 @@ public class EventSessionController : ControllerBase
         var command = new DeleteEventSessionCommand { Id = id };
         BaseCommandResponse<Guid> response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == "event_session_ticket_entitlement_conflict"
                 ? this.ToCommandConflictProblem(response, "Event session deletion conflict", "Event session deletion conflict.")

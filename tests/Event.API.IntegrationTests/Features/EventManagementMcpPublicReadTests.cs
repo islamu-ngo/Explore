@@ -12,6 +12,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
@@ -411,7 +412,7 @@ public sealed class EventManagementMcpPublicReadTests
                 MaxAudienceAttendees = 120,
                 ConcurrencyStamp = Guid.NewGuid()
             };
-            session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+            session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
 
             var eventEntity = _context.Events.Local.FirstOrDefault(e => e.Id == eventId);
             if (eventEntity is not null)

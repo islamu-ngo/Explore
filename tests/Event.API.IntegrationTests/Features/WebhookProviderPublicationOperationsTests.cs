@@ -99,12 +99,9 @@ public sealed class WebhookProviderPublicationOperationsTests
     {
         var publicationId = Guid.CreateVersion7();
         _mediator.Send(Arg.Any<ReconcileWebhookProviderPublicationCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Id = publicationId,
-                Success = true,
-                Message = "Provider publication reconciled."
-            });
+            .Returns(BaseCommandResponse.Success(
+                publicationId,
+                "Provider publication reconciled."));
         var controller = CreateController();
 
         var result = await controller.Reconcile(
@@ -133,13 +130,10 @@ public sealed class WebhookProviderPublicationOperationsTests
     public async Task Abandon_WhenStateConflicts_ReturnsConflict()
     {
         _mediator.Send(Arg.Any<AbandonWebhookProviderPublicationCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "webhook_provider_publication_not_abandonable",
-                Message = "Provider publication cannot be abandoned.",
-                Errors = ["Provider publication cannot be abandoned."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "webhook_provider_publication_not_abandonable",
+                "Provider publication cannot be abandoned.",
+                ["Provider publication cannot be abandoned."]));
         var controller = CreateController();
 
         var result = await controller.Abandon(

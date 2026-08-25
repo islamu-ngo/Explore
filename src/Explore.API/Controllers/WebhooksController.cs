@@ -202,7 +202,7 @@ public sealed class WebhooksController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return ConsumerFailures.Map(this, response);
         }
@@ -248,7 +248,7 @@ public sealed class WebhooksController(
             },
             cancellationToken);
 
-        return response.Success ? Ok(response) : ConsumerFailures.Map(this, response);
+        return response.IsSuccess ? Ok(response) : ConsumerFailures.Map(this, response);
     }
 
     [HttpPost("consumers/{consumerId:guid}/provider-binding/repair", Name = RouteNames.RepairWebhookProviderBinding)]
@@ -278,7 +278,7 @@ public sealed class WebhooksController(
             },
             cancellationToken);
 
-        return response.Success
+        return response.IsSuccess
             ? Ok(response)
             : ProviderBindingRepairFailures.Map(this, response);
     }
@@ -318,7 +318,7 @@ public sealed class WebhooksController(
             },
             cancellationToken);
 
-        if (result.Success && result.Id is not null)
+        if (result.IsSuccess && result.Id is not null)
         {
             return Ok(result.Id);
         }

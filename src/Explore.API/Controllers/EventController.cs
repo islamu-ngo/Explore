@@ -293,7 +293,7 @@ public class EventController : ExploreControllerBase
         Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
         Response.Headers.Vary = "Host, X-Tenant-Slug";
 
-        var fileResult = File(result.PngBytes, "image/png");
+        var fileResult = File(result.PngBytes.ToArray(), "image/png");
         fileResult.EntityTag = entityTag;
         return fileResult;
     }

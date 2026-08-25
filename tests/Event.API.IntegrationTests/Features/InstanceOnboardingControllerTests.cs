@@ -290,7 +290,7 @@ public class InstanceOnboardingControllerTests
 
         var completeBody = await completeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(completeBody).IsNotNull();
-        await Assert.That(completeBody!.Success).IsTrue();
+        await Assert.That(completeBody!.IsSuccess).IsTrue();
 
         using var getRequest = CreateInstanceAdminRequest(HttpMethod.Get, $"{SettingsBaseUrl}/deployment-mode", userId, body: null, includeSetupSecret: false);
         var getResponse = await client.SendAsync(getRequest);
@@ -636,7 +636,7 @@ public class InstanceOnboardingControllerTests
 
         var updateBody = await updateResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(updateBody).IsNotNull();
-        await Assert.That(updateBody!.Success).IsTrue();
+        await Assert.That(updateBody!.IsSuccess).IsTrue();
 
         using var getRequest = CreateInstanceAdminRequest(
             HttpMethod.Get,
@@ -784,7 +784,7 @@ public class InstanceOnboardingControllerTests
 
         var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(responseBody).IsNotNull();
-        await Assert.That(responseBody!.Success).IsTrue();
+        await Assert.That(responseBody!.IsSuccess).IsTrue();
         await Assert.That(responseBody.Message).DoesNotContain("one-time-admin-password");
 
         using var internalWithSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
@@ -963,7 +963,7 @@ public class InstanceOnboardingControllerTests
 
         var updateBody = await updateResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(updateBody).IsNotNull();
-        await Assert.That(updateBody!.Success).IsTrue();
+        await Assert.That(updateBody!.IsSuccess).IsTrue();
 
         using var getRequest = CreateInstanceAdminRequest(
             HttpMethod.Get,

@@ -147,7 +147,7 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
             "BE", "EUR", Guid.CreateVersion7(), null, UtcNow);
         PaymentAttempt payment = PaymentAttempt.Create(
             paymentId, tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "refund-race",
-            organizerMinor, platformFeeMinor, 0, $"payment:{tenantId:N}:{paymentId:N}", UtcNow, UtcNow.AddMinutes(30));
+            Money.Create(organizerMinor, recipient.CurrencyCode), Money.Create(platformFeeMinor, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), $"payment:{tenantId:N}:{paymentId:N}", UtcNow, UtcNow.AddMinutes(30));
         payment.AttachAcceptance(Acceptance(
             tenantId, paymentId, orderId, organizerMinor, platformFeeMinor, lineTotals));
         payment.MarkSucceeded(PaymentProviderId(paymentId), UtcNow.AddSeconds(1), "req_payment");

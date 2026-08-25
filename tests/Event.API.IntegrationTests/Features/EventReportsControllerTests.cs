@@ -139,12 +139,9 @@ public sealed class EventReportsControllerTests
         var reportId = Guid.CreateVersion7();
         var dto = CreateSubmitDto();
         _mediator.Send(Arg.Any<SubmitEventReportCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = reportId,
-                Message = "Event report submitted successfully."
-            });
+            .Returns(BaseCommandResponse.Success(
+                reportId,
+                "Event report submitted successfully."));
         var controller = CreateController("203.0.113.5", "EventReportingTests/1.0", "corr-report-1");
 
         var actionResult = await controller.Submit(dto, CancellationToken.None);
@@ -173,13 +170,10 @@ public sealed class EventReportsControllerTests
     public async Task Submit_WhenDuplicate_ReturnsConflictProblemDetails()
     {
         _mediator.Send(Arg.Any<SubmitEventReportCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "A matching event report was already submitted recently.",
-                FailureCode = EventReportFailureCodes.Duplicate,
-                Errors = ["A matching report already exists in the duplicate prevention window."]
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                EventReportFailureCodes.Duplicate,
+                "A matching event report was already submitted recently.",
+                ["A matching report already exists in the duplicate prevention window."]));
         var controller = CreateController("203.0.113.5", "EventReportingTests/1.0", "corr-report-2");
 
         var actionResult = await controller.Submit(CreateSubmitDto(), CancellationToken.None);
@@ -209,12 +203,9 @@ public sealed class EventReportsControllerTests
         _mediator.Send(
                 Arg.Any<UpdateMyReportCommunicationConsentCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = report.Id,
-                Message = "Event report communication consent updated successfully."
-            });
+            .Returns(BaseCommandResponse.Success(
+                report.Id,
+                "Event report communication consent updated successfully."));
         _mediator.Send(Arg.Any<GetMyReportRequest>(), Arg.Any<CancellationToken>())
             .Returns(report);
         _myReportAssembler.ToResource(report, Arg.Any<HttpContext>()).Returns(halResource);
@@ -247,14 +238,11 @@ public sealed class EventReportsControllerTests
         _mediator.Send(
                 Arg.Any<UpdateMyReportCommunicationConsentCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Id = reportId,
-                Message = "Event report was not found.",
-                Errors = ["Event report was not found."],
-                FailureCode = EventReportFailureCodes.ReportNotFound
-            });
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                EventReportFailureCodes.ReportNotFound,
+                "Event report was not found.",
+                ["Event report was not found."],
+                reportId));
         var controller = CreateController(null, null, "corr-report-consent-denied");
 
         var actionResult = await controller.UpdateCommunicationConsent(

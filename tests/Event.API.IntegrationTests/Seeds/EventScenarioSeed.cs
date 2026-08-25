@@ -5,6 +5,7 @@ using Event.Api.IntegrationTests.Builders;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 
 namespace Event.Api.IntegrationTests.Seeds;
@@ -126,7 +127,7 @@ public static class EventScenarioSeed
             ConcurrencyStamp = Guid.NewGuid()
         };
 
-        session.Reschedule(startUtc, startUtc.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(startUtc, startUtc.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
         return session;
     }
 }

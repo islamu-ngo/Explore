@@ -108,7 +108,7 @@ public class EventModerationController : ExploreControllerBase
             CorrelationId = request.CorrelationId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, StatusValidationProblem);
         }
@@ -144,7 +144,7 @@ public class EventModerationController : ExploreControllerBase
             CorrelationId = request.CorrelationId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response.FailureCode == HeavyRedactEventCommand.StorageDeletionPendingFailureCode
                 ? this.ToServiceUnavailableProblem(
@@ -184,7 +184,7 @@ public class EventModerationController : ExploreControllerBase
             CorrelationId = request.CorrelationId
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, StatusValidationProblem);
         }

@@ -162,7 +162,7 @@ public sealed class EventPublicActionController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -199,7 +199,7 @@ public sealed class EventPublicActionController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -239,7 +239,7 @@ public sealed class EventPublicActionController : ExploreControllerBase
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, DeleteValidationProblem);
         }

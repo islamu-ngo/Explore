@@ -4,6 +4,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Exceptions;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -12,6 +13,7 @@ internal sealed class AdmissionApiScenario
     private static readonly DateTime UtcNow = new(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
     private readonly Dictionary<string, RecoveryCapabilityState> capabilities = new(StringComparer.Ordinal);
     private bool accountTicketRevoked;
+    internal int? RecoveryRateLimitRetryAfterSeconds { get; set; }
 
     internal AdmissionApiScenario()
     {
@@ -77,6 +79,11 @@ internal sealed class AdmissionApiScenario
 
     internal object? RequestRecovery(string email, Type responseType)
     {
+        if (RecoveryRateLimitRetryAfterSeconds is int retryAfterSeconds)
+        {
+            throw new AdmissionRecoveryRateLimitExceededException(retryAfterSeconds);
+        }
+
         if (string.Equals(email, PresentIdentity, StringComparison.OrdinalIgnoreCase))
             PresentRecoveryRequests++;
         else if (string.Equals(email, AbsentIdentity, StringComparison.OrdinalIgnoreCase))

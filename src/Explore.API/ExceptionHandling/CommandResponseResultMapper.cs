@@ -66,7 +66,7 @@ internal static class CommandResponseResultMapper
         ArgumentNullException.ThrowIfNull(controller);
         ArgumentNullException.ThrowIfNull(response);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return controller.Ok(response);
         }
@@ -110,7 +110,7 @@ internal static class CommandResponseResultMapper
         if (response.Id is not null)
         {
             problemDetails.Extensions["id"] = response.Id;
-            problemDetails.Extensions["success"] = response.Success;
+            problemDetails.Extensions["success"] = response.IsSuccess;
             problemDetails.Extensions["message"] = response.Message;
         }
 
@@ -177,7 +177,7 @@ internal static class CommandResponseResultMapper
         if (response.Id is not null)
         {
             problemDetails.Extensions["id"] = response.Id;
-            problemDetails.Extensions["success"] = response.Success;
+            problemDetails.Extensions["success"] = response.IsSuccess;
             problemDetails.Extensions["message"] = response.Message;
         }
 
@@ -299,7 +299,7 @@ internal static class CommandResponseResultMapper
             response.FailureCode ?? ApiProblemCodes.UnexpectedError);
 
         problemDetails.Extensions["id"] = response.Id;
-        problemDetails.Extensions["success"] = response.Success;
+        problemDetails.Extensions["success"] = response.IsSuccess;
         problemDetails.Extensions["message"] = response.Message;
 
         if (response.QuotaExceeded is not null)

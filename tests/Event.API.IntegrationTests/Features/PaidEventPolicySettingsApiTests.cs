@@ -47,7 +47,7 @@ public sealed class PaidEventPolicySettingsApiTests
         var body = CreateRevisionDto();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ReviseTenantPaidEventPolicyCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Id = Guid.CreateVersion7(), Success = true });
+            .Returns(BaseCommandResponse.Success(Guid.CreateVersion7()));
         var controller = new TenantPaidEventPolicySettingsController(
             mediator,
             Substitute.For<IResourceAssembler<TenantPaidEventPolicyConfigurationDto, TenantPaidEventPolicyConfigurationDto>>())

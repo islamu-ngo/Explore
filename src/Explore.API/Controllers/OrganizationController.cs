@@ -206,7 +206,7 @@ public class OrganizationController : ExploreControllerBase
             Cells = request.Cells
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -235,7 +235,7 @@ public class OrganizationController : ExploreControllerBase
             IsMuted = request.IsMuted
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, PreferenceValidationProblem);
         }
@@ -271,7 +271,7 @@ public class OrganizationController : ExploreControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
@@ -327,7 +327,7 @@ public class OrganizationController : ExploreControllerBase
 
         var result = await _mediator.Send(command, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result.FailureCode == FailureCodes.NotFound
                     ? this.ToNotFoundProblem(OrganizationNotFoundProblem)
@@ -390,7 +390,7 @@ public class OrganizationController : ExploreControllerBase
             UserId = userId
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return this.ToNotFoundProblem(DeleteNotFoundProblem);
         }

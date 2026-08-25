@@ -140,7 +140,7 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToQuotaProblemOrBadRequest(response);
         }
@@ -187,7 +187,7 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         var result = await _mediator.Send(command, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(PurgeNotFoundProblem)
@@ -237,7 +237,7 @@ public class CustomPropertyDefinitionController : ControllerBase
             Reason = purgeDto.Reason
         }, cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
         {
             return Ok(result);
         }

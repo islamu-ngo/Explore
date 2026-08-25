@@ -4,6 +4,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
@@ -178,7 +179,7 @@ public class EventSessionLifecycleConstraintTests
     private static EventSession CreateRoomSession(RoomScheduleScope scope, DateTimeOffset startUtc, DateTimeOffset endUtc)
     {
         var session = new EventSession { EventId = scope.Event.Id, Event = null!, LocationId = scope.Location.Id, Location = null!, RoomId = scope.Room.Id, Room = null!, StartTime = startUtc, EndTime = endUtc, TenantId = scope.Tenant.Id, Tenant = null! };
-        session.Reschedule(startUtc, endUtc, "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(startUtc, endUtc), "UTC", new EventScheduleProjectionCalculator());
         return session;
     }
 

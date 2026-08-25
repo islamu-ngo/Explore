@@ -171,7 +171,7 @@ public sealed class WebhookEndpointsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return EndpointFailures.Map(this, response);
         }
@@ -210,7 +210,7 @@ public sealed class WebhookEndpointsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return EndpointFailures.Map(this, response);
         }
@@ -239,7 +239,7 @@ public sealed class WebhookEndpointsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return EndpointFailures.Map(this, response);
         }
@@ -276,7 +276,7 @@ public sealed class WebhookEndpointsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return EndpointFailures.Map(this, response);
         }
@@ -306,7 +306,7 @@ public sealed class WebhookEndpointsController(
             },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return EndpointFailures.Map(this, response);
         }

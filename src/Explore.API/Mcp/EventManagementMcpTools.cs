@@ -1335,7 +1335,7 @@ public sealed class EventManagementMcpTools(
             var response = await mediator.Send(
                 new GetEventTemplateDiffQuery(eventId, targetTemplateVersion.Value),
                 cancellationToken);
-            return response.Success && response.Id is not null
+            return response.IsSuccess && response.Id is not null
                 ? EventMcpTemplateDiffRead.WithDiff(MapTemplateDiff(response.Id))
                 : EventMcpTemplateDiffRead.Unavailable(response.FailureCode ?? "not_available");
         }
@@ -1365,7 +1365,7 @@ public sealed class EventManagementMcpTools(
             var response = await mediator.Send(
                 new GetEventSessionTemplateDiffQuery(sessionId, targetTemplateVersion.Value),
                 cancellationToken);
-            return response.Success && response.Id is not null
+            return response.IsSuccess && response.Id is not null
                 ? EventMcpTemplateDiffRead.WithDiff(MapTemplateDiff(response.Id))
                 : EventMcpTemplateDiffRead.Unavailable(response.FailureCode ?? "not_available");
         }

@@ -308,9 +308,11 @@ public sealed class EventPromotionsControllerTests
         ProvenanceType: null,
         SubmittedByUserId: null);
 
-    private static PromotionManagementCommandResponseDto Success(Guid id) => new() { Id = id, Success = true };
+    private static PromotionManagementCommandResponseDto Success(Guid id) =>
+        PromotionManagementCommandResponseDto.Success(id, null, null);
 
-    private static PromotionCodeIssuedCommandResponseDto IssuedSuccess(Guid id) => new() { Id = id, Success = true };
+    private static PromotionCodeIssuedCommandResponseDto IssuedSuccess(Guid id) =>
+        PromotionCodeIssuedCommandResponseDto.Success(id, null, null, null);
 
     private static async Task AssertCommandResponseShape(string actionName, Type expectedResponseType)
     {

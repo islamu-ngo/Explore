@@ -5,6 +5,7 @@ namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 public class EventScheduleProjectionTests
 {
@@ -183,8 +184,8 @@ public class EventScheduleProjectionTests
             Title = "Arrival"
         };
 
-        session.Reschedule(localStart, localEnd, "Europe/Brussels", _calculator);
-        agendaItem.Reschedule(localStart, localEnd, "Europe/Brussels", _calculator);
+        session.Reschedule(UtcInstantRange.Create(localStart, localEnd), "Europe/Brussels", _calculator);
+        agendaItem.Reschedule(UtcInstantRange.Create(localStart, localEnd), "Europe/Brussels", _calculator);
 
         await Assert.That(session.StartTime).IsEqualTo(localStart.ToUniversalTime());
         await Assert.That(session.EndTime).IsEqualTo(localEnd.ToUniversalTime());

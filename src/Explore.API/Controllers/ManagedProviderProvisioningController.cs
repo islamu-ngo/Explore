@@ -55,7 +55,7 @@ public class ManagedProviderProvisioningController : ControllerBase
             new EnsureManagedProviderClientProvisionedCommand { ProvisioningDto = provisioningDto },
             cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return this.ToCommandValidationProblem(response, ProvisioningValidationProblem);
         }

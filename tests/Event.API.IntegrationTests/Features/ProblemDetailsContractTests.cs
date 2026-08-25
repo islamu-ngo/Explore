@@ -311,8 +311,7 @@ public class ProblemDetailsContractTests
     public async Task CommandResponseQuotaMapper_Returns422ProblemDetailsWithStableExtensions()
     {
         var tenantId = Guid.NewGuid();
-        var response = new BaseCommandResponse<Guid>();
-        response.SetQuotaExceeded(
+        var response = BaseCommandResponse.Quota<Guid>(
             "Custom-property option quota exceeded.",
             new QuotaExceededDetails(
                 CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,

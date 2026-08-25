@@ -380,7 +380,7 @@ public sealed class RegistrationFormsController(
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateTemplate(RegistrationFormTemplateInputDto input, CancellationToken ct)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new CreateRegistrationFormTemplateCommand(input), ct);
-        return response.Success
+        return response.IsSuccess
             ? CreatedAtRoute(RouteNames.GetRegistrationFormTemplate, new { templateId = response.Id }, response)
             : this.ToCommandValidationProblem(response, RegistrationValidationProblem);
     }
@@ -396,7 +396,7 @@ public sealed class RegistrationFormsController(
     public async Task<ActionResult<BaseCommandResponse<Guid>>> InstantiateTemplate(Guid templateId, InstantiateRegistrationFormTemplateInputDto input, CancellationToken ct)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new InstantiateRegistrationFormTemplateCommand(templateId, input), ct);
-        return response.Success
+        return response.IsSuccess
             ? CreatedAtRoute(RouteNames.GetRegistrationForm, new { eventId = input.EventId, formId = response.Id }, response)
             : this.ToCommandValidationProblem(response, RegistrationValidationProblem);
     }
@@ -415,7 +415,7 @@ public sealed class RegistrationFormsController(
         if (!TryParseConcurrencyStamp(ifMatch, out Guid stamp))
             return this.ToValidationProblem(RegistrationValidationProblem, "If-Match must be a strong quoted non-empty GUID concurrency stamp.");
         BaseCommandResponse<Guid> response = await mediator.Send(command(stamp), ct);
-        if (!response.Success) return this.ToCommandValidationProblem(response, RegistrationValidationProblem);
+        if (!response.IsSuccess) return this.ToCommandValidationProblem(response, RegistrationValidationProblem);
         return createdRoute is null ? Ok(response) : CreatedAtRoute(createdRoute, createdValues!(response.Id), response);
     }
 
@@ -433,7 +433,7 @@ public sealed class RegistrationFormsController(
                 "If-Match must be a strong quoted non-empty GUID concurrency stamp.",
                 "registration_form_reorder_invalid");
         BaseCommandResponse<Guid> response = await mediator.Send(command(stamp), ct);
-        if (!response.Success) return this.ToCommandValidationProblem(response, RegistrationValidationProblem);
+        if (!response.IsSuccess) return this.ToCommandValidationProblem(response, RegistrationValidationProblem);
         RegistrationFormVersionDto? version = await mediator.Send(
             new GetRegistrationFormVersionQuery(eventId, formId, versionId), ct);
         return await ToResource(version, versionAssembler);

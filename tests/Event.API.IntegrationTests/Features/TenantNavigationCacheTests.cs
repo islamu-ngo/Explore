@@ -47,7 +47,7 @@ public class TenantNavigationCacheTests
 
         var createBody = await createResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(createBody).IsNotNull();
-        await Assert.That(createBody!.Success).IsTrue();
+        await Assert.That(createBody!.IsSuccess).IsTrue();
 
         // Step 3: GET navigation again — cache should be invalidated, new link visible
         var secondGet = await _fixture.Client.GetAsync("/api/tenant/navigation");

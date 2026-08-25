@@ -8,6 +8,7 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -553,7 +554,7 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
             Event = null!,
             Title = $"ELP agenda {Guid.NewGuid():N}"
         };
-        agenda.Reschedule(Now, Now.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        agenda.Reschedule(UtcInstantRange.Create(Now, Now.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
         return agenda;
     }
 

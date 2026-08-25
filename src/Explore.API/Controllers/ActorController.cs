@@ -317,7 +317,7 @@ public class ActorController : ControllerBase
 
     private ActionResult<BaseCommandResponse<Guid>> MapModerationResponse(BaseCommandResponse<Guid> response)
     {
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

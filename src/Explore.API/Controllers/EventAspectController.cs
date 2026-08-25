@@ -105,7 +105,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
             AspectDto = aspectDto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == "event_not_found")
                 return this.ToNotFoundProblem(EventNotFoundProblem);
@@ -144,7 +144,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
             AspectDto = aspectDto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode is "event_not_found" or "event_islamic_aspect_not_found")
                 return this.ToNotFoundProblem(EventNotFoundProblem, response.Message);
@@ -241,7 +241,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
             AspectDto = aspectDto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode == "event_not_found")
                 return this.ToNotFoundProblem(EventNotFoundProblem);
@@ -280,7 +280,7 @@ public sealed class EventAspectController(IMediator mediator) : ExploreControlle
             AspectDto = aspectDto
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             if (response.FailureCode is "event_not_found" or "event_tech_aspect_not_found")
                 return this.ToNotFoundProblem(EventNotFoundProblem, response.Message);

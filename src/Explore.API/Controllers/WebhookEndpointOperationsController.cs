@@ -50,7 +50,7 @@ public sealed class WebhookEndpointOperationsController(IMediator mediator) : Ex
             },
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }
@@ -100,7 +100,7 @@ public sealed class WebhookEndpointOperationsController(IMediator mediator) : Ex
             },
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             return Ok(response);
         }

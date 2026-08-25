@@ -58,7 +58,7 @@ public sealed class ModerationIntegrationController(
         }, cancellationToken);
         RecordCallback("osprey", request.TenantId, response);
 
-        return response.Success ? Ok(response) : this.ToEventReportProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToEventReportProblem(response);
     }
 
     [HttpPost("coop/callback", Name = RouteNames.ModerationIntegrationCoopCallback)]
@@ -154,31 +154,25 @@ public sealed class ModerationIntegrationController(
 
         if (capture.IsDuplicate)
         {
-            var duplicateResponse = new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = capture.MessageId,
-                Message = "Coop decision callback was already captured."
-            };
+            var duplicateResponse = BaseCommandResponse.Success(
+                capture.MessageId,
+                "Coop decision callback was already captured.");
             RecordCallback("coop", incoming.Verification!.TenantId!.Value, duplicateResponse);
             return Ok(duplicateResponse);
         }
 
-        var response = new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = capture.MessageId,
-            Message = "Coop decision callback was captured for durable processing."
-        };
+        var response = BaseCommandResponse.Success(
+            capture.MessageId,
+            "Coop decision callback was captured for durable processing.");
 
         RecordCallback("coop", incoming.Verification!.TenantId!.Value, response);
 
-        return response.Success ? Ok(response) : this.ToEventReportProblem(response);
+        return response.IsSuccess ? Ok(response) : this.ToEventReportProblem(response);
     }
 
     private void RecordCallback(string provider, Guid tenantId, BaseCommandResponse<Guid> response)
     {
-        var outcome = response.Success ? "succeeded" : "failed";
+        var outcome = response.IsSuccess ? "succeeded" : "failed";
         var failureCategory = response.FailureCode ?? "none";
         metrics.RecordEventReportProviderCallback(
             provider,

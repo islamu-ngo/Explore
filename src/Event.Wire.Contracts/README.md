@@ -6,6 +6,10 @@
 `Event.Wire.Contracts` contains versioned, machine-consumed representations that must behave
 identically in server and isolated client runtimes.
 
+The assembly and project name are exactly `Event.Wire.Contracts`. Public namespaces use the
+`ISLAMU.Wire.Contracts.*` root to avoid colliding with the existing `Explore.Domain.Event`
+aggregate type and the cross-language reserved keyword `event`.
+
 ## Include
 
 - Strict, versioned payload and deep-link codecs
