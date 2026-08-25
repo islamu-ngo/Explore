@@ -12,15 +12,23 @@ public interface IGroupService
     Task<bool> CreateGroupAsync(string fullName, string? description = null);
     Task<HalResourceOfGroupDto?> GetGroupDetailsAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, Guid expectedConcurrencyStamp, UpdateGroupDto group);
-    Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
+    Task<IReadOnlyList<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
     Task<GroupMembersResult> GetGroupMembersWithAffordancesAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> AddGroupMemberAsync(AddGroupMemberDto member);
     Task<BaseCommandResponseOfGuid?> UpdateGroupMemberRoleAsync(UpdateGroupMemberRoleDto updateDto);
     Task<BaseCommandResponseOfGuid?> DeleteGroupMemberAsync(Guid memberId);
 }
 
-public sealed record GroupMembersResult(ICollection<GroupMemberDto> Members, bool CanCreate)
+public sealed record GroupMembersResult
 {
+    public GroupMembersResult(IEnumerable<GroupMemberDto> Members, bool CanCreate)
+    {
+        this.Members = Array.AsReadOnly(Members.ToArray());
+        this.CanCreate = CanCreate;
+    }
+
+    public IReadOnlyList<GroupMemberDto> Members { get; }
+    public bool CanCreate { get; }
     public static GroupMembersResult Empty { get; } = new([], false);
 }
 
@@ -118,7 +126,7 @@ public class GroupService : IGroupService
         }
     }
 
-    public async Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId)
+    public async Task<IReadOnlyList<GroupMemberDto>> GetGroupMembersAsync(Guid groupId)
     {
         var result = await GetGroupMembersWithAffordancesAsync(groupId);
         return result.Members;

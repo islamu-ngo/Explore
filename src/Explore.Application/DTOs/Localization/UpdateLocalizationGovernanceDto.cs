@@ -20,8 +20,14 @@ public sealed record LocalizationTmsUpdateDto
 
 public sealed record LocalizationLanguagePolicyUpdateDto
 {
+    private IReadOnlyList<string> _enabledLanguages = Array.AsReadOnly(Array.Empty<string>());
+
     public required string DefaultLanguage { get; init; }
-    public string[] EnabledLanguages { get; init; } = [];
+    public IReadOnlyList<string> EnabledLanguages
+    {
+        get => _enabledLanguages;
+        init => _enabledLanguages = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public required string FallbackLanguage { get; init; }
 }
 

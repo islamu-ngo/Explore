@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.Analytics;
 
 public sealed record AnalyticsGovernanceSettingsDto
 {
+    private IReadOnlyList<string> _resolveReasons = Array.AsReadOnly(Array.Empty<string>());
+
     // Provider & basic config (read-only context from environment/secrets)
     public string Provider { get; init; } = "none";
     public bool Enabled { get; init; }
@@ -31,5 +33,9 @@ public sealed record AnalyticsGovernanceSettingsDto
     public bool CookieBannerRequired { get; init; }
     public bool CanRunBeforeConsent { get; init; }
     public string StorageProfile { get; init; } = "Unknown";
-    public List<string> ResolveReasons { get; init; } = [];
+    public IReadOnlyList<string> ResolveReasons
+    {
+        get => _resolveReasons;
+        init => _resolveReasons = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }

@@ -5,6 +5,8 @@ namespace Explore.Application.DTOs.EventSessionTemplate;
 
 public sealed record EventSessionTemplateDto
 {
+    private IReadOnlyList<EventSessionTemplateDefinitionDto>? _definitions = Array.AsReadOnly(Array.Empty<EventSessionTemplateDefinitionDto>());
+
     public Guid Id { get; init; }
     public Guid ConcurrencyStamp { get; init; }
     public Guid EventTemplateId { get; init; }
@@ -20,5 +22,9 @@ public sealed record EventSessionTemplateDto
     public string? CreatedBy { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
     public string? UpdatedBy { get; init; }
-    public List<EventSessionTemplateDefinitionDto> Definitions { get; init; } = [];
+    public IReadOnlyList<EventSessionTemplateDefinitionDto> Definitions
+    {
+        get => _definitions!;
+        init => _definitions = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

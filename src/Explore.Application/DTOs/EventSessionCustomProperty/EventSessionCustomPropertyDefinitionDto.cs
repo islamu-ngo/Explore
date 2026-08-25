@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.EventSessionCustomProperty;
 
 public sealed record EventSessionCustomPropertyDefinitionDto
 {
+    private IReadOnlyList<EventSessionCustomPropertyOptionDto>? _options = Array.AsReadOnly(Array.Empty<EventSessionCustomPropertyOptionDto>());
+
     public Guid Id { get; init; }
     public Guid ConcurrencyStamp { get; init; }
     public Guid EventSessionId { get; init; }
@@ -51,5 +53,9 @@ public sealed record EventSessionCustomPropertyDefinitionDto
     public DateTimeOffset InstantiatedAt { get; init; }
     public DateTimeOffset? LastSyncedFromTemplateAt { get; init; }
 
-    public List<EventSessionCustomPropertyOptionDto> Options { get; init; } = [];
+    public IReadOnlyList<EventSessionCustomPropertyOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

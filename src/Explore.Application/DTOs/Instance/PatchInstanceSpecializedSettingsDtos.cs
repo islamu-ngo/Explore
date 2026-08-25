@@ -17,12 +17,19 @@ public sealed record PatchInstanceStorageSettingsDto
 
 public sealed record InstanceStoragePolicyWriteDto
 {
+    private IReadOnlyList<StorageRouteSettingsDto> _routes =
+        Array.AsReadOnly(Array.Empty<StorageRouteSettingsDto>());
+
     public string Provider { get; init; } = string.Empty;
     public long DefaultMaxUploadBytes { get; init; }
     public long DefaultTenantQuotaBytes { get; init; }
     public long InstanceMaxUploadBytes { get; init; }
     public bool LockTenantStorage { get; init; }
-    public List<StorageRouteSettingsDto> Routes { get; init; } = [];
+    public IReadOnlyList<StorageRouteSettingsDto> Routes
+    {
+        get => _routes;
+        init => _routes = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record InstanceS3ConfigurationWriteDto

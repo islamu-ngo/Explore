@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.EventSessionCustomProperty;
 
 public sealed record CreateEventSessionCustomPropertyDefinitionDto
 {
+    private IReadOnlyList<CreateEventSessionCustomPropertyOptionDto>? _options = Array.AsReadOnly(Array.Empty<CreateEventSessionCustomPropertyOptionDto>());
+
     public Guid EventSessionId { get; init; }
     public string Namespace { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
@@ -41,5 +43,9 @@ public sealed record CreateEventSessionCustomPropertyDefinitionDto
     public DateTimeOffset? MaxDateTime { get; set; }
     public string? AllowedUrlSchemes { get; set; }
 
-    public List<CreateEventSessionCustomPropertyOptionDto> Options { get; set; } = [];
+    public IReadOnlyList<CreateEventSessionCustomPropertyOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

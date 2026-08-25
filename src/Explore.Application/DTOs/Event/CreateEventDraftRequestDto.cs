@@ -3,6 +3,7 @@
 
 namespace Explore.Application.DTOs.Event;
 
+using System.Collections.Immutable;
 using Explore.Application.DTOs.EventAspects;
 
 public sealed record CreateEventDraftRequestDto
@@ -33,13 +34,21 @@ public sealed record CreateEventDraftRequestDto
     public int? SeriesOrder { get; init; }
     public int? RegistrationPolicyId { get; init; }
     public CreateUpdateIslamicAspectDto? IslamicAspect { get; init; }
-    public List<Guid> CategoryIds { get; init; } = [];
-    public List<Guid> TagIds { get; init; } = [];
-    public List<CreateEventLocationDto> Locations { get; init; } = [];
-    public List<CreateEventGraphSessionDto> Sessions { get; init; } = [];
-    public List<CreateEventGraphDayDto> Days { get; init; } = [];
-    public List<CreateEventRoomDto> Rooms { get; init; } = [];
-    public List<CreateEventGraphAgendaItemDto> AgendaItems { get; init; } = [];
+    private IReadOnlyList<Guid>? _categoryIds = ImmutableArray<Guid>.Empty;
+    private IReadOnlyList<Guid>? _tagIds = ImmutableArray<Guid>.Empty;
+    private IReadOnlyList<CreateEventLocationDto>? _locations = ImmutableArray<CreateEventLocationDto>.Empty;
+    private IReadOnlyList<CreateEventGraphSessionDto>? _sessions = ImmutableArray<CreateEventGraphSessionDto>.Empty;
+    private IReadOnlyList<CreateEventGraphDayDto>? _days = ImmutableArray<CreateEventGraphDayDto>.Empty;
+    private IReadOnlyList<CreateEventRoomDto>? _rooms = ImmutableArray<CreateEventRoomDto>.Empty;
+    private IReadOnlyList<CreateEventGraphAgendaItemDto>? _agendaItems = ImmutableArray<CreateEventGraphAgendaItemDto>.Empty;
+
+    public IReadOnlyList<Guid> CategoryIds { get => _categoryIds!; init => _categoryIds = value?.ToImmutableArray(); }
+    public IReadOnlyList<Guid> TagIds { get => _tagIds!; init => _tagIds = value?.ToImmutableArray(); }
+    public IReadOnlyList<CreateEventLocationDto> Locations { get => _locations!; init => _locations = value?.ToImmutableArray(); }
+    public IReadOnlyList<CreateEventGraphSessionDto> Sessions { get => _sessions!; init => _sessions = value?.ToImmutableArray(); }
+    public IReadOnlyList<CreateEventGraphDayDto> Days { get => _days!; init => _days = value?.ToImmutableArray(); }
+    public IReadOnlyList<CreateEventRoomDto> Rooms { get => _rooms!; init => _rooms = value?.ToImmutableArray(); }
+    public IReadOnlyList<CreateEventGraphAgendaItemDto> AgendaItems { get => _agendaItems!; init => _agendaItems = value?.ToImmutableArray(); }
 
     public CreateEventDto ToCreateEventDto() => new()
     {

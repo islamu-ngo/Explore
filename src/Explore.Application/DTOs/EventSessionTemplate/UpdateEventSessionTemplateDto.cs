@@ -24,5 +24,11 @@ public sealed record UpdateEventSessionTemplateMetadataDto
 
 public sealed record UpdateEventSessionTemplateDefinitionsDto
 {
-    public List<CreateEventSessionTemplateDefinitionDto>? Items { get; init; }
+    private IReadOnlyList<CreateEventSessionTemplateDefinitionDto>? _items;
+
+    public IReadOnlyList<CreateEventSessionTemplateDefinitionDto>? Items
+    {
+        get => _items;
+        init => _items = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

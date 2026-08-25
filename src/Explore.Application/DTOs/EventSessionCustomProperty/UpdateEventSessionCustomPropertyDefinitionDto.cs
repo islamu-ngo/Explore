@@ -14,5 +14,11 @@ public sealed record UpdateEventSessionCustomPropertyDefinitionDto
 
 public sealed record UpdateEventSessionCustomPropertyDefinitionOptionsDto
 {
-    public List<CreateEventSessionCustomPropertyOptionDto>? Items { get; init; }
+    private IReadOnlyList<CreateEventSessionCustomPropertyOptionDto>? _items;
+
+    public IReadOnlyList<CreateEventSessionCustomPropertyOptionDto>? Items
+    {
+        get => _items;
+        init => _items = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
 public sealed record CreateCustomPropertyDefinitionDto
 {
+    private IReadOnlyList<CreateCustomPropertyOptionDto>? _options = Array.AsReadOnly(Array.Empty<CreateCustomPropertyOptionDto>());
+
     public EntityTypeName EntityTypeName { get; set; }
     public required string Namespace { get; init; }
     public required string Key { get; init; }
@@ -36,5 +38,9 @@ public sealed record CreateCustomPropertyDefinitionDto
     public DateTimeOffset? MinDateTime { get; set; }
     public DateTimeOffset? MaxDateTime { get; set; }
     public string? AllowedUrlSchemes { get; set; }
-    public List<CreateCustomPropertyOptionDto> Options { get; set; } = [];
+    public IReadOnlyList<CreateCustomPropertyOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

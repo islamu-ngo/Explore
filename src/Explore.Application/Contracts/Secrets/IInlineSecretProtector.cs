@@ -8,4 +8,14 @@ public interface IInlineSecretProtector
     InlineProtectedSecret Protect(string plaintext);
 }
 
-public sealed record InlineProtectedSecret(byte[] Ciphertext, int Version);
+public sealed record InlineProtectedSecret
+{
+    public InlineProtectedSecret(ReadOnlyMemory<byte> Ciphertext, int Version)
+    {
+        this.Ciphertext = Ciphertext.ToArray();
+        this.Version = Version;
+    }
+
+    public ReadOnlyMemory<byte> Ciphertext { get; }
+    public int Version { get; }
+}

@@ -1,6 +1,9 @@
 // ABOUTME: Composite public-home discovery read model with bounded event sections and safe status metadata.
 // ABOUTME: Reserves future proximity fields as null while exposing only coarse area context in this release.
 
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Models.PublicExperience;
@@ -9,26 +12,79 @@ namespace Explore.Application.DTOs.PublicExperience;
 
 public sealed record HomeDiscoveryDto
 {
+    private IReadOnlyList<EventDiscoveryItemDto> _hero = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+    private IReadOnlyList<EventDiscoveryItemDto> _upcomingInArea = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+    private IReadOnlyList<EventDiscoveryItemDto> _mostViewedInArea = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+    private IReadOnlyList<EventDiscoveryItemDto> _mostViewedOnline = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+    private IReadOnlyList<HomeDiscoverySectionDto> _curatedSections = Array.AsReadOnly(Array.Empty<HomeDiscoverySectionDto>());
+    private IReadOnlyList<EventDiscoveryItemDto> _recentlyAdded = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+    private IReadOnlyDictionary<string, HomeDiscoverySectionStatus> _sectionStatuses =
+        new ReadOnlyDictionary<string, HomeDiscoverySectionStatus>(
+            new Dictionary<string, HomeDiscoverySectionStatus>(StringComparer.Ordinal));
+
     public int SchemaVersion { get; init; } = 1;
     public HomeDiscoveryContextDto Context { get; set; } = new();
-    public List<EventDiscoveryItemDto> Hero { get; set; } = [];
-    public List<EventDiscoveryItemDto> UpcomingInArea { get; set; } = [];
+    public IReadOnlyList<EventDiscoveryItemDto> Hero
+    {
+        get => _hero;
+        init => _hero = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyList<EventDiscoveryItemDto> UpcomingInArea
+    {
+        get => _upcomingInArea;
+        init => _upcomingInArea = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public HomeDiscoverySectionDto? Spotlight { get; set; }
-    public List<EventDiscoveryItemDto> MostViewedInArea { get; set; } = [];
-    public List<EventDiscoveryItemDto> MostViewedOnline { get; set; } = [];
-    public List<HomeDiscoverySectionDto> CuratedSections { get; set; } = [];
-    public List<EventDiscoveryItemDto> RecentlyAdded { get; set; } = [];
-    public Dictionary<string, HomeDiscoverySectionStatus> SectionStatuses { get; init; } = [];
+    public IReadOnlyList<EventDiscoveryItemDto> MostViewedInArea
+    {
+        get => _mostViewedInArea;
+        init => _mostViewedInArea = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyList<EventDiscoveryItemDto> MostViewedOnline
+    {
+        get => _mostViewedOnline;
+        init => _mostViewedOnline = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyList<HomeDiscoverySectionDto> CuratedSections
+    {
+        get => _curatedSections;
+        init => _curatedSections = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyList<EventDiscoveryItemDto> RecentlyAdded
+    {
+        get => _recentlyAdded;
+        init => _recentlyAdded = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyDictionary<string, HomeDiscoverySectionStatus> SectionStatuses
+    {
+        get => _sectionStatuses;
+        init => _sectionStatuses = value is null
+            ? null!
+            : new ReadOnlyDictionary<string, HomeDiscoverySectionStatus>(
+                new Dictionary<string, HomeDiscoverySectionStatus>(value, StringComparer.Ordinal));
+    }
     public DateTimeOffset GeneratedAtUtc { get; init; }
 }
 
 public sealed record HomeDiscoveryContextDto
 {
+    private IReadOnlyList<PublicDiscoveryAreaDto> _availableAreas =
+        Array.AsReadOnly(Array.Empty<PublicDiscoveryAreaDto>());
+
     public HomeDiscoveryMode Mode { get; init; } = HomeDiscoveryMode.All;
     public Guid? SelectedAreaId { get; init; }
     public Guid? DefaultAreaId { get; init; }
     public string SelectedAreaDisplayName { get; init; } = string.Empty;
-    public List<PublicDiscoveryAreaDto> AvailableAreas { get; init; } = [];
+    public IReadOnlyList<PublicDiscoveryAreaDto> AvailableAreas
+    {
+        get => _availableAreas;
+        init => _availableAreas = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record EventDiscoveryItemDto
@@ -48,8 +104,33 @@ public sealed record EventDiscoveryItemDto
     public string? NearestLocationName { get; init; }
     public DateTimeOffset? NearestOccurrenceStartsAtUtc { get; init; }
 
+    [JsonInclude]
     [JsonExtensionData]
-    public Dictionary<string, object> AdditionalProperties { get; set; } = [];
+    internal Dictionary<string, JsonElement> JsonAdditionalProperties { get; } = new(StringComparer.Ordinal);
+
+    [JsonIgnore]
+    public ImmutableDictionary<string, object> AdditionalProperties
+    {
+        get => JsonAdditionalProperties.ToImmutableDictionary(
+            property => property.Key,
+            property => (object)property.Value,
+            StringComparer.Ordinal);
+        set
+        {
+            JsonAdditionalProperties.Clear();
+            if (value is null)
+            {
+                return;
+            }
+
+            foreach (var property in value)
+            {
+                JsonAdditionalProperties[property.Key] = JsonSerializer.SerializeToElement(
+                    property.Value,
+                    property.Value?.GetType() ?? typeof(object));
+            }
+        }
+    }
 }
 
 public sealed record FederatedEventDto
@@ -76,7 +157,13 @@ public sealed record EventFederationMetadataDto
 
 public sealed record HomeDiscoverySectionDto
 {
+    private IReadOnlyList<EventDiscoveryItemDto> _items = Array.AsReadOnly(Array.Empty<EventDiscoveryItemDto>());
+
     public string Key { get; init; } = string.Empty;
     public string Label { get; init; } = string.Empty;
-    public List<EventDiscoveryItemDto> Items { get; init; } = [];
+    public IReadOnlyList<EventDiscoveryItemDto> Items
+    {
+        get => _items;
+        init => _items = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }

@@ -1,6 +1,7 @@
 // ABOUTME: Detail DTO for the EventWithSessions aggregate read view consumed by app-layer queries.
 // ABOUTME: Combines core event scalars, module-gated nullable aspect fields, summary metrics, and filtered facets.
 
+using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using Explore.Application.Hateoas;
 
@@ -33,9 +34,26 @@ public sealed record EventWithSessionsViewDto
     public bool HasInPersonSessions { get; init; }
     public bool HasVirtualSessions { get; init; }
     public string? AggregatedSessionIslamicThemes { get; init; }
-    public IReadOnlyList<EventCustomPropertyFacetDto> EventCustomProperties { get; init; } = [];
-    public IReadOnlyList<EventSessionCustomPropertyFacetDto> EventSessionCustomProperties { get; init; } = [];
+    private IReadOnlyList<EventCustomPropertyFacetDto>? _eventCustomProperties = ImmutableArray<EventCustomPropertyFacetDto>.Empty;
+    private IReadOnlyList<EventSessionCustomPropertyFacetDto>? _eventSessionCustomProperties = ImmutableArray<EventSessionCustomPropertyFacetDto>.Empty;
+    private IReadOnlyDictionary<string, HalLink>? _links = ImmutableDictionary<string, HalLink>.Empty;
+
+    public IReadOnlyList<EventCustomPropertyFacetDto> EventCustomProperties
+    {
+        get => _eventCustomProperties!;
+        init => _eventCustomProperties = value?.ToImmutableArray();
+    }
+
+    public IReadOnlyList<EventSessionCustomPropertyFacetDto> EventSessionCustomProperties
+    {
+        get => _eventSessionCustomProperties!;
+        init => _eventSessionCustomProperties = value?.ToImmutableArray();
+    }
 
     [JsonPropertyName("_links")]
-    public Dictionary<string, HalLink> Links { get; init; } = new();
+    public IReadOnlyDictionary<string, HalLink> Links
+    {
+        get => _links!;
+        init => _links = value?.ToImmutableDictionary();
+    }
 }

@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Services;
 /// </summary>
 public interface IOrganizationMemberService
 {
-    Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId);
+    Task<IReadOnlyList<OrganizationMemberDto>> GetMembersAsync(Guid organizationId);
     Task<OrganizationMembersResult> GetMembersWithAffordancesAsync(Guid organizationId);
     Task<BaseCommandResponseOfGuid?> InviteMemberAsync(AddOrganizationMemberDto member);
     Task<BaseCommandResponseOfGuid?> UpdateMemberRoleAsync(UpdateOrganizationMemberRoleDto updateDto);
@@ -19,8 +19,16 @@ public interface IOrganizationMemberService
     Task<BaseCommandResponseOfGuid?> DeleteMemberAsync(Guid memberId);
 }
 
-public sealed record OrganizationMembersResult(ICollection<OrganizationMemberDto> Members, bool CanCreate)
+public sealed record OrganizationMembersResult
 {
+    public OrganizationMembersResult(IEnumerable<OrganizationMemberDto> Members, bool CanCreate)
+    {
+        this.Members = Array.AsReadOnly(Members.ToArray());
+        this.CanCreate = CanCreate;
+    }
+
+    public IReadOnlyList<OrganizationMemberDto> Members { get; }
+    public bool CanCreate { get; }
     public static OrganizationMembersResult Empty { get; } = new([], false);
 }
 
@@ -38,7 +46,7 @@ public class OrganizationMemberService : IOrganizationMemberService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
+    public async Task<IReadOnlyList<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
     {
         var result = await GetMembersWithAffordancesAsync(organizationId);
         return result.Members;

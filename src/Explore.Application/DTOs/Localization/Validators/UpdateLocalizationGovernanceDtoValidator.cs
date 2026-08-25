@@ -37,7 +37,7 @@ public class UpdateLocalizationGovernanceDtoValidator : AbstractValidator<Update
 
         RuleFor(x => x.Languages!.EnabledLanguages)
             .NotNull().WithMessage("EnabledLanguages is required.")
-            .Must(list => list is { Length: > 0 })
+            .Must(list => list is { Count: > 0 })
             .WithMessage("At least one language must be enabled.")
             .Must(list => list.All(code => CultureRegistry.Contains(code)))
             .WithMessage("EnabledLanguages contains codes that are not in CultureRegistry.")

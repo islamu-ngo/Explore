@@ -48,6 +48,7 @@ using Explore.Application.DTOs.StatusType;
 using Explore.Application.DTOs.Storage;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Studio;
+using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.DTOs.TagTypeTags;
@@ -59,6 +60,8 @@ using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Application.DTOs.Webhooks;
+using Explore.Application.Features.Promotions;
+using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Models;
 using Explore.Application.Models.InternalEvents;
@@ -73,6 +76,18 @@ namespace Explore.Application.Serialization;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false,
     Converters = [typeof(JsonStringEnumConverter)])]
+[JsonSerializable(typeof(CreateExternalApiKeyCommandResponse))]
+[JsonSerializable(typeof(GuestRegistrationOrderLifecycleResponseDto))]
+[JsonSerializable(typeof(GuestRegistrationOrderStartDto))]
+[JsonSerializable(typeof(RegistrationMaterialChangeChoiceCommandResultDto))]
+[JsonSerializable(typeof(RegistrationOrderLifecycleResponseDto))]
+[JsonSerializable(typeof(RegistrationPaymentCommandResultDto))]
+[JsonSerializable(typeof(RegistrationRefundCommandResultDto))]
+[JsonSerializable(typeof(SupportAccessSessionCommandResponseDto))]
+[JsonSerializable(typeof(PromotionCodeIssuedCommandResponseDto))]
+[JsonSerializable(typeof(PromotionManagementCommandResponseDto))]
+[JsonSerializable(typeof(PromotionRedemptionResponseDto))]
+[JsonSerializable(typeof(WebhookProviderPortalAccessCommandResponse))]
 [JsonSerializable(typeof(ActorDto))]
 [JsonSerializable(typeof(AiAssistantBootstrapDto))]
 [JsonSerializable(typeof(AiAssistantModelDto))]
@@ -109,7 +124,6 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(WebhookEventDataFieldDto))]
 [JsonSerializable(typeof(WebhookEventTypeDto))]
 [JsonSerializable(typeof(WebhookProviderPortalAccessDto))]
-[JsonSerializable(typeof(WebhookProviderPortalAccessCommandResponse))]
 [JsonSerializable(typeof(WebhookMessageDto))]
 [JsonSerializable(typeof(WebhookMessagePayloadDto))]
 [JsonSerializable(typeof(WebhookDeliveryAttemptDto))]

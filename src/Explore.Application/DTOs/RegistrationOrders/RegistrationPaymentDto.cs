@@ -4,6 +4,7 @@
 namespace Explore.Application.DTOs.RegistrationOrders;
 
 using Explore.Application.Responses;
+using System.Text.Json.Serialization;
 
 public sealed record RegistrationPaymentDto
 {
@@ -44,10 +45,28 @@ public sealed record RegistrationMaterialChangeChoiceRequestDto
     public string ChoiceCode { get; init; } = string.Empty;
 }
 
-public sealed class RegistrationMaterialChangeChoiceCommandResultDto : BaseCommandResponse<Guid>
+public sealed record RegistrationMaterialChangeChoiceCommandResultDto : BaseCommandResponse<Guid>
 {
-    public RegistrationMaterialChangeChoiceDto? Choice { get; init; }
-    public RegistrationRefundDto? Refund { get; init; }
+    private RegistrationMaterialChangeChoiceCommandResultDto(BaseCommandResponse<Guid> state, RegistrationMaterialChangeChoiceDto? choice, RegistrationRefundDto? refund) : base(state, true)
+    {
+        Choice = choice;
+        Refund = refund;
+    }
+
+    [JsonConstructor]
+    internal RegistrationMaterialChangeChoiceCommandResultDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, RegistrationMaterialChangeChoiceDto? choice, RegistrationRefundDto? refund)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), choice, refund)
+    {
+    }
+
+    public RegistrationMaterialChangeChoiceDto? Choice { get; }
+    public RegistrationRefundDto? Refund { get; }
+
+    public static RegistrationMaterialChangeChoiceCommandResultDto Success(Guid id, string? message, RegistrationMaterialChangeChoiceDto? choice, RegistrationRefundDto? refund) =>
+        new(BaseCommandResponse.Success(id, message), choice, refund);
+
+    public static RegistrationMaterialChangeChoiceCommandResultDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null, null);
 }
 
 public sealed record RegistrationRefundDto
@@ -83,14 +102,48 @@ public sealed record RegistrationRefundRequestDto
     public string ReasonCode { get; init; } = string.Empty;
 }
 
-public sealed class RegistrationRefundCommandResultDto : BaseCommandResponse<Guid>
+public sealed record RegistrationRefundCommandResultDto : BaseCommandResponse<Guid>
 {
-    public RegistrationRefundDto? Refund { get; init; }
+    private RegistrationRefundCommandResultDto(BaseCommandResponse<Guid> state, RegistrationRefundDto? refund) : base(state, true)
+    {
+        Refund = refund;
+    }
+
+    [JsonConstructor]
+    internal RegistrationRefundCommandResultDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, RegistrationRefundDto? refund)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), refund)
+    {
+    }
+
+    public RegistrationRefundDto? Refund { get; }
+
+    public static RegistrationRefundCommandResultDto Success(Guid id, string? message, RegistrationRefundDto? refund) =>
+        new(BaseCommandResponse.Success(id, message), refund);
+
+    public static RegistrationRefundCommandResultDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
 }
 
-public sealed class RegistrationPaymentCommandResultDto : BaseCommandResponse<Guid>
+public sealed record RegistrationPaymentCommandResultDto : BaseCommandResponse<Guid>
 {
-    public RegistrationPaymentDto? Payment { get; init; }
+    private RegistrationPaymentCommandResultDto(BaseCommandResponse<Guid> state, RegistrationPaymentDto? payment) : base(state, true)
+    {
+        Payment = payment;
+    }
+
+    [JsonConstructor]
+    internal RegistrationPaymentCommandResultDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, RegistrationPaymentDto? payment)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), payment)
+    {
+    }
+
+    public RegistrationPaymentDto? Payment { get; }
+
+    public static RegistrationPaymentCommandResultDto Success(Guid id, string? message, RegistrationPaymentDto? payment) =>
+        new(BaseCommandResponse.Success(id, message), payment);
+
+    public static RegistrationPaymentCommandResultDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
 }
 
 public sealed record RegistrationPaymentCheckoutTargetDto

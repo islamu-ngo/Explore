@@ -2,7 +2,7 @@
 // ABOUTME: Validates transient detections through the shared admission codec and never logs raw browser material.
 
 using System.Text.Json;
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 using Explore.Blazor.Client.Contracts.Interop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;

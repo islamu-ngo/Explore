@@ -1,6 +1,7 @@
 // ABOUTME: Aggregate-view DTO describing one session-scoped custom-property facet aggregated at event scope.
 // ABOUTME: Mirrors the event facet shape while remaining explicit for session-derived extension data.
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using Explore.Domain.Enums;
 
@@ -13,7 +14,13 @@ public sealed record EventSessionCustomPropertyFacetDto
     public string DisplayName { get; init; } = string.Empty;
     public PropertyType PropertyType { get; init; }
     public ExposureLevel ExposureLevel { get; init; }
-    public IReadOnlyList<JsonElement> Values { get; init; } = [];
+    private IReadOnlyList<JsonElement>? _values = ImmutableArray<JsonElement>.Empty;
+
+    public IReadOnlyList<JsonElement> Values
+    {
+        get => _values!;
+        init => _values = value?.ToImmutableArray();
+    }
     public bool IsSearchable { get; init; }
     public bool IsFilterable { get; init; }
     public bool IsExportable { get; init; }

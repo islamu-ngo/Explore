@@ -43,7 +43,7 @@ public sealed class ImagePreviewService(ILogger<ImagePreviewService> logger) : I
 
         try
         {
-            return $"data:{fileData.ContentType};base64,{Convert.ToBase64String(fileData.Content)}";
+            return $"data:{fileData.ContentType};base64,{Convert.ToBase64String(fileData.Content.Span)}";
         }
         catch (Exception ex)
         {

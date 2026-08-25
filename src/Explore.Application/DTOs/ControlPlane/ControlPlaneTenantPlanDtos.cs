@@ -3,6 +3,7 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
+using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 using Explore.Application.Hateoas;
 
@@ -31,6 +32,8 @@ public sealed record ControlPlaneTenantPlanDetailDto
 
 public sealed record ControlPlaneTenantPlanVersionDto
 {
+    private IReadOnlyDictionary<string, HalLink>? _links;
+
     public Guid Id { get; init; }
     public int VersionNumber { get; init; }
     public int StatusId { get; init; }
@@ -44,7 +47,13 @@ public sealed record ControlPlaneTenantPlanVersionDto
 
     [JsonPropertyName("_links")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public Dictionary<string, HalLink>? Links { get; set; }
+    public IReadOnlyDictionary<string, HalLink>? Links
+    {
+        get => _links;
+        set => _links = value is null
+            ? null
+            : new ReadOnlyDictionary<string, HalLink>(new Dictionary<string, HalLink>(value, StringComparer.Ordinal));
+    }
 }
 
 public sealed record ControlPlaneTenantPlanSettingDto

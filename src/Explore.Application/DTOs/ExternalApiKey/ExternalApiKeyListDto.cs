@@ -5,6 +5,8 @@ namespace Explore.Application.DTOs.ExternalApiKey;
 
 public sealed record ExternalApiKeyListDto
 {
+    private IReadOnlyList<string> _scopes = Array.AsReadOnly(Array.Empty<string>());
+
     public Guid Id { get; init; }
     public required string Name { get; init; }
     public string? Description { get; init; }
@@ -14,7 +16,11 @@ public sealed record ExternalApiKeyListDto
     public required string ExternalApiKeyOwnerTypeCode { get; init; }
     public required string ExternalApiKeyOwnerTypeName { get; init; }
     public Guid OwnerId { get; init; }
-    public List<string> Scopes { get; init; } = [];
+    public IReadOnlyList<string> Scopes
+    {
+        get => _scopes;
+        init => _scopes = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public int ExternalApiKeyStatusId { get; init; }
     public required string ExternalApiKeyStatusCode { get; init; }
     public required string ExternalApiKeyStatusName { get; init; }

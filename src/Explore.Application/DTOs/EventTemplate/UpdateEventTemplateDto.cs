@@ -25,5 +25,11 @@ public sealed record UpdateEventTemplateMetadataDto
 
 public sealed record UpdateEventTemplateDefinitionsDto
 {
-    public List<CreateEventTemplateDefinitionDto>? Items { get; init; }
+    private IReadOnlyList<CreateEventTemplateDefinitionDto>? _items;
+
+    public IReadOnlyList<CreateEventTemplateDefinitionDto>? Items
+    {
+        get => _items;
+        init => _items = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

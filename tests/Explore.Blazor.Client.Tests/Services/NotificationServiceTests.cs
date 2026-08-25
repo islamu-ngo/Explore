@@ -504,11 +504,11 @@ public class NotificationServiceTests
     }
 
     [Test]
-    public async Task MarkAsReadAsync_ReturnsFalse_WhenNullSuccess()
+    public async Task MarkAsReadAsync_ReturnsFalse_WhenSuccessDefaultsFalse()
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var response = new BaseCommandResponseOfGuid { Success = null };
+        var response = new BaseCommandResponseOfGuid();
         _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 

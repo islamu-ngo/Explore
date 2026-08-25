@@ -1,6 +1,7 @@
 // ABOUTME: Shallow list-item DTO for the EventWithSessions aggregate read view.
 // ABOUTME: Exposes key summary scalars plus a capped set of searchable public facets for discovery surfaces.
 
+using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using Explore.Application.Hateoas;
 
@@ -33,8 +34,19 @@ public sealed record EventListAggregateViewDto
     public bool HasInPersonSessions { get; init; }
     public bool HasVirtualSessions { get; init; }
     public string? AggregatedSessionIslamicThemes { get; init; }
-    public IReadOnlyList<EventCustomPropertyFacetDto> SearchableFacets { get; init; } = [];
+    private IReadOnlyList<EventCustomPropertyFacetDto>? _searchableFacets = ImmutableArray<EventCustomPropertyFacetDto>.Empty;
+    private IReadOnlyDictionary<string, HalLink>? _links = ImmutableDictionary<string, HalLink>.Empty;
+
+    public IReadOnlyList<EventCustomPropertyFacetDto> SearchableFacets
+    {
+        get => _searchableFacets!;
+        init => _searchableFacets = value?.ToImmutableArray();
+    }
 
     [JsonPropertyName("_links")]
-    public Dictionary<string, HalLink> Links { get; init; } = new();
+    public IReadOnlyDictionary<string, HalLink> Links
+    {
+        get => _links!;
+        init => _links = value?.ToImmutableDictionary();
+    }
 }

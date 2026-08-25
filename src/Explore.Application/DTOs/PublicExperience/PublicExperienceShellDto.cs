@@ -9,6 +9,10 @@ namespace Explore.Application.DTOs.PublicExperience;
 
 public sealed record PublicExperienceShellDto
 {
+    private IReadOnlyList<PublicExperienceEventSectionDto> _eventSections =
+        Array.AsReadOnly(Array.Empty<PublicExperienceEventSectionDto>());
+    private IReadOnlyList<PublicExperienceCtaDto> _ctas = Array.AsReadOnly(Array.Empty<PublicExperienceCtaDto>());
+
     public int SchemaVersion { get; init; } = 1;
     public string Revision { get; init; } = string.Empty;
     public PublicExperienceMode Mode { get; init; } = PublicExperienceMode.DiscoveryCentric;
@@ -17,18 +21,34 @@ public sealed record PublicExperienceShellDto
     public PublicExperienceNavigationDto Navigation { get; init; } = new();
     public PublicExperienceEventCatalogDto EventCatalog { get; init; } = new();
     public PublicExperiencePrimaryOrganizationDto PrimaryOrganization { get; init; } = new();
-    public List<PublicExperienceEventSectionDto> EventSections { get; init; } = new();
-    public List<PublicExperienceCtaDto> Ctas { get; init; } = new();
+    public IReadOnlyList<PublicExperienceEventSectionDto> EventSections
+    {
+        get => _eventSections;
+        init => _eventSections = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
+
+    public IReadOnlyList<PublicExperienceCtaDto> Ctas
+    {
+        get => _ctas;
+        init => _ctas = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public FooterConfigDto Footer { get; init; } = new();
 }
 
 public sealed record PublicExperienceHomeDto
 {
+    private IReadOnlyList<PublicExperienceHomeBlockDto> _blocks =
+        Array.AsReadOnly(Array.Empty<PublicExperienceHomeBlockDto>());
+
     public string PreferredHomePage { get; init; } = "EventList";
     public string BrandDisplayName { get; init; } = string.Empty;
     public string BrandLogoUrl { get; init; } = string.Empty;
     public string BrandFaviconUrl { get; init; } = string.Empty;
-    public List<PublicExperienceHomeBlockDto> Blocks { get; init; } = new();
+    public IReadOnlyList<PublicExperienceHomeBlockDto> Blocks
+    {
+        get => _blocks;
+        init => _blocks = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record PublicExperienceHomeBlockDto
@@ -46,7 +66,14 @@ public sealed record PublicExperienceHomeBlockDto
 
 public sealed record PublicExperienceNavigationDto
 {
-    public List<PublicExperienceNavigationLinkDto> Links { get; init; } = new();
+    private IReadOnlyList<PublicExperienceNavigationLinkDto> _links =
+        Array.AsReadOnly(Array.Empty<PublicExperienceNavigationLinkDto>());
+
+    public IReadOnlyList<PublicExperienceNavigationLinkDto> Links
+    {
+        get => _links;
+        init => _links = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record PublicExperienceNavigationLinkDto

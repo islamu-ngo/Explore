@@ -35,6 +35,9 @@ public sealed record PatchTenantStorageS3Dto
 
 public sealed record TenantStorageSettingsDto
 {
+    private IReadOnlyList<StorageRouteSettingsDto> _routes =
+        Array.AsReadOnly(Array.Empty<StorageRouteSettingsDto>());
+
     public Guid TenantId { get; init; }
     public string Provider { get; set; } = StorageProviders.Local;
     public long MaxUploadBytes { get; set; } = 10 * 1024 * 1024;
@@ -42,7 +45,11 @@ public sealed record TenantStorageSettingsDto
     public bool IsReadOnly { get; init; }
     public bool TenantOverridesAllowed { get; init; }
     public bool TenantStorageLocked { get; init; } = true;
-    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
+    public IReadOnlyList<StorageRouteSettingsDto> Routes
+    {
+        get => _routes;
+        init => _routes = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 
     public string S3Endpoint { get; set; } = string.Empty;
     public string S3PublicEndpoint { get; set; } = string.Empty;
@@ -61,6 +68,9 @@ public sealed record TenantStorageSettingsDto
 
 public sealed record TenantStorageEffectivePolicyDto
 {
+    private IReadOnlyList<StorageRouteSettingsDto> _routes =
+        Array.AsReadOnly(Array.Empty<StorageRouteSettingsDto>());
+
     public string Provider { get; init; } = StorageProviders.Local;
     public long MaxUploadBytes { get; init; } = 10 * 1024 * 1024;
     public long TenantQuotaBytes { get; init; } = 1024L * 1024 * 1024;
@@ -70,7 +80,11 @@ public sealed record TenantStorageEffectivePolicyDto
     public string ProviderSource { get; init; } = "SystemDefault";
     public string MaxUploadSource { get; init; } = "SystemDefault";
     public string QuotaSource { get; init; } = "SystemDefault";
-    public List<StorageRouteSettingsDto> Routes { get; init; } = [];
+    public IReadOnlyList<StorageRouteSettingsDto> Routes
+    {
+        get => _routes;
+        init => _routes = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record TenantStorageUsageDto

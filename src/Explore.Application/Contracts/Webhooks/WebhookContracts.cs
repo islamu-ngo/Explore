@@ -22,21 +22,42 @@ public sealed record WebhookEventBuildContext(
     IReadOnlyDictionary<string, object?> Data,
     Guid? ConsumerId = null);
 
-public sealed record WebhookPayloadBuildResult(
-    bool Succeeded,
-    WebhookEventEnvelope? Envelope,
-    byte[]? PayloadBytes,
-    string? PayloadHash,
-    DateTimeOffset? PayloadRetentionUntil,
-    string? FailureCategory,
-    string? SafeDetail)
+public sealed record WebhookPayloadBuildResult
 {
+    public WebhookPayloadBuildResult(
+        bool Succeeded,
+        WebhookEventEnvelope? Envelope,
+        ReadOnlyMemory<byte>? PayloadBytes,
+        string? PayloadHash,
+        DateTimeOffset? PayloadRetentionUntil,
+        string? FailureCategory,
+        string? SafeDetail)
+    {
+        this.Succeeded = Succeeded;
+        this.Envelope = Envelope;
+        this.PayloadBytes = PayloadBytes.HasValue
+            ? new ReadOnlyMemory<byte>(PayloadBytes.Value.ToArray())
+            : (ReadOnlyMemory<byte>?)null;
+        this.PayloadHash = PayloadHash;
+        this.PayloadRetentionUntil = PayloadRetentionUntil;
+        this.FailureCategory = FailureCategory;
+        this.SafeDetail = SafeDetail;
+    }
+
+    public bool Succeeded { get; }
+    public WebhookEventEnvelope? Envelope { get; }
+    public ReadOnlyMemory<byte>? PayloadBytes { get; }
+    public string? PayloadHash { get; }
+    public DateTimeOffset? PayloadRetentionUntil { get; }
+    public string? FailureCategory { get; }
+    public string? SafeDetail { get; }
+
     public static WebhookPayloadBuildResult Success(
         WebhookEventEnvelope envelope,
         byte[] payloadBytes,
         string payloadHash,
         DateTimeOffset payloadRetentionUntil) =>
-        new(true, envelope, payloadBytes.ToArray(), payloadHash, payloadRetentionUntil, null, null);
+        new(true, envelope, payloadBytes, payloadHash, payloadRetentionUntil, null, null);
 
     public static WebhookPayloadBuildResult Failure(string failureCategory, string? safeDetail = null) =>
         new(false, null, null, null, null, failureCategory, safeDetail);

@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.Onboarding;
 
 public sealed record PublicExperienceSettingsDto
 {
+    private IReadOnlyList<string> _enabledModules = Array.AsReadOnly(Array.Empty<string>());
+
     public Guid TenantId { get; init; }
     public Explore.Application.Models.PublicExperienceMode Mode { get; init; } = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric;
     public string DeploymentMode { get; init; } = "SingleTenant";
@@ -32,7 +34,11 @@ public sealed record PublicExperienceSettingsDto
     public string AnnouncementBarLinkUrl { get; init; } = string.Empty;
     public int AnnouncementBarRevision { get; init; }
     public string CommunityGuidelinesContent { get; init; } = string.Empty;
-    public List<string> EnabledModules { get; init; } = new();
+    public IReadOnlyList<string> EnabledModules
+    {
+        get => _enabledModules;
+        init => _enabledModules = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public string AnalyticsProvider { get; init; } = "none";
     public bool AnalyticsEnabled { get; init; }
     public string AnalyticsConsentMode { get; init; } = "pseudonymous";

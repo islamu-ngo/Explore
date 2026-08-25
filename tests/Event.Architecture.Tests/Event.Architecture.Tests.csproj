@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.API\Explore.API.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
   </ItemGroup>
 
 </Project>

@@ -458,8 +458,7 @@ public sealed class NotificationFanoutRecipientTemplateFactory
 
     private static void ValidateChangeSet(NotificationFanoutChangeSetV1 changeSet, bool isCancellation)
     {
-        if (changeSet.Fields is null
-            || changeSet.Fields.Length == 0
+        if (changeSet.Fields.Length == 0
             || changeSet.Fields.Any(field => !Enum.IsDefined(field))
             || changeSet.Fields.Distinct().Count() != changeSet.Fields.Length
             || isCancellation != (changeSet.Fields.Length == 1
@@ -489,8 +488,8 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         NotificationFanoutSnapshotV1 before,
         NotificationFanoutSnapshotV1 after)
     {
-        NotificationFanoutSessionDisplayTimeV1[]? beforeSessions = before.SessionDisplayTimes;
-        NotificationFanoutSessionDisplayTimeV1[]? afterSessions = after.SessionDisplayTimes;
+        IReadOnlyList<NotificationFanoutSessionDisplayTimeV1>? beforeSessions = before.SessionDisplayTimes;
+        IReadOnlyList<NotificationFanoutSessionDisplayTimeV1>? afterSessions = after.SessionDisplayTimes;
         if (beforeSessions is null && afterSessions is null)
         {
             return;
@@ -516,13 +515,13 @@ public sealed class NotificationFanoutRecipientTemplateFactory
 
         ValidateSessionDisplayTimeSet(beforeSessions);
         ValidateSessionDisplayTimeSet(afterSessions);
-        if (beforeSessions.Length != afterSessions.Length)
+        if (beforeSessions.Count != afterSessions.Count)
         {
             throw new JsonException("Fanout session display-time snapshots have different session sets.");
         }
 
         bool anyDisplayTimeChanged = false;
-        for (var index = 0; index < beforeSessions.Length; index++)
+        for (var index = 0; index < beforeSessions.Count; index++)
         {
             NotificationFanoutSessionDisplayTimeV1 prior = beforeSessions[index];
             NotificationFanoutSessionDisplayTimeV1 current = afterSessions[index];
@@ -544,21 +543,21 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         }
     }
 
-    private static void ValidateSessionDisplayTimeSet(NotificationFanoutSessionDisplayTimeV1[]? sessions)
+    private static void ValidateSessionDisplayTimeSet(IReadOnlyList<NotificationFanoutSessionDisplayTimeV1>? sessions)
     {
         if (sessions is null)
         {
             return;
         }
 
-        if (sessions.Length == 0
+        if (sessions.Count == 0
             || sessions.Any(session => session is null
                 || session.SessionId == Guid.Empty
                 || string.IsNullOrWhiteSpace(session.SessionTitle)
                 || session.StartsAt == default
                 || session.EndsAt is { } endsAt
                     && (endsAt == default || endsAt <= session.StartsAt))
-            || sessions.Select(session => session.SessionId).Distinct().Count() != sessions.Length)
+            || sessions.Select(session => session.SessionId).Distinct().Count() != sessions.Count)
         {
             throw new JsonException("Fanout session display-time snapshot is empty, duplicated, or incomplete.");
         }
@@ -568,13 +567,13 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         List<string> changes,
         NotificationFanoutRecipientTemplate template)
     {
-        if (template.Before.SessionDisplayTimes is not { Length: > 0 } beforeSessions
-            || template.After.SessionDisplayTimes is not { Length: > 0 } afterSessions)
+        if (template.Before.SessionDisplayTimes is not { Count: > 0 } beforeSessions
+            || template.After.SessionDisplayTimes is not { Count: > 0 } afterSessions)
         {
             return;
         }
 
-        for (var index = 0; index < beforeSessions.Length; index++)
+        for (var index = 0; index < beforeSessions.Count; index++)
         {
             NotificationFanoutSessionDisplayTimeV1 prior = beforeSessions[index];
             NotificationFanoutSessionDisplayTimeV1 current = afterSessions[index];

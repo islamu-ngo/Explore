@@ -3,6 +3,8 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
+using System.Collections.Immutable;
+
 public sealed record EventSessionCreateContextDto
 {
     public Guid EventId { get; init; }
@@ -12,10 +14,15 @@ public sealed record EventSessionCreateContextDto
     public DateOnly? EventStartDate { get; init; }
     public DateOnly? EventEndDate { get; init; }
     public EventSessionCreateDefaultsDto Defaults { get; init; } = new();
-    public List<EventSessionCreateLocationOptionDto> Locations { get; init; } = [];
-    public List<EventSessionCreateRoomOptionDto> Rooms { get; init; } = [];
-    public List<EventSessionCreateGroupOptionDto> SessionGroups { get; init; } = [];
-    public List<string> Notices { get; init; } = [];
+    private IReadOnlyList<EventSessionCreateLocationOptionDto>? _locations = ImmutableArray<EventSessionCreateLocationOptionDto>.Empty;
+    private IReadOnlyList<EventSessionCreateRoomOptionDto>? _rooms = ImmutableArray<EventSessionCreateRoomOptionDto>.Empty;
+    private IReadOnlyList<EventSessionCreateGroupOptionDto>? _sessionGroups = ImmutableArray<EventSessionCreateGroupOptionDto>.Empty;
+    private IReadOnlyList<string>? _notices = ImmutableArray<string>.Empty;
+
+    public IReadOnlyList<EventSessionCreateLocationOptionDto> Locations { get => _locations!; init => _locations = value?.ToImmutableArray(); }
+    public IReadOnlyList<EventSessionCreateRoomOptionDto> Rooms { get => _rooms!; init => _rooms = value?.ToImmutableArray(); }
+    public IReadOnlyList<EventSessionCreateGroupOptionDto> SessionGroups { get => _sessionGroups!; init => _sessionGroups = value?.ToImmutableArray(); }
+    public IReadOnlyList<string> Notices { get => _notices!; init => _notices = value?.ToImmutableArray(); }
 }
 
 public sealed record EventSessionCreateDefaultsDto

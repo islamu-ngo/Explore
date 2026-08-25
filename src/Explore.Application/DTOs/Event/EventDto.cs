@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Category;
@@ -66,7 +67,13 @@ public sealed record EventDto
     [JsonIgnore]
     public bool IsManagementView { get; set; }
     public string? SourcePublisherName { get; init; }
-    public List<EventPublicActionDto> PublicActions { get; init; } = new();
+    private IReadOnlyList<EventPublicActionDto>? _publicActions = ImmutableArray<EventPublicActionDto>.Empty;
+
+    public IReadOnlyList<EventPublicActionDto> PublicActions
+    {
+        get => _publicActions!;
+        init => _publicActions = value?.ToImmutableArray();
+    }
 
     public EventTicketPriceSummaryDto? TicketPriceSummary { get; init; }
 
@@ -114,7 +121,13 @@ public sealed record EventDto
 
     // ===== Aspects =====
     // List of active aspect types for this event (e.g., ["Islamic", "Tech"])
-    public List<string> AvailableAspects { get; init; } = new();
+    private IReadOnlyList<string>? _availableAspects = ImmutableArray<string>.Empty;
+
+    public IReadOnlyList<string> AvailableAspects
+    {
+        get => _availableAspects!;
+        init => _availableAspects = value?.ToImmutableArray();
+    }
 
     // Islamic Aspect (only populated if event has Islamic characteristics)
     public EventAspects.EventIslamicAspectDto? IslamicAspect { get; init; }
@@ -129,8 +142,11 @@ public sealed record EventDto
     public string? BackgroundImageUri { get; init; }
 
     // Tags & Categories (populated via junction tables)
-    public List<TagListDto> Tags { get; set; } = new();
-    public List<CategoryListDto> Categories { get; set; } = new();
+    private IReadOnlyList<TagListDto>? _tags = ImmutableArray<TagListDto>.Empty;
+    private IReadOnlyList<CategoryListDto>? _categories = ImmutableArray<CategoryListDto>.Empty;
+
+    public IReadOnlyList<TagListDto> Tags { get => _tags!; init => _tags = value?.ToImmutableArray(); }
+    public IReadOnlyList<CategoryListDto> Categories { get => _categories!; init => _categories = value?.ToImmutableArray(); }
 
     // Tenant
     public Guid TenantId { get; init; }

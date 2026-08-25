@@ -32,7 +32,7 @@ public sealed class RecordContractArchitectureTests
     private static readonly Assembly ApiAssembly = typeof(OrganizationReviewController).Assembly;
     private static readonly Assembly DomainAssembly = typeof(ITenantEntity).Assembly;
 
-    private static readonly string[] RetainedApplicationContractClasses =
+    private static readonly string[] ExpectedBaseCommandResponseDescendants =
     [
         "Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderLifecycleResponseDto",
         "Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderStartDto",
@@ -44,6 +44,8 @@ public sealed class RecordContractArchitectureTests
         "Explore.Application.Features.Promotions.PromotionCodeIssuedCommandResponseDto",
         "Explore.Application.Features.Promotions.PromotionManagementCommandResponseDto",
         "Explore.Application.Features.Promotions.Requests.Commands.PromotionRedemptionResponseDto",
+        "Explore.Application.Responses.CreateExternalApiKeyCommandResponse",
+        "Explore.Application.Responses.WebhookProviderPortalAccessCommandResponse",
     ];
 
     private static readonly HashSet<string> ClassCategories = new(StringComparer.Ordinal)
@@ -106,9 +108,7 @@ public sealed class RecordContractArchitectureTests
         await Assert.That(Classify(editState)).IsEqualTo(ContractClassification.MutableEditState);
         await Assert.That(IsApplicationContractOwned(fixture)).IsTrue();
         await Assert.That(Classify(fixture)).IsEqualTo(ContractClassification.TestFixture);
-        await Assert.That(classContracts.Order(StringComparer.Ordinal).SequenceEqual(
-            RetainedApplicationContractClasses,
-            StringComparer.Ordinal)).IsTrue();
+        await Assert.That(classContracts).IsEmpty();
     }
 
     [Test]
@@ -203,38 +203,54 @@ public sealed class RecordContractArchitectureTests
     }
 
     [Test]
-    public async Task RetainedApplicationContractExclusionsAreExactBaseCommandResponseHierarchies()
+    public async Task BaseCommandResponseHierarchyIsExactlyTwelveImmutableDirectRecordDescendants()
     {
-        var retainedNames = RetainedApplicationContractClasses;
-        var retainedTypes = retainedNames
-            .Select(name => ApplicationAssembly.GetType(name, throwOnError: true, ignoreCase: false)!)
+        var descendants = DiscoverConcreteBaseCommandResponseDescendants();
+        var descendantNames = descendants
+            .Select(GetTypeName)
             .ToArray();
-        var baseCommandResponseContracts = DiscoverCompiledApplicationContractClasses()
-            .Where(DerivesFromBaseCommandResponse)
+        var nonRecords = descendants
+            .Where(type => !IsRecord(type))
+            .Select(GetTypeName)
+            .ToArray();
+        var indirectDescendants = descendants
+            .Where(type => type.BaseType is not { IsGenericType: true } baseType
+                || baseType.GetGenericTypeDefinition() != typeof(BaseCommandResponse<>))
+            .Select(GetTypeName)
+            .ToArray();
+        var publicMutationDebt = descendants
+            .SelectMany(type => type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            .Where(property => property.SetMethod?.IsPublic == true)
+            .Select(property => $"{GetTypeName(property.DeclaringType!)}.{property.Name}")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var publicConstructionDebt = descendants
+            .Where(type => type.GetConstructors(BindingFlags.Public | BindingFlags.Instance).Length != 0)
             .Select(GetTypeName)
             .ToArray();
 
-        await Assert.That(retainedNames).Count().IsEqualTo(10);
-        await Assert.That(retainedNames.Distinct(StringComparer.Ordinal).Count()).IsEqualTo(retainedNames.Length);
-        await Assert.That(retainedNames.SequenceEqual(retainedNames.Order(StringComparer.Ordinal), StringComparer.Ordinal)).IsTrue();
-        await Assert.That(retainedTypes.All(type => type is { IsClass: true, IsAbstract: false })).IsTrue();
-        await Assert.That(retainedTypes.All(type => !IsRecord(type))).IsTrue();
-        await Assert.That(baseCommandResponseContracts).IsEquivalentTo(retainedNames);
+        await Assert.That(IsRecord(typeof(BaseCommandResponse<>))).IsTrue();
+        await Assert.That(descendantNames).Count().IsEqualTo(12);
+        await Assert.That(descendantNames).IsEquivalentTo(ExpectedBaseCommandResponseDescendants);
+        await Assert.That(nonRecords).IsEmpty();
+        await Assert.That(indirectDescendants).IsEmpty();
+        await Assert.That(publicMutationDebt).IsEmpty();
+        await Assert.That(publicConstructionDebt).IsEmpty();
     }
 
     [Test]
-    public async Task EveryNonRetainedCompiledApplicationContractClassIsARecord()
+    public async Task EveryCompiledApplicationContractClassIsARecord()
     {
-        var retained = RetainedApplicationContractClasses.ToHashSet(StringComparer.Ordinal);
         var classContracts = DiscoverCompiledApplicationContractClasses()
-            .Where(type => !retained.Contains(GetTypeName(type)) && !IsRecord(type))
+            .Where(type => !IsRecord(type))
             .Select(GetTypeName)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
         ReportApplicationContractRecordDebt(classContracts);
         await Assert.That(classContracts).IsEmpty()
-            .Because("every compiled Application-owned DTO contract outside the ten mutable BaseCommandResponse hierarchies must use record semantics independently of the shrinking class baseline");
+            .Because("every compiled Application-owned DTO contract must use record semantics independently of the shrinking class baseline");
     }
 
     [Test]
@@ -261,15 +277,14 @@ public sealed class RecordContractArchitectureTests
     }
 
     [Test]
-    public async Task FinalBaselinesContainOnlyRetainedResponseHierarchiesAndLegitimateTargets()
+    public async Task FinalClassBaselineIsEmptyAndBodyBaselineContainsOnlyLegitimateTargets()
     {
         var classBaseline = ReadBaseline(ClassBaselinePath, BaselineKind.Class);
         var bodyBaseline = ReadBaseline(BodyBaselinePath, BaselineKind.Body);
 
         await Assert.That(classBaseline.Failures).IsEmpty();
         await Assert.That(bodyBaseline.Failures).IsEmpty();
-        await Assert.That(classBaseline.Entries).Count().IsEqualTo(10);
-        await Assert.That(classBaseline.Entries.All(entry => entry.Category == "retained-class")).IsTrue();
+        await Assert.That(classBaseline.Entries).IsEmpty();
         await Assert.That(bodyBaseline.Entries).Count().IsEqualTo(7);
         await Assert.That(bodyBaseline.Entries.All(entry => entry.Category == "legitimate-target")).IsTrue();
         await Assert.That(DiscoverConcreteMediatRClassRequests()).IsEmpty();
@@ -356,6 +371,13 @@ public sealed class RecordContractArchitectureTests
         .Where(type => type is { IsClass: true, IsAbstract: false })
         .Where(IsApplicationContractOwned)
         .Where(type => !IsGenerated(type) && !IsValidator(type) && !IsMutableEditState(type) && !IsTestFixture(type))
+        .OrderBy(GetTypeName, StringComparer.Ordinal)
+        .ToArray();
+
+    private static Type[] DiscoverConcreteBaseCommandResponseDescendants() => ApplicationAssembly
+        .GetTypes()
+        .Where(type => type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false })
+        .Where(DerivesFromBaseCommandResponse)
         .OrderBy(GetTypeName, StringComparer.Ordinal)
         .ToArray();
 

@@ -31,6 +31,10 @@ public class CreateLocationDtoValidator : AbstractValidator<CreateLocationDto>
             .NotNull()
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
 
+        RuleFor(p => p)
+            .Must(p => p.Latitude.HasValue == p.Longitude.HasValue)
+            .WithMessage("Latitude and longitude must both be provided or both omitted.");
+
         RuleFor(p => p.Latitude)
             .InclusiveBetween(-90, 90).When(p => p.Latitude.HasValue)
             .WithMessage("{PropertyName} must be between -90 and 90.");

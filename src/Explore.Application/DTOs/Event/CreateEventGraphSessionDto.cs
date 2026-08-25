@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Explore.Application.DTOs.EventSession;
 using Explore.Domain.Enums;
 
@@ -29,6 +30,9 @@ public sealed record CreateEventGraphSessionDto
     public int? RegistrationModeId { get; init; }
     public Guid? SessionTemplateId { get; init; }
     public EventSessionIslamicAspectDto? IslamicAspect { get; init; }
-    public List<int> LanguageIds { get; init; } = new();
-    public List<Guid> SpeakerActorIds { get; init; } = new();
+    private IReadOnlyList<int>? _languageIds = ImmutableArray<int>.Empty;
+    private IReadOnlyList<Guid>? _speakerActorIds = ImmutableArray<Guid>.Empty;
+
+    public IReadOnlyList<int> LanguageIds { get => _languageIds!; init => _languageIds = value?.ToImmutableArray(); }
+    public IReadOnlyList<Guid> SpeakerActorIds { get => _speakerActorIds!; init => _speakerActorIds = value?.ToImmutableArray(); }
 }

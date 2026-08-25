@@ -38,7 +38,25 @@ public class ImageStorageSupportServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.FileName).IsEqualTo("test.jpg");
         await Assert.That(result.ContentType).IsEqualTo("image/jpeg");
-        await Assert.That(result.Content.SequenceEqual(bytes)).IsTrue();
+        await Assert.That(result.Content.Span.SequenceEqual(bytes)).IsTrue();
+    }
+
+    [Test]
+    public async Task FileUploadData_CopiesContentAndPreservesBase64Json()
+    {
+        byte[] source = [1, 2, 3];
+        var fileData = new FileUploadData(source, "test.jpg", "image/jpeg");
+
+        source[0] = 9;
+
+        await Assert.That(fileData.Content.Span.SequenceEqual(new byte[] { 1, 2, 3 })).IsTrue();
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        var json = System.Text.Json.JsonSerializer.Serialize(fileData, options);
+        await Assert.That(json).Contains("\"content\":\"AQID\"");
+
+        var roundTripped = System.Text.Json.JsonSerializer.Deserialize<FileUploadData>(json, options);
+        await Assert.That(roundTripped).IsNotNull();
+        await Assert.That(roundTripped!.Content.Span.SequenceEqual(new byte[] { 1, 2, 3 })).IsTrue();
     }
 
     [Test]
@@ -262,12 +280,7 @@ public class ImageStorageSupportServiceTests
     public async Task ImagePreviewService_GenerateLocalPreviewFromBytes_ReturnsDataUri()
     {
         var service = new ImagePreviewService(NullLogger<ImagePreviewService>.Instance);
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 1, 2, 3 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
+        var fileData = new FileUploadData(new byte[] { 1, 2, 3 }, "test.jpg", "image/jpeg");
 
         var result = service.GenerateLocalPreviewFromBytes(fileData);
 

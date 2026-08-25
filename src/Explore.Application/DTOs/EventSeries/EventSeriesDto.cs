@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Explore.Application.DTOs.Event;
 
 namespace Explore.Application.DTOs.EventSeries;
@@ -23,5 +24,11 @@ public sealed record EventSeriesDto
     public DateTimeOffset? StartDateUtc { get; init; }
     public DateTimeOffset? EndDateUtc { get; init; }
 
-    public List<EventListDto> Events { get; init; } = new();
+    private IReadOnlyList<EventListDto>? _events = ImmutableArray<EventListDto>.Empty;
+
+    public IReadOnlyList<EventListDto> Events
+    {
+        get => _events!;
+        init => _events = value?.ToImmutableArray();
+    }
 }

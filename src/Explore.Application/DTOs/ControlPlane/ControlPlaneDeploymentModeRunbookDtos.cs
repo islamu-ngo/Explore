@@ -5,15 +5,28 @@ namespace Explore.Application.DTOs.ControlPlane;
 
 public sealed record ControlPlaneDeploymentModeRunbookDto
 {
+    private IReadOnlyList<ControlPlaneDeploymentModeTargetOptionDto> _targetOptions =
+        Array.AsReadOnly(Array.Empty<ControlPlaneDeploymentModeTargetOptionDto>());
+    private IReadOnlyList<ControlPlaneDeploymentModeRunbookStepDto> _steps =
+        Array.AsReadOnly(Array.Empty<ControlPlaneDeploymentModeRunbookStepDto>());
+
     public string CurrentMode { get; init; } = string.Empty;
 
     public int ActiveTenantCount { get; init; }
 
     public DateTimeOffset GeneratedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 
-    public List<ControlPlaneDeploymentModeTargetOptionDto> TargetOptions { get; init; } = [];
+    public IReadOnlyList<ControlPlaneDeploymentModeTargetOptionDto> TargetOptions
+    {
+        get => _targetOptions;
+        init => _targetOptions = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 
-    public List<ControlPlaneDeploymentModeRunbookStepDto> Steps { get; init; } = [];
+    public IReadOnlyList<ControlPlaneDeploymentModeRunbookStepDto> Steps
+    {
+        get => _steps;
+        init => _steps = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }
 
 public sealed record ControlPlaneDeploymentModeTargetOptionDto

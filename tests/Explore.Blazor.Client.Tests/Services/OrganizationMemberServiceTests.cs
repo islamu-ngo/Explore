@@ -51,6 +51,20 @@ public class OrganizationMemberServiceTests
     }
 
     [Test]
+    public async Task OrganizationMembersResult_CopiesThePublishedMemberSnapshot()
+    {
+        var member = new OrganizationMemberDto { Id = Guid.NewGuid() };
+        var source = new List<OrganizationMemberDto> { member };
+        var result = new OrganizationMembersResult(source, CanCreate: true);
+
+        source.Clear();
+
+        await Assert.That(result.Members).Contains(member);
+        await Assert.That(result.Members.Count).IsEqualTo(1);
+        Assert.Throws<NotSupportedException>(() => ((ICollection<OrganizationMemberDto>)result.Members).Clear());
+    }
+
+    [Test]
     public async Task GetMembersWithAffordancesAsync_ReturnsEmptyResult_WhenApiThrows()
     {
         var organizationId = Guid.NewGuid();

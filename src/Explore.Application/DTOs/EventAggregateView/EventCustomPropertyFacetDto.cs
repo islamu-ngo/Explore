@@ -1,6 +1,7 @@
 // ABOUTME: Aggregate-view DTO describing one event-scoped custom-property facet and its values.
 // ABOUTME: Uses JsonElement values so typed projection data survives without reflection-based unions.
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using Explore.Domain.Enums;
 
@@ -13,7 +14,13 @@ public sealed record EventCustomPropertyFacetDto
     public string DisplayName { get; init; } = string.Empty;
     public PropertyType PropertyType { get; init; }
     public ExposureLevel ExposureLevel { get; init; }
-    public IReadOnlyList<JsonElement> Values { get; init; } = [];
+    private IReadOnlyList<JsonElement>? _values = ImmutableArray<JsonElement>.Empty;
+
+    public IReadOnlyList<JsonElement> Values
+    {
+        get => _values!;
+        init => _values = value?.ToImmutableArray();
+    }
     public bool IsSearchable { get; init; }
     public bool IsFilterable { get; init; }
     public bool IsExportable { get; init; }

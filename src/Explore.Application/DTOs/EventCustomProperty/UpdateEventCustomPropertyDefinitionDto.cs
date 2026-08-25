@@ -14,5 +14,11 @@ public sealed record UpdateEventCustomPropertyDefinitionDto
 
 public sealed record UpdateEventCustomPropertyDefinitionOptionsDto
 {
-    public List<CreateEventCustomPropertyOptionDto>? Items { get; init; }
+    private IReadOnlyList<CreateEventCustomPropertyOptionDto>? _items;
+
+    public IReadOnlyList<CreateEventCustomPropertyOptionDto>? Items
+    {
+        get => _items;
+        init => _items = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

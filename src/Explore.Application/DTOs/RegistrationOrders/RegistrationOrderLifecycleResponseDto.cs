@@ -1,11 +1,41 @@
 // ABOUTME: Standard command response enriched with the safe post-transition order state.
 // ABOUTME: Enables duplicate lifecycle submissions to return the original durable result.
 
+using System.Text.Json.Serialization;
 using Explore.Application.Responses;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class RegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
+public sealed record RegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
 {
-    public RegistrationOrderDto? Order { get; init; }
+    private RegistrationOrderLifecycleResponseDto(
+        BaseCommandResponse<Guid> state,
+        RegistrationOrderDto? order) : base(state, true)
+    {
+        Order = order;
+    }
+
+    [JsonConstructor]
+    internal RegistrationOrderLifecycleResponseDto(
+        Guid id,
+        bool isSuccess,
+        string? message,
+        IReadOnlyList<string>? errors,
+        string? failureCode,
+        QuotaExceededDetails? quotaExceeded,
+        RegistrationOrderDto? order)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), order)
+    {
+    }
+
+    public RegistrationOrderDto? Order { get; }
+
+    public static RegistrationOrderLifecycleResponseDto Success(
+        Guid id,
+        string? message,
+        RegistrationOrderDto? order) =>
+        new(BaseCommandResponse.Success(id, message), order);
+
+    public static RegistrationOrderLifecycleResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
 }

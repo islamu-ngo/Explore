@@ -16,6 +16,12 @@ public sealed record ExternalApiKeyMetadataUpdateDto
 
 public sealed record ExternalApiKeyAccessPolicyUpdateDto
 {
-    public List<string> Scopes { get; init; } = [];
+    private IReadOnlyList<string> _scopes = Array.AsReadOnly(Array.Empty<string>());
+
+    public IReadOnlyList<string> Scopes
+    {
+        get => _scopes;
+        init => _scopes = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
     public DateTime? ExpiresAt { get; init; }
 }

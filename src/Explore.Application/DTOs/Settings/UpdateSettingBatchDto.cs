@@ -1,11 +1,21 @@
 // ABOUTME: Request body DTO for batch setting updates via API.
 // ABOUTME: Contains key-value pairs and optional batch update mode selection.
 
+using System.Collections.ObjectModel;
+
 namespace Explore.Application.DTOs.Settings;
 
 public sealed record UpdateSettingBatchDto
 {
-    public required Dictionary<string, string> Values { get; init; }
+    private IReadOnlyDictionary<string, string> _values = null!;
+
+    public required IReadOnlyDictionary<string, string> Values
+    {
+        get => _values;
+        init => _values = value is null
+            ? null!
+            : new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(value, StringComparer.Ordinal));
+    }
 
     /// <summary>
     /// Optional batch update mode. If not specified, the controller selects an appropriate default:

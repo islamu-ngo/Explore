@@ -1,29 +1,37 @@
 // ABOUTME: Server-backed event program summary read model for progressive-disclosure shells.
 // ABOUTME: Groups EventSession program items by section, local day, and readiness guidance.
 
+using System.Collections.Immutable;
 using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventProgram;
 
 public sealed record EventProgramSummaryDto
 {
+    private IReadOnlyList<EventProgramSectionDto>? _sections = ImmutableArray<EventProgramSectionDto>.Empty;
+    private IReadOnlyList<EventProgramReadinessWarningDto>? _readinessWarnings = ImmutableArray<EventProgramReadinessWarningDto>.Empty;
+
     public Guid EventId { get; init; }
     public string EventTitle { get; init; } = string.Empty;
     public string? TimeZoneId { get; init; }
-    public List<EventProgramSectionDto> Sections { get; set; } = [];
-    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; init; } = [];
+    public IReadOnlyList<EventProgramSectionDto> Sections { get => _sections!; init => _sections = value?.ToImmutableArray(); }
+    public IReadOnlyList<EventProgramReadinessWarningDto> ReadinessWarnings { get => _readinessWarnings!; init => _readinessWarnings = value?.ToImmutableArray(); }
 }
 
 public sealed record EventProgramSectionDto
 {
+    private IReadOnlyList<EventProgramSessionGroupSectionDto>? _sessionGroups = ImmutableArray<EventProgramSessionGroupSectionDto>.Empty;
+
     public string SectionKey { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
     public int SortOrder { get; init; }
-    public List<EventProgramSessionGroupSectionDto> SessionGroups { get; init; } = [];
+    public IReadOnlyList<EventProgramSessionGroupSectionDto> SessionGroups { get => _sessionGroups!; init => _sessionGroups = value?.ToImmutableArray(); }
 }
 
 public sealed record EventProgramSessionGroupSectionDto
 {
+    private IReadOnlyList<EventProgramDayGroupDto>? _days = ImmutableArray<EventProgramDayGroupDto>.Empty;
+
     public Guid? SessionGroupId { get; init; }
     public string Title { get; init; } = string.Empty;
     public int SortOrder { get; init; }
@@ -31,18 +39,22 @@ public sealed record EventProgramSessionGroupSectionDto
     public string? LocationName { get; init; }
     public string? RoomName { get; init; }
     public EventLocationPublicDto? EventLocation { get; init; }
-    public List<EventProgramDayGroupDto> Days { get; init; } = [];
+    public IReadOnlyList<EventProgramDayGroupDto> Days { get => _days!; init => _days = value?.ToImmutableArray(); }
 }
 
 public sealed record EventProgramDayGroupDto
 {
+    private IReadOnlyList<EventProgramItemDto>? _items = ImmutableArray<EventProgramItemDto>.Empty;
+
     public DateOnly? LocalDate { get; init; }
     public string DisplayLabel { get; init; } = string.Empty;
-    public List<EventProgramItemDto> Items { get; init; } = [];
+    public IReadOnlyList<EventProgramItemDto> Items { get => _items!; init => _items = value?.ToImmutableArray(); }
 }
 
 public sealed record EventProgramItemDto
 {
+    private IReadOnlyList<EventProgramReadinessWarningDto>? _readinessWarnings = ImmutableArray<EventProgramReadinessWarningDto>.Empty;
+
     public Guid SessionId { get; init; }
     public string Title { get; init; } = string.Empty;
     public int? EventSessionKindId { get; init; }
@@ -60,7 +72,7 @@ public sealed record EventProgramItemDto
     public EventLocationPublicDto? EventLocation { get; init; }
     public int? Capacity { get; init; }
     public string? RegistrationModeName { get; init; }
-    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; init; } = [];
+    public IReadOnlyList<EventProgramReadinessWarningDto> ReadinessWarnings { get => _readinessWarnings!; init => _readinessWarnings = value?.ToImmutableArray(); }
 }
 
 public sealed record EventProgramReadinessWarningDto

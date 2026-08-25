@@ -5,10 +5,25 @@ namespace Explore.Application.DTOs.Onboarding;
 
 public sealed record OnboardingPreflightDto
 {
+    private List<OnboardingPreflightCheckDto> _blockingChecks = [];
+    private List<OnboardingPreflightCheckDto> _warningChecks = [];
+
     public string DeploymentMode { get; set; } = "SingleTenant";
     public bool IsReadyToLaunch => BlockingChecks.All(check => check.Status == OnboardingPreflightCheckStatus.Pass);
-    public List<OnboardingPreflightCheckDto> BlockingChecks { get; init; } = [];
-    public List<OnboardingPreflightCheckDto> WarningChecks { get; init; } = [];
+    public IReadOnlyList<OnboardingPreflightCheckDto> BlockingChecks
+    {
+        get => _blockingChecks.AsReadOnly();
+        init => _blockingChecks = value is null ? null! : value.ToList();
+    }
+
+    public IReadOnlyList<OnboardingPreflightCheckDto> WarningChecks
+    {
+        get => _warningChecks.AsReadOnly();
+        init => _warningChecks = value is null ? null! : value.ToList();
+    }
+
+    internal void AddBlockingCheck(OnboardingPreflightCheckDto check) => _blockingChecks.Add(check);
+    internal void AddWarningCheck(OnboardingPreflightCheckDto check) => _warningChecks.Add(check);
 }
 
 public sealed record OnboardingPreflightCheckDto

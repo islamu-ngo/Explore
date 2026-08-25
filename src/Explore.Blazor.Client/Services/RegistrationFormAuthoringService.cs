@@ -30,29 +30,25 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
     public async Task<Guid> CreateFormAsync(Guid eventId, Guid workflowId, Guid stamp, RegistrationFormInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-workflows/{workflowId}/forms");
-        return (await apiClient.CreateRegistrationFormAsync(eventId, workflowId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The form response did not contain an identifier.");
+        return (await apiClient.CreateRegistrationFormAsync(eventId, workflowId, ETag(stamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInputDto input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/registration-form-templates/{templateId}/instantiate");
-        return (await apiClient.InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The template response did not contain an identifier.");
+        return (await apiClient.InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task<Guid> CreateVersionAsync(Guid eventId, Guid formId, Guid stamp, RegistrationFormVersionInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-forms/{formId}/versions");
-        return (await apiClient.CreateRegistrationFormVersionAsync(eventId, formId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The version response did not contain an identifier.");
+        return (await apiClient.CreateRegistrationFormVersionAsync(eventId, formId, ETag(stamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task<Guid> AddSectionAsync(Guid eventId, Guid formId, Guid versionId, Guid stamp, RegistrationFormSectionInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/sections");
-        return (await apiClient.AddRegistrationFormSectionAsync(eventId, formId, versionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The section response did not contain an identifier.");
+        return (await apiClient.AddRegistrationFormSectionAsync(eventId, formId, versionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task UpdateSectionAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid stamp, RegistrationFormSectionInput input, HalLink link, CancellationToken cancellationToken = default)
@@ -70,8 +66,7 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
     public async Task<Guid> AddFieldAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid stamp, RegistrationFormFieldCreateInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/sections/{sectionId}/fields");
-        return (await apiClient.AddRegistrationFormFieldAsync(eventId, formId, versionId, sectionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The field response did not contain an identifier.");
+        return (await apiClient.AddRegistrationFormFieldAsync(eventId, formId, versionId, sectionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task UpdateFieldAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormFieldDto field, RegistrationFormFieldUpdateInput input, HalLink link, CancellationToken cancellationToken = default)
@@ -89,8 +84,7 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
     public async Task<Guid> AddOptionAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormFieldDto field, RegistrationFormOptionInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/sections/{sectionId}/fields/{field.Id}/options");
-        return (await apiClient.AddRegistrationFormFieldOptionAsync(eventId, formId, versionId, sectionId, field.Id, ETag(field.ConcurrencyStamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The option response did not contain an identifier.");
+        return (await apiClient.AddRegistrationFormFieldOptionAsync(eventId, formId, versionId, sectionId, field.Id, ETag(field.ConcurrencyStamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task UpdateOptionAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, RegistrationFormFieldOptionDto option, RegistrationFormOptionInput input, HalLink link, CancellationToken cancellationToken = default)
@@ -108,8 +102,7 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
     public async Task<Guid> AddRuleAsync(Guid eventId, Guid formId, Guid versionId, Guid stamp, RegistrationFormRuleInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/rules");
-        return (await apiClient.AddRegistrationFormRuleAsync(eventId, formId, versionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
-            ?? throw new InvalidOperationException("The rule response did not contain an identifier.");
+        return (await apiClient.AddRegistrationFormRuleAsync(eventId, formId, versionId, ETag(stamp), input, cancellationToken: cancellationToken)).Id;
     }
 
     public async Task UpdateRuleAsync(Guid eventId, Guid formId, Guid versionId, RegistrationFormRuleDto rule, RegistrationFormRuleInput input, HalLink link, CancellationToken cancellationToken = default)

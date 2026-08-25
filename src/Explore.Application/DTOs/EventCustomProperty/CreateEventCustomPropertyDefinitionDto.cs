@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.EventCustomProperty;
 
 public sealed record CreateEventCustomPropertyDefinitionDto
 {
+    private IReadOnlyList<CreateEventCustomPropertyOptionDto>? _options = Array.AsReadOnly(Array.Empty<CreateEventCustomPropertyOptionDto>());
+
     public Guid EventId { get; init; }
     public string Namespace { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
@@ -41,5 +43,9 @@ public sealed record CreateEventCustomPropertyDefinitionDto
     public DateTimeOffset? MaxDateTime { get; set; }
     public string? AllowedUrlSchemes { get; set; }
 
-    public List<CreateEventCustomPropertyOptionDto> Options { get; set; } = [];
+    public IReadOnlyList<CreateEventCustomPropertyOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

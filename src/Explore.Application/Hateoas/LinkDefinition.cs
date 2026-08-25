@@ -1,5 +1,6 @@
 namespace Explore.Application.Hateoas;
 
+using System.Collections.Immutable;
 using System.Collections.Generic;
 using Explore.Application.Authorization;
 
@@ -28,7 +29,7 @@ public sealed record LinkDefinition(
     string? Method = null,
     string? Title = null,
     bool RequiresAuth = false,
-    string[]? RequiredRoles = null,
+    ImmutableList<string>? RequiredRoles = null,
     Func<bool>? Condition = null,
     string? PermissionResourceKind = null,
     string? PermissionAction = null,
@@ -53,19 +54,19 @@ public sealed record LinkDefinition(
     /// Creates an edit/update link definition (requires authentication).
     /// </summary>
     public static LinkDefinition Edit(string routeName, object? routeValues = null, string[]? roles = null) =>
-        new(LinkRelations.Edit, routeName, routeValues, "PUT", RequiresAuth: true, RequiredRoles: roles);
+        new(LinkRelations.Edit, routeName, routeValues, "PUT", RequiresAuth: true, RequiredRoles: roles?.ToImmutableList());
 
     /// <summary>
     /// Creates a delete link definition (requires authentication).
     /// </summary>
     public static LinkDefinition Delete(string routeName, object? routeValues = null, string[]? roles = null) =>
-        new(LinkRelations.Delete, routeName, routeValues, "DELETE", RequiresAuth: true, RequiredRoles: roles);
+        new(LinkRelations.Delete, routeName, routeValues, "DELETE", RequiresAuth: true, RequiredRoles: roles?.ToImmutableList());
 
     /// <summary>
     /// Creates a create link definition (requires authentication).
     /// </summary>
     public static LinkDefinition Create(string routeName, object? routeValues = null, string[]? roles = null) =>
-        new(LinkRelations.Create, routeName, routeValues, "POST", RequiresAuth: true, RequiredRoles: roles);
+        new(LinkRelations.Create, routeName, routeValues, "POST", RequiresAuth: true, RequiredRoles: roles?.ToImmutableList());
 
     /// <summary>
     /// Creates a related resource link definition.
@@ -102,7 +103,7 @@ public sealed record LinkDefinition(
     /// Specifies roles required for this link.
     /// </summary>
     public LinkDefinition WithRoles(params string[] roles) =>
-        this with { RequiresAuth = true, RequiredRoles = roles };
+        this with { RequiresAuth = true, RequiredRoles = roles.ToImmutableList() };
 
     /// <summary>
     /// Specifies resource/action metadata for link-level authorization checks.

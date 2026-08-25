@@ -22,13 +22,13 @@ internal static class EventSessionSaveCoordinator
         if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
         {
             var result = await eventService.CreateSessionAsync(session);
-            if (result.Success != true || !result.Id.HasValue || result.Id.Value == Guid.Empty)
+            if (result.Success != true || result.Id == Guid.Empty)
             {
                 return EventSessionSaveResult.Failed(
                     result.Message ?? "Program item could not be saved. Check the details and try again.");
             }
 
-            sessionId = result.Id.Value;
+            sessionId = result.Id;
         }
 
         return await AssignSelectedProgramSectionAsync(

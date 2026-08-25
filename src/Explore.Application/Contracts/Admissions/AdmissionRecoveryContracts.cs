@@ -1,6 +1,8 @@
 // ABOUTME: Defines provider-neutral admission recovery capability, persistence, and delivery contracts.
 // ABOUTME: Keeps public receipts uniform and redacts every capability or digest-bearing diagnostic shape.
 
+using Explore.Domain.Interfaces;
+
 namespace Explore.Application.Contracts.Admissions;
 
 public enum AdmissionRecoveryPurpose
@@ -264,6 +266,10 @@ public sealed record AdmissionRecoveryAuditFact(
     int CapabilityVersion,
     DateTimeOffset OccurredAtUtc);
 
+public sealed record AdmissionRecoveryRateLimitDecision(
+    bool Allowed,
+    int RetryAfterSeconds = 0);
+
 public sealed record AdmissionRecoveryDeliveryEnvelope(
     string RecipientAddress,
     Guid RecoveryRequestId,
@@ -278,7 +284,7 @@ public sealed record AdmissionRecoveryProtectedDeliveryMaterial(string Ciphertex
         $"AdmissionRecoveryProtectedDeliveryMaterial(protectionVersion={ProtectionVersion}, <redacted>)";
 }
 
-public sealed class AdmissionRecoveryDeliveryIntent
+public sealed class AdmissionRecoveryDeliveryIntent : ITenantEntity, IConcurrencyAware
 {
     private AdmissionRecoveryDeliveryIntent()
     {
@@ -327,7 +333,7 @@ public sealed class AdmissionRecoveryDeliveryIntent
     public DateTime? RoutedAt { get; private set; }
     public DateTime? HandoffCompletedAt { get; private set; }
     public string? HandoffReceiptId { get; private set; }
-    public Guid ConcurrencyStamp { get; private set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     public void MarkRouted(DateTime routedAtUtc)
     {
@@ -449,6 +455,14 @@ public interface IAdmissionRecoveryAuditService
         CancellationToken cancellationToken);
 }
 
+public interface IAdmissionRecoveryRateLimiter
+{
+    AdmissionRecoveryRateLimitDecision TryAcquire(
+        Guid tenantId,
+        string normalizedIdentity,
+        DateTimeOffset occurredAtUtc);
+}
+
 public interface IAdmissionTicketRecoveryRepository
 {
     Task<Explore.Domain.AdmissionTicket?> GetForUpdateAsync(
@@ -459,36 +473,57 @@ public interface IAdmissionTicketRecoveryRepository
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
 
-public interface IAdmissionRecoveryRepository
+public interface IAdmissionRecoveryIdentityResolver
 {
-    Task<AdmissionRecoveryIdentityResult> FindIdentityAsync(
+    Task<AdmissionRecoveryIdentityResult> FindAsync(
         AdmissionRecoveryRequest request,
         CancellationToken cancellationToken);
+}
 
-    Task<AdmissionRecoveryMutationResult> StoreAsync(
-        AdmissionRecoveryCapabilityRecord request,
+public interface IAdmissionRecoveryRepository
+{
+    Task<Explore.Domain.AdmissionRecoveryCapability> AddAsync(
+        Explore.Domain.AdmissionRecoveryCapability capability,
         CancellationToken cancellationToken);
 
-    Task<AdmissionRecoveryCapabilityState> GetByDigestAsync(
-        AdmissionRecoveryCapabilityLookup request,
+    Task<Explore.Domain.AdmissionRecoveryCapability?> FindByProofDigestAsync(
+        Guid tenantId,
+        Guid recoveryRequestId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
+        int keyVersion,
+        string lookupDigest,
         CancellationToken cancellationToken);
 
-    Task<AdmissionRecoveryCapabilityState> GetByLocatorAsync(
+    Task<Explore.Domain.AdmissionRecoveryCapability?> FindByLocatorAsync(
         Guid tenantId,
         IReadOnlyList<AdmissionRecoveryLocatorDigest> locators,
         CancellationToken cancellationToken);
 
-    Task<AdmissionRecoveryCapabilityState> GetCurrentByRequestIdAsync(
+    Task<Explore.Domain.AdmissionRecoveryCapability?> FindLatestByRequestIdAsync(
         Guid tenantId,
         Guid recoveryRequestId,
         AdmissionRecoveryPurpose purpose,
         CancellationToken cancellationToken);
 
-    Task<AdmissionRecoveryMutationResult> ConsumeAsync(
-        AdmissionRecoveryCapabilityMutation request,
+    Task<Explore.Domain.AdmissionRecoveryCapability?> FindLatestByTicketIdAsync(
+        Guid tenantId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
         CancellationToken cancellationToken);
 
-    Task<AdmissionRecoveryMutationResult> RotateAsync(
-        AdmissionRecoveryRotationRequest request,
+    Task<bool> TryConsumeAsync(
+        Guid tenantId,
+        Guid capabilityId,
+        int keyVersion,
+        string lookupDigest,
+        Guid expectedConcurrencyStamp,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryRotateAsync(
+        Explore.Domain.AdmissionRecoveryCapability current,
+        Explore.Domain.AdmissionRecoveryCapability replacement,
+        DateTime rotatedAtUtc,
         CancellationToken cancellationToken);
 }

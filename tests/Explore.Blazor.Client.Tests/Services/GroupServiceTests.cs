@@ -127,6 +127,20 @@ public sealed class GroupServiceTests
     }
 
     [Test]
+    public async Task GroupMembersResult_CopiesThePublishedMemberSnapshot()
+    {
+        var member = new GroupMemberDto { Id = Guid.NewGuid() };
+        var source = new List<GroupMemberDto> { member };
+        var result = new GroupMembersResult(source, CanCreate: true);
+
+        source.Clear();
+
+        await Assert.That(result.Members).Contains(member);
+        await Assert.That(result.Members.Count).IsEqualTo(1);
+        Assert.Throws<NotSupportedException>(() => ((ICollection<GroupMemberDto>)result.Members).Clear());
+    }
+
+    [Test]
     public async Task GetGroupMembersWithAffordancesAsync_ReturnsEmptyResult_WhenApiFails()
     {
         var groupId = Guid.NewGuid();

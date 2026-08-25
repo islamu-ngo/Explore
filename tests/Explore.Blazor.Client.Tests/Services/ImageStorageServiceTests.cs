@@ -41,7 +41,7 @@ public class ImageStorageServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.FileName).IsEqualTo("test.jpg");
         await Assert.That(result.ContentType).IsEqualTo("image/jpeg");
-        await Assert.That(result.Content.SequenceEqual(bytes)).IsTrue();
+        await Assert.That(result.Content.Span.SequenceEqual(bytes)).IsTrue();
     }
 
     [Test]
@@ -77,12 +77,7 @@ public class ImageStorageServiceTests
     [Test]
     public async Task UploadAndCreateRecordFromBytesAsync_ReturnsFailure_WhenBffSessionMissing()
     {
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 10, 20, 30 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
+        var fileData = new FileUploadData(new byte[] { 10, 20, 30 }, "test.jpg", "image/jpeg");
 
         // Act
         var result = await _service.UploadAndCreateRecordFromBytesAsync(fileData);
@@ -97,12 +92,7 @@ public class ImageStorageServiceTests
     public async Task UploadAndCreateRecordFromBytesAsync_WithUploadSession_UsesBffProxyOutsideBrowser()
     {
         var uploadClient = Substitute.For<IImageUploadClient>();
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 10, 20, 30 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
+        var fileData = new FileUploadData(new byte[] { 10, 20, 30 }, "test.jpg", "image/jpeg");
         var storageId = Guid.NewGuid();
         uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
             .Returns(new ImageUploadTarget
@@ -134,12 +124,7 @@ public class ImageStorageServiceTests
     public async Task UploadAndCreateRecordFromBytesAsync_WhenUploadClientReturnsRawError_MapsGenericSafeError()
     {
         var uploadClient = Substitute.For<IImageUploadClient>();
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 10, 20, 30 },
-            FileName = @"..\..\secret<script>.png",
-            ContentType = "image/png"
-        };
+        var fileData = new FileUploadData(new byte[] { 10, 20, 30 }, @"..\..\secret<script>.png", "image/png");
         uploadClient.GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size)
             .Returns(new ImageUploadTarget
             {
@@ -209,12 +194,7 @@ public class ImageStorageServiceTests
     public async Task GenerateLocalPreviewFromBytes_ReturnsDataUri_WhenValidData()
     {
         // Arrange
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 1, 2, 3 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
+        var fileData = new FileUploadData(new byte[] { 1, 2, 3 }, "test.jpg", "image/jpeg");
 
         // Act
         var result = _service.GenerateLocalPreviewFromBytes(fileData);

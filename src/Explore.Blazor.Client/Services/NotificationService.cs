@@ -108,7 +108,7 @@ public class NotificationService : INotificationService
         try
         {
             var response = await _apiClient.MarkNotificationAsReadAsync(notificationId);
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -127,7 +127,7 @@ public class NotificationService : INotificationService
         try
         {
             var response = await _apiClient.MarkAllNotificationsAsReadAsync();
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -165,7 +165,7 @@ public class NotificationService : INotificationService
         try
         {
             var response = await _apiClient.ArchiveNotificationAsync(notificationId, archive);
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -184,7 +184,7 @@ public class NotificationService : INotificationService
         try
         {
             var response = await _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil);
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -228,7 +228,7 @@ public class NotificationService : INotificationService
                 Cells = cells.ToList()
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -251,7 +251,7 @@ public class NotificationService : INotificationService
                 IsMuted = isMuted
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -341,7 +341,7 @@ public class NotificationService : INotificationService
                 ExpirationTime = expirationTime
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -360,7 +360,7 @@ public class NotificationService : INotificationService
         try
         {
             var response = await _apiClient.UnsubscribeCurrentUserWebPushSubscriptionAsync(subscriptionId);
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -404,7 +404,7 @@ public class NotificationService : INotificationService
                 Cells = cells.ToList()
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -427,7 +427,7 @@ public class NotificationService : INotificationService
                 IsMuted = isMuted
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -471,7 +471,7 @@ public class NotificationService : INotificationService
                 Cells = cells.ToList()
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {
@@ -494,7 +494,7 @@ public class NotificationService : INotificationService
                 IsMuted = isMuted
             });
 
-            return response.Success ?? false;
+            return response.Success;
         }
         catch (ApiException ex)
         {

@@ -5,6 +5,8 @@ namespace Explore.Application.DTOs.CustomPropertyProjection;
 
 public sealed record CustomPropertyFilterCriterion
 {
+    private IReadOnlyList<Guid>? _optionIds;
+
     public required string Namespace { get; init; }
 
     public required string Key { get; init; }
@@ -15,7 +17,11 @@ public sealed record CustomPropertyFilterCriterion
 
     public Guid? OptionId { get; init; }
 
-    public List<Guid>? OptionIds { get; init; }
+    public IReadOnlyList<Guid>? OptionIds
+    {
+        get => _optionIds;
+        init => _optionIds = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 
     public decimal? MinNumber { get; init; }
 

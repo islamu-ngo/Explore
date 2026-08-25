@@ -1,6 +1,7 @@
 // ABOUTME: Strict version-one JSON contracts for immutable event and session fanout occurrences.
 // ABOUTME: Rejects unknown members so queued template payloads fail closed on contract drift.
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -20,25 +21,26 @@ public enum NotificationFanoutChangeField
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record NotificationFanoutChangeSetV1
 {
-    private NotificationFanoutChangeField[] _fields = [];
-
     [JsonConstructor]
-    public NotificationFanoutChangeSetV1(NotificationFanoutChangeField[] Fields) =>
-        _fields = Fields.ToArray();
-
-    public NotificationFanoutChangeField[] Fields
+    public NotificationFanoutChangeSetV1()
     {
-        get => _fields.ToArray();
-        init => _fields = value.ToArray();
     }
+
+    public NotificationFanoutChangeSetV1(NotificationFanoutChangeField[] Fields) =>
+        this.Fields = Fields.ToImmutableArray();
+
+    public ImmutableArray<NotificationFanoutChangeField> Fields { get; init; } =
+        ImmutableArray<NotificationFanoutChangeField>.Empty;
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record NotificationFanoutSnapshotV1
 {
-    private NotificationFanoutSessionDisplayTimeV1[]? _sessionDisplayTimes;
-
     [JsonConstructor]
+    public NotificationFanoutSnapshotV1()
+    {
+    }
+
     public NotificationFanoutSnapshotV1(
         string EventTitle,
         string? SessionTitle,
@@ -54,7 +56,7 @@ public sealed record NotificationFanoutSnapshotV1
         this.EndsAt = EndsAt;
         this.Timezone = Timezone;
         this.Location = Location;
-        _sessionDisplayTimes = SessionDisplayTimes?.ToArray();
+        this.SessionDisplayTimes = SessionDisplayTimes?.ToImmutableList();
     }
 
     public string EventTitle { get; init; }
@@ -64,11 +66,7 @@ public sealed record NotificationFanoutSnapshotV1
     public string? Timezone { get; init; }
     public NotificationFanoutLocationSnapshotV1? Location { get; init; }
 
-    public NotificationFanoutSessionDisplayTimeV1[]? SessionDisplayTimes
-    {
-        get => _sessionDisplayTimes?.ToArray();
-        init => _sessionDisplayTimes = value?.ToArray();
-    }
+    public ImmutableList<NotificationFanoutSessionDisplayTimeV1>? SessionDisplayTimes { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -108,12 +106,10 @@ public static class NotificationFanoutTemplateJson
         JsonSerializer.Serialize(Canonicalize(value), NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1);
 
     public static NotificationFanoutChangeSetV1 Canonicalize(NotificationFanoutChangeSetV1 value) =>
-        value.Fields is null
-            ? value
-            : value with
-            {
-                Fields = value.Fields.OrderBy(field => (int)field).ToArray()
-            };
+        value with
+        {
+            Fields = value.Fields.OrderBy(field => (int)field).ToImmutableArray()
+        };
 
     public static NotificationFanoutSnapshotV1 Canonicalize(NotificationFanoutSnapshotV1 value) =>
         value.SessionDisplayTimes is null
@@ -122,6 +118,6 @@ public static class NotificationFanoutTemplateJson
             {
                 SessionDisplayTimes = value.SessionDisplayTimes
                     .OrderBy(session => session?.SessionId ?? Guid.Empty)
-                    .ToArray()
+                    .ToImmutableList()
             };
 }

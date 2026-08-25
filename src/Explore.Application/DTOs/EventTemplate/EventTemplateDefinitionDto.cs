@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.EventTemplate;
 
 public sealed record EventTemplateDefinitionDto
 {
+    private IReadOnlyList<EventTemplateOptionDto>? _options = Array.AsReadOnly(Array.Empty<EventTemplateOptionDto>());
+
     public Guid Id { get; init; }
     public Guid EventTemplateId { get; init; }
     public string Namespace { get; init; } = string.Empty;
@@ -42,5 +44,9 @@ public sealed record EventTemplateDefinitionDto
     public DateTimeOffset? MaxDateTime { get; init; }
     public string? AllowedUrlSchemes { get; init; }
 
-    public List<EventTemplateOptionDto> Options { get; init; } = [];
+    public IReadOnlyList<EventTemplateOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

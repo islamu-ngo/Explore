@@ -42,6 +42,10 @@ public class UpdateLocationDtoValidator : AbstractValidator<UpdateLocationDto>
             .When(dto => dto.Timezone is not null);
 
         RuleFor(dto => dto)
+            .Must(HasAtomicCoordinateUpdate)
+            .WithMessage("Latitude and longitude must be updated together as a complete pair or both cleared.");
+
+        RuleFor(dto => dto)
             .Must(HasAnyGroup)
             .WithMessage("At least one location update group must be provided.");
     }
@@ -55,8 +59,21 @@ public class UpdateLocationDtoValidator : AbstractValidator<UpdateLocationDto>
         dto.Latitude is not null ||
         dto.Longitude is not null ||
         dto.Timezone is not null;
-}
 
+    private static bool HasAtomicCoordinateUpdate(UpdateLocationDto dto)
+    {
+        if (dto.Latitude is null && dto.Longitude is null)
+        {
+            return true;
+        }
+
+        return dto.Latitude is not null
+            && dto.Longitude is not null
+            && dto.Latitude.Value.HasValue
+            && dto.Longitude.Value.HasValue
+            && dto.Latitude.Value.Value.HasValue == dto.Longitude.Value.Value.HasValue;
+    }
+}
 public class UpdateLocationFullNameDtoValidator : AbstractValidator<UpdateLocationFullNameDto>
 {
     public UpdateLocationFullNameDtoValidator()

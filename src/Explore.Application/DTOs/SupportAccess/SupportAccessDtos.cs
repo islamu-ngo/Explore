@@ -3,6 +3,7 @@
 
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.SupportAccess;
 
@@ -49,9 +50,26 @@ public sealed record SupportAccessSessionDto
     public bool IsActive { get; init; }
 }
 
-public sealed class SupportAccessSessionCommandResponseDto : BaseCommandResponse<Guid>
+public sealed record SupportAccessSessionCommandResponseDto : BaseCommandResponse<Guid>
 {
-    public SupportAccessSessionDto? Session { get; set; }
+    private SupportAccessSessionCommandResponseDto(BaseCommandResponse<Guid> state, SupportAccessSessionDto? session) : base(state, true)
+    {
+        Session = session;
+    }
+
+    [JsonConstructor]
+    internal SupportAccessSessionCommandResponseDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, SupportAccessSessionDto? session)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), session)
+    {
+    }
+
+    public SupportAccessSessionDto? Session { get; }
+
+    public static SupportAccessSessionCommandResponseDto Success(Guid id, string? message, SupportAccessSessionDto? session) =>
+        new(BaseCommandResponse.Success(id, message), session);
+
+    public static SupportAccessSessionCommandResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
 }
 
 public sealed record CurrentSupportAccessSessionDto

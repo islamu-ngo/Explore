@@ -1170,10 +1170,10 @@ public partial class CreateEvent : IDisposable
                 createDto.GroupId);
             var response = await EventService.CreateEventAsync(createDto);
 
-            if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
+            if (response?.Success == true && response.Id != Guid.Empty)
             {
                 _submitState.Complete();
-                createdEventId = response.Id.Value;
+                createdEventId = response.Id;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
 
                 if (intent == CreateEventSubmitIntent.SaveDraft)

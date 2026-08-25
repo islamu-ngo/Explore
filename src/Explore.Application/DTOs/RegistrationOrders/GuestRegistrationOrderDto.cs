@@ -65,21 +65,44 @@ public sealed record GuestRegistrationOrderDto
     }
 }
 
-public sealed class GuestRegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
+public sealed record GuestRegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
 {
-    public GuestRegistrationOrderDto? Order { get; init; }
+    private GuestRegistrationOrderLifecycleResponseDto(
+        BaseCommandResponse<Guid> state,
+        GuestRegistrationOrderDto? order) : base(state, true)
+    {
+        Order = order;
+    }
 
-    public static GuestRegistrationOrderLifecycleResponseDto From(RegistrationOrderLifecycleResponseDto response)
+    [JsonConstructor]
+    internal GuestRegistrationOrderLifecycleResponseDto(
+        Guid id,
+        bool isSuccess,
+        string? message,
+        IReadOnlyList<string>? errors,
+        string? failureCode,
+        QuotaExceededDetails? quotaExceeded,
+        GuestRegistrationOrderDto? order)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), order)
+    {
+    }
+
+    public GuestRegistrationOrderDto? Order { get; }
+
+    public static GuestRegistrationOrderLifecycleResponseDto Success(
+        Guid id,
+        string? message,
+        GuestRegistrationOrderDto? order) =>
+        new(BaseCommandResponse.Success(id, message), order);
+
+    public static GuestRegistrationOrderLifecycleResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
+
+    internal static GuestRegistrationOrderLifecycleResponseDto From(RegistrationOrderLifecycleResponseDto response)
     {
         ArgumentNullException.ThrowIfNull(response);
-        return new GuestRegistrationOrderLifecycleResponseDto
-        {
-            Id = response.Id,
-            Success = response.Success,
-            Message = response.Message,
-            FailureCode = response.FailureCode,
-            Errors = response.Errors,
-            Order = response.Order is null ? null : GuestRegistrationOrderDto.From(response.Order)
-        };
+        return new GuestRegistrationOrderLifecycleResponseDto(
+            response,
+            response.Order is null ? null : GuestRegistrationOrderDto.From(response.Order));
     }
 }

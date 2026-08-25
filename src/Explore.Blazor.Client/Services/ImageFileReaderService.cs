@@ -59,12 +59,7 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
                 "Successfully read selected image into memory. SizeBucket={SizeBucket}",
                 ImageUploadClientPolicy.GetSizeBucket(bytes.Length));
 
-            return new FileUploadData
-            {
-                Content = bytes,
-                FileName = safeFileName,
-                ContentType = contentType
-            };
+            return new FileUploadData(bytes, safeFileName, contentType);
         }
         catch (Exception ex)
         {

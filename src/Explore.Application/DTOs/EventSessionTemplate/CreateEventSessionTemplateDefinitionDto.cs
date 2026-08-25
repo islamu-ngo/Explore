@@ -7,6 +7,8 @@ namespace Explore.Application.DTOs.EventSessionTemplate;
 
 public record CreateEventSessionTemplateDefinitionDto
 {
+    private IReadOnlyList<CreateEventSessionTemplateOptionDto>? _options = Array.AsReadOnly(Array.Empty<CreateEventSessionTemplateOptionDto>());
+
     public string Namespace { get; init; } = string.Empty;
     public string Key { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
@@ -40,5 +42,9 @@ public record CreateEventSessionTemplateDefinitionDto
     public DateTimeOffset? MaxDateTime { get; init; }
     public string? AllowedUrlSchemes { get; init; }
 
-    public List<CreateEventSessionTemplateOptionDto> Options { get; init; } = [];
+    public IReadOnlyList<CreateEventSessionTemplateOptionDto> Options
+    {
+        get => _options!;
+        init => _options = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

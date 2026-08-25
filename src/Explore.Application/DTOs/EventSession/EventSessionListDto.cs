@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Explore.Application.DTOs.Location;
 using Explore.Domain.Enums;
 namespace Explore.Application.DTOs.EventSession;
@@ -71,7 +72,13 @@ public sealed record EventSessionListDto
     public EventSessionIslamicAspectDto? IslamicAspect { get; init; }
 
     // Program sections/tracks/devrooms this session belongs to
-    public List<EventSessionGroupAssignmentDto> SessionGroups { get; init; } = [];
+    private IReadOnlyList<EventSessionGroupAssignmentDto>? _sessionGroups = ImmutableArray<EventSessionGroupAssignmentDto>.Empty;
+
+    public IReadOnlyList<EventSessionGroupAssignmentDto> SessionGroups
+    {
+        get => _sessionGroups!;
+        init => _sessionGroups = value?.ToImmutableArray();
+    }
 
     public Guid TenantId { get; init; }
 }

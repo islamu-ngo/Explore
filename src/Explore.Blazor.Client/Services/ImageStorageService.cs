@@ -14,9 +14,16 @@ namespace Explore.Blazor.Client.Services;
 /// </summary>
 public sealed record FileUploadData
 {
-    public required byte[] Content { get; init; }
-    public required string FileName { get; init; }
-    public required string ContentType { get; init; }
+    public FileUploadData(ReadOnlyMemory<byte> Content, string FileName, string ContentType)
+    {
+        this.Content = Content.ToArray();
+        this.FileName = FileName;
+        this.ContentType = ContentType;
+    }
+
+    public ReadOnlyMemory<byte> Content { get; }
+    public string FileName { get; }
+    public string ContentType { get; }
     public long Size => Content.Length;
 }
 

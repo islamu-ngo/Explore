@@ -1,6 +1,8 @@
 // ABOUTME: Immutable definition of a single setting: its key, type, default, allowed scopes, and constraints.
 // ABOUTME: Part of the code-defined Setting Definition Registry — setting metadata lives in code, not the database.
 
+using System.Collections.Immutable;
+
 namespace Explore.Domain.Settings;
 
 /// <summary>
@@ -17,14 +19,40 @@ namespace Explore.Domain.Settings;
 /// <param name="IsLockable">Whether a parent scope can lock this setting to prevent child overrides.</param>
 /// <param name="IsSensitive">Whether this setting contains credentials or secrets requiring masked display.</param>
 /// <param name="AllowedValues">Optional constrained set of allowed values (JSON-serialized strings).</param>
-public sealed record SettingDefinition(
-    string Key,
-    SettingValueType ValueType,
-    string DefaultValue,
-    string Category,
-    string Description,
-    SettingScope MinScope = SettingScope.Instance,
-    SettingScope MaxScope = SettingScope.Tenant,
-    bool IsLockable = true,
-    bool IsSensitive = false,
-    string[]? AllowedValues = null);
+public sealed record SettingDefinition
+{
+    public SettingDefinition(
+        string Key,
+        SettingValueType ValueType,
+        string DefaultValue,
+        string Category,
+        string Description,
+        SettingScope MinScope = SettingScope.Instance,
+        SettingScope MaxScope = SettingScope.Tenant,
+        bool IsLockable = true,
+        bool IsSensitive = false,
+        IEnumerable<string>? AllowedValues = null)
+    {
+        this.Key = Key;
+        this.ValueType = ValueType;
+        this.DefaultValue = DefaultValue;
+        this.Category = Category;
+        this.Description = Description;
+        this.MinScope = MinScope;
+        this.MaxScope = MaxScope;
+        this.IsLockable = IsLockable;
+        this.IsSensitive = IsSensitive;
+        this.AllowedValues = AllowedValues?.ToImmutableList();
+    }
+
+    public string Key { get; }
+    public SettingValueType ValueType { get; }
+    public string DefaultValue { get; }
+    public string Category { get; }
+    public string Description { get; }
+    public SettingScope MinScope { get; }
+    public SettingScope MaxScope { get; }
+    public bool IsLockable { get; }
+    public bool IsSensitive { get; }
+    public ImmutableList<string>? AllowedValues { get; }
+}

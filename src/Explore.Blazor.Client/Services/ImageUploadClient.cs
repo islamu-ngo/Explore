@@ -74,7 +74,7 @@ public sealed class ImageUploadClient(
             form.Add(uploadSessionContent, "uploadSessionId");
             form.Add(contentTypeContent, "contentType");
 
-            using var fileContent = new ByteArrayContent(fileData.Content);
+            using var fileContent = new ByteArrayContent(fileData.Content.ToArray());
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileData.ContentType);
             form.Add(fileContent, "file", safeFileName);
 

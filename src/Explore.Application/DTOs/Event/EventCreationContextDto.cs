@@ -3,6 +3,8 @@
 
 namespace Explore.Application.DTOs.Event;
 
+using System.Collections.Immutable;
+
 public sealed record EventCreationContextDto
 {
     public bool CanCreate { get; init; }
@@ -19,5 +21,11 @@ public sealed record EventCreationContextDto
 
     public string? UnavailableReason { get; init; }
 
-    public List<EventCreationPublisherOptionDto> PublisherOptions { get; init; } = [];
+    private IReadOnlyList<EventCreationPublisherOptionDto>? _publisherOptions = ImmutableArray<EventCreationPublisherOptionDto>.Empty;
+
+    public IReadOnlyList<EventCreationPublisherOptionDto> PublisherOptions
+    {
+        get => _publisherOptions!;
+        init => _publisherOptions = value?.ToImmutableArray();
+    }
 }

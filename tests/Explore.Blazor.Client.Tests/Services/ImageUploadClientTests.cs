@@ -59,12 +59,7 @@ public sealed class ImageUploadClientTests
             BaseAddress = new Uri("https://bff.test")
         });
         var client = CreateClient();
-        var fileData = new FileUploadData
-        {
-            Content = [1, 2, 3],
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
+        var fileData = new FileUploadData(new byte[] { 1, 2, 3 }, "test.jpg", "image/jpeg");
 
         var result = await client.UploadViaBffProxyAsync("session-1", fileData);
 
@@ -90,12 +85,7 @@ public sealed class ImageUploadClientTests
             BaseAddress = new Uri("https://bff.test")
         });
         var client = CreateClient();
-        var fileData = new FileUploadData
-        {
-            Content = [1, 2, 3],
-            FileName = dangerousFileName,
-            ContentType = "image/png"
-        };
+        var fileData = new FileUploadData(new byte[] { 1, 2, 3 }, dangerousFileName, "image/png");
 
         var result = await client.UploadViaBffProxyAsync("session-1", fileData);
 

@@ -57,5 +57,11 @@ public sealed record UpdateCustomPropertyDefinitionValidationDto
 
 public sealed record UpdateCustomPropertyDefinitionOptionsDto
 {
-    public List<CreateCustomPropertyOptionDto>? Items { get; init; }
+    private IReadOnlyList<CreateCustomPropertyOptionDto>? _items;
+
+    public IReadOnlyList<CreateCustomPropertyOptionDto>? Items
+    {
+        get => _items;
+        init => _items = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

@@ -5,6 +5,8 @@ namespace Explore.Application.DTOs.EventTemplate;
 
 public sealed record EventTemplateDto
 {
+    private IReadOnlyList<EventTemplateDefinitionDto>? _definitions = Array.AsReadOnly(Array.Empty<EventTemplateDefinitionDto>());
+
     public Guid Id { get; init; }
     public Guid ConcurrencyStamp { get; init; }
     public Guid TenantId { get; init; }
@@ -20,5 +22,9 @@ public sealed record EventTemplateDto
     public string? CreatedBy { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
     public string? UpdatedBy { get; init; }
-    public List<EventTemplateDefinitionDto> Definitions { get; init; } = [];
+    public IReadOnlyList<EventTemplateDefinitionDto> Definitions
+    {
+        get => _definitions!;
+        init => _definitions = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

@@ -1,6 +1,8 @@
 // ABOUTME: Provider-agnostic contract for Translation Management System (TMS) integration.
 // ABOUTME: Implemented by TolgeeTranslationProvider, WeblateTranslationProvider, OfflineTranslationProvider, and NullTranslationProvider.
 
+using System.Collections.Immutable;
+
 namespace Explore.Application.Contracts.Infrastructure;
 
 /// <summary>
@@ -45,7 +47,17 @@ public interface ITranslationManagementProvider
 /// </summary>
 /// <param name="KeyName">Translation key (e.g., "lookup.tag.FIQH.full_name").</param>
 /// <param name="Translations">Language code → translated value (e.g., {"en": "Fiqh", "fr": "Jurisprudence islamique"}).</param>
-public record TranslationKeyImport(string KeyName, IDictionary<string, string> Translations);
+public sealed record TranslationKeyImport
+{
+    public TranslationKeyImport(string KeyName, IDictionary<string, string> Translations)
+    {
+        this.KeyName = KeyName;
+        this.Translations = Translations.ToImmutableDictionary(StringComparer.Ordinal);
+    }
+
+    public string KeyName { get; }
+    public ImmutableDictionary<string, string> Translations { get; }
+}
 
 /// <summary>
 /// A single exported translation from the TMS.
