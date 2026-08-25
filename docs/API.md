@@ -100,6 +100,7 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 2. Business logic belongs in handlers/services, never controllers.
 3. Every endpoint has named routes (via `RouteNames` constants) for HATEOAS link generation.
 4. Endpoints include `[ProducesResponseType]` and XML doc summaries for OpenAPI quality.
+5. Published record collections are defensive snapshots. Controllers replace immutable extension data with `SetItem`/record copies rather than mutating indexers, and convert `ReadOnlyMemory<byte>` to an MVC byte array only at the file-result boundary.
 
 ### Grouped Entity PATCH Contracts
 

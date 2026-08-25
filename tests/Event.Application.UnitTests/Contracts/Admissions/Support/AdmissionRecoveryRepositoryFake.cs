@@ -1,207 +1,183 @@
-// ABOUTME: Implements the exact recovery repository port with ticket-bound digest lineage and atomic rotation.
-// ABOUTME: Every mutation rejects tenant, request, ticket, purpose, or digest mismatches and stores no plaintext.
+// ABOUTME: Implements entity-returning recovery repository and identity resolver test ports.
+// ABOUTME: Preserves digest-only state while exercising atomic consume and rotation semantics.
 
-using System.Reflection;
+using Explore.Application.Contracts.Admissions;
+using Explore.Domain;
 
 namespace ApplicationUnitTests.Contracts.Admissions.Support;
 
-internal class RecoveryRepositoryFake : DispatchProxy
+internal sealed class RecoveryIdentityResolverFake(AdmissionTestScenario scenario) :
+    IAdmissionRecoveryIdentityResolver
 {
-    internal const string PortName = "IAdmissionRecoveryRepository";
-    private AdmissionTestScenario scenario = null!;
+    internal const string PortName = nameof(IAdmissionRecoveryIdentityResolver);
 
-    internal static object Create(AdmissionTestScenario scenario)
+    public Task<AdmissionRecoveryIdentityResult> FindAsync(
+        AdmissionRecoveryRequest request,
+        CancellationToken cancellationToken)
     {
-        Type port = AdmissionContractRuntime.ApplicationType(PortName);
-        object proxy = Create(port, typeof(RecoveryRepositoryFake));
-        ((RecoveryRepositoryFake)proxy).scenario = scenario;
-        return proxy;
-    }
-
-    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-    {
-        MethodInfo method = targetMethod ?? throw AdmissionContractRuntime.Missing("recovery repository method");
-        object?[] arguments = args ?? [];
-        return method.Name switch
+        if (request.TenantId != scenario.TenantId)
         {
-            "FindIdentityAsync" => FindIdentity(method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryRequest")),
-            "StoreAsync" => Store(method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryCapabilityRecord")),
-            "GetByDigestAsync" => GetByDigest(
-                method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryCapabilityLookup")),
-            "GetCurrentByRequestIdAsync" => GetCurrent(method, arguments),
-            "GetCurrentByTicketIdAsync" => GetCurrentByTicket(method, arguments),
-            "ConsumeAsync" => Consume(
-                method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryCapabilityMutation")),
-            "RotateAsync" => Rotate(
-                method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryRotationRequest")),
-            _ => throw AdmissionContractRuntime.Missing($"planned {PortName}.{method.Name}")
-        };
-    }
+            throw AdmissionContractRuntime.Missing("matching recovery identity tenant");
+        }
 
-    private object? GetCurrentByTicket(MethodInfo method, object?[] arguments)
-    {
-        Require(arguments.Length == 4, "GetCurrentByTicketIdAsync(TenantId, AdmissionTicketId, Purpose, ct) signature");
-        Guid tenantId = (Guid)arguments[0]!;
-        Guid ticketId = (Guid)arguments[1]!;
-        string purpose = arguments[2]!.ToString()!;
-        StoredRecoveryCapability? stored = scenario.RecoveryByDigest.Values.LastOrDefault(value =>
-            value.TenantId == tenantId &&
-            value.AdmissionTicketId == ticketId &&
-            value.Purpose == purpose);
-        return State(
-            method.ReturnType,
-            stored,
-            stored?.Digest ?? string.Empty,
-            tenantId,
-            stored?.RecoveryRequestId ?? Guid.Empty,
-            ticketId,
-            purpose);
+        return Task.FromResult(new AdmissionRecoveryIdentityResult(
+            scenario.TenantId,
+            scenario.RecoveryRequestId,
+            scenario.IdentityPresent,
+            scenario.TicketsByAssignment.Values
+                .Select(AdmissionContractRuntime.EntityId)
+                .ToArray()));
     }
+}
 
-    private object? FindIdentity(Type returnType, object request)
-    {
-        Require(AdmissionContractRuntime.Value<Guid>(request, "TenantId") == scenario.TenantId, "identity tenant");
-        Type payload = RequiredPayload(returnType, "AdmissionRecoveryIdentityResult");
-        object result = AdmissionContractRuntime.Create(
-            payload,
-            ("TenantId", scenario.TenantId),
-            ("RecoveryRequestId", scenario.RecoveryRequestId),
-            ("IdentityPresent", scenario.IdentityPresent),
-            ("AdmissionTicketIds", scenario.TicketsByAssignment.Values.Select(AdmissionContractRuntime.EntityId).ToArray()));
-        return AdmissionContractRuntime.WrapAsync(returnType, result);
-    }
+internal sealed class RecoveryRepositoryFake(AdmissionTestScenario scenario) :
+    IAdmissionRecoveryRepository
+{
+    internal const string PortName = nameof(IAdmissionRecoveryRepository);
+    private readonly Dictionary<string, AdmissionRecoveryCapability> entities =
+        new(StringComparer.Ordinal);
 
-    private object? Store(Type returnType, object request)
+    public Task<AdmissionRecoveryCapability> AddAsync(
+        AdmissionRecoveryCapability capability,
+        CancellationToken cancellationToken)
     {
-        Require(scenario.IdentityPresent, "present identity before recovery storage");
-        StoredRecoveryCapability value = RecordFrom(request, "LookupDigest", "ExpiresAtUtc");
-        Require(!scenario.RecoveryByDigest.ContainsKey(value.Digest), "new recovery digest");
-        scenario.RecoveryByDigest.Add(value.Digest, value);
+        if (!scenario.IdentityPresent || entities.ContainsKey(capability.LookupDigest))
+        {
+            throw AdmissionContractRuntime.Missing("new recovery entity after present identity");
+        }
+
+        entities.Add(capability.LookupDigest, capability);
+        scenario.RecoveryByDigest.Add(capability.LookupDigest, Stored(capability));
         scenario.RecoveryStoreCalls++;
-        return Success(returnType, "Stored");
+        return Task.FromResult(capability);
     }
 
-    private object? GetByDigest(Type returnType, object request)
+    public Task<AdmissionRecoveryCapability?> FindByProofDigestAsync(
+        Guid tenantId,
+        Guid recoveryRequestId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
+        int keyVersion,
+        string lookupDigest,
+        CancellationToken cancellationToken)
     {
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid requestId = AdmissionContractRuntime.Value<Guid>(request, "RecoveryRequestId");
-        Guid ticketId = AdmissionContractRuntime.Value<Guid>(request, "AdmissionTicketId");
-        string purpose = AdmissionContractRuntime.Value<object>(request, "Purpose").ToString()!;
-        string digest = AdmissionContractRuntime.Value<string>(request, "LookupDigest");
-        RequireLineage(tenantId, requestId, ticketId, purpose);
-        scenario.RecoveryByDigest.TryGetValue(digest, out StoredRecoveryCapability? stored);
-        if (stored is not null) RequireStoredLineage(stored, tenantId, requestId, ticketId, purpose);
-        return State(returnType, stored, digest, tenantId, requestId, ticketId, purpose);
+        entities.TryGetValue(lookupDigest, out AdmissionRecoveryCapability? entity);
+        return Task.FromResult(entity is not null &&
+            entity.TenantId == tenantId &&
+            entity.RecoveryRequestId == recoveryRequestId &&
+            entity.AdmissionTicketId == admissionTicketId &&
+            entity.Purpose == purpose.ToString() &&
+            entity.LookupKeyVersion == keyVersion
+                ? entity
+                : null);
     }
 
-    private object? GetCurrent(MethodInfo method, object?[] arguments)
+    public Task<AdmissionRecoveryCapability?> FindByLocatorAsync(
+        Guid tenantId,
+        IReadOnlyList<AdmissionRecoveryLocatorDigest> locators,
+        CancellationToken cancellationToken)
     {
-        ParameterInfo[] parameters = method.GetParameters();
-        Require(parameters.Length == 4 && parameters[0].ParameterType == typeof(Guid) &&
-                parameters[1].ParameterType == typeof(Guid) && parameters[3].ParameterType == typeof(CancellationToken),
-            "GetCurrentByRequestIdAsync(TenantId, RecoveryRequestId, Purpose, ct) signature");
-        Guid tenantId = (Guid)arguments[0]!;
-        Guid requestId = (Guid)arguments[1]!;
-        string purpose = arguments[2]!.ToString()!;
-        Require(tenantId == scenario.TenantId, "current recovery tenant");
-        Require(requestId == scenario.RecoveryRequestId, "current recovery request ID");
-        StoredRecoveryCapability stored = scenario.RecoveryByDigest.Values.Single(value =>
-            !value.Consumed && !value.Rotated && value.RecoveryRequestId == requestId);
-        RequireStoredLineage(stored, tenantId, requestId, scenario.CurrentAdmissionTicketId, purpose);
+        AdmissionRecoveryCapability? entity = entities.Values.SingleOrDefault(candidate =>
+            candidate.TenantId == tenantId &&
+            locators.Any(locator =>
+                locator.KeyVersion == candidate.LookupKeyVersion &&
+                locator.LocatorDigest == candidate.LocatorDigest));
+        return Task.FromResult(entity);
+    }
+
+    public Task<AdmissionRecoveryCapability?> FindLatestByRequestIdAsync(
+        Guid tenantId,
+        Guid recoveryRequestId,
+        AdmissionRecoveryPurpose purpose,
+        CancellationToken cancellationToken)
+    {
         scenario.RecoveryCurrentReadCalls++;
-        return State(method.ReturnType, stored, stored.Digest, tenantId, requestId, stored.AdmissionTicketId, purpose);
+        return Task.FromResult(entities.Values
+            .Where(entity =>
+                entity.TenantId == tenantId &&
+                entity.RecoveryRequestId == recoveryRequestId &&
+                entity.Purpose == purpose.ToString())
+            .OrderByDescending(entity => entity.CapabilityVersion)
+            .FirstOrDefault());
     }
 
-    private object? Consume(Type returnType, object request)
+    public Task<AdmissionRecoveryCapability?> FindLatestByTicketIdAsync(
+        Guid tenantId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(entities.Values
+            .Where(entity =>
+                entity.TenantId == tenantId &&
+                entity.AdmissionTicketId == admissionTicketId &&
+                entity.Purpose == purpose.ToString())
+            .OrderByDescending(entity => entity.CapabilityVersion)
+            .FirstOrDefault());
+
+    public Task<bool> TryConsumeAsync(
+        Guid tenantId,
+        Guid capabilityId,
+        int keyVersion,
+        string lookupDigest,
+        Guid expectedConcurrencyStamp,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken)
     {
-        StoredRecoveryCapability requested = RecordFrom(request, "LookupDigest", "ExpiresAtUtc");
-        StoredRecoveryCapability stored = scenario.RecoveryByDigest[requested.Digest];
-        RequireStoredLineage(stored, requested.TenantId, requested.RecoveryRequestId,
-            requested.AdmissionTicketId, requested.Purpose);
-        Require(!stored.Consumed && !stored.Rotated, "current single-use recovery digest");
-        scenario.RecoveryByDigest[stored.Digest] = stored with { Consumed = true };
-        return Success(returnType, "Consumed");
+        if (!entities.TryGetValue(lookupDigest, out AdmissionRecoveryCapability? entity) ||
+            entity.TenantId != tenantId ||
+            entity.Id != capabilityId ||
+            entity.LookupKeyVersion != keyVersion ||
+            entity.ConcurrencyStamp != expectedConcurrencyStamp)
+        {
+            return Task.FromResult(false);
+        }
+
+        AdmissionRecoveryTransitionOutcome outcome = entity.Consume(occurredAtUtc);
+        if (outcome != AdmissionRecoveryTransitionOutcome.Consumed)
+        {
+            return Task.FromResult(false);
+        }
+
+        scenario.RecoveryByDigest[lookupDigest] =
+            scenario.RecoveryByDigest[lookupDigest] with { Consumed = true };
+        return Task.FromResult(true);
     }
 
-    private object? Rotate(Type returnType, object request)
+    public Task<bool> TryRotateAsync(
+        AdmissionRecoveryCapability current,
+        AdmissionRecoveryCapability replacement,
+        DateTime rotatedAtUtc,
+        CancellationToken cancellationToken)
     {
-        Require(scenario.UnitOfWork.InTransaction, "atomic recovery rotation transaction");
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid requestId = AdmissionContractRuntime.Value<Guid>(request, "RecoveryRequestId");
-        Guid ticketId = AdmissionContractRuntime.Value<Guid>(request, "AdmissionTicketId");
-        string purpose = AdmissionContractRuntime.Value<object>(request, "Purpose").ToString()!;
-        string oldDigest = AdmissionContractRuntime.Value<string>(request, "OldLookupDigest");
-        string replacementDigest = AdmissionContractRuntime.Value<string>(request, "ReplacementLookupDigest");
-        RequireLineage(tenantId, requestId, ticketId, purpose);
-        StoredRecoveryCapability old = scenario.RecoveryByDigest[oldDigest];
-        RequireStoredLineage(old, tenantId, requestId, ticketId, purpose);
-        Require(!old.Consumed && !old.Rotated, "rotatable old recovery digest");
-        Require(oldDigest != replacementDigest && !scenario.RecoveryByDigest.ContainsKey(replacementDigest),
-            "distinct replacement recovery digest");
-        DateTimeOffset expiry = AdmissionContractRuntime.Value<DateTimeOffset>(request, "ReplacementExpiresAtUtc");
-        scenario.RecoveryByDigest[oldDigest] = old with { Rotated = true };
-        scenario.RecoveryByDigest.Add(replacementDigest,
-            new(tenantId, requestId, ticketId, replacementDigest, purpose, expiry, false, false));
+        if (!entities.TryGetValue(current.LookupDigest, out AdmissionRecoveryCapability? stored) ||
+            stored.ConcurrencyStamp != current.ConcurrencyStamp ||
+            stored.ConsumedAt.HasValue ||
+            stored.RotatedAt.HasValue)
+        {
+            return Task.FromResult(false);
+        }
+
+        if (stored.Rotate(rotatedAtUtc) != AdmissionRecoveryTransitionOutcome.Rotated)
+        {
+            return Task.FromResult(false);
+        }
+
+        scenario.RecoveryByDigest[current.LookupDigest] =
+            scenario.RecoveryByDigest[current.LookupDigest] with { Rotated = true };
+        entities.Add(replacement.LookupDigest, replacement);
+        scenario.RecoveryByDigest.Add(replacement.LookupDigest, Stored(replacement));
         scenario.RecoveryRotationCalls++;
-        return Success(returnType, "Rotated");
+        return Task.FromResult(true);
     }
 
-    private StoredRecoveryCapability RecordFrom(object request, string digestProperty, string expiryProperty)
-    {
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid requestId = AdmissionContractRuntime.Value<Guid>(request, "RecoveryRequestId");
-        Guid ticketId = AdmissionContractRuntime.Value<Guid>(request, "AdmissionTicketId");
-        string purpose = AdmissionContractRuntime.Value<object>(request, "Purpose").ToString()!;
-        RequireLineage(tenantId, requestId, ticketId, purpose);
-        return new(tenantId, requestId, ticketId,
-            AdmissionContractRuntime.Value<string>(request, digestProperty), purpose,
-            AdmissionContractRuntime.Value<DateTimeOffset>(request, expiryProperty), false, false);
-    }
-
-    private void RequireLineage(Guid tenantId, Guid requestId, Guid ticketId, string purpose)
-    {
-        Require(tenantId == scenario.TenantId, "recovery tenant");
-        Require(requestId == scenario.RecoveryRequestId, "recovery request ID");
-        Require(ticketId == scenario.CurrentAdmissionTicketId, "issued admission ticket");
-        Require(purpose == "TicketRecovery", "recovery purpose");
-    }
-
-    private static void RequireStoredLineage(
-        StoredRecoveryCapability stored, Guid tenantId, Guid requestId, Guid ticketId, string purpose) =>
-        Require(stored.TenantId == tenantId && stored.RecoveryRequestId == requestId &&
-                stored.AdmissionTicketId == ticketId && stored.Purpose == purpose, "stored recovery lineage");
-
-    private static object ExactRequest(object?[] arguments, string name) =>
-        AdmissionContractRuntime.ExactObject(arguments.Single(value => value is not CancellationToken)!, name);
-
-    private static object? State(Type returnType, StoredRecoveryCapability? stored, string digest,
-        Guid tenantId, Guid requestId, Guid ticketId, string purpose)
-    {
-        Type payload = RequiredPayload(returnType, "AdmissionRecoveryCapabilityState");
-        object result = AdmissionContractRuntime.Create(payload,
-            ("Found", stored is not null), ("TenantId", tenantId), ("RecoveryRequestId", requestId),
-            ("AdmissionTicketId", ticketId), ("LookupDigest", digest), ("Purpose", purpose),
-            ("ExpiresAtUtc", stored?.ExpiresAtUtc ?? default), ("Consumed", stored?.Consumed ?? false),
-            ("Rotated", stored?.Rotated ?? false));
-        return AdmissionContractRuntime.WrapAsync(returnType, result);
-    }
-
-    private static Type RequiredPayload(Type returnType, string name)
-    {
-        Type payload = AdmissionContractRuntime.AsyncPayload(returnType)
-            ?? throw AdmissionContractRuntime.Missing($"{name} return");
-        return payload.Name == name ? payload : throw AdmissionContractRuntime.Missing($"exact {name} return");
-    }
-
-    private static object? Success(Type returnType, string outcome)
-    {
-        Type? payload = AdmissionContractRuntime.AsyncPayload(returnType);
-        object? result = payload is null ? null : AdmissionContractRuntime.Create(payload, ("Outcome", outcome));
-        return AdmissionContractRuntime.WrapAsync(returnType, result);
-    }
-
-    private static void Require(bool condition, string fact)
-    {
-        if (!condition) throw AdmissionContractRuntime.Missing($"matching {fact}");
-    }
+    private static StoredRecoveryCapability Stored(AdmissionRecoveryCapability entity) =>
+        new(
+            entity.TenantId,
+            entity.RecoveryRequestId,
+            entity.AdmissionTicketId,
+            entity.LookupDigest,
+            entity.Purpose,
+            new DateTimeOffset(entity.ExpiresAt),
+            entity.ConsumedAt.HasValue,
+            entity.RotatedAt.HasValue);
 }

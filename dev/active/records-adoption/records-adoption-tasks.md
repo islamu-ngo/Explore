@@ -7,10 +7,10 @@ Last Updated: 2026-08-25 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** All 24 implementation tasks are complete; Phase 4 API verification remains externally blocked, so the workstream is not fully green or merge-ready.
-- **Completed:** 24/24 implementation tasks (phase verification tracked separately).
+- **Overall status:** The original 24 implementation tasks are complete; 16 approved expansion tasks across Phases 7–11 are not started. Phase 4 API verification remains externally blocked, so the expanded workstream is not fully green or merge-ready.
+- **Completed:** 24/40 implementation tasks (phase verification tracked separately).
 - **Current priority:** Recover the Phase 4 API integration gate without weakening production-auth guardrails.
-- **Next recommended slice:** Resolve the privacy-replay/Infisical startup blocker, rerun only the failed API gate, then curate the shared dirty worktree for review.
+- **Next recommended slice:** Resolve the privacy-replay/Infisical startup blocker and rerun only the failed API gate; then start Task 7.1, `Author Failing Immutable Result And Mapper Specifications`.
 - **Isolation:** Product edits run only in `/home/amir/ISLAMU/Github/Event-records-adoption`; its architecture baseline is green at 443 passed, 1 skipped, 0 failed.
 - **Shared-worktree note:** The unrelated paid-checkout PII inventory failure remains in main and is not modified by this workstream.
 - **Planning verification:** `git diff --check` passed. `Event.Architecture.Tests` ran 444 tests: 442 passed, 1 skipped, 1 unrelated shared-workspace failure.
@@ -333,7 +333,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 39 projects, 0 errors, 7,115 warnings.
 - [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` — recovery run 2,553 passed, 0 warnings after repairing detached-worktree `.git` file discovery; initial run was 2,552 passed, 1 failed, 1 skipped.
 
-## Phase 6: Governance Closure And Release Contribution — COMPLETE
+## Phase 6: Original-Wave Governance Closure And Release Contribution — COMPLETE
 
 - [x] **6.1 Tighten Final Ratchets And Remove Resolved Debt**
   - **Status:** COMPLETE — final schemas accept only ten retained mutable response hierarchies and seven legitimate targets after integrating the paid-registration response envelopes from `develop`; zero concrete MediatR class debt and exact bidirectional stale/missing checks pass 10/10.
@@ -359,7 +359,7 @@ Last Updated: 2026-08-25 Europe/Brussels
   - **Dependencies:** 6.1.
   - **Guidance:** matched docs/rules.
 
-- [x] **6.3 Changelog Contribution And Final Commit Composition**
+- [x] **6.3 Initial Changelog Contribution And Commit Composition**
   - **Status:** COMPLETE — previously unclaimed CHG-2026-0010 uses the approved architecture scope, all six impact objects pass ReleaseInputPolicy, and the breaking commit message is composed but not executed.
   - **Files:** `docs/releases/changes/CHG-2026-0010.yaml` (new; availability rechecked before creation).
   - **Acceptance:**
@@ -378,10 +378,160 @@ Last Updated: 2026-08-25 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 39 projects, 0 errors, 0 warnings.
 - [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — 453 passed, 0 failed, 0 warnings.
 
+## Phase 7: Immutable Application Command Results — COMPLETE
+
+- [x] **7.1 Author Failing Immutable Result And Mapper Specifications**
+  - **Status:** COMPLETE — independent adversarial verification confirmed the compile-safe RED result contract and exhaustive green mapper characterization at confidence 0.97.
+  - **Files:** new `tests/Event.Application.UnitTests/Responses/BaseCommandResponseContractTests.cs`; existing `tests/Event.API.IntegrationTests/ExceptionHandling/CommandResponseResultMapperTests.cs`; focused derived-response tests.
+  - **Acceptance:** 21 contract tests cover all 12 concrete descendants, strict valid-state factories, defensive/read-only errors, quota privacy, source-generated JSON, generic IDs, and complete payload preservation; 5 pass and 16 fail for the intended missing immutable production contract. All 97 exhaustive RFC 7807 mapper cases pass.
+  - **Effort:** L.
+  - **Dependencies:** Phase 4 gate executed with zero records-adoption failures; user-approved direct `develop` continuation.
+
+- [x] **7.2 Redesign Base Command Response And Factories**
+  - **Status:** COMPLETE — independently confirmed at confidence 0.995. The analyzer-clean non-generic companion owns eight generic factories; the immutable generic state and all 12 sealed descendants expose no public mutation or construction escape, and every concrete failure clears 19 payload/secret/value fields by construction.
+  - **Files:** `src/Explore.Application/Responses/BaseCommandResponse.cs`; bounded derived responses and local factories discovered by 7.1.
+  - **Acceptance:** result construction is factory-only and immutable; no public setters, mutable errors, `SetQuotaExceeded`, compatibility constructor, or contradictory state remains.
+  - **Effort:** XL.
+  - **Dependencies:** 7.1.
+
+- [x] **7.3 Migrate Result Consumers Serialization And Ratchets**
+  - **Status:** COMPLETE — independently confirmed at 0.995 confidence. All production/test manifests are cleared: API 268 -> 0, API integration 447 -> 0, and persistence constructions 3 -> 0. Application/API/API-test builds are green; mapper 97/97, contract 26/26, and fresh architecture 11/11 pass; scoped diff-check/LSP are clean.
+  - **Files:** bounded result constructors/assignments across Application/API/Infrastructure/tests; `ExploreJsonContext.cs`; mapper; architecture ratchets.
+  - **Acceptance:** every caller uses immutable construction, JSON/ProblemDetails behavior is preserved, and architecture tests reject mutable result debt.
+  - **Effort:** XL.
+  - **Dependencies:** 7.2.
+
+### Phase 7 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Status:** COMPLETE for all owned code — the exact command is blocked only by unrelated untracked `CoordinateWriteAuthorityArchitectureTests.cs` CS1513. The same full solution build with that one file externally excluded passes with 0 errors; Blazor and persistence consumer projects are green, and Blazor tests pass 2,561/2,562 with one documented pre-existing skip.
+- [x] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - **Status:** EXECUTED — 2,486 passed, 1 skipped, and 30 unrelated shared-work failures were classified in admissions route RED tests, Quartz lifecycle, snapshot isolation, unavailable production-secret startup, and persistence-schema fixtures. The owned immutable-result mapper seam passes 97/97.
+
+## Phase 8: Repository-Wide Published Collection Immutability — NOT STARTED
+
+- [x] **8.1 Author Failing Collection Ownership And Mutation Ratchets**
+  - **Status:** COMPLETE — the compiled inventory covers 772 collection-bearing public records across Domain, Application, API, and Blazor. One schema-characterization test passes, while two intentional RED tests deterministically enumerate the same 128 mutable exposures; immutable framework collections are correctly excluded.
+  - **Files:** record/collection architecture tests plus focused owner tests emitted by compiled/source inventory.
+  - **Acceptance:** every published collection is classified; mutable exposure fails; intentional aggregate/service/generated ownership remains explicit.
+  - **Effort:** XL.
+  - **Dependencies:** 7.3.
+
+- [x] **8.2 Migrate Published Immutable Collection Contracts**
+  - **Status:** COMPLETE — all 128 mutable exposures across the 772-record inventory now use defensively copied read-only/immutable snapshots. Binary/base64, JSON arrays, PATCH null/omitted behavior, HAL `_links`, mapping, generated-client interop, and direct consumers were preserved; the integrated ratchet passes 3/3.
+  - **Files:** exact Domain/Application/API/Blazor candidates from 8.1; factories, mappers, serializer contexts, and consumers.
+  - **Acceptance:** immutable contracts defensively snapshot inputs and expose read-only collections without breaking JSON/AOT, mapping, cache, outbox, HAL, or component behavior.
+  - **Effort:** XL.
+  - **Dependencies:** 8.1.
+
+- [x] **8.3 Enforce Collection Standard And Synchronize Guidance**
+  - **Status:** COMPLETE — the compiled no-mutable-exposure ratchet and exact empty exceptional baseline are permanent. Governance, Architecture, API, Blazor, and five `.agents`/`.omo` rule-twin pairs now agree on defensive snapshots, immutable adapter updates, base64 bytes, PATCH/HAL preservation, and sequence-equality limits.
+  - **Files:** ratchet/disposition data; Governance/Architecture/API/Blazor docs; matching `.agents`/`.omo` rule twins.
+  - **Acceptance:** new/stale collection debt fails, exclusions have removal triggers, twin rules agree, and docs do not overclaim deep immutability.
+  - **Effort:** M.
+  - **Dependencies:** 8.2.
+
+### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Status:** PASSED — exact root Release build completed with 0 errors after immutable-consumer test repairs; 2,381 shared analyzer warnings remain outside this workstream.
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+  - **Status:** EXECUTED — 456 passed, 1 documented skip, and 5 unrelated failures were classified exactly: two agent-context checks, coordinate write authority, generated quota OpenAPI, and EF/provider inventory. The owned collection ratchet passes 3/3.
+
+## Phase 9: Domain Money Coordinates And Temporal Ranges — COMPLETE
+
+- [x] **9.1 Author Failing Value Concept Specifications And Ownership Inventory**
+  - **Status:** COMPLETE — four focused value-object specifications are intentionally RED on the four absent production types. Repository-grounded owner/caller inventories resolve money, exact-coordinate privacy/erasure, inclusive local-date, half-open UTC-instant, persistence-seam, and explicit-exclusion semantics without widening the phase.
+  - **Files:** new focused tests under `tests/Event.Domain.UnitTests/ValueObjects/`; evidenced money, coordinate, local-date, and UTC-instant owners.
+  - **Acceptance:** Red tests cover currency normalization, checked minor units, coordinate bounds, nullability, ordering/overlap, and distinct local-versus-UTC semantics.
+  - **Effort:** XL.
+  - **Dependencies:** 8.3.
+
+- [x] **9.2 Implement Domain Value Concepts**
+  - **Status:** COMPLETE — four sealed record values use private construction, valid-state factories, normalized equality, bounded invariant formatting, and only evidenced behavior. Focused tests pass: Money 12, GeoCoordinate 11, LocalDateRange 6, UtcInstantRange 7.
+  - **Files:** new `Money.cs`, `GeoCoordinate.cs`, `LocalDateRange.cs`, and `UtcInstantRange.cs` under `src/Explore.Domain/ValueObjects/`.
+  - **Acceptance:** dependency-free immutable values cannot represent invalid states and implement only behavior required by current callers.
+  - **Effort:** L.
+  - **Dependencies:** 9.1.
+
+- [x] **9.3 Adopt Values In Domain APIs And Non-Persisted Callers**
+  - **Status:** COMPLETE — `EventTicketType`/`PaymentAttempt`, `Location`/`LocationPii`, `EventAgendaItem`, and `EventSession` consume semantic values at paired boundaries. All production and test callers are migrated; scalar properties remain only as the explicit Phase 10 persistence seam.
+  - **Files:** owners/callers identified by 9.1; no migrations or snapshots.
+  - **Acceptance:** primitive-pair method/factory boundaries use semantic values, with persisted-owner adoption isolated exactly for Phase 10.
+  - **Effort:** XL.
+  - **Dependencies:** 9.2.
+
+### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Status:** EXECUTED — all records-adoption projects compiled. The root build stopped only at two unrelated `Explore.Infrastructure.Tests` constructor calls missing `ILogger<CompositeOutboxMessageDispatcher>`; affected Domain, Application, Persistence, API integration, and persistence integration projects compile with zero owned errors.
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+  - **Status:** PASSED — 976 passed, 0 failed, 0 skipped.
+
+## Phase 10: Generated EF Value Persistence Migration — NOT STARTED
+
+- [ ] **10.1 Author Failing Persistence And Migration Invariant Breakers**
+  - **Status:** IN PROGRESS — RED lanes cover five-provider scalar metadata, SQLite value round trips/checks, PostgreSQL coordinate privacy/zero-PII behavior, and generated migration upgrade/down/reapply parity.
+  - **Files:** focused mapping/round-trip tests under `tests/Event.Persistence.IntegrationTests/Database/`; migration tests under `Migrations/`.
+  - **Acceptance:** Red tests cover existing-row upgrade, value round trips, nullability, constraints, tenant/privacy boundaries, rollback, and reapply.
+  - **Effort:** XL.
+  - **Dependencies:** 9.3.
+
+- [ ] **10.2 Configure Persisted Value Ownership**
+  - **Decision:** Domain values remain semantic owner boundaries over explicit scalar EF leaves. Add only `CK_EventTicketType_MoneyNonnegative`, `CK_LocationPii_CoordinateShape`, `CK_EventAgendaItem_LocalDateRange`, and `CK_EventSession_LocalDateRange`; no complex/owned/converter mapping or storage-shape change.
+  - **Files:** Phase 9 persisted owners; their `IEntityTypeConfiguration<T>` files; `ExploreDbContext` only when required.
+  - **Acceptance:** value mappings preserve storage meaning, filters, precision, checks, and privacy ownership with no unrelated model delta or generated-file edit.
+  - **Effort:** XL.
+  - **Dependencies:** 10.1.
+
+- [ ] **10.3 Generate Multi-Provider Migrations And Schema Documentation**
+  - **Files:** generated application/provider migrations and snapshots; `schemas/islamu-event.md`.
+  - **Acceptance:** repository `dotnet ef` workflows produce only approved reversible changes for every applicable provider; no generated line is hand-edited.
+  - **Effort:** XL.
+  - **Dependencies:** 10.2.
+
+- [ ] **10.4 Close Tier 1 Migration Review Evidence**
+  - **Files:** changed mappings/migrations/tests; anonymized workstream evidence.
+  - **Acceptance:** multi-provider, zero-PII, tenant/privacy/data-loss, and anonymized MAD gates have no unresolved critical finding; accepted findings are test-first repaired.
+  - **Effort:** L.
+  - **Dependencies:** 10.1–10.3.
+
+### Phase 10 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 11: Generated NSwag Records And Final Closure — NOT STARTED
+
+- [ ] **11.1 Author Failing Generated Record Capability And Contract Specifications**
+  - **Files:** record/OpenAPI architecture tests, `ApiClientNamingTests.cs`, and generated-client JSON/HAL/PATCH tests.
+  - **Acceptance:** current POCO output fails the intended record assertions, native-versus-owned generator routing is evidenced, and framework-required exclusions are protected.
+  - **Effort:** L.
+  - **Dependencies:** 10.4.
+
+- [ ] **11.2 Implement Deterministic Record Generation**
+  - **Files:** `nswag.json`, `Explore.Blazor.Client.csproj`, optional repository-owned generation extension, generated `Clients/EventApiClient.g.cs`.
+  - **Acceptance:** generator-owned records are produced twice byte-identically with no hand edits, copied templates, or unapproved dependency.
+  - **Effort:** XL.
+  - **Dependencies:** 11.1.
+
+- [ ] **11.3 Migrate Generated Contract Consumers**
+  - **Files:** generated DTO consumers, `AppJsonSerializerContext.cs`, API smoke/HAL tests, Blazor client tests, architecture shape tests.
+  - **Acceptance:** consumers use immutable generated construction while JSON, HAL, PATCH, nullable/required, exceptions, methods, AOT, and affordance gating remain correct.
+  - **Effort:** XL.
+  - **Dependencies:** 11.2.
+
+- [ ] **11.4 Final Ratchets Documentation Changelog And Commit Composition**
+  - **Files:** final ratchets/baselines; Governance/Architecture/Domain/API/Blazor/schema docs and twin rules; new unclaimed `docs/releases/changes/CHG-2026-XXXX.yaml`.
+  - **Acceptance:** no deferred item remains, final ratchets/docs/I-VSD agree, the Tier 2 fragment validates, and the unexecuted commit composition includes `BREAKING CHANGE:` plus the new `Change-Id`.
+  - **Effort:** M.
+  - **Dependencies:** 11.3 and all expanded functional tasks.
+
+### Phase 11 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+
 ## Remaining / Deferred Work
 
-- Immutable `BaseCommandResponse<T>`/result-factory redesign — separate workstream because it changes handler failure construction.
-- New `Money`, `GeoCoordinate`, `DateRange`, or other domain concepts — only after independent domain-duplication evidence.
-- EF schema changes from value-object redesign — separate migration intent; generated migrations only.
-- Repository-wide immutable-collection standard — outside converted immutable contracts.
-- Changing NSwag DTO generation from POCO classes — not part of records adoption.
+- None. Every previously deferred item is now assigned to Phases 7–11 with Red-first tasks, owning-layer implementation, phase-end verification, rollback guidance, and final release closure.

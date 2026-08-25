@@ -16,7 +16,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 - Completed the mandatory Grill-Me decisions with the user.
 - Created [I-VSD records-adoption consultation](../../../islamic-value-sensitive-design/i-vsd-records-adoption.md).
 - Created `records-adoption-plan.md`.
-- Cross-checked all three planning artifacts: 24 task IDs/names, seven phases, statuses, gates, decisions, release strategy, and I-VSD links agree.
+- Cross-checked the original planning artifacts: 24 task IDs/names, seven phases, statuses, gates, decisions, release strategy, and I-VSD links agreed.
 - `git diff --check` passed for the records-adoption planning and I-VSD artifacts.
 - Ran `Event.Architecture.Tests`: 442 passed, 1 skipped, and 1 pre-existing/shared-workspace failure was observed.
 - Created isolated detached worktree `/home/amir/ISLAMU/Github/Event-records-adoption` from clean `aa74b645c`.
@@ -36,23 +36,33 @@ Last Updated: 2026-08-25 Europe/Brussels
 - Preserved PATCH absent/set/clear behavior, HAL/pagination/mapping semantics, JSON/AOT serialization, and mutable persisted outbox lifecycle entities. Immutable notification payload collections now defensively snapshot inputs.
 - Reconciled the focused record ratchet to exact retained-class equality: 9/9 architecture tests pass. DTO mapping/serialization tests pass 12/12, outbox payload tests pass 7/7, and notification payload tests pass 2/2.
 - Completed bounded Tier 1 reviews with no findings: contract review approved 829 changed DTO record declarations and zero changed persisted outbox entity files; security/privacy review approved after 81 focused tests.
+- Re-baselined the approved plan on 2026-08-25 to absorb all five previously deferred areas into five new phases: immutable Application results, repository-wide published collection immutability, Domain money/coordinate/temporal values, generated EF persistence migration, and generated NSwag records/final closure.
+- Expanded the ledger from 24 to 40 implementation tasks across Phases 0–11; no deferred item remains.
+- Proved `work/records-adoption` was already an ancestor of `develop`, confirmed `git merge --ff-only work/records-adoption` was already up to date, stopped isolated execution, and removed `/home/amir/ISLAMU/Github/Event-records-adoption` at the user's direction.
+- Completed Task 7.1 with independently confirmed evidence: 21 compile-safe result-contract tests cover all 12 concrete descendants and expose 16 intentional immutable-contract failures; 97 exhaustive RFC 7807 mapper cases pass.
+- Completed Task 7.2 with independent confidence 0.995: an analyzer-clean non-generic companion owns eight generic factories; `BaseCommandResponse<TKey>` and 12 sealed descendants are immutable records with internal JSON constructors, defensive errors, strict valid states, and failure payload/secret clearing.
 
 ### IN PROGRESS
 
-- All 24 implementation tasks and Phase 6 are complete. The overall workstream remains verification-blocked because the exact Phase 4 API integration gate is still red.
+- The original 24 implementation tasks and Phases 7–8 are complete. Phase 8 migrated all 128 mutable exposures across 772 collection-bearing public records; its ratchet passes 3/3 with an empty exceptional baseline, canonical docs plus five rule-twin pairs teach the standard, and the root build passes with 0 errors. Full architecture verification executed 462 tests with 456 passed, 1 documented skip, and 5 precisely classified unrelated failures.
+- Phase 9 Task 9.1 is complete and intentionally RED on four absent production values. Selected owners are `EventTicketType`/`PaymentAttempt` for Money, `LocationPii` under `Location` authority for exact coordinates, `EventAgendaItem` plus optional `EventSession` for local ranges, and `EventAgendaItem` plus scheduled `EventSession` for UTC ranges. EventSeries aggregate dates, EventSessionAgendaItem scalars, downstream money snapshots/allocations, and derived summaries are explicit exclusions.
+- Phase 9 Task 9.2 is complete: all four values are sealed record classes with private constructors and valid-state factories. Their focused tests pass 36/36; no EF, serializer, API, Application, provider, or spatial dependency enters Domain.
+- Phase 9 is complete. Semantic owner adoption covers ticket/payment money, exact-coordinate privacy transitions, strict agenda ranges, and fixed/open-ended/prayer-relative session schedules. All primitive callers are migrated without shims; the full Domain suite passes 976/976. The root Release build has no owned error and remains blocked only by two unrelated Infrastructure test constructor logger arguments.
+- Phase 10 persistence architecture is resolved: keep scalar EF leaves and add four portable checks. Complex/owned/converter mapping is rejected because optional prices share owner currency, EF 10 cannot preserve current cross-owner temporal indexes over nested leaves, and valid start-only sessions are not ranges. Expected generated provider delta is exactly four add-check operations with reversible drops.
 - Phase 6 Release verification passed 39 projects with 0 errors and 0 warnings; `Event.Architecture.Tests` passed 453/453 with 0 warnings.
-- Pre-PR review is not merge-ready until the privacy-replay/Infisical startup blocker is resolved and the broad shared dirty worktree is curated.
+- The exact API baseline on current `develop` ran 2,429 tests: 2,303 passed, 1 skipped, and 125 failed. Classification found zero records-adoption failures, 122 unrelated active-work failures, and three privacy-replay/Infisical production-auth startup failures.
 
 ### NEXT
 
-1. Resolve the privacy-replay/Infisical startup blocker without weakening production-auth guardrails.
-2. Rerun only the exact Phase 4 API integration gate and require it to pass before merge readiness.
-3. Curate the shared 1,186-path dirty worktree into an owned review/commit set; do not commit, tag, push, or publish without authorization.
+1. Complete the four Phase 10 RED invariant lanes before changing configurations.
+2. Add exactly four portable scalar-leaf checks without changing storage shape, filters, indexes, or privacy boundaries.
+3. Generate and verify every provider migration through repository `dotnet ef` workflows.
+4. Keep unrelated `develop` edits separate; do not commit, tag, push, or publish without authorization.
 
 ### BLOCKERS
 
-- The shared main-worktree architecture baseline still fails `UserPiiInventoryArchitectureTests.InventoryCoversCurrentEfAndDesignatedProviderSurfaces` because unrelated untracked paid-checkout fields are absent from the PII inventory. Records adoption must not modify that work.
-- This is not an active implementation blocker: all records-adoption product edits and verification run in the isolated green worktree.
+- The full API phase gate is not green: 122 failures belong to unrelated active admissions/domain/integration work and three production-auth guardrail cases require external privacy-replay/Infisical credentials. Focused records-adoption slices continue only because the user explicitly directed direct `develop` implementation.
+- The shared `develop` worktree contains unrelated tracked and untracked edits. Records adoption must not modify, stage, revert, or claim ownership of them.
 - AnySearch MCP was not registered. Context7 and official web research were available for official .NET/MediatR facts; no implementation source was copied, and the clean-room handoff/evidence remains source-free.
 
 ## Quick Resume
@@ -61,15 +71,15 @@ Last Updated: 2026-08-25 Europe/Brussels
 2. Read only the current phase, constraints, or changed decision in `records-adoption-plan.md`.
 3. Resume from the current priority in `records-adoption-tasks.md` unless the user overrides it.
 4. Keep `records-adoption-tasks.md` as the hot ledger; update this context only after a phase, decision, blocker, failed validation, material discovery, or handoff.
-5. Do not implement feature vertical slices. Preserve horizontal ownership: Domain → Application → API/OpenAPI → generated client/Blazor.
+5. Do not implement feature vertical slices. Preserve expanded ownership: Application results → published collections → Domain values → Persistence migrations → generated client/Blazor → final governance.
 
 ## Current Status
 
 - **Planning status:** Approved.
-- **Implementation status:** All 24 implementation tasks and Phase 6 are complete; Phase 4 verification remains blocked by API integration startup infrastructure.
-- **Completed implementation tasks:** 24/24.
-- **Current priority:** Recover the Phase 4 API integration gate.
-- **Next recommended slice:** Resolve privacy-replay/Infisical startup deterministically, rerun only the red API gate, then curate the shared dirty worktree.
+- **Implementation status:** Phases 0–9 are implemented directly on `develop`; Phase 10 persistence invariant work is next.
+- **Completed implementation tasks:** 33/40.
+- **Current priority:** Task 10.1, `Author Failing Persistence And Migration Invariant Breakers`.
+- **Next recommended slice:** Establish RED round-trip, existing-row, nullability, constraint, tenant/privacy, rollback, and reapply evidence across PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL migration models.
 - **I-VSD:** [C# Records Adoption I-VSD consultation](../../../islamic-value-sensitive-design/i-vsd-records-adoption.md).
 
 ## Key Files And Responsibilities
@@ -85,31 +95,36 @@ Last Updated: 2026-08-25 Europe/Brussels
 | `src/Explore.Domain/ValueObjects/**/*.cs` | Existing | Domain | Bounded value-object candidate surface | Entity/reference identity remains class-based. |
 | `src/Explore.Application/Features/**` | Existing | Application | MediatR command/query surface | Concrete requests should become sealed records. |
 | `src/Explore.Application/DTOs/**/*.cs` | Existing | Application | Handwritten DTO surface | 657 source files match `*Dto*.cs`; not all are candidates. |
-| `src/Explore.Application/Responses/BaseCommandResponse.cs` | Existing | Application | Mutable command result/failure builder | Explicitly retained as a class. |
+| `src/Explore.Application/Responses/BaseCommandResponse.cs` | Existing | Application | Current mutable command result/failure builder | Phase 7 replaces setter mutation with immutable valid-state factories. |
 | `src/Explore.Domain/OutboxMessage.cs` | Existing | Domain | Mutable persisted outbox lifecycle entity | Explicitly retained as a class. |
 | `src/Explore.API/Controllers/**/*.cs` | Existing | API | Trusted request adapters | Route/principal/tenant authority, not body authority. |
 | `src/Explore.API/Serialization/OptionalUpdateJsonConverterFactory.cs` | Existing | API | PATCH absent/set/clear JSON semantics | Must remain behaviorally intact. |
 | `schemas/openapi_islamu-event.json` | Generated | API contract | Canonical checked-in OpenAPI | Never hand-edit. |
 | `docs/API_CONTRACT_INVENTORY.md` | Generated | Docs/API | Generated operation inventory | Never hand-edit. |
-| `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` | Generated | Blazor | NSwag API client and DTO classes | Must remain generated classes. |
+| `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` | Generated | Blazor | NSwag API client and DTO contracts | Phase 11 changes representation through the generator only; never hand-edit. |
 | `src/Explore.Blazor.Client/Serialization/AppJsonSerializerContext.cs` | Existing | Blazor | AOT JSON metadata | Align after regeneration/local records. |
 | `docs/releases/changes/CHG-2026-0010.yaml` | Planned new | Release | Breaking/OpenAPI/security change fragment | Final task only; recheck ID availability. |
 
 ## Key Decisions
 
 1. **Classification-first and ambitious:** convert every handwritten type whose correct semantics are immutable data plus value equality.
-2. **No record uniformity:** retain classes for generation, entity/reference identity, lifecycle mutation, framework-populated binding, editable UI state, handlers/services/controllers/validators, and mutable command responses.
-3. **Horizontal Clean Architecture:** policy → Domain → Application requests → Application DTOs/payloads → API/OpenAPI → generated client/Blazor → governance closure.
+2. **No record uniformity:** retain classes for entity/reference identity, lifecycle mutation, framework-populated binding, editable UI state, handlers/services/controllers/validators, and any generated type proven incompatible with record semantics.
+3. **Horizontal Clean Architecture:** original policy/Domain/Application/API/Blazor work is followed by Application results → published collections → Domain values → Persistence migrations → generated client/Blazor → final governance.
 4. **Green phase boundaries:** a horizontal phase may repair downstream compilation breakages before its single gate.
 5. **Trusted facts:** remove current user/tenant from bodies; put trusted IDs on commands only when authorization or business intent uses them.
 6. **Permanent ratchet:** new class debt, unclassified body authority, and stale baseline entries fail architecture tests.
 7. **Record form:** positional for short stable contracts; nominal `required`/`init` records for long, optional, PATCH, validation, or named-construction contracts.
-8. **Collections:** harden only converted immutable contracts with serializer-compatible read-only members and defensive copies; do not assume record equality compares sequence contents.
-9. **`BaseCommandResponse<T>`:** retain as class; immutable result redesign is deferred.
-10. **Generated DTOs:** backend sources may be records; NSwag output remains generated classes.
+8. **Collections:** apply serializer-compatible read-only members and defensive snapshots to every published immutable contract; preserve intentional private mutation and do not assume sequence equality.
+9. **`BaseCommandResponse<T>`:** Phase 7 replaces the current mutable class/factory pattern with immutable valid-state construction while preserving RFC 7807 mapping.
+10. **Generated DTOs:** backend sources and compatible NSwag output become records; NSwag output always remains generator-owned.
 11. **Outbox:** immutable payload snapshots may be records; persisted entities/processors remain classes.
 12. **Breaking changes:** explicitly approved for development. Update tests, OpenAPI, generated client, API changelog, and change fragment; add no compatibility shim.
 13. **Tests:** exploit `with` for one-fact adversarial variants, equality only where consumed, immutable construction, JSON round trips, PATCH presence, and identity tampering; do not test compiler prose.
+14. **Immutable results:** replace mutable `BaseCommandResponse<T>` setters and local object-initializer factories with valid-state immutable factories while preserving ProblemDetails mapping.
+15. **Published collections:** defensively snapshot caller-owned collections and expose read-only contracts repository-wide; keep intentional aggregate/service backing mutation private.
+16. **Domain values:** model normalized minor-unit money, bounded coordinates, and separate local-date/UTC-instant ranges; do not collapse distinct temporal semantics.
+17. **EF migration:** generated, reversible, expand/contract, multi-provider value persistence is in scope; migration/snapshot hand edits remain forbidden.
+18. **Generated clients:** NSwag DTOs become generator-owned records through proven native support or a clean-room repository-owned extension; generated output is never manually converted.
 
 ## Constraints And Rules To Remember
 
@@ -181,7 +196,12 @@ Each implementation phase then runs exactly:
 | 3 Application DTOs/payloads | same | `tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj` |
 | 4 API/OpenAPI | same | `tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj` |
 | 5 Blazor | same | `tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj` |
-| 6 Governance close | same | `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj` |
+| 6 Original-wave governance | same | `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj` |
+| 7 Immutable results | same | `tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj` |
+| 8 Published collections | same | `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj` |
+| 9 Domain values | same | `tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj` |
+| 10 EF value persistence | same | `tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj` |
+| 11 Generated records/final close | same | `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj` |
 
 The repeated Application and Architecture projects have distinct phase ownership and concrete reasons. Successful commands are not rerun unchanged.
 
@@ -191,21 +211,20 @@ The repeated Application and Architecture projects have distinct phase ownership
 - The current architecture baseline is blocked by unrelated paid-checkout PII inventory drift; do not add those fields from this workstream.
 - Body `UserId`/`TenantId` names can represent current authority or a legitimate target; trace every caller before disposition.
 - AutoMapper and LINQ constructor projection compatibility is candidate-specific.
-- Some Domain value objects may be EF-mapped; a model delta blocks and requires separate migration classification.
+- Domain value-object model deltas are approved Phase 10 scope and must use the `add-ef-migration` contract with generated multi-provider artifacts.
 - Record collections remain shallowly immutable unless copied.
 - Record equality does not provide structural sequence equality.
 - Generated `ToString()` increases accidental PII/logging risk.
 - Horizontal phases are implementation checkpoints, not releaseable API/client combinations.
 - The Phase 4 OpenAPI breaking diff is known (+108/-33 with 776 operation IDs stable); scoped Stryker is green at 85.19% with two non-critical surviving string mutants.
 - The append-only `CHG-2026-0010` fragment is now claimed; its terminal commit must retain both `BREAKING CHANGE:` and `Change-Id: CHG-2026-0010`.
+- `BaseCommandResponse<T>` has a broad direct-construction/derived-response surface; Task 7.1 must inventory it before production edits.
+- Local date ranges and UTC instant ranges are semantically distinct; Phase 9 must not collapse them into one unconstrained abstraction.
+- Pinned NSwag record capability is not yet proven; Task 11.1 owns the bounded capability check and clean-room owned-extension fallback.
 
 ## Deferred Work
 
-- Immutable redesign of `BaseCommandResponse<T>` and handler result factories.
-- Any new domain concept such as `Money`, `GeoCoordinate`, or `DateRange` not already justified by repository duplication.
-- EF schema migration caused by value-object redesign.
-- Repository-wide immutable-collection standard beyond converted immutable contracts.
-- Changing NSwag generator representation from POCO classes.
+- None. The former five-item deferred list is fully owned by Phases 7–11 and Tasks 7.1–11.4.
 
 ## Handoff Notes
 
@@ -230,3 +249,14 @@ The repeated Application and Architecture projects have distinct phase ownership
 - **Documentation impact:** Tasks/context reconciled; the plan was unchanged because scope, architecture, phase order, acceptance, risk, and validation strategy did not change.
 - **Risks:** The broad shared 1,186-path dirty state prevents reliable ownership from an unstaged diff; no commit may be attempted until paths are curated.
 - **Notes for next contributor:** Preserve the exact eight/seven baselines, do not add shims or hand-edit generated artifacts, and do not relabel Phase 4 complete until its exact test project is green.
+
+### Planning Re-Baseline Handoff — 2026-08-25 Europe/Brussels
+
+- **Current state:** Plan-only scope expansion completed; no runtime, test, migration, generator, or generated-product file changed.
+- **Next action:** Recover the exact Phase 4 API gate, then begin Task 7.1. Phases 7–11 must execute in order.
+- **Blockers:** The existing privacy-replay/Infisical startup blocker remains the sole gate before expanded implementation.
+- **Modified files:** `records-adoption-plan.md`, `records-adoption-context.md`, `records-adoption-tasks.md`, and the linked I-VSD scope report.
+- **Validation:** Planning-only whitespace/link/deferred-coverage checks are required; no .NET build or test belongs to this plan edit.
+- **Documentation impact:** All five former deferrals are now actionable, Red-first tasks with owning files, gates, rollback, and release closure.
+- **Risks:** NSwag native record support remains a bounded capability proof; the plan requires a deterministic owned extension if absent and forbids copied templates or hand edits.
+- **Notes for next contributor:** The completed count is 24/40. Do not restore any former item to `Deferred Work`; record a concrete blocker under its owning task instead.

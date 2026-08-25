@@ -1081,3 +1081,48 @@ not account for this repository having replaced the standard Blazor router.
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-25 Europe/Brussels] — Phase 20 QR clean-room evidence needs explicit context identities
+
+**Context**: While applying the Tier-1 `ip-clean-room-governance` intent to Phase 20
+Task 20.3, public package/platform research had to remain separate from the QR
+implementation and its AFC/SSO review.
+
+**Symptom / Observation**: The first provenance record transparently named the implementation
+child as its reviewer but did not retain the lead research context, the fresh implementation
+context identity, or a journal link. Independent audit `st_01a03a04` therefore rejected the
+evidence even though it found no incompatible dependency or externally derived expressive
+structure.
+
+**Root Cause**: A source-free functional handoff is necessary but not sufficient audit
+evidence. The retained record must also identify where research ended, which fresh context
+implemented from the handoff, and which separate reviewer made the AFC/SSO decision.
+
+**Resolution**: `phase20-qr-clean-room-evidence.md` now identifies lead goal
+`01a0386c-ab3c-7051-9d65-168a7532dfe3` as the metadata-research context, child
+`st_01a039ec` as the source-free implementation context, and independent audit
+`st_01a03a04` as the AFC/SSO reviewer. It records the MIT encoder as an engineering-policy
+approval rather than legal certification and keeps eventual PR/commit provenance explicitly
+pending. Re-audit `st_01a03a04` confirmed the corrected record with confidence 0.99.
+The dependency-license validator passes for 653 package/version pairs.
+
+**Why This Matters for Future Work**: Clean-room implementation must preserve auditable
+context separation, not merely assert that source was absent. Name the researcher, fresh
+implementer, and independent reviewer in the durable record before claiming the gate passed;
+keep package-policy approval distinct from assembled-distribution legal compliance.
+
+**References**:
+- `dev/active/registration-data-collection/phase20-qr-clean-room-evidence.md`
+- `.omo/evidence/20260825-phase20/20.3-qr-independent-red.md`
+- `docs/legal/IP_GOVERNANCE.md`
+- `.agents/skills/ip-clean-room/resources/sso-and-provenance-review.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [ ] Candidate for skill update: `ip-clean-room`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [x] Stays in journal only (one-off audit lesson)
+
+---

@@ -3,18 +3,18 @@
 
 # Records Adoption — Implementation Plan
 
-Last Updated: 2026-08-24 Europe/Brussels
+Last Updated: 2026-08-25 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Modernize suitable DTOs, MediatR requests, immutable outbox payloads, domain value objects, and immutable Blazor state with C# records while retaining classes where identity, lifecycle mutation, generated ownership, framework binding, or editable state makes class semantics correct.
 - **Task directory:** `dev/active/records-adoption/`
 - **Planning status:** Approved; implementation active in isolated worktree `/home/amir/ISLAMU/Github/Event-records-adoption`.
-- **Matched intent:** `openapi-contract-change` from `.agents/contract/intents.yaml`.
-- **Criticality:** The matched intent is `standard`, but the body-authority and tenant/user identity corrections activate the Tier 1 Security guardrail for those tasks. Those tasks require advanced-model implementation, invariant-breaker tests, zero-PII checks, scoped mutation evidence above 85%, and anonymized Epistemic MAD review.
+- **Matched intents:** `openapi-contract-change` and `add-ef-migration` from `.agents/contract/intents.yaml`, plus a fallback cross-layer refactor contract for immutable Application results and collection contracts.
+- **Criticality:** The OpenAPI work is standard, while body-authority corrections and generated EF migrations activate Tier 1 Security guardrails. Those tasks require advanced-model implementation, invariant-breaker tests, fail-closed tenant behavior, multi-provider migration evidence, zero-PII checks where sensitive values are involved, scoped mutation evidence above 85% for changed security logic, and anonymized Epistemic MAD review.
 - **Relevant skills:** `implementation-plan`, `i-vsd`, `grill-me`, `criticality-guardrail`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `outbox-pattern`, `dotnet-efcore-guidelines`, `blazor-ui-conventions`, `ip-clean-room`, `agentic-research`, `ast-grep`, `epistemic-mad-review`.
 - **Relevant rules:** `.agents/rules/application-layer.md`, `api-controllers.md`, `domain.md`, `blazor-client.md`, `tests.md`, `auth-trust-boundaries.md`, `work-criticality-matrix.md`, and `ip-clean-room.md`.
-- **Primary layers:** Domain, Application, API, generated OpenAPI/NSwag contract, and Blazor Client. Persistence is touched only when an existing value-object mapping or projection caller must compile; no schema change is planned.
+- **Primary layers:** Domain, Application, Persistence, API, generated OpenAPI/NSwag contract, and Blazor Client.
 - **Complexity:** XL. The Application project alone has 657 source files matching `*Dto*.cs`; compiled request discovery, object initializers, AutoMapper projections, JSON source generation, OpenAPI generation, generated client code, and UI consumers create a repository-wide blast radius.
 - **I-VSD Document:** [C# Records Adoption I-VSD consultation](../../../islamic-value-sensitive-design/i-vsd-records-adoption.md)
 - **Grill-Me Intake:**
@@ -22,9 +22,11 @@ Last Updated: 2026-08-24 Europe/Brussels
   - Accepted explicit command `UserId` / `TenantId` only when authorization or business intent uses those facts; ambient trusted contexts remain valid where identity is not request data.
   - Accepted a permanent, shrinking architecture ratchet for MediatR requests, DTO classes, and body-authority dispositions.
   - Rejected feature-oriented vertical slices. Migration ownership is horizontal: Domain → Application → API/OpenAPI → generated client/Blazor, with downstream compilation repairs allowed before each phase gate.
-  - Accepted `BaseCommandResponse<T>` remaining a class; immutable result redesign is deferred.
-  - Accepted serializer-compatible read-only collections and defensive copies within converted contracts, without a repository-wide collection rewrite.
+  - The original bounded scope retained `BaseCommandResponse<T>` and limited collection hardening to converted contracts; the 2026-08-25 re-baseline supersedes both limits.
   - Explicitly approved intentional development-stage breaking API changes, provided tests, OpenAPI, generated clients, and release evidence move together by workstream completion. Compatibility shims are forbidden.
+  - Re-baselined on 2026-08-25: the user approved implementing every previously deferred area. The workstream now includes immutable `BaseCommandResponse<T>` and result factories, a repository-wide immutable published-collection standard, evidenced `Money`/`GeoCoordinate`/temporal-range value concepts, generated EF migrations for resulting model changes, and generated NSwag record contracts.
+  - Domain concepts remain evidence-driven: local calendar ranges and UTC instant ranges are distinct semantics, and no generic `DateRange` may erase that distinction.
+  - Generated NSwag records must come from the pinned generator or a deterministic repository-owned generation extension. Hand-editing `EventApiClient.g.cs` remains forbidden.
 
 ## 1. Executive Summary
 
@@ -37,8 +39,13 @@ The outcome is not “records everywhere.” It is:
 - trusted route, user, and tenant facts introduced from established server authorities rather than request bodies;
 - immutable outbox payload snapshots separated from mutable persisted outbox entities;
 - small domain value objects using record class or `readonly record struct` only when value/copy semantics fit;
-- immutable Blazor result/filter/dialog snapshots expressed as records while generated NSwag DTOs and mutable form/component state remain classes;
+- immutable Blazor result/filter/dialog snapshots expressed as records while mutable form/component state remains class-based and NSwag representation remains generator-owned;
 - permanent architecture tests that reject new record-policy debt and force every retained class to have a current semantic reason.
+- immutable Application command results created through explicit success/failure factories rather than public setter mutation;
+- a repository-wide standard for published immutable collections, with defensive snapshots and explicit mutable-owner exclusions;
+- evidenced `Money`, `GeoCoordinate`, local-date-range, and UTC-instant-range concepts replacing duplicated primitive pairs;
+- generated EF migrations and provider snapshots for intentional value-object persistence changes;
+- deterministic NSwag-generated record DTOs, with consumers migrated away from setter-dependent construction.
 
 ### Intended outcomes
 
@@ -52,9 +59,10 @@ The outcome is not “records everywhere.” It is:
 
 - No conversion of EF entities, outbox lifecycle entities, services, repositories, handlers, validators, controllers, or mutable Blazor edit state merely for consistency.
 - No manual edits to `EventApiClient.g.cs`, generated OpenAPI, API inventory, EF migrations, or model snapshots.
-- No immutable redesign of `BaseCommandResponse<T>` in this workstream.
-- No new money, coordinate, or date-range value object unless Phase 0 proves an existing duplicated concept and a separate task is approved.
-- No dependency additions, database schema change, product behavior, or UI redesign.
+- No unification of local calendar ranges with UTC instant ranges when their invariants differ.
+- No conversion of internal mutable collections whose owning aggregate/service intentionally controls mutation.
+- No dependency addition for NSwag record generation unless the outbound-license gate passes and the user separately approves the expansion.
+- No product workflow or UI redesign.
 - No backward-compatibility adapters, legacy constructors, duplicate JSON properties, or obsolete command aliases.
 
 ## 2. Source-Grounded Current State Report
@@ -174,8 +182,8 @@ The outcome is not “records everywhere.” It is:
 | Outbox/EF entity | Class | Always for this workstream. |
 | Small value object | Sealed record class or `readonly record struct` | It is large/reference-rich, EF identity-bearing, or copy/value semantics are wrong. |
 | Blazor immutable result/filter/dialog payload | Sealed record | It is generated or edit/component state. |
-| Generated NSwag DTO | Generated class | Always; representation belongs to NSwag. |
-| `BaseCommandResponse<T>` | Class | Retained for incremental mutation and failure helpers. |
+| Generated NSwag DTO | Generated partial record after Phase 11 | Representation remains generator-owned; never hand-edit output. |
+| `BaseCommandResponse<T>` | Immutable record/result contract after Phase 7 | Creation flows through explicit factories; no public mutable setters or mutable error collection exposure. |
 
 ### 3.2 Construction and equality
 
@@ -220,9 +228,9 @@ AuthorizationBehavior -> manually instantiated validator -> handler
 8. `ISecureRequest` facts remain fail-closed for empty/missing route, tenant, and user facts.
 9. PATCH omission, explicit clear, route authority, and `If-Match` behavior remain explicit.
 10. Generated OpenAPI, inventory, NSwag code, migrations, and model snapshots are never hand-edited.
-11. `BaseCommandResponse<T>` remains a class.
+11. `BaseCommandResponse<T>` becomes immutable only through test-first migration of factories, derived responses, serializers, and API ProblemDetails mapping.
 12. Outbox/EF lifecycle entities remain classes.
-13. Generated NSwag DTOs remain generated classes.
+13. Generated NSwag DTOs remain generated artifacts; Phase 11 changes their generated representation without hand-editing output.
 14. Mutable Blazor forms/component state remain classes.
 15. No compatibility shims or obsolete aliases.
 16. Every behavioral implementation task has a Red-phase specification before production edits.
@@ -271,20 +279,20 @@ AuthorizationBehavior -> manually instantiated validator -> handler
 - **Consequences:** Reviewers must justify positional order and metadata placement.
 - **Affected layers:** Domain, Application, API, Blazor.
 
-### D6. Bounded deep-immutability hardening
+### D6. Repository-wide published-collection immutability
 
-- **Decision:** Harden collection members within each converted immutable contract using read-only interfaces and defensive copies proven compatible with serializers/generators.
+- **Decision:** Apply one repository-wide standard to published immutable contracts: expose read-only collection abstractions, defensively snapshot caller-owned mutable inputs, and keep mutable backing collections private to intentional owners.
 - **Why:** Records provide shallow immutability only.
-- **Alternatives considered:** Ignore mutable members; repository-wide immutable-collection rewrite.
-- **Consequences:** Some constructor/factory code changes beyond the declaration keyword are required.
-- **Affected layers:** Domain, Application, Blazor.
+- **Alternatives considered:** Ignore mutable members; replace every internal collection with an immutable package type.
+- **Consequences:** Architecture tests must distinguish published immutable contracts from aggregate/service internals; serializers and generated clients require explicit compatibility tests.
+- **Affected layers:** Domain, Application, API, Blazor, tests, and governance.
 
-### D7. Preserve lifecycle and generated classes
+### D7. Preserve lifecycle and framework-owned mutation
 
-- **Decision:** Retain EF/outbox entities, handlers, validators, controllers, generated DTOs, mutable UI state, and `BaseCommandResponse<T>` as classes.
-- **Why:** Reference identity, mutation, inheritance, generator ownership, or framework behavior is intentional.
-- **Alternatives considered:** Mutable records; immutable result redesign.
-- **Consequences:** The permanent baseline documents why these are not record-policy debt.
+- **Decision:** Retain EF/outbox entities, handlers, validators, controllers, and mutable UI state as classes. Migrate Application results and generated DTO representation only through their owning factory/generator boundaries.
+- **Why:** Reference identity, lifecycle mutation, inheritance, and framework behavior remain intentional even after the expanded record adoption.
+- **Alternatives considered:** Records everywhere; public setters on records; hand-edited generated records.
+- **Consequences:** The permanent baseline documents semantic exclusions while Phases 7 and 11 remove the two previously deferred class categories.
 
 ### D8. Breaking changes are explicit, not shimmed
 
@@ -300,14 +308,37 @@ AuthorizationBehavior -> manually instantiated validator -> handler
 - **Alternatives considered:** Assert every record has generated equality/`ToString()` only.
 - **Consequences:** Record mechanics are tested through consumer-visible invariants.
 
+### D10. Value concepts follow existing semantic pairs
+
+- **Decision:** Introduce `Money` around normalized currency plus minor units, `GeoCoordinate` around bounded latitude/longitude, and separate local-date and UTC-instant range concepts where current invariants differ.
+- **Why:** `EventTicketType`/`PaymentAttempt`, `LocationPii`, `Event`/`EventSeries`, and session/agenda models repeat these primitives, but a single generic range would collapse different temporal meanings.
+- **Alternatives considered:** Keep primitive pairs; introduce one unconstrained generic `DateRange`; redesign unrelated payment/location workflows.
+- **Consequences:** Domain tests define semantics first, then Application/Persistence callers migrate in bounded batches. No arithmetic or range operation is added unless a current caller needs it.
+- **Affected layers:** Domain, Application, Persistence, serialization, and tests.
+
+### D11. EF changes are generated and expand/contract safe
+
+- **Decision:** Accept the schema/model changes produced by the approved value-object redesign, but generate every migration and provider snapshot from corrected Domain/EF configuration sources.
+- **Why:** CLR value-object ownership may change EF metadata even when column names remain stable; hand-edited migrations are forbidden and multi-provider compatibility is a Tier 1 gate.
+- **Alternatives considered:** Suppress all model changes; hand-edit snapshots; destructive one-step column replacement.
+- **Consequences:** Phase 10 proves old-row compatibility, up/down/reapply behavior, nullability, constraints, and provider-specific output before accepting generated artifacts.
+- **Affected layers:** Domain, Persistence, migration projects, schema docs, and tests.
+
+### D12. Generated record DTOs stay generator-owned
+
+- **Decision:** First prove whether pinned NSwag 14.6.3 exposes a deterministic record mode. If it does not, add a repository-owned deterministic generation extension under the existing client-generation boundary; never patch generated declarations manually.
+- **Why:** `nswag.json` currently specifies `classStyle: Poco`, generated consumers rely on parameterless/object-initializer construction, and exact `partial class` assumptions exist in architecture tests.
+- **Alternatives considered:** Keep POCOs; edit `EventApiClient.g.cs`; copy third-party templates; add an unreviewed generator dependency.
+- **Consequences:** Phase 11 begins with compiled/source characterization, migrates all generated-contract consumers, runs generation twice for idempotency, and preserves JSON, HAL, PATCH, nullable, and client-method behavior.
+- **Affected files:** `src/Explore.Blazor.Client/nswag.json`, `Explore.Blazor.Client.csproj`, generated client output, client consumers, architecture/API/Blazor tests, and generation docs.
+
 ## 6. Implementation Phases
 
 ### Phase 0: Architecture Policy And Candidate Baseline
 
-- **Phase status:** Complete — exact ratchets, policy, Release build, and architecture suite independently verified.
 - **Goal:** Establish a deterministic candidate/disposition inventory and permanent no-new-debt ratchet before production conversion.
 - **Depends on:** No records-adoption task. Start is blocked until the owning paid-checkout work restores the pre-existing architecture-suite baseline to green.
-- **Relevant files:** new `tests/Event.Architecture.Tests/RecordContractArchitectureTests.cs`; new `tests/Event.Architecture.Tests/Baselines/record-contract-class-baseline.json`; new `tests/Event.Architecture.Tests/Baselines/http-body-authority-dispositions.json`; existing `docs/GOVERNANCE.md`, `.agents/rules/application-layer.md`, `.agents/rules/domain.md`, `.agents/rules/blazor-client.md`, `.agents/rules/tests.md`.
+- **Relevant files:** `tests/Event.Architecture.Tests/RecordContractArchitectureTests.cs`; `tests/Event.Architecture.Tests/Baselines/record-contract-class-baseline.json`; `tests/Event.Architecture.Tests/Baselines/http-body-authority-dispositions.json`; `docs/GOVERNANCE.md`, `.agents/rules/application-layer.md`, `.agents/rules/domain.md`, `.agents/rules/blazor-client.md`, `.agents/rules/tests.md`.
 - **Related skills/rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `ast-grep`; Application/API/Domain/Blazor/Test rules.
 - **Acceptance criteria:**
   - Compiled concrete `IRequest`/`IRequest<T>` types are discovered deterministically.
@@ -320,42 +351,11 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Revert only the new test/policy artifacts if discovery is nondeterministic. Do not weaken predicates to make the baseline smaller; correct classification or split a false-positive category.
 
-#### Task 0.1: Author Failing Record And Body-Authority Ratchets
-- **Status:** Complete — intentional RED independently confirmed.
-- **Type:** create
-- **Layer:** Tests
-- **Files:** `tests/Event.Architecture.Tests/RecordContractArchitectureTests.cs` (new); both baseline JSON files (new, initially empty).
-- **Description:** Discover compiled MediatR requests, Application DTO declarations, generated ownership, and API `[FromBody]` contracts. Add deterministic tests for record detection, baseline completeness/staleness, and authority-like property dispositions. Observe RED against current technical debt.
-- **Acceptance Criteria:**
-  - [x] Tests fail for current class requests and unclassified DTOs.
-  - [x] Tests fail for undisposed body `TenantId`/`UserId`-shaped members.
-  - [x] Generated NSwag output, validators, entities, and edit-state classes are excluded by explicit category rather than path accident.
-  - [x] Record detection reuses the repository’s compiled `EqualityContract` precedent or an equally deterministic runtime check.
-- **Dependencies:** Precondition: rerun the architecture baseline only after the owning paid-checkout work changes; it must be green before the first records-adoption test edit.
-- **Effort:** L.
-- **Required Skills/Rules:** `criticality-guardrail`, `auth-patterns`, `.agents/rules/tests.md`.
-
-#### Task 0.2: Classify Current Contracts And Establish Shrinking Baselines
-- **Status:** Complete.
-- **Type:** investigate/modify
-- **Layer:** Architecture
-- **Files:** the two new baseline JSON files; `docs/GOVERNANCE.md`; `.agents/rules/application-layer.md`; `.agents/rules/domain.md`; `.agents/rules/blazor-client.md`; `.agents/rules/tests.md`.
-- **Description:** Classify every discovered item as positional-record candidate, nominal-record candidate, record-struct candidate, or retained class with reason/removal trigger. Populate only current debt/exceptions, then make Task 0.1 green without hiding candidates.
-- **Acceptance Criteria:**
-  - [x] Every baseline entry names type, category, reason, owner, and removal trigger.
-  - [x] No generated file or build output is included.
-  - [x] Rules document concrete-record default, class exclusions, collection/equality caveats, and body-authority policy.
-  - [x] A stale type or resolved class automatically fails until its entry is removed.
-- **Dependencies:** 0.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `ast-grep`.
-
 ### Phase 1: Domain Value Semantics
 
-- **Phase status:** Complete — no production conversion required; Release build and 857 Domain tests independently verified.
 - **Goal:** Convert only approved small Domain value types while preserving entity/reference identity and EF behavior.
 - **Depends on:** Phase 0.
-- **Relevant files:** bounded candidates from `src/Explore.Domain/ValueObjects/**/*.cs`; their existing consumers; new `tests/Event.Domain.UnitTests/ValueObjects/RecordValueObjectContractTests.cs`; existing EF configurations only when a candidate is already mapped.
+- **Relevant files:** bounded candidates from `src/Explore.Domain/ValueObjects/**/*.cs`; their existing consumers; `tests/Event.Domain.UnitTests/ValueObjects/RecordValueObjectContractTests.cs`; existing EF configurations only when a candidate is already mapped.
 - **Related skills/rules:** `clean-architecture-rules`, `dotnet-efcore-guidelines`, Domain/Test rules.
 - **Acceptance criteria:**
   - Every converted type has intentional equality/copy semantics and invariant tests.
@@ -366,48 +366,6 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Revert an individual candidate to its prior class/struct when value equality, copying, EF mapping, or mutation behavior proves incorrect; keep its baseline reason rather than adding custom equality solely to force record use.
-
-#### Task 1.1: Author Failing Value-Semantics Specifications
-- **Status:** Complete — exhaustive characterization found no unresolved Domain class candidate.
-- **Type:** create/modify
-- **Layer:** Tests
-- **Files:** `tests/Event.Domain.UnitTests/ValueObjects/RecordValueObjectContractTests.cs` (new); existing candidate-specific Domain tests.
-- **Description:** From Phase 0 candidates, add RED specifications for construction invariants, intended equality/inequality, `with`-based one-fact variants, copy behavior, collection mutation boundaries, and invalid values.
-- **Acceptance Criteria:**
-  - [x] Each test can fail for the named regression.
-  - [x] No test merely asserts compiler-generated prose or exact `ToString()` output.
-  - [x] Sequence-equality applicability is explicit; the bounded declarations expose no collection state.
-- **Dependencies:** 0.2.
-- **Effort:** M.
-- **Required Skills/Rules:** Domain/Test rules, `dotnet-efcore-guidelines`.
-
-#### Task 1.2: Convert Approved Domain Value Types
-- **Status:** Complete — verified no-op; all approved bounded types were already records.
-- **Type:** modify
-- **Layer:** Domain
-- **Files:** exact candidate files emitted by the Phase 0 baseline under `src/Explore.Domain/ValueObjects/`; direct Domain/Application callers.
-- **Description:** Use sealed record classes or `readonly record struct` according to semantics. Preserve constructor validation and use defensive copies for mutable referenced inputs where immutability is claimed.
-- **Acceptance Criteria:**
-  - [x] All Task 1.1 specifications pass.
-  - [x] No Domain dependency is added.
-  - [x] Entity, aggregate, outbox lifecycle, and large reference-rich types remain classes.
-- **Dependencies:** 1.1.
-- **Effort:** L.
-- **Required Skills/Rules:** `clean-architecture-rules`, Domain rule.
-
-#### Task 1.3: Repair Mappings And Remove Resolved Domain Baselines
-- **Status:** Complete — verified no-op mapping/model closure.
-- **Type:** modify
-- **Layer:** Persistence/Application/Tests
-- **Files:** only verified callers/configurations of converted value types; Phase 0 class baseline.
-- **Description:** Update constructor call sites and existing EF conversions/configuration without changing schema. Remove resolved baseline entries.
-- **Acceptance Criteria:**
-  - [x] No migration or snapshot file is edited.
-  - [x] EF metadata/model evidence shows no schema delta.
-  - [x] Downstream compilation requires no repair and introduces no outward Domain reference.
-- **Dependencies:** 1.2.
-- **Effort:** M.
-- **Required Skills/Rules:** `dotnet-efcore-guidelines`, `clean-architecture-rules`.
 
 ### Phase 2: Application MediatR Requests
 
@@ -426,47 +384,6 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Keep a request as a reasoned baseline class only when a verified external framework requires class semantics. Do not add setters to a record merely to preserve object-initializer callers.
 
-#### Task 2.1: Author Failing Request And Authorization Specifications
-- **Status:** Complete — comprehensive request RED and fail-closed facts independently confirmed.
-- **Type:** modify/create
-- **Layer:** Tests
-- **Files:** `RecordContractArchitectureTests.cs`; focused tests under `tests/Event.Application.UnitTests/Features/`; identity/authorization tests for affected requests.
-- **Description:** Turn request-baseline candidates into RED batches. Use `with` variants to forge tenant/user/resource facts, prove immutable construction, and lock authorization-fact derivation before conversion.
-- **Acceptance Criteria:**
-  - [x] The compiled batch fails because 590 concrete requests remain classes.
-  - [x] Wrong-tenant, empty-ID, and changed-resource variants fail closed where applicable.
-  - [x] Sensitive request values are not asserted through logs or snapshots.
-- **Dependencies:** 1.3.
-- **Effort:** XL.
-- **Required Skills/Rules:** `criticality-guardrail`, `auth-patterns`, `cqrs-mediatr-guidelines`.
-
-#### Task 2.2: Convert Commands And Queries By Application Ownership
-- **Type:** modify
-- **Layer:** Application
-- **Files:** request files identified by the compiled Phase 0 baseline; direct validators/handlers and downstream constructors.
-- **Description:** Convert concrete requests to sealed positional or nominal records. Preserve abstract record hierarchies. Prefer command-owned intent fields; a nested Application request record is allowed when it avoids unsafe long positional signatures and contains no HTTP-only behavior.
-- **Acceptance Criteria:**
-  - [ ] Selected class requests are eliminated from the baseline.
-  - [ ] No command has meaningless ambient IDs.
-  - [ ] No body-sourced current authority survives in authorization facts.
-  - [ ] Manual validator construction and handler contracts remain unchanged.
-- **Dependencies:** 2.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `cqrs-mediatr-guidelines`, `auth-patterns`, Application rule.
-
-#### Task 2.3: Harden Request Collections And Logging Boundaries
-- **Type:** modify
-- **Layer:** Application
-- **Files:** collection-bearing converted requests; affected call sites; zero-PII test sinks.
-- **Description:** Replace mutable published collections with serializer/consumer-compatible read-only contracts and defensive copies where required. Ensure logging uses bounded scalar fields rather than record interpolation/destructuring.
-- **Acceptance Criteria:**
-  - [ ] Mutation after request construction cannot alter values where the contract claims immutability.
-  - [ ] Equality tests do not assume structural list/array equality.
-  - [ ] Tier 1 request families emit no raw body, token, free text, user ID, or tenant ID in logs.
-- **Dependencies:** 2.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `criticality-guardrail`, Application/Test rules.
-
 ### Phase 3: Application DTOs And Immutable Payloads
 
 - **Goal:** Convert eligible handwritten data contracts and immutable outbox payload snapshots while retaining lifecycle and framework classes.
@@ -483,74 +400,6 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Prefer changing a positional candidate to a nominal record when mapping/serializer metadata requires named members. Revert to a reasoned class when framework behavior is genuinely class-oriented; do not weaken PATCH or validation semantics.
-
-#### Task 3.1: Author Failing DTO Mapping And Serialization Specifications
-- **Type:** create/modify
-- **Layer:** Tests
-- **Files:** focused tests under `tests/Event.Application.UnitTests/DTOs/`, mapping tests, payload-factory tests, JSON-context tests.
-- **Description:** For each horizontal DTO category batch, add RED tests for immutable construction, intended equality, `with` variants, mapping/projection, JSON round trip, required/null behavior, PATCH omission/clear, and payload serialization.
-- **Acceptance Criteria:**
-  - [ ] Tests assert machine-consumed behavior, not declaration prose.
-  - [ ] PATCH tests distinguish omitted, explicit null/clear, and replacement.
-  - [ ] Payload tests preserve event type/version, idempotency inputs, and privacy-safe fields.
-- **Dependencies:** 2.3.
-- **Effort:** XL.
-- **Required Skills/Rules:** `outbox-pattern`, Application/Test rules.
-
-#### Task 3.2: Convert Read And Projection DTOs
-- **Type:** modify
-- **Layer:** Application
-- **Files:** Phase 0 read/projection candidates under `DTOs/**` and `Features/**/DTOs`; mapping profiles; direct consumers.
-- **Description:** Use positional records for short stable scalar projections and nominal records for long/optional/attribute-heavy contracts. Harden collections only where immutable projection semantics require it.
-- **Acceptance Criteria:**
-  - [ ] Every converted projection has intentional equality.
-  - [ ] AutoMapper/LINQ construction remains translatable and deterministic.
-  - [ ] HAL, ETag, pagination, and normalized lookup fields retain their intended wire meaning.
-- **Dependencies:** 3.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `cqrs-mediatr-guidelines`, `clean-architecture-rules`.
-
-#### Task 3.3: Convert HTTP Body DTOs And Remove Ambient Authority
-- **Type:** modify
-- **Layer:** Application
-- **Files:** Phase 0 HTTP-body candidates and their validators; downstream API/MCP/BFF constructors needed for compilation.
-- **Description:** Convert bodies to positional or nominal records. Remove current-user/current-tenant fields and route-owned IDs. Retain explicit target resource IDs only with a disposition. Put ASP.NET validation metadata on record constructor parameters when positional binding is used.
-- **Acceptance Criteria:**
-  - [ ] Bodies contain only client-owned fields.
-  - [ ] PATCH bodies remain nominal records when presence semantics require it.
-  - [ ] No record has multiple public constructors when ASP.NET record binding applies.
-  - [ ] Validation messages and ProblemDetails inputs remain machine-equivalent or intentionally documented as breaking.
-- **Dependencies:** 3.1, 2.2.
-- **Effort:** XL.
-- **Required Skills/Rules:** `auth-patterns`, `criticality-guardrail`, Application/API rules.
-
-#### Task 3.4: Convert Immutable Outbox Payload Snapshots
-- **Type:** modify
-- **Layer:** Application
-- **Files:** payload contracts/factories identified by Phase 0 under Application notification, registration, moderation, federation, integration, and webhook features; payload tests.
-- **Description:** Convert point-in-time payload snapshots to sealed records without converting persisted queue/lifecycle entities. Preserve versioned JSON field names unless an intentional breaking payload change is explicitly documented.
-- **Acceptance Criteria:**
-  - [ ] Outbox entities, repositories, leases, retries, and processors remain classes.
-  - [ ] Serialized payloads round-trip and retain idempotency/replay facts.
-  - [ ] PII-bearing payloads are not exposed through record logging/`ToString()`.
-  - [ ] No compatibility reader is added.
-- **Dependencies:** 3.1.
-- **Effort:** L.
-- **Required Skills/Rules:** `outbox-pattern`, `criticality-guardrail`.
-
-#### Task 3.5: Align Mapping, JSON Contexts, And Downstream Compilation
-- **Type:** modify
-- **Layer:** Application/Infrastructure/API/Tests
-- **Files:** `src/Explore.Application/Profiles/**/*.cs`; `Serialization/ExploreJsonContext.cs`; verified caller files; DTO baseline.
-- **Description:** Update named/constructor mappings, source-generation registrations, object-initializer call sites, and downstream consumers. Remove resolved baseline entries.
-- **Acceptance Criteria:**
-  - [ ] Application mapping configuration is valid.
-  - [ ] System.Text.Json source generation includes every required record.
-  - [ ] No generated file is hand-edited.
-  - [ ] Retained class entries still have valid reasons.
-- **Dependencies:** 3.2–3.4.
-- **Effort:** XL.
-- **Required Skills/Rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`.
 
 ### Phase 4: API Trust Boundary And OpenAPI Contract
 
@@ -569,62 +418,6 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Fix the source DTO/controller/model and regenerate. Never patch generated schema/client text. A discovered authorization mismatch blocks the phase; do not preserve the old body authority through a shim.
 
-#### Task 4.1: Author Failing HTTP And Trust-Boundary Invariant Breakers
-- **Type:** create/modify
-- **Layer:** Tests
-- **Files:** focused tests under `tests/Event.API.IntegrationTests/Features/`, `Authentication/`, and `Hosting/`; OpenAPI contract tests; body-authority disposition baseline.
-- **Description:** Add RED tests for body tenant/user spoofing, wrong tenant header/context, missing identity, route/body conflict, PATCH absent/null/value behavior, positional validation metadata, stable ProblemDetails codes, and OpenAPI required/null schemas.
-- **Acceptance Criteria:**
-  - [ ] Forged body authority cannot affect command authorization or persistence.
-  - [ ] Missing/conflicting trusted identity fails with existing 401/403/404 policy.
-  - [ ] Legitimate target IDs remain usable only for their explicit operation.
-  - [ ] Operation IDs and route names remain stable unless the breaking change explicitly documents them.
-- **Dependencies:** 3.3.
-- **Effort:** XL.
-- **Required Skills/Rules:** `criticality-guardrail`, `auth-patterns`, API/Test rules.
-
-#### Task 4.2: Refactor Controllers And API Models
-- **Type:** modify
-- **Layer:** API
-- **Files:** affected controllers and `Models/**/*.cs` identified by Task 4.1; trusted context dependencies; direct MCP/BFF adapters where the same command is constructed.
-- **Description:** Use `ExploreControllerBase`, `PlatformIdentityPrincipalExtensions`, `IUserContext`, `ITenantContext`, and route facts according to existing authority. Convert only immutable API-owned models; retain query/form/inheritance/`IValidatableObject` classes where class semantics fit.
-- **Acceptance Criteria:**
-  - [ ] Controllers never re-derive raw claims or resolve services from `RequestServices`.
-  - [ ] No current tenant/user field is accepted from JSON.
-  - [ ] Commands receive only semantically used trusted facts.
-  - [ ] Write endpoints remain authorized and failures remain RFC 7807 ProblemDetails.
-- **Dependencies:** 4.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `auth-patterns`, `cqrs-mediatr-guidelines`, API/Auth rules.
-
-#### Task 4.3: Regenerate And Document The API Contract
-- **Type:** modify
-- **Layer:** API/Docs
-- **Files:** generated `schemas/openapi_islamu-event.json`; generated `docs/API_CONTRACT_INVENTORY.md`; `docs/API_CHANGELOG.md`; API OpenAPI catalogs/tests.
-- **Description:** Build `Explore.API` to regenerate OpenAPI and run the inventory generator through the documented workflow. Record every intentional body/requiredness/nullability break.
-- **Acceptance Criteria:**
-  - [ ] Generated artifacts come only from documented generators.
-  - [ ] OpenAPI body schemas omit current-authority fields.
-  - [ ] Required/nullability metadata matches runtime binding.
-  - [ ] `docs/API_CHANGELOG.md` explains migration with no compatibility alias.
-- **Dependencies:** 4.2.
-- **Effort:** L.
-- **Required Skills/Rules:** API rule, `openapi-contract-change` intent.
-
-#### Task 4.4: Close Tier 1 Mutation And Adversarial Review Evidence
-- **Type:** investigate/modify
-- **Layer:** Security/Tests
-- **Files:** `stryker-config.json` (existing, modify only if scoped configuration is repository-approved); changed identity tests/code; new structured MAD findings artifact under `.omo/start-work/artifacts/records-adoption/phase4/`.
-- **Description:** Run scoped Stryker evidence for changed identity/tenancy code using the existing configuration and require a score above 85%. Run 2–3 anonymized specialist reviews with Security weighted at 60%; every accepted defect must add a reproducible invariant-breaker test and correction before phase close.
-- **Acceptance Criteria:**
-  - [ ] Scoped mutation score is above 85%.
-  - [ ] Review output contains no agent/model identity.
-  - [ ] Security, API contract, and maintainability arguments are independently generated and weighted.
-  - [ ] Accepted findings have tests and fixes; unresolved critical findings block.
-- **Dependencies:** 4.1–4.3.
-- **Effort:** L.
-- **Required Skills/Rules:** `criticality-guardrail`, `epistemic-mad-review`, `auth-patterns`.
-
 ### Phase 5: Generated Client And Blazor Immutable State
 
 - **Goal:** Regenerate the NSwag client, repair Blazor consumers, and convert only immutable presentation-owned snapshots.
@@ -642,63 +435,9 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Correct the OpenAPI source and regenerate when client shape is wrong. Never patch `EventApiClient.g.cs`. Reclassify local state as a retained class when form binding or mutable identity is intentional.
 
-#### Task 5.1: Author Failing Client Serialization And State Specifications
-- **Type:** create/modify
-- **Layer:** Tests
-- **Files:** `tests/Explore.Blazor.Client.Tests/Services/EventApiClientSerializationTests.cs`; candidate model/component tests; validator tests.
-- **Description:** Add RED tests for regenerated request/response JSON, required/null behavior, absence of authority fields, service construction, immutable snapshot equality/`with` variants, and mutable edit-state exclusions.
-- **Acceptance Criteria:**
-  - [ ] Tests fail against the stale generated client or mutable candidate state.
-  - [ ] No UI test inspects roles/claims for actions.
-  - [ ] Record tests assert consumer behavior, not compiler implementation.
-- **Dependencies:** 4.3.
-- **Effort:** L.
-- **Required Skills/Rules:** `blazor-ui-conventions`, Blazor/Test rules.
+### Phase 6: Original-Wave Governance Closure And Release Contribution
 
-#### Task 5.2: Regenerate NSwag And Repair Client Services
-- **Type:** modify/generated
-- **Layer:** Blazor
-- **Files:** generated `Clients/EventApiClient.g.cs`; verified services/validators/components consuming changed contracts.
-- **Description:** Run the documented `GenerateApiClient` target against the committed OpenAPI schema, then update handwritten consumers. Keep generated DTO class representation unchanged.
-- **Acceptance Criteria:**
-  - [ ] Generated client is deterministic from `nswag.json`.
-  - [ ] No manual generated-code changes exist.
-  - [ ] Services send only client-owned body data.
-  - [ ] HAL extension data and ProblemDetails handling remain intact.
-- **Dependencies:** 5.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `blazor-ui-conventions`, API/Blazor rules.
-
-#### Task 5.3: Convert Immutable Presentation Models
-- **Type:** modify
-- **Layer:** Blazor
-- **Files:** Phase 0 Blazor result/filter/dialog candidates; direct component/service consumers; retained-class baseline.
-- **Description:** Convert immutable local snapshots to sealed records, harden collection members where needed, and use `with` updates where replacement semantics improve state handling. Retain form/edit/component identity models as classes.
-- **Acceptance Criteria:**
-  - [ ] Equality/rerender behavior is intentional.
-  - [ ] Mutable edit state is not converted.
-  - [ ] No generated DTO is manually wrapped solely to make it a record.
-  - [ ] Accessibility and HAL behavior are unchanged.
-- **Dependencies:** 5.1–5.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `blazor-ui-conventions`, Blazor rule.
-
-#### Task 5.4: Align Blazor JSON Source Generation
-- **Type:** modify
-- **Layer:** Blazor
-- **Files:** `src/Explore.Blazor.Client/Serialization/AppJsonSerializerContext.cs`; affected serialization tests; baseline.
-- **Description:** Register local records and regenerated DTOs needed for AOT-safe serialization, remove stale entries, and clear resolved presentation baseline debt.
-- **Acceptance Criteria:**
-  - [ ] AOT JSON context covers every used contract.
-  - [ ] No provider credential contract is added.
-  - [ ] Source-generated round trips match service settings.
-- **Dependencies:** 5.2–5.3.
-- **Effort:** M.
-- **Required Skills/Rules:** `blazor-ui-conventions`, Blazor/Test rules.
-
-### Phase 6: Governance Closure And Release Contribution
-
-- **Goal:** Close all eligible debt, synchronize documentation, prove final architecture policy, and prepare the governed breaking-change contribution.
+- **Goal:** Close the original seven-phase record-adoption wave, synchronize its documentation, prove its architecture policy, and prepare its governed breaking-change contribution.
 - **Depends on:** Phase 5.
 - **Relevant files:** record ratchet/baselines; `docs/GOVERNANCE.md`, `ARCHITECTURE.md`, `API.md`, `API_CHANGELOG.md`, `OUTBOX_PATTERN.md`, `BLAZOR.md`, relevant `.agents/rules/*.md`; new `docs/releases/changes/CHG-2026-0010.yaml`.
 - **Related skills/rules:** `review-pr`, `criticality-guardrail`, `epistemic-mad-review`, release governance, all matched rules.
@@ -713,49 +452,95 @@ AuthorizationBehavior -> manually instantiated validator -> handler
   - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** A failing final ratchet returns work to the owning earlier phase; do not add unexplained baseline entries. A release-fragment validation failure blocks contribution preparation.
 
-#### Task 6.1: Tighten Final Ratchets And Remove Resolved Debt
-- **Type:** modify
-- **Layer:** Tests/Architecture
-- **Files:** `RecordContractArchitectureTests.cs`; both baseline JSON files.
-- **Description:** Author the final RED expectations for zero eligible request-class debt, no stale exceptions, no current-authority body properties, and complete retained-class reasons; then remove only genuinely resolved entries.
-- **Acceptance Criteria:**
-  - [ ] Concrete MediatR class baseline is empty unless an externally imposed exception is approved and documented.
-  - [ ] DTO baseline contains only semantic/framework/generated exclusions.
-  - [ ] Body dispositions contain no current-authority exceptions.
-  - [ ] New debt fails without a baseline update and review.
-- **Dependencies:** 5.4.
-- **Effort:** M.
-- **Required Skills/Rules:** `review-pr`, Architecture/Test rules.
+### Phase 7: Immutable Application Command Results
 
-#### Task 6.2: Synchronize Architecture And Contributor Documentation
-- **Type:** modify
-- **Layer:** Docs
-- **Files:** `docs/GOVERNANCE.md`; `docs/ARCHITECTURE.md`; `docs/API.md`; `docs/API_CHANGELOG.md`; `docs/OUTBOX_PATTERN.md`; `docs/BLAZOR.md`; relevant `.agents/rules/*.md`; I-VSD link.
-- **Description:** Document final declaration policy, trusted request flow, generated ownership, PATCH/model-binding rules, collection/equality caveats, outbox payload/entity split, Blazor state split, and no-shim migration.
-- **Acceptance Criteria:**
-  - [ ] Docs describe implemented reality, not roadmap claims.
-  - [ ] All links and source-of-truth statements agree.
-  - [ ] No documentation claims deep immutability, automatic thread safety, or structural collection equality.
-- **Dependencies:** 6.1.
-- **Effort:** M.
-- **Required Skills/Rules:** all matched docs/rules.
+- **Phase status:** Complete — Tasks 7.1–7.3, the owned build gate, and the immutable-result API seam are green. The exact root build is blocked only by the unrelated untracked coordinate-authority syntax error; the full solution build excluding only that file through an external scoped target passes with zero errors. Blazor and persistence consumer projects build green, 2,561 Blazor tests pass with one pre-existing documented skip, and the exhaustive command-result mapper passes 97/97. The full API integration project was executed once: 2,486 passed, 1 skipped, and 30 unrelated shared-work failures were classified across admissions route RED tests, Quartz lifecycle, snapshot isolation, unavailable production secrets, and persistence-schema fixtures.
+- **Goal:** Replace mutable `BaseCommandResponse<TKey>` construction with an immutable result contract and explicit success/failure factories while preserving RFC 7807 mapping and serialized response behavior.
+- **Depends on:** Phase 6 complete. The exact Phase 4 gate was executed on `develop` and reported zero records-adoption failures, 122 unrelated failures, and three external secret/startup failures. The user explicitly directed direct `develop` continuation and removal of the isolated worktree; focused Phase 7 evidence may advance, but phase closure still requires the exact verification lane to be rerun and classified honestly.
+- **Relevant files:** `src/Explore.Application/Responses/BaseCommandResponse.cs`; bounded derived responses and factories under `src/Explore.Application/**`; `src/Explore.Application/Serialization/ExploreJsonContext.cs`; `src/Explore.API/ExceptionHandling/CommandResponseResultMapper.cs` and `QuotaProblemDetailsFactory.cs`; `tests/Event.Application.UnitTests/Responses/BaseCommandResponseContractTests.cs`; `tests/Event.API.IntegrationTests/ExceptionHandling/CommandResponseResultMapperTests.cs`; existing architecture ratchets.
+- **Related skills/rules:** `cqrs-mediatr-guidelines`, `clean-architecture-rules`, Application/API/Test rules.
+- **Acceptance criteria:**
+  - `BaseCommandResponse<TKey>` exposes no public mutable setters and no caller-mutable error collection.
+  - Named success, validation, not-found, conflict, authorization, authentication, and quota factories create valid states only.
+  - Derived response types and local handler/service factories use the immutable creation path.
+  - `CommandResponseResultMapper` preserves successful bodies and all RFC 7807 status/code/detail/extension behavior.
+  - System.Text.Json source generation and existing API response shape remain intentional and covered.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Revert the owning response contract and caller factories together if a valid result state cannot be represented without mutation. Do not restore public setters as a local compile fix; retain focused Red evidence and redesign the factory surface.
 
-#### Task 6.3: Changelog Contribution And Final Commit Composition
-- **Type:** create/compose
-- **Layer:** Release
-- **Files:** `docs/releases/changes/CHG-2026-0010.yaml` (new); no commit is created without explicit user authorization.
-- **Description:** Create the append-only Tier 2 fragment covering Breaking, Security, Migration, Configuration, OpenAPI, and Operator impacts. Validate it through repository release policy. Compose—but do not execute without approval—the terminal commit:
-  `refactor(architecture)!: adopt semantics-first record contracts`
-  with `BREAKING CHANGE:` and `Change-Id: CHG-2026-0010`.
-- **Acceptance Criteria:**
-  - [ ] Fragment uses an unclaimed stable Change ID and valid `architecture` scope.
-  - [ ] All six impact dispositions have references and truthful detail.
-  - [ ] `ReleaseInputPolicy` validation passes.
-  - [ ] Breaking commit is not marked `Changelog: skip`.
-  - [ ] No commit, tag, push, or publish occurs unless the user explicitly requests it.
-- **Dependencies:** 6.2 and all functional tasks.
-- **Effort:** S.
-- **Required Skills/Rules:** release governance, `conventional-commit`.
+### Phase 8: Repository-Wide Published Collection Immutability — Complete
+
+- **Phase status:** Complete — Tasks 8.1–8.3 and both phase gates are complete. The compiled ratchet covers 772 collection-bearing public records across Domain, Application, API, and Blazor; all 128 genuine mutable exposures were migrated to defensively copied read-only or immutable snapshots. The integrated collection ratchet passes 3/3, the exceptional baseline is empty, canonical docs plus five rule-twin pairs teach the enforced standard, and the root build passes with 0 errors. The full architecture project executed 462 tests: 456 passed, 1 documented skip, and 5 precisely classified unrelated failures in agent context, coordinate authority, generated quota OpenAPI, and EF/provider inventory.
+- **Goal:** Extend defensive snapshot and read-only exposure rules from converted records to every published immutable contract while preserving intentional aggregate/service mutation.
+- **Depends on:** Phase 7.
+- **Relevant files:** immutable contract surfaces under `src/Explore.Domain`, `src/Explore.Application`, `src/Explore.API`, and `src/Explore.Blazor.Client`; existing serializer contexts; new/extended architecture ratchets; focused owner tests; canonical governance and twin path rules.
+- **Related skills/rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `blazor-ui-conventions`, Domain/Application/API/Blazor/Test rules.
+- **Acceptance criteria:**
+  - Every published immutable contract with a collection has an explicit disposition: immutable/read-only snapshot, generated/framework-owned, or intentionally mutable owner.
+  - Caller-owned lists, arrays, sets, and dictionaries cannot mutate an immutable contract after construction.
+  - Aggregate and service internals may retain private mutable backing collections behind read-only views.
+  - Equality tests never infer structural sequence equality from containing records.
+  - JSON/AOT, mapping, HAL extension data, and generated-client behavior remain deterministic.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Reclassify a serializer/framework-owned member with evidence when read-only representation is unsupported. Do not expose mutable collections to avoid a mapping or deserialization repair; fix the owning factory/context instead.
+
+### Phase 9: Domain Money Coordinates And Temporal Ranges — Complete
+
+- **Phase status:** Complete — `Money`, `GeoCoordinate`, `LocalDateRange`, and `UtcInstantRange` are dependency-free sealed record values with private construction and narrow static factories. Ticket/payment factories, location privacy transitions, agenda scheduling, and fixed/open-ended/prayer-relative session scheduling now consume semantic values without compatibility overloads. Structural closure covers 41 ticket factories, 26 payment factories, and every selected schedule transition. The full Domain project passes 976/976. The exact root Release build compiled every owned project and failed only in two unrelated Infrastructure test constructors missing a newly required logger argument.
+- **Goal:** Introduce evidenced domain value concepts for normalized money, geographic coordinates, local calendar ranges, and UTC instant ranges before persistence remapping.
+- **Depends on:** Phase 8.
+- **Relevant files:** `src/Explore.Domain/ValueObjects/Money.cs`, `GeoCoordinate.cs`, `LocalDateRange.cs`, and `UtcInstantRange.cs`; `CurrencyMetadata.cs`, `LocationPii.cs`, `Location.cs`, `EventTicketType.cs`, `PaymentAttempt.cs`, `Event.cs`, `EventSeries.cs`, `EventSession.cs`, and `EventAgendaItem.cs`; focused tests under `tests/Event.Domain.UnitTests/ValueObjects/`.
+- **Related skills/rules:** `clean-architecture-rules`, `dotnet-efcore-guidelines`, Domain/Test rules.
+- **Acceptance criteria:**
+  - `Money` uses normalized currency and checked minor-unit semantics required by existing ticketing/payment callers.
+  - `GeoCoordinate` enforces latitude/longitude bounds while preserving nullable location and PII-erasure behavior.
+  - Local `DateOnly` ranges and UTC `DateTimeOffset` ranges remain separate concepts with explicit ordering/overlap invariants.
+  - No EF, serializer, API, or Application dependency enters Domain.
+  - Existing scalar persistence stays temporarily compilable until Phase 10 replaces it through generated migration work.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Keep a duplicated primitive pair only when Red tests prove the owners have different semantics. Do not add generic arithmetic/range APIs, implicit conversions, or compatibility aliases that current callers do not require.
+
+### Phase 10: Generated EF Value Persistence Migration
+
+- **Phase status:** In progress — two independent repository-grounded architecture reviews reject EF complex/owned/converter mappings: optional prices share one currency authority, temporal leaves participate in cross-owner indexes, and start-only sessions are not ranges. Domain values remain the semantic write boundary; EF retains explicit scalar relational leaves. Phase 10 adds four portable check constraints and generated five-provider migrations without column, key, index, nullability, or table changes.
+- **Goal:** Enforce the Phase 9 value invariants over their owner-controlled scalar persistence leaves and generate data-preserving, reversible, multi-provider EF migrations and snapshots.
+- **Depends on:** Phase 9.
+- **Relevant files:** entity configurations for event, location/PII, ticketing, payment, series/session/agenda owners; `ExploreDbContext`; generated application/provider migration projects and model snapshots; `schemas/islamu-event.md`; migration and round-trip tests under `tests/Event.Persistence.IntegrationTests/`.
+- **Related skills/rules:** `criticality-guardrail`, `dotnet-efcore-guidelines`, `clean-architecture-rules`, `epistemic-mad-review`, `.agents/rules/efcore-migrations.md`, Persistence/Test rules.
+- **Acceptance criteria:**
+  - EF intentionally maps the approved value concepts through existing scalar owner leaves; `Money`, `GeoCoordinate`, `LocalDateRange`, and `UtcInstantRange` do not become complex, owned, converted, or independently tracked persistence types.
+  - Generated checks reject negative ticket amounts, partial/out-of-range coordinates, and reversed local date ranges without weakening tenant filters, privacy erasure, nullability, indexes, precision, or existing database checks.
+  - Existing rows upgrade without data loss; rollback/reapply behavior is explicit and tested.
+  - Every migration and snapshot is generated by repository `dotnet ef` workflows and inspected, never hand-edited.
+  - PostgreSQL plus every shipped provider-specific model/migration path is intentionally generated or proven unaffected.
+  - Tier 1 multi-provider and anonymized MAD evidence has no unresolved critical finding.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** If generation emits any column, key, index, table, raw-SQL, or unrelated operation, remove the unapplied generated migration, correct configuration/generation inputs, and regenerate. `Down()` removes only the four checks; malformed legacy rows block installation for explicit operator correction rather than being silently rewritten.
+
+### Phase 11: Generated NSwag Records And Final Closure
+
+- **Goal:** Generate record DTOs deterministically from the canonical OpenAPI contract, migrate client consumers, close all ratchets/docs, and prepare the final release contribution.
+- **Depends on:** Phase 10.
+- **Relevant files:** `src/Explore.Blazor.Client/nswag.json`, `Explore.Blazor.Client.csproj`, generated `Clients/EventApiClient.g.cs`, `dotnet-tools.json`, client services/helpers/serializer contexts, `.github/workflows/openapi-contract.yml`, generated-shape architecture tests, API/Blazor contract tests, governance docs, and a new final Tier 2 change fragment with an unclaimed ID.
+- **Related skills/rules:** `blazor-ui-conventions`, `clean-architecture-rules`, `ip-clean-room`, `openapi-contract-change`, Blazor/API/Test/release rules.
+- **Acceptance criteria:**
+  - The pinned generator's native record capability is proven or a deterministic repository-owned generation extension is used without copied third-party templates or hand edits.
+  - Generated DTOs are records only where JSON/HAL/PATCH/nullable/required/member-construction semantics remain correct; explicitly framework-required generated classes have reasoned exclusions.
+  - Parameterless/object-initializer consumers migrate to generated constructors/init semantics.
+  - OpenAPI, generated client, AOT JSON, HAL extension data, client methods, and second-run determinism are green.
+  - Final architecture ratchets, documentation, I-VSD traceability, and Tier 2 release evidence include Phases 7–11.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Restore `classStyle: Poco` and the prior generated artifact through the generator if record output cannot preserve a required framework contract. Do not keep a partially transformed generated file, copied template, or nondeterministic post-processing step.
 
 ## 7. Testing Strategy
 
@@ -766,6 +551,10 @@ AuthorizationBehavior -> manually instantiated validator -> handler
 - **Application:** `Event.Application.UnitTests` proves MediatR construction, authorization facts, mapping, JSON, PATCH groups, and payload round trips.
 - **API:** `Event.API.IntegrationTests` proves body tampering cannot become current authority, model binding/validation remains correct, and OpenAPI reflects runtime contracts.
 - **Blazor:** `Explore.Blazor.Client.Tests` proves generated-client serialization and immutable-versus-editable presentation semantics.
+- **Application results:** Application/API tests prove immutable result factories, impossible-state prevention, error snapshot isolation, JSON behavior, and RFC 7807 mapping.
+- **Published collections:** Owning-layer behavioral tests plus architecture ratchets prove defensive snapshots, read-only exposure, and explicit mutable-owner exclusions.
+- **Domain values and persistence:** Domain tests prove money/coordinate/range invariants; Persistence tests prove round trips, old-row upgrade, rollback/reapply, constraints, tenant isolation, privacy erasure, and provider parity.
+- **Generated records:** Architecture, API, and Blazor tests prove generator-owned record shape, JSON/HAL/PATCH semantics, consumer construction, and deterministic regeneration.
 
 ### 7.2 Record-aware adversarial scenarios
 
@@ -790,7 +579,12 @@ AuthorizationBehavior -> manually instantiated validator -> handler
 | 3 | `Event.Application.UnitTests` | Different reason: DTO mapping, JSON, PATCH, and payload behavior. |
 | 4 | `Event.API.IntegrationTests` | Intent-mandated live HTTP/model-binding/OpenAPI boundary. |
 | 5 | `Explore.Blazor.Client.Tests` | Generated-client and local presentation state. |
-| 6 | `Event.Architecture.Tests` | Intent-mandated final Clean Architecture and ratchet proof. |
+| 6 | `Event.Architecture.Tests` | Original-wave Clean Architecture and ratchet checkpoint. |
+| 7 | `Event.API.IntegrationTests` | Immutable command-result bodies and RFC 7807 mapper behavior. |
+| 8 | `Event.Architecture.Tests` | Cross-layer published-collection ownership and no-new-debt ratchet. |
+| 9 | `Event.Domain.UnitTests` | Money, coordinate, and temporal-range invariants. |
+| 10 | `Event.Persistence.IntegrationTests` | Generated migration, old-row upgrade, rollback/reapply, and provider model behavior. |
+| 11 | `Event.Architecture.Tests` | Final generated-record ownership, deterministic contract shape, and all expanded ratchets. |
 
 Tier 1 Task 4.4 adds one scoped Stryker mutation run and anonymized MAD review as mandatory criticality evidence. They are not substitutes for or repetitions of the phase-end project test.
 
@@ -803,28 +597,33 @@ Tier 1 Task 4.4 adds one scoped Stryker mutation run and anonymized MAD review a
 - Update `docs/API.md` and mandatory `docs/API_CHANGELOG.md` for body/requiredness/nullability breaks and generation workflow.
 - Update `docs/OUTBOX_PATTERN.md` only where payload-record guidance changes implemented reality.
 - Update `docs/BLAZOR.md` with generated-class versus local-record ownership.
+- Update `docs/DOMAIN.md` with money, coordinate, and distinct temporal-range semantics.
+- Update `schemas/islamu-event.md` from the generated EF model/migration reality.
 - Update matching `.agents/rules/*.md` so future agents apply the final rule.
 - Keep the [I-VSD report](../../../islamic-value-sensitive-design/i-vsd-records-adoption.md) linked from all workstream artifacts.
 
 ### Configuration and generated artifacts
 
-- No runtime setting or environment variable is planned.
+- No runtime secret, setting, or environment variable is planned.
 - `stryker-config.json` is reused; modify only if a verified scoped configuration is required and remains general-purpose.
 - `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, and `EventApiClient.g.cs` are generator outputs.
-- No EF migration or model snapshot is expected.
+- EF migration and model-snapshot changes are expected in Phase 10 and must be generated from corrected Domain/Persistence sources for every applicable provider.
+- `nswag.json` and the existing client-generation target change in Phase 11; generated DTO declarations remain generator-owned.
+- No dependency is planned. If native NSwag cannot emit records, the owned generation extension must use repository/runtime capabilities unless a separately approved dependency passes outbound-license review.
 
 ### 8.1 Release & Changelog Strategy
 
-This is **Tier 2 — High-Impact / Breaking / Security / OpenAPI**:
+This remains **Tier 2 — High-Impact / Breaking / Security / Migration / OpenAPI**:
 
-- Create `docs/releases/changes/CHG-2026-0010.yaml` in the final task.
-- Proposed terminal commit composition: `refactor(architecture)!: adopt semantics-first record contracts`.
-- Required trailers: non-empty `BREAKING CHANGE:` and `Change-Id: CHG-2026-0010`.
+- Preserve completed original-wave fragment `docs/releases/changes/CHG-2026-0010.yaml`.
+- In Task 11.4, recheck and create a second unclaimed `docs/releases/changes/CHG-2026-XXXX.yaml` for immutable results, EF migration, and generated-record consumer impact.
+- Proposed terminal commit composition remains `refactor(architecture)!: adopt semantics-first record contracts`, updated to teach the expanded migration.
+- Required trailers: non-empty `BREAKING CHANGE:` and the final fragment's `Change-Id`.
 - `Changelog: skip` is forbidden because the change is breaking and OpenAPI-visible.
 - The fragment must classify:
   - **Breaking:** request body, requiredness, nullability, and generated-client changes;
   - **Security:** trusted user/tenant authority removal from bodies;
-  - **Migration:** no database migration; source/client migration required;
+  - **Migration:** generated multi-provider database migration plus source/client migration;
   - **Configuration:** not applicable unless Stryker/generator settings change;
   - **OpenAPI:** regenerated schema/inventory/client;
   - **Operator:** coordinated API/Blazor deployment and no old-client support.
@@ -901,6 +700,12 @@ No religious-legal ruling is requested or issued. Finance, moderation, monetizat
 | EF value-object mapping changes schema | Low | High | Model evidence; block/reclassify migration | Model snapshot/migration diff | 1.3 |
 | Horizontal phase is accidentally treated as releasable | Medium | High | Context/tasks mark workstream incomplete until Phase 6 | API/client version mismatch | all phases |
 | XL migration hides review defects | High | High | Shrinking batches within layer phase, Tier 1 MAD, one gate per phase | Baseline growth, mutation survivors, review finding | 0.2, 4.4, 6.1 |
+| Immutable result migration permits contradictory states | Medium | High | Factory-only construction and mapper characterization | Result/ProblemDetails contract failure | 7.1–7.3 |
+| Collection standard converts intentional mutable ownership | Medium | High | Explicit dispositions and owner-focused mutation tests | Aggregate/service behavior failure | 8.1–8.3 |
+| Money/range abstraction erases distinct semantics | Medium | Critical | Separate currency/local-date/UTC-instant invariants | Mixed-currency or range test failure | 9.1–9.3 |
+| Generated value-object migration loses or reinterprets stored data | Medium | Critical | Expand/contract, old-row fixtures, rollback/reapply, multi-provider MAD | Migration invariant failure | 10.1–10.4 |
+| NSwag record output breaks HAL/PATCH/consumer construction | High | High | Capability proof, generated-contract Red tests, deterministic regeneration | Architecture/API/Blazor contract failure | 11.1–11.3 |
+| Owned generator customization copies third-party expression | Low | Critical | Clean-room public-interface-only design and provenance review | IP governance blocker | 11.1–11.2 |
 
 ## 15. Success Metrics And Definition Of Done
 
@@ -915,6 +720,12 @@ No religious-legal ruling is requested or issued. Finance, moderation, monetizat
 9. Every phase’s one Release build and selected test project pass once.
 10. Final `Event.Architecture.Tests` passes with no stale baseline.
 11. `CHG-2026-0010.yaml` validates, and no compatibility shim or unauthorized commit exists.
+12. `BaseCommandResponse<TKey>` and all result factories are immutable and preserve RFC 7807/API behavior.
+13. Every published immutable collection has defensive snapshot/read-only semantics or an explicit current exclusion.
+14. `Money`, `GeoCoordinate`, local-date-range, and UTC-instant-range values replace their approved duplicated primitive boundaries.
+15. Generated EF migrations preserve existing data, tenant/privacy constraints, rollback/reapply behavior, and applicable provider models.
+16. NSwag generates deterministic record DTOs without hand edits, copied templates, or broken JSON/HAL/PATCH/client contracts.
+17. The final expanded Tier 2 fragment validates, and `Remaining / Deferred Work` is empty.
 
 ## 16. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
@@ -959,147 +770,4 @@ The most likely failure is treating the Phase 0 baseline as an administrative in
 
 The second risk is horizontal sequencing scale. Clean Architecture ownership is clear, but hundreds of downstream constructors and generated-client consumers may make one layer phase too large for a single contributor. Implementation may split a phase into smaller **batches of the same layer/category** while keeping one phase-end gate and without reverting to feature vertical slices.
 
-The exact candidate set, OpenAPI delta, and mutation survivors are intentionally assigned to bounded implementation tasks rather than guessed in this plan.
-
-## 19. Session Handoff — 2026-08-24 Europe/Brussels
-
-### Resume location and safety
-
-- **Isolated implementation worktree:** `/home/amir/ISLAMU/Github/Event-records-adoption`
-- **Original detached base:** `aa74b645c`
-- **Shared main worktree:** contains unrelated payment/privacy work and must not be modified, reverted, or used for records-adoption verification.
-- **Live work:** no child agent, build, test, generator, Stryker, API host, or other persistent process remains active.
-- **Git:** no commit, tag, push, or publish was performed or authorized.
-- **Dirty scope:** the isolated worktree intentionally contains the accumulated records-adoption changes from Phases 0–4. Do not discard or overwrite them.
-
-### Authoritative implementation state
-
-The repository evidence below is newer than some task-status checkboxes and the older resume context. Treat this handoff as the authoritative resume point, then reconcile `records-adoption-tasks.md`, `records-adoption-context.md`, this plan's task statuses, and the native todo list before resuming implementation.
-
-- **Phases 0–3:** implemented and independently verified.
-- **Phase 4 Tasks 4.1–4.3:** implemented and independently verified.
-- **Task 4.4:** in progress.
-  - The scoped Tier 1 Stryker run is complete and passed.
-  - The required anonymized Epistemic MAD review has **not** started.
-  - The Phase 4 full `Event.API.IntegrationTests` gate has **not** yet run after MAD closeout.
-- **Phases 5–6:** not started.
-
-### Implemented contract state
-
-- `806/806` compiled concrete MediatR requests are records; request classes: `0`.
-- Public mutable request setters were reduced from `19` to `6`; all six are required by `IEventSessionLifecycleTransitionCommand`.
-- `816/816` eligible handwritten Application contracts are records.
-- The Application class baseline contains exactly `10` retained `BaseCommandResponse<>` hierarchy classes after integrating the paid-registration response envelopes added on `develop`.
-- All `28/28` HTTP/input DTO candidates are sealed nominal records.
-- All `8/8` current-user/current-tenant body authority members were removed.
-- The body-authority baseline contains exactly `7` legitimate target identifiers and no current-authority exceptions.
-- All `13/13` eligible handwritten API boundary models are sealed records.
-- Outbox classification is `49` immutable payload records, `5` lifecycle/state classes, and `1` static helper.
-- `NotificationFanoutSnapshotV1` defensively snapshots both recipient arrays.
-- `PerformanceBehavior` logs bounded request type and elapsed metadata only; it does not destructure whole requests.
-
-### Generated contract state
-
-The following were regenerated only through repository-owned generators:
-
-- `artifacts/openapi/Explore.json`
-- `artifacts/api-inventory/Explore.inventory.json`
-- `src/Explore.Blazor.Client/Api/ExploreApiClient.g.cs`
-
-Generator commands already run successfully:
-
-```bash
-.ci/scripts/Generate-OpenApi.sh --write
-.ci/scripts/Generate-ApiSurfaceInventory.sh --write
-.ci/scripts/Generate-OpenApi.sh --check
-.ci/scripts/Generate-ApiSurfaceInventory.sh --check
-```
-
-Current generated-contract evidence:
-
-- all `28/28` input record schemas are present;
-- all `8/8` removed authority properties are absent;
-- all `7/7` legitimate target identifiers remain;
-- all `13/13` handwritten API record schemas are represented;
-- OpenAPI and inventory check modes are idempotent;
-- runtime and checked-in OpenAPI contract tests pass.
-
-`docs/API_CONTRACT.md` records the implemented record-input ownership, authority-versus-target distinction, and generator commands.
-
-### Latest verification evidence
-
-- Phase 3 Release solution build: passed with `0` errors.
-- Full `Event.Application.UnitTests`: `4,022/4,022` passed.
-- Record architecture tests: `10/10` passed.
-- Mapping/JSON/PATCH tests: `12/12` passed.
-- HTTP input authority tests: `10/10` passed.
-- Task 2 authorization tests: `12/12` passed.
-- API trust-boundary invariant tests: `9/9` passed.
-- API record contract tests: `5/5` passed.
-- OpenAPI contract tests: `4/4` passed.
-- Source-generated JSON-context tests: `10/10` passed.
-- API record/authority endpoint tests: `18/18` passed.
-- LSP diagnostics on changed scopes: `0` errors.
-- Generator idempotency and `git diff --check`: passed.
-
-Tier 1 mutation result:
-
-- scope: `DeleteUserController`, `RegisterUserController`, and `RegisterTenantController`;
-- total mutants: `36`;
-- killed: `32`;
-- survived: `2`;
-- no coverage: `2`;
-- timeout: `0`;
-- score: `88.89%`, above the required `85%`;
-- report: `artifacts/stryker-output/records-adoption-tier1/reports/mutation-report.html`;
-- evidence: `.omo/start-work/evidence/records-adoption/4.4-mutation.md`.
-
-The surviving/uncovered mutants were reviewed as response-logging/correlation helpers and synthetic rollback branches; none bypass current-authority removal or trusted-context selection. No threshold weakening or test exclusion was used.
-
-### Exact next work
-
-1. Reconcile the stale plan/context/tasks/native-todo statuses to the authoritative state above. Do not rerun completed implementation waves.
-2. Resume **Task 4.4** by loading `.agents/skills/epistemic-mad-review/SKILL.md`.
-3. Run MAD Round A with five independent, read-only reviewers covering:
-   - Domain/Clean Architecture;
-   - Security/authorization and tenant isolation;
-   - data/serialization/OpenAPI/generated-client contracts;
-   - tests/mutation/nondeterminism;
-   - operations/maintainability/generator workflow.
-4. Before Round B, remove reviewer identity, model/provider, task/session metadata, timestamps, and token data. Label only `Review A` through `Review E`.
-5. Present the anonymous findings to each reviewer in a different deterministic order with a recorded fixed seed. Require agree/partially-agree/disagree, evidence, missing risk, and ranked votes.
-6. Perform Round C weighted adjudication based on demonstrated expertise and direct repository evidence. Preserve all security/privacy dissent even when minority-held.
-7. Write the durable review artifact under `.omo/start-work/artifacts/records-adoption/phase4/` with reviewed files/flows, commands, anonymous critiques, votes, adjudication, majority conclusions, dissent, residual risks, and follow-up tasks. Do not include agent/model identity.
-8. For every accepted defect, add a reproducible invariant-breaker test first, fix it minimally, and rerun only affected focused checks.
-9. Independently verify the Stryker evidence and MAD artifact.
-10. Run the Phase 4 closeout gates once after all accepted findings are resolved:
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-```
-
-11. Mark Task 4.4 and Phase 4 complete only after both gates pass.
-12. Continue with Task 5.1, **Author Failing Client Serialization And State Specifications**.
-
-### Important evidence paths
-
-- `.omo/start-work/evidence/records-adoption/3.5-final-integration.md`
-- `.omo/start-work/evidence/records-adoption/4.1-http-invariants.md`
-- `.omo/start-work/evidence/records-adoption/4.1-openapi-red.md`
-- `.omo/start-work/evidence/records-adoption/4.2-api-refactor.md`
-- `.omo/start-work/evidence/records-adoption/4.3-contract-generation.md`
-- `.omo/start-work/evidence/records-adoption/4.4-mutation.md`
-- `tests/Event.Architecture.Tests/RecordContractArchitectureTests.cs`
-- `tests/Event.Architecture.Tests/ApiRecordContractArchitectureTests.cs`
-- `tests/Event.Architecture.Tests/RecordInputOpenApiContractTests.cs`
-- `tests/Event.Architecture.Tests/Baselines/record-contract-class-baseline.json`
-- `tests/Event.Architecture.Tests/Baselines/http-body-authority-dispositions.json`
-
-### Known constraints and non-blockers
-
-- AnySearch MCP and Context7 MCP were not registered; official Microsoft documentation and available repository evidence were used instead.
-- The unrelated main-worktree PII inventory failure remains outside this workstream and does not block verification in the isolated worktree.
-- Do not hand-edit generated OpenAPI, inventory, NSwag client, EF migrations, or model snapshots.
-- Do not add compatibility aliases, constructors, duplicate JSON fields, or old-client shims.
-- Do not start Phase 5 before Task 4.4 MAD and the full Phase 4 gate are complete.
+The original candidate set and OpenAPI delta are now evidenced. The expanded workstream's highest risks are the broad direct-construction surface around `BaseCommandResponse<TKey>`, preserving distinct money/local-date/UTC semantics through EF flattening, and proving generated record DTOs without copying third-party templates or weakening HAL/PATCH serialization. Phases 7–11 bind each risk to Red-first contracts, generator-owned artifacts, and one phase-end gate.

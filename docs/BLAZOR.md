@@ -268,7 +268,7 @@ Generated DTOs preserve HAL `_links` through extension data. Per-resource UI aff
 
 `EventApiClient.g.cs` and every NSwag DTO remain generated classes; correct the API/OpenAPI source and rerun `GenerateApiClient` rather than patching generated output or wrapping it solely to obtain record syntax. Handwritten immutable presentation results, filters, and persistence snapshots may be sealed records. Forms, edit models, component/service identity state, auth/PII hydration state, and framework-deserialized BFF payloads remain classes when their lifecycle is mutable.
 
-Local record state is only shallowly immutable. Snapshot constructors or `init` members copy mutable input collections when later caller mutation would violate the published state; record equality still compares collection members by their own equality semantics. `AppJsonSerializerContext` registers only local/browser-safe contracts actually used by AOT paths. Provider credential contracts are not registered, and local-storage round trips use the source-generated options.
+Local record state is only shallowly immutable. Snapshot constructors or `init` members copy mutable input collections when later caller mutation would violate the published state; member-list results expose defensive `IReadOnlyList<T>` snapshots and upload bytes expose copied `ReadOnlyMemory<byte>` without changing base64 JSON behavior. Record equality still compares collection members by their own equality semantics. `AppJsonSerializerContext` registers only local/browser-safe contracts actually used by AOT paths. Provider credential contracts are not registered, and local-storage round trips use the source-generated options.
 
 ### Localization Admin Service Boundary
 

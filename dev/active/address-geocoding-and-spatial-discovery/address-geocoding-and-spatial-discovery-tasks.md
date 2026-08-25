@@ -7,9 +7,9 @@ Last Updated: 2026-08-25 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Re-baselined; awaiting user approval; runtime implementation not started.
-- **Completed:** 0/19 implementation tasks (phase verification tracked separately).
-- **Current priority:** Task 1.1, Red Phase coordinate-write and aggregate specifications.
+- **Overall status:** Phase 1 in progress; Task 1.1 Red specifications independently confirmed in the task-owned isolated worktree.
+- **Completed:** 1/19 implementation tasks (phase verification tracked separately).
+- **Current priority:** Task 1.2, atomic Location address transitions and direct-write contraction.
 - **Next recommended slice:** Complete Phase 1 only.
 - **I-VSD:** [I-VSD Address Geocoding And Spatial Discovery](../../../islamic-value-sensitive-design/i-vsd-address-geocoding-and-spatial-discovery.md)
 - **Spatial ownership:** Exact PostGIS work is deferred to `dev/active/home-discovery-experience/` Phase 6; no spatial runtime task exists here.
@@ -33,7 +33,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 
 ## Phase 1: Location Integrity And Complete Write-Contract Contraction - NOT STARTED
 
-- [ ] **1.1 Red Phase - Lock Coordinate Write And Aggregate Invariants**
+- [x] **1.1 Red Phase - Lock Coordinate Write And Aggregate Invariants**
   - **Files:**
     - `tests/Event.Application.UnitTests/Features/Locations/Commands/LocationAddressWriteContractTests.cs` (new)
     - `tests/Event.Application.UnitTests/Features/Events/Commands/CreateEventLocationWriteContractTests.cs` (new)
@@ -46,9 +46,10 @@ Last Updated: 2026-08-25 Europe/Brussels
     - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*CreateEventDraftLocationWriteContractTests/*"`
     - `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj -- --treenode-filter "/*/*/*CoordinateWriteAuthorityArchitectureTests/*"`
   - **Acceptance:**
-    - [ ] Tests fail because raw coordinate write members/paths still exist or atomic transitions are missing.
-    - [ ] Failure is behavior/contract-specific, not a broken fixture or nondeterministic timeout.
-    - [ ] Authorized read/disclosure coordinate DTOs are explicitly excluded from the contraction assertion.
+    - [x] Tests fail because raw coordinate write members/paths still exist or atomic transitions are missing.
+    - [x] Failure is behavior/contract-specific, not a broken fixture or nondeterministic timeout.
+    - [x] Authorized read/disclosure coordinate DTOs are explicitly excluded from the contraction assertion.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding` at `c2000922b`; 10 Location, 2 nested Event and 3 AI tests failed only on intended contract assertions; architecture controls passed 3/3 and the ratchet reported the expected 14 write-authority symbols; four files were LSP-clean and warning-free.
   - **Effort:** L
   - **Dependencies:** User approval of Phase 1.
   - **Guidance:** Plan Decisions 1-2; `criticality-guardrail`; Application/Domain/test rules.
@@ -62,7 +63,11 @@ Last Updated: 2026-08-25 Europe/Brussels
     - Location validators/requests/handlers and `LookupMappingProfile.cs` (existing)
     - Existing Location command/privacy tests plus Task 1.1 tests
   - **Description:** Replace flattened create mapping and independent coordinate mutation with explicit aggregate construction and manual/provider address transitions. Manual changes clear coordinates. Provider transition requires a complete finite pair. Remove direct Location raw coordinate write members. Preserve erasure, consent, concurrency and authorized coordinate reads.
-  - **Green command:** `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*LocationAddressWriteContractTests/*|/*/*/*CreateLocationCommandHandlerTests/*|/*/*/*UpdateLocationCommandHandlerTests/*|/*/*/*PrivateHomeOwnershipCommandHandlerTests/*"`
+  - **Green commands:**
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*LocationAddressWriteContractTests/*"`
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*CreateLocationCommandHandlerTests/*"`
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*UpdateLocationCommandHandlerTests/*"`
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*PrivateHomeOwnershipCommandHandlerTests/*"`
   - **Acceptance:**
     - [ ] Real construction no longer depends on proxy-setter AutoMapper behavior.
     - [ ] No partial/non-finite coordinate state is constructible through the public aggregate write API.

@@ -292,11 +292,11 @@ Use records for handwritten contracts whose meaning is immutable data with value
 
 ### Intentional Classes
 
-Retain classes for generated NSwag contracts; EF entities and outbox lifecycle entities; services, handlers, controllers, and validators; mutable Blazor edit/component state; and `BaseCommandResponse<T>`. Framework population, custom conversion, or inheritance retains class semantics only when a verified binding/framework constraint requires it; record-compatible abstract/concrete inheritance hierarchies remain record candidates. These are exclusions by semantics or ownership, not record-policy debt.
+Retain classes for generated NSwag contracts; EF entities and outbox lifecycle entities; services, handlers, controllers, and validators; and mutable Blazor edit/component state. Immutable `BaseCommandResponse<T>` results and their concrete payload-bearing descendants use valid-state record factories. Framework population, custom conversion, or inheritance retains class semantics only when a verified binding/framework constraint requires it; record-compatible abstract/concrete inheritance hierarchies remain record candidates. These are exclusions by semantics or ownership, not record-policy debt.
 
 ### Immutability, Equality, and Logging
 
-Records are shallowly immutable. A contract that promises immutable collection data must expose serializer-compatible read-only members and defensively copy mutable inputs. Record equality does not make array or list contents sequence-equal; test sequence semantics explicitly where they matter. Never log, interpolate, or destructure a whole record; log only bounded, approved scalar diagnostics.
+Records are shallowly immutable. Every published collection-bearing record must expose a serializer-compatible read-only or immutable member and defensively copy mutable inputs. `ReadOnlyMemory<byte>` preserves base64 wire behavior for binary payloads; read-only lists/dictionaries and immutable collections preserve JSON arrays/objects, PATCH presence, HAL extension data, and caller ownership. Adapters replace immutable collections (`SetItem`, record copy, or a new snapshot) instead of mutating through an indexer. Record equality does not make array or list contents sequence-equal; test sequence semantics explicitly where they matter. Never log, interpolate, or destructure a whole record; log only bounded, approved scalar diagnostics.
 
 ### Trusted Authority
 
@@ -304,7 +304,7 @@ Records are shallowly immutable. A contract that promises immutable collection d
 
 ### Ratchet and TDD
 
-The record-contract and body-authority baselines are exact shrinking inventories: missing new debt and stale or resolved entries both fail. Before a behavioral conversion, write focused tests for consumed equality, one-fact `with` variants, JSON construction, PATCH omitted/clear/replacement behavior, and authority trust boundaries; test machine-consumed behavior rather than generated record prose.
+The record-contract and body-authority baselines are exact shrinking inventories: missing new debt and stale or resolved entries both fail. `PublishedCollectionContractArchitectureTests` classifies every published collection record across Domain, Application, API, and Blazor; mutable framework/ownership exceptions require exact reasoned entries in `published-collection-contract-dispositions.json`, whose completed baseline is empty. Before a behavioral conversion, write focused tests for consumed equality, one-fact `with` variants, caller-mutation isolation, JSON construction, PATCH omitted/clear/replacement behavior, and authority trust boundaries; test machine-consumed behavior rather than generated record prose.
 
 ---
 

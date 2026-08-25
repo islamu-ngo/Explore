@@ -3,7 +3,7 @@
 
 # I-VSD Provider-Responsibility Consultation: C# Records Adoption
 
-Last Updated: 2026-08-24
+Last Updated: 2026-08-25
 
 ## Scope
 
@@ -11,11 +11,23 @@ This report reviews the provider-controlled architectural decision to adopt C# `
 
 The review covers the supplied enterprise architecture report, current repository conventions, representative Application/API/Domain/Blazor contracts, identity and tenant boundaries, System.Text.Json and ASP.NET Core binding constraints, generated NSwag ownership, EF Core exclusions, and relevant test seams. It does not authorize a repository-wide positional-record codemod, change runtime code, or claim that implementation has started.
 
-The requested “no backward compatibility” development posture removes the need for compatibility shims, but it does not remove the provider duty to make each intentional wire-contract break explicit, regenerate governed artifacts, document release impact, and keep tenant/authentication behavior fail-closed.
+The requested “no backward compatibility” development posture removes the need for compatibility shims, but it does not remove the provider duty to make each intentional wire-contract or schema break explicit, generate governed artifacts, preserve stored data, document release impact, and keep tenant/authentication behavior fail-closed.
+
+On 2026-08-25 the user approved bringing every previously deferred area into this workstream. The provider-responsibility scope now also covers immutable command-result factories, repository-wide published collection immutability, evidenced money/coordinate/temporal-range values, generated multi-provider EF migrations, and generator-owned NSwag record DTOs.
 
 ## Claim Boundary
 
 This report is I-VSD provider-responsibility design reasoning and implementation traceability. It is **not a fatwa, Sharia certification, legal opinion, security certification, product certification, or empirical proof of ethical outcomes**. Record syntax alone does not prove immutability, thread safety, authorization safety, correctness, performance, or maintainability.
+
+## Phase 9 High-Criticality Value Boundary
+
+- `Money` represents normalized currency-qualified integer minor units only. It does not encode interest, financing, exchange, payout, refund, or religious-legal permissibility; those remain separate product/domain and qualified scholarly decisions.
+- `GeoCoordinate` is exact location PII owned by `LocationPii` and governed through the `Location` erasure/anti-resurrection authority. Invalid, partial, non-finite, or out-of-range pairs fail closed, while diagnostic formatting redacts exact values.
+- Local calendar ranges and UTC instant ranges remain distinct concepts. Local ranges are inclusive dates without timezone conversion; UTC schedule ranges normalize instants and use half-open overlap semantics so adjacent schedules do not conflict.
+- Phase 9 keeps scalar persistence seams and avoids providers, PostGIS, migrations, or generated-client changes. Phase 10 owns generated data-preserving persistence migration evidence.
+- Phase 10 intentionally retains those scalar leaves as the relational representation. This avoids duplicate currency authority, preserves indexed/queryable time and amount columns, and keeps open-ended schedules representable. Generated provider migrations add only bounded checks for nonnegative ticket money, atomic/bounded coordinates, and ordered local ranges; malformed legacy rows fail installation for explicit correction rather than silent monetary or PII rewriting.
+
+These boundaries strengthen privacy, stewardship, predictability, and maintainability without making a Sharia compliance claim.
 
 ## Findings
 
@@ -69,7 +81,7 @@ For each write boundary:
 | Blazor result/filter snapshot | Sealed record when genuinely immutable | Generated-client isolation, rerender/equality effects, collection safety |
 | Blazor edit/component state | Class by default | Required mutation, binding, validation, lifecycle |
 | EF entity, outbox entity, service, handler, validator, controller | Class | No conversion in this workstream |
-| Generated NSwag code | Generated partial class | Never hand-edit; regenerate from OpenAPI |
+| Generated NSwag code | Generator-owned partial record where framework behavior permits | Never hand-edit; prove native support or use an independently designed deterministic repository-owned extension |
 
 ### Test-First Migration
 
@@ -83,6 +95,18 @@ Every behavioral slice must first establish failing tests for the public seam it
 - OpenAPI and generated clients are deterministic and synchronized;
 - sensitive request values are absent from logs and traces;
 - equality changes affect only contracts for which value equality is intended.
+
+## Scope Re-Baseline — 2026-08-25
+
+The expanded plan preserves the original moral boundaries and adds these provider-controlled duties:
+
+1. **Immutable command results:** valid-state factories must replace setter mutation without hiding failure codes, quota facts, validation errors, or RFC 7807 behavior.
+2. **Published collections:** read-only typing is insufficient by itself; caller-owned mutable inputs require defensive snapshots, while aggregate/service internal mutation remains private and intentional.
+3. **Domain values:** `Money` must retain checked integer minor-unit and normalized currency semantics; `GeoCoordinate` must stay inside the location-PII ownership boundary; local calendar ranges and UTC instant ranges must not be conflated.
+4. **Persistence migration:** value-object adoption must preserve existing rows, tenant filters, privacy erasure, nullability, constraints, rollback/reapply, and shipped provider models through generated artifacts only.
+5. **Generated client records:** the repository must not copy NSwag/NJsonSchema templates or hand-edit generated declarations. Record output must be produced through public generator capabilities or independently designed repository-owned generation logic, with JSON/HAL/PATCH behavior proven first.
+
+These are engineering/provider-responsibility decisions, not religious-legal rulings. No new scholarly escalation is required; security, privacy, data-loss, and outbound-license gates remain mandatory.
 
 ## Common Overlooked Failures And Outcomes
 
@@ -120,12 +144,11 @@ Every behavioral slice must first establish failing tests for the public seam it
 
 ## Validation Gaps
 
-- Exact syntax-aware counts by candidate category have not yet been committed as a repository manifest.
-- Every object-initializer, assignment, AutoMapper projection, serializer context, and generated-client consumer has not yet been classified.
-- No pilot conversion has been implemented or tested; this is planning intake only.
-- OpenAPI and NSwag diffs for any proposed conversion are unknown until a vertical slice is executed.
-- Equality-sensitive dictionary/set/cache usages require per-candidate reference analysis.
-- Zero-PII logging behavior requires implementation-phase tests for sensitive request families.
+- The exact direct-construction and derived-type surface for immutable `BaseCommandResponse<T>` migration remains a Phase 7 Red inventory.
+- The complete repository-wide collection disposition set remains a Phase 8 output.
+- Money, coordinate, and temporal primitive owners are evidenced, but exact migrated owners and persistence representation remain Phase 9–10 Red outputs.
+- The pinned NSwag configuration currently proves POCO output; native record capability remains a Phase 11 public-interface capability check.
+- Generated EF migration operations and generated-client diffs are intentionally unknown until their Red specifications and source model/generator changes exist.
 
 ## Escalation Needed
 
@@ -145,14 +168,18 @@ Every behavioral slice must first establish failing tests for the public seam it
 - `src/Explore.Application/DTOs/Category/CreateCategoryDto.cs`.
 - `src/Explore.Application/DTOs/Category/UpdateCategoryDto.cs`.
 - `src/Explore.Application/Responses/BaseCommandResponse.cs`.
+- `src/Explore.API/ExceptionHandling/CommandResponseResultMapper.cs`.
 - `src/Explore.Application/Responses/PaginatedResult.cs`.
 - `src/Explore.Application/Features/Promotions/Requests/Commands/PromotionManagementCommands.cs`.
 - `src/Explore.Application/Features/RegistrationProviders/RegistrationProviderManagementRequests.cs`.
 - `src/Explore.Application/Authorization/TrustedAuthorizationFacts.cs`.
 - `src/Explore.Domain/OutboxMessage.cs` and representative outbox factories.
+- `src/Explore.Domain/LocationPii.cs`, `EventTicketType.cs`, `PaymentAttempt.cs`, `Event.cs`, `EventSeries.cs`, `EventSession.cs`, and `EventAgendaItem.cs`.
+- Representative EF entity configurations, application/provider migration snapshots, and migration integration tests.
 - `src/Explore.API/Serialization/OptionalUpdateJsonConverterFactory.cs`.
 - `src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs`.
 - `src/Explore.Blazor.Client/nswag.json`.
+- `src/Explore.Blazor.Client/Explore.Blazor.Client.csproj` generation target and pinned NSwag tool manifest.
 - `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` ownership and generated shape.
 - `src/Explore.Blazor.Client/Serialization/AppJsonSerializerContext.cs`.
 - `.github/workflows/openapi-contract.yml` and `schemas/openapi_islamu-event.json`.
@@ -164,11 +191,11 @@ Every behavioral slice must first establish failing tests for the public seam it
 - AnySearch MCP and Context7 MCP were requested but are not registered in this session.
 - The configured general web-search provider failed; official documentation was fetched directly from Microsoft Learn URLs.
 - No external issue tracker, roadmap, customer-support system, or production incident evidence was needed or reviewed for this internal refactor plan.
-- No implementation diff, generated OpenAPI diff, benchmark, or live runtime evidence exists because implementation has not started.
+- Expanded Phase 7–11 implementation diffs, generated EF operations, and generated-record output do not exist yet because this update changes planning artifacts only.
 
 ## Context Inventory
 
 - Repository/workspace documentation, source, configuration, tests, generated OpenAPI/NSwag artifacts, and existing I-VSD reports were available.
-- Two bounded read-only repository scouts inventoried type categories and traced trusted identity, serialization, generated-client, and test boundaries.
+- Five bounded read-only repository scouts across the original and expanded planning passes inventoried type categories, immutable result/collection seams, Domain/Persistence candidates, generated-client ownership, and tests.
 - Official Microsoft Learn documentation was reviewed through direct URL retrieval under the repository clean-room policy.
 - No relevant external project-context MCP, AnySearch, Context7, or hosted planning integration was visible.
