@@ -1850,6 +1850,221 @@
         "x-output-cache-policy": "DetailData"
       }
     },
+    "/api/tickets/recovery": {
+      "post": {
+        "tags": [
+          "AdmissionTicketRecovery"
+        ],
+        "summary": "Request admission ticket recovery",
+        "operationId": "RequestAdmissionTicketRecovery",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestAdmissionTicketRecoveryCommand"
+                  }
+                ]
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestAdmissionTicketRecoveryCommand"
+                  }
+                ]
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestAdmissionTicketRecoveryCommand"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryRequestResult"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryRequestResult"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryRequestResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "admission_ticket_recovery",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/tickets/recovery/consume": {
+      "post": {
+        "tags": [
+          "AdmissionTicketRecovery"
+        ],
+        "summary": "Consume admission ticket recovery capability",
+        "operationId": "ConsumeAdmissionTicketRecovery",
+        "parameters": [
+          {
+            "name": "X-Admission-Ticket-Recovery-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryDeliveryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryDeliveryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTicketRecoveryDeliveryDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "admission_ticket_recovery"
+      }
+    },
     "/api/ai/assistant/bootstrap": {
       "get": {
         "tags": [
@@ -88438,6 +88653,67 @@
           }
         }
       },
+      "AdmissionTicketRecoveryDeliveryDto": {
+        "required": [
+          "id",
+          "ticketId",
+          "eventId",
+          "statusCode",
+          "displayReference",
+          "manualCode",
+          "manualCodeClassificationCode",
+          "qrRepresentation",
+          "printModel"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "displayReference": {
+            "type": "string"
+          },
+          "manualCode": {
+            "type": "string"
+          },
+          "manualCodeClassificationCode": {
+            "type": "string"
+          },
+          "qrRepresentation": {
+            "type": "string"
+          },
+          "printModel": {
+            "type": "string"
+          }
+        }
+      },
+      "AdmissionTicketRecoveryRequestResult": {
+        "required": [
+          "accepted",
+          "success"
+        ],
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "AgendaDayGroupDto": {
         "type": "object",
         "properties": {
@@ -89976,6 +90252,14 @@
         }
       },
       "BaseCommandResponseOfboolean": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90006,29 +90290,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfCompanyRegistrationAssignmentCsvResultDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/CompanyRegistrationAssignmentCsvResultDto"
-              }
-            ]
+            "$ref": "#/components/schemas/CompanyRegistrationAssignmentCsvResultDto"
           },
           "success": {
             "type": "boolean"
@@ -90055,29 +90333,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionDto"
-              }
-            ]
+            "$ref": "#/components/schemas/ControlPlaneDeploymentModeTransitionDto"
           },
           "success": {
             "type": "boolean"
@@ -90104,29 +90376,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ControlPlaneTenantLifecycleTransitionDto"
-              }
-            ]
+            "$ref": "#/components/schemas/ControlPlaneTenantLifecycleTransitionDto"
           },
           "success": {
             "type": "boolean"
@@ -90153,29 +90419,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfCustomPropertyPurgeResultDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/CustomPropertyPurgeResultDto"
-              }
-            ]
+            "$ref": "#/components/schemas/CustomPropertyPurgeResultDto"
           },
           "success": {
             "type": "boolean"
@@ -90202,29 +90462,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfDrainDirtyScopesResponseDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/DrainDirtyScopesResponseDto"
-              }
-            ]
+            "$ref": "#/components/schemas/DrainDirtyScopesResponseDto"
           },
           "success": {
             "type": "boolean"
@@ -90251,18 +90505,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfGuid": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90294,18 +90549,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfint": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90341,18 +90597,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfIReadOnlyListOfEventCustomPropertyProjectionDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90389,18 +90646,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfIReadOnlyListOfEventSessionCustomPropertyProjectionDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90437,29 +90695,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfManagedProviderClientProvisioningResultDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ManagedProviderClientProvisioningResultDto"
-              }
-            ]
+            "$ref": "#/components/schemas/ManagedProviderClientProvisioningResultDto"
           },
           "success": {
             "type": "boolean"
@@ -90486,29 +90738,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfOrganizerPaymentOnboardingLinkResult": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/OrganizerPaymentOnboardingLinkResult"
-              }
-            ]
+            "$ref": "#/components/schemas/OrganizerPaymentOnboardingLinkResult"
           },
           "success": {
             "type": "boolean"
@@ -90535,29 +90781,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfRebuildProjectionResponseDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/RebuildProjectionResponseDto"
-              }
-            ]
+            "$ref": "#/components/schemas/RebuildProjectionResponseDto"
           },
           "success": {
             "type": "boolean"
@@ -90584,29 +90824,23 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfStorageUploadSessionDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StorageUploadSessionDto"
-              }
-            ]
+            "$ref": "#/components/schemas/StorageUploadSessionDto"
           },
           "success": {
             "type": "boolean"
@@ -90633,18 +90867,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "BaseCommandResponseOfstring": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -90678,14 +90913,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -94434,6 +94662,16 @@
         }
       },
       "CreateExternalApiKeyCommandResponse": {
+        "required": [
+          "apiKey",
+          "keyId",
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "apiKey": {
@@ -94477,14 +94715,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -104757,17 +104988,19 @@
         }
       },
       "GuestRegistrationOrderLifecycleResponseDto": {
+        "required": [
+          "order",
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "order": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/GuestRegistrationOrderDto"
-              }
-            ]
+            "$ref": "#/components/schemas/GuestRegistrationOrderDto"
           },
           "id": {
             "type": "string",
@@ -104798,18 +105031,19 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
       "GuestRegistrationOrderStartDto": {
+        "required": [
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -104841,14 +105075,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -124163,6 +124390,12 @@
       "HalResourceOfStudioContextDto": {
         "type": "object",
         "properties": {
+          "allowedLinkRelations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -136776,22 +137009,25 @@
         }
       },
       "PromotionCodeIssuedCommandResponseDto": {
+        "required": [
+          "promotion",
+          "issuedCode",
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
+          "promotion": {
+            "$ref": "#/components/schemas/PromotionManagementDto"
+          },
           "issuedCode": {
             "type": [
               "null",
               "string"
-            ]
-          },
-          "promotion": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PromotionManagementDto"
-              }
             ]
           },
           "id": {
@@ -136823,14 +137059,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -136846,17 +137075,19 @@
         }
       },
       "PromotionManagementCommandResponseDto": {
+        "required": [
+          "promotion",
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "promotion": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PromotionManagementDto"
-              }
-            ]
+            "$ref": "#/components/schemas/PromotionManagementDto"
           },
           "id": {
             "type": "string",
@@ -136887,14 +137118,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -137037,6 +137261,19 @@
         "type": "string"
       },
       "PromotionRedemptionResponseDto": {
+        "required": [
+          "appliedPromotionDisplayLabel",
+          "promotionDiscountTotalMinor",
+          "totalDueMinor",
+          "platformFeeTotalMinor",
+          "platformContributionTotalMinor",
+          "id",
+          "success",
+          "message",
+          "errors",
+          "failureCode",
+          "quotaExceeded"
+        ],
         "type": "object",
         "properties": {
           "appliedPromotionDisplayLabel": {
@@ -137106,14 +137343,7 @@
             ]
           },
           "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
+            "$ref": "#/components/schemas/QuotaExceededDetails"
           }
         }
       },
@@ -142348,6 +142578,17 @@
           }
         }
       },
+      "RequestAdmissionTicketRecoveryCommand": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "RequestPaidCheckoutReviewDto": {
         "type": "object",
         "properties": {
@@ -144399,7 +144640,15 @@
         }
       },
       "StudioContextDto": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "allowedLinkRelations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "SubmitEventOrganizerClaimDto": {
         "required": [
@@ -152641,6 +152890,9 @@
     },
     {
       "name": "ActorType"
+    },
+    {
+      "name": "AdmissionTicketRecovery"
     },
     {
       "name": "AiAssistant"

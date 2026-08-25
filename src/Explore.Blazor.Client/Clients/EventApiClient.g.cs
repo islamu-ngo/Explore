@@ -208,6 +208,23 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Request admission ticket recovery
+        /// </summary>
+        /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
+        /// <returns>Accepted</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<AdmissionTicketRecoveryRequestResult> RequestAdmissionTicketRecoveryAsync(string idempotency_Key, string? api_version = null, string? x_Api_Version = null, RequestAdmissionTicketRecoveryCommand? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Consume admission ticket recovery capability
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<AdmissionTicketRecoveryDeliveryDto> ConsumeAdmissionTicketRecoveryAsync(string? x_Admission_Ticket_Recovery_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get AI assistant bootstrap
         /// </summary>
         /// <remarks>
@@ -9468,6 +9485,215 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Request admission ticket recovery
+        /// </summary>
+        /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
+        /// <returns>Accepted</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<AdmissionTicketRecoveryRequestResult> RequestAdmissionTicketRecoveryAsync(string idempotency_Key, string? api_version = null, string? x_Api_Version = null, RequestAdmissionTicketRecoveryCommand? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (idempotency_Key == null)
+                        throw new System.ArgumentNullException("idempotency_Key");
+                    request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tickets/recovery"
+                    urlBuilder_.Append("api/tickets/recovery");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 202)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<AdmissionTicketRecoveryRequestResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Consume admission ticket recovery capability
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<AdmissionTicketRecoveryDeliveryDto> ConsumeAdmissionTicketRecoveryAsync(string? x_Admission_Ticket_Recovery_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Admission_Ticket_Recovery_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Admission-Ticket-Recovery-Capability", ConvertToString(x_Admission_Ticket_Recovery_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tickets/recovery/consume"
+                    urlBuilder_.Append("api/tickets/recovery/consume");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<AdmissionTicketRecoveryDeliveryDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -101749,6 +101975,78 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AdmissionTicketRecoveryDeliveryDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid TicketId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayReference")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string DisplayReference { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("manualCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ManualCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("manualCodeClassificationCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ManualCodeClassificationCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("qrRepresentation")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string QrRepresentation { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("printModel")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PrintModel { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AdmissionTicketRecoveryRequestResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("accepted")]
+        public bool Accepted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
+        public bool Success { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AgendaDayGroupDto
     {
 
@@ -102988,10 +103286,10 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public bool? Id { get; set; } = default!;
+        public bool Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103003,7 +103301,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103021,10 +103320,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public CompanyRegistrationAssignmentCsvResultDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public CompanyRegistrationAssignmentCsvResultDto Id { get; set; } = new CompanyRegistrationAssignmentCsvResultDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103036,7 +103336,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103054,10 +103355,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public ControlPlaneDeploymentModeTransitionDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public ControlPlaneDeploymentModeTransitionDto Id { get; set; } = new ControlPlaneDeploymentModeTransitionDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103069,7 +103371,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103087,10 +103390,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public ControlPlaneTenantLifecycleTransitionDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public ControlPlaneTenantLifecycleTransitionDto Id { get; set; } = new ControlPlaneTenantLifecycleTransitionDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103102,7 +103406,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103120,10 +103425,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public CustomPropertyPurgeResultDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public CustomPropertyPurgeResultDto Id { get; set; } = new CustomPropertyPurgeResultDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103135,7 +103441,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103153,10 +103460,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public DrainDirtyScopesResponseDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public DrainDirtyScopesResponseDto Id { get; set; } = new DrainDirtyScopesResponseDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103168,7 +103476,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103186,10 +103495,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103201,7 +103511,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103219,11 +103530,12 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? Id { get; set; } = default!;
+        public int Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103235,7 +103547,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103256,7 +103569,7 @@ namespace Explore.Blazor.Client.Clients
         public System.Collections.Generic.ICollection<EventCustomPropertyProjectionDto>? Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103268,7 +103581,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103289,7 +103603,7 @@ namespace Explore.Blazor.Client.Clients
         public System.Collections.Generic.ICollection<EventSessionCustomPropertyProjectionDto>? Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103301,7 +103615,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103319,10 +103634,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public ManagedProviderClientProvisioningResultDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public ManagedProviderClientProvisioningResultDto Id { get; set; } = new ManagedProviderClientProvisioningResultDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103334,7 +103650,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103352,10 +103669,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public OrganizerPaymentOnboardingLinkResult? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public OrganizerPaymentOnboardingLinkResult Id { get; set; } = new OrganizerPaymentOnboardingLinkResult();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103367,7 +103685,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103385,10 +103704,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public RebuildProjectionResponseDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public RebuildProjectionResponseDto Id { get; set; } = new RebuildProjectionResponseDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103400,7 +103720,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103418,10 +103739,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public StorageUploadSessionDto? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public StorageUploadSessionDto Id { get; set; } = new StorageUploadSessionDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103433,7 +103755,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103454,7 +103777,7 @@ namespace Explore.Blazor.Client.Clients
         public string? Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -103466,7 +103789,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -106543,10 +106867,11 @@ namespace Explore.Blazor.Client.Clients
         public string? KeyId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -106558,7 +106883,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -113834,13 +114160,15 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
-        public GuestRegistrationOrderDto? Order { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public GuestRegistrationOrderDto Order { get; set; } = new GuestRegistrationOrderDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -113852,7 +114180,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -113870,10 +114199,11 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -113885,7 +114215,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -125986,6 +126317,9 @@ namespace Explore.Blazor.Client.Clients
     public partial class HalResourceOfStudioContextDto
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowedLinkRelations")]
+        public System.Collections.Generic.ICollection<string>? AllowedLinkRelations { get; set; } = default!;
+
         /// <summary>
         /// HAL hypermedia links
         /// </summary>
@@ -135267,17 +135601,19 @@ namespace Explore.Blazor.Client.Clients
     public partial class PromotionCodeIssuedCommandResponseDto
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("promotion")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public PromotionManagementDto Promotion { get; set; } = new PromotionManagementDto();
+
         [System.Text.Json.Serialization.JsonPropertyName("issuedCode")]
         public string? IssuedCode { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("promotion")]
-        public PromotionManagementDto? Promotion { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -135289,7 +135625,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -135326,13 +135663,15 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("promotion")]
-        public PromotionManagementDto? Promotion { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public PromotionManagementDto Promotion { get; set; } = new PromotionManagementDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -135344,7 +135683,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -135472,26 +135812,31 @@ namespace Explore.Blazor.Client.Clients
         public string? AppliedPromotionDisplayLabel { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("promotionDiscountTotalMinor")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? PromotionDiscountTotalMinor { get; set; } = default!;
+        public long PromotionDiscountTotalMinor { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("totalDueMinor")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? TotalDueMinor { get; set; } = default!;
+        public long TotalDueMinor { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("platformFeeTotalMinor")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? PlatformFeeTotalMinor { get; set; } = default!;
+        public long PlatformFeeTotalMinor { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("platformContributionTotalMinor")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? PlatformContributionTotalMinor { get; set; } = default!;
+        public long PlatformContributionTotalMinor { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
-        public bool? Success { get; set; } = default!;
+        public bool Success { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
@@ -135503,7 +135848,8 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -139690,6 +140036,25 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RequestAdmissionTicketRecoveryCommand
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Email { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RequestPaidCheckoutReviewDto
     {
 
@@ -141813,6 +142178,9 @@ namespace Explore.Blazor.Client.Clients
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class StudioContextDto
     {
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowedLinkRelations")]
+        public System.Collections.Generic.ICollection<string>? AllowedLinkRelations { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
