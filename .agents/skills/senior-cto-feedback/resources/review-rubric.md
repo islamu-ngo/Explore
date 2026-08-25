@@ -210,9 +210,9 @@ Check:
 
 Check:
 
-- `plan.md` distinguishes verified evidence from assumptions.
-- `context.md` has current progress, next step, blockers, and validation baseline.
-- `tasks.md` maps cleanly to phases and verification.
+- `plan.md` distinguishes verified evidence from assumptions and defines high-level architectural phase exit criteria without embedding granular task execution checklists, `- [ ]` checkboxes, or session handoffs.
+- `context.md` has current progress, next step, blockers, validation baseline, and dated handoffs.
+- `tasks.md` maps cleanly to phases and contains the hot execution ledger (Red/Green task sequence, checkboxes, and phase verification).
 - Status across all three files agrees.
 - Another implementation agent could resume without re-asking the user for core context.
 

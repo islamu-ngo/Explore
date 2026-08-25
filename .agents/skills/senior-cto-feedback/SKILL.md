@@ -31,7 +31,7 @@ priority: high
 5. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
 
 ## Top 5 Anti-Patterns
-1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`.
+1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`, or allowing `plan.md` to be polluted with granular task checklists (`- [ ]`) and session handoffs.
 2. **Approving Post-Hoc Test Tautology ("The Ugly Mirror")**, which allows agents to write tests after implementation or rely on shallow mock-heavy tests that mirror bugs instead of enforcing invariants.
 3. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
 4. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.

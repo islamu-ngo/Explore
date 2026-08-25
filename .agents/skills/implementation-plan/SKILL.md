@@ -23,14 +23,18 @@ priority: high
 2. Execute the mandatory intake gate before writing: load `i-vsd`, evaluate provider responsibilities, follow its action routing, and create or update `islamic-value-sensitive-design/i-vsd-<task-name>.md`; then load `grill-me`, resolve repository facts first, and interrogate the user—with recommended answers—about every remaining material requirement, failure mode, and edge case.
 3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release & Changelog Strategy** into the plan.
 4. **Test-First Invariant Sequencing**: Every behavioral implementation phase MUST sequence task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), preventing post-hoc test generation.
-5. Resume from task-owned context and the current task, update artifacts only on their defined triggers, and run phase-end verification exactly once with one Release build and at most one fastest relevant non-browser project test.
+5. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
+   - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
+   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes, dynamic status, and phase verification gates).
+   - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
 
-## Top 5 Anti-Patterns
+## Top Anti-Patterns
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
 2. **Post-Hoc Test Tautology ("The Ugly Mirror")**, which writes code first and tests afterwards, producing self-fulfilling tests that mirror implementation bugs and mock away real failure modes.
 3. Future-state-first planning, which designs changes before reporting what exists, what is missing, and what evidence supports those conclusions.
 4. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
 5. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
+6. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
 
 ## Minimal Examples
 ```text

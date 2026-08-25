@@ -143,6 +143,7 @@ Link `islamic-value-sensitive-design/i-vsd-<task-name>.md` from the plan, contex
 
 Write the maintenance contract into the artifacts themselves so implementation agents do not need to reload this skill repeatedly:
 
+- Maintain strict single responsibility: `plan.md` defines architectural phase boundaries and exit criteria without embedding granular task checklists (`- [ ]`) or session handoffs; `tasks.md` is the sole hot execution ledger; `context.md` is the sole active memory and handoff log.
 - `tasks.md` is the hot execution ledger and must be updated during implementation, not by a later cleanup command.
 - A substantial task is checked immediately after its implementation acceptance criteria are met; small related tasks may be reconciled together, but never later than phase end.
 - Phase verification checkboxes remain separate from implementation checkboxes, and the phase becomes complete only after its build and selected test pass.

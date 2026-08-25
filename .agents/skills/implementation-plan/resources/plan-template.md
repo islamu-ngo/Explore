@@ -97,7 +97,7 @@ When the decision is a major technology selection, external library, or competin
 
 ## 6. Implementation Phases
 
-Use reviewable slices. Every phase includes:
+Use reviewable architectural slices. Every phase in `plan.md` defines high-level architectural scope, dependencies, relevant files/layers, phase exit criteria, the single phase-end verification command, and rollback handling.
 
 ```markdown
 ### Phase N: <Name>
@@ -105,27 +105,22 @@ Use reviewable slices. Every phase includes:
 - **Depends on:**
 - **Relevant files:** existing/new status included
 - **Related skills/rules:**
-- **Acceptance criteria:** observable outcomes
+- **Acceptance criteria:** observable architectural and contract outcomes (bullet list, not execution checkboxes)
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:**
 ```
 
-```markdown
-#### Task N.M: <Actionable Task>
-- **Type:** create / modify / delete / investigate
-- **Layer:** Domain / Application / Persistence / Infrastructure / API / Blazor / Docs / DevOps
-- **Files:** exact paths marked existing or new
-- **Description:** implementation-level instructions
-- **Acceptance Criteria:** checkboxes with observable outcomes
-- **Dependencies:** task ids
-- **Effort:** S / M / L / XL
-- **Required Skills/Rules:**
-```
+> [!IMPORTANT]
+> **Single Responsibility Rule (`plan.md` vs `tasks.md`)**:
+> - `plan.md` defines **architectural phases, goals, component files, phase-level acceptance criteria, verification commands, and rollback strategy**.
+> - Do **NOT** include granular `#### Task N.M:` execution blocks, task descriptions/effort, or `[ ]` / `[x]` checkboxes in `plan.md`.
+> - All granular task breakdowns (`Task N.M`), Red/Green/Refactor task sequences, and actionable execution checklists belong **strictly in `tasks.md`**.
+> - Ephemeral session progress, worktree dirty scopes, test pass counts, and handoffs belong **strictly in `context.md`**.
 
-#### Behavioral Slice Rule: Test-First Invariant Task Sequencing
-To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST sequence tasks in **Test-First Invariant order**:
+#### Behavioral Slice Rule: Test-First Invariant Task Sequencing (in `tasks.md`)
+To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST break down its actionable tasks in **`tasks.md`** in **Test-First Invariant order**:
 
 1. **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests**
    - Author failing tests against public interfaces, MediatR requests, or API contracts *before* implementing production logic.
@@ -138,8 +133,8 @@ To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write co
 
 Do not create standalone manual-QA, documentation-review, reporting, dev-doc maintenance, or redundant verification tasks. Run no build or test command until the phase implementation is complete.
 
-#### Final Phase Closing Rule: Changelog & Commit as the Final Task
-Every implementation plan MUST sequence its **Changelog Contribution & Commit Composition** as the **FINAL task of the FINAL phase** (e.g. `Task N.Last: Changelog Contribution & Final Commit Composition`). This ensures that:
+#### Final Phase Closing Rule: Changelog & Commit as the Final Task (in `tasks.md`)
+Every implementation workstream MUST sequence its **Changelog Contribution & Commit Composition** as the **FINAL task of the FINAL phase in `tasks.md`** (e.g. `Task N.Last: Changelog Contribution & Final Commit Composition`). This ensures that:
 1. All functional implementation across layers is 100% complete.
 2. All tests are green and verified.
 3. All relevant documentation (docs, schemas, runbooks) has been updated.

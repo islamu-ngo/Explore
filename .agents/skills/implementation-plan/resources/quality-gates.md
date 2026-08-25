@@ -44,6 +44,7 @@
 
 - The stable task name and `Last Updated: YYYY-MM-DD Europe/Brussels` appear in all three files.
 - Plan, context, and tasks agree on status, current priority, next action, blockers, task ids, decisions, risks, and verification.
+- **Dev-Doc Triad Single Responsibility**: `plan.md` defines architectural phase exit criteria without embedding granular task execution checklists, checkboxes (`- [ ]`), or session handoffs; `tasks.md` is the sole hot execution ledger; `context.md` is the sole session memory and handoff log.
 - Context puts resume state and blockers near the top.
 - Tasks are checkable and mirror the plan's phases.
 - The implementation-agent contract makes `tasks.md` the hot ledger, requires substantial-task updates immediately and full reconciliation by phase end, and separates implementation completion from phase verification.

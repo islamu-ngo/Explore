@@ -219,30 +219,30 @@ Prefer splitting by risk boundary:
    - cleanup obsolete compatibility paths,
    - delete obsolete tests.
 
-## Test-First Invariant Rewrite Pattern
+## Test-First Invariant Rewrite Pattern (for `tasks.md`)
 
-When rewriting a flawed plan that puts tests after implementation (creating post-hoc test tautology risk), convert the tasks into strict **Test-First Invariant Specification order**:
+When rewriting a flawed workstream where tasks put tests after implementation (creating post-hoc test tautology risk), convert the tasks in **`tasks.md`** into strict **Test-First Invariant Specification order** (while keeping `plan.md` focused on architectural phases and exit criteria):
 
 ```markdown
-### ❌ Before (Flawed Code-First Sequence):
+### ❌ Before (Flawed Code-First Sequence in tasks.md):
 - Task 2.1: Implement CreateOrderCommandHandler and Order entity
 - Task 2.2: Add unit tests for CreateOrderCommandHandler
 
-### ✅ After (Test-First Invariant Sequence):
-- Task 2.1 (Red Phase): Author CreateOrder Invariant & Contract Specification Tests
-  - Layer: Application / Tests
-  - Files: tests/Event.Application.UnitTests/Orders/CreateOrderCommandTests.cs (new)
-  - Description: Author failing specification tests asserting domain invariants (positive integer currency, state machine initialization, capacity check) and fail-closed error responses (ProblemDetails RFC 7807) before writing handler logic.
-  - Acceptance Criteria:
+### ✅ After (Test-First Invariant Sequence in tasks.md):
+- [ ] **2.1 (Red Phase): Author CreateOrder Invariant & Contract Specification Tests**
+  - **Layer:** Application / Tests
+  - **Files:** `tests/Event.Application.UnitTests/Orders/CreateOrderCommandTests.cs` (new)
+  - **Description:** Author failing specification tests asserting domain invariants (positive integer currency, state machine initialization, capacity check) and fail-closed error responses (ProblemDetails RFC 7807) before writing handler logic.
+  - **Acceptance:**
     - [ ] Tests fail on missing command handler with expected missing type/behavior.
     - [ ] Concurrency and invalid-input invariant test cases covered.
-- Task 2.2 (Green Phase): Implement Order Aggregate & CreateOrderCommandHandler
-  - Layer: Domain / Application
-  - Files: src/Explore.Domain/Entities/Order.cs (new), src/Explore.Application/Features/Orders/Commands/CreateOrderCommandHandler.cs (new)
-  - Description: Author production code strictly to satisfy the invariant test specifications.
-- Task 2.3 (Refactor & Wire Up): Clean Architecture & DI Registration
-  - Layer: Application
-  - Description: Clean up memory allocations, ensure zero-PII logging via StarRedactor, and register handlers.
+- [ ] **2.2 (Green Phase): Implement Order Aggregate & CreateOrderCommandHandler**
+  - **Layer:** Domain / Application
+  - **Files:** `src/Explore.Domain/Entities/Order.cs` (new), `src/Explore.Application/Features/Orders/Commands/CreateOrderCommandHandler.cs` (new)
+  - **Description:** Author production code strictly to satisfy the invariant test specifications.
+- [ ] **2.3 (Refactor & Wire Up): Clean Architecture & DI Registration**
+  - **Layer:** Application
+  - **Description:** Clean up memory allocations, ensure zero-PII logging via StarRedactor, and register handlers.
 ```
 
 ## Anti-Patterns To Remove From Plans

@@ -3,6 +3,14 @@
 
 # Operational Artifacts
 
+## Dev-Doc Triad Responsibility Matrix
+
+| Artifact | Single Source of Truth For | Forbidden Content (Belongs Elsewhere) |
+|---|---|---|
+| `dev/active/<task>/<task>-plan.md` | Strategic architectural design, current-state evidence, design decisions (ADRs), phase-level boundaries and exit criteria | Granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), session handoffs, dirty worktree logs |
+| `dev/active/<task>/<task>-tasks.md` | Hot execution ledger, granular Red/Green/Refactor task breakdown (`- [ ] **N.M**`), task checkboxes, phase verification gates | Lengthy architectural narrative, design trade-off debates, deep security/I-VSD analysis |
+| `dev/active/<task>/<task>-context.md` | Active session working memory (`COMPLETED`, `IN PROGRESS`, `NEXT`, `BLOCKERS`), quick resume, validation baseline, dated session handoffs | Granular task execution checklists, full architectural specifications |
+
 ## Context File
 
 Use this structure for `dev/active/<task-name>/<task-name>-context.md`:
