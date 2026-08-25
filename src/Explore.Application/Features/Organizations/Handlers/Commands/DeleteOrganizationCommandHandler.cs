@@ -22,11 +22,9 @@ public sealed class DeleteOrganizationCommandHandler(
         var organization = await organizationRepository.GetById(request.Id);
         if (organization is null)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Organization not found."
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                ["Organization not found."],
+                "Organization not found.");
         }
 
         if (!Guid.TryParse(request.UserId, out var requesterUserId))
@@ -43,11 +41,6 @@ public sealed class DeleteOrganizationCommandHandler(
         await organizationRepository.Delete(organization);
         await cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = organization.Id,
-            Message = "Organization deleted successfully."
-        };
+        return BaseCommandResponse.Success(organization.Id, "Organization deleted successfully.");
     }
 }

@@ -48,16 +48,13 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateGroupDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UpdateGroupDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Group update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Group update failed.");
         }
 
         var currentUserId = _userContext.GetRequiredUserId();
@@ -71,10 +68,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
         var group = await _groupRepository.GetById(request.GroupId);
         if (group == null)
         {
-            response.Success = false;
-            response.Message = "Group not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Group not found.");
         }
 
         if (group.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -96,19 +90,15 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
                     lockedCancellationToken);
                 if (participation is null)
                 {
-                    response.Success = false;
-                    response.Message = "Group not found.";
-                    response.FailureCode = FailureCodes.NotFound;
-                    return response;
+                    return BaseCommandResponse.NotFound<Guid>("Group not found.");
                 }
 
                 var targetParent = await ResolveTargetParent(participation, request.UpdateGroupDto);
                 if (targetParent.ParentOrganizationId.HasValue && targetParent.ParentGroupId.HasValue)
                 {
-                    response.Success = false;
-                    response.Message = "Validation failed.";
-                    response.Errors = ["A group can have either a parent organization or a parent group, not both."];
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>(
+                        ["A group can have either a parent organization or a parent group, not both."],
+                        "Validation failed.");
                 }
 
                 var hierarchyErrors = await ValidateHierarchy(
@@ -118,10 +108,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
                     lockedCancellationToken);
                 if (hierarchyErrors.Count > 0)
                 {
-                    response.Success = false;
-                    response.Message = "Validation failed.";
-                    response.Errors = hierarchyErrors;
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>(hierarchyErrors, "Validation failed.");
                 }
 
                 ApplyFullName(group, request.UpdateGroupDto.FullName);
@@ -137,11 +124,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
 
                 await _cache.RemoveAsync($"group:detail:{group.Id}", lockedCancellationToken);
 
-                response.Success = true;
-                response.Message = "Group updated successfully.";
-                response.Id = group.Id;
-
-                return response;
+                return BaseCommandResponse.Success(group.Id, "Group updated successfully.");
             },
             cancellationToken);
     }

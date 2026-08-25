@@ -33,16 +33,13 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandler
         DrainCustomPropertyProjectionDirtyScopesCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<DrainDirtyScopesResponseDto>();
-
         var validator = new DrainDirtyScopesRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.RequestDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Drain request validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<DrainDirtyScopesResponseDto>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Drain request validation failed.");
         }
 
         var tenantId = request.RequestDto.TenantId;
@@ -65,22 +62,19 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandler
         if (drainedCount < 0)
         {
             _metrics.RecordDrainFailure(tenantId.ToString(), projectionName);
-            response.Success = false;
-            response.Message = $"Unknown projection name: '{projectionName}'.";
-            response.Errors = [$"ProjectionName must be '{IEventCustomPropertyProjectionUpdater.ProjectionName}' or '{IEventSessionCustomPropertyProjectionUpdater.ProjectionName}'."];
-            return response;
+            return BaseCommandResponse.Validation<DrainDirtyScopesResponseDto>(
+                [$"ProjectionName must be '{IEventCustomPropertyProjectionUpdater.ProjectionName}' or '{IEventSessionCustomPropertyProjectionUpdater.ProjectionName}'."],
+                $"Unknown projection name: '{projectionName}'.");
         }
 
         _metrics.RecordDrain(tenantId.ToString(), projectionName, drainedCount, stopwatch.Elapsed.TotalSeconds);
 
-        response.Success = true;
-        response.Id = new DrainDirtyScopesResponseDto
-        {
-            DrainedCount = drainedCount,
-            DrainedAt = DateTimeOffset.UtcNow
-        };
-        response.Message = $"Drained {drainedCount} dirty scope(s).";
-
-        return response;
+        return BaseCommandResponse.Success(
+            new DrainDirtyScopesResponseDto
+            {
+                DrainedCount = drainedCount,
+                DrainedAt = DateTimeOffset.UtcNow
+            },
+            $"Drained {drainedCount} dirty scope(s).");
     }
 }

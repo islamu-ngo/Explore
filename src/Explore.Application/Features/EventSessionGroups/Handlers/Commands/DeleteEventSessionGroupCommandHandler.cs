@@ -30,21 +30,17 @@ public class DeleteEventSessionGroupCommandHandler : IRequestHandler<DeleteEvent
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteEventSessionGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var group = await _eventSessionGroupRepository.GetForUpdateAsync(request.Id, cancellationToken);
         if (group is null)
         {
-            response.Success = false;
-            response.Message = "Event session group not found.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session group not found.");
         }
 
         if (group.EventId != request.EventId)
         {
-            response.Success = false;
-            response.Message = "Event session group must belong to the requested event.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event session group must belong to the requested event."],
+                "Event session group must belong to the requested event.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async token =>
@@ -65,9 +61,6 @@ public class DeleteEventSessionGroupCommandHandler : IRequestHandler<DeleteEvent
                 token);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = group.Id;
-        response.Message = "Event session group deleted successfully.";
-        return response;
+        return BaseCommandResponse.Success(group.Id, "Event session group deleted successfully.");
     }
 }

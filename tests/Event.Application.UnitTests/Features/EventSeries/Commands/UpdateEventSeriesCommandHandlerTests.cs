@@ -44,7 +44,7 @@ public class UpdateEventSeriesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event series update group must be provided.");
         await _eventSeriesRepository.DidNotReceive().Update(Arg.Any<DomainEventSeries>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -70,7 +70,7 @@ public class UpdateEventSeriesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event series not found.");
         await _eventSeriesRepository.DidNotReceive().Update(Arg.Any<DomainEventSeries>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -127,7 +127,7 @@ public class UpdateEventSeriesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(series.Description).IsNull();
         await _eventSeriesRepository.Received(1).Update(series);
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
@@ -177,7 +177,7 @@ public class UpdateEventSeriesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(series.Title).IsEqualTo("Updated series");
         await Assert.That(series.Slug).IsEqualTo("updated-series");
         await Assert.That(series.FeaturedImageId).IsEqualTo(featuredImageId);
@@ -230,7 +230,7 @@ public class UpdateEventSeriesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(series.FeaturedImageId).IsEqualTo(originalFeaturedImageId);
         await _eventSeriesRepository.DidNotReceive().Update(Arg.Any<DomainEventSeries>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());

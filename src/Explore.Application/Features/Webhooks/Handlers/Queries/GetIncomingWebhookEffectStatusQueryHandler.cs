@@ -21,12 +21,9 @@ public sealed class GetIncomingWebhookEffectStatusQueryHandler(
     {
         if (request.TenantId == Guid.Empty || request.Limit is < 1 or > MaxLimit)
         {
-            return new BaseCommandResponse<IReadOnlyList<IncomingWebhookEffectStatusDto>>
-            {
-                Success = false,
-                Message = "TenantId and a limit between 1 and 200 are required.",
-                Errors = ["TenantId and a limit between 1 and 200 are required."]
-            };
+            return BaseCommandResponse.Validation<IReadOnlyList<IncomingWebhookEffectStatusDto>>(
+                ["TenantId and a limit between 1 and 200 are required."],
+                "TenantId and a limit between 1 and 200 are required.");
         }
 
         var rows = await repository.GetStatusRowsAsync(
@@ -51,11 +48,8 @@ public sealed class GetIncomingWebhookEffectStatusQueryHandler(
             SafeDetail = row.SafeDetail
         }).ToArray();
 
-        return new BaseCommandResponse<IReadOnlyList<IncomingWebhookEffectStatusDto>>
-        {
-            Success = true,
-            Id = statuses,
-            Message = "Incoming Coop effect status retrieved."
-        };
+        return BaseCommandResponse.Success<IReadOnlyList<IncomingWebhookEffectStatusDto>>(
+            statuses,
+            "Incoming Coop effect status retrieved.");
     }
 }

@@ -39,7 +39,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await _reportRepository.DidNotReceive().GetByIdAsync(
             Arg.Any<Guid>(),
@@ -63,7 +63,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
             scenario.Command,
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(scenario.Decision.Execution.State)
             .IsEqualTo(EventReportDecisionExecutionState.Completed);
         RecipientNotificationMaterialization outcome = _materializer.Requests.Single();
@@ -105,7 +105,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.Completed);
         await Assert.That(scenario.Decision.Execution.EnforcementReceiptId).IsEqualTo(receipt.Id);
         await Assert.That(scenario.Report.Status).IsEqualTo(EventReportStatus.Actioned);
@@ -154,7 +154,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.Completed);
         await Assert.That(scenario.Decision.Execution.EnforcementReceiptId).IsEqualTo(receipt.Id);
         await _mediator.DidNotReceive().Send(Arg.Any<ModerateEventCommand>(), Arg.Any<CancellationToken>());
@@ -172,8 +172,8 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
         BaseCommandResponse<Guid> first = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
         BaseCommandResponse<Guid> replay = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(first.Success).IsTrue();
-        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(first.IsSuccess).IsTrue();
+        await Assert.That(replay.IsSuccess).IsTrue();
         await Assert.That(scenario.Report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.WaitingReporter);
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.Completed);
@@ -225,7 +225,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionRecipientAuthorityChanged);
         await Assert.That(scenario.Report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -270,7 +270,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.WaitingReporter);
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.Completed);
         RecipientNotificationMaterialization followUp = _materializer.Requests.Single();
@@ -324,7 +324,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_materializer.Requests).Count().IsEqualTo(2);
         RecipientNotificationMaterialization warning = _materializer.Requests[0];
         await Assert.That(warning.Intent.RecipientKind).IsEqualTo(nameof(NotificationRecipientKindEnum.Organizer));
@@ -354,7 +354,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionOrganizerUnavailable);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
         await Assert.That(scenario.Report.Status).IsEqualTo(EventReportStatus.UnderReview);
@@ -392,7 +392,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionRecipientAuthorityChanged);
         await Assert.That(scenario.Report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -408,7 +408,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionExecutionInvalidState);
         await Assert.That(_materializer.Requests).IsEmpty();
         await _mediator.DidNotReceive().Send(Arg.Any<ModerateEventCommand>(), Arg.Any<CancellationToken>());
@@ -464,7 +464,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(execution.State).IsEqualTo(EventReportDecisionExecutionState.Completed);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.Closed);
         await Assert.That(_materializer.Requests).Count().IsEqualTo(1);
@@ -486,7 +486,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionExecutionInProgress);
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.Requested);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -511,7 +511,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionExecutionInProgress);
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.InProgress);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -535,7 +535,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event report decision was already executed.");
         await Assert.That(scenario.Decision.Execution.State).IsEqualTo(EventReportDecisionExecutionState.CompletionPending);
         await Assert.That(scenario.Case.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -755,12 +755,8 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
         };
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = "Succeeded"
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id) =>
+        BaseCommandResponse.Success(id, "Succeeded");
 
     private static NotificationPreferenceDecision CreatePreferenceDecision(bool isEnabled) => new(
         NotificationPreferenceCategoryCodes.TrustSafety,

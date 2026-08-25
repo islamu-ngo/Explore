@@ -85,7 +85,7 @@ public sealed class AtprotoFederationGovernanceTests
             Scope = SettingScope.Instance
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await settingsResolver.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default, default, default);
     }
 
@@ -150,7 +150,7 @@ public sealed class AtprotoFederationGovernanceTests
             Scope = forgedScope
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await userPreferences.DidNotReceiveWithAnyArgs().Create(default!);
         await settingsResolver.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default, default, default);
     }
@@ -185,7 +185,7 @@ public sealed class AtprotoFederationGovernanceTests
             Scope = SettingScope.User
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await userPreferences.DidNotReceiveWithAnyArgs().Create(default!);
         await settingsResolver.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default, default, default);
     }
@@ -222,7 +222,7 @@ public sealed class AtprotoFederationGovernanceTests
             Scope = SettingScope.User
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await userPreferences.Received(1).Create(Arg.Is<UserPreference>(preference =>
             preference.TenantId == TenantId
             && preference.UserId == CurrentUserId
@@ -256,7 +256,7 @@ public sealed class AtprotoFederationGovernanceTests
             Scope = SettingScope.Instance
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await settingsResolver.Received(1).UnlockAsync(
             GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
             SettingScope.Instance,

@@ -36,7 +36,6 @@ public class CreateTenantUserRoleGrantCommandHandler : IRequestHandler<CreateTen
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantUserRoleGrantCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.TenantUserRoleGrantDto;
 
         var validator = new CreateTenantUserRoleGrantDtoValidator(_tenantUserRepository, _roleRepository);
@@ -44,27 +43,24 @@ public class CreateTenantUserRoleGrantCommandHandler : IRequestHandler<CreateTen
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant user role grant creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Tenant user role grant creation failed.");
         }
 
         var tenantUser = await _tenantUserRepository.GetById(dto.TenantUserId);
         if (tenantUser is null || tenantUser.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Tenant user role grant creation failed.";
-            response.Errors = ["Tenant-local user state is required before a role can be granted."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Tenant-local user state is required before a role can be granted."],
+                "Tenant user role grant creation failed.");
         }
 
         if (tenantUser.StatusId != (int)TenantUserStatusEnum.Active || tenantUser.IsDeleted)
         {
-            response.Success = false;
-            response.Message = "Tenant user role grant creation failed.";
-            response.Errors = ["Tenant-local user must be active before a role can be granted."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Tenant-local user must be active before a role can be granted."],
+                "Tenant user role grant creation failed.");
         }
 
         var existingGrant = await _tenantUserRoleGrantRepository.GetByTenantUserAndRole(
@@ -74,10 +70,9 @@ public class CreateTenantUserRoleGrantCommandHandler : IRequestHandler<CreateTen
 
         if (existingGrant is not null)
         {
-            response.Success = false;
-            response.Message = "Tenant user role grant creation failed.";
-            response.Errors = ["An active grant for this tenant user and role already exists."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["An active grant for this tenant user and role already exists."],
+                "Tenant user role grant creation failed.");
         }
 
         var tenantUserRoleGrant = new TenantUserRoleGrant
@@ -95,10 +90,8 @@ public class CreateTenantUserRoleGrantCommandHandler : IRequestHandler<CreateTen
 
         tenantUserRoleGrant = await _tenantUserRoleGrantRepository.Create(tenantUserRoleGrant);
 
-        response.Success = true;
-        response.Id = tenantUserRoleGrant.Id;
-        response.Message = "Tenant user role grant created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            tenantUserRoleGrant.Id,
+            "Tenant user role grant created successfully.");
     }
 }

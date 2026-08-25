@@ -46,7 +46,7 @@ public class ImportLocalizationBundleCommandHandlerTests
 
         var result = await _handler.Handle(BuildCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _bundleFileWriter.Received(1).WriteBundleAsync(
             "en",
             Arg.Is<IReadOnlyDictionary<string, string>>(translations => translations["ui.button.save"] == "Save"),
@@ -63,7 +63,7 @@ public class ImportLocalizationBundleCommandHandlerTests
 
         var result = await _handler.Handle(BuildCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Instance administrator");
         await _bundleFileWriter.DidNotReceive().WriteBundleAsync(
             Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());

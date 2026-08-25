@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 
@@ -33,7 +34,7 @@ public sealed class RegistrationRefundServiceTests
             order, 400, "browser-key-must-not-be-stored", Guid.CreateVersion7(),
             "buyer", "event_cancelled", CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await refunds.Received(1).ReserveAndScheduleAsync(
             Arg.Is<RefundAttempt>(attempt =>
                 attempt.Allocation.TotalMinor == 400 &&
@@ -58,7 +59,7 @@ public sealed class RegistrationRefundServiceTests
             "BE", "EUR", Guid.CreateVersion7(), null, Now.AddMinutes(-2));
         PaymentAttempt payment = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "composition-1",
-            1_000, 75, 0, "payment:refund", Now.AddMinutes(-2), Now.AddMinutes(30));
+            Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), "payment:refund", Now.AddMinutes(-2), Now.AddMinutes(30));
         payment.AttachAcceptance(RefundTestAcceptance.Create(
             TenantId, orderId, 1_000, 75, 0, Now.AddMinutes(-3)));
         payment.MarkSucceeded("pi_refund", Now.AddMinutes(-1), "req_payment");

@@ -11,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -129,9 +130,9 @@ public sealed class CreateEventTicketTypeCommandHandler(
             dto.Name,
             catalog.CurrencyCode,
             (TicketPricingModeEnum)dto.TicketPricingModeId,
-            dto.FixedPriceMinor,
-            dto.MinimumPriceMinor,
-            dto.SuggestedPriceMinor,
+            CreateMoney(dto.FixedPriceMinor, catalog.CurrencyCode),
+            CreateMoney(dto.MinimumPriceMinor, catalog.CurrencyCode),
+            CreateMoney(dto.SuggestedPriceMinor, catalog.CurrencyCode),
             (ParticipantDataCollectionModeEnum)dto.ParticipantDataCollectionModeId,
             dto.CapacityPoolId,
             dto.MinimumAge,
@@ -143,39 +144,19 @@ public sealed class CreateEventTicketTypeCommandHandler(
             dto.PerVerifiedContactLimit,
             dto.PerBookingPartyLimit);
 
-    private static BaseCommandResponse<Guid> Ok(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static Money? CreateMoney(long? minorUnits, string currencyCode) =>
+        minorUnits.HasValue ? Money.Create(minorUnits.Value, currencyCode) : null;
 
-    private static BaseCommandResponse<Guid> Missing(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_ticketing_not_found",
-        Message = "Ticketing configuration was not found.",
-        Errors = ["Ticketing configuration was not found."]
-    };
+    private static BaseCommandResponse<Guid> Ok(Guid id, string message) => BaseCommandResponse.Success(id, message);
+
+    private static BaseCommandResponse<Guid> Missing(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "event_ticketing_not_found", "Ticketing configuration was not found.", ["Ticketing configuration was not found."], id);
 
     private static BaseCommandResponse<Guid> Bad(Guid id, string error) => Bad(id, [error]);
 
-    private static BaseCommandResponse<Guid> Bad(Guid id, IEnumerable<string> errors) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_ticketing_validation_failed",
-        Message = "Ticketing configuration is invalid.",
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Bad(Guid id, IEnumerable<string> errors) => BaseCommandResponse.Failure<Guid>(
+        "event_ticketing_validation_failed", "Ticketing configuration is invalid.", errors, id);
 
-    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_ticketing_concurrency_conflict",
-        Message = "Ticketing configuration was updated by another request.",
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => BaseCommandResponse.Failure<Guid>(
+        "event_ticketing_concurrency_conflict", "Ticketing configuration was updated by another request.", [error], id);
 }

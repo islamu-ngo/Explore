@@ -76,7 +76,7 @@ public sealed class WebhookConsumerHandlersTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _consumerRepository.Received(1).CreateAsync(
             Arg.Is<WebhookConsumer>(consumer =>
                 consumer.ConsumerKind == ownerKind &&
@@ -124,7 +124,7 @@ public sealed class WebhookConsumerHandlersTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_owner_organization_not_found");
         await _consumerRepository.DidNotReceive().CreateAsync(
             Arg.Any<WebhookConsumer>(),
@@ -246,7 +246,7 @@ public sealed class WebhookConsumerHandlersTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _endpointRepository.Received(1).CreateWithSubscriptionsAsync(
             Arg.Is<WebhookEndpoint>(endpoint =>
                 endpoint.ConsumerId == consumer.Id &&
@@ -341,7 +341,7 @@ public sealed class WebhookConsumerHandlersTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(endpoint.Url).IsEqualTo("https://integrator.example/webhook");
         await Assert.That(endpoint.Description).IsEqualTo("Persisted destination");
         await Assert.That(endpoint.MaxAttempts).IsEqualTo(12);

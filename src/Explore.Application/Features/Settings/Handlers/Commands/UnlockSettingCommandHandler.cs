@@ -44,23 +44,19 @@ public class UnlockSettingCommandHandler
     public async Task<BaseCommandResponse<Guid>> Handle(
         UnlockSettingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         // Validate key exists
         var definition = SettingRegistry.Get(request.Key);
         if (definition is null)
         {
-            response.Success = false;
-            response.Message = $"Setting key '{request.Key}' not found in registry.";
-            return response;
+            string message = $"Setting key '{request.Key}' not found in registry.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Validate scope (only Instance and Tenant supported)
         if (request.Scope is not SettingScope.Instance and not SettingScope.Tenant)
         {
-            response.Success = false;
-            response.Message = $"Unlocking is only supported at Instance and Tenant scopes, not {request.Scope}.";
-            return response;
+            string message = $"Unlocking is only supported at Instance and Tenant scopes, not {request.Scope}.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Authorization
@@ -68,10 +64,7 @@ public class UnlockSettingCommandHandler
             request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
         if (!authorized)
         {
-            response.Success = false;
-            response.Message = authError;
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(authError);
         }
 
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
@@ -96,9 +89,8 @@ public class UnlockSettingCommandHandler
             request.Key, null, null, unlockSource,
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
 
-        response.Success = true;
-        response.Id = scopeId;
-        response.Message = $"Setting '{request.Key}' unlocked at {request.Scope} scope.";
-        return response;
+        return BaseCommandResponse.Success(
+            scopeId,
+            $"Setting '{request.Key}' unlocked at {request.Scope} scope.");
     }
 }

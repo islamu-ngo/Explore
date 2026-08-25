@@ -26,6 +26,10 @@ public class GetEventSeriesListRequestHandler : IRequestHandler<GetEventSeriesLi
         var (items, totalCount) = await _eventSeriesRepository.GetEventSeriesPaged(request.PageNumber, request.PageSize, request.ActorId);
         var dtos = _mapper.Map<List<EventSeriesListDto>>(items);
 
-        return new PaginatedResult<EventSeriesListDto>(dtos, totalCount, request.PageNumber, request.PageSize);
+        return PaginatedResult<EventSeriesListDto>.Create(
+            dtos,
+            totalCount,
+            request.PageNumber,
+            request.PageSize);
     }
 }

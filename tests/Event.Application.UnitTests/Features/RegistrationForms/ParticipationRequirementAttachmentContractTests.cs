@@ -91,7 +91,7 @@ public sealed class ParticipationRequirementAttachmentContractTests
                 configuration.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveAsync(
             $"event:detail:{configuration.Id}", Arg.Any<CancellationToken>());
@@ -122,7 +122,7 @@ public sealed class ParticipationRequirementAttachmentContractTests
                 configuration.Id, requirement.Id, configuration.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveAsync(
             $"event:detail:{configuration.Id}", Arg.Any<CancellationToken>());
@@ -150,8 +150,8 @@ public sealed class ParticipationRequirementAttachmentContractTests
             new DetachRegistrationRequirementCommand(Guid.Empty, Guid.Empty, Guid.Empty),
             CancellationToken.None);
 
-        await Assert.That(attachResult.Success).IsFalse();
-        await Assert.That(detachResult.Success).IsFalse();
+        await Assert.That(attachResult.IsSuccess).IsFalse();
+        await Assert.That(detachResult.IsSuccess).IsFalse();
         await cache.DidNotReceiveWithAnyArgs().RemoveAsync((string)null!, default);
         await cache.DidNotReceiveWithAnyArgs().RemoveByTagAsync((string)null!, default);
     }

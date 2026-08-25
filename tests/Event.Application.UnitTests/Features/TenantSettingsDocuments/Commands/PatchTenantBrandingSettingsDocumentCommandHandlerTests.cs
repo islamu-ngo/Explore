@@ -54,7 +54,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).IsEqualTo("Expected Concurrency Stamp is required.");
         await _repository.DidNotReceive().Update(Arg.Any<TenantSettingsDocument>());
@@ -68,7 +68,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).Contains("At least one tenant branding mutation group");
         await _repository.DidNotReceive().Update(Arg.Any<TenantSettingsDocument>());
@@ -88,7 +88,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).Contains("must include at least one field");
         await _repository.DidNotReceive().Update(Arg.Any<TenantSettingsDocument>());
@@ -105,7 +105,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Tenant branding settings document not found.");
         await _repository.DidNotReceive().Update(Arg.Any<TenantSettingsDocument>());
         _resolver.DidNotReceive().InvalidateTenantDocumentCache(Arg.Any<Guid>(), Arg.Any<string?>());
@@ -179,7 +179,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.ConcurrencyStamp).IsEqualTo(refreshedStamp);
         await Assert.That(result.Id.UpdatedAt).IsEqualTo(updatedAt);
@@ -218,7 +218,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
             CreateCommand(tenantId, expectedStamp, assets: Assets(logoUrl: "  https://cdn.example.test/updated.svg  ")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         using var payloadJson = JsonDocument.Parse(document.PayloadJson);
         await Assert.That(payloadJson.RootElement.GetProperty("displayName").GetString()).IsEqualTo("Original Brand");
         await Assert.That(payloadJson.RootElement.GetProperty("logoUrl").GetString()).IsEqualTo("https://cdn.example.test/updated.svg");
@@ -245,7 +245,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         using var payloadJson = JsonDocument.Parse(document.PayloadJson);
         await Assert.That(payloadJson.RootElement.GetProperty("displayName").GetString()).IsEqualTo("Original Brand");
         await Assert.That(payloadJson.RootElement.GetProperty("logoUrl").GetString()).IsEqualTo("https://cdn.example.test/original.svg");
@@ -270,7 +270,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
             CreateCommand(tenantId, expectedStamp, assets: Assets(logoUrl: "https://cdn.example.test/updated.svg")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).Contains("Display Name must not exceed 200 characters");
         await Assert.That(document.PayloadJson).IsEqualTo(payloadJson);
@@ -297,7 +297,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
             CreateCommand(tenantId, expectedStamp, DisplayName("Changed Brand")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).Contains("Display name cannot be changed");
         await _repository.DidNotReceive().Update(Arg.Any<TenantSettingsDocument>());
@@ -324,7 +324,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
             CreateCommand(tenantId, expectedStamp, DisplayName("Updated Brand")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         using var payloadJson = JsonDocument.Parse(document.PayloadJson);
         await Assert.That(payloadJson.RootElement.GetProperty("displayName").GetString()).IsEqualTo("Updated Brand");
         await Assert.That(payloadJson.RootElement.GetProperty("logoUrl").GetString()).IsEqualTo("https://cdn.example.test/original.svg");
@@ -357,7 +357,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
                 Assets(logoUrl: "https://cdn.example.test/changed.svg")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Single()).Contains("Logo URL cannot be changed");
         using var payloadJson = JsonDocument.Parse(document.PayloadJson);
@@ -392,7 +392,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!).Count().IsEqualTo(4);
         await Assert.That(result.Errors!.Any(error => error.Contains("Display name cannot be changed"))).IsTrue();

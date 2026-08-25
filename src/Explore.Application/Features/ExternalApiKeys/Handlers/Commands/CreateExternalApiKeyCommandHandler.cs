@@ -58,7 +58,6 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
 
     public async Task<CreateExternalApiKeyCommandResponse> Handle(CreateExternalApiKeyCommand request, CancellationToken cancellationToken)
     {
-        var response = new CreateExternalApiKeyCommandResponse();
         var currentUserId = _userContext.GetRequiredUserId();
         var dto = request.ExternalApiKeyDto;
 
@@ -78,10 +77,10 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         var validationResult = await validator.ValidateAsync(dto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "External API key creation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return CreateExternalApiKeyCommandResponse.Failure(
+                BaseCommandResponse.Validation<Guid>(
+                    validationResult.Errors.Select(error => error.ErrorMessage),
+                    "External API key creation failed."));
         }
 
         var authorityResult = await CheckOwnerAuthorityAsync(dto, currentUserId, cancellationToken);
@@ -129,12 +128,11 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             externalApiKey.OwnerType,
             externalApiKey.OwnerId);
 
-        response.Success = true;
-        response.Id = externalApiKey.Id;
-        response.KeyId = externalApiKey.KeyId;
-        response.ApiKey = rawApiKey;
-        response.Message = "External API key created successfully. Save the secret now because it will not be shown again.";
-        return response;
+        return CreateExternalApiKeyCommandResponse.Success(
+            externalApiKey.Id,
+            "External API key created successfully. Save the secret now because it will not be shown again.",
+            rawApiKey,
+            externalApiKey.KeyId);
     }
 
     private async Task<OwnerAuthorityResult> CheckOwnerAuthorityAsync(

@@ -26,13 +26,10 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandler : IRequestHan
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Email dispatch tenant control update failed validation.",
-                FailureCode = EmailDispatchFailureCodes.ValidationFailed,
-                Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                EmailDispatchFailureCodes.ValidationFailed,
+                "Email dispatch tenant control update failed validation.",
+                validationResult.Errors.Select(error => error.ErrorMessage));
         }
 
         var changedAt = DateTime.UtcNow;
@@ -44,13 +41,10 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandler : IRequestHan
             changedAt,
             cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = control.Id,
-            Success = true,
-            Message = request.IsPaused
+        return BaseCommandResponse.Success(
+            control.Id,
+            request.IsPaused
                 ? "Email dispatch paused for tenant."
-                : "Email dispatch resumed for tenant."
-        };
+                : "Email dispatch resumed for tenant.");
     }
 }

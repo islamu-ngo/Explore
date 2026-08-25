@@ -42,7 +42,7 @@ public class UpdateOrganizationCommandHandlerTests
             UpdateOrganizationDto = new UpdateOrganizationDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one organization update group must be provided.");
         await _organizationRepository.DidNotReceive().Update(Arg.Any<Organization>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -116,7 +116,7 @@ public class UpdateOrganizationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(organization.FullName).IsEqualTo("Updated Organization");
         await Assert.That(organization.Email).IsEqualTo("existing@example.com");
         await _organizationRepository.Received(1).Update(organization);
@@ -146,7 +146,7 @@ public class UpdateOrganizationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(organization.WebsiteUrl).IsNull();
         await _organizationRepository.Received(1).Update(organization);
     }
@@ -165,7 +165,7 @@ public class UpdateOrganizationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("WebsiteUrl group must include Value.");
         await _organizationRepository.DidNotReceive().Update(Arg.Any<Organization>());
     }

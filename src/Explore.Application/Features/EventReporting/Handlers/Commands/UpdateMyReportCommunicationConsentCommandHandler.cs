@@ -148,12 +148,8 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         return response;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private async Task<bool> IsFencedAsync(Guid? userId, CancellationToken cancellationToken) =>
         userId is Guid subjectId &&
@@ -165,24 +161,16 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         CancellationToken cancellationToken) =>
         await IsFencedAsync(userId, cancellationToken) ? FencedFailure() : response;
 
-    private static BaseCommandResponse<Guid> FencedFailure() => new()
-    {
-        Success = false,
-        Message = "Event report communication consent update failed.",
-        FailureCode = PrivacyErasureFencedFailureCode
-    };
+    private static BaseCommandResponse<Guid> FencedFailure() =>
+        BaseCommandResponse.Failure<Guid>(
+            PrivacyErasureFencedFailureCode,
+            "Event report communication consent update failed.");
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string message,
         IEnumerable<string> errors,
-        string failureCode) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string failureCode) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 
 }

@@ -125,7 +125,7 @@ public sealed class ImportEventCommandHandler(
             return Success(created.Id, "Event imported successfully.");
         }, cancellationToken);
 
-        if (response.Success && importedTenantId.HasValue)
+        if (response.IsSuccess && importedTenantId.HasValue)
         {
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(importedTenantId.Value), cancellationToken);
         }
@@ -133,19 +133,11 @@ public sealed class ImportEventCommandHandler(
         return response;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 }

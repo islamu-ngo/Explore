@@ -114,7 +114,7 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_draft_not_editable");
         await Assert.That(existingEvent.Title).IsEqualTo(originalTitle);
         await participationConfigurations.DidNotReceive().UpdateAsync(Arg.Any<EventParticipationConfiguration>(), Arg.Any<CancellationToken>());

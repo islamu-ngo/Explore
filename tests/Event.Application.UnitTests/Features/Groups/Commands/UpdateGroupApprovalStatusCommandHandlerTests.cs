@@ -55,7 +55,7 @@ public class UpdateGroupApprovalStatusCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(groupId);
         await Assert.That(participation.ApprovalStatusId).IsEqualTo(2);
         await Assert.That(participation.UpdatedBy).IsEqualTo(currentUserId);
@@ -73,7 +73,7 @@ public class UpdateGroupApprovalStatusCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Validation failed.");
         await Assert.That(result.Errors).Contains("Approval Status Id does not exist.");
         await _groupTenantRepository.DidNotReceiveWithAnyArgs().GetByGroupAndTenant(default, default, default);

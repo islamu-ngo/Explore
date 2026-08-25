@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Features.Promotions.Validators;
+using Explore.Application.Responses;
 using Explore.Domain;
 using FluentValidation;
 using MediatR;
@@ -99,26 +100,15 @@ public sealed class ApplyPromotionCodeToRegistrationOrderCommandHandler(
 
     private static PromotionRedemptionResponseDto Unavailable(Guid orderId) => Failure(orderId, PromotionRedemptionFailureCodes.Unavailable);
 
-    private static PromotionRedemptionResponseDto Failure(Guid orderId, string code) => new()
-    {
-        Id = orderId,
-        Success = false,
-        Message = "Promotion cannot be applied to this order.",
-        FailureCode = code,
-        Errors = [code]
-    };
+    private static PromotionRedemptionResponseDto Failure(Guid orderId, string code) =>
+        PromotionRedemptionResponseDto.Failure(BaseCommandResponse.Failure<Guid>(
+            code, "Promotion cannot be applied to this order.", [code], orderId));
 
-    private static PromotionRedemptionResponseDto Success(RegistrationOrder order, string message) => new()
-    {
-        Id = order.Id,
-        Success = true,
-        Message = message,
-        AppliedPromotionDisplayLabel = order.AppliedPromotionDisplayLabelSnapshot,
-        PromotionDiscountTotalMinor = order.PromotionDiscountTotalMinorSnapshot,
-        TotalDueMinor = order.TotalDueMinorSnapshot,
-        PlatformFeeTotalMinor = order.PlatformFeeTotalMinorSnapshot,
-        PlatformContributionTotalMinor = order.PlatformContributionTotalMinorSnapshot
-    };
+    private static PromotionRedemptionResponseDto Success(RegistrationOrder order, string message) =>
+        PromotionRedemptionResponseDto.Success(
+            order.Id, message, order.AppliedPromotionDisplayLabelSnapshot,
+            order.PromotionDiscountTotalMinorSnapshot, order.TotalDueMinorSnapshot,
+            order.PlatformFeeTotalMinorSnapshot, order.PlatformContributionTotalMinorSnapshot);
 }
 
 public sealed class RemovePromotionFromRegistrationOrderCommandHandler(
@@ -174,26 +164,17 @@ public sealed class RemovePromotionFromRegistrationOrderCommandHandler(
         }, cancellationToken);
     }
 
-    private static PromotionRedemptionResponseDto Failure(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        Message = "Promotion cannot be changed for this order.",
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Errors = [PromotionRedemptionFailureCodes.Unavailable]
-    };
+    private static PromotionRedemptionResponseDto Failure(Guid orderId) =>
+        PromotionRedemptionResponseDto.Failure(BaseCommandResponse.Failure<Guid>(
+            PromotionRedemptionFailureCodes.Unavailable,
+            "Promotion cannot be changed for this order.",
+            [PromotionRedemptionFailureCodes.Unavailable], orderId));
 
-    private static PromotionRedemptionResponseDto Success(RegistrationOrder order, string message) => new()
-    {
-        Id = order.Id,
-        Success = true,
-        Message = message,
-        AppliedPromotionDisplayLabel = order.AppliedPromotionDisplayLabelSnapshot,
-        PromotionDiscountTotalMinor = order.PromotionDiscountTotalMinorSnapshot,
-        TotalDueMinor = order.TotalDueMinorSnapshot,
-        PlatformFeeTotalMinor = order.PlatformFeeTotalMinorSnapshot,
-        PlatformContributionTotalMinor = order.PlatformContributionTotalMinorSnapshot
-    };
+    private static PromotionRedemptionResponseDto Success(RegistrationOrder order, string message) =>
+        PromotionRedemptionResponseDto.Success(
+            order.Id, message, order.AppliedPromotionDisplayLabelSnapshot,
+            order.PromotionDiscountTotalMinorSnapshot, order.TotalDueMinorSnapshot,
+            order.PlatformFeeTotalMinorSnapshot, order.PlatformContributionTotalMinorSnapshot);
 }
 
 file static class PromotionFeePolicyLoader

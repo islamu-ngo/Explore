@@ -26,14 +26,11 @@ public sealed class StartAuthenticatedRegistrationOrderCommandHandler(
     {
         if (!currentUser.IsAuthenticated || currentUser.UserId is not { } userId)
         {
-            return Task.FromResult(new BaseCommandResponse<Guid>
-            {
-                Id = request.EventId,
-                Success = false,
-                FailureCode = "registration_order_authentication_required",
-                Message = "Registration order requires an authenticated account.",
-                Errors = ["Registration order requires an authenticated account."]
-            });
+            return Task.FromResult(BaseCommandResponse.Failure<Guid>(
+                "registration_order_authentication_required",
+                "Registration order requires an authenticated account.",
+                ["Registration order requires an authenticated account."],
+                request.EventId));
         }
 
         return starter.StartAsync(new CreateRegistrationOrderWithHoldCommand
@@ -70,14 +67,11 @@ public sealed class ClaimGuestRegistrationOrderCommandHandler(
 
         if (!currentUser.IsAuthenticated || currentUser.UserId is not { } userId)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.OrderId,
-                Success = false,
-                FailureCode = "registration_order_authentication_required",
-                Message = "Registration order claim requires an authenticated account.",
-                Errors = ["Registration order claim requires an authenticated account."]
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                "registration_order_authentication_required",
+                "Registration order claim requires an authenticated account.",
+                ["Registration order claim requires an authenticated account."],
+                request.OrderId);
         }
 
         User? user = await users.GetUserWithDetails(userId, cancellationToken);
@@ -101,14 +95,11 @@ public sealed class ClaimGuestRegistrationOrderCommandHandler(
 
                 bool linked = order.TryLinkGuestOrderToAccount(userId, verifiedEmail);
                 await inventory.SaveChangesAsync(token);
-                return new BaseCommandResponse<Guid>
-                {
-                    Id = order.Id,
-                    Success = true,
-                    Message = linked
+                return BaseCommandResponse.Success(
+                    order.Id,
+                    linked
                         ? "Registration order linked to the current account."
-                        : "Registration order already linked to the current account."
-                };
+                        : "Registration order already linked to the current account.");
             }, cancellationToken);
         }
         catch (InvalidOperationException exception) when (exception.Message.Contains("another account", StringComparison.Ordinal))
@@ -125,22 +116,11 @@ public sealed class ClaimGuestRegistrationOrderCommandHandler(
         }
     }
 
-    private static BaseCommandResponse<Guid> NotFound(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order was not found."
-    };
+    private static BaseCommandResponse<Guid> NotFound(Guid orderId) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_not_found", "Registration order was not found.", id: orderId);
 
-    private static BaseCommandResponse<Guid> Invalid(Guid orderId, string code, string message) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = code,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Invalid(Guid orderId, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], orderId);
 }
 
 public sealed class ContinueAuthenticatedRegistrationOrderCommandHandler(

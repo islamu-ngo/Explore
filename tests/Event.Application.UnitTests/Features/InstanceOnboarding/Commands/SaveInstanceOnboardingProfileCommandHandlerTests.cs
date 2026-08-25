@@ -87,7 +87,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_currentBootstrap.Id);
         await Assert.That(_capturedUpserts.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Branding.DisplayName,
@@ -142,7 +142,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Id).IsEqualTo(_currentBootstrap.Id);
         await Assert.That(result.Message).IsEqualTo("Setup mode is no longer active.");
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
@@ -165,7 +165,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Id).IsEqualTo(_currentBootstrap.Id);
         await Assert.That(result.Message).IsEqualTo("Setup mode is no longer active.");
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
@@ -188,7 +188,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Count).IsGreaterThan(0);
         await _bootstrapRepository.Received(1).GetCurrent(Arg.Any<CancellationToken>());
@@ -209,7 +209,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _systemSettingRepository.Received(2).UpsertAsync(Arg.Any<SystemSetting>(), Arg.Any<CancellationToken>());
         _ = _systemSettingRepository.DidNotReceive().UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.Email.FromAddress), Arg.Any<CancellationToken>());
@@ -263,7 +263,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, cancellationToken);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _bootstrapRepository.Received(1).GetCurrent(cancellationToken);
         await _unitOfWork.Received(1).ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task>>(), cancellationToken);
@@ -313,7 +313,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(transactionCompleted).IsTrue();
         await Assert.That(observedAuditEvent).IsNotNull();
         await Assert.That(HasNoOnboardingPayloadShape(observedAuditEvent!)).IsTrue();

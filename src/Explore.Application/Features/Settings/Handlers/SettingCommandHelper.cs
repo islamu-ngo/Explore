@@ -26,7 +26,7 @@ internal static class SettingCommandHelper
         switch (definition.ValueType)
         {
             case SettingValueType.String:
-                if (definition.AllowedValues is { Length: > 0 } &&
+                if (definition.AllowedValues is { Count: > 0 } &&
                     !definition.AllowedValues.Contains(plainValue, StringComparer.OrdinalIgnoreCase))
                 {
                     return (false, null,

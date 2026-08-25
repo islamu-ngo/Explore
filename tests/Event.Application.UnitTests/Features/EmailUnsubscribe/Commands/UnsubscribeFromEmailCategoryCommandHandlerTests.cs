@@ -33,7 +33,7 @@ public sealed class UnsubscribeFromEmailCategoryCommandHandlerTests
             Category = "unknown"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unknown_notification_category");
         await _repository.DidNotReceive().Create(Arg.Any<UserNotificationPreference>());
         await _repository.DidNotReceive().Update(Arg.Any<UserNotificationPreference>());
@@ -58,7 +58,7 @@ public sealed class UnsubscribeFromEmailCategoryCommandHandlerTests
             Category = NotificationPreferenceCategories.RegistrationConfirmations.ToUpperInvariant()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).Create(Arg.Is<UserNotificationPreference>(preference =>
             preference.TenantId == tenantId
             && preference.UserId == userId
@@ -96,7 +96,7 @@ public sealed class UnsubscribeFromEmailCategoryCommandHandlerTests
             Category = NotificationPreferenceCategories.RegistrationConfirmations
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(preference.IsEnabled).IsFalse();
         await Assert.That(preference.UpdatedBy).IsEqualTo(userId);
         await _repository.Received(1).Update(preference);

@@ -48,7 +48,7 @@ public class BootstrapKeycloakRealmCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("keycloak_bootstrap_validation_failed");
         await _keycloakBootstrapService.DidNotReceive()
             .BootstrapAsync(Arg.Any<KeycloakBootstrapRequestDto>(), Arg.Any<CancellationToken>());
@@ -79,7 +79,7 @@ public class BootstrapKeycloakRealmCommandHandlerTests
             BootstrapRequest = request
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("keycloak_admin_rejected");
         await Assert.That(result.Message).DoesNotContain(request.BootstrapAdminPassword);
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
@@ -124,7 +124,7 @@ public class BootstrapKeycloakRealmCommandHandlerTests
             BootstrapRequest = request
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(persistedConfiguration).IsNotNull();
         await Assert.That(persistedConfiguration!.KeycloakEnabled).IsTrue();
         await Assert.That(persistedConfiguration.KeycloakAuthority).IsEqualTo("https://keycloak.example.com/realms/ISLAMU");

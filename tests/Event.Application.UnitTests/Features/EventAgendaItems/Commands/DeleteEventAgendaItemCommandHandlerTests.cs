@@ -56,7 +56,7 @@ public class DeleteEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(agendaItemId);
         await _eventAgendaItemRepository.Received(1).Delete(Arg.Any<EventAgendaItem>());
     }
@@ -74,7 +74,7 @@ public class DeleteEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventAgendaItemRepository.DidNotReceive().Delete(Arg.Any<EventAgendaItem>());
     }
 }

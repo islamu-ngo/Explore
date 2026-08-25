@@ -73,7 +73,7 @@ public sealed class WebhookBulkReplayHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).AcquireTenantScheduleLockAsync(
             command.TenantId,
             Arg.Any<CancellationToken>());
@@ -135,7 +135,7 @@ public sealed class WebhookBulkReplayHandlerTests
             ReasonCode = "operator.cancel"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_bulk_replay_concurrency_conflict");
         await Assert.That(operation.Status).IsEqualTo(WebhookBulkReplayStatus.Queued);
         await repository.DidNotReceive().UpdateAsync(

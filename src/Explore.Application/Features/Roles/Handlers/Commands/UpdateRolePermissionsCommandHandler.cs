@@ -35,23 +35,17 @@ public class UpdateRolePermissionsCommandHandler : IRequestHandler<UpdateRolePer
 
     public async Task<BaseCommandResponse<int>> Handle(UpdateRolePermissionsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<int>();
-
         // Rule 4: System immutability check
         var modCheck = await _capabilityCeiling.CanModifyRoleAsync(request.RoleId);
         if (!modCheck.IsAllowed)
         {
-            response.Success = false;
-            response.Message = modCheck.Error!;
-            return response;
+            return BaseCommandResponse.Validation<int>([modCheck.Error!], modCheck.Error);
         }
 
         var role = await _roleRepository.GetByIdAsync(request.RoleId);
         if (role == null)
         {
-            response.Success = false;
-            response.Message = "Role not found.";
-            return response;
+            return BaseCommandResponse.Validation<int>(["Role not found."], "Role not found.");
         }
 
         // Capability ceiling validation
@@ -63,10 +57,9 @@ public class UpdateRolePermissionsCommandHandler : IRequestHandler<UpdateRolePer
 
         if (ceilingErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Permission assignment validation failed.";
-            response.Errors = ceilingErrors;
-            return response;
+            return BaseCommandResponse.Validation<int>(
+                ceilingErrors,
+                "Permission assignment validation failed.");
         }
 
         // Replace all permissions atomically
@@ -85,10 +78,8 @@ public class UpdateRolePermissionsCommandHandler : IRequestHandler<UpdateRolePer
         // Invalidate permission cache
         _permissionRegistry.InvalidateCache();
 
-        response.Success = true;
-        response.Id = request.RoleId;
-        response.Message = $"Role '{role.FullName}' updated with {request.PermissionIds.Count} permissions.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            request.RoleId,
+            $"Role '{role.FullName}' updated with {request.PermissionIds.Count} permissions.");
     }
 }

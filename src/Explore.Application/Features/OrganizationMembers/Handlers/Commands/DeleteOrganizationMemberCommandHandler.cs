@@ -28,22 +28,17 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteOrganizationMemberCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var memberToDelete = await _organizationMemberRepository.GetById(request.MemberId);
 
         if (memberToDelete == null)
         {
-            response.Success = false;
-            response.Message = "Member not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Member not found"], "Member not found");
         }
 
         var organization = await _organizationRepository.GetById(memberToDelete.OrganizationTenant.OrganizationId);
         if (organization == null)
         {
-            response.Success = false;
-            response.Message = "Organization not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Organization not found"], "Organization not found");
         }
 
         // Check permissions - requester must be an Admin
@@ -54,33 +49,29 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
             // Only OrgAdmin role can remove members
             if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to remove members.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to remove members."],
+                    "You do not have permission to remove members.");
             }
         }
         else
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         // Prevent self-deletion if they are the only Admin
         var adminCount = members.Count(m => m.RoleId == (int)RoleEnum.OrgAdmin);
         if (memberToDelete.RoleId == (int)RoleEnum.OrgAdmin && adminCount <= 1)
         {
-            response.Success = false;
-            response.Message = "Cannot remove the last admin of the organization.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Cannot remove the last admin of the organization."],
+                "Cannot remove the last admin of the organization.");
         }
 
         await _organizationMemberRepository.Delete(memberToDelete);
 
-        response.Success = true;
-        response.Message = "Member removed successfully";
-        response.Id = memberToDelete.Id;
-
-        return response;
+        return BaseCommandResponse.Success(memberToDelete.Id, "Member removed successfully");
     }
 }

@@ -25,7 +25,7 @@ public sealed class SchedulerAdminCommandHandlerTests
 
         var response = await handler.Handle(ConfirmedPause(), CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerReadOnly);
         await operations.DidNotReceive().PauseAllAsync(Arg.Any<CancellationToken>());
     }
@@ -42,7 +42,7 @@ public sealed class SchedulerAdminCommandHandlerTests
 
         var response = await handler.Handle(new PauseSchedulerCommand(), CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerConfirmationRequired);
         await operations.DidNotReceive().PauseAllAsync(Arg.Any<CancellationToken>());
     }
@@ -57,7 +57,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new PauseSchedulerCommand { ConfirmationText = "some-other-scheduler" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerConfirmationRequired);
         await operations.DidNotReceive().PauseAllAsync(Arg.Any<CancellationToken>());
     }
@@ -72,7 +72,7 @@ public sealed class SchedulerAdminCommandHandlerTests
         var response = await new ResumeSchedulerCommandHandler(operations, Policy(readOnly: false))
             .Handle(new ResumeSchedulerCommand(), CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -85,7 +85,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new TriggerSchedulerJobCommand { Group = "DEFAULT", Name = "email-dispatch-drain" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerReadOnly);
         await operations.DidNotReceive().TriggerJobAsync(
             Arg.Any<string>(),
@@ -102,7 +102,7 @@ public sealed class SchedulerAdminCommandHandlerTests
 
         var response = await handler.Handle(ConfirmedPause(), CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.FailureCode).IsNull();
         await operations.Received(1).PauseAllAsync(Arg.Any<CancellationToken>());
     }
@@ -116,7 +116,7 @@ public sealed class SchedulerAdminCommandHandlerTests
 
         var response = await handler.Handle(new ResumeSchedulerCommand(), CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await operations.Received(1).ResumeAllAsync(Arg.Any<CancellationToken>());
     }
 
@@ -132,7 +132,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new PauseSchedulerJobCommand { Group = "DEFAULT", Name = "ghost-job" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.NotFound);
         await Assert.That(response.Id).IsEqualTo("DEFAULT.ghost-job");
     }
@@ -149,7 +149,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new ResumeSchedulerJobCommand { Group = "DEFAULT", Name = "idempotency-cleanup" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerUnavailable);
     }
 
@@ -165,7 +165,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new TriggerSchedulerJobCommand { Group = "DEFAULT", Name = "email-dispatch-drain" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo("DEFAULT.email-dispatch-drain");
         await operations.Received(1).TriggerJobAsync("DEFAULT", "email-dispatch-drain", Arg.Any<CancellationToken>());
     }
@@ -182,7 +182,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new ResetSchedulerJobErrorStateCommand { Group = "DEFAULT", Name = "webhook-retention-cleanup" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo("DEFAULT.webhook-retention-cleanup");
     }
 
@@ -202,7 +202,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new ResetSchedulerJobErrorStateCommand { Group = "DEFAULT", Name = "healthy-job" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerActionNotApplicable);
     }
 
@@ -218,7 +218,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new InterruptSchedulerJobCommand { Group = "DEFAULT", Name = "storage-reconciliation" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -233,7 +233,7 @@ public sealed class SchedulerAdminCommandHandlerTests
             new InterruptSchedulerJobCommand { Group = "DEFAULT", Name = "idle-job" },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(FailureCodes.SchedulerActionNotApplicable);
     }
 

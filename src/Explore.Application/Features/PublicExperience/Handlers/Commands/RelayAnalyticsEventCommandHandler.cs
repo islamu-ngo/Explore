@@ -124,7 +124,7 @@ public partial class RelayAnalyticsEventCommandHandler : IRequestHandler<RelayAn
         return authenticatedUserId?.ToString() ?? $"tenant-{Guid.CreateVersion7():N}";
     }
 
-    private static Dictionary<string, object?> ConvertProperties(Dictionary<string, JsonElement> properties)
+    private static Dictionary<string, object?> ConvertProperties(IReadOnlyDictionary<string, JsonElement> properties)
     {
         var converted = new Dictionary<string, object?>(StringComparer.Ordinal);
 

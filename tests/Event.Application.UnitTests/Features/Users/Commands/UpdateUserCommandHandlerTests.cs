@@ -95,7 +95,7 @@ public sealed class UpdateUserCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("User not found");
         await _userRepository.DidNotReceive().GetById(user.Id);
         await _userRepository.DidNotReceive().Update(Arg.Any<User>());
@@ -174,7 +174,7 @@ public sealed class UpdateUserCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.ProfilePictureUri).IsEqualTo(storageObject.Uri);
         await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
         await _userRepository.Received(1).Update(user);
@@ -224,7 +224,7 @@ public sealed class UpdateUserCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(actor.ProfilePictureUri).IsEqualTo("storage://profiles/original.png");
         await Assert.That(storageObject.ActorId).IsNull();
         await _userRepository.DidNotReceive().Update(Arg.Any<User>());

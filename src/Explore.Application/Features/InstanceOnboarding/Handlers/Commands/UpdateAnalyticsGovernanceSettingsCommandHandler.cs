@@ -28,22 +28,15 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
 
         if (!await adminContext.IsInstanceAdminAsync(userId, cancellationToken))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Only instance administrators can update instance governance settings.",
-                FailureCode = FailureCodes.AdminRequired
-            };
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         }
 
         if (!request.Patch.HasChanges())
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "ValidationFailed",
-                Errors = ["Analytics governance patch must include at least one setting."]
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                "ValidationFailed",
+                errors: ["Analytics governance patch must include at least one setting."]);
         }
 
         // Resolve current provider context for capability-aware validation
@@ -71,12 +64,7 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
         var errors = ValidateSettings(s, group, capabilities);
         if (errors.Count > 0)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = "ValidationFailed",
-                Errors = errors
-            };
+            return BaseCommandResponse.Failure<Guid>("ValidationFailed", errors: errors);
         }
 
         // Collect advisory warnings for suboptimal-but-allowed combos
@@ -85,11 +73,9 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
         // Persist all settings
         await PersistSettingsAsync(s, request.Patch, userId, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Message = warnings.Count > 0 ? string.Join(" ", warnings) : null
-        };
+        return BaseCommandResponse.Success(
+            Guid.Empty,
+            warnings.Count > 0 ? string.Join(" ", warnings) : null);
     }
 
     private static List<string> ValidateSettings(

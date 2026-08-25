@@ -63,7 +63,7 @@ public sealed class StorageObjectCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(storageObjectId);
         await Assert.That(entity.TenantId).IsEqualTo(_tenantId);
         await Assert.That(entity.Uri).IsEqualTo("/api/storageobject/018f0000-0000-7000-8000-000000000001/content");
@@ -102,7 +102,7 @@ public sealed class StorageObjectCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Storage object not found.");
         await _storageObjectRepository.DidNotReceiveWithAnyArgs().Update(default!);
     }
@@ -145,7 +145,7 @@ public sealed class StorageObjectCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
     }
 

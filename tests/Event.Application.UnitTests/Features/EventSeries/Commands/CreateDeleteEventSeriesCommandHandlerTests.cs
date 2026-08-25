@@ -46,7 +46,7 @@ public sealed class CreateDeleteEventSeriesCommandHandlerTests
             EventSeriesDto = CreateDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(mappedSeries.TenantId).IsEqualTo(TenantId);
         await _adminContext.Received(1).GetAdminTenantIdsAsync(UserId, Arg.Any<CancellationToken>());
         await _adminContext.DidNotReceive().IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -113,7 +113,7 @@ public sealed class CreateDeleteEventSeriesCommandHandlerTests
             EventSeriesDto = CreateDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
         await _seriesRepository.Received(1).Create(mappedSeries);
     }
@@ -127,7 +127,7 @@ public sealed class CreateDeleteEventSeriesCommandHandlerTests
 
         var result = await DeleteHandler().Handle(new DeleteEventSeriesCommand { Id = series.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.DidNotReceive().IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _seriesRepository.Received(1).Delete(series);
     }
@@ -185,7 +185,7 @@ public sealed class CreateDeleteEventSeriesCommandHandlerTests
 
         var result = await DeleteHandler().Handle(new DeleteEventSeriesCommand { Id = series.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
         await _seriesRepository.Received(1).Delete(series);
     }
@@ -199,7 +199,7 @@ public sealed class CreateDeleteEventSeriesCommandHandlerTests
 
         var result = await DeleteHandler().Handle(new DeleteEventSeriesCommand { Id = seriesId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event series not found.");
         await _seriesRepository.DidNotReceive().Delete(Arg.Any<DomainEventSeries>());
     }

@@ -51,7 +51,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await actionRepository.Received(1).Create(Arg.Is<EventPublicAction>(action =>
             action.HealthStateId == (int)EventPublicActionHealthStateEnum.PendingReview
             && action.DestinationDomain == "tickets.example.org"
@@ -90,7 +90,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await actionRepository.DidNotReceive().Create(Arg.Any<EventPublicAction>());
     }
 
@@ -128,7 +128,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
             handler.Handle(CreatePrimaryCommand(eventId, "https://one.example.org"), CancellationToken.None),
             handler.Handle(CreatePrimaryCommand(eventId, "https://two.example.org"), CancellationToken.None));
 
-        await Assert.That(results.Count(result => result.Success)).IsEqualTo(1);
+        await Assert.That(results.Count(result => result.IsSuccess)).IsEqualTo(1);
         await Assert.That(created.Count).IsEqualTo(1);
     }
 
@@ -167,7 +167,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(
             "Public action kind is not available for this event's participation mode.");
         await actionRepository.DidNotReceiveWithAnyArgs()

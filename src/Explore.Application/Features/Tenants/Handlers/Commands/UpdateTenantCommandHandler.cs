@@ -23,23 +23,15 @@ public sealed class UpdateTenantCommandHandler(
         var validationResult = await validator.ValidateAsync(request.Update, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Tenant update failed.",
-                Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant update failed.");
         }
 
         var tenant = await tenantRepository.GetById(request.TenantId);
         if (tenant is null)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Tenant not found.",
-                FailureCode = FailureCodes.NotFound
-            };
+            return BaseCommandResponse.NotFound<Guid>("Tenant not found.");
         }
 
         if (request.Update.FullName is not null)
@@ -54,11 +46,6 @@ public sealed class UpdateTenantCommandHandler(
         if (slugChanged)
             await tenantSlugCache.RefreshAsync(cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = tenant.Id,
-            Message = "Tenant updated successfully."
-        };
+        return BaseCommandResponse.Success(tenant.Id, "Tenant updated successfully.");
     }
 }

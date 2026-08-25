@@ -176,20 +176,11 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
 
     private static BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> Success(
         ControlPlaneTenantLifecycleTransitionDto result,
-        string message) => new()
-        {
-            Success = true,
-            Id = result,
-            Message = message
-        };
+        string message) => BaseCommandResponse.Success(result, message);
 
     private static BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> Failure(
         string message,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = [message]
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<ControlPlaneTenantLifecycleTransitionDto>([message], message)
+            : BaseCommandResponse.Failure<ControlPlaneTenantLifecycleTransitionDto>(failureCode, message, [message]);
 }

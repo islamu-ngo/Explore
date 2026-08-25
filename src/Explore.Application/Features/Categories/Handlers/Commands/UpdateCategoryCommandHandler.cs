@@ -31,27 +31,21 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateCategoryDtoValidator(request.CategoryId, _categoryRepository);
         var validationResult = await validator.ValidateAsync(request.UpdateCategoryDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Category update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Category update failed.");
         }
 
         var category = await _categoryRepository.GetById(request.CategoryId);
 
         if (category == null)
         {
-            response.Success = false;
-            response.Message = "Category not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Category not found.");
         }
 
         if (category.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -67,13 +61,9 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
 
         await _categoryRepository.Update(category);
 
-        response.Success = true;
-        response.Id = category.Id;
-        response.Message = "Category updated successfully.";
-
         await _cache.RemoveAsync("categories:list:1:20", cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(category.Id, "Category updated successfully.");
     }
 
     private static void ApplyUpdates(Category category, UpdateCategoryDto dto)

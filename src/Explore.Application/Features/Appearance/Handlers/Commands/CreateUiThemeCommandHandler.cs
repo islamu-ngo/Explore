@@ -36,26 +36,23 @@ public class CreateUiThemeCommandHandler : IRequestHandler<CreateUiThemeCommand,
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateUiThemeCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         Guid? ownerTenantId = request.UiThemeDto.IsPlatformTheme ? null : _tenantContext.TenantId;
 
         if (!await IsAuthorizedAsync(request.UiThemeDto.IsPlatformTheme, ownerTenantId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = request.UiThemeDto.IsPlatformTheme
+            string message = request.UiThemeDto.IsPlatformTheme
                 ? "Only instance administrators can manage platform themes."
                 : "Only tenant administrators or instance administrators can manage tenant themes.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var validator = new CreateUiThemeDtoValidator(_uiThemeRepository, ownerTenantId);
         var validationResult = await validator.ValidateAsync(request.UiThemeDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "UI theme creation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "UI theme creation failed.");
         }
 
         var theme = UiThemeMapper.CreateEntity(request.UiThemeDto, ownerTenantId);
@@ -70,10 +67,7 @@ public class CreateUiThemeCommandHandler : IRequestHandler<CreateUiThemeCommand,
             return await _uiThemeRepository.Create(theme);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = theme.Id;
-        response.Message = "UI theme created successfully.";
-        return response;
+        return BaseCommandResponse.Success(theme.Id, "UI theme created successfully.");
     }
 
     private async Task<bool> IsAuthorizedAsync(bool isPlatformTheme, Guid? ownerTenantId, CancellationToken cancellationToken)

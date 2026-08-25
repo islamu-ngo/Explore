@@ -138,7 +138,7 @@ public sealed class RegistrationProviderManagedPublishPreflightService(
                         SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret,
                         SecretScope.Tenant,
                         tenantId,
-                        protectedSecret.Ciphertext,
+                        protectedSecret.Ciphertext.ToArray(),
                         protectedSecret.Version,
                         qualifier: binding.Id.ToString("N"));
                     secretBinding = await secretBindingRepository.Create(secretBinding);

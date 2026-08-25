@@ -81,7 +81,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
     }
 
@@ -110,7 +110,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors.Any(e => e.Contains("same Namespace + Key", StringComparison.Ordinal))).IsTrue();
     }
 
@@ -151,7 +151,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors.Any(error => error.Contains("ExpectedConcurrencyStamp", StringComparison.Ordinal))).IsTrue();
         await _customPropertyDefinitionRepository.DidNotReceive().GetTrackedDefinitionWithOptions(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -194,7 +194,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _customPropertyDefinitionRepository.Received(1).ExistsScopedMachineKey(
             tenantId,
             EntityTypeName.Organization,
@@ -242,7 +242,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _customPropertyDefinitionRepository.Received(1).UpdateWithOptions(
             Arg.Is<CustomPropertyDefinition>(definition =>
                 definition.Id == existing.Id
@@ -297,7 +297,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(existing.EntityTypeName).IsEqualTo(EntityTypeName.Group);
         await _customPropertyDefinitionRepository.Received(1).Update(existing);
         await _customPropertyDefinitionRepository.DidNotReceive().UpdateWithOptions(
@@ -344,7 +344,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);

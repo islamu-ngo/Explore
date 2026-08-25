@@ -29,13 +29,11 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
         RotateListmonkIntegrationCredentialsCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue)
         {
-            response.Success = false;
-            response.Message = "Authentication is required to rotate Listmonk credentials.";
-            return response;
+            return BaseCommandResponse.Authentication<Guid>(
+                "Authentication is required to rotate Listmonk credentials.");
         }
 
         var tenantId = tenantContext.TenantId;
@@ -43,19 +41,17 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
             || await adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
         if (!isAuthorized)
         {
-            response.Success = false;
-            response.Message = "Tenant or instance administrator authority is required to rotate Listmonk credentials.";
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Tenant or instance administrator authority is required to rotate Listmonk credentials.");
         }
 
         var validator = new RotateListmonkIntegrationCredentialsDtoValidator();
         var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Listmonk credential rotation failed.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Listmonk credential rotation failed.");
         }
 
         var rotations = PendingRotations(request.Dto).ToArray();
@@ -68,9 +64,8 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
                 cancellationToken);
             if (instanceBinding?.IsLocked == true)
             {
-                response.Success = false;
-                response.Message = "Listmonk credentials are locked by instance policy.";
-                return response;
+                return BaseCommandResponse.Authorization<Guid>(
+                    "Listmonk credentials are locked by instance policy.");
             }
         }
 
@@ -85,10 +80,7 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
             actor.Value,
             rotations.Length);
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = "Listmonk credentials rotated successfully.";
-        return response;
+        return BaseCommandResponse.Success(tenantId, "Listmonk credentials rotated successfully.");
     }
 
     private async Task RotateCredentialAsync(
@@ -111,7 +103,7 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
                 settingKey,
                 SecretScope.Tenant,
                 tenantId,
-                protectedSecret.Ciphertext,
+                protectedSecret.Ciphertext.ToArray(),
                 protectedSecret.Version);
             tenantBinding.CreatedAt = DateTime.UtcNow;
             tenantBinding.CreatedBy = actorId;
@@ -120,7 +112,7 @@ public sealed class RotateListmonkIntegrationCredentialsCommandHandler(
         }
         else
         {
-            tenantBinding.SwitchToInlineEncrypted(protectedSecret.Ciphertext, protectedSecret.Version);
+            tenantBinding.SwitchToInlineEncrypted(protectedSecret.Ciphertext.ToArray(), protectedSecret.Version);
             tenantBinding.UpdatedBy = actorId;
             tenantBinding.UpdatedAt = DateTime.UtcNow;
             await secretBindingRepository.Update(tenantBinding);

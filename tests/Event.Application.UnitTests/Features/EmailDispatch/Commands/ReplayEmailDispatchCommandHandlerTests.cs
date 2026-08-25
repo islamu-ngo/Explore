@@ -22,7 +22,7 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             new ReplayEmailDispatchCommand { TenantId = Guid.NewGuid(), OutboxId = Guid.Empty },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("OutboxId is required.");
         await _repository.DidNotReceiveWithAnyArgs().TryReplayForOperator(default, default, default, default, default);
@@ -40,7 +40,7 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             new ReplayEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
         await _repository.DidNotReceiveWithAnyArgs().TryReplayForOperator(default, default, default, default, default);
     }
@@ -57,7 +57,7 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             new ReplayEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Email dispatch is already pending replay.");
         await _repository.DidNotReceiveWithAnyArgs().TryReplayForOperator(default, default, default, default, default);
     }
@@ -74,7 +74,7 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             new ReplayEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
         await Assert.That(result.Message).IsEqualTo("Skipped email dispatch rows cannot be replayed.");
         await _repository.DidNotReceiveWithAnyArgs().TryReplayForOperator(default, default, default, default, default);
@@ -100,7 +100,7 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             new ReplayEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId, ChangedBy = changedBy },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(outboxId);
         await Assert.That(result.Message).IsEqualTo("Email dispatch queued for replay.");
         await _repository.Received(1).TryReplayForOperator(

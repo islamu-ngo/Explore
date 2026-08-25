@@ -82,7 +82,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
             new DeleteEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(pool.IsDeleted).IsTrue();
         await Assert.That(pool.DeletedAt).IsEqualTo(_deletedAt.UtcDateTime);
         await Assert.That(pool.DeletedBy).IsEqualTo(_userId);

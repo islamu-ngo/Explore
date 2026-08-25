@@ -29,51 +29,41 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateStorageObjectCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var entity = await _storageObjectRepository.GetById(request.StorageObjectId);
         if (entity is null || entity.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Storage object update failed.";
-            response.Errors = ["Storage object not found."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Storage object not found."],
+                "Storage object update failed.");
         }
 
         if (await _storageObjectRepository.IsRetainedEvidenceAsync(entity.Id, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Storage object update failed.";
-            response.Errors = ["Retained legitimacy evidence cannot be modified."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Retained legitimacy evidence cannot be modified."],
+                "Storage object update failed.");
         }
 
         var validator = new UpdateStorageObjectDtoValidator(_actorRepository);
         var validationResult = await validator.ValidateAsync(request.StorageObjectDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Storage object update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Storage object update failed.");
         }
 
         if (!HasValidMergedAccess(entity, request.StorageObjectDto))
         {
-            response.Success = false;
-            response.Message = "Storage object update failed.";
-            response.Errors = ["The resulting storage visibility and purpose are not eligible for the stored content."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["The resulting storage visibility and purpose are not eligible for the stored content."],
+                "Storage object update failed.");
         }
 
         ApplyUpdate(entity, request.StorageObjectDto);
         await _storageObjectRepository.Update(entity);
 
-        response.Success = true;
-        response.Id = entity.Id;
-        response.Message = "Storage object updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(entity.Id, "Storage object updated successfully.");
     }
 
     private static void ApplyUpdate(Domain.StorageObject entity, UpdateStorageObjectDto dto)

@@ -109,7 +109,7 @@ public class CreateEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(agendaItemId);
         await _eventAgendaItemRepository.Received(1).Create(Arg.Any<EventAgendaItem>());
     }
@@ -217,7 +217,7 @@ public class CreateEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedItem).IsNotNull();
         await Assert.That(capturedItem!.EventDayId).IsEqualTo(eventDayId);
     }
@@ -246,7 +246,7 @@ public class CreateEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventAgendaItemRepository.DidNotReceive().Create(Arg.Any<EventAgendaItem>());
     }
 
@@ -299,7 +299,7 @@ public class CreateEventAgendaItemCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert — Reschedule was called (local projection fields populated)
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedItem).IsNotNull();
         await Assert.That(capturedItem!.StartTime).IsEqualTo(startTime);
         await Assert.That(capturedItem.EndTime).IsEqualTo(endTime);

@@ -63,7 +63,7 @@ public class SubscribeToActorCommandHandlerTests
             new SubscribeToActorCommand { Subscription = new SubscribeToActorDto { TargetActorId = targetActor.Id } },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdSubscriptionId);
         await _actorSubscriptionRepository.Received(1).Create(Arg.Is<ActorSubscription>(subscription =>
             subscription.TenantId == tenantId
@@ -89,7 +89,7 @@ public class SubscribeToActorCommandHandlerTests
             new SubscribeToActorCommand { Subscription = new SubscribeToActorDto { TargetActorId = Guid.NewGuid() } },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("An active tenant-local user is required before subscribing.");
         await _actorSubscriptionRepository.DidNotReceive().Create(Arg.Any<ActorSubscription>());
     }
@@ -115,7 +115,7 @@ public class SubscribeToActorCommandHandlerTests
             new SubscribeToActorCommand { Subscription = new SubscribeToActorDto { TargetActorId = targetActorId } },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Target actor must be an organization or group in the current tenant.");
         await _actorSubscriptionRepository.DidNotReceive().Create(Arg.Any<ActorSubscription>());
     }
@@ -144,7 +144,7 @@ public class SubscribeToActorCommandHandlerTests
             new SubscribeToActorCommand { Subscription = new SubscribeToActorDto { TargetActorId = targetActor.Id } },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingSubscription.Id);
         await Assert.That(existingSubscription.StatusId).IsEqualTo((int)ActorSubscriptionStatusEnum.Active);
         await Assert.That(existingSubscription.NotificationLevelId).IsEqualTo((int)ActorSubscriptionNotificationLevelEnum.All);

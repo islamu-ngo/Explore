@@ -89,7 +89,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(actorId);
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
     }
@@ -130,7 +130,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(actorId);
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
     }
@@ -180,7 +180,7 @@ public class CreateActorCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         _mapper.DidNotReceiveWithAnyArgs().Map<Actor>(default!);
         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
@@ -211,7 +211,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
 
@@ -245,7 +245,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
 
@@ -275,7 +275,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
 
@@ -306,7 +306,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
 
@@ -342,7 +342,7 @@ public class CreateActorCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _actorRepository.Received(1).Create(Arg.Is<Actor>(a => a.UserId == userId));
     }
 }

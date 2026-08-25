@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Location.Validators;
 using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.Locations.Handlers.Commands;
@@ -33,30 +34,31 @@ public class CreateLocationCommandHandler : IRequestHandler<CreateLocationComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateLocationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateLocationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.LocationDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Location creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Location creation failed.");
         }
-
         var location = _mapper.Map<Location>(request.LocationDto);
+        GeoCoordinate? coordinate = request.LocationDto.Latitude.HasValue
+            ? GeoCoordinate.Create(
+                request.LocationDto.Latitude.Value,
+                request.LocationDto.Longitude!.Value)
+            : null;
+        location.SetProviderAddress(
+            request.LocationDto.Address,
+            request.LocationDto.Postcode,
+            coordinate);
 
         // Set TenantId from the request context
         location.TenantId = _tenantContext.TenantId;
 
         location = await _locationRepository.Create(location);
 
-        response.Success = true;
-        response.Id = location.Id;
-        response.Message = "Location created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(location.Id, "Location created successfully.");
     }
 }

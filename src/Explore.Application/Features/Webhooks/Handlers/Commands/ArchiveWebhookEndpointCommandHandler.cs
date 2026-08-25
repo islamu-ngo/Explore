@@ -87,20 +87,9 @@ public sealed class ArchiveWebhookEndpointCommandHandler(
             }, cancellationToken);
         }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = request.EndpointId,
-            Success = true,
-            Message = "Webhook endpoint archived."
-        };
+        return BaseCommandResponse.Success(request.EndpointId, "Webhook endpoint archived.");
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }

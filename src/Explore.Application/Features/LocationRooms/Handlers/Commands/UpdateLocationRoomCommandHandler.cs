@@ -27,26 +27,20 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateLocationRoomCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateLocationRoomDtoValidator(_locationRepository);
         var validationResult = await validator.ValidateAsync(request.UpdateLocationRoomDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Room update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Room update failed.");
         }
 
         var room = await _locationRoomRepository.GetById(request.LocationRoomId);
         if (room == null)
         {
-            response.Success = false;
-            response.Message = "Room not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Room not found.");
         }
 
         if (room.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -63,9 +57,9 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
             var parentLocation = await _locationRepository.GetById(request.UpdateLocationRoomDto.Location.LocationId);
             if (parentLocation == null || parentLocation.TenantId != room.TenantId)
             {
-                response.Success = false;
-                response.Message = "Location does not belong to the same tenant as the room.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Location does not belong to the same tenant as the room."],
+                    "Location does not belong to the same tenant as the room.");
             }
 
             if (parentLocation.Id != room.LocationId
@@ -73,9 +67,9 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
                     room.Id,
                     cancellationToken))
             {
-                response.Success = false;
-                response.Message = "A room used by an event schedule cannot be moved to another location.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["A room used by an event schedule cannot be moved to another location."],
+                    "A room used by an event schedule cannot be moved to another location.");
             }
         }
 
@@ -88,11 +82,7 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
 
         await _locationRoomRepository.Update(room);
 
-        response.Success = true;
-        response.Id = room.Id;
-        response.Message = "Room updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(room.Id, "Room updated successfully.");
     }
 
     private static void ApplyLocation(LocationRoom room, UpdateLocationRoomLocationDto? group)

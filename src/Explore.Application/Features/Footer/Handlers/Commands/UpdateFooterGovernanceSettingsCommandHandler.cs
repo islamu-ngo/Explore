@@ -21,19 +21,13 @@ public sealed class UpdateFooterGovernanceSettingsCommandHandler(
         UpdateFooterGovernanceSettingsCommand request, CancellationToken cancellationToken)
     {
         if (!await adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Only instance administrators can update footer governance settings.",
-                FailureCode = FailureCodes.AdminRequired
-            };
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update footer governance settings.");
 
         if (!request.Patch.HasChanges())
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "At least one footer governance setting must be provided."
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                ["At least one footer governance setting must be provided."],
+                "At least one footer governance setting must be provided.");
 
         if (request.Patch.LockTenantTemplate.HasValue)
             await settingsResolver.SetValueAsync(
@@ -67,6 +61,6 @@ public sealed class UpdateFooterGovernanceSettingsCommandHandler(
 
         settingsResolver.InvalidateCache(SettingScope.Instance, null);
 
-        return new BaseCommandResponse<Guid> { Success = true, Message = "Footer governance settings updated successfully." };
+        return BaseCommandResponse.Success(Guid.Empty, "Footer governance settings updated successfully.");
     }
 }

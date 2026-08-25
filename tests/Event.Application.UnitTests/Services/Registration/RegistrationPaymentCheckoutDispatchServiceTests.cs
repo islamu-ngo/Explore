@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services.Registration;
@@ -862,9 +863,9 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
             "OrganizerDirect",
             "2026-08-20.acacia",
             "composition-1",
-            10_00,
-            2_00,
-            2_50,
+            Money.Create(10_00, recipient.CurrencyCode),
+            Money.Create(2_00, recipient.CurrencyCode),
+            Money.Create(2_50, recipient.CurrencyCode),
             "checkout:stable",
             UtcNow.AddMinutes(-2),
             UtcNow.AddMinutes(30));

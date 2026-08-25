@@ -85,7 +85,7 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
 
         var result = await _handler.Handle(command, cancellation.Token);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(created.Id);
         await Assert.That(mapped.TenantId).IsEqualTo(tenantId);
         await _repository.Received(1).Create(mapped);
@@ -117,7 +117,7 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(mapped.TenantId).IsEqualTo(tenantId);
         await _repository.Received(1).Create(mapped);
     }
@@ -139,7 +139,7 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(sessionId, actorId, tenantId, Guid.NewGuid()), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Actor is already assigned as a speaker for this event session.");
         await _repository.DidNotReceive().Create(Arg.Any<EventSessionSpeaker>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());

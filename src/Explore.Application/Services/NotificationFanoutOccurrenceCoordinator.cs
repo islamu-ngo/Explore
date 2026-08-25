@@ -1,6 +1,7 @@
 // ABOUTME: Serializes fanout occurrence precedence, coalescing, replay, and supersession decisions.
 // ABOUTME: Runs inside the caller's transaction and emits one stable outbox pointer only for a new winner.
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Explore.Application.Contracts.Persistence;
@@ -519,16 +520,16 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             return latestOccurrence.SafeBeforeSnapshotJson;
         }
 
-        NotificationFanoutSessionDisplayTimeV1[] earliestBefore = latestTemplate.Before.SessionDisplayTimes!;
-        NotificationFanoutSessionDisplayTimeV1[] incomingBefore = incomingTemplate.Before.SessionDisplayTimes!;
-        NotificationFanoutSessionDisplayTimeV1[] latestAfter = incomingTemplate.After.SessionDisplayTimes!;
+        IReadOnlyList<NotificationFanoutSessionDisplayTimeV1> earliestBefore = latestTemplate.Before.SessionDisplayTimes!;
+        IReadOnlyList<NotificationFanoutSessionDisplayTimeV1> incomingBefore = incomingTemplate.Before.SessionDisplayTimes!;
+        IReadOnlyList<NotificationFanoutSessionDisplayTimeV1> latestAfter = incomingTemplate.After.SessionDisplayTimes!;
 
         Dictionary<Guid, NotificationFanoutSessionDisplayTimeV1> earliestById = earliestBefore
             .ToDictionary(session => session.SessionId);
         Dictionary<Guid, NotificationFanoutSessionDisplayTimeV1> incomingBeforeById = incomingBefore
             .ToDictionary(session => session.SessionId);
-        var mergedBefore = new NotificationFanoutSessionDisplayTimeV1[latestAfter.Length];
-        for (var index = 0; index < latestAfter.Length; index++)
+        var mergedBefore = new NotificationFanoutSessionDisplayTimeV1[latestAfter.Count];
+        for (var index = 0; index < latestAfter.Count; index++)
         {
             NotificationFanoutSessionDisplayTimeV1 final = latestAfter[index];
             if (!earliestById.TryGetValue(final.SessionId, out NotificationFanoutSessionDisplayTimeV1? prior)
@@ -548,7 +549,7 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
 
         NotificationFanoutSnapshotV1 mergedSnapshot = latestTemplate.Before with
         {
-            SessionDisplayTimes = mergedBefore
+            SessionDisplayTimes = mergedBefore.ToImmutableList()
         };
         return NotificationFanoutTemplateJson.Serialize(mergedSnapshot);
     }
@@ -561,8 +562,8 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             StringComparison.Ordinal);
 
     private static bool HasCompleteSessionDisplayTimes(NotificationFanoutRecipientTemplate template) =>
-        template.Before.SessionDisplayTimes is { Length: > 0 }
-        && template.After.SessionDisplayTimes is { Length: > 0 };
+        template.Before.SessionDisplayTimes is { Count: > 0 }
+        && template.After.SessionDisplayTimes is { Count: > 0 };
 
     private static bool HasAnySessionDisplayTimes(NotificationFanoutRecipientTemplate template) =>
         template.Before.SessionDisplayTimes is not null

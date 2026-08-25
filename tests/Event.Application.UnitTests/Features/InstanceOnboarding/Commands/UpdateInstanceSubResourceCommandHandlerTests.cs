@@ -54,7 +54,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             Patch = new PatchModuleSettingsDto { EnableIslamicModule = OptionalUpdate<bool>.Set(false) }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _service.Received(1).ApplyModuleSettingsPatchAsync(
             PlatformDefaults.DefaultTenantId,
             Arg.Is<PatchModuleSettingsDto>(patch => patch.EnableIslamicModule.HasValue),
@@ -370,7 +370,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await storageService.Received(1).ApplySettingsAsync(
             Arg.Is<InstanceStorageSettingsDto>(settings =>
                 settings.S3Endpoint == "https://new.example" &&
@@ -408,7 +408,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await storageService.DidNotReceive().ApplySettingsAsync(
             Arg.Any<InstanceStorageSettingsDto>(),
             Arg.Any<PatchInstanceStorageSettingsDto>());
@@ -441,7 +441,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             Patch = patch
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await resolver.Received(1).ApplyConfigurationAsync(
             Arg.Is<PatchResolverConfigurationDto>(value => value.PathPrefix.HasValue && value.PathPrefix.Value == "/new"),
             Arg.Is<ResolverConfigurationDto>(value =>
@@ -473,7 +473,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await resolver.DidNotReceive().ApplyConfigurationAsync(
             Arg.Any<PatchResolverConfigurationDto>(),
             Arg.Any<ResolverConfigurationDto>(),
@@ -721,7 +721,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             Patch = new PatchRenderPolicySettingsDto { RenderPolicyPreset = OptionalUpdate<string?>.Set("CustomAdvanced") }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
         await _service.DidNotReceive().ApplyRenderPolicySettingsPatchAsync(
@@ -743,7 +743,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             Patch = new PatchModuleSettingsDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _service.DidNotReceive().ReadSettingsAsync();
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());

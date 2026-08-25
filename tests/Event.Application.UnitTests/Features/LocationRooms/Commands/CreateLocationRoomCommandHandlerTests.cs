@@ -67,7 +67,7 @@ public class CreateLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(roomId);
         await _locationRoomRepository.Received(1).Create(Arg.Any<LocationRoom>());
     }
@@ -130,7 +130,7 @@ public class CreateLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRoomRepository.DidNotReceive().Create(Arg.Any<LocationRoom>());
     }
 }

@@ -36,7 +36,7 @@ public class RotateLocalizationTmsApiKeyCommandHandlerTests
 
         _repository = Substitute.For<ISecretBindingRepository>();
         var protector = Substitute.For<IInlineSecretProtector>();
-        protector.Protect(Arg.Any<string>()).Returns(new InlineProtectedSecret([1, 2, 3], 1));
+        protector.Protect(Arg.Any<string>()).Returns(new InlineProtectedSecret(new byte[] { 1, 2, 3 }, 1));
         _secretResolver = Substitute.For<ISecretResolver>();
 
         _handler = new RotateLocalizationTmsApiKeyCommandHandler(
@@ -58,7 +58,7 @@ public class RotateLocalizationTmsApiKeyCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).Create(Arg.Is<SecretBinding>(binding =>
             binding.SettingKey == SecretDefinitionRegistry.Keys.Localization.TmsApiKey
             && binding.Scope == SecretScope.Tenant
@@ -97,7 +97,7 @@ public class RotateLocalizationTmsApiKeyCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Create(Arg.Any<SecretBinding>());
         await _repository.DidNotReceive().Update(Arg.Any<SecretBinding>());
     }

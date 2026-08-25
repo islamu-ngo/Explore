@@ -67,13 +67,13 @@ public class CancelStorageUploadSessionCommandHandler
     private void RecordCancelMetrics(BaseCommandResponse<StorageUploadSessionDto> response, string fallbackProvider)
     {
         var provider = response.Id?.Provider ?? fallbackProvider;
-        var outcome = response.Success
+        var outcome = response.IsSuccess
             ? (IsAlreadyClosed(response) ? "idempotent" : "succeeded")
             : "failed";
 
         _metrics.RecordStorageUploadSession(provider, "cancel", outcome, response.FailureCode);
 
-        if (response.Success && !IsAlreadyClosed(response) && response.Id is not null)
+        if (response.IsSuccess && !IsAlreadyClosed(response) && response.Id is not null)
         {
             _metrics.RecordStorageQuotaReservation(provider, "release", "succeeded");
             _metrics.RecordStorageQuotaBytes(response.Id.ReservedBytes, provider, "release", "succeeded");
@@ -140,25 +140,18 @@ public class CancelStorageUploadSessionCommandHandler
         StorageUploadSession session,
         Models.Storage.ResolvedStoragePolicy policy,
         StorageUsageCounter? usageCounter,
-        string message)
-        => new()
-        {
-            Success = true,
-            Id = CreateStorageUploadSessionCommandHandler.Map(session, policy, usageCounter),
-            Message = message
-        };
+        string message) =>
+        BaseCommandResponse.Success(
+            CreateStorageUploadSessionCommandHandler.Map(session, policy, usageCounter),
+            message);
 
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation<StorageUploadSessionDto>(errors, message)
+            : BaseCommandResponse.Failure<StorageUploadSessionDto>(failureCode, message, errors);
 
     private static bool IsAlreadyClosed(BaseCommandResponse<StorageUploadSessionDto> response)
         => response.Message?.Contains("already closed", StringComparison.OrdinalIgnoreCase) == true;

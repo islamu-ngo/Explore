@@ -168,7 +168,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await _tenantRepository.Received(1).Create(Arg.Is<Tenant>(tenant =>
             tenant.FullName == "ERP Customer" &&
@@ -234,7 +234,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OrganizerKind).IsEqualTo(ManagedProviderOrganizerKindDto.Organization);
         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(organization =>
             organization.FullName == "Customer Legal Entity"));
@@ -270,7 +270,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OrganizerKind).IsEqualTo(ManagedProviderOrganizerKindDto.Group);
         await _groupRepository.Received(1).Create(Arg.Is<Group>(group =>
             group.FullName == "Customer Community Group"));
@@ -299,7 +299,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<ManagedProviderClientProvisioningResultDto>>>(),
             Arg.Any<CancellationToken>());
@@ -333,7 +333,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             new EnsureManagedProviderClientProvisionedCommand { ProvisioningDto = CreateValidDto() },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.UserId).IsEqualTo(existingUserId);
         await _userRepository.DidNotReceive().Create(Arg.Any<User>());
     }
@@ -367,7 +367,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tenant_administrator_email_match_denied");
         await _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
     }
@@ -486,7 +486,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.TenantId).IsEqualTo(tenantId);
         await Assert.That(result.Id.UserId).IsEqualTo(userId);
         await Assert.That(result.Id.TenantUserId).IsEqualTo(tenantUserId);
@@ -753,7 +753,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             outboxMessageId,
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(mutationLock.CompletionObservedInside).IsTrue();
         await onboardingRepository.Received(1).Create(Arg.Is<TenantOnboardingState>(state =>
             state.TenantId == result.Id!.TenantId

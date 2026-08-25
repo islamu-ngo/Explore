@@ -28,7 +28,6 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
         UpdateListmonkIntegrationSettingsCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var authorization = await SettingCommandHelper.CheckAuthorizationAsync(
             SettingScope.Tenant,
             adminContext,
@@ -37,9 +36,7 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
             cancellationToken);
         if (!authorization.Authorized)
         {
-            response.Success = false;
-            response.Message = authorization.Error;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(authorization.Error);
         }
 
         var actorId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
@@ -48,9 +45,8 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
             cancellationToken);
         if (!actorId.HasValue)
         {
-            response.Success = false;
-            response.Message = "Authentication is required to update Listmonk integration settings.";
-            return response;
+            return BaseCommandResponse.Authentication<Guid>(
+                "Authentication is required to update Listmonk integration settings.");
         }
 
         var context = SettingCommandHelper.BuildSettingContext(SettingScope.Tenant, tenantContext, actorId.Value);
@@ -66,10 +62,9 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
         var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Listmonk integration settings update failed.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Listmonk integration settings update failed.");
         }
 
         var values = Values(request.Dto);
@@ -82,10 +77,9 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
             var definition = SettingRegistry.Get(key);
             if (definition is null)
             {
-                response.Success = false;
-                response.Message = "Listmonk integration settings update failed.";
-                response.Errors = [$"Unknown setting '{key}'."];
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    [$"Unknown setting '{key}'."],
+                    "Listmonk integration settings update failed.");
             }
 
             currentSettings.TryGetValue(key, out var current);
@@ -94,19 +88,17 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
                 : SettingCommandHelper.CheckLockState(current, SettingScope.Tenant);
             if (lockState.IsBlockedByLock)
             {
-                response.Success = false;
-                response.Message = "Listmonk integration settings update failed.";
-                response.Errors = [lockState.LockReason ?? "Listmonk integration settings are locked."];
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    [lockState.LockReason ?? "Listmonk integration settings are locked."],
+                    "Listmonk integration settings update failed.");
             }
 
             var serialized = SettingCommandHelper.ValidateAndSerialize(plainValue, definition);
             if (!serialized.IsValid)
             {
-                response.Success = false;
-                response.Message = "Listmonk integration settings update failed.";
-                response.Errors = [serialized.Error ?? $"Invalid value for '{key}'."];
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    [serialized.Error ?? $"Invalid value for '{key}'."],
+                    "Listmonk integration settings update failed.");
             }
 
             await settingsResolver.SetValueAsync(
@@ -128,10 +120,9 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandler(
                 cancellationToken);
         }
 
-        response.Success = true;
-        response.Id = tenantContext.TenantId;
-        response.Message = "Listmonk integration settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            tenantContext.TenantId,
+            "Listmonk integration settings updated successfully.");
     }
 
     private static Dictionary<string, string> Values(UpdateListmonkIntegrationSettingsDto dto)

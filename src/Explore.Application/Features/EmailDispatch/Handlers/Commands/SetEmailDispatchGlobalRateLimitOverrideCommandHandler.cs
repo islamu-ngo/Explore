@@ -20,13 +20,10 @@ public sealed class SetEmailDispatchGlobalRateLimitOverrideCommandHandler(IEmail
             .ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = EmailDispatchFailureCodes.ValidationFailed,
-                Message = "Global SMTP rate-limit override failed validation.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                EmailDispatchFailureCodes.ValidationFailed,
+                "Global SMTP rate-limit override failed validation.",
+                validation.Errors.Select(error => error.ErrorMessage));
         }
 
         var state = await repository.SetGlobalSmtpRateLimitOverride(
@@ -34,13 +31,10 @@ public sealed class SetEmailDispatchGlobalRateLimitOverrideCommandHandler(IEmail
             request.ChangedBy,
             DateTime.UtcNow,
             cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = state.Id,
-            Success = true,
-            Message = request.RateLimitPerMinute.HasValue
+        return BaseCommandResponse.Success(
+            state.Id,
+            request.RateLimitPerMinute.HasValue
                 ? "Global SMTP rate-limit override updated."
-                : "Global SMTP rate-limit override cleared."
-        };
+                : "Global SMTP rate-limit override cleared.");
     }
 }

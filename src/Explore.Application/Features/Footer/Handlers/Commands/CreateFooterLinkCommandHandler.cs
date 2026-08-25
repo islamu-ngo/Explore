@@ -58,11 +58,6 @@ public sealed class CreateFooterLinkCommandHandler(
 
         link = await footerLinkRepository.Create(link);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = link.Id,
-            Message = "Footer link created successfully.",
-        };
+        return BaseCommandResponse.Success(link.Id, "Footer link created successfully.");
     }
 }

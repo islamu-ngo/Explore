@@ -73,7 +73,7 @@ public sealed class PaidCheckoutGovernanceHandlersTests
         BaseCommandResponse<Guid> result = await handler.Handle(
             new StopPaidCheckoutSalesCommand(tenantId, eventId, "operator_stop"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(control.Id);
         await Assert.That(control.IsStopped).IsTrue();
         await Assert.That(control.Version).IsEqualTo(2L);
@@ -119,10 +119,10 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             repository, events, CurrentUser(actorId), unitOfWork, time).Handle(
             new StopPaidCheckoutSalesCommand(tenantId, eventId, "operator_stop"), CancellationToken.None);
 
-        await Assert.That(anonymous.Success).IsFalse();
-        await Assert.That(emptyTenant.Success).IsFalse();
-        await Assert.That(emptyEvent.Success).IsFalse();
-        await Assert.That(crossTenant.Success).IsFalse();
+        await Assert.That(anonymous.IsSuccess).IsFalse();
+        await Assert.That(emptyTenant.IsSuccess).IsFalse();
+        await Assert.That(emptyEvent.IsSuccess).IsFalse();
+        await Assert.That(crossTenant.IsSuccess).IsFalse();
         await Assert.That(anonymous.FailureCode).IsEqualTo("paid_checkout_governance_invalid");
         await Assert.That(emptyTenant.FailureCode).IsEqualTo("paid_checkout_governance_invalid");
         await Assert.That(emptyEvent.FailureCode).IsEqualTo("paid_checkout_governance_invalid");
@@ -151,7 +151,7 @@ public sealed class PaidCheckoutGovernanceHandlersTests
         BaseCommandResponse<Guid> result = await handler.Handle(
             new RequestPaidCheckoutResumeCommand(tenantId, null, "operator_resume"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(added).IsNotNull();
         await Assert.That(result.Id).IsEqualTo(added!.Id);
         await Assert.That(added.TenantId).IsEqualTo(tenantId);
@@ -199,8 +199,8 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             new ReviewPaidCheckoutResumeCommand(tenantId, rejectedEventId, false, "independent_rejection"),
             CancellationToken.None);
 
-        await Assert.That(approvedResult.Success).IsTrue();
-        await Assert.That(rejectedResult.Success).IsTrue();
+        await Assert.That(approvedResult.IsSuccess).IsTrue();
+        await Assert.That(rejectedResult.IsSuccess).IsTrue();
         await Assert.That(approvedResult.Id).IsEqualTo(approved.Id);
         await Assert.That(rejectedResult.Id).IsEqualTo(rejected.Id);
         await Assert.That(approved.IsStopped).IsFalse();
@@ -239,7 +239,7 @@ public sealed class PaidCheckoutGovernanceHandlersTests
         BaseCommandResponse<Guid> result = await handler.Handle(
             new ReviewPaidCheckoutResumeCommand(tenantId, null, true, "self_approval"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("paid_checkout_resume_review_invalid");
         await Assert.That(control.IsStopped).IsTrue();
         await Assert.That(control.ResumeRequestedBy).IsEqualTo(requesterId);
@@ -276,7 +276,7 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             tenantId, eventId, (int)PaidCheckoutReviewTrigger.HighValue, "EUR", 5_000, "risk_review"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(added).IsNotNull();
         await Assert.That(result.Id).IsEqualTo(added!.Id);
         await Assert.That(added.TenantId).IsEqualTo(tenantId);
@@ -316,8 +316,8 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             tenantId, eventId, (int)PaidCheckoutReviewTrigger.FirstPaidEvent, "EUR", null, "risk_review"),
             CancellationToken.None);
 
-        await Assert.That(undefinedTrigger.Success).IsFalse();
-        await Assert.That(crossTenant.Success).IsFalse();
+        await Assert.That(undefinedTrigger.IsSuccess).IsFalse();
+        await Assert.That(crossTenant.IsSuccess).IsFalse();
         await Assert.That(undefinedTrigger.FailureCode).IsEqualTo("paid_checkout_review_invalid");
         await Assert.That(crossTenant.FailureCode).IsEqualTo("paid_checkout_review_invalid");
         await Assert.That(unitOfWork.SerializableExecutions).IsEqualTo(1);
@@ -349,8 +349,8 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             new DecidePaidCheckoutReviewCommand(tenantId, rejected.Id, false, "risk_rejected"),
             CancellationToken.None);
 
-        await Assert.That(approvedResult.Success).IsTrue();
-        await Assert.That(rejectedResult.Success).IsTrue();
+        await Assert.That(approvedResult.IsSuccess).IsTrue();
+        await Assert.That(rejectedResult.IsSuccess).IsTrue();
         await Assert.That(approvedResult.Id).IsEqualTo(approved.Id);
         await Assert.That(rejectedResult.Id).IsEqualTo(rejected.Id);
         await Assert.That(approved.StatusCode).IsEqualTo("approved");
@@ -391,8 +391,8 @@ public sealed class PaidCheckoutGovernanceHandlersTests
             new DecidePaidCheckoutReviewCommand(tenantId, invalidReason.Id, false, string.Empty),
             CancellationToken.None);
 
-        await Assert.That(selfResult.Success).IsFalse();
-        await Assert.That(invalidReasonResult.Success).IsFalse();
+        await Assert.That(selfResult.IsSuccess).IsFalse();
+        await Assert.That(invalidReasonResult.IsSuccess).IsFalse();
         await Assert.That(selfResult.FailureCode).IsEqualTo("paid_checkout_review_invalid");
         await Assert.That(invalidReasonResult.FailureCode).IsEqualTo("paid_checkout_review_invalid");
         await Assert.That(selfReview.StatusCode).IsEqualTo("pending");

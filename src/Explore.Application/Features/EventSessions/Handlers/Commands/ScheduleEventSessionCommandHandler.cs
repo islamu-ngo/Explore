@@ -15,6 +15,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -131,8 +132,7 @@ public sealed class ScheduleEventSessionCommandHandler(
                 try
                 {
                     session.Reschedule(
-                        command.Request.StartTime,
-                        command.Request.EndTime,
+                        UtcInstantRange.Create(command.Request.StartTime, command.Request.EndTime),
                         timezone,
                         scheduleProjectionCalculator);
                 }
@@ -261,7 +261,7 @@ public sealed class ScheduleEventSessionCommandHandler(
         }
 
         BaseCommandResponse<Guid> response = commandResult.Response;
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response;
         }
@@ -294,21 +294,13 @@ public sealed class ScheduleEventSessionCommandHandler(
         return fields.ToArray();
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 
     private async Task RefreshParentScheduleSummaryAsync(Guid eventId, CancellationToken cancellationToken)
     {

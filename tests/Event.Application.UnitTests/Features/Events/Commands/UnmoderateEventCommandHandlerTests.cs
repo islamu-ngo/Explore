@@ -79,7 +79,7 @@ public sealed class UnmoderateEventCommandHandlerTests
             CorrelationId = correlationId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await Assert.That(createdRecords).Count().IsEqualTo(1);
 
@@ -122,7 +122,7 @@ public sealed class UnmoderateEventCommandHandlerTests
 
         var result = await _handler.Handle(new UnmoderateEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_unmoderation_not_reversible");
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -138,7 +138,7 @@ public sealed class UnmoderateEventCommandHandlerTests
 
         var result = await _handler.Handle(new UnmoderateEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_unmoderation_invalid_status");
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -169,7 +169,7 @@ public sealed class UnmoderateEventCommandHandlerTests
 
         var result = await handler.Handle(new UnmoderateEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event is already published.");
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -234,7 +234,7 @@ public sealed class UnmoderateEventCommandHandlerTests
             new UnmoderateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _moderationRecordRepository.Received(2).Create(Arg.Any<EventModerationRecord>());
         await Assert.That(createdRecords.Select(record => record.Id).Distinct()).Count().IsEqualTo(1);
         await _eventRepository.Received(2).Update(Arg.Any<Explore.Domain.Event>());
@@ -289,7 +289,7 @@ public sealed class UnmoderateEventCommandHandlerTests
             new UnmoderateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _moderationRecordRepository.Received(1).Create(Arg.Any<EventModerationRecord>());
         await _eventRepository.Received(1).Update(firstAttemptEvent);
         await _cache.Received(1).RemoveAsync($"event:detail:{firstAttemptEvent.Id}", Arg.Any<CancellationToken>());
@@ -340,7 +340,7 @@ public sealed class UnmoderateEventCommandHandlerTests
             new UnmoderateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_unmoderation_invalid_status");
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());

@@ -116,20 +116,20 @@ public class CreateStorageUploadSessionCommandHandler
         long expectedSizeBytes)
     {
         var idempotentReplay = IsIdempotentReplay(response);
-        var outcome = response.Success
+        var outcome = response.IsSuccess
             ? (idempotentReplay ? "idempotent" : "succeeded")
             : "failed";
 
         _metrics.RecordStorageUploadSession(provider, "create", outcome, response.FailureCode);
 
-        if (response.Success && !idempotentReplay)
+        if (response.IsSuccess && !idempotentReplay)
         {
             _metrics.RecordStorageQuotaReservation(provider, "reserve", "succeeded");
             _metrics.RecordStorageQuotaBytes(expectedSizeBytes, provider, "reserve", "succeeded");
             return;
         }
 
-        if (!response.Success && response.FailureCode == FailureCodes.QuotaExceeded)
+        if (!response.IsSuccess && response.FailureCode == FailureCodes.QuotaExceeded)
         {
             _metrics.RecordStorageQuotaReservation(provider, "reserve", "failed", response.FailureCode);
         }
@@ -175,12 +175,17 @@ public class CreateStorageUploadSessionCommandHandler
 
         if (!CanReserve(usageBeforeReserve, dto.ExpectedSizeBytes, policy.TenantQuotaBytes))
         {
-            return Failure(
+            var error = $"Tenant storage quota is {policy.TenantQuotaBytes} bytes; used={usageBeforeReserve.UsedBytes}, reserved={usageBeforeReserve.ReservedBytes}, attempted={dto.ExpectedSizeBytes}.";
+            return BaseCommandResponse.Quota<StorageUploadSessionDto>(
                 "Upload would exceed the tenant storage quota.",
-                [
-                    $"Tenant storage quota is {policy.TenantQuotaBytes} bytes; used={usageBeforeReserve.UsedBytes}, reserved={usageBeforeReserve.ReservedBytes}, attempted={dto.ExpectedSizeBytes}."
-                ],
-                FailureCodes.QuotaExceeded);
+                new QuotaExceededDetails(
+                    GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+                    ToQuotaDetailValue(policy.TenantQuotaBytes),
+                    ToQuotaDetailValue(usageBeforeReserve.UsedBytes + usageBeforeReserve.ReservedBytes),
+                    ToQuotaDetailValue(usageBeforeReserve.UsedBytes + usageBeforeReserve.ReservedBytes + dto.ExpectedSizeBytes),
+                    "tenant",
+                    tenantId),
+                error);
         }
 
         usageCounter.Reserve(dto.ExpectedSizeBytes, policy.TenantQuotaBytes);
@@ -251,33 +256,31 @@ public class CreateStorageUploadSessionCommandHandler
     private static bool CanReserve((long UsedBytes, long ReservedBytes) usage, long attemptedBytes, long quotaBytes)
         => usage.UsedBytes + usage.ReservedBytes + attemptedBytes <= quotaBytes;
 
+    private static int ToQuotaDetailValue(long value) =>
+        value >= int.MaxValue ? int.MaxValue : checked((int)value);
+
     private static BaseCommandResponse<StorageUploadSessionDto> Success(
         StorageUploadSession session,
         ResolvedStoragePolicy policy,
         StorageUsageCounter? usageCounter,
         string message,
-        (long UsedBytes, long ReservedBytes)? usageSnapshot = null)
-        => new()
-        {
-            Success = true,
-            Id = Map(session, policy, usageCounter, usageSnapshot),
-            Message = message
-        };
+        (long UsedBytes, long ReservedBytes)? usageSnapshot = null) =>
+        BaseCommandResponse.Success(
+            Map(session, policy, usageCounter, usageSnapshot),
+            message);
 
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation<StorageUploadSessionDto>(errors, message)
+            : BaseCommandResponse.Failure<StorageUploadSessionDto>(failureCode, message, errors);
 
     private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
-        Failure("Upload session reservation failed.", []);
+        BaseCommandResponse.Validation<StorageUploadSessionDto>(
+            ["Upload session reservation failed."],
+            "Upload session reservation failed.");
 
     internal static StorageUploadSessionDto Map(
         StorageUploadSession session,

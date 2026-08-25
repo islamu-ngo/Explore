@@ -178,7 +178,7 @@ public sealed class PaidEventPolicyHandlersTests
             new ReviseInstancePaidEventPolicyCommand(CreateRevisionDto()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.SerializableBoundaries).IsEqualTo(1);
         await _policies.Received(1).AddAsync(Arg.Is<PaidEventPolicyVersion>(policy => policy.VersionNumber == 2 && policy.IsActive), Arg.Any<CancellationToken>());
         await _policies.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

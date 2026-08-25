@@ -24,27 +24,20 @@ public class ArchiveNotificationCommandHandler : IRequestHandler<ArchiveNotifica
 
     public async Task<BaseCommandResponse<Guid>> Handle(ArchiveNotificationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var userId = _currentUserService.UserId;
         if (userId == null)
         {
-            response.Success = false;
-            response.Message = "User not authenticated.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["User not authenticated."], "User not authenticated.");
         }
 
         var result = await _notificationRepository.ArchiveNotification(request.Id, userId.Value, request.Archive);
         if (!result)
         {
-            response.Success = false;
-            response.Message = "Notification not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Notification not found."], "Notification not found.");
         }
 
-        response.Success = true;
-        response.Id = request.Id;
-        response.Message = request.Archive ? "Notification archived." : "Notification unarchived.";
-        return response;
+        return BaseCommandResponse.Success(
+            request.Id,
+            request.Archive ? "Notification archived." : "Notification unarchived.");
     }
 }

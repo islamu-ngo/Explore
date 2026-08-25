@@ -57,7 +57,7 @@ public sealed class PromotionManagementCommandHandlerTests
             Arg.Any<CancellationToken>());
         await _digests.Received(1).ComputeActiveAsync(_tenantId, scenario.Event.Id, "LAUNCH-ONE", Arg.Any<CancellationToken>());
         await _promotions.DidNotReceive().AddPublishedCodeAsync(Arg.Any<PromotionCode>(), Arg.Any<PromotionCodeDigest>(), Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.IssuedCode).IsEqualTo("LAUNCH-ONE");
         await Assert.That(response.Promotion!.PromotionCodeDisplayLabel).IsNull();
         await Assert.That(_unitOfWork.SerializableCount).IsEqualTo(1);
@@ -83,7 +83,7 @@ public sealed class PromotionManagementCommandHandlerTests
             Arg.Is<PromotionCode>(code => code.DisplayLabel == "****R-SECRET"),
             Arg.Is<PromotionCodeDigest>(digest => digest.KeyVersion == 9 && digest.Value == "digest:SUPER-SECRET"),
             Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         string json = JsonSerializer.Serialize(response);
         await Assert.That(json).DoesNotContain(nameof(PromotionCodeIssuedCommandResponseDto.IssuedCode));
         await Assert.That(json).DoesNotContain("SUPER-SECRET");
@@ -115,7 +115,7 @@ public sealed class PromotionManagementCommandHandlerTests
             Arg.Is<PromotionCodeDigest>(digest => digest.Value == "digest:ROTATE-123456789"),
             UtcNow,
             Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.IssuedCode).IsEqualTo("ROTATE-123456789");
         await Assert.That(response.Promotion!.PromotionCodeDisplayLabel).IsEqualTo("****23456789");
     }
@@ -145,14 +145,14 @@ public sealed class PromotionManagementCommandHandlerTests
         await _promotions.Received(1).AddDefinitionAsync(
             Arg.Is<PromotionDefinition>(definition => definition.DefinitionGroupId == scenario.Definition.DefinitionGroupId && definition.VersionNumber == 2),
             Arg.Any<CancellationToken>());
-        await Assert.That(revisionResponse.Success).IsTrue();
+        await Assert.That(revisionResponse.IsSuccess).IsTrue();
         await Assert.That(revisionResponse.Promotion!.StatusId).IsEqualTo((int)PromotionDefinitionStatusEnum.Draft);
         await Assert.That(_unitOfWork.SerializableCount).IsEqualTo(1);
 
         PromotionManagementCommandResponseDto revokeResponse = await new RevokePromotionCommandHandler(_events, _promotions, _tenant, _time, _unitOfWork)
             .Handle(new RevokePromotionCommand(scenario.Event.Id, scenario.Definition.Id), CancellationToken.None);
 
-        await Assert.That(revokeResponse.Success).IsTrue();
+        await Assert.That(revokeResponse.IsSuccess).IsTrue();
         await Assert.That(revokeResponse.Promotion!.StatusId).IsEqualTo((int)PromotionDefinitionStatusEnum.Revoked);
         await Assert.That(scenario.Definition.RevokedAtUtc).IsEqualTo(UtcNow);
     }

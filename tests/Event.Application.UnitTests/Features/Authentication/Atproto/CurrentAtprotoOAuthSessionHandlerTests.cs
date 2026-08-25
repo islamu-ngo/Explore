@@ -25,7 +25,7 @@ public sealed class CurrentAtprotoOAuthSessionHandlerTests
             Identity.Did,
             new Uri("https://pds.example/"),
             "oauth-active",
-            [1, 2, 3]);
+            new byte[] { 1, 2, 3 });
         gateway.GetCurrentAsync(Identity, Arg.Any<CancellationToken>()).Returns(expected);
 
         var result = await new GetCurrentAtprotoOAuthSessionQueryHandler(gateway)

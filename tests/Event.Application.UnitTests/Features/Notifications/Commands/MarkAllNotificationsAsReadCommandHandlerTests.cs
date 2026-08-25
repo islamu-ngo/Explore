@@ -39,7 +39,7 @@ public class MarkAllNotificationsAsReadCommandHandlerTests
         var result = await _handler.Handle(new MarkAllNotificationsAsReadCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("10");
     }
 
@@ -55,7 +55,7 @@ public class MarkAllNotificationsAsReadCommandHandlerTests
         var result = await _handler.Handle(new MarkAllNotificationsAsReadCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("0");
     }
 
@@ -69,7 +69,7 @@ public class MarkAllNotificationsAsReadCommandHandlerTests
         var result = await _handler.Handle(new MarkAllNotificationsAsReadCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("User not authenticated.");
     }
 }

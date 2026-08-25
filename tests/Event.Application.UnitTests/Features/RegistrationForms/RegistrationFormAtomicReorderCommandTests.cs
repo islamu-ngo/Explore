@@ -45,7 +45,7 @@ public sealed class RegistrationFormAtomicReorderCommandTests
                 [sections[1].Id, sections[0].Id], fixture.Version.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo(fixture.Version.Id);
         await Assert.That(sections[1].Ordinal).IsEqualTo(1);
         Guid[] expectedOrder = [sections[1].Id, sections[0].Id];
@@ -66,7 +66,7 @@ public sealed class RegistrationFormAtomicReorderCommandTests
                 [fieldId, fieldId], fixture.Version.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("registration_form_reorder_invalid");
         await fixture.Repository.DidNotReceive().ReorderFieldsAsync(
             Arg.Any<RegistrationFormVersion>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
@@ -85,7 +85,7 @@ public sealed class RegistrationFormAtomicReorderCommandTests
                 overBoundedOrder, fixture.Version.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("registration_form_reorder_invalid");
         await fixture.Repository.DidNotReceive().GetVersionForUpdateAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());

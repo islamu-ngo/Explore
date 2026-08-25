@@ -38,17 +38,14 @@ public class CreateEventSessionLanguageCommandHandler : IRequestHandler<CreateEv
 
     public async Task<BaseCommandResponse<int>> Handle(CreateEventSessionLanguageCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<int>();
-
         var validator = new CreateEventSessionLanguageDtoValidator(_eventSessionRepository, _languageRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionLanguageDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event Session Language creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<int>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event Session Language creation failed.");
         }
 
         var eventSessionLanguage = _mapper.Map<EventSessionLanguage>(request.EventSessionLanguageDto);
@@ -58,10 +55,8 @@ public class CreateEventSessionLanguageCommandHandler : IRequestHandler<CreateEv
 
         eventSessionLanguage = await _repository.Create(eventSessionLanguage);
 
-        response.Success = true;
-        response.Id = eventSessionLanguage.Id;
-        response.Message = "Event Session Language created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            eventSessionLanguage.Id,
+            "Event Session Language created successfully.");
     }
 }

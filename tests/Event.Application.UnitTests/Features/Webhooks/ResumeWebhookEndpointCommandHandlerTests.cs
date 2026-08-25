@@ -46,7 +46,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.recovered"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).TryResumeAsync(
             endpoint.TenantId,
             endpoint.Id,
@@ -84,7 +84,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.recovered"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_not_paused");
         await repository.DidNotReceiveWithAnyArgs().TryResumeAsync(
             default,
@@ -124,7 +124,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.recovered"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_resume_conflict");
     }
 

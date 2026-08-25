@@ -66,7 +66,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             EventAgendaItemDto = new UpdateEventAgendaItemDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event agenda item update failed.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -118,7 +118,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(agendaItem.Title).IsEqualTo("Updated Keynote");
         await Assert.That(agendaItem.Description).IsEqualTo(originalDescription);
         await Assert.That(agendaItem.SortOrder).IsEqualTo(originalSortOrder);
@@ -149,7 +149,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(agendaItem.Description).IsNull();
         await _eventAgendaItemRepository.Received(1).Update(agendaItem);
     }
@@ -167,7 +167,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Description must include an explicit field operation.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
     }
@@ -208,7 +208,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(agendaItem.StartTime).IsEqualTo(startUtc);
         await Assert.That(agendaItem.EndTime).IsEqualTo(endUtc);
         await Assert.That(agendaItem.EventDayId).IsEqualTo(eventDayId);
@@ -246,7 +246,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Room must belong to the selected location.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -275,7 +275,7 @@ public class UpdateEventAgendaItemCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event does not belong to the same tenant as the agenda item.");
         await _eventAgendaItemRepository.DidNotReceive().Update(Arg.Any<EventAgendaItem>());
     }

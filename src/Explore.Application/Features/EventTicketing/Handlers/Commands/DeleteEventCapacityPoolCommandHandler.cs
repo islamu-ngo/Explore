@@ -65,7 +65,7 @@ public sealed class DeleteEventCapacityPoolCommandHandler(
                 return Ok(pool.Id, "Capacity pool deleted.");
             }, cancellationToken);
 
-            if (!response.Success)
+            if (!response.IsSuccess)
             {
                 return response;
             }
@@ -84,28 +84,11 @@ public sealed class DeleteEventCapacityPoolCommandHandler(
         && eventTarget.ParticipationConfiguration?.ParticipationHandlingModeId
             == (int)ParticipationHandlingModeEnum.PlatformManaged;
 
-    private static BaseCommandResponse<Guid> Ok(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Ok(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Missing(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_ticketing_not_found",
-        Message = "Ticketing configuration was not found.",
-        Errors = ["Ticketing configuration was not found."]
-    };
+    private static BaseCommandResponse<Guid> Missing(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "event_ticketing_not_found", "Ticketing configuration was not found.", ["Ticketing configuration was not found."], id);
 
-    private static BaseCommandResponse<Guid> Bad(Guid id, string error) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_ticketing_validation_failed",
-        Message = "Ticketing configuration is invalid.",
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> Bad(Guid id, string error) => BaseCommandResponse.Failure<Guid>(
+        "event_ticketing_validation_failed", "Ticketing configuration is invalid.", [error], id);
 }

@@ -51,43 +51,33 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.DefinitionId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition update failed.";
-            response.Errors = ["DefinitionId and ExpectedConcurrencyStamp are required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["DefinitionId and ExpectedConcurrencyStamp are required."],
+                "Event session custom property definition update failed.");
         }
 
         var validator = new UpdateEventSessionCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session custom property definition update failed.");
         }
 
         var definition = await _sessionCustomPropertyRepository.GetTrackedDefinitionWithOptions(request.DefinitionId, cancellationToken);
         if (definition == null)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session custom property definition not found.");
         }
 
         request = request with { TenantId = definition.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session custom property definition not found.");
         }
 
         if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -133,24 +123,22 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             AllowedUrlSchemes = definition.AllowedUrlSchemes,
             Options = definition.Options.Select(ToCreateOptionDto).ToList()
         };
-        ApplyPatch(candidate, request.DefinitionDto);
+        candidate = ApplyPatch(candidate, request.DefinitionDto);
 
         var candidateValidation = await new CreateEventSessionCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition update failed.";
-            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                candidateValidation.Errors.Select(error => error.ErrorMessage),
+                "Event session custom property definition update failed.");
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(candidate.Namespace, candidate.Key);
         if (!governance.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition update failed.";
-            response.Errors = governance.Errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                governance.Errors,
+                "Event session custom property definition update failed.");
         }
 
         if (await _sessionCustomPropertyRepository.ExistsDefinitionKey(
@@ -159,10 +147,9 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
                 governance.NormalizedKey,
                 definition.Id))
         {
-            response.Success = false;
-            response.Message = "Event session custom property definition update failed.";
-            response.Errors = ["A custom property definition with the same Namespace + Key already exists for this session."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A custom property definition with the same Namespace + Key already exists for this session."],
+                "Event session custom property definition update failed.");
         }
 
         if (request.DefinitionDto.Options is not null)
@@ -173,7 +160,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
                 cancellationToken);
             if (candidate.Options.Count > maxOptions)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event session custom property definition update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -182,7 +169,6 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
                         candidate.Options.Count,
                         "event_session_custom_property_options",
                         definition.TenantId));
-                return response;
             }
         }
 
@@ -210,13 +196,9 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             },
             cancellationToken);
 
-        response.Success = true;
-        response.Id = definition.Id;
-        response.Message = "Event session custom property definition updated successfully.";
-
         await InvalidateCaches(definition.EventSessionId, definition.Id, cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(definition.Id, "Event session custom property definition updated successfully.");
     }
 
     private List<EventSessionCustomPropertyOption> CreateOptionEntities(
@@ -254,7 +236,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         SortOrder = option.SortOrder
     };
 
-    private static void ApplyPatch(
+    private static CreateEventSessionCustomPropertyDefinitionDto ApplyPatch(
         CreateEventSessionCustomPropertyDefinitionDto candidate,
         UpdateEventSessionCustomPropertyDefinitionDto patch)
     {
@@ -296,7 +278,9 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             if (validation.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = validation.AllowedUrlSchemes.Value;
         }
 
-        if (patch.Options is not null) candidate.Options = patch.Options.Items!;
+        return patch.Options is null
+            ? candidate
+            : candidate with { Options = patch.Options.Items! };
     }
 
     private async Task InvalidateCaches(Guid eventSessionId, Guid definitionId, CancellationToken cancellationToken)

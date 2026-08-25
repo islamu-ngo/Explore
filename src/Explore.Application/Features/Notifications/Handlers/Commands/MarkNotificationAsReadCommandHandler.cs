@@ -24,27 +24,18 @@ public class MarkNotificationAsReadCommandHandler : IRequestHandler<MarkNotifica
 
     public async Task<BaseCommandResponse<Guid>> Handle(MarkNotificationAsReadCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var userId = _currentUserService.UserId;
         if (userId == null)
         {
-            response.Success = false;
-            response.Message = "User not authenticated.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["User not authenticated."], "User not authenticated.");
         }
 
         var result = await _notificationRepository.MarkAsRead(request.Id, userId.Value);
         if (!result)
         {
-            response.Success = false;
-            response.Message = "Notification not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Notification not found."], "Notification not found.");
         }
 
-        response.Success = true;
-        response.Id = request.Id;
-        response.Message = "Notification marked as read.";
-        return response;
+        return BaseCommandResponse.Success(request.Id, "Notification marked as read.");
     }
 }

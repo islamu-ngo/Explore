@@ -4,6 +4,7 @@
 using System.Reflection;
 using Explore.Application.Services;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using DomainEvent = Explore.Domain.Event;
 
@@ -203,9 +204,9 @@ public sealed class EventTicketPriceSummaryMapperTests
                     "General admission",
                     currencyCode,
                     mode,
-                    fixedPriceMinor,
-                    minimumPriceMinor,
-                    suggestedPriceMinor,
+                    fixedPriceMinor.HasValue ? Money.Create(fixedPriceMinor.Value, currencyCode) : null,
+                    minimumPriceMinor.HasValue ? Money.Create(minimumPriceMinor.Value, currencyCode) : null,
+                    suggestedPriceMinor.HasValue ? Money.Create(suggestedPriceMinor.Value, currencyCode) : null,
                     ParticipantDataCollectionModeEnum.None,
                     null,
                     null,

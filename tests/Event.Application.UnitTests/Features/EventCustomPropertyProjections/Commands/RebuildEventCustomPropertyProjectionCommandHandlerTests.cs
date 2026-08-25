@@ -51,7 +51,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.LockAcquired).IsTrue();
         await Assert.That(result.Id.RowsProcessed).IsEqualTo(150);
@@ -74,7 +74,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.LockAcquired).IsFalse();
         await Assert.That(result.Message!).Contains("skipped");
@@ -90,7 +90,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Count).IsGreaterThan(0);
     }
@@ -105,7 +105,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
     }
 
@@ -127,7 +127,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
@@ -163,7 +163,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.QuotaExceeded).IsNull();
         await _projectionUpdater.Received(1)
             .RebuildForTenantAsync(tenantId, 24, Arg.Any<CancellationToken>());
@@ -190,7 +190,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _projectionUpdater.Received(1)
             .RebuildForTenantAsync(tenantId, 25, Arg.Any<CancellationToken>());
     }

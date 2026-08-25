@@ -40,16 +40,13 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
 
     public async Task<BaseCommandResponse<Guid>> Handle(AddOrganizationMemberCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.AddOrganizationMemberDto;
 
         // 1. Check if organization exists
         var organization = await _organizationRepository.GetById(dto.OrganizationId);
         if (organization == null)
         {
-            response.Success = false;
-            response.Message = "Organization not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Organization not found"], "Organization not found");
         }
 
         var participation = request.TenantId == Guid.Empty
@@ -60,9 +57,9 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
                 cancellationToken);
         if (participation is null)
         {
-            response.Success = false;
-            response.Message = "Organization does not belong to the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Organization does not belong to the current tenant."],
+                "Organization does not belong to the current tenant.");
         }
 
         // 2. Check permissions (Requester must be an Admin member)
@@ -74,33 +71,33 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
             // Only OrgAdmin role can invite members
             if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to invite members.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to invite members."],
+                    "You do not have permission to invite members.");
             }
         }
         else
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         // 3. Find user by email
         var userToAdd = await _userRepository.GetUserByEmail(dto.Email);
         if (userToAdd == null)
         {
-            response.Success = false;
-            response.Message = "User with this email not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["User with this email not found."],
+                "User with this email not found.");
         }
 
         // 4. Check if user is already a member
         if (members.Any(m => m.UserId == userToAdd.Id))
         {
-            response.Success = false;
-            response.Message = "User is already a member of this organization.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["User is already a member of this organization."],
+                "User is already a member of this organization.");
         }
 
         // 5. Create Member
@@ -118,10 +115,6 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
 
         organizationMember = await _organizationMemberRepository.Create(organizationMember);
 
-        response.Success = true;
-        response.Message = "Member added successfully";
-        response.Id = organizationMember.Id;
-
-        return response;
+        return BaseCommandResponse.Success(organizationMember.Id, "Member added successfully");
     }
 }

@@ -39,8 +39,6 @@ public class BootstrapKeycloakRealmCommandHandler
         BootstrapKeycloakRealmCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new KeycloakBootstrapRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.BootstrapRequest, cancellationToken);
         if (!validationResult.IsValid)
@@ -51,11 +49,10 @@ public class BootstrapKeycloakRealmCommandHandler
                 "validation_failed",
                 "keycloak_bootstrap_validation_failed");
 
-            response.Success = false;
-            response.Message = "Invalid Keycloak bootstrap request.";
-            response.FailureCode = "keycloak_bootstrap_validation_failed";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "keycloak_bootstrap_validation_failed",
+                "Invalid Keycloak bootstrap request.",
+                validationResult.Errors.Select(x => x.ErrorMessage));
         }
 
         LogKeycloakBootstrapAudit(
@@ -83,13 +80,13 @@ public class BootstrapKeycloakRealmCommandHandler
                 request.BootstrapRequest.Mode,
                 bootstrapResult.FailureCode);
 
-            response.Success = false;
-            response.Message = string.IsNullOrWhiteSpace(bootstrapResult.Message)
+            string message = string.IsNullOrWhiteSpace(bootstrapResult.Message)
                 ? "Keycloak bootstrap failed."
                 : bootstrapResult.Message;
-            response.FailureCode = bootstrapResult.FailureCode ?? "keycloak_bootstrap_failed";
-            response.Errors = [response.Message];
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                bootstrapResult.FailureCode ?? "keycloak_bootstrap_failed",
+                message,
+                [message]);
         }
 
         var runtimeConfiguration = new AuthProviderConfigurationDto
@@ -117,11 +114,11 @@ public class BootstrapKeycloakRealmCommandHandler
             request.BootstrapRequest.ApiClientId,
             request.BootstrapRequest.Mode);
 
-        response.Success = true;
-        response.Message = string.IsNullOrWhiteSpace(bootstrapResult.Message)
-            ? "Keycloak bootstrap completed successfully."
-            : bootstrapResult.Message;
-        return response;
+        return BaseCommandResponse.Success(
+            Guid.Empty,
+            string.IsNullOrWhiteSpace(bootstrapResult.Message)
+                ? "Keycloak bootstrap completed successfully."
+                : bootstrapResult.Message);
     }
 
     private static string BuildRealmAuthority(string keycloakBaseUrl, string realm)

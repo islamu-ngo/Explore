@@ -4,6 +4,7 @@
 using Explore.Application.Responses;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using MediatR;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.Features.Promotions.Requests.Commands;
 
@@ -35,17 +36,49 @@ public sealed record ApplyAuthenticatedPromotionCodeToRegistrationOrderCommand(
 public sealed record RemoveAuthenticatedPromotionFromRegistrationOrderCommand(Guid EventId, Guid OrderId)
     : IRequest<PromotionRedemptionResponseDto>, IAuthenticatedRegistrationOrderAccessCommand;
 
-public sealed class PromotionRedemptionResponseDto : BaseCommandResponse<Guid>
+public sealed record PromotionRedemptionResponseDto : BaseCommandResponse<Guid>
 {
-    public string? AppliedPromotionDisplayLabel { get; init; }
+    private PromotionRedemptionResponseDto(
+        BaseCommandResponse<Guid> state,
+        string? appliedPromotionDisplayLabel,
+        long promotionDiscountTotalMinor,
+        long totalDueMinor,
+        long platformFeeTotalMinor,
+        long platformContributionTotalMinor) : base(state, true)
+    {
+        AppliedPromotionDisplayLabel = appliedPromotionDisplayLabel;
+        PromotionDiscountTotalMinor = promotionDiscountTotalMinor;
+        TotalDueMinor = totalDueMinor;
+        PlatformFeeTotalMinor = platformFeeTotalMinor;
+        PlatformContributionTotalMinor = platformContributionTotalMinor;
+    }
 
-    public long PromotionDiscountTotalMinor { get; init; }
+    [JsonConstructor]
+    internal PromotionRedemptionResponseDto(
+        Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded,
+        string? appliedPromotionDisplayLabel, long promotionDiscountTotalMinor, long totalDueMinor, long platformFeeTotalMinor, long platformContributionTotalMinor)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), appliedPromotionDisplayLabel, promotionDiscountTotalMinor, totalDueMinor, platformFeeTotalMinor, platformContributionTotalMinor)
+    {
+    }
 
-    public long TotalDueMinor { get; init; }
+    public string? AppliedPromotionDisplayLabel { get; }
+    public long PromotionDiscountTotalMinor { get; }
+    public long TotalDueMinor { get; }
+    public long PlatformFeeTotalMinor { get; }
+    public long PlatformContributionTotalMinor { get; }
 
-    public long PlatformFeeTotalMinor { get; init; }
+    public static PromotionRedemptionResponseDto Success(
+        Guid id,
+        string? message,
+        string? appliedPromotionDisplayLabel,
+        long promotionDiscountTotalMinor,
+        long totalDueMinor,
+        long platformFeeTotalMinor,
+        long platformContributionTotalMinor) =>
+        new(BaseCommandResponse.Success(id, message), appliedPromotionDisplayLabel, promotionDiscountTotalMinor, totalDueMinor, platformFeeTotalMinor, platformContributionTotalMinor);
 
-    public long PlatformContributionTotalMinor { get; init; }
+    public static PromotionRedemptionResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null, 0, 0, 0, 0);
 }
 
 public static class PromotionRedemptionFailureCodes

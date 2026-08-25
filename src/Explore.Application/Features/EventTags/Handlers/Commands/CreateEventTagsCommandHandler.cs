@@ -38,17 +38,14 @@ public class CreateEventTagsCommandHandler : IRequestHandler<CreateEventTagsComm
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventTagsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventTagsDtoValidator(_eventRepository, _tagRepository, _eventTagsRepository);
         var validationResult = await validator.ValidateAsync(request.EventTagsDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event Tag assignment failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event Tag assignment failed.");
         }
 
         var eventTags = _mapper.Map<Domain.EventTags>(request.EventTagsDto);
@@ -58,10 +55,6 @@ public class CreateEventTagsCommandHandler : IRequestHandler<CreateEventTagsComm
 
         eventTags = await _eventTagsRepository.Create(eventTags);
 
-        response.Success = true;
-        response.Id = eventTags.Id;
-        response.Message = "Event Tag assigned successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventTags.Id, "Event Tag assigned successfully.");
     }
 }

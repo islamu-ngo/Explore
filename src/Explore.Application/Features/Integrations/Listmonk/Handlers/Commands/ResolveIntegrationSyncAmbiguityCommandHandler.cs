@@ -26,18 +26,18 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandler(
         ResolveIntegrationSyncAmbiguityCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new ResolveIntegrationSyncAmbiguityDtoValidator();
         var validation = await validator.ValidateAsync(request.Resolution, cancellationToken);
         if (!validation.IsValid || request.OutboxId == Guid.Empty)
         {
-            response.Message = "Integration sync recovery validation failed.";
-            response.Errors = validation.Errors.Select(error => error.ErrorMessage).ToList();
+            var errors = validation.Errors.Select(error => error.ErrorMessage).ToList();
             if (request.OutboxId == Guid.Empty)
             {
-                response.Errors.Add("OutboxId is required.");
+                errors.Add("OutboxId is required.");
             }
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                errors,
+                "Integration sync recovery validation failed.");
         }
 
         var authorization = await SettingCommandHelper.CheckAuthorizationAsync(
@@ -52,8 +52,10 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandler(
             cancellationToken);
         if (!authorization.Authorized || actorId is null)
         {
-            response.Message = authorization.Error ?? "Tenant administrator authorization is required.";
-            return response;
+            var message = authorization.Error ?? "Tenant administrator authorization is required.";
+            return !authorization.Authorized
+                ? BaseCommandResponse.Authorization<Guid>(message)
+                : BaseCommandResponse.Authentication<Guid>(message);
         }
 
         IntegrationSyncOutbox? resolved = await repository.ResolveAmbiguousAsync(
@@ -67,13 +69,10 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandler(
             cancellationToken);
         if (resolved is null)
         {
-            response.Message = "The ambiguous integration sync row was not found or was already resolved.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>(
+                "The ambiguous integration sync row was not found or was already resolved.");
         }
 
-        response.Success = true;
-        response.Id = resolved.Id;
-        response.Message = "Integration sync ambiguity resolved.";
-        return response;
+        return BaseCommandResponse.Success(resolved.Id, "Integration sync ambiguity resolved.");
     }
 }

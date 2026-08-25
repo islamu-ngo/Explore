@@ -259,7 +259,7 @@ public sealed class RegistrationProviderManagedPublishPreflightServiceTests
         IRegistrationProviderCallbackUriBuilder callbackUris = Substitute.For<IRegistrationProviderCallbackUriBuilder>();
         callbackUris.Build(Arg.Any<string>(), scope.Binding.Id).Returns(new Uri("https://event.example.test/callback"));
         IInlineSecretProtector protector = Substitute.For<IInlineSecretProtector>();
-        protector.Protect("whsec_test").Returns(new InlineProtectedSecret([1, 2, 3], 1));
+        protector.Protect("whsec_test").Returns(new InlineProtectedSecret(new byte[] { 1, 2, 3 }, 1));
         secretRepository = Substitute.For<ISecretBindingRepository>();
         secretRepository.Create(Arg.Any<SecretBinding>()).Returns(call =>
         {

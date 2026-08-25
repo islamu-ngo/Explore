@@ -192,8 +192,7 @@ public sealed class SubmitEventReportCommandHandler(
         if (options.MaxReportsPerUserPerHour > 0 && reporterCount >= options.MaxReportsPerUserPerHour)
         {
             metrics.RecordEventReportSubmission(tenantId.ToString(), "failed", FailureCodes.QuotaExceeded);
-            var response = new BaseCommandResponse<Guid>();
-            response.SetQuotaExceeded(
+            BaseCommandResponse<Guid> response = BaseCommandResponse.Quota<Guid>(
                 "Reporter event-report quota exceeded.",
                 new QuotaExceededDetails(
                     "reporting.max_reports_per_user_per_hour",
@@ -218,8 +217,7 @@ public sealed class SubmitEventReportCommandHandler(
         if (options.MaxReportsPerEventPerUserPerDay > 0 && reporterEventCount >= options.MaxReportsPerEventPerUserPerDay)
         {
             metrics.RecordEventReportSubmission(tenantId.ToString(), "failed", FailureCodes.QuotaExceeded);
-            var response = new BaseCommandResponse<Guid>();
-            response.SetQuotaExceeded(
+            BaseCommandResponse<Guid> response = BaseCommandResponse.Quota<Guid>(
                 "Event report quota exceeded.",
                 new QuotaExceededDetails(
                     "reporting.max_reports_per_event_per_user_per_day",
@@ -347,12 +345,10 @@ public sealed class SubmitEventReportCommandHandler(
         CancellationToken cancellationToken) =>
         await IsFencedAsync(userId, cancellationToken) ? FencedFailure() : response;
 
-    private static BaseCommandResponse<Guid> FencedFailure() => new()
-    {
-        Success = false,
-        Message = "Event report submission failed.",
-        FailureCode = PrivacyErasureFencedFailureCode
-    };
+    private static BaseCommandResponse<Guid> FencedFailure() =>
+        BaseCommandResponse.Failure<Guid>(
+            PrivacyErasureFencedFailureCode,
+            "Event report submission failed.");
 
     private static EventReportSubmissionOptions NormalizeOptions(EventReportSubmissionOptions options)
     {
@@ -386,12 +382,8 @@ public sealed class SubmitEventReportCommandHandler(
         };
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private BaseCommandResponse<Guid> Failure(
         Guid? tenantId,
@@ -403,13 +395,8 @@ public sealed class SubmitEventReportCommandHandler(
     {
         metrics.RecordEventReportSubmission(tenantId?.ToString(), "failed", failureCategory);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        return failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
     }
 }

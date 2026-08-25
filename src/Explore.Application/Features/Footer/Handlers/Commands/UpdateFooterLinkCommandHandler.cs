@@ -53,11 +53,6 @@ public sealed class UpdateFooterLinkCommandHandler(
 
         await footerLinkRepository.Update(link);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = link.Id,
-            Message = "Footer link updated successfully.",
-        };
+        return BaseCommandResponse.Success(link.Id, "Footer link updated successfully.");
     }
 }

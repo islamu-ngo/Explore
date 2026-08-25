@@ -4,6 +4,7 @@
 using System.Reflection;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using DomainEvent = Explore.Domain.Event;
 
@@ -116,11 +117,12 @@ public sealed class EventFilterTests
             "General admission",
             "USD",
             mode,
-            mode == TicketPricingModeEnum.Fixed ? amountMinor : null,
+            mode == TicketPricingModeEnum.Fixed && amountMinor.HasValue ? Money.Create(amountMinor.Value, "USD") : null,
             mode is TicketPricingModeEnum.Donation or TicketPricingModeEnum.PayWhatYouCan or TicketPricingModeEnum.SlidingScale
-                ? amountMinor
+                && amountMinor.HasValue
+                ? Money.Create(amountMinor.Value, "USD")
                 : null,
-            mode == TicketPricingModeEnum.SlidingScale ? amountMinor.GetValueOrDefault() + 100 : null,
+            mode == TicketPricingModeEnum.SlidingScale ? Money.Create(amountMinor.GetValueOrDefault() + 100, "USD") : null,
             ParticipantDataCollectionModeEnum.None,
             null,
             null,

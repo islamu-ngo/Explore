@@ -29,25 +29,22 @@ public class CreateLocationRoomCommandHandler : IRequestHandler<CreateLocationRo
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateLocationRoomCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateLocationRoomDtoValidator(_locationRepository);
         var validationResult = await validator.ValidateAsync(request.LocationRoomDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Room creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Room creation failed.");
         }
 
         var parentLocation = await _locationRepository.GetById(request.LocationRoomDto.LocationId);
         if (parentLocation == null)
         {
-            response.Success = false;
-            response.Message = "Location not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Location not found in the current tenant."],
+                "Location not found in the current tenant.");
         }
 
         var room = _mapper.Map<LocationRoom>(request.LocationRoomDto);
@@ -55,10 +52,6 @@ public class CreateLocationRoomCommandHandler : IRequestHandler<CreateLocationRo
 
         room = await _locationRoomRepository.Create(room);
 
-        response.Success = true;
-        response.Id = room.Id;
-        response.Message = "Room created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(room.Id, "Room created successfully.");
     }
 }

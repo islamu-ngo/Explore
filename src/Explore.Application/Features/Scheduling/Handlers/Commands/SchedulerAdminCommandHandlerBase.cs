@@ -39,20 +39,14 @@ public abstract class SchedulerAdminCommandHandlerBase(
 
         return result.Outcome switch
         {
-            SchedulerOperationOutcome.Succeeded => new BaseCommandResponse<string>
-            {
-                Id = operationId,
-                Success = true,
-                Message = successMessage
-            },
+            SchedulerOperationOutcome.Succeeded => BaseCommandResponse.Success(operationId, successMessage),
             SchedulerOperationOutcome.SchedulerUnavailable => Failure(
                 operationId,
                 FailureCodes.SchedulerUnavailable,
                 "Background scheduling is disabled on this host."),
-            SchedulerOperationOutcome.JobNotFound => Failure(
-                operationId,
-                FailureCodes.NotFound,
-                "The requested scheduled job does not exist."),
+            SchedulerOperationOutcome.JobNotFound => BaseCommandResponse.NotFound(
+                "The requested scheduled job does not exist.",
+                operationId),
             SchedulerOperationOutcome.ReadOnly => Failure(
                 operationId,
                 FailureCodes.SchedulerReadOnly,
@@ -80,12 +74,6 @@ public abstract class SchedulerAdminCommandHandlerBase(
     protected static BaseCommandResponse<string> ConfirmationMismatch(string operationId, string message) =>
         Failure(operationId, FailureCodes.SchedulerConfirmationRequired, message);
 
-    protected static BaseCommandResponse<string> Failure(string operationId, string failureCode, string message) => new()
-    {
-        Id = operationId,
-        Success = false,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = [message]
-    };
+    protected static BaseCommandResponse<string> Failure(string operationId, string failureCode, string message) =>
+        BaseCommandResponse.Failure<string>(failureCode, message, [message], operationId);
 }

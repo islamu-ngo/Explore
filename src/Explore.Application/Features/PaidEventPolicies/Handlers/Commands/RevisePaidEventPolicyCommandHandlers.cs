@@ -114,15 +114,10 @@ public sealed class ReviseInstancePaidEventPolicyCommandHandler(IPaidEventPolicy
             limit.RollingOrganizerWindowDays,
             limit.HighValueReviewThresholdMinor));
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(string code, string message) => new()
-    {
-        Success = false,
-        FailureCode = code,
-        Message = "Paid-event policy is invalid.",
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, "Paid-event policy is invalid.", [message]);
 }
 
 public sealed class RevisePaidEventPolicyCommandValidator : AbstractValidator<RevisePaidEventPolicyDto>
@@ -164,6 +159,6 @@ public sealed class ReviseTenantPaidEventPolicyCommandHandler(IPaidEventPolicyRe
 {
     public async Task<BaseCommandResponse<Guid>> Handle(ReviseTenantPaidEventPolicyCommand request, CancellationToken cancellationToken) =>
         request.TenantId == Guid.Empty
-            ? new BaseCommandResponse<Guid> { Success = false, FailureCode = "paid_event_policy_validation_failed", Message = "Paid-event policy is invalid.", Errors = ["Tenant is required."] }
+            ? BaseCommandResponse.Failure<Guid>("paid_event_policy_validation_failed", "Paid-event policy is invalid.", ["Tenant is required."])
             : await ReviseInstancePaidEventPolicyCommandHandler.ReviseAsync(request.TenantId, request.Policy, policies, unitOfWork, cancellationToken);
 }

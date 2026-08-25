@@ -55,25 +55,15 @@ public sealed class SetCurrentUserNotificationPreferenceMuteCommandHandler(
             profileId = profile.Id;
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = profileId,
-            Success = true,
-            Message = request.IsMuted
+        return BaseCommandResponse.Success(
+            profileId,
+            request.IsMuted
                 ? "Non-essential notifications muted."
-                : "Non-essential notification mute disabled."
-        };
+                : "Non-essential notification mute disabled.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = message,
-            Errors = [message]
-        };
-    }
+    private static BaseCommandResponse<Guid> Failure(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 
     private static int ScopeRank(int scopeId) => scopeId;
 

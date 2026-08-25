@@ -86,11 +86,6 @@ public sealed class UpdatePlatformMonetizationSettingsCommandHandler(
             return feeRevision.Id;
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = revisionId,
-            Success = true,
-            Message = "Platform monetization settings updated."
-        };
+        return BaseCommandResponse.Success(revisionId, "Platform monetization settings updated.");
     }
 }

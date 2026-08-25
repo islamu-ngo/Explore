@@ -20,7 +20,7 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandlerTests
             new SetEmailDispatchTenantPauseStateCommand { TenantId = Guid.Empty, IsPaused = true },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("TenantId is required.");
         await _repository.DidNotReceiveWithAnyArgs().SetTenantPauseState(default, default, default, default, default, default);
@@ -38,7 +38,7 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("Pause reason must be 500 characters or fewer.");
         await _repository.DidNotReceiveWithAnyArgs().SetTenantPauseState(default, default, default, default, default, default);
@@ -70,7 +70,7 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(controlId);
         await Assert.That(result.Message).IsEqualTo("Email dispatch paused for tenant.");
         await _repository.Received(1).SetTenantPauseState(
@@ -101,7 +101,7 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandlerTests
             new SetEmailDispatchTenantPauseStateCommand { TenantId = tenantId, IsPaused = false },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(controlId);
         await Assert.That(result.Message).IsEqualTo("Email dispatch resumed for tenant.");
         await _repository.Received(1).SetTenantPauseState(

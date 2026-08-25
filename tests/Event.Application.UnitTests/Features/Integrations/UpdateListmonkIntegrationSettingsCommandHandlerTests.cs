@@ -58,7 +58,7 @@ public sealed class UpdateListmonkIntegrationSettingsCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await resolver.Received(1).SetValueAsync(
             GovernanceSettingKeys.Integrations.Listmonk.Enabled,
             "true",

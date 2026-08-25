@@ -100,12 +100,7 @@ public sealed class CreateWebhookConsumerCommandHandler(
                     EffectiveScopeId: ownership.OwnerId),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Message = "Webhook consumer created.",
-                Id = created.Id
-            };
+            return BaseCommandResponse.Success(created.Id, "Webhook consumer created.");
         }, cancellationToken);
     }
 
@@ -144,11 +139,5 @@ public sealed class CreateWebhookConsumerCommandHandler(
         string message,
         string failureCode,
         List<string> errors)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = errors
-        };
+        => BaseCommandResponse.Failure<Guid>(failureCode, message, errors);
 }

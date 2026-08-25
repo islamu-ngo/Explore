@@ -78,21 +78,24 @@ public sealed class GetStudioContextQueryHandler(
         try
         {
             IReadOnlyList<AuthorizationDecision> decisions = await authorization.AuthorizeBatchAsync(checks, cancellationToken);
+            var allowedLinkRelations = new HashSet<string>(StringComparer.Ordinal);
             if (decisions.Where((_, index) => index % 3 == 0).Any(decision => decision.IsAllowed))
             {
-                context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
-                context.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
+                allowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
+                allowedLinkRelations.Add(LinkRelations.ViewParticipants);
             }
 
             if (decisions.Where((_, index) => index % 3 == 1).Any(decision => decision.IsAllowed))
             {
-                context.AllowedLinkRelations.Add(LinkRelations.ManageRegistrationChannels);
+                allowedLinkRelations.Add(LinkRelations.ManageRegistrationChannels);
             }
 
             if (decisions.Where((_, index) => index % 3 == 2).Any(decision => decision.IsAllowed))
             {
-                context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationProviderHealth);
+                allowedLinkRelations.Add(LinkRelations.ViewRegistrationProviderHealth);
             }
+
+            context = context with { AllowedLinkRelations = allowedLinkRelations };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -100,7 +103,7 @@ public sealed class GetStudioContextQueryHandler(
         }
         catch
         {
-            context.AllowedLinkRelations.Clear();
+            return context;
         }
 
         return context;

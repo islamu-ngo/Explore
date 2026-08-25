@@ -37,8 +37,6 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionSpeakerCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventSessionSpeakerDtoValidator();
         var validationResult = await validator.ValidateAsync(request.SpeakerDto, cancellationToken);
 
@@ -51,10 +49,9 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
 
         if (speaker == null)
         {
-            response.Success = false;
-            response.FailureCode = "event_session_speaker_not_found";
-            response.Message = "Speaker assignment not found.";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "event_session_speaker_not_found",
+                "Speaker assignment not found.");
         }
 
         if (speaker.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -118,11 +115,7 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         await _speakerRepository.Update(speaker);
         await InvalidateCachesAsync(previousSession?.EventId, targetSession.EventId, targetSession.TenantId, cancellationToken);
 
-        response.Success = true;
-        response.Id = speaker.Id;
-        response.Message = "Speaker assignment updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(speaker.Id, "Speaker assignment updated successfully.");
     }
 
     private static void ApplySession(EventSessionSpeaker entity, DTOs.EventSessionSpeaker.UpdateEventSessionSpeakerSessionDto? dto, EventSession targetSession)
@@ -162,10 +155,5 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         ValidationFailure(new List<string> { error });
 
     private static BaseCommandResponse<Guid> ValidationFailure(List<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = "Speaker assignment update failed.",
-            Errors = errors
-        };
+        BaseCommandResponse.Validation<Guid>(errors, "Speaker assignment update failed.");
 }

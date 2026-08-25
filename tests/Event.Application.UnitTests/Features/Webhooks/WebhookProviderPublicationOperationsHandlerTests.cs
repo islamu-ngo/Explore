@@ -49,7 +49,7 @@ public sealed class WebhookProviderPublicationOperationsHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(publication.Status).IsEqualTo(WebhookProviderPublicationStatus.ProviderQueued);
         await Assert.That(publication.ExternalProviderMessageId).IsEqualTo("provider-message-123");
         await Assert.That(publication.Attempts.Last().Outcome)
@@ -92,7 +92,7 @@ public sealed class WebhookProviderPublicationOperationsHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode)
             .IsEqualTo("webhook_provider_publication_concurrency_conflict");
         await Assert.That(publication.Status)
@@ -130,7 +130,7 @@ public sealed class WebhookProviderPublicationOperationsHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(publication.Status).IsEqualTo(WebhookProviderPublicationStatus.Abandoned);
         await Assert.That(publication.FailureCategory).IsEqualTo("operator_abandoned");
         await Assert.That(publication.Attempts.Last().Outcome)
@@ -169,7 +169,7 @@ public sealed class WebhookProviderPublicationOperationsHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode)
             .IsEqualTo("webhook_provider_publication_not_abandonable");
         await repository.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);

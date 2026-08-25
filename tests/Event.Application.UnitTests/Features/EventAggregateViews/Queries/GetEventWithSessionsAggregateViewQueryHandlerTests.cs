@@ -36,7 +36,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Public), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Id).IsNull();
         await Assert.That(result.Errors).IsNotNull();
     }
@@ -52,7 +52,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Public), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.EventCustomProperties.Count).IsEqualTo(1);
         await Assert.That(result.Id.EventCustomProperties[0].Key).IsEqualTo("public-facet");
         await Assert.That(result.Id.EventSessionCustomProperties.Count).IsEqualTo(1);
@@ -76,7 +76,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Public), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var eventFacet = result.Id!.EventCustomProperties.Single();
         await Assert.That(eventFacet.Key).IsEqualTo("public-facet");
         await Assert.That(eventFacet.IsExportable).IsTrue();
@@ -110,7 +110,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.TenantAdminOnly), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.EventCustomProperties.Count).IsEqualTo(2);
         await Assert.That(result.Id.EventCustomProperties.Select(x => x.Key).ToArray())
             .IsEquivalentTo(["public-facet", "tenant-admin-facet"]);
@@ -127,7 +127,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Internal), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.EventCustomProperties.Count).IsEqualTo(2);
         await Assert.That(result.Id.EventSessionCustomProperties.Count).IsEqualTo(2);
     }
@@ -168,7 +168,7 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Public), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.IslamicTheme).IsNull();
         await Assert.That(result.Id.IsRamadan).IsNull();
         await Assert.That(result.Id.TargetAudience).IsNull();

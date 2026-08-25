@@ -19,22 +19,14 @@ public class DeleteLocationRoomCommandHandler : IRequestHandler<DeleteLocationRo
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteLocationRoomCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var room = await _locationRoomRepository.GetById(request.Id);
         if (room == null)
         {
-            response.Success = false;
-            response.Message = "Room not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Room not found."], "Room not found.");
         }
 
         await _locationRoomRepository.Delete(room);
 
-        response.Success = true;
-        response.Id = room.Id;
-        response.Message = "Room deleted successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(room.Id, "Room deleted successfully.");
     }
 }

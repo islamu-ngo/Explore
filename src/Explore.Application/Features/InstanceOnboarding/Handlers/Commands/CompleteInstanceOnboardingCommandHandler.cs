@@ -84,14 +84,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         if (bootstrap?.IsCompleted == true)
         {
-            response.Success = false;
-            response.Message = "Instance onboarding has already been completed.";
-            return response;
+            const string message = "Instance onboarding has already been completed.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var configuredDeploymentMode = await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken);
@@ -107,20 +104,18 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var validation = await validator.ValidateAsync(request.Settings, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid onboarding request.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Invalid onboarding request.");
         }
 
         // Pre-validate user before opening the transaction — avoids early-return inside tx scope
         var existingUserCheck = await _userRepository.GetById(request.UserId);
         if (existingUserCheck == null && string.IsNullOrWhiteSpace(request.Email))
         {
-            response.Success = false;
-            response.Message = "User identity data is required to complete onboarding.";
-            response.Errors = new List<string> { "No user found and no email claim available to create one." };
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["No user found and no email claim available to create one."],
+                "User identity data is required to complete onboarding.");
         }
 
         var deploymentMode = configuredDeploymentMode;
@@ -196,10 +191,9 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             ActorUserId: request.UserId,
             DeploymentMode: deploymentMode.ToString()));
 
-        response.Success = true;
-        response.Message = "Instance onboarding completed successfully.";
-        response.Id = bootstrap?.Id ?? Guid.Empty;
-        return response;
+        return BaseCommandResponse.Success(
+            bootstrap?.Id ?? Guid.Empty,
+            "Instance onboarding completed successfully.");
     }
 
     private async Task<User> CreateOnboardingUserAsync(CompleteInstanceOnboardingCommand request, Guid? tenantId)

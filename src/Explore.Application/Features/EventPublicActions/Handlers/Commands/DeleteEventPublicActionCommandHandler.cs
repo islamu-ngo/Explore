@@ -36,19 +36,9 @@ public sealed class DeleteEventPublicActionCommandHandler(
         }
 
         await actionRepository.Delete(action);
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = action.Id,
-            Message = "Public action deleted."
-        };
+        return BaseCommandResponse.Success(action.Id, "Public action deleted.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string error) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string error) =>
+        BaseCommandResponse.Validation<Guid>([error], message, id);
 }

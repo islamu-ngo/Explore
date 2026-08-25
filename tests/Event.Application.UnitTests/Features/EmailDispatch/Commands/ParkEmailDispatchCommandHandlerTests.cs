@@ -26,7 +26,7 @@ public sealed class ParkEmailDispatchCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("Park reason is required.");
         await _repository.DidNotReceiveWithAnyArgs().TryParkForOperator(default, default, default!, default, default, default);
@@ -44,7 +44,7 @@ public sealed class ParkEmailDispatchCommandHandlerTests
             new ParkEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId, Reason = "unsafe payload" },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.NotFound);
         await _repository.DidNotReceiveWithAnyArgs().TryParkForOperator(default, default, default!, default, default, default);
     }
@@ -61,7 +61,7 @@ public sealed class ParkEmailDispatchCommandHandlerTests
             new ParkEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId, Reason = "unsafe payload" },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
         await _repository.DidNotReceiveWithAnyArgs().TryParkForOperator(default, default, default!, default, default, default);
     }
@@ -78,7 +78,7 @@ public sealed class ParkEmailDispatchCommandHandlerTests
             new ParkEmailDispatchCommand { TenantId = tenantId, OutboxId = outboxId, Reason = "manual review" },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
         await Assert.That(result.Message).IsEqualTo("Skipped email dispatch rows cannot be parked.");
         await _repository.DidNotReceiveWithAnyArgs().TryParkForOperator(default, default, default!, default, default, default);
@@ -111,7 +111,7 @@ public sealed class ParkEmailDispatchCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(outboxId);
         await Assert.That(result.Message).IsEqualTo("Email dispatch parked for operator review.");
         await _repository.Received(1).TryParkForOperator(

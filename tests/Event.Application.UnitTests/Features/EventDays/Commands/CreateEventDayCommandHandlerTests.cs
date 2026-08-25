@@ -73,7 +73,7 @@ public class CreateEventDayCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(eventDayId);
         await _eventDayRepository.Received(1).Create(Arg.Any<EventDay>());
     }
@@ -142,7 +142,7 @@ public class CreateEventDayCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventDayRepository.DidNotReceive().Create(Arg.Any<EventDay>());
     }
 
@@ -185,7 +185,7 @@ public class CreateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         _mapper.DidNotReceiveWithAnyArgs().Map<EventDay>(default!);
         await _eventDayRepository.DidNotReceive().Create(Arg.Any<EventDay>());
     }

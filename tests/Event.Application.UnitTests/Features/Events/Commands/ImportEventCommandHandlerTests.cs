@@ -49,7 +49,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event imported successfully.");
         await eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.EventStatusId == (int)EventStatusEnum.Draft
@@ -123,7 +123,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(cacheObservedCommit).IsTrue();
         await eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.VisibilityTypeId == (int)VisibilityTypeEnum.Public));
@@ -168,7 +168,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(createdEntities).HasCount().EqualTo(2);
         await Assert.That(createdEntities[0].Id).IsEqualTo(createdEntities[1].Id);
         await Assert.That(createdEntities[0].Id.Version).IsEqualTo(7);
@@ -242,7 +242,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event imported successfully.");
         await Assert.That(result.Id).IsEqualTo(capturedEventId);
         await Assert.That(committedEvent!.Id).IsEqualTo(capturedEventId);
@@ -323,7 +323,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_validation_failed");
         await Assert.That(mismatchedEvent!.Id).IsEqualTo(capturedEventId);
         await eventRepository.Received(2).GetById(capturedEventId);
@@ -349,7 +349,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = request, TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_validation_failed");
         await eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }
@@ -373,7 +373,7 @@ public sealed class ImportEventCommandHandlerTests
 
         var result = await handler.Handle(new ImportEventCommand { Request = CreateValidRequest(), TenantId = TenantId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_import_readiness_failed");
         await eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }

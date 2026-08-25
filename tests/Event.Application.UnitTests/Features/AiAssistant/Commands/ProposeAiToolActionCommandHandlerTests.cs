@@ -49,7 +49,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
         await _conversationRepository.DidNotReceiveWithAnyArgs()
             .GetByIdForUpdateAsync(default, default);
@@ -62,7 +62,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unknown_tool");
         await _conversationRepository.DidNotReceiveWithAnyArgs()
             .GetByIdForUpdateAsync(default, default);
@@ -75,7 +75,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("forbidden_tool_argument");
         await _conversationRepository.DidNotReceiveWithAnyArgs()
             .GetByIdForUpdateAsync(default, default);
@@ -90,7 +90,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("conversation_not_found");
         await _conversationRepository.DidNotReceiveWithAnyArgs().Update(default!);
     }
@@ -104,7 +104,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("conversation_not_active");
         await Assert.That(conversation.ProposedActions).IsEmpty();
         await _conversationRepository.DidNotReceiveWithAnyArgs().Update(default!);
@@ -131,7 +131,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             toolName: "HeavyModerateEvent",
             payloadJson: CreateHeavyModerationPayload(eventId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tool_authorization_denied");
         await Assert.That(conversation.ProposedActions).IsEmpty();
         await _conversationRepository.DidNotReceiveWithAnyArgs().Update(default!);
@@ -150,7 +150,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             toolName: "HeavyModerateEvent",
             payloadJson: CreateHeavyModerationPayload(eventId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         await Assert.That(conversation.ProposedActions.Single().Kind).IsEqualTo(AiProposedActionKind.HeavyModerateEvent);
 
@@ -182,7 +182,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             toolName: "HeavyModerateEvent",
             payloadJson: CreateHeavyModerationPayload(eventId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authorizationProvider.Received(1).AuthorizeAsync(
             Arg.Is<AuthorizationRequest>(request =>
                 request != null &&
@@ -207,7 +207,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             toolName: "HeavyModerateEvent",
             payloadJson: CreateHeavyModerationPayload(eventId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tool_authorization_denied");
         await Assert.That(conversation.ProposedActions).IsEmpty();
         await _authorizationProvider.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
@@ -224,7 +224,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         var proposedAction = conversation.ProposedActions.Single();
@@ -255,7 +255,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
               }
               """), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         var proposedAction = conversation.ProposedActions.Single();
@@ -282,7 +282,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
               }
               """), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         var proposedAction = conversation.ProposedActions.Single();
@@ -373,7 +373,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
                 toolName: proposalCase.ToolName,
                 payloadJson: proposalCase.PayloadJson), CancellationToken.None);
 
-            await Assert.That(result.Success).IsTrue();
+            await Assert.That(result.IsSuccess).IsTrue();
             await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
             await Assert.That(conversation.ProposedActions.Single().Kind).IsEqualTo(proposalCase.Kind);
             await _conversationRepository.Received().Update(conversation);
@@ -394,7 +394,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
                 toolName: definition.Name,
                 payloadJson: BuildMinimalPayloadJson(definition)), CancellationToken.None);
 
-            await Assert.That(result.Success).IsTrue();
+            await Assert.That(result.IsSuccess).IsTrue();
             await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
             await Assert.That(conversation.ProposedActions.Single().Kind).IsEqualTo(definition.Kind);
             await _conversationRepository.Received().Update(conversation);

@@ -85,28 +85,20 @@ public class DeleteEventSessionCommandHandler : IRequestHandler<DeleteEventSessi
             .SelectMany(ticketType => ticketType.Entitlements)
             .Any(entitlement => entitlement.EventSessionId == eventSessionId) == true;
 
-    private static BaseCommandResponse<Guid> Success(Guid id) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = "Event session deleted successfully."
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id) =>
+        BaseCommandResponse.Success(id, "Event session deleted successfully.");
 
-    private static BaseCommandResponse<Guid> NotFound(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_session_not_found",
-        Message = "Event session not found."
-    };
+    private static BaseCommandResponse<Guid> NotFound(Guid id) =>
+        BaseCommandResponse.Failure<Guid>(
+            "event_session_not_found",
+            "Event session not found.",
+            id: id);
 
-    private static BaseCommandResponse<Guid> Conflict(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "event_session_ticket_entitlement_conflict",
-        Message = "Event session is referenced by a published ticket catalog."
-    };
+    private static BaseCommandResponse<Guid> Conflict(Guid id) =>
+        BaseCommandResponse.Failure<Guid>(
+            "event_session_ticket_entitlement_conflict",
+            "Event session is referenced by a published ticket catalog.",
+            id: id);
 
     private enum DeleteResult
     {

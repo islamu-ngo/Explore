@@ -63,16 +63,13 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateOrganizationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.OrganizationDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Organization creation failed due to validation errors.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Organization creation failed due to validation errors.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -80,10 +77,9 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
                 _tenantContext.TenantId,
                 request.OrganizationDto.ProfilePictureId))
         {
-            response.Success = false;
-            response.Message = "Organization creation failed due to validation errors.";
-            response.Errors = ["Profile picture must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Profile picture must be an active public safe-raster object in the current tenant."],
+                "Organization creation failed due to validation errors.");
         }
 
         var currentUserId = request.CreatorUserId;
@@ -142,15 +138,13 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         }, cancellationToken);
         _adminCacheInvalidator.InvalidateUser(currentUserId);
 
-        response.Success = true;
-        response.Message = "Organization created successfully. You are now the creator and admin of this organization.";
-        response.Id = organization.Id;
-
         _metrics.RecordOrganizationCreated(_tenantContext.TenantId.ToString());
 
         await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(
+            organization.Id,
+            "Organization created successfully. You are now the creator and admin of this organization.");
     }
 
 }

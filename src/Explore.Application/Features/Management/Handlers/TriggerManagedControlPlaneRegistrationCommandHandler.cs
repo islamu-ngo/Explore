@@ -156,7 +156,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             ManagedControlPlaneContract.CredentialSecretSettingKey,
             SecretScope.Instance,
             null,
-            protectedSecrets.Ciphertext,
+            protectedSecrets.Ciphertext.ToArray(),
             protectedSecrets.Version,
             isLocked: true);
         binding.CreatedAt = now;
@@ -222,7 +222,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             ?? throw new InvalidOperationException("Managed registration credential binding is missing.");
         var protectedSecrets = secretProtector.Protect(JsonSerializer.Serialize(
             secrets with { ControlPlaneToEventSecret = null }));
-        binding.SwitchToInlineEncrypted(protectedSecrets.Ciphertext, protectedSecrets.Version);
+        binding.SwitchToInlineEncrypted(protectedSecrets.Ciphertext.ToArray(), protectedSecrets.Version);
         binding.UpdatedAt = now;
         registration.MarkRegistered(now);
 

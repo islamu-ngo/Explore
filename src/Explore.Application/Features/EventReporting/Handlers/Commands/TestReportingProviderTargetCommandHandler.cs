@@ -59,12 +59,9 @@ public sealed class TestReportingProviderTargetCommandHandler(
             return Failed($"Tenant {request.Provider} reporting provider requires an endpoint URL and API key before testing.");
         }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = tenantId,
-            Message = $"Tenant {request.Provider} reporting provider configuration is ready for test dispatch."
-        };
+        return BaseCommandResponse.Success(
+            tenantId,
+            $"Tenant {request.Provider} reporting provider configuration is ready for test dispatch.");
     }
 
     private async Task<bool> IsUserAuthorizedAsync(
@@ -122,19 +119,15 @@ public sealed class TestReportingProviderTargetCommandHandler(
         return targets.FirstOrDefault(target => target.Scope == EventReportProviderTargetScope.Tenant);
     }
 
-    private static BaseCommandResponse<Guid> Locked(string message) => new()
-    {
-        Success = false,
-        FailureCode = FailureCodes.ReportingTenantOverridesLocked,
-        Message = message,
-        Errors = ["Instance reporting delegation must be unlocked before tenant reporting provider tests can run."]
-    };
+    private static BaseCommandResponse<Guid> Locked(string message) =>
+        BaseCommandResponse.Failure<Guid>(
+            FailureCodes.ReportingTenantOverridesLocked,
+            message,
+            ["Instance reporting delegation must be unlocked before tenant reporting provider tests can run."]);
 
-    private static BaseCommandResponse<Guid> Failed(string message, string? failureCode = null) => new()
-    {
-        Success = false,
-        FailureCode = failureCode,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failed(string message, string? failureCode = null) => failureCode is null
+        ? BaseCommandResponse.Validation<Guid>([message], message)
+        : failureCode == FailureCodes.AdminRequired
+            ? BaseCommandResponse.Authorization<Guid>(message)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, [message]);
 }

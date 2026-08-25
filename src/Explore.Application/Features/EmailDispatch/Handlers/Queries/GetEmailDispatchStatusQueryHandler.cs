@@ -24,22 +24,17 @@ public sealed class GetEmailDispatchStatusQueryHandler
         GetEmailDispatchStatusQuery request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<IReadOnlyList<EmailDispatchStatusDto>>();
-
         if (request.TenantId == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "TenantId is required.";
-            response.Errors = ["TenantId is required."];
-            return response;
+            return BaseCommandResponse.Validation<IReadOnlyList<EmailDispatchStatusDto>>(
+                ["TenantId is required."],
+                "TenantId is required.");
         }
 
         if (request.Limit < 1 || request.Limit > MaxLimit)
         {
-            response.Success = false;
-            response.Message = $"Limit must be between 1 and {MaxLimit}.";
-            response.Errors = [$"Limit must be between 1 and {MaxLimit}."];
-            return response;
+            var message = $"Limit must be between 1 and {MaxLimit}.";
+            return BaseCommandResponse.Validation<IReadOnlyList<EmailDispatchStatusDto>>([message], message);
         }
 
         var rows = await _repository.GetStatusRows(request.TenantId, request.Limit, cancellationToken);
@@ -61,10 +56,8 @@ public sealed class GetEmailDispatchStatusQueryHandler
             CorrelationId = row.CorrelationId
         }).ToList();
 
-        response.Success = true;
-        response.Id = dtos;
-        response.Message = "Email dispatch status retrieved.";
-
-        return response;
+        return BaseCommandResponse.Success<IReadOnlyList<EmailDispatchStatusDto>>(
+            dtos,
+            "Email dispatch status retrieved.");
     }
 }

@@ -60,12 +60,9 @@ public sealed class GetEventListAggregateViewQueryHandler
                         _logger))
                     .ToList();
 
-                return new BaseCommandResponse<PaginatedResult<EventListAggregateViewDto>>
-                {
-                    Success = true,
-                    Id = PaginatedResult<EventListAggregateViewDto>.Create(dtos, totalCount, pageNumber, pageSize),
-                    Message = "Event aggregate list retrieved successfully."
-                };
+                return BaseCommandResponse.Success(
+                    PaginatedResult<EventListAggregateViewDto>.Create(dtos, totalCount, pageNumber, pageSize),
+                    "Event aggregate list retrieved successfully.");
             },
             new HybridCacheEntryOptions
             {

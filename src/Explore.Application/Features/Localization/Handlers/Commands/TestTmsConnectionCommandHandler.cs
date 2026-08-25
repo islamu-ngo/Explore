@@ -24,28 +24,20 @@ public class TestTmsConnectionCommandHandler : IRequestHandler<TestTmsConnection
 
     public async Task<BaseCommandResponse<Guid>> Handle(TestTmsConnectionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Instance administrator authority is required to test the localization TMS connection.";
-            return response;
+            const string message = "Instance administrator authority is required to test the localization TMS connection.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var isConnected = await _translationProvider.TestConnectionAsync(cancellationToken);
-
         if (isConnected)
         {
-            response.Success = true;
-            response.Message = "TMS connection successful.";
-        }
-        else
-        {
-            response.Success = false;
-            response.Message = "TMS connection failed. Check provider settings and API credentials.";
+            return BaseCommandResponse.Success(Guid.Empty, "TMS connection successful.");
         }
 
-        return response;
+        const string failureMessage = "TMS connection failed. Check provider settings and API credentials.";
+        return BaseCommandResponse.Validation<Guid>([failureMessage], failureMessage);
     }
 }

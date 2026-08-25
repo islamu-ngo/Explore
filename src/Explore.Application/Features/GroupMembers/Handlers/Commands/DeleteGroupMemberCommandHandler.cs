@@ -33,21 +33,17 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteGroupMemberCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var memberToDelete = await _groupMemberRepository.GetById(request.MemberId);
         if (memberToDelete == null)
         {
-            response.Success = false;
-            response.Message = "Member not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Member not found"], "Member not found");
         }
 
         if (!Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
@@ -60,9 +56,9 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
             if (requesterMember == null ||
                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to remove members.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to remove members."],
+                    "You do not have permission to remove members.");
             }
         }
 
@@ -74,17 +70,13 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
         if (memberToDelete.RoleId == (int)RoleEnum.GroupAdmin &&
             adminCount <= 1)
         {
-            response.Success = false;
-            response.Message = "Cannot remove the last admin of the group.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Cannot remove the last admin of the group."],
+                "Cannot remove the last admin of the group.");
         }
 
         await _groupMemberRepository.Delete(memberToDelete);
 
-        response.Success = true;
-        response.Message = "Member removed successfully";
-        response.Id = memberToDelete.Id;
-
-        return response;
+        return BaseCommandResponse.Success(memberToDelete.Id, "Member removed successfully");
     }
 }

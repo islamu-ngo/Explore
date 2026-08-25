@@ -27,24 +27,15 @@ public class RebuildSingleEventSessionCustomPropertyProjectionCommandHandler
         RebuildSingleEventSessionCustomPropertyProjectionCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.EventSessionId == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "EventSessionId is required.";
-            response.Errors = ["EventSessionId is required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["EventSessionId is required."], "EventSessionId is required.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(
             async ct => await _projectionUpdater.RefreshForEventSessionAsync(request.EventSessionId, ct),
             cancellationToken);
 
-        response.Success = true;
-        response.Id = request.EventSessionId;
-        response.Message = "Event session projection rows refreshed successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(request.EventSessionId, "Event session projection rows refreshed successfully.");
     }
 }

@@ -33,22 +33,19 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateGroupMemberRoleCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.UpdateGroupMemberRoleDto;
 
         var memberToUpdate = await _groupMemberRepository.GetById(dto.Id);
         if (memberToUpdate == null)
         {
-            response.Success = false;
-            response.Message = "Member not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Member not found"], "Member not found");
         }
 
         if (!Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
@@ -61,9 +58,9 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
             if (requesterMember == null ||
                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to update roles.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to update roles."],
+                    "You do not have permission to update roles.");
             }
         }
 
@@ -76,18 +73,14 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
             (int)dto.Role != (int)RoleEnum.GroupAdmin &&
             adminCount <= 1)
         {
-            response.Success = false;
-            response.Message = "Cannot demote the last admin of the group.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Cannot demote the last admin of the group."],
+                "Cannot demote the last admin of the group.");
         }
 
         memberToUpdate.RoleId = (int)dto.Role;
         await _groupMemberRepository.Update(memberToUpdate);
 
-        response.Success = true;
-        response.Message = "Member role updated successfully";
-        response.Id = memberToUpdate.Id;
-
-        return response;
+        return BaseCommandResponse.Success(memberToUpdate.Id, "Member role updated successfully");
     }
 }

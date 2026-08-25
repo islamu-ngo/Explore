@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Validators;
 using Explore.Application.Services.Registration;
@@ -103,12 +104,9 @@ file static class RegistrationOrderLifecycleCommandFailures
     {
         return validation.IsValid
             ? null
-            : new RegistrationOrderLifecycleResponseDto
-            {
-                Id = command.OrderId,
-                Success = false,
-                Message = "Registration order lifecycle request is invalid.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            : RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.Validation(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "Registration order lifecycle request is invalid.",
+                command.OrderId));
     }
 }

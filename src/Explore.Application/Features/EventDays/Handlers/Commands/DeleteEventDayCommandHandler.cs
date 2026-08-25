@@ -27,15 +27,12 @@ public class DeleteEventDayCommandHandler : IRequestHandler<DeleteEventDayComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteEventDayCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var eventDay = await _eventDayRepository.GetById(request.Id);
         if (eventDay == null)
         {
-            response.Success = false;
-            response.FailureCode = "event_day_not_found";
-            response.Message = "Event day not found.";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "event_day_not_found",
+                "Event day not found.");
         }
 
         DeleteResult deleteResult = await _unitOfWork.ExecuteInTransactionAsync(async token =>
@@ -66,21 +63,16 @@ public class DeleteEventDayCommandHandler : IRequestHandler<DeleteEventDayComman
 
         if (deleteResult != DeleteResult.Deleted)
         {
-            response.Success = false;
-            response.FailureCode = deleteResult == DeleteResult.Referenced
+            string failureCode = deleteResult == DeleteResult.Referenced
                 ? "event_day_ticket_entitlement_conflict"
                 : "event_day_not_found";
-            response.Message = deleteResult == DeleteResult.Referenced
+            string message = deleteResult == DeleteResult.Referenced
                 ? "Event day is referenced by a published ticket catalog."
                 : "Event day not found.";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(failureCode, message);
         }
 
-        response.Success = true;
-        response.Id = eventDay.Id;
-        response.Message = "Event day deleted successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventDay.Id, "Event day deleted successfully.");
     }
 
     private static bool ReferencesEventDay(EventTicketCatalogVersion? catalog, Guid eventDayId) =>

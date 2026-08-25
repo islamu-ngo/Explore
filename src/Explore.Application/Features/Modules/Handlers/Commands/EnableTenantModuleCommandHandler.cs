@@ -31,20 +31,10 @@ public sealed class EnableTenantModuleCommandHandler(
             cancellationToken);
 
         return success
-            ? new BaseCommandResponse<Guid>
-            {
-                Id = request.TenantId,
-                Success = true,
-                Message = "Module enabled."
-            }
+            ? BaseCommandResponse.Success(request.TenantId, "Module enabled.")
             : Failure(request.TenantId, $"Module '{request.ModuleKey}' not found or not active.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid tenantId, string message) => new()
-    {
-        Id = tenantId,
-        Success = false,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid tenantId, string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message, tenantId);
 }

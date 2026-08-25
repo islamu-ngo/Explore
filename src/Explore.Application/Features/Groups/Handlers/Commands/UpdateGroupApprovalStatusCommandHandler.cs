@@ -25,16 +25,14 @@ public class UpdateGroupApprovalStatusCommandHandler(
         UpdateGroupApprovalStatusCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new UpdateGroupApprovalStatusDtoValidator(approvalStatusRepository);
         var validationResult = await validator.ValidateAsync(request.GroupApprovalStatusDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Validation failed.");
         }
 
         var participation = await groupTenantRepository.GetByGroupAndTenant(
@@ -54,10 +52,8 @@ public class UpdateGroupApprovalStatusCommandHandler(
         await groupTenantRepository.Update(participation);
         await cache.RemoveAsync($"group:detail:{participation.GroupId}", cancellationToken);
 
-        response.Success = true;
-        response.Message = "Group approval status updated successfully.";
-        response.Id = participation.GroupId;
-
-        return response;
+        return BaseCommandResponse.Success(
+            participation.GroupId,
+            "Group approval status updated successfully.");
     }
 }

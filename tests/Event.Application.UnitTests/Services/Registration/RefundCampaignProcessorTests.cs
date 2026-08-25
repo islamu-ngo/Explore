@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services.Registration;
@@ -145,7 +146,7 @@ public sealed class RefundCampaignProcessorTests
             "BE", "EUR", Guid.CreateVersion7(), null, Now.AddMinutes(-2));
         PaymentAttempt payment = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "composition-1",
-            1_000, 75, 0, "payment:campaign", Now.AddMinutes(-2), Now.AddMinutes(30));
+            Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), "payment:campaign", Now.AddMinutes(-2), Now.AddMinutes(30));
         payment.AttachAcceptance(RefundTestAcceptance.Create(
             TenantId, orderId, 1_000, 75, 0, Now.AddMinutes(-3)));
         payment.MarkSucceeded("pi_campaign", Now.AddMinutes(-1), "req_payment");
@@ -160,7 +161,7 @@ public sealed class RefundCampaignProcessorTests
             "BE", "EUR", Guid.CreateVersion7(), null, Now.AddMinutes(-2));
         PaymentAttempt payment = PaymentAttempt.Create(
             Guid.CreateVersion7(), TenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "composition-1",
-            1_000, 75, 0, "payment:campaign:uncaptured", Now.AddMinutes(-2), Now.AddMinutes(30));
+            Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), "payment:campaign:uncaptured", Now.AddMinutes(-2), Now.AddMinutes(30));
         payment.AttachAcceptance(RefundTestAcceptance.Create(
             TenantId, orderId, 1_000, 75, 0, Now.AddMinutes(-3)));
         payment.MarkRequiresAction("cs_cancel", Now.AddMinutes(-1), "req_checkout");

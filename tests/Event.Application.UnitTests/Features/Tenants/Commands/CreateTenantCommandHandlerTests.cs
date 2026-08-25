@@ -86,7 +86,7 @@ public class CreateTenantCommandHandlerTests
 
         var result = await _handler.Handle(new CreateTenantCommand { TenantDto = dto }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdTenant.Id);
         await _tenantRepository.Received(1).Create(Arg.Any<Tenant>());
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(createdTenant.Id, dto.FullName, Arg.Any<CancellationToken>());
@@ -101,7 +101,7 @@ public class CreateTenantCommandHandlerTests
 
         var result = await _handler.Handle(new CreateTenantCommand { TenantDto = dto }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("slug already exists");
         await _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
         await _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -122,7 +122,7 @@ public class CreateTenantCommandHandlerTests
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
             tenantUser.TenantId == tenantId &&
             tenantUser.UserId == TestUserId &&
@@ -146,7 +146,7 @@ public class CreateTenantCommandHandlerTests
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
         await _roleRepository.DidNotReceive().GetByMasterCodeAsync(Arg.Any<string>());
     }
@@ -166,7 +166,7 @@ public class CreateTenantCommandHandlerTests
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 
@@ -184,7 +184,7 @@ public class CreateTenantCommandHandlerTests
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 

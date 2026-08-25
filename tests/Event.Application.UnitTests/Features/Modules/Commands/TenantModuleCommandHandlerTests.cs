@@ -31,7 +31,7 @@ public sealed class TenantModuleCommandHandlerTests
             ModuleKey = "Mod_Tech"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo(TenantId);
         await _moduleService.Received(1).EnableModuleAsync(
             TenantId,
@@ -54,7 +54,7 @@ public sealed class TenantModuleCommandHandlerTests
             ModuleKey = "Mod_Unknown"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains("Module 'Mod_Unknown' not found or not active.");
     }
 
@@ -71,7 +71,7 @@ public sealed class TenantModuleCommandHandlerTests
             ModuleKey = "Mod_Islamic"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo(TenantId);
         await _moduleService.Received(1).DisableModuleAsync(
             TenantId,
@@ -92,7 +92,7 @@ public sealed class TenantModuleCommandHandlerTests
             ModuleKey = "Mod_Tech"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains("Module 'Mod_Tech' is not enabled for this tenant.");
     }
 }

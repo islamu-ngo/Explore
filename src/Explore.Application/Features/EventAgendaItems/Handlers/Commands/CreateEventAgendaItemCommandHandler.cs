@@ -9,6 +9,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.EventAgendaItems.Handlers.Commands;
@@ -43,33 +44,29 @@ public class CreateEventAgendaItemCommandHandler : IRequestHandler<CreateEventAg
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventAgendaItemCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventAgendaItemDtoValidator(_eventRepository);
         var validationResult = await validator.ValidateAsync(request.EventAgendaItemDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event agenda item creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event agenda item creation failed.");
         }
 
         var parentEvent = await _eventRepository.GetById(request.EventAgendaItemDto.EventId);
         if (parentEvent == null)
         {
-            response.Success = false;
-            response.Message = "Event not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event not found in the current tenant."],
+                "Event not found in the current tenant.");
         }
 
         var agendaItem = _mapper.Map<EventAgendaItem>(request.EventAgendaItemDto);
         agendaItem.TenantId = parentEvent.TenantId;
 
         agendaItem.Reschedule(
-            request.EventAgendaItemDto.StartTime,
-            request.EventAgendaItemDto.EndTime,
+            UtcInstantRange.Create(request.EventAgendaItemDto.StartTime, request.EventAgendaItemDto.EndTime),
             parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
             _scheduleProjectionCalculator);
 
@@ -88,10 +85,6 @@ public class CreateEventAgendaItemCommandHandler : IRequestHandler<CreateEventAg
             return await _eventAgendaItemRepository.Create(agendaItem);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = agendaItem.Id;
-        response.Message = "Event agenda item created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(agendaItem.Id, "Event agenda item created successfully.");
     }
 }

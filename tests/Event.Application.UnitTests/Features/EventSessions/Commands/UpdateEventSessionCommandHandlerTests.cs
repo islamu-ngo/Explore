@@ -133,7 +133,7 @@ public class UpdateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
         await _eventSessionRepository.DidNotReceive()
             .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -194,7 +194,7 @@ public class UpdateEventSessionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(session.FeaturedImageId).IsEqualTo(originalImageId);
         await _eventSessionRepository.DidNotReceive()
             .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -237,7 +237,7 @@ public class UpdateEventSessionCommandHandlerTests
             CreateScheduleCommand(sessionId, eventId, concurrencyStamp, newStart, newEnd, session.Title),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_fanout.CreatedOccurrences).Count().IsEqualTo(1);
         await Assert.That(_fanout.OutboxPointers).Count().IsEqualTo(1);
         NotificationFanoutOccurrence occurrence = _fanout.CreatedOccurrences[0];
@@ -297,7 +297,7 @@ public class UpdateEventSessionCommandHandlerTests
                 session.Title),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_fanout.CreatedOccurrences).IsEmpty();
         await Assert.That(_fanout.OutboxPointers).IsEmpty();
     }
@@ -338,7 +338,7 @@ public class UpdateEventSessionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_update_invalid_status");
         await Assert.That(result.Errors).Contains(
             "Published event sessions cannot be moved to another event until attendee transfer notifications are supported.");
@@ -416,7 +416,7 @@ public class UpdateEventSessionCommandHandlerTests
                 "Published session"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventSessionRepository.Received(2).GetById(sessionId);
         await Assert.That(updateAttempts).IsEqualTo(2);
         await Assert.That(_fanout.CreatedOccurrences).Count().IsEqualTo(1);
@@ -493,7 +493,7 @@ public class UpdateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(existingSession.EventDayId).IsEqualTo(eventDayId);
     }
 
@@ -542,7 +542,7 @@ public class UpdateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(existingSession.EventDayId).IsNull();
     }
 
@@ -603,7 +603,7 @@ public class UpdateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(existingSession.EventDayId).IsEqualTo(newDayId);
         await Assert.That(existingSession.EventDayId).IsNotEqualTo(oldDayId);
     }

@@ -169,7 +169,7 @@ public sealed class CancelEventCommandHandler(
             return Success(attemptEvent.Id, "Event cancelled successfully.");
         }, cancellationToken);
 
-        if (!response.Success || !tenantIdToInvalidate.HasValue)
+        if (!response.IsSuccess || !tenantIdToInvalidate.HasValue)
         {
             return response;
         }
@@ -179,19 +179,11 @@ public sealed class CancelEventCommandHandler(
         return response;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 }

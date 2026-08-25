@@ -34,16 +34,14 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandler(
         PatchTenantBrandingSettingsDocumentCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<TenantBrandingSettingsDocumentDto>();
         var patchValidator = new PatchTenantBrandingSettingsDocumentDtoValidator();
         var validationResult = await patchValidator.ValidateAsync(request.Patch, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant branding settings patch failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<TenantBrandingSettingsDocumentDto>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant branding settings patch failed.");
         }
 
         var document = await tenantSettingsDocumentRepository.GetTrackedByTenantAndDocumentKey(
@@ -53,10 +51,8 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandler(
 
         if (document is null)
         {
-            response.Success = false;
-            response.Message = "Tenant branding settings document not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<TenantBrandingSettingsDocumentDto>(
+                "Tenant branding settings document not found.");
         }
 
         if (document.ConcurrencyStamp != request.Patch.ExpectedConcurrencyStamp)
@@ -76,20 +72,18 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandler(
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant branding settings patch failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<TenantBrandingSettingsDocumentDto>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant branding settings patch failed.");
         }
 
         var lockState = await lockService.GetLockStateAsync(cancellationToken);
         var errors = ValidateRequestedFieldLocks(request.Patch, lockState);
         if (errors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Tenant branding settings patch failed.";
-            response.Errors = errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<TenantBrandingSettingsDocumentDto>(
+                errors,
+                "Tenant branding settings patch failed.");
         }
 
         var payloadJson = JsonSerializer.Serialize(mergedPayload, SerializerOptions);
@@ -100,10 +94,9 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandler(
         }, cancellationToken);
         typedSettingsDocumentResolver.InvalidateTenantDocumentCache(request.TenantId, SettingsDocumentKeys.Tenant.Branding);
 
-        response.Success = true;
-        response.Id = MapDocument(document, mergedPayload, lockState);
-        response.Message = "Tenant branding settings patched successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            MapDocument(document, mergedPayload, lockState),
+            "Tenant branding settings patched successfully.");
     }
 
     private static BrandingSettings DeserializePayload(string payloadJson)

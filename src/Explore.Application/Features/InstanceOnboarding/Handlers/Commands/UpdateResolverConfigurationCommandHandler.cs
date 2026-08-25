@@ -27,22 +27,17 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateResolverConfigurationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
-            response.Success = false;
-            response.Message = "Only instance administrators can update tenant resolver configuration.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update tenant resolver configuration.");
         }
 
         if (!request.Patch.HasChanges())
         {
-            response.Success = false;
-            response.Message = "Resolver configuration patch must include at least one setting.";
-            return response;
+            const string message = "Resolver configuration patch must include at least one setting.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var configuration = await _resolverConfigService.GetConfigurationAsync(cancellationToken);
@@ -62,17 +57,13 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
         var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid resolver configuration.";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(x => x.ErrorMessage),
+                "Invalid resolver configuration.");
         }
 
         await _resolverConfigService.ApplyConfigurationAsync(request.Patch, configuration, request.UserId, cancellationToken);
 
-        response.Success = true;
-        response.Id = Guid.Empty;
-        response.Message = "Tenant resolver configuration updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Tenant resolver configuration updated successfully.");
     }
 }

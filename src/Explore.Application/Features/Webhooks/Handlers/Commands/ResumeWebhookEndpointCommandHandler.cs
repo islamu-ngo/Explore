@@ -116,22 +116,10 @@ public sealed class ResumeWebhookEndpointCommandHandler(
                     PrincipalReference: $"user:{request.ActorUserId:D}"),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.EndpointId,
-                Success = true,
-                Message = "Webhook endpoint resumed."
-            };
+            return BaseCommandResponse.Success(request.EndpointId, "Webhook endpoint resumed.");
         }, cancellationToken);
     }
 
     private static BaseCommandResponse<Guid> Failure(Guid endpointId, string code, string message) =>
-        new()
-        {
-            Id = endpointId,
-            Success = false,
-            Message = message,
-            FailureCode = code,
-            Errors = [message]
-        };
+        BaseCommandResponse.Failure(code, message, [message], endpointId);
 }

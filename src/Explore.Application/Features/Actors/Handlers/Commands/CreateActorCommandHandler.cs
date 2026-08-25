@@ -48,8 +48,6 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateActorCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateActorDtoValidator(
             _actorTypeRepository,
             _didCustodyTypeRepository,
@@ -63,10 +61,9 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Actor creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Actor creation failed.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -75,20 +72,15 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
                 request.ActorDto.ProfilePictureId,
                 request.ActorDto.BannerPictureId))
         {
-            response.Success = false;
-            response.Message = "Actor creation failed.";
-            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Every image must be an active public safe-raster object in the current tenant."],
+                "Actor creation failed.");
         }
 
         var actor = _mapper.Map<Actor>(request.ActorDto);
 
         actor = await _actorRepository.Create(actor);
 
-        response.Success = true;
-        response.Id = actor.Id;
-        response.Message = "Actor created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(actor.Id, "Actor created successfully.");
     }
 }

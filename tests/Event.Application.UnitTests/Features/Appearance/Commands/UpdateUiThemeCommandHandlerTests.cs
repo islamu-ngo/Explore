@@ -54,7 +54,7 @@ public class UpdateUiThemeCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(theme.DisplayName).IsEqualTo("Updated");
         await Assert.That(theme.Description).IsNull();
         await Assert.That(theme.IsActive).IsTrue();
@@ -77,7 +77,7 @@ public class UpdateUiThemeCommandHandlerTests
             UiThemeDto = new UpdateUiThemeDto { RowVersion = theme.RowVersion }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task>>(),
             Arg.Any<CancellationToken>());
@@ -101,7 +101,7 @@ public class UpdateUiThemeCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Update(Arg.Any<UiTheme>());
     }
 

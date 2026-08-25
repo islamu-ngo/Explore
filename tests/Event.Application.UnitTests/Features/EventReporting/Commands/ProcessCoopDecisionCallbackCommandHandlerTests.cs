@@ -69,7 +69,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
 
         var createdDecision = report.Decisions.Single();
         var coopLink = report.ExternalLinks.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdDecision.Id);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.Submitted);
         await Assert.That(reportCase.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -144,7 +144,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingDecision.Id);
         await _eventReportRepository.DidNotReceive().PersistDecisionCaptureAsync(
             Arg.Any<EventReport>(),
@@ -191,8 +191,8 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
                 "coop-decision-stale"),
             CancellationToken.None);
 
-        await Assert.That(current.Success).IsTrue();
-        await Assert.That(stale.Success).IsFalse();
+        await Assert.That(current.IsSuccess).IsTrue();
+        await Assert.That(stale.IsSuccess).IsFalse();
         await Assert.That(stale.FailureCode).IsEqualTo(EventReportFailureCodes.CaseConcurrencyConflict);
         await Assert.That(report.Decisions).Count().IsEqualTo(1);
         await Assert.That(reportCase.CurrentDecisionId).IsEqualTo(currentDecision.Id);
@@ -236,7 +236,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
 
         var createdDecision = report.Decisions.Single();
         var coopLink = report.ExternalLinks.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(createdDecision.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
         await Assert.That(createdDecision.ProviderTargetId).IsEqualTo(tenantTargetId);
         await Assert.That(coopLink.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
@@ -277,7 +277,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await _eventReportRepository.DidNotReceive().PersistDecisionCaptureAsync(
             Arg.Any<EventReport>(),
@@ -325,7 +325,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.DecisionInvalid);
         await _eventReportRepository.DidNotReceive().PersistDecisionCaptureAsync(
             Arg.Any<EventReport>(),
@@ -355,7 +355,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.TenantUnresolved);
         await _eventReportRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Send(Arg.Any<ExecuteReportDecisionCommand>(), Arg.Any<CancellationToken>());
@@ -379,7 +379,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await Assert.That(result.Errors).Contains("ProviderDecisionId is required.");
         await _eventReportRepository.DidNotReceive().GetByIdForUpdateAsync(
@@ -447,12 +447,8 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
         EventReportPriority.Normal,
         DateTime.UtcNow.AddDays(1));
 
-    private static BaseCommandResponse<Guid> Success(Guid id) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = "Succeeded"
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id) =>
+        BaseCommandResponse.Success(id, "Succeeded");
 
     private sealed class ImmediateUnitOfWork : IUnitOfWork
     {

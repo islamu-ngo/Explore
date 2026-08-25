@@ -27,7 +27,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
 
         var response = await fixture.Handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         var created = fixture.CreatedBinding;
         await Assert.That(created).IsNotNull();
         await Assert.That(created!.InstanceId).IsEqualTo(fixture.Bootstrap.Id);
@@ -73,7 +73,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
 
         var response = await fixture.Handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(binding.ExternalApplicationId).IsEqualTo("app_rebound");
         await Assert.That(binding.InstanceId).IsEqualTo(fixture.Bootstrap.Id);
         await Assert.That(binding.ConcurrencyVersion).IsEqualTo(3);
@@ -98,7 +98,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
 
         var response = await fixture.Handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("webhook_provider_binding_mismatched");
         await fixture.BindingRepository.DidNotReceive().CreateAsync(
             Arg.Any<WebhookConsumerProviderBinding>(),
@@ -127,7 +127,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
             fixture.CreateRequest("app_cross_tenant"),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("webhook_consumer_not_found");
         fixture.Authority.DidNotReceive().ResolveCurrentProfile();
         await fixture.Authority.DidNotReceive().VerifyOwnershipAsync(

@@ -28,22 +28,17 @@ public class UpdateInstanceSmtpSettingsCommandHandler : IRequestHandler<UpdateIn
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceSmtpSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
-            response.Success = false;
-            response.Message = "Only instance administrators can update SMTP settings.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update SMTP settings.");
         }
 
         if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
         {
-            response.Success = false;
-            response.Message = "SMTP settings patch must include a complete configuration group.";
-            return response;
+            const string message = "SMTP settings patch must include a complete configuration group.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var patch = request.Patch.Configuration.Value;
@@ -62,8 +57,6 @@ public class UpdateInstanceSmtpSettingsCommandHandler : IRequestHandler<UpdateIn
 
         _smtpConfigResolver.InvalidateCache();
 
-        response.Success = true;
-        response.Message = "SMTP settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "SMTP settings updated successfully.");
     }
 }

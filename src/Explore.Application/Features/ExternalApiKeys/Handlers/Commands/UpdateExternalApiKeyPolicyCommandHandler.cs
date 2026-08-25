@@ -44,16 +44,12 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateExternalApiKeyPolicyCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var currentUserId = _userContext.GetRequiredUserId();
         var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.ExternalApiKeyId, cancellationToken);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "External API key not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("External API key not found.");
         }
 
         var validator = new UpdateExternalApiKeyPolicyDtoValidator(_externalApiKeyRepository, externalApiKey);
@@ -61,10 +57,9 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "External API key update failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "External API key update failed.");
         }
 
         if (request.ExternalApiKeyPolicyDto.Metadata is { } metadata)
@@ -92,10 +87,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
             externalApiKey.TenantId?.ToString() ?? "platform",
             currentUserId);
 
-        response.Success = true;
-        response.Id = externalApiKey.Id;
-        response.Message = "External API key updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(externalApiKey.Id, "External API key updated successfully.");
     }
 
     private async Task<bool> CanManageAsync(Explore.Domain.ExternalApiKey externalApiKey, Guid currentUserId, CancellationToken cancellationToken)

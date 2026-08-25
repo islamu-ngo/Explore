@@ -37,7 +37,7 @@ public sealed class UpdateTenantCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).Update(Arg.Is<Tenant>(value => value.Slug == "new-slug"));
         await slugCache.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
     }

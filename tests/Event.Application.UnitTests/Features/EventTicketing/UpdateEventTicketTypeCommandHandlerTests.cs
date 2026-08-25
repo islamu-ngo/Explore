@@ -53,7 +53,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
             new UpdateEventTicketTypeCommand { EventId = _eventId, TicketTypeId = ticket.Id, TicketType = FullTicketDto(pool.Id) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(ticket.Name).IsEqualTo("Verified adult admission");
         await Assert.That(ticket.TicketPricingModeId).IsEqualTo((int)TicketPricingModeEnum.Fixed);
         await Assert.That(ticket.FixedPriceMinor).IsEqualTo(2_500);

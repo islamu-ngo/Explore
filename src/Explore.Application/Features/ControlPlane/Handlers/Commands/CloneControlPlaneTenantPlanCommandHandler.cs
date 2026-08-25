@@ -60,18 +60,9 @@ public sealed class CloneControlPlaneTenantPlanCommandHandler(ITenantPlanReposit
         clonedVersion.TenantPlanStatusId = (int)TenantPlanStatusEnum.Draft;
         await tenantPlanRepository.Create(clone);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = clone.Id,
-            Message = "Tenant plan cloned as draft."
-        };
+        return BaseCommandResponse.Success(clone.Id, "Tenant plan cloned as draft.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

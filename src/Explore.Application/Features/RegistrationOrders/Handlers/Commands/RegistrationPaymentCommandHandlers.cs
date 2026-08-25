@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Validators;
 using Explore.Application.Services.Registration;
@@ -185,13 +186,15 @@ public sealed class RespondAuthenticatedRegistrationMaterialChangeCommandHandler
             .ValidateAsync(request.Request, cancellationToken);
         if (!validation.IsValid || !currentUser.UserId.HasValue)
         {
-            return new() { FailureCode = "material_change_choice_invalid", Message = "Material-change choice is invalid." };
+            return RegistrationMaterialChangeChoiceCommandResultDto.Failure(
+                BaseCommandResponse.Failure<Guid>("material_change_choice_invalid", "Material-change choice is invalid."));
         }
 
         RegistrationOrder? order = await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
             inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken);
         return order is null
-            ? new() { FailureCode = "registration_order_not_found", Message = "Registration order was not found." }
+            ? RegistrationMaterialChangeChoiceCommandResultDto.Failure(
+                BaseCommandResponse.Failure<Guid>("registration_order_not_found", "Registration order was not found."))
             : await choices.RespondAsync(
                 order, request.Request.CampaignId, request.Request.ChoiceCode,
                 currentUser.UserId.Value, cancellationToken);
@@ -226,36 +229,23 @@ public sealed class RetryStudioRegistrationRefundCommandHandler(
             now,
             cancellationToken);
         return retried
-            ? new RegistrationRefundCommandResultDto
-            {
-                Success = true,
-                Id = attempt.Id,
-                Refund = RegistrationPaymentContractService.MapRefund(attempt)
-            }
+            ? RegistrationRefundCommandResultDto.Success(
+                attempt.Id, null, RegistrationPaymentContractService.MapRefund(attempt))
             : RefundCommandFailures.Invalid();
     }
 }
 
 file static class RefundCommandFailures
 {
-    public static RegistrationRefundCommandResultDto Invalid() => new()
-    {
-        FailureCode = "refund_request_invalid",
-        Message = "Refund request is invalid."
-    };
+    public static RegistrationRefundCommandResultDto Invalid() => RegistrationRefundCommandResultDto.Failure(
+        BaseCommandResponse.Failure<Guid>("refund_request_invalid", "Refund request is invalid."));
 
-    public static RegistrationRefundCommandResultDto NotFound() => new()
-    {
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order was not found."
-    };
+    public static RegistrationRefundCommandResultDto NotFound() => RegistrationRefundCommandResultDto.Failure(
+        BaseCommandResponse.Failure<Guid>("registration_order_not_found", "Registration order was not found."));
 }
 
 file static class PaymentNotFound
 {
-    public static RegistrationPaymentCommandResultDto Result() => new()
-    {
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order was not found."
-    };
+    public static RegistrationPaymentCommandResultDto Result() => RegistrationPaymentCommandResultDto.Failure(
+        BaseCommandResponse.Failure<Guid>("registration_order_not_found", "Registration order was not found."));
 }

@@ -85,7 +85,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Layer 3 custom properties cannot redefine reserved Layer 2 semantics.");
         await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
     }
@@ -116,7 +116,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Layer 3 custom properties cannot redefine reserved Layer 2 semantics.");
         await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs()
             .ExistsScopedMachineKey(default, default!, default!, default!);
@@ -144,7 +144,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors.Any(e => e.Contains("same Namespace + Key", StringComparison.Ordinal))).IsTrue();
     }
 
@@ -188,7 +188,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdId);
         await _customPropertyDefinitionRepository.Received(1).CreateWithOptions(
             Arg.Is<CustomPropertyDefinition>(definition =>
@@ -228,7 +228,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key);
@@ -283,7 +283,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.FailureCode).IsNotEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNull();
     }
@@ -315,7 +315,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);

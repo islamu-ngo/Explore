@@ -180,13 +180,10 @@ internal static class RegistrationFormCommandHandler
         }
 
         bool isReorder = request is ReorderRegistrationFormSectionsCommand or ReorderRegistrationFormFieldsCommand;
-        return new()
-        {
-            Id = Guid.Empty,
-            Success = false,
-            Message = "Registration authoring request is invalid.",
-            FailureCode = isReorder ? "registration_form_reorder_invalid" : "registration_form_validation_failed",
-            Errors = [.. validation.Errors.Select(error => error.ErrorMessage)]
-        };
+        return BaseCommandResponse.Failure<Guid>(
+            isReorder ? "registration_form_reorder_invalid" : "registration_form_validation_failed",
+            "Registration authoring request is invalid.",
+            validation.Errors.Select(error => error.ErrorMessage),
+            Guid.Empty);
     }
 }

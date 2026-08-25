@@ -40,34 +40,28 @@ public sealed class PurgeEventSessionCustomPropertyDefinitionCommandHandler : IR
 
     public async Task<BaseCommandResponse<CustomPropertyPurgeResultDto>> Handle(PurgeEventSessionCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<CustomPropertyPurgeResultDto>();
         var reason = request.Reason.Trim();
         if (string.IsNullOrWhiteSpace(reason))
         {
-            response.Success = false;
-            response.Message = "Session custom-property definition purge failed.";
-            response.Errors = ["A purge reason is required."];
-            return response;
+            return BaseCommandResponse.Validation<CustomPropertyPurgeResultDto>(
+                ["A purge reason is required."],
+                "Session custom-property definition purge failed.");
         }
 
         var summary = await _repository.GetPurgeDependencies(request.Id, cancellationToken);
         if (summary is null)
         {
-            response.Success = false;
-            response.Message = "Session custom-property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<CustomPropertyPurgeResultDto>("Session custom-property definition not found.");
         }
 
         if (summary.HasBlockingDependencies)
         {
-            CustomPropertyPurgeResponseFactory.ApplyBlockedResponse(
-                response,
+            var blockedResponse = CustomPropertyPurgeResponseFactory.ToBlockedResponse(
                 summary,
                 reason,
                 "Session custom-property definition purge blocked.");
             RecordPurgeDecision(summary, "blocked");
-            return response;
+            return blockedResponse;
         }
 
         var auditLogId = Guid.CreateVersion7();
@@ -93,29 +87,28 @@ public sealed class PurgeEventSessionCustomPropertyDefinitionCommandHandler : IR
             var latestSummary = await _repository.GetPurgeDependencies(request.Id, cancellationToken);
             if (latestSummary?.HasBlockingDependencies == true)
             {
-                CustomPropertyPurgeResponseFactory.ApplyBlockedResponse(
-                    response,
+                var blockedResponse = CustomPropertyPurgeResponseFactory.ToBlockedResponse(
                     latestSummary,
                     reason,
                     "Session custom-property definition purge blocked.");
                 RecordPurgeDecision(latestSummary, "blocked_after_recheck");
-                return response;
+                return blockedResponse;
             }
         }
 
-        response.Success = purged;
-        response.Message = purged
-            ? "Session custom-property definition purged successfully."
-            : "Session custom-property definition purge failed.";
-        response.Id = purged ? result : CustomPropertyPurgeResponseFactory.ToResult(summary, false, null, reason);
         RecordPurgeDecision(summary, purged ? "purged" : "failed");
 
         if (purged)
         {
             await _cache.RemoveAsync($"session-custom-properties:detail:{request.Id}", cancellationToken);
+            return BaseCommandResponse.Success(result, "Session custom-property definition purged successfully.");
         }
 
-        return response;
+        const string failureMessage = "Session custom-property definition purge failed.";
+        return BaseCommandResponse.Validation(
+            [failureMessage],
+            failureMessage,
+            CustomPropertyPurgeResponseFactory.ToResult(summary, false, null, reason));
     }
 
     private void RecordPurgeDecision(CustomPropertyPurgeDependencySummary summary, string outcome)

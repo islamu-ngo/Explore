@@ -675,23 +675,23 @@ public sealed class RegistrationParticipantCommandService(
         static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
-    private static BaseCommandResponse<Guid> Missing(Guid id) => new() { Id = id, Success = false, Message = "Registration participant resource was not found.", Errors = ["Registration participant resource was not found."] };
-    private static BaseCommandResponse<Guid> Invalid(Guid id, string error) => new() { Id = id, Success = false, Message = "Registration participant request is invalid.", Errors = [error] };
-    private static BaseCommandResponse<Guid> Conflict(Guid id) => new() { Id = id, Success = false, Message = "Registration order changed while assignments were updated.", Errors = ["Registration order changed while assignments were updated."] };
-    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> CompanySuccess(Guid id, int count, bool alreadyApplied, string message) => new()
-    {
-        Id = new CompanyRegistrationAssignmentCsvResultDto(id, count, alreadyApplied),
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
+    private static BaseCommandResponse<Guid> Missing(Guid id) => BaseCommandResponse.Validation(
+        ["Registration participant resource was not found."], "Registration participant resource was not found.", id);
+    private static BaseCommandResponse<Guid> Invalid(Guid id, string error) => BaseCommandResponse.Validation(
+        [error], "Registration participant request is invalid.", id);
+    private static BaseCommandResponse<Guid> Conflict(Guid id) => BaseCommandResponse.Validation(
+        ["Registration order changed while assignments were updated."],
+        "Registration order changed while assignments were updated.", id);
+    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> CompanySuccess(Guid id, int count, bool alreadyApplied, string message) =>
+        BaseCommandResponse.Success(new CompanyRegistrationAssignmentCsvResultDto(id, count, alreadyApplied), message);
 
-    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> InvalidCompany(Guid id, string error, string? failureCode = null) => new()
-    {
-        Id = new CompanyRegistrationAssignmentCsvResultDto(id, 0, false),
-        Success = false,
-        FailureCode = failureCode,
-        Message = "Company assignment CSV request is invalid.",
-        Errors = [error]
-    };
+    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> InvalidCompany(Guid id, string error, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(
+                [error], "Company assignment CSV request is invalid.",
+                new CompanyRegistrationAssignmentCsvResultDto(id, 0, false))
+            : BaseCommandResponse.Failure<CompanyRegistrationAssignmentCsvResultDto>(
+                failureCode, "Company assignment CSV request is invalid.", [error],
+                new CompanyRegistrationAssignmentCsvResultDto(id, 0, false));
 }

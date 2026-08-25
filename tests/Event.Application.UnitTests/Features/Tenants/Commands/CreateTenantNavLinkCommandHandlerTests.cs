@@ -62,7 +62,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(linkId);
         await _repository.Received(1).Create(Arg.Is<TenantNavigationLink>(e =>
             e.TenantId == _tenantId &&
@@ -92,7 +92,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).Create(Arg.Is<TenantNavigationLink>(e =>
             e.Label == "Home" &&
             e.Url == "https://example.com"));
@@ -155,7 +155,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Validation failed.");
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!.Count).IsGreaterThan(0);
@@ -173,7 +173,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Create(Arg.Any<TenantNavigationLink>());
     }
 
@@ -188,7 +188,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Create(Arg.Any<TenantNavigationLink>());
     }
 
@@ -209,7 +209,7 @@ public class CreateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -221,7 +221,7 @@ public class CreateTenantNavLinkCommandHandlerTests
             new CreateTenantNavLinkCommand { NavigationLinkDto = dto },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Create(Arg.Any<TenantNavigationLink>());
     }
 
@@ -247,7 +247,7 @@ public class CreateTenantNavLinkCommandHandlerTests
             new CreateTenantNavLinkCommand { NavigationLinkDto = dto },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).Create(Arg.Is<TenantNavigationLink>(link => link.Url == dto.Url));
     }
 }

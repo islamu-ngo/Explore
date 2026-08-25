@@ -156,7 +156,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         using var cancellationSource = new CancellationTokenSource();
         var result = await _handler.Handle(command, cancellationSource.Token);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
         await Assert.That(_capturedUpserts.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Deployment.Mode,
@@ -254,7 +254,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
             tenantUser.ActorId == actorId && tenantUser.Actor == null));
     }
@@ -283,7 +283,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName).Value)
             .IsEqualTo(JsonSerializer.Serialize("Trimmed Community Events"));
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(
@@ -316,7 +316,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _platformUserRoleRepository.Received(1).Create(Arg.Is<PlatformUserRole>(role =>
             role.UserId == TestUserId
             && role.RoleId == (int)RoleEnum.Admin
@@ -396,7 +396,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost
             && setting.Value == JsonSerializer.Serialize("admin.example.org")), Arg.Any<CancellationToken>());
@@ -424,7 +424,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
             setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
             && setting.Value == JsonSerializer.Serialize("Trimmed Instance Name")), Arg.Any<CancellationToken>());

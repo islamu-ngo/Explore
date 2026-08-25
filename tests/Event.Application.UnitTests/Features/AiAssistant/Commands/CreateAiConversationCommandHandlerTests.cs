@@ -53,7 +53,7 @@ public sealed class CreateAiConversationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
 
         await _conversationRepository.Received(1).Create(Arg.Is<AiConversation>(conversation =>
@@ -75,7 +75,7 @@ public sealed class CreateAiConversationCommandHandlerTests
 
         var result = await CreateHandler().Handle(new CreateAiConversationCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
         await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
     }
@@ -88,7 +88,7 @@ public sealed class CreateAiConversationCommandHandlerTests
 
         var result = await CreateHandler().Handle(new CreateAiConversationCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("disabled");
         await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
     }
@@ -101,7 +101,7 @@ public sealed class CreateAiConversationCommandHandlerTests
             Conversation = new CreateAiConversationRequestDto { Title = new string('x', 201) }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
     }
@@ -121,7 +121,7 @@ public sealed class CreateAiConversationCommandHandlerTests
             Conversation = new CreateAiConversationRequestDto { ActorId = actorId }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_authorized");
         await _conversationRepository.DidNotReceive().Create(Arg.Any<AiConversation>());
     }

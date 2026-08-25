@@ -51,7 +51,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(memberToUpdate.Id, RoleEnum.GroupModerator, requesterUserId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(memberToUpdate.Id);
         await Assert.That(result.Message).IsEqualTo("Member role updated successfully");
         await Assert.That(memberToUpdate.RoleId).IsEqualTo((int)RoleEnum.GroupModerator);
@@ -80,7 +80,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(memberToUpdate.Id, RoleEnum.GroupModerator, requesterUserId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(memberToUpdate.RoleId).IsEqualTo((int)RoleEnum.GroupModerator);
         await _groupMemberRepository.Received(1).Update(memberToUpdate);
     }
@@ -95,7 +95,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(memberId, RoleEnum.GroupModerator, Guid.NewGuid()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Member not found");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -120,7 +120,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             RequesterUserId = "not-a-guid"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invalid requester User ID.");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -148,7 +148,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(memberToUpdate.Id, RoleEnum.GroupModerator, requesterUserId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("You do not have permission to update roles.");
         await Assert.That(memberToUpdate.RoleId).IsEqualTo((int)RoleEnum.GroupMember);
         await _groupMemberRepository.DidNotReceive().GetMembersByGroupId(Arg.Any<Guid>());
@@ -177,7 +177,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(adminToDemote.Id, RoleEnum.GroupMember, requesterUserId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Cannot demote the last admin of the group.");
         await Assert.That(adminToDemote.RoleId).IsEqualTo((int)RoleEnum.GroupAdmin);
         await _groupMemberRepository.DidNotReceive().Update(Arg.Any<GroupMember>());
@@ -206,7 +206,7 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
             CreateCommand(adminToDemote.Id, RoleEnum.GroupMember, requesterUserId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(adminToDemote.RoleId).IsEqualTo((int)RoleEnum.GroupMember);
         await _groupMemberRepository.Received(1).Update(adminToDemote);
     }

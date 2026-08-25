@@ -33,25 +33,22 @@ public class CreateEventDayCommandHandler : IRequestHandler<CreateEventDayComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventDayCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventDayDtoValidator(_eventRepository, _eventDayRepository);
         var validationResult = await validator.ValidateAsync(request.EventDayDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event day creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event day creation failed.");
         }
 
         var parentEvent = await _eventRepository.GetById(request.EventDayDto.EventId);
         if (parentEvent == null)
         {
-            response.Success = false;
-            response.Message = "Event not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event not found in the current tenant."],
+                "Event not found in the current tenant.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -59,10 +56,9 @@ public class CreateEventDayCommandHandler : IRequestHandler<CreateEventDayComman
                 parentEvent.TenantId,
                 request.EventDayDto.BannerImageId))
         {
-            response.Success = false;
-            response.Message = "Event day creation failed.";
-            response.Errors = ["Banner image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Banner image must be an active public safe-raster object in the current tenant."],
+                "Event day creation failed.");
         }
 
         var eventDay = _mapper.Map<EventDay>(request.EventDayDto);
@@ -70,10 +66,6 @@ public class CreateEventDayCommandHandler : IRequestHandler<CreateEventDayComman
 
         eventDay = await _eventDayRepository.Create(eventDay);
 
-        response.Success = true;
-        response.Id = eventDay.Id;
-        response.Message = "Event day created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventDay.Id, "Event day created successfully.");
     }
 }

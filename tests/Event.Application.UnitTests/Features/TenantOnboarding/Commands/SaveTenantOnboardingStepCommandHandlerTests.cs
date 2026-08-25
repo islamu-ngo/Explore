@@ -67,7 +67,7 @@ public class SaveTenantOnboardingStepCommandHandlerTests
 
         var response = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await analyticsProvider.Received(1).TrackAsync(
             Arg.Is<string>(x => x.StartsWith("pseudo-")),
             "onboarding.step_completed",

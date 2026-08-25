@@ -32,23 +32,18 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateOrganizationMemberRoleCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.UpdateOrganizationMemberRoleDto;
 
         var memberToUpdate = await _organizationMemberRepository.GetById(dto.Id);
         if (memberToUpdate == null)
         {
-            response.Success = false;
-            response.Message = "Member not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Member not found"], "Member not found");
         }
 
         var organization = await _organizationRepository.GetById(memberToUpdate.OrganizationTenant.OrganizationId);
         if (organization == null)
         {
-            response.Success = false;
-            response.Message = "Organization not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Organization not found"], "Organization not found");
         }
 
         // Check permissions - requester must be an Admin
@@ -59,9 +54,9 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
             // Only OrgAdmin role can update roles
             if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to update roles.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to update roles."],
+                    "You do not have permission to update roles.");
             }
 
             // Prevent demoting the last admin
@@ -70,25 +65,21 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
                 (int)dto.Role != (int)RoleEnum.OrgAdmin &&
                 adminCount <= 1)
             {
-                response.Success = false;
-                response.Message = "Cannot demote the last admin of the organization.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Cannot demote the last admin of the organization."],
+                    "Cannot demote the last admin of the organization.");
             }
         }
         else
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         memberToUpdate.RoleId = (int)dto.Role;
         await _organizationMemberRepository.Update(memberToUpdate);
 
-        response.Success = true;
-        response.Message = "Member role updated successfully";
-        response.Id = memberToUpdate.Id;
-
-        return response;
+        return BaseCommandResponse.Success(memberToUpdate.Id, "Member role updated successfully");
     }
 }

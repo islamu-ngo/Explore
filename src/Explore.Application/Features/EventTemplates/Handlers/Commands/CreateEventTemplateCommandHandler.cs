@@ -50,16 +50,13 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventTemplateCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.TemplateDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event template creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event template creation failed.");
         }
 
         if (await _eventTemplateRepository.ExistsTemplateKey(
@@ -67,10 +64,9 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
                 request.TemplateDto.TemplateKey,
                 request.TemplateDto.Version))
         {
-            response.Success = false;
-            response.Message = "Event template creation failed.";
-            response.Errors = ["A template with the same TemplateKey and Version already exists for this tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A template with the same TemplateKey and Version already exists for this tenant."],
+                "Event template creation failed.");
         }
 
         var maxDefinitions = await _quotaResolver.GetIntAsync(
@@ -79,7 +75,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
             cancellationToken);
         if (request.TemplateDto.Definitions.Count > maxDefinitions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event template creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
@@ -88,7 +84,6 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
                     request.TemplateDto.Definitions.Count,
                     "event_template_definitions",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var maxOptions = await _quotaResolver.GetIntAsync(
@@ -99,7 +94,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
             .FirstOrDefault(definition => definition.Options.Count > maxOptions);
         if (overOptionDefinition is not null)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event template creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -108,16 +103,14 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
                     overOptionDefinition.Options.Count,
                     "event_template_definition_options",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var definitionsResult = BuildDefinitionEntities(request.TemplateDto.Definitions);
         if (definitionsResult.Errors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event template creation failed.";
-            response.Errors = definitionsResult.Errors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                definitionsResult.Errors,
+                "Event template creation failed.");
         }
 
         var template = _mapper.Map<EventTemplate>(request.TemplateDto);
@@ -129,19 +122,15 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
             ct => _eventTemplateRepository.CreateWithDefinitions(template, definitionsResult.Definitions, ct),
             cancellationToken);
 
-        response.Success = true;
-        response.Id = template.Id;
-        response.Message = "Event template created successfully.";
-
         await _cache.RemoveAsync(
             GetListCacheKey(_tenantContext.TenantId, null, 1, PaginatedResult<object>.DefaultPageSize),
             cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(template.Id, "Event template created successfully.");
     }
 
     private (IReadOnlyCollection<TemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
-        List<CreateEventTemplateDefinitionDto> definitionDtos)
+        IReadOnlyList<CreateEventTemplateDefinitionDto> definitionDtos)
     {
         var errors = new List<string>();
         var definitions = new List<TemplateDefinitionWithOptions>();

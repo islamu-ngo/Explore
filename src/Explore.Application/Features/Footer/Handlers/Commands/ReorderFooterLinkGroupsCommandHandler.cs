@@ -39,6 +39,6 @@ public sealed class ReorderFooterLinkGroupsCommandHandler(
             }
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid> { Success = true };
+        return BaseCommandResponse.Success(Guid.Empty);
     }
 }

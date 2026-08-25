@@ -4,81 +4,25 @@
 using System.Collections.Concurrent;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
+using Explore.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Services.Registration;
 
-public sealed class AdmissionRecoveryService
+public sealed class AdmissionRecoveryService(
+    IAdmissionRecoveryRepository repository,
+    IAdmissionRecoveryIdentityResolver identityResolver,
+    IAdmissionRecoveryCapabilityService capabilityService,
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
+    IAdmissionRecoveryDeliveryStager deliveryStager,
+    IAdmissionRecoveryTicketDocumentService ticketDocumentService,
+    IAdmissionRecoveryAuditService auditService,
+    IAdmissionRecoveryRateLimiter rateLimiter,
+    ILogger<AdmissionRecoveryService> logger)
 {
-    private readonly IAdmissionRecoveryRepository repository;
-    private readonly IAdmissionRecoveryCapabilityService capabilityService;
-    private readonly IAdmissionRecoveryDeliveryService deliveryService;
-    private readonly IUnitOfWork unitOfWork;
-    private readonly TimeProvider timeProvider;
-    private readonly IAdmissionRecoveryDeliveryStager? deliveryStager;
-    private readonly IAdmissionRecoveryTicketDocumentService? ticketDocumentService;
-    private readonly IAdmissionRecoveryAuditService? auditService;
     private readonly ConcurrentDictionary<Guid, RecoveryLineage> knownLineage = [];
-
-    public AdmissionRecoveryService(
-        IAdmissionRecoveryRepository repository,
-        IAdmissionRecoveryCapabilityService capabilityService,
-        IAdmissionRecoveryDeliveryService deliveryService,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
-        : this(repository, capabilityService, deliveryService, unitOfWork, timeProvider, null, null, null)
-    {
-    }
-
-    public AdmissionRecoveryService(
-        IAdmissionRecoveryRepository repository,
-        IAdmissionRecoveryCapabilityService capabilityService,
-        IAdmissionRecoveryDeliveryService deliveryService,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider,
-        IAdmissionRecoveryDeliveryStager deliveryStager)
-        : this(repository, capabilityService, deliveryService, unitOfWork, timeProvider, deliveryStager, null, null)
-    {
-    }
-
-    public AdmissionRecoveryService(
-        IAdmissionRecoveryRepository repository,
-        IAdmissionRecoveryCapabilityService capabilityService,
-        IAdmissionRecoveryDeliveryService deliveryService,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider,
-        IAdmissionRecoveryDeliveryStager deliveryStager,
-        IAdmissionRecoveryTicketDocumentService ticketDocumentService)
-        : this(
-            repository,
-            capabilityService,
-            deliveryService,
-            unitOfWork,
-            timeProvider,
-            deliveryStager,
-            ticketDocumentService,
-            null)
-    {
-    }
-
-    public AdmissionRecoveryService(
-        IAdmissionRecoveryRepository repository,
-        IAdmissionRecoveryCapabilityService capabilityService,
-        IAdmissionRecoveryDeliveryService deliveryService,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider,
-        IAdmissionRecoveryDeliveryStager deliveryStager,
-        IAdmissionRecoveryTicketDocumentService ticketDocumentService,
-        IAdmissionRecoveryAuditService auditService)
-    {
-        this.repository = repository;
-        this.capabilityService = capabilityService;
-        this.deliveryService = deliveryService;
-        this.unitOfWork = unitOfWork;
-        this.timeProvider = timeProvider;
-        this.deliveryStager = deliveryStager;
-        this.ticketDocumentService = ticketDocumentService;
-        this.auditService = auditService;
-    }
 
     public async Task<AdmissionRecoveryRequestResult> RequestAsync(
         AdmissionRecoveryRequest request,
@@ -88,26 +32,39 @@ public sealed class AdmissionRecoveryService
         {
             NormalizedIdentity = NormalizeIdentity(request.NormalizedIdentity)
         };
-        AdmissionRecoveryIdentityResult identity =
-            await repository.FindIdentityAsync(normalized, cancellationToken);
+        AdmissionRecoveryRateLimitDecision decision = rateLimiter.TryAcquire(
+            normalized.TenantId,
+            normalized.NormalizedIdentity,
+            timeProvider.GetUtcNow());
+        if (!decision.Allowed)
+        {
+            throw new AdmissionRecoveryRateLimitExceededException(decision.RetryAfterSeconds);
+        }
+
+        try
+        {
+            AdmissionRecoveryIdentityResult identity =
+                await identityResolver.FindAsync(normalized, cancellationToken);
         if (!identity.IdentityPresent || identity.AdmissionTicketIds.Count == 0)
         {
             return Accepted();
         }
 
-        RecoveryLineage[] lineages = identity.AdmissionTicketIds
-            .Select(admissionTicketId => new RecoveryLineage(
-                request.TenantId,
-                identity.RecoveryRequestId,
-                admissionTicketId,
-                request.Purpose,
-                0))
-            .ToArray();
-        var materials = new List<(RecoveryLineage Lineage, AdmissionRecoveryCapabilityMaterial Material)>(
-            lineages.Length);
+        var prepared = new List<PreparedRecovery>(identity.AdmissionTicketIds.Count);
         DateTimeOffset createdAtUtc = timeProvider.GetUtcNow();
-        foreach (RecoveryLineage lineage in lineages)
+        foreach (Guid admissionTicketId in identity.AdmissionTicketIds)
         {
+            AdmissionRecoveryCapability? current = await repository.FindLatestByTicketIdAsync(
+                normalized.TenantId,
+                admissionTicketId,
+                normalized.Purpose,
+                cancellationToken);
+            var lineage = new RecoveryLineage(
+                normalized.TenantId,
+                current?.RecoveryRequestId ?? identity.RecoveryRequestId,
+                admissionTicketId,
+                normalized.Purpose,
+                0);
             AdmissionRecoveryCapabilityMaterial material = await capabilityService.IssueAsync(
                 new AdmissionRecoveryCapabilityIssueRequest(
                     lineage.TenantId,
@@ -116,71 +73,86 @@ public sealed class AdmissionRecoveryService
                     lineage.Purpose,
                     lineage.KeyVersion),
                 cancellationToken);
-            materials.Add((lineage, material));
+            prepared.Add(new PreparedRecovery(
+                lineage,
+                material,
+                current,
+                Guid.CreateVersion7(),
+                current is null ? 1 : current.CapabilityVersion + 1));
         }
 
+        var committed = new List<PreparedRecovery>(prepared.Count);
         await unitOfWork.ExecuteInTransactionAsync(
             async token =>
             {
-                foreach ((RecoveryLineage lineage, AdmissionRecoveryCapabilityMaterial material) in materials)
+                committed.Clear();
+                foreach (PreparedRecovery recovery in prepared)
                 {
-                    await repository.StoreAsync(
-                        new AdmissionRecoveryCapabilityRecord(
-                            lineage.TenantId,
-                            lineage.RecoveryRequestId,
-                            lineage.AdmissionTicketId,
-                            lineage.Purpose,
-                            material.LookupDigest,
-                            material.KeyVersion,
-                            material.ExpiresAtUtc,
-                            Guid.CreateVersion7(),
-                            1,
-                            createdAtUtc,
-                            material.LocatorDigest),
+                    AdmissionRecoveryCapability replacement =
+                        CreateCapability(recovery, createdAtUtc);
+                    bool persisted;
+                    if (recovery.Existing is { ConsumedAt: null, RotatedAt: null } current)
+                    {
+                        persisted = await repository.TryRotateAsync(
+                            current,
+                            replacement,
+                            createdAtUtc.UtcDateTime,
+                            token);
+                    }
+                    else
+                    {
+                        _ = await repository.AddAsync(replacement, token);
+                        persisted = true;
+                    }
+                    if (!persisted)
+                    {
+                        continue;
+                    }
+
+                    committed.Add(recovery);
+                    await deliveryStager.StageAsync(
+                        new AdmissionRecoveryDeliveryRequest(
+                            recovery.Lineage.TenantId,
+                            recovery.Lineage.RecoveryRequestId,
+                            recovery.Lineage.AdmissionTicketId,
+                            recovery.Lineage.Purpose,
+                            recovery.Material.Capability,
+                            recovery.CapabilityVersion),
                         token);
-                    if (deliveryStager is not null)
-                    {
-                        await deliveryStager.StageAsync(
-                            new AdmissionRecoveryDeliveryRequest(
-                                lineage.TenantId,
-                                lineage.RecoveryRequestId,
-                                lineage.AdmissionTicketId,
-                                lineage.Purpose,
-                                material.Capability),
-                            token);
-                    }
-                    if (auditService is not null)
-                    {
-                        await auditService.AppendAsync(
-                            new AdmissionRecoveryAuditFact(
-                                lineage.TenantId,
-                                lineage.RecoveryRequestId,
-                                "AdmissionRecoveryIssued",
-                                1,
-                                createdAtUtc),
-                            token);
-                    }
+                    await auditService.AppendAsync(
+                        new AdmissionRecoveryAuditFact(
+                            recovery.Lineage.TenantId,
+                            recovery.Lineage.RecoveryRequestId,
+                            recovery.Existing is null
+                                ? "AdmissionRecoveryIssued"
+                                : "AdmissionRecoveryRotated",
+                            recovery.CapabilityVersion,
+                            createdAtUtc),
+                        token);
                 }
             },
             cancellationToken);
 
-        foreach ((RecoveryLineage lineage, AdmissionRecoveryCapabilityMaterial material) in materials)
+        foreach (PreparedRecovery recovery in committed)
         {
-            knownLineage[lineage.RecoveryRequestId] = lineage with { KeyVersion = material.KeyVersion };
-            if (deliveryStager is null)
-            {
-                await deliveryService.DeliverAsync(
-                    new AdmissionRecoveryDeliveryRequest(
-                        lineage.TenantId,
-                        lineage.RecoveryRequestId,
-                        lineage.AdmissionTicketId,
-                        lineage.Purpose,
-                        material.Capability),
-                    cancellationToken);
-            }
+            knownLineage[recovery.Lineage.RecoveryRequestId] =
+                recovery.Lineage with { KeyVersion = recovery.Material.KeyVersion };
         }
 
-        return Accepted();
+            return Accepted();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                "Admission recovery request processing failed uniformly for tenant {TenantId}; failure type {FailureType}",
+                normalized.TenantId,
+                exception.GetType().Name);
+            return Accepted();
+        }
     }
 
     public async Task<AdmissionRecoveryConsumeResult> ConsumeAsync(
@@ -212,49 +184,43 @@ public sealed class AdmissionRecoveryService
                 request.Capability,
                 lineage.KeyVersion),
             cancellationToken);
-        AdmissionRecoveryCapabilityState state = await repository.GetByDigestAsync(
-            new AdmissionRecoveryCapabilityLookup(
-                lineage.TenantId,
-                lineage.RecoveryRequestId,
-                lineage.AdmissionTicketId,
-                lineage.Purpose,
-                digest.LookupDigest,
-                digest.KeyVersion),
+        AdmissionRecoveryCapability? state = await repository.FindByProofDigestAsync(
+            lineage.TenantId,
+            lineage.RecoveryRequestId,
+            lineage.AdmissionTicketId,
+            lineage.Purpose,
+            digest.KeyVersion,
+            digest.LookupDigest,
             cancellationToken);
-        if (!state.Found)
+        if (state is null)
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Invalid);
         }
 
-        if (state.Rotated)
+        if (state.RotatedAt.HasValue)
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Rotated);
         }
 
-        if (state.Consumed)
+        if (state.ConsumedAt.HasValue)
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.AlreadyConsumed);
         }
 
-        if (state.ExpiresAtUtc <= timeProvider.GetUtcNow())
+        if (state.ExpiresAt <= timeProvider.GetUtcNow().UtcDateTime)
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Expired);
         }
 
-        AdmissionRecoveryMutationResult mutation = await repository.ConsumeAsync(
-            new AdmissionRecoveryCapabilityMutation(
-                state.TenantId,
-                state.RecoveryRequestId,
-                state.AdmissionTicketId,
-                state.Purpose,
-                state.LookupDigest,
-                state.ExpiresAtUtc,
-                state.KeyVersion,
-                state.CapabilityId,
-                state.ConcurrencyStamp,
-                timeProvider.GetUtcNow()),
+        bool consumed = await repository.TryConsumeAsync(
+            state.TenantId,
+            state.Id,
+            state.LookupKeyVersion,
+            state.LookupDigest,
+            state.ConcurrencyStamp,
+            timeProvider.GetUtcNow().UtcDateTime,
             cancellationToken);
-        return mutation.Outcome == AdmissionRecoveryMutationOutcome.Consumed
+        return consumed
             ? new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Consumed)
             : new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.AlreadyConsumed);
     }
@@ -283,11 +249,15 @@ public sealed class AdmissionRecoveryService
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Invalid);
         }
 
-        AdmissionRecoveryCapabilityState state = await repository.GetByLocatorAsync(
+        AdmissionRecoveryCapability? state = await repository.FindByLocatorAsync(
             tenantId,
             locators,
             cancellationToken);
-        if (!state.Found || state.Purpose != AdmissionRecoveryPurpose.TicketRecovery)
+        if (state is null ||
+            !string.Equals(
+                state.Purpose,
+                AdmissionRecoveryPurpose.TicketRecovery.ToString(),
+                StringComparison.Ordinal))
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Invalid);
         }
@@ -297,21 +267,20 @@ public sealed class AdmissionRecoveryService
                 state.TenantId,
                 state.RecoveryRequestId,
                 state.AdmissionTicketId,
-                state.Purpose,
+                AdmissionRecoveryPurpose.TicketRecovery,
                 capability,
-                state.KeyVersion),
+                state.LookupKeyVersion),
             cancellationToken);
-        AdmissionRecoveryCapabilityState verified = await repository.GetByDigestAsync(
-            new AdmissionRecoveryCapabilityLookup(
-                state.TenantId,
-                state.RecoveryRequestId,
-                state.AdmissionTicketId,
-                state.Purpose,
-                proof.LookupDigest,
-                proof.KeyVersion),
+        AdmissionRecoveryCapability? verified = await repository.FindByProofDigestAsync(
+            state.TenantId,
+            state.RecoveryRequestId,
+            state.AdmissionTicketId,
+            AdmissionRecoveryPurpose.TicketRecovery,
+            proof.KeyVersion,
+            proof.LookupDigest,
             cancellationToken);
-        if (!verified.Found || verified.Rotated || verified.Consumed ||
-            verified.ExpiresAtUtc <= timeProvider.GetUtcNow())
+        if (verified is null || verified.RotatedAt.HasValue || verified.ConsumedAt.HasValue ||
+            verified.ExpiresAt <= timeProvider.GetUtcNow().UtcDateTime)
         {
             return new AdmissionRecoveryConsumeResult(AdmissionRecoveryConsumeOutcome.Invalid);
         }
@@ -323,50 +292,41 @@ public sealed class AdmissionRecoveryService
             await unitOfWork.ExecuteInTransactionAsync(
                 async token =>
                 {
-                    AdmissionRecoveryMutationResult mutation = await repository.ConsumeAsync(
-                        new AdmissionRecoveryCapabilityMutation(
-                            verified.TenantId,
-                            verified.RecoveryRequestId,
-                            verified.AdmissionTicketId,
-                            verified.Purpose,
-                            verified.LookupDigest,
-                            verified.ExpiresAtUtc,
-                            verified.KeyVersion,
-                            verified.CapabilityId,
-                            verified.ConcurrencyStamp,
-                            timeProvider.GetUtcNow()),
+                    bool consumed = await repository.TryConsumeAsync(
+                        verified.TenantId,
+                        verified.Id,
+                        verified.LookupKeyVersion,
+                        verified.LookupDigest,
+                        verified.ConcurrencyStamp,
+                        timeProvider.GetUtcNow().UtcDateTime,
                         token);
-                    if (mutation.Outcome != AdmissionRecoveryMutationOutcome.Consumed)
+                    if (!consumed)
                     {
                         return;
                     }
 
-                    AdmissionRecoveryTicketDocument? document = ticketDocumentService is null
-                        ? null
-                        : await ticketDocumentService.RotateAndCreateAsync(
+                    AdmissionRecoveryTicketDocument? document =
+                        await ticketDocumentService.RotateAndCreateAsync(
                             verified.TenantId,
                             verified.AdmissionTicketId,
                             token);
-                    if (ticketDocumentService is not null && document is null)
+                    if (document is null)
                     {
                         throw new RecoveryDocumentUnavailableException();
                     }
 
                     result = new AdmissionRecoveryConsumeResult(
                         AdmissionRecoveryConsumeOutcome.Consumed,
-                        verified.CapabilityId,
+                        verified.Id,
                         document);
-                    if (auditService is not null)
-                    {
-                        await auditService.AppendAsync(
-                            new AdmissionRecoveryAuditFact(
-                                verified.TenantId,
-                                verified.RecoveryRequestId,
-                                "AdmissionRecoveryConsumed",
-                                verified.CapabilityVersion,
-                                timeProvider.GetUtcNow()),
-                            token);
-                    }
+                    await auditService.AppendAsync(
+                        new AdmissionRecoveryAuditFact(
+                            verified.TenantId,
+                            verified.RecoveryRequestId,
+                            "AdmissionRecoveryConsumed",
+                            verified.CapabilityVersion,
+                            timeProvider.GetUtcNow()),
+                        token);
                 },
                 cancellationToken);
         }
@@ -382,12 +342,12 @@ public sealed class AdmissionRecoveryService
         AdmissionRecoveryResendRequest request,
         CancellationToken cancellationToken)
     {
-        AdmissionRecoveryCapabilityState current = await repository.GetCurrentByRequestIdAsync(
+        AdmissionRecoveryCapability? current = await repository.FindLatestByRequestIdAsync(
             request.TenantId,
             request.RecoveryRequestId,
             request.Purpose,
             cancellationToken);
-        if (!current.Found || current.Consumed || current.Rotated ||
+        if (current is null || current.ConsumedAt.HasValue || current.RotatedAt.HasValue ||
             request.Purpose != AdmissionRecoveryPurpose.TicketRecovery)
         {
             return new AdmissionRecoveryResendResult(AdmissionRecoveryRequestOutcome.Accepted);
@@ -398,48 +358,45 @@ public sealed class AdmissionRecoveryService
                 current.TenantId,
                 current.RecoveryRequestId,
                 current.AdmissionTicketId,
-                current.Purpose,
-                current.KeyVersion),
+                request.Purpose,
+                0),
             cancellationToken);
         DateTimeOffset rotatedAtUtc = timeProvider.GetUtcNow();
+        AdmissionRecoveryCapability replacementEntity = AdmissionRecoveryCapability.Create(
+            Guid.CreateVersion7(),
+            current.TenantId,
+            current.RecoveryRequestId,
+            current.AdmissionTicketId,
+            current.Purpose,
+            current.CapabilityVersion + 1,
+            replacement.KeyVersion,
+            replacement.LookupDigest,
+            replacement.ExpiresAtUtc.UtcDateTime,
+            rotatedAtUtc.UtcDateTime,
+            replacement.LocatorDigest);
 
-        AdmissionRecoveryMutationResult rotation = new(AdmissionRecoveryMutationOutcome.Rejected);
+        bool rotation = false;
         await unitOfWork.ExecuteInTransactionAsync(
             async token =>
             {
-                rotation = await repository.RotateAsync(
-                    new AdmissionRecoveryRotationRequest(
-                        current.TenantId,
-                        current.RecoveryRequestId,
-                        current.AdmissionTicketId,
-                        current.Purpose,
-                        current.LookupDigest,
-                        replacement.LookupDigest,
-                        replacement.KeyVersion,
-                        replacement.ExpiresAtUtc,
-                        current.KeyVersion,
-                        current.CapabilityId,
-                        Guid.CreateVersion7(),
-                        current.CapabilityVersion + 1,
-                        current.ConcurrencyStamp,
-                        rotatedAtUtc,
-                        replacement.LocatorDigest),
+                rotation = await repository.TryRotateAsync(
+                    current,
+                    replacementEntity,
+                    rotatedAtUtc.UtcDateTime,
                     token);
-                if (rotation.Outcome == AdmissionRecoveryMutationOutcome.Rotated &&
-                    deliveryStager is not null)
+                if (rotation)
                 {
                     await deliveryStager.StageAsync(
                         new AdmissionRecoveryDeliveryRequest(
                             current.TenantId,
                             current.RecoveryRequestId,
                             current.AdmissionTicketId,
-                            current.Purpose,
+                            request.Purpose,
                             replacement.Capability,
                             current.CapabilityVersion + 1),
                         token);
                 }
-                if (rotation.Outcome == AdmissionRecoveryMutationOutcome.Rotated &&
-                    auditService is not null)
+                if (rotation)
                 {
                     await auditService.AppendAsync(
                         new AdmissionRecoveryAuditFact(
@@ -452,7 +409,7 @@ public sealed class AdmissionRecoveryService
                 }
             },
             cancellationToken);
-        if (rotation.Outcome != AdmissionRecoveryMutationOutcome.Rotated)
+        if (!rotation)
         {
             return new AdmissionRecoveryResendResult(AdmissionRecoveryRequestOutcome.Accepted);
         }
@@ -461,20 +418,8 @@ public sealed class AdmissionRecoveryService
             current.TenantId,
             current.RecoveryRequestId,
             current.AdmissionTicketId,
-            current.Purpose,
+            request.Purpose,
             replacement.KeyVersion);
-        if (deliveryStager is null)
-        {
-            await deliveryService.DeliverAsync(
-                new AdmissionRecoveryDeliveryRequest(
-                    current.TenantId,
-                    current.RecoveryRequestId,
-                    current.AdmissionTicketId,
-                    current.Purpose,
-                    replacement.Capability,
-                    current.CapabilityVersion + 1),
-                cancellationToken);
-        }
         return new AdmissionRecoveryResendResult(AdmissionRecoveryRequestOutcome.Accepted);
     }
 
@@ -489,12 +434,12 @@ public sealed class AdmissionRecoveryService
 
         try
         {
-            AdmissionRecoveryCapabilityState current = await repository.GetCurrentByRequestIdAsync(
+            AdmissionRecoveryCapability? current = await repository.FindLatestByRequestIdAsync(
                 request.TenantId,
                 request.RecoveryRequestId,
                 request.Purpose,
                 cancellationToken);
-            if (!current.Found)
+            if (current is null)
             {
                 return null;
             }
@@ -503,8 +448,8 @@ public sealed class AdmissionRecoveryService
                 current.TenantId,
                 current.RecoveryRequestId,
                 current.AdmissionTicketId,
-                current.Purpose,
-                current.KeyVersion);
+                request.Purpose,
+                current.LookupKeyVersion);
             knownLineage.TryAdd(resolved.RecoveryRequestId, resolved);
             return resolved;
         }
@@ -520,12 +465,35 @@ public sealed class AdmissionRecoveryService
     private static string NormalizeIdentity(string value) =>
         value.Trim().ToUpperInvariant();
 
+    private static AdmissionRecoveryCapability CreateCapability(
+        PreparedRecovery recovery,
+        DateTimeOffset createdAtUtc) =>
+        AdmissionRecoveryCapability.Create(
+            recovery.CapabilityId,
+            recovery.Lineage.TenantId,
+            recovery.Lineage.RecoveryRequestId,
+            recovery.Lineage.AdmissionTicketId,
+            recovery.Lineage.Purpose.ToString(),
+            recovery.CapabilityVersion,
+            recovery.Material.KeyVersion,
+            recovery.Material.LookupDigest,
+            recovery.Material.ExpiresAtUtc.UtcDateTime,
+            createdAtUtc.UtcDateTime,
+            recovery.Material.LocatorDigest);
+
     private sealed record RecoveryLineage(
         Guid TenantId,
         Guid RecoveryRequestId,
         Guid AdmissionTicketId,
         AdmissionRecoveryPurpose Purpose,
         int KeyVersion);
+
+    private sealed record PreparedRecovery(
+        RecoveryLineage Lineage,
+        AdmissionRecoveryCapabilityMaterial Material,
+        AdmissionRecoveryCapability? Existing,
+        Guid CapabilityId,
+        int CapabilityVersion);
 
     private sealed class RecoveryDocumentUnavailableException : Exception
     {

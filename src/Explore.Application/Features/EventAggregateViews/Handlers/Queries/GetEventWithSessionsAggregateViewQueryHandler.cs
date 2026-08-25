@@ -46,12 +46,9 @@ public sealed class GetEventWithSessionsAggregateViewQueryHandler
                 var view = await _repository.GetByEventIdAsync(request.EventId, cancellationToken);
                 if (view is null)
                 {
-                    return new BaseCommandResponse<DTOs.EventAggregateView.EventWithSessionsViewDto>
-                    {
-                        Success = false,
-                        Message = "Event aggregate view was not found.",
-                        Errors = ["Event aggregate view was not found."]
-                    };
+                    return BaseCommandResponse.Validation<DTOs.EventAggregateView.EventWithSessionsViewDto>(
+                        ["Event aggregate view was not found."],
+                        "Event aggregate view was not found.");
                 }
 
                 var eventDefinitions = await _repository.GetEventDefinitionsByEventIdsAsync([request.EventId], cancellationToken);
@@ -59,12 +56,9 @@ public sealed class GetEventWithSessionsAggregateViewQueryHandler
 
                 var dto = EventAggregateViewMapper.MapDetail(view, eventDefinitions, sessionDefinitions, request.ExposureCeiling, _logger);
 
-                return new BaseCommandResponse<DTOs.EventAggregateView.EventWithSessionsViewDto>
-                {
-                    Success = true,
-                    Id = dto,
-                    Message = "Event aggregate view retrieved successfully."
-                };
+                return BaseCommandResponse.Success(
+                    dto,
+                    "Event aggregate view retrieved successfully.");
             },
             new HybridCacheEntryOptions
             {

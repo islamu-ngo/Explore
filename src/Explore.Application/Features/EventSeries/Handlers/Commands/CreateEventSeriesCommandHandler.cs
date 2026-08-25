@@ -56,12 +56,9 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
         var validationResult = await validator.ValidateAsync(request.EventSeriesDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event series creation failed due to validation errors.",
-                Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event series creation failed due to validation errors.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -69,12 +66,9 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
                 tenantId,
                 request.EventSeriesDto.FeaturedImageId))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event series creation failed due to validation errors.",
-                Errors = ["Featured image must be an active public safe-raster object in the current tenant."]
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                ["Featured image must be an active public safe-raster object in the current tenant."],
+                "Event series creation failed due to validation errors.");
         }
 
         var series = _mapper.Map<Domain.EventSeries>(request.EventSeriesDto);
@@ -89,12 +83,7 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
 
         series = await _eventSeriesRepository.Create(series);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = series.Id,
-            Success = true,
-            Message = "Event series created successfully."
-        };
+        return BaseCommandResponse.Success(series.Id, "Event series created successfully.");
     }
 
     private static string GenerateSlug(string title)

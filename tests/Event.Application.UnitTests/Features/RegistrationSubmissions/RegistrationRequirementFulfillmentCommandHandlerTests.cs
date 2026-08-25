@@ -71,16 +71,15 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
                 "worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
             .Returns([claim]);
         lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
-            .Returns(new RegistrationOrderLifecycleResponseDto
-            {
-                Success = true,
-                Order = new RegistrationOrderDto
+            .Returns(RegistrationOrderLifecycleResponseDto.Success(
+                orderId,
+                null,
+                new RegistrationOrderDto
                 {
                     Id = orderId,
                     TenantId = tenantId,
                     StatusId = (int)RegistrationOrderStatusEnum.ReadyForCheckout
-                }
-            });
+                }));
         finalization.CompleteAsync(claim, UtcNow, CancellationToken.None).Returns(true);
         var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
             finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
@@ -109,16 +108,15 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
                 "worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
             .Returns([claim]);
         lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
-            .Returns(new RegistrationOrderLifecycleResponseDto
-            {
-                Success = true,
-                Order = new RegistrationOrderDto
+            .Returns(RegistrationOrderLifecycleResponseDto.Success(
+                orderId,
+                null,
+                new RegistrationOrderDto
                 {
                     Id = orderId,
                     TenantId = tenantId,
                     StatusId = (int)RegistrationOrderStatusEnum.AwaitingRequirements
-                }
-            });
+                }));
         var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
             finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
 
@@ -205,17 +203,15 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
         lifecycle.ReadyForCheckoutAsync(duplicateOrderId, tenantId, CancellationToken.None)
             .Returns(Response(duplicateOrderId, tenantId, RegistrationOrderStatusEnum.NeedsReconciliation));
         lifecycle.FinalizePaidAsync(duplicateOrderId, tenantId, CancellationToken.None)
-            .Returns(new RegistrationOrderLifecycleResponseDto
-            {
-                Success = true,
-                Message = "payment_duplicate_succeeded_observations",
-                Order = new RegistrationOrderDto
+            .Returns(RegistrationOrderLifecycleResponseDto.Success(
+                duplicateOrderId,
+                "payment_duplicate_succeeded_observations",
+                new RegistrationOrderDto
                 {
                     Id = duplicateOrderId,
                     TenantId = tenantId,
                     StatusId = (int)RegistrationOrderStatusEnum.NeedsReconciliation
-                }
-            });
+                }));
         lifecycle.ReadyForCheckoutAsync(validOrderId, tenantId, CancellationToken.None)
             .Returns(Response(validOrderId, tenantId, RegistrationOrderStatusEnum.AwaitingPayment));
         lifecycle.FinalizePaidAsync(validOrderId, tenantId, CancellationToken.None)
@@ -238,16 +234,15 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
     private static RegistrationOrderLifecycleResponseDto Response(
         Guid orderId,
         Guid tenantId,
-        RegistrationOrderStatusEnum status) => new()
-        {
-            Success = true,
-            Order = new RegistrationOrderDto
+        RegistrationOrderStatusEnum status) => RegistrationOrderLifecycleResponseDto.Success(
+            orderId,
+            null,
+            new RegistrationOrderDto
             {
                 Id = orderId,
                 TenantId = tenantId,
                 StatusId = (int)status
-            }
-        };
+            });
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {

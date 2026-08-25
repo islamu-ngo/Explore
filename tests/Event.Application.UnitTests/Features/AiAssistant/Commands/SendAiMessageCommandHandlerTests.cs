@@ -73,7 +73,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
@@ -86,7 +86,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("disabled");
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
@@ -104,7 +104,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(modelId: "unapproved-model"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("model_not_allowed");
         await Assert.That(result.Errors).Contains("Selected AI model is not allowed by tenant policy.");
         await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -129,7 +129,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(modelId: "gpt-5.4"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(conversation.Runs.Single().Provider).IsEqualTo(AiProviderDefaults.ProviderOpenAiCompatible);
         await Assert.That(conversation.Runs.Single().ModelId).IsEqualTo("gpt-5.4");
         await _conversationRepository.Received(1).Update(conversation);
@@ -145,7 +145,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(priorRunId);
         await _conversationRepository.Received(1).GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
@@ -161,7 +161,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
@@ -177,7 +177,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
@@ -194,7 +194,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
@@ -219,7 +219,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _conversationRepository.Received(1).ReleaseStaleRunningConversationsForUserAsync(
             _userId,
             Arg.Is<DateTime>(cutoff => cutoff < DateTime.UtcNow),
@@ -239,7 +239,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(conversation.BlockedReason).IsNull();
         await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Running);
         await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Queued);
@@ -258,7 +258,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(content: "Plan the event", actorId: actorId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("AI message queued.");
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Running);
@@ -285,7 +285,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(actorId: actorId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_authorized");
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
         await _idempotencyRepository.DidNotReceive().SaveAsync(Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
@@ -316,7 +316,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(content: "Describe this picture:", images: images), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var message = conversation.Messages.Single();
         await Assert.That(message.Content).IsEqualTo("Describe this picture:");
         await Assert.That(message.ImageAttachmentsJson).IsNotNull();
@@ -357,7 +357,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Use this poster", images: images),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await Assert.That(conversation.Messages).IsEmpty();
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
@@ -388,7 +388,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Use this poster", images: images),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -417,7 +417,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Use this poster", images: images),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("validation_failed");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -444,7 +444,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Use this poster", images: images),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -471,7 +471,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Use this poster", images: images),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -502,7 +502,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Draft it with these references", references: references),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(conversation.References.Count).IsEqualTo(2);
         await Assert.That(conversation.References.Select(reference => reference.Kind)).Contains(AiReferenceKind.Event);
         await Assert.That(conversation.References.Select(reference => reference.Kind)).Contains(AiReferenceKind.Actor);
@@ -540,7 +540,7 @@ public sealed class SendAiMessageCommandHandlerTests
         command = command with { Message = command.Message with { Content = null! } };
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var message = conversation.Messages.Single();
         await Assert.That(message.Content).IsEqualTo(string.Empty);
         await Assert.That(message.ImageAttachmentsJson).IsNotNull();
@@ -561,7 +561,7 @@ public sealed class SendAiMessageCommandHandlerTests
             CreateCommand(content: "Just answer", mode: AiAssistantInteractionModes.Ask),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
             ComputeBodyHash(_conversationId, "Just answer", null, null, AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));

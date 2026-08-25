@@ -89,7 +89,7 @@ public sealed class PatchTenantFooterSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(writes.Count).IsEqualTo(3);
         await Assert.That(writes.Select(write => write.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Footer.Enabled,
@@ -165,7 +165,7 @@ public sealed class PatchTenantFooterSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(writes.Select(write => write.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Footer.Enabled,
             GovernanceSettingKeys.Footer.Template
@@ -187,7 +187,7 @@ public sealed class PatchTenantFooterSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(
             default,
             default!,
@@ -213,7 +213,7 @@ public sealed class PatchTenantFooterSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one tenant footer settings field must be provided.");
         await _tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(
             default,
@@ -242,7 +242,7 @@ public sealed class PatchTenantFooterSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(_unitOfWork.ExecutionCount).IsEqualTo(0);
         _settingsResolver.DidNotReceive().InvalidateCache(Arg.Any<SettingScope?>(), Arg.Any<Guid?>());
     }

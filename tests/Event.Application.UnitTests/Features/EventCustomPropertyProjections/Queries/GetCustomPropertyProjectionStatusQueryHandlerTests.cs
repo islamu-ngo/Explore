@@ -56,7 +56,7 @@ public sealed class GetCustomPropertyProjectionStatusQueryHandlerTests
             new GetEventCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Count).IsEqualTo(1);
         await Assert.That(result.Id![0].PendingDirtyScopeCount).IsEqualTo(7);
@@ -94,7 +94,7 @@ public sealed class GetCustomPropertyProjectionStatusQueryHandlerTests
             new GetEventSessionCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Count).IsEqualTo(1);
         await Assert.That(result.Id![0].PendingDirtyScopeCount).IsEqualTo(0);

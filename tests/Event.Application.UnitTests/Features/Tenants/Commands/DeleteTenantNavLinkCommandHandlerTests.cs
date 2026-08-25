@@ -50,7 +50,7 @@ public class DeleteTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("deleted successfully");
         await _repository.Received(1).Delete(existingLink);
     }
@@ -69,7 +69,7 @@ public class DeleteTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
         await _repository.DidNotReceive().Delete(Arg.Any<TenantNavigationLink>());
     }

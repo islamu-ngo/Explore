@@ -139,7 +139,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             SourceReportDecisionId = sourceReportDecisionId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(@event.Title).IsEqualTo(EventRedactionSentinelPolicy.DisplayText);
@@ -226,7 +226,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
 
         var result = await _handler.Handle(new HeavyRedactEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _redactionRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _fanoutOccurrenceRepository.Received(1).Create(Arg.Is<NotificationFanoutOccurrence>(occurrence =>
@@ -313,7 +313,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             new HeavyRedactEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(createdRecords).Count().IsEqualTo(2);
         await Assert.That(createdRecords.Select(record => record.Id).Distinct()).Count().IsEqualTo(1);
     }
@@ -373,7 +373,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             new HeavyRedactEventCommand { Id = @event.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _fanoutOccurrenceRepository.DidNotReceive().Create(Arg.Any<NotificationFanoutOccurrence>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
@@ -407,7 +407,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
         }, CancellationToken.None);
 
         var record = createdRecords.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(record.ModeratorUserId).IsNull();
         await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
         await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
@@ -447,7 +447,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
 
         var result = await _handler.Handle(new HeavyRedactEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_heavy_redaction_storage_deletion_pending");
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(@event.Title).IsEqualTo(EventRedactionSentinelPolicy.DisplayText);
@@ -463,7 +463,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
 
         var result = await _handler.Handle(new HeavyRedactEventCommand { Id = Guid.NewGuid() }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_heavy_redaction_user_unresolved");
         await _unitOfWork.DidNotReceive()
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());

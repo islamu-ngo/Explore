@@ -32,24 +32,19 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceStorageSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
-            response.Success = false;
-            response.Message = "Only instance administrators can update storage settings.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update storage settings.");
         }
 
         if (!request.Patch.HasChanges()
             || request.Patch.Policy is { HasValue: true, Value: null }
             || request.Patch.S3Configuration is { HasValue: true, Value: null })
         {
-            response.Success = false;
-            response.Message = "Storage settings patch must include a complete policy or S3 configuration group.";
-            return response;
+            const string message = "Storage settings patch must include a complete policy or S3 configuration group.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var settings = await _storageSettingService.ReadSettingsAsync(cancellationToken);
@@ -61,7 +56,7 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
             settings.DefaultTenantQuotaBytes = policy.DefaultTenantQuotaBytes;
             settings.InstanceMaxUploadBytes = policy.InstanceMaxUploadBytes;
             settings.LockTenantStorage = policy.LockTenantStorage;
-            settings.Routes = policy.Routes;
+            settings = settings with { Routes = policy.Routes };
         }
 
         if (request.Patch.S3Configuration.HasValue)
@@ -87,10 +82,9 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
         var validationResult = await validator.ValidateAsync(settings, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Storage settings validation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Storage settings validation failed.");
         }
 
         await _storageSettingService.ApplySettingsAsync(settings, request.Patch);
@@ -98,8 +92,6 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
         // Invalidate S3 config cache so optional S3 provider changes take effect immediately.
         _s3ConfigResolver.InvalidateCache();
 
-        response.Success = true;
-        response.Message = "Storage settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Storage settings updated successfully.");
     }
 }

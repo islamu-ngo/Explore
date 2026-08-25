@@ -93,7 +93,7 @@ public sealed class GetControlPlaneTenantEffectiveConfigurationQueryHandler(
                 LockSource = GetLockSource(resolved),
                 Description = resolved.Description ?? definition.Description,
                 IsSensitive = definition.IsSensitive,
-                AllowedValues = definition.AllowedValues ?? []
+                AllowedValues = definition.AllowedValues?.ToArray() ?? []
             });
         }
 

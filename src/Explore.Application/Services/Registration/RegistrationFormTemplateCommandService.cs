@@ -114,21 +114,10 @@ public sealed class RegistrationFormTemplateCommandService(
 
     private DateTime UtcNow() => timeProvider.GetUtcNow().UtcDateTime;
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) => new()
-    {
-        Id = id,
-        Success = false,
-        Message = message,
-        FailureCode = code,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], id);
 
     private static void EnsureStamp(Guid actual, Guid expected, string entityType, Guid entityId)
     {

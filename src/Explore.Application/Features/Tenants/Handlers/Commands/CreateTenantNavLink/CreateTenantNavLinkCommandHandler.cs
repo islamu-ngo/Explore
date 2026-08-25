@@ -43,8 +43,6 @@ public class CreateTenantNavLinkCommandHandler : IRequestHandler<CreateTenantNav
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantNavLinkCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         // Validate the DTO
         bool requireHttps = await _settingsResolver.ResolveAsync<bool>(
             GovernanceSettingKeys.Security.RequireHttpsExternalUrls,
@@ -55,10 +53,9 @@ public class CreateTenantNavLinkCommandHandler : IRequestHandler<CreateTenantNav
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Validation failed.");
         }
 
         // Map DTO to entity
@@ -84,10 +81,6 @@ public class CreateTenantNavLinkCommandHandler : IRequestHandler<CreateTenantNav
         // Create the navigation link
         navigationLink = await _navigationLinkRepository.Create(navigationLink);
 
-        response.Success = true;
-        response.Id = navigationLink.Id;
-        response.Message = "Navigation link created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(navigationLink.Id, "Navigation link created successfully.");
     }
 }

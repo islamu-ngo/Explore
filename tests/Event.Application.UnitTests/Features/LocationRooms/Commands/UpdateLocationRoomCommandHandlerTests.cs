@@ -68,7 +68,7 @@ public class UpdateLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(existingRoom.Name).IsEqualTo("Updated Hall");
         await Assert.That(existingRoom.Capacity).IsEqualTo(300);
         await Assert.That(existingRoom.SortOrder).IsEqualTo(2);
@@ -85,7 +85,7 @@ public class UpdateLocationRoomCommandHandlerTests
             UpdateLocationRoomDto = new UpdateLocationRoomDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
     }
 
@@ -110,7 +110,7 @@ public class UpdateLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
     }
 
@@ -147,7 +147,7 @@ public class UpdateLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRoomRepository.DidNotReceive().Update(Arg.Any<LocationRoom>());
     }
 

@@ -55,7 +55,7 @@ public sealed class WebPushSubscriptionHandlerTests
             Auth = ValidAuth
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(subscription.Id);
         await _repository.Received(1).UpsertAsync(
             TenantId,
@@ -82,7 +82,7 @@ public sealed class WebPushSubscriptionHandlerTests
             Auth = ValidAuth
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Device identifier is required.");
         await _repository.DidNotReceive().UpsertAsync(
             Arg.Any<Guid>(),
@@ -112,7 +112,7 @@ public sealed class WebPushSubscriptionHandlerTests
             Auth = ValidAuth
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("already owned");
         await Assert.That(string.Join(" ", result.Errors ?? [])).DoesNotContain(ValidP256Dh);
         await Assert.That(string.Join(" ", result.Errors ?? [])).DoesNotContain(ValidAuth);
@@ -142,7 +142,7 @@ public sealed class WebPushSubscriptionHandlerTests
 
         var result = await handler.Handle(new UnsubscribeCurrentUserWebPushSubscriptionCommand(subscriptionId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).UnsubscribeAsync(TenantId, UserId, subscriptionId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
 

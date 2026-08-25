@@ -42,7 +42,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "value"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(failureCode);
         await _systemSettings.DidNotReceiveWithAnyArgs().IsLocked(default!, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
@@ -60,7 +60,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("setting_system_locked");
         await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
@@ -80,7 +80,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, value),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("setting_validation_failed");
         await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
@@ -98,7 +98,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
             cancellationToken);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.Received(1).SetValueAsync(_tenantId, key, "true", cancellationToken, _actorUserId);
         await _mediator.Received(1).Publish(
             Arg.Is<Explore.Application.Notifications.SettingChangedNotification>(notification =>
@@ -117,7 +117,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.Received(1).SetValueAsync(
             _tenantId,
             key,
@@ -158,9 +158,9 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new UnlockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(lockResult.Success).IsFalse();
+        await Assert.That(lockResult.IsSuccess).IsFalse();
         await Assert.That(lockResult.FailureCode).IsEqualTo(failureCode);
-        await Assert.That(unlockResult.Success).IsFalse();
+        await Assert.That(unlockResult.IsSuccess).IsFalse();
         await Assert.That(unlockResult.FailureCode).IsEqualTo(failureCode);
         await _systemSettings.DidNotReceiveWithAnyArgs().IsLocked(default!, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
@@ -205,7 +205,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new LockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(failureCode);
         await _tenantSettings.DidNotReceiveWithAnyArgs().LockAsync(default, default!, default);
     }
@@ -224,7 +224,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new LockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.Received(1).LockAsync(
             _tenantId,
             key,
@@ -252,7 +252,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new UnlockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(failureCode);
         await _tenantSettings.DidNotReceiveWithAnyArgs().UnlockAsync(default, default!, default, default);
     }
@@ -271,7 +271,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new UnlockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.Received(1).UnlockAsync(
             _tenantId,
             key,
@@ -304,7 +304,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("authenticated_operator_required");
         await mutationLock.DidNotReceiveWithAnyArgs().ExecuteAsync<object>(default!, default!, default);
         await _systemSettings.DidNotReceiveWithAnyArgs().IsLocked(default!, default);

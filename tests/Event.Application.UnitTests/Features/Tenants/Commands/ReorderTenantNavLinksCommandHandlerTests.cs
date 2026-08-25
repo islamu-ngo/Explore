@@ -58,7 +58,7 @@ public class ReorderTenantNavLinksCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("reordered successfully");
         await _repository.Received(2).Update(Arg.Any<TenantNavigationLink>());
     }
@@ -76,7 +76,7 @@ public class ReorderTenantNavLinksCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("No navigation links provided");
         await _repository.DidNotReceive().Update(Arg.Any<TenantNavigationLink>());
     }
@@ -108,7 +108,7 @@ public class ReorderTenantNavLinksCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
         // No partial apply — Update should NOT be called for any link
         await _repository.DidNotReceive().Update(Arg.Any<TenantNavigationLink>());
@@ -145,7 +145,7 @@ public class ReorderTenantNavLinksCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         // Verify the order values were correctly set
         var link1 = existingLinks.First(l => l.Id == id1);
         var link2 = existingLinks.First(l => l.Id == id2);

@@ -71,7 +71,7 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _repository.Received(1).Update(Arg.Is<TenantNavigationLink>(e =>
             e.Label == "Updated" &&
             e.Url == "https://updated.com" &&
@@ -99,7 +99,7 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Validation failed.");
         await _repository.DidNotReceive().Update(Arg.Any<TenantNavigationLink>());
     }
@@ -128,7 +128,7 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
         await _repository.DidNotReceive().Update(Arg.Any<TenantNavigationLink>());
     }
@@ -229,7 +229,7 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _repository.DidNotReceive().Update(Arg.Any<TenantNavigationLink>());
     }
 }

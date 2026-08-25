@@ -36,7 +36,7 @@ public class UpdateCategoryCommandHandlerTests
             UpdateCategoryDto = new UpdateCategoryDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Category update failed.");
         await _categoryRepository.DidNotReceive().Update(Arg.Any<Category>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -78,7 +78,7 @@ public class UpdateCategoryCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(category.FullName).IsEqualTo("Updated Category");
         await Assert.That(category.MasterCode).IsEqualTo("EXISTING");
         await Assert.That(category.ParentId).IsNotNull();
@@ -105,7 +105,7 @@ public class UpdateCategoryCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(category.ParentId).IsNull();
         await _categoryRepository.Received(1).Update(category);
     }
@@ -123,7 +123,7 @@ public class UpdateCategoryCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Parent group must include ParentId.");
         await _categoryRepository.DidNotReceive().Update(Arg.Any<Category>());
     }

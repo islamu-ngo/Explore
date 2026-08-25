@@ -16,6 +16,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -52,8 +53,7 @@ public class EventListCacheInvalidationCommandHandlerTests
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         session.Reschedule(
-            new DateTimeOffset(2026, 3, 29, 0, 30, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 3, 29, 1, 30, 0, TimeSpan.Zero),
+            UtcInstantRange.Create(new DateTimeOffset(2026, 3, 29, 0, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 3, 29, 1, 30, 0, TimeSpan.Zero)),
             "UTC",
             calculator);
         @event.Sessions.Add(session);
@@ -106,7 +106,7 @@ public class EventListCacheInvalidationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(persistedOccurrence).IsNotNull();
         NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
             .Parse(persistedOccurrence!);
@@ -171,7 +171,7 @@ public class EventListCacheInvalidationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 

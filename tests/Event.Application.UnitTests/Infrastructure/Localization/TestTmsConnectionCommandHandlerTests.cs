@@ -25,7 +25,7 @@ public class TestTmsConnectionCommandHandlerTests
 
         var result = await handler.Handle(new TestTmsConnectionCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("successful");
     }
 
@@ -41,7 +41,7 @@ public class TestTmsConnectionCommandHandlerTests
 
         var result = await handler.Handle(new TestTmsConnectionCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("failed");
     }
 
@@ -55,7 +55,7 @@ public class TestTmsConnectionCommandHandlerTests
 
         var result = await handler.Handle(new TestTmsConnectionCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Instance administrator");
         await provider.DidNotReceive().TestConnectionAsync(Arg.Any<CancellationToken>());
     }
@@ -70,7 +70,7 @@ public class TestTmsConnectionCommandHandlerTests
 
         var result = await handler.Handle(new TestTmsConnectionCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await provider.Received(1).TestConnectionAsync(Arg.Any<CancellationToken>());
     }
 

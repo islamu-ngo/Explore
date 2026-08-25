@@ -28,14 +28,11 @@ public class GetEventSessionCustomPropertyProjectionsForSessionQueryHandler
         GetEventSessionCustomPropertyProjectionsForSessionQuery request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>();
-
         if (request.EventSessionId == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "EventSessionId is required.";
-            response.Errors = ["EventSessionId is required."];
-            return response;
+            return BaseCommandResponse.Validation<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>(
+                ["EventSessionId is required."],
+                "EventSessionId is required.");
         }
 
         var projections = await _projectionRepository.GetForSessionAsync(
@@ -45,10 +42,8 @@ public class GetEventSessionCustomPropertyProjectionsForSessionQueryHandler
 
         var dtos = _mapper.Map<List<EventSessionCustomPropertyProjectionDto>>(projections);
 
-        response.Success = true;
-        response.Id = dtos;
-        response.Message = "Session projection rows retrieved.";
-
-        return response;
+        return BaseCommandResponse.Success<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>(
+            dtos,
+            "Session projection rows retrieved.");
     }
 }

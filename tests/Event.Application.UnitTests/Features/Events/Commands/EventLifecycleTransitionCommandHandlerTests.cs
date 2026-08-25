@@ -57,7 +57,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = eventEntity.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Archived);
         await eventRepository.Received(1).Update(eventEntity);
         await federationOutbox.Received(1).AddAsync(
@@ -93,7 +93,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = eventEntity.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_archive_transition_not_allowed");
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -124,7 +124,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Archived);
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
@@ -159,7 +159,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_archive_concurrency_conflict");
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -211,7 +211,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Cancelled);
         await eventRepository.Received(1).Update(eventEntity);
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
@@ -263,7 +263,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.FailureCode).IsNull();
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
@@ -312,7 +312,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = stamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).Update(firstAttemptEvent);
         await eventRepository.Received(1).Update(retryEvent);
         await Assert.That(stagedRows).Count().IsEqualTo(2);
@@ -351,7 +351,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = stamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).Update(firstAttemptEvent);
         await eventRepository.DidNotReceive().Update(committedEvent);
         await federationOutbox.Received(1).AddAsync(Arg.Any<PdsSyncOutbox>(), Arg.Any<CancellationToken>());
@@ -390,7 +390,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = stamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).Update(firstAttemptEvent);
         await eventRepository.Received(1).Update(retryEvent);
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(2);
@@ -430,7 +430,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = stamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).Update(firstAttemptEvent);
         await eventRepository.DidNotReceive().Update(committedEvent);
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);

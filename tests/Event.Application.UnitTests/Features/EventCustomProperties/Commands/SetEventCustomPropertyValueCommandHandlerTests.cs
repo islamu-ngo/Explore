@@ -30,7 +30,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, eventId, ordinal: 1, textValue: "Arabic"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("ordinal 0", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
@@ -60,7 +60,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, eventId, ordinal: 1, textValue: " alpha "),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("Duplicate normalized values", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
@@ -113,7 +113,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, eventId, ordinal: 1, textValue: " alpha "),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).SetValue(Arg.Any<EventCustomPropertyValue>(), Arg.Any<CancellationToken>());
     }
 
@@ -131,7 +131,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, eventId, ordinal: 0, textValue: "not-a-number"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("NumberValue", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
@@ -151,7 +151,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, eventId, ordinal: 0, textValue: "Arabic"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("not active", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }

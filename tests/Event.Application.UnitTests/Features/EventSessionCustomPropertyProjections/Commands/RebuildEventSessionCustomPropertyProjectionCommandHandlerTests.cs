@@ -55,7 +55,7 @@ public class RebuildEventSessionCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key);
@@ -89,7 +89,7 @@ public class RebuildEventSessionCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.QuotaExceeded).IsNull();
         await _projectionUpdater.Received(1)
             .RebuildForTenantAsync(tenantId, 24, Arg.Any<CancellationToken>());
@@ -116,7 +116,7 @@ public class RebuildEventSessionCustomPropertyProjectionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.QuotaExceeded).IsNull();
         await _projectionUpdater.Received(1)
             .RebuildForTenantAsync(tenantId, 25, Arg.Any<CancellationToken>());

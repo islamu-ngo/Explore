@@ -54,24 +54,20 @@ public class UpdateSettingCommandHandler
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateSettingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         // Validate key exists
         var definition = SettingRegistry.Get(request.Key);
         if (definition is null)
         {
-            response.Success = false;
-            response.Message = $"Setting key '{request.Key}' not found in registry.";
-            return response;
+            string message = $"Setting key '{request.Key}' not found in registry.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Validate scope range
         if (request.Scope < definition.MinScope || request.Scope > definition.MaxScope)
         {
-            response.Success = false;
-            response.Message = $"Setting '{request.Key}' cannot be overridden at {request.Scope} scope. " +
-                               $"Allowed range: {definition.MinScope}–{definition.MaxScope}.";
-            return response;
+            string message = $"Setting '{request.Key}' cannot be overridden at {request.Scope} scope. " +
+                             $"Allowed range: {definition.MinScope}–{definition.MaxScope}.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Authorization
@@ -79,10 +75,7 @@ public class UpdateSettingCommandHandler
             request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
         if (!authorized)
         {
-            response.Success = false;
-            response.Message = authError;
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(authError);
         }
 
         Guid? resolvedUserId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
@@ -90,9 +83,9 @@ public class UpdateSettingCommandHandler
 
         if (request.Scope == SettingScope.User && resolvedUserId is null)
         {
-            response.Success = false;
-            response.Message = "Unable to resolve authenticated user.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Unable to resolve authenticated user."],
+                "Unable to resolve authenticated user.");
         }
 
         // Validate and serialize value
@@ -100,18 +93,14 @@ public class UpdateSettingCommandHandler
             SettingCommandHelper.ValidateAndSerialize(request.Value, definition);
         if (!isValid)
         {
-            response.Success = false;
-            response.Message = validationError;
-            return response;
+            return BaseCommandResponse.Validation<Guid>([validationError!], validationError);
         }
 
         var authorityError = await SettingCommandHelper.ValidateTenantVerificationOverrideAsync(
             request.Key, request.Value, request.Scope, _resolver, cancellationToken);
         if (authorityError is not null)
         {
-            response.Success = false;
-            response.Message = authorityError;
-            return response;
+            return BaseCommandResponse.Validation<Guid>([authorityError], authorityError);
         }
 
         // Check lock state
@@ -124,9 +113,8 @@ public class UpdateSettingCommandHandler
             var (isBlocked, lockReason) = SettingCommandHelper.CheckLockState(resolved, request.Scope);
             if (isBlocked)
             {
-                response.Success = false;
-                response.Message = $"Cannot update '{request.Key}': {lockReason}.";
-                return response;
+                string message = $"Cannot update '{request.Key}': {lockReason}.";
+                return BaseCommandResponse.Validation<Guid>([message], message);
             }
         }
 
@@ -165,9 +153,7 @@ public class UpdateSettingCommandHandler
                     cancellationToken);
                 if (!mutation.Accepted)
                 {
-                    response.Success = false;
-                    response.Message = mutation.Error;
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>([mutation.Error!], mutation.Error);
                 }
 
                 await _locationPrivacyMutations.InvalidateMutationAsync(
@@ -196,10 +182,9 @@ public class UpdateSettingCommandHandler
             SettingCommandHelper.MapScopeToSource(request.Scope),
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
 
-        response.Success = true;
-        response.Id = scopeId;
-        response.Message = $"Setting '{request.Key}' updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            scopeId,
+            $"Setting '{request.Key}' updated successfully.");
     }
 
     private async Task WriteUserPreferenceAsync(

@@ -87,8 +87,8 @@ public sealed class ReviewEventOrganizerClaimCommandHandlerTests
         var first = await handler.Handle(command, CancellationToken.None);
         var retry = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(first.Success).IsTrue();
-        await Assert.That(retry.Success).IsTrue();
+        await Assert.That(first.IsSuccess).IsTrue();
+        await Assert.That(retry.IsSuccess).IsTrue();
         await Assert.That(@event.OrganizerActorId).IsEqualTo(claimantActorId);
         await claimRepository.Received(1).UpdateApprovalAsync(claim, @event, Arg.Any<CancellationToken>());
     }
@@ -155,7 +155,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(claim.StatusId).IsEqualTo((int)EventOrganizerClaimStatusEnum.Pending);
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await claimRepository.DidNotReceive().UpdateApprovalAsync(

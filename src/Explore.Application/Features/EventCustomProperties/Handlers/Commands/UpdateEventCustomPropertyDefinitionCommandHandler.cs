@@ -51,43 +51,33 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.DefinitionId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = ["DefinitionId and ExpectedConcurrencyStamp are required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["DefinitionId and ExpectedConcurrencyStamp are required."],
+                "Event custom property definition update failed.");
         }
 
         var validator = new UpdateEventCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event custom property definition update failed.");
         }
 
         var definition = await _eventCustomPropertyRepository.GetTrackedDefinitionWithOptions(request.DefinitionId, cancellationToken);
         if (definition == null)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event custom property definition not found.");
         }
 
         request = request with { TenantId = definition.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event custom property definition not found.");
         }
 
         if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -133,24 +123,22 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             AllowedUrlSchemes = definition.AllowedUrlSchemes,
             Options = definition.Options.Select(ToCreateOptionDto).ToList()
         };
-        ApplyPatch(candidate, request.DefinitionDto);
+        candidate = ApplyPatch(candidate, request.DefinitionDto);
 
         var candidateValidation = await new CreateEventCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                candidateValidation.Errors.Select(error => error.ErrorMessage),
+                "Event custom property definition update failed.");
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(candidate.Namespace, candidate.Key);
         if (!governance.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = governance.Errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                governance.Errors,
+                "Event custom property definition update failed.");
         }
 
         if (await _eventCustomPropertyRepository.ExistsDefinitionKey(
@@ -159,10 +147,9 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                 governance.NormalizedKey,
                 definition.Id))
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = ["A custom property definition with the same Namespace + Key already exists for this event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A custom property definition with the same Namespace + Key already exists for this event."],
+                "Event custom property definition update failed.");
         }
 
         if (request.DefinitionDto.Options is not null)
@@ -173,7 +160,7 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                 cancellationToken);
             if (candidate.Options.Count > maxOptions)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event custom property definition update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -182,7 +169,6 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                         candidate.Options.Count,
                         "event_custom_property_options",
                         definition.TenantId));
-                return response;
             }
         }
 
@@ -210,13 +196,9 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             },
             cancellationToken);
 
-        response.Success = true;
-        response.Id = definition.Id;
-        response.Message = "Event custom property definition updated successfully.";
-
         await InvalidateCaches(definition.EventId, definition.Id, cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(definition.Id, "Event custom property definition updated successfully.");
     }
 
     private List<EventCustomPropertyOption> CreateOptionEntities(
@@ -254,7 +236,7 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
         SortOrder = option.SortOrder
     };
 
-    private static void ApplyPatch(
+    private static CreateEventCustomPropertyDefinitionDto ApplyPatch(
         CreateEventCustomPropertyDefinitionDto candidate,
         UpdateEventCustomPropertyDefinitionDto patch)
     {
@@ -296,7 +278,9 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             if (validation.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = validation.AllowedUrlSchemes.Value;
         }
 
-        if (patch.Options is not null) candidate.Options = patch.Options.Items!;
+        return patch.Options is null
+            ? candidate
+            : candidate with { Options = patch.Options.Items! };
     }
 
     private async Task InvalidateCaches(Guid eventId, Guid definitionId, CancellationToken cancellationToken)

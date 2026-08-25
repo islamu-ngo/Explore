@@ -35,13 +35,10 @@ file static class RegistrationFormTemplateCommandRunner
             .ValidateAsync(request, cancellationToken);
         return validation.IsValid
             ? await operation(request, cancellationToken)
-            : new BaseCommandResponse<Guid>
-            {
-                Id = Guid.Empty,
-                Success = false,
-                Message = "Registration form template request is invalid.",
-                FailureCode = "registration_form_template_validation_failed",
-                Errors = [.. validation.Errors.Select(error => error.ErrorMessage)]
-            };
+            : BaseCommandResponse.Failure<Guid>(
+                "registration_form_template_validation_failed",
+                "Registration form template request is invalid.",
+                validation.Errors.Select(error => error.ErrorMessage),
+                Guid.Empty);
     }
 }

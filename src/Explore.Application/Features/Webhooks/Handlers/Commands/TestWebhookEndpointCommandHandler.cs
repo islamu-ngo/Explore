@@ -98,7 +98,7 @@ public sealed class TestWebhookEndpointCommandHandler(
             "WebhookEndpoint",
             endpoint.Id,
             endpoint.ConsumerId,
-            payload.PayloadBytes,
+            payload.PayloadBytes.Value.Span,
             "application/json",
             "utf-8",
             now.UtcDateTime,
@@ -155,12 +155,7 @@ public sealed class TestWebhookEndpointCommandHandler(
                     EffectiveScopeId: endpoint.Consumer.OwnerId),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = materialized.Message.Id,
-                Success = true,
-                Message = "Webhook endpoint test scheduled."
-            };
+            return BaseCommandResponse.Success(materialized.Message.Id, "Webhook endpoint test scheduled.");
         }, cancellationToken);
     }
 
@@ -203,11 +198,5 @@ public sealed class TestWebhookEndpointCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }

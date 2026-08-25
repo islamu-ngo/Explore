@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 
@@ -274,7 +275,7 @@ public sealed class RegistrationPaymentReconciliationServiceTests
             Guid.CreateVersion7(), Guid.CreateVersion7(), UtcNow.AddMinutes(-2));
         return PaymentAttempt.Create(
             AttemptId, TenantId, Guid.CreateVersion7(), recipient, "OrganizerDirect", "2026-08-20.acacia",
-            "composition-1", 1_000, 200, 250, "checkout:stable", UtcNow.AddMinutes(-2), UtcNow.AddMinutes(30));
+            "composition-1", Money.Create(1_000, recipient.CurrencyCode), Money.Create(200, recipient.CurrencyCode), Money.Create(250, recipient.CurrencyCode), "checkout:stable", UtcNow.AddMinutes(-2), UtcNow.AddMinutes(30));
     }
 
     private sealed record TestSetup(

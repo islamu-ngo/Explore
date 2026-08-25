@@ -26,12 +26,9 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
             .ValidateAsync(request.Request, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid Cerbos policy synchronization request.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "Invalid Cerbos policy synchronization request.");
         }
 
         PolicyPackageAdminCredentials? oneTimeCredentials =
@@ -48,12 +45,9 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
             {
                 var reconciliation = await configurationService
                     .ReconcileDeploymentProviderAsync(cancellationToken, oneTimeCredentials);
-                return new BaseCommandResponse<Guid>
-                {
-                    Success = reconciliation.Succeeded,
-                    Message = reconciliation.Message,
-                    Errors = reconciliation.Succeeded ? [] : [reconciliation.Message]
-                };
+                return reconciliation.Succeeded
+                    ? BaseCommandResponse.Success(Guid.Empty, reconciliation.Message)
+                    : BaseCommandResponse.Validation<Guid>([reconciliation.Message], reconciliation.Message);
             }
 
             var result = await policyPackageService.PublishAsync(cancellationToken, oneTimeCredentials);
@@ -65,14 +59,11 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
                     result.PackageId,
                     result.ContentHash);
 
-                return new BaseCommandResponse<Guid>
-                {
-                    Id = Guid.Empty,
-                    Success = true,
-                    Message = string.IsNullOrWhiteSpace(result.Message)
+                return BaseCommandResponse.Success(
+                    Guid.Empty,
+                    string.IsNullOrWhiteSpace(result.Message)
                         ? "Authorization policy package synced successfully."
-                        : result.Message
-                };
+                        : result.Message);
             }
 
             logger.LogWarning(
@@ -81,16 +72,19 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
                 result.IssueCode,
                 result.Message);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = Guid.Empty,
-                Success = false,
-                Message = string.IsNullOrWhiteSpace(result.Message)
-                    ? "Authorization policy package sync failed."
-                    : result.Message,
-                FailureCode = result.IssueCode == PolicyPackageIssueCode.None ? null : result.IssueCode.ToString(),
-                Errors = result.Warnings.ToList()
-            };
+            string message = string.IsNullOrWhiteSpace(result.Message)
+                ? "Authorization policy package sync failed."
+                : result.Message;
+            return result.IssueCode == PolicyPackageIssueCode.None
+                ? BaseCommandResponse.Validation(
+                    result.Warnings.Count > 0 ? result.Warnings : [message],
+                    message,
+                    Guid.Empty)
+                : BaseCommandResponse.Failure<Guid>(
+                    result.IssueCode.ToString(),
+                    message,
+                    result.Warnings.Count > 0 ? result.Warnings : null,
+                    Guid.Empty);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -99,13 +93,10 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
         catch (Exception ex)
         {
             logger.LogError(ex, "Authorization policy package sync failed unexpectedly.");
-            return new BaseCommandResponse<Guid>
-            {
-                Id = Guid.Empty,
-                Success = false,
-                Message = "Authorization policy package sync failed.",
-                Errors = ["Review server logs for the safe failure details and retry."]
-            };
+            return BaseCommandResponse.Validation(
+                ["Review server logs for the safe failure details and retry."],
+                "Authorization policy package sync failed.",
+                Guid.Empty);
         }
     }
 }

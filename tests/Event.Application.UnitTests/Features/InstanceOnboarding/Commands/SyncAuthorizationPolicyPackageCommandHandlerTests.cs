@@ -54,7 +54,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 
         var result = await _handler.Handle(new SyncAuthorizationPolicyPackageCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _policyPackageService.DidNotReceive().PublishAsync(Arg.Any<CancellationToken>());
     }
 
@@ -87,7 +87,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.Received(1).ReconcileDeploymentProviderAsync(
             Arg.Any<CancellationToken>(),
             Arg.Is<PolicyPackageAdminCredentials>(credentials =>
@@ -109,7 +109,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 
         var result = await _handler.Handle(new SyncAuthorizationPolicyPackageCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("synced");
     }
 
@@ -138,7 +138,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _policyPackageService.Received(1).PublishAsync(
             Arg.Any<CancellationToken>(),
             Arg.Is<PolicyPackageAdminCredentials>(credentials =>
@@ -159,7 +159,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(string.Join(' ', result.Errors)).Contains("both");
         await _policyPackageService.DidNotReceive().PublishAsync(
             Arg.Any<CancellationToken>(),
@@ -183,7 +183,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 
         var result = await _handler.Handle(new SyncAuthorizationPolicyPackageCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("failed");
         await Assert.That(result.FailureCode).IsEqualTo(nameof(PolicyPackageIssueCode.AdminApiNotConfigured));
         await Assert.That(result.Errors).Contains("Configure Cerbos Admin API credentials before publishing.");
@@ -197,7 +197,7 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandlerTests
 
         var result = await _handler.Handle(new SyncAuthorizationPolicyPackageCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Authorization policy package sync failed.");
         await Assert.That(string.Join(' ', result.Errors)).DoesNotContain("secret should not leak");
     }

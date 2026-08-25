@@ -27,7 +27,7 @@ public sealed class GetPublicEventOpenGraphImageRequestHandlerTests
         _tenantPolicySettings.ReadEffectiveTenantSettingsAsync(Arg.Any<Guid>())
             .Returns(new TenantPolicySettingsDto { BrandDisplayName = "Default brand" });
         _renderer.RenderAsync(Arg.Any<EventOpenGraphImageRenderRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new EventOpenGraphImageRenderResult([1, 2, 3], "etag"));
+            .Returns(new EventOpenGraphImageRenderResult(new byte[] { 1, 2, 3 }, "etag"));
         _handler = new GetPublicEventOpenGraphImageRequestHandler(
             _eventRepository,
             _tenantPolicySettings,
@@ -51,9 +51,9 @@ public sealed class GetPublicEventOpenGraphImageRequestHandlerTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.PngBytes.Length).IsEqualTo(3);
-        await Assert.That(result.PngBytes[0]).IsEqualTo((byte)1);
-        await Assert.That(result.PngBytes[1]).IsEqualTo((byte)2);
-        await Assert.That(result.PngBytes[2]).IsEqualTo((byte)3);
+        await Assert.That(result.PngBytes.Span[0]).IsEqualTo((byte)1);
+        await Assert.That(result.PngBytes.Span[1]).IsEqualTo((byte)2);
+        await Assert.That(result.PngBytes.Span[2]).IsEqualTo((byte)3);
         await Assert.That(result.ETag).IsEqualTo("etag");
         await _tenantPolicySettings.Received(1).ReadEffectiveTenantSettingsAsync(eventEntity.TenantId);
         await _renderer.Received(1).RenderAsync(

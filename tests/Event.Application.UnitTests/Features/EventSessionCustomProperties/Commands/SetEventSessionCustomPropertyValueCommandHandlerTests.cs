@@ -30,7 +30,7 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, sessionId, ordinal: 1, textValue: "Arabic"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("ordinal 0", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
@@ -60,7 +60,7 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
             CreateCommand(definitionId, sessionId, ordinal: 1, textValue: " alpha "),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("Duplicate normalized values", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
@@ -93,7 +93,7 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
             CreateOptionCommand(definitionId, sessionId, optionId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("active option", StringComparison.Ordinal))).IsTrue();
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }

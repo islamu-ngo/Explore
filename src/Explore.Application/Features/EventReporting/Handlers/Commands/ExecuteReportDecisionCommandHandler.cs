@@ -57,7 +57,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
         Guid tenantId = tenantContext.TenantId;
         EventReport? preflightReport = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, cancellationToken);
         TargetValidation preflight = ValidateTarget(preflightReport, request);
-        if (!preflight.Response.Success)
+        if (!preflight.Response.IsSuccess)
         {
             return preflight.Response;
         }
@@ -88,7 +88,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
             enforcementLeaseToken,
             enforcementClaimedAtUtc,
             cancellationToken);
-        if (!claim.Response.Success || claim.IsCompleted)
+        if (!claim.Response.IsSuccess || claim.IsCompleted)
         {
             return claim.Response;
         }
@@ -101,7 +101,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
                 claim.Decision!,
                 enforcementLeaseToken,
                 cancellationToken);
-            if (!enforcement.Success)
+            if (!enforcement.IsSuccess)
             {
                 return enforcement;
             }
@@ -205,7 +205,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
         {
             EventReport? report = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, token);
             TargetValidation target = ValidateTarget(report, request);
-            if (!target.Response.Success)
+            if (!target.Response.IsSuccess)
             {
                 return ExecutionClaimResult.Failed(target.Response);
             }
@@ -414,7 +414,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
     {
         EventReport? report = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, cancellationToken);
         TargetValidation target = ValidateTarget(report, request);
-        if (!target.Response.Success)
+        if (!target.Response.IsSuccess)
         {
             throw new DecisionCompletionPreparationException(
                 target.Response.FailureCode ?? EventReportFailureCodes.DecisionExecutionInvalidState,
@@ -556,7 +556,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
         {
             EventReport? report = await eventReportRepository.GetByIdForUpdateAsync(tenantId, request.ReportId, token);
             TargetValidation target = ValidateTarget(report, request);
-            if (!target.Response.Success)
+            if (!target.Response.IsSuccess)
             {
                 throw new DecisionCompletionPreparationException(
                     target.Response.FailureCode ?? EventReportFailureCodes.DecisionExecutionInvalidState,
@@ -891,25 +891,16 @@ public sealed class ExecuteReportDecisionCommandHandler(
             ? $"report-decision:{request.DecisionId:N}"
             : request.CorrelationId.Trim();
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 
     private sealed record TargetValidation(
         BaseCommandResponse<Guid> Response,

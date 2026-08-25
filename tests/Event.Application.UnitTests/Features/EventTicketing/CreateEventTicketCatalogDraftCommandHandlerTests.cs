@@ -40,7 +40,7 @@ public sealed class CreateEventTicketCatalogDraftCommandHandlerTests
             new CreateEventTicketCatalogDraftCommand { EventId = _eventId, CurrencyCode = "USD" },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Ticket catalog draft created.");
         await _catalogs.Received(1).AddAsync(
             Arg.Is<EventTicketCatalogVersion>(catalog =>

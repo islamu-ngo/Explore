@@ -48,18 +48,9 @@ public sealed class CreateControlPlaneTenantPlanVersionDraftCommandHandler(ITena
         plan.Versions.Add(version);
         await tenantPlanRepository.CreateVersionAsync(version, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = version.Id,
-            Message = "Tenant plan version draft created."
-        };
+        return BaseCommandResponse.Success(version.Id, "Tenant plan version draft created.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

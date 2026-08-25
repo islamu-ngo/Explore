@@ -33,18 +33,17 @@ public class UnsubscribeFromActorCommandHandler : IRequestHandler<UnsubscribeFro
 
     public async Task<BaseCommandResponse<Guid>> Handle(UnsubscribeFromActorCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new UnsubscribeFromActorDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Subscription, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return Failure(response, "Actor unsubscribe failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
+            return Failure("Actor unsubscribe failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
         }
 
         var tenantUser = await GetActiveCurrentTenantUserAsync(cancellationToken);
         if (tenantUser is null)
         {
-            return Failure(response, "Actor unsubscribe failed.", ["An active tenant-local user is required before unsubscribing."]);
+            return Failure("Actor unsubscribe failed.", ["An active tenant-local user is required before unsubscribing."]);
         }
 
         var subscription = await _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(
@@ -56,14 +55,14 @@ public class UnsubscribeFromActorCommandHandler : IRequestHandler<UnsubscribeFro
 
         if (subscription is null)
         {
-            response.Success = true;
-            response.Message = "Actor subscription is already unsubscribed.";
-            return response;
+            return BaseCommandResponse.Success(
+                Guid.Empty,
+                "Actor subscription is already unsubscribed.");
         }
 
         if (subscription.ConcurrencyStamp != request.Subscription.ExpectedConcurrencyStamp)
         {
-            return Failure(response, "Actor unsubscribe failed.", ["Subscription changed since it was loaded."]);
+            return Failure("Actor unsubscribe failed.", ["Subscription changed since it was loaded."]);
         }
 
         if (subscription.StatusId != (int)ActorSubscriptionStatusEnum.Unsubscribed)
@@ -73,10 +72,7 @@ public class UnsubscribeFromActorCommandHandler : IRequestHandler<UnsubscribeFro
             await _actorSubscriptionRepository.Update(subscription);
         }
 
-        response.Success = true;
-        response.Id = subscription.Id;
-        response.Message = "Actor subscription is unsubscribed.";
-        return response;
+        return BaseCommandResponse.Success(subscription.Id, "Actor subscription is unsubscribed.");
     }
 
     private async Task<TenantUser?> GetActiveCurrentTenantUserAsync(CancellationToken cancellationToken)
@@ -94,11 +90,6 @@ public class UnsubscribeFromActorCommandHandler : IRequestHandler<UnsubscribeFro
                 : null;
     }
 
-    private static BaseCommandResponse<Guid> Failure(BaseCommandResponse<Guid> response, string message, List<string> errors)
-    {
-        response.Success = false;
-        response.Message = message;
-        response.Errors = errors;
-        return response;
-    }
+    private static BaseCommandResponse<Guid> Failure(string message, List<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

@@ -33,7 +33,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(harness.Repository.Connections).IsEmpty();
     }
 
@@ -44,7 +44,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(harness.Repository.Connections).IsEmpty();
     }
 
@@ -55,7 +55,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(harness.Repository.Connections).IsEmpty();
     }
 
@@ -68,7 +68,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         OrganizerPaymentProviderConnection created = harness.Repository.Connections.Single();
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(created.OrganizerActorId).IsEqualTo(ActorId);
         await Assert.That(created.OrganizerActorId).IsNotEqualTo(UserId);
     }
@@ -81,7 +81,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existing.Id);
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
     }
@@ -94,7 +94,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_2"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_connection_replace_required");
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
     }
@@ -106,7 +106,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         harness.Repository.AddExisting("acct_1", organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"));
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
     }
 
@@ -118,7 +118,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(current.ExternalAccountId).IsEqualTo("acct_old");
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Replaced);
         await Assert.That(current.ReplacedByConnectionId).IsEqualTo(result.Id);
@@ -135,7 +135,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
         await Assert.That(current.ExternalAccountId).IsEqualTo("acct_old");
     }
@@ -152,7 +152,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
         await Assert.That(result.Id).IsNotEqualTo(historical.Id);
     }
@@ -166,7 +166,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
     }
 
@@ -179,7 +179,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
     }
 
@@ -192,7 +192,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
     }
 
@@ -209,7 +209,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
         await Assert.That(result.Id).IsNotEqualTo(historical.Id);
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
@@ -228,7 +228,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
         await Assert.That(result.Id).IsNotEqualTo(historical.Id);
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
@@ -245,8 +245,8 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         BaseCommandResponse<Guid> deniedResult = await denied.DisableHandler.Handle(new DisableOrganizerPaymentConnectionCommand(TenantId, ActorId, deniedConnection.Id, "operator_disabled"), CancellationToken.None);
         BaseCommandResponse<Guid> allowedResult = await allowed.DisableHandler.Handle(new DisableOrganizerPaymentConnectionCommand(TenantId, ActorId, allowedConnection.Id, "operator_disabled"), CancellationToken.None);
 
-        await Assert.That(deniedResult.Success).IsFalse();
-        await Assert.That(allowedResult.Success).IsTrue();
+        await Assert.That(deniedResult.IsSuccess).IsFalse();
+        await Assert.That(allowedResult.IsSuccess).IsTrue();
         await Assert.That(allowedConnection.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Disabled);
         await Assert.That(allowedConnection.DisabledReasonCode).IsEqualTo("operator_disabled");
     }
@@ -311,7 +311,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/existing"));
         await Assert.That(result.Id.ReusedExistingConnection).IsTrue();
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(0);
@@ -330,7 +330,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Id).IsNull();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_onboarding_link_failed");
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
@@ -346,7 +346,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
         OrganizerPaymentProviderConnection created = harness.Repository.Connections.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/new"));
         await Assert.That(result.Id.ReusedExistingConnection).IsFalse();
         await Assert.That(created.OrganizerActorId).IsEqualTo(ActorId);
@@ -370,8 +370,8 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> retry = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(retry.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(retry.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(1);
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
@@ -387,7 +387,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(1);
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
@@ -429,7 +429,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(0);
         await Assert.That(harness.Repository.Connections).IsEmpty();
@@ -447,8 +447,8 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.ManualReconciliationRequired();
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> later = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(rejected.Success).IsFalse();
-        await Assert.That(later.Success).IsFalse();
+        await Assert.That(rejected.IsSuccess).IsFalse();
+        await Assert.That(later.IsSuccess).IsFalse();
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(2);
         await Assert.That(harness.OperationRepository.Operations.Count).IsEqualTo(2);
         await Assert.That(harness.OperationRepository.Operations.Any(operation => operation.StatusId == (int)OrganizerPaymentProviderAccountOperationStatus.ProviderRejected)).IsTrue();
@@ -467,7 +467,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.ReusedExistingConnection).IsTrue();
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
         await Assert.That(harness.Repository.HistoricalReadCount).IsGreaterThanOrEqualTo(1);
@@ -486,7 +486,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
         await Assert.That(harness.OperationRepository.Operations.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
@@ -505,7 +505,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
         await Assert.That(harness.Repository.Connections.Single().OrganizerActorId).IsNotEqualTo(ActorId);
@@ -524,7 +524,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(returnUrl, refreshUrl), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(harness.Provider.LastLinkRequest!.ReturnUrl).IsEqualTo(returnUrl);
         await Assert.That(harness.Provider.LastLinkRequest.RefreshUrl).IsEqualTo(refreshUrl);
         await Assert.That(typeof(OrganizerPaymentProviderConnection).GetProperties().Any(property => property.Name.Contains("Url", StringComparison.Ordinal))).IsFalse();
@@ -538,7 +538,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(harness.Provider.LastAccountRequest!.TenantId).IsEqualTo(TenantId);
         await Assert.That(harness.Provider.LastAccountRequest.OrganizerActorId).IsEqualTo(ActorId);
         await Assert.That(harness.Provider.LastAccountRequest.ProviderCode).IsEqualTo("stripe");

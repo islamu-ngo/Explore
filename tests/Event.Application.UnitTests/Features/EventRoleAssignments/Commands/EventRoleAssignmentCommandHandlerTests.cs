@@ -85,7 +85,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_owner_transfer_required");
         await _authorityCeilingService.DidNotReceive().CanAssignRoleAsync(
             Arg.Any<Guid>(),
@@ -153,7 +153,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_role_assignment_duplicate");
         await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
         await _auditLogRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
@@ -192,7 +192,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
         await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
         await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
@@ -233,7 +233,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             ActorUserId = ActorUserId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_owner_transfer_required");
         await _authorityCeilingService.DidNotReceive().CanAssignRoleAsync(
             Arg.Any<Guid>(),
@@ -288,7 +288,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             StartsAtUtc = DateTime.UtcNow.AddHours(1)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_ownership_transfer_invalid");
         await Assert.That(currentOwner.Status).IsEqualTo(EventRoleAssignmentStatus.Active);
         await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
@@ -338,7 +338,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(currentOwner.Status).IsEqualTo(EventRoleAssignmentStatus.Revoked);
         await _assignmentRepository.Received(1).Create(Arg.Is<EventRoleAssignment>(assignment =>
             assignment.UserId == TargetUserId &&

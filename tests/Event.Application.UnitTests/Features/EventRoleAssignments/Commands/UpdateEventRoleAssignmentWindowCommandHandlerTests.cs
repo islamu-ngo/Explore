@@ -63,7 +63,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_role_assignment_not_found");
         await Assert.That(result.Id).IsEqualTo(command.AssignmentId);
         await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
@@ -86,7 +86,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_not_found");
         await _authorityCeilingService.DidNotReceive().CanAssignRoleAsync(
             Arg.Any<Guid>(),
@@ -117,7 +117,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
         await Assert.That(result.Errors).Contains("The role contains permissions outside your same-event authority ceiling.");
         await _assignmentRepository.DidNotReceive().Update(Arg.Any<EventRoleAssignment>());
@@ -149,7 +149,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
         var result = await _handler.Handle(command, CancellationToken.None);
         var afterHandle = DateTime.UtcNow;
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(assignment.Id);
         await Assert.That(result.Message).IsEqualTo("Event role assignment updated successfully.");
         await Assert.That(assignment.StartsAtUtc).IsEqualTo(command.StartsAtUtc);

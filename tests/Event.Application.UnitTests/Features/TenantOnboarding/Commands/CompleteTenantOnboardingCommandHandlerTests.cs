@@ -94,7 +94,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("tenant administrators");
     }
 
@@ -116,7 +116,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(), cancellation.Token);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _policySettingService.Received(1).ApplyTenantSettingsAsync(
             TestTenantId,
             TestUserId,
@@ -143,7 +143,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -181,7 +181,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingState.Id);
         await _onboardingStateRepository.Received(1).Update(Arg.Is<TenantOnboardingState>(s => s.IsCompleted));
         await _onboardingStateRepository.DidNotReceive().Create(Arg.Any<TenantOnboardingState>());

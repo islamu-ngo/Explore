@@ -38,13 +38,11 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
 
     public async Task<BaseCommandResponse<Guid>> Handle(ExportFromTmsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Instance administrator authority is required to export localization bundles from TMS.";
-            return response;
+            const string message = "Instance administrator authority is required to export localization bundles from TMS.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         IEnumerable<TranslationExport> exports;
@@ -56,9 +54,8 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
         {
             _logger.LogError(ex, "[LOCALIZATION] Export from TMS failed for {Language}", request.LanguageCode);
             _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "provider_error");
-            response.Success = false;
-            response.Message = $"Export from TMS failed for language '{request.LanguageCode}': {ex.Message}";
-            return response;
+            var message = $"Export from TMS failed for language '{request.LanguageCode}': {ex.Message}";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var translations = exports
@@ -68,11 +65,10 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
 
         if (translations.Count == 0)
         {
-            response.Success = false;
-            response.Message =
+            var message =
                 $"No translations found for language '{request.LanguageCode}'. Verify the TMS has translations for this language.";
             _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "empty");
-            return response;
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         try
@@ -80,20 +76,17 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
             var path = await _bundleFileWriter.WriteBundleAsync(request.LanguageCode, translations, cancellationToken);
             await _translationResolver.InvalidateLanguageAsync(request.LanguageCode, cancellationToken);
 
-            response.Success = true;
-            response.Id = Guid.CreateVersion7();
-            response.Message =
+            var message =
                 $"Exported {translations.Count} translations for language '{request.LanguageCode}' → {path}";
             _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "success");
-            return response;
+            return BaseCommandResponse.Success(Guid.CreateVersion7(), message);
         }
         catch (BundleWriteException ex)
         {
             _logger.LogError(ex, "[LOCALIZATION] Bundle persistence failed for {Language}", request.LanguageCode);
             _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "write_error");
-            response.Success = false;
-            response.Message = $"Failed to persist bundle for '{request.LanguageCode}': {ex.Message}";
-            return response;
+            var message = $"Failed to persist bundle for '{request.LanguageCode}': {ex.Message}";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
     }
 }

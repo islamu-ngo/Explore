@@ -687,14 +687,7 @@ public sealed class PublishEventRegistrationProviderBindingCommandHandler(
         if (!preflight.Succeeded)
         {
             string code = preflight.FailureCode ?? "registration_provider_preflight_failed";
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.BindingId,
-                Success = false,
-                FailureCode = code,
-                Message = code,
-                Errors = [.. preflight.Errors]
-            };
+            return BaseCommandResponse.Failure<Guid>(code, code, preflight.Errors, request.BindingId);
         }
         return await mediator.Send(new PublishRegistrationProviderBindingCommand(
             request.TenantId,
@@ -1268,9 +1261,10 @@ internal static class RegistrationProviderManagementHandlerHelpers
         binding.ReplaceDraftCapabilities(capabilities);
     }
 
-    public static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
+    public static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    public static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) => new() { Id = id, Success = false, FailureCode = code, Message = message, Errors = [message] };
+    public static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], id);
 
     public static RegistrationProviderConnectionDto ToConnectionDto(RegistrationProviderConnection connection, Guid eventId = default) => new()
     {

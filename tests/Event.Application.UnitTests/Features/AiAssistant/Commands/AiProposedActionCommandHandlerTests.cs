@@ -40,12 +40,7 @@ public sealed class AiProposedActionCommandHandlerTests
         _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([]);
         _groupMemberRepository.GetGroupIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([]);
         _mediator.Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = _eventId,
-                Message = "Created"
-            });
+            .Returns(BaseCommandResponse.Success(_eventId, "Created"));
     }
 
     [Test]
@@ -56,7 +51,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
         await _conversationRepository.DidNotReceive().GetProposedActionForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
@@ -70,7 +65,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("proposed_action_not_found");
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Proposed);
         await _conversationRepository.DidNotReceive().UpdateProposedActionAsync(Arg.Any<AiProposedAction>(), Arg.Any<CancellationToken>());
@@ -84,11 +79,11 @@ public sealed class AiProposedActionCommandHandlerTests
         CreateEventCommand? sentCommand = null;
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_eventId);
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
         await Assert.That(action.ResultResourceId).IsEqualTo(_eventId);
@@ -131,11 +126,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateStorageUploadSessionCommand>(command => uploadCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<StorageUploadSessionDto>
-            {
-                Success = true,
-                Id = CreateUploadSessionDto(uploadSessionId)
-            });
+            .Returns(BaseCommandResponse.Success(CreateUploadSessionDto(uploadSessionId)));
         _mediator.Send(Arg.Do<FinalizeStorageUploadSessionCommand>(command =>
             {
                 finalizeCommand = command;
@@ -147,17 +138,13 @@ public sealed class AiProposedActionCommandHandlerTests
                     command.Content.Position = 0;
                 }
             }), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<StorageUploadSessionDto>
-            {
-                Success = true,
-                Id = CreateUploadSessionDto(uploadSessionId, storageObjectId)
-            });
+            .Returns(BaseCommandResponse.Success(CreateUploadSessionDto(uploadSessionId, storageObjectId)));
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(uploadCommand).IsNotNull();
         await Assert.That(uploadCommand!.UploadSessionDto.ContentType).IsEqualTo("image/png");
         await Assert.That(uploadCommand.UploadSessionDto.OriginalFileName).IsEqualTo("poster.png");
@@ -188,7 +175,7 @@ public sealed class AiProposedActionCommandHandlerTests
             CreateConfirmCommand(),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _mediator.DidNotReceive().Send(
             Arg.Any<CreateStorageUploadSessionCommand>(),
@@ -256,11 +243,11 @@ public sealed class AiProposedActionCommandHandlerTests
         _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([organizationId]);
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.OrganizationId).IsEqualTo(organizationId);
@@ -293,11 +280,11 @@ public sealed class AiProposedActionCommandHandlerTests
         CreateEventCommand? sentCommand = null;
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.EventTypeId).IsEqualTo(999);
         await Assert.That(sentCommand.EventDto.AudienceGenderId).IsEqualTo(999);
@@ -345,11 +332,11 @@ public sealed class AiProposedActionCommandHandlerTests
         CreateEventCommand? sentCommand = null;
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.IslamicAspect).IsNotNull();
         await Assert.That(sentCommand.EventDto.IslamicAspect!.GenderMode).IsEqualTo(GenderSegregationMode.Segregated);
@@ -380,11 +367,11 @@ public sealed class AiProposedActionCommandHandlerTests
             organizationId: selectedOrganizationId));
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.OrganizationId).IsEqualTo(selectedOrganizationId);
         await Assert.That(sentCommand.EventDto.GroupId).IsNull();
@@ -407,11 +394,11 @@ public sealed class AiProposedActionCommandHandlerTests
             userId: _userId));
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.OrganizationId).IsNull();
         await Assert.That(sentCommand.EventDto.GroupId).IsNull();
@@ -436,11 +423,11 @@ public sealed class AiProposedActionCommandHandlerTests
             groupId: selectedGroupId));
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+            .Returns(BaseCommandResponse.Success(_eventId));
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.EventDto.OrganizationId).IsNull();
         await Assert.That(sentCommand.EventDto.GroupId).IsEqualTo(selectedGroupId);
@@ -456,7 +443,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_eventId);
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().CreateToolExecutionAsync(Arg.Any<AiToolExecution>(), Arg.Any<CancellationToken>());
@@ -471,7 +458,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Failed);
         await Assert.That(action.FailureCode).IsNotNull();
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
@@ -497,7 +484,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateRejectHandler().Handle(CreateRejectCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_actionId);
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Rejected);
         await Assert.That(action.RejectedBy).IsEqualTo(_userId);
@@ -515,7 +502,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateRejectHandler().Handle(CreateRejectCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_actionId);
         await _conversationRepository.DidNotReceive().UpdateProposedActionAsync(Arg.Any<AiProposedAction>(), Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
@@ -531,7 +518,7 @@ public sealed class AiProposedActionCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateRejectHandler().Handle(CreateRejectCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_proposed_action_state");
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
         await _conversationRepository.DidNotReceive().UpdateProposedActionAsync(Arg.Any<AiProposedAction>(), Arg.Any<CancellationToken>());
@@ -622,7 +609,7 @@ public sealed class AiProposedActionCommandHandlerTests
             CreateConfirmCommand(),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _mediator.DidNotReceive().Send(
             Arg.Any<CreateStorageUploadSessionCommand>(),

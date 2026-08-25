@@ -43,15 +43,12 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(AddGroupMemberCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.AddGroupMemberDto;
 
         var group = await _groupRepository.GetById(dto.GroupId);
         if (group == null)
         {
-            response.Success = false;
-            response.Message = "Group not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Group not found"], "Group not found");
         }
 
         var participation = await _groupTenantRepository.GetByGroupAndTenant(
@@ -60,16 +57,16 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
             cancellationToken);
         if (participation is null)
         {
-            response.Success = false;
-            response.Message = "Group does not participate in the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Group does not participate in the current tenant."],
+                "Group does not participate in the current tenant.");
         }
 
         if (!Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
-            response.Success = false;
-            response.Message = "Invalid requester User ID.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Invalid requester User ID."],
+                "Invalid requester User ID.");
         }
 
         var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
@@ -82,26 +79,26 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
             if (requesterMember == null ||
                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
-                response.Success = false;
-                response.Message = "You do not have permission to add members.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["You do not have permission to add members."],
+                    "You do not have permission to add members.");
             }
         }
 
         var userToAdd = await _userRepository.GetUserByEmail(dto.Email);
         if (userToAdd == null)
         {
-            response.Success = false;
-            response.Message = "User with this email not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["User with this email not found."],
+                "User with this email not found.");
         }
 
         var alreadyMember = await _groupMemberRepository.Exists(dto.GroupId, userToAdd.Id);
         if (alreadyMember)
         {
-            response.Success = false;
-            response.Message = "User is already a member of this group.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["User is already a member of this group."],
+                "User is already a member of this group.");
         }
 
         var groupMember = new GroupMember
@@ -119,10 +116,6 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
 
         groupMember = await _groupMemberRepository.Create(groupMember);
 
-        response.Success = true;
-        response.Message = "Member added successfully";
-        response.Id = groupMember.Id;
-
-        return response;
+        return BaseCommandResponse.Success(groupMember.Id, "Member added successfully");
     }
 }

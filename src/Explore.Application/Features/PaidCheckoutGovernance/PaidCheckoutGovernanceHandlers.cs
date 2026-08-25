@@ -258,9 +258,8 @@ file static class PaidCheckoutSaleControlMutation
         return eventTarget?.TenantId == tenantId;
     }
 
-    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-        { Id = id, Success = true, Message = message };
+    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    internal static BaseCommandResponse<Guid> Failure(string code) => new()
-        { Success = false, FailureCode = code, Message = "Paid Checkout governance action was not applied." };
+    internal static BaseCommandResponse<Guid> Failure(string code) =>
+        BaseCommandResponse.Failure<Guid>(code, "Paid Checkout governance action was not applied.");
 }

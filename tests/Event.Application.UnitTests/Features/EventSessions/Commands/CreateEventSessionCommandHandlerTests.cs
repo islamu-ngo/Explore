@@ -122,7 +122,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(sessionId);
         await _eventSessionRepository.Received(1)
             .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -152,7 +152,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
     }
 
@@ -197,7 +197,7 @@ public class CreateEventSessionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         _mapper.DidNotReceiveWithAnyArgs().Map<EventSession>(default!);
         await _eventSessionRepository.DidNotReceive()
             .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -232,7 +232,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
     }
 
@@ -264,7 +264,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
         await _eventSessionRepository.DidNotReceive()
             .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -301,7 +301,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
         await _eventSessionRepository.DidNotReceive()
             .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
@@ -356,7 +356,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventSessionRepository.Received(1)
             .CreateWithRoomOverlapGuardAsync(
                 Arg.Is<EventSession>(s => s.LocationId == locationId),
@@ -416,7 +416,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedSession).IsNotNull();
         await Assert.That(capturedSession!.EventDayId).IsEqualTo(eventDayId);
     }
@@ -464,7 +464,7 @@ public class CreateEventSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedSession).IsNotNull();
         await Assert.That(capturedSession!.EventDayId).IsNull();
     }

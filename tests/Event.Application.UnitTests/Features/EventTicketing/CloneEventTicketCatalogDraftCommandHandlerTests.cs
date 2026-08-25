@@ -43,7 +43,7 @@ public sealed class CloneEventTicketCatalogDraftCommandHandlerTests
             new CloneEventTicketCatalogDraftCommand { EventId = _eventId },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _catalogs.Received(1).AddAsync(
             Arg.Is<EventTicketCatalogVersion>(catalog =>
                 catalog.EventId == _eventId

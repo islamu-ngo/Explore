@@ -88,12 +88,9 @@ public sealed class LockControlPlaneTenantSettingCommandHandler(
                         request.TenantId, "setting_state_conflict", "The tenant setting state changed before it could be locked."), null);
                 }
 
-                var response = new BaseCommandResponse<Guid>
-                {
-                    Id = request.TenantId,
-                    Success = true,
-                    Message = "Tenant setting locked.",
-                };
+                BaseCommandResponse<Guid> response = BaseCommandResponse.Success(
+                    request.TenantId,
+                    "Tenant setting locked.");
                 var notification = new SettingChangedNotification(
                     request.Key,
                     existing.Value,

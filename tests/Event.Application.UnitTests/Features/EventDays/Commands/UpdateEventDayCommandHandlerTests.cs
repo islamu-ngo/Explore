@@ -46,7 +46,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event day update group must be provided.");
         await _eventDayRepository.DidNotReceive().Update(Arg.Any<EventDay>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -101,7 +101,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventDay.Label).IsNull();
         await _eventDayRepository.Received(1).Update(eventDay);
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
@@ -153,7 +153,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(eventDay.BannerImageId).IsEqualTo(originalBannerImageId);
         await _eventDayRepository.DidNotReceive().Update(Arg.Any<EventDay>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -187,7 +187,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Another EventDay already exists for this event on the specified date.");
         await _eventDayRepository.DidNotReceive().Update(Arg.Any<EventDay>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -219,7 +219,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventDayRepository.DidNotReceive().Update(Arg.Any<EventDay>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -250,7 +250,7 @@ public class UpdateEventDayCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventDay.EventId).IsEqualTo(newEventId);
         await _eventDayRepository.Received(1).Update(eventDay);
         await _cache.Received(1).RemoveAsync($"event:detail:{oldEventId}", Arg.Any<CancellationToken>());

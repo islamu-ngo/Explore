@@ -24,6 +24,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -188,26 +189,23 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.EventDto;
 
         var validationErrors = await ValidateRequestAsync(dto, cancellationToken);
         if (validationErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event creation failed due to validation errors.";
-            response.Errors = validationErrors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationErrors,
+                "Event creation failed due to validation errors.");
         }
 
         int requestedStatusId = dto.EventStatusId == 0 ? (int)EventStatusEnum.Draft : dto.EventStatusId;
         if (requestedStatusId is not ((int)EventStatusEnum.Draft or (int)EventStatusEnum.Published))
         {
-            response.Success = false;
-            response.Message = "Event creation failed due to validation errors.";
-            response.Errors = ["Event creation supports only Draft or Published status."];
-            response.FailureCode = "event_create_status_not_supported";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "event_create_status_not_supported",
+                "Event creation failed due to validation errors.",
+                ["Event creation supports only Draft or Published status."]);
         }
 
         var currentUserId = _userContext.GetRequiredUserId();
@@ -224,19 +222,17 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 _tenantContext.TenantId,
                 imageIds))
         {
-            response.Success = false;
-            response.Message = "Event creation failed due to validation errors.";
-            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Every image must be an active public safe-raster object in the current tenant."],
+                "Event creation failed due to validation errors.");
         }
 
         var actorResult = await ResolvePublisherActorAsync(dto, currentUserId, cancellationToken);
         if (!actorResult.Succeeded)
         {
-            response.Success = false;
-            response.Message = actorResult.ErrorMessage!;
-            response.Errors = new List<string> { actorResult.ErrorDetail! };
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                [actorResult.ErrorDetail!],
+                actorResult.ErrorMessage!);
         }
 
         var timezoneId = ResolveTimezoneId(dto);
@@ -255,11 +251,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, policy.Profile, policy);
             if (!readiness.IsReady)
             {
-                response.Success = false;
-                response.Message = "Event creation failed because the event is not ready to publish.";
-                response.Errors = readiness.Errors.Select(error => error.Message).ToList();
-                response.FailureCode = "event_publish_readiness_failed";
-                return response;
+                return BaseCommandResponse.Failure<Guid>(
+                    "event_publish_readiness_failed",
+                    "Event creation failed because the event is not ready to publish.",
+                    readiness.Errors.Select(error => error.Message));
             }
 
             eventEntity.Publish(occurredAt);
@@ -304,10 +299,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 return eventEntity.Id;
             }, cancellationToken);
 
-            response.Success = true;
-            response.Id = eventId;
-            response.Message = "Event created successfully.";
-
             _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
             try
             {
@@ -318,16 +309,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             {
                 // Best-effort cache invalidation - Redis may be unavailable in local dev
             }
+
+            return BaseCommandResponse.Success(eventId, "Event created successfully.");
         }
         catch (RoomScheduleConflictException ex)
         {
-            response.Success = false;
-            response.Message = "Event creation failed.";
-            response.Errors = new List<string> { ex.Message };
-            response.FailureCode = "room_schedule_conflict";
+            return BaseCommandResponse.Failure<Guid>(
+                "room_schedule_conflict",
+                "Event creation failed.",
+                [ex.Message]);
         }
-
-        return response;
     }
 
     private async Task<List<string>> ValidateRequestAsync(CreateEventDto request, CancellationToken cancellationToken)
@@ -563,6 +554,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         foreach (var locationDto in dto.Locations)
         {
+            if (locationDto.Latitude.HasValue != locationDto.Longitude.HasValue)
+            {
+                throw new InvalidOperationException("Location coordinates must both be provided or both omitted.");
+            }
+
+            GeoCoordinate? coordinate = locationDto.Latitude.HasValue
+                ? GeoCoordinate.Create(locationDto.Latitude.Value, locationDto.Longitude!.Value)
+                : null;
             var location = new Location
             {
                 FullName = locationDto.FullName,
@@ -571,13 +570,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 Timezone = locationDto.Timezone,
                 TenantId = _tenantContext.TenantId,
                 Tenant = null!,
-                Pii = new LocationPii
-                {
-                    Address = locationDto.Address,
-                    Postcode = locationDto.Postcode,
-                    Latitude = locationDto.Latitude,
-                    Longitude = locationDto.Longitude
-                }
+                Pii = LocationPii.Create(locationDto.Address, locationDto.Postcode, coordinate)
             };
 
             location = await _locationRepository.Create(location);
@@ -673,7 +666,35 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 ct);
             session.AssignEventLocation(eventLocation);
 
-            session.Reschedule(sessionDto.StartTime, sessionDto.EndTime, timezoneId, _scheduleProjectionCalculator);
+            switch (sessionDto.EndTimeType)
+            {
+                case SessionEndTimeType.Fixed:
+                    session.Reschedule(
+                        UtcInstantRange.Create(sessionDto.StartTime, sessionDto.EndTime!.Value),
+                        timezoneId,
+                        _scheduleProjectionCalculator);
+                    break;
+                case SessionEndTimeType.OpenEnded:
+                    session.ScheduleOpenEnded(
+                        sessionDto.StartTime,
+                        timezoneId,
+                        _scheduleProjectionCalculator);
+                    break;
+                case SessionEndTimeType.RelativeToPrayer when sessionDto.EndTime is { } endTime:
+                    session.ScheduleRelativeToPrayer(
+                        UtcInstantRange.Create(sessionDto.StartTime, endTime),
+                        timezoneId,
+                        _scheduleProjectionCalculator);
+                    break;
+                case SessionEndTimeType.RelativeToPrayer:
+                    session.ScheduleRelativeToPrayer(
+                        sessionDto.StartTime,
+                        timezoneId,
+                        _scheduleProjectionCalculator);
+                    break;
+                default:
+                    throw new InvalidOperationException("Event session end time type is not supported.");
+            }
             session.EventDayId = session.LocalStartDate is not null
                 ? ResolveDayId(sessionDto.DayTempKey, session.LocalStartDate.Value, dayMaps)
                 : null;
@@ -828,7 +849,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 ct);
             agendaItem.AssignEventLocation(eventLocation);
 
-            agendaItem.Reschedule(itemDto.StartTime, itemDto.EndTime, timezoneId, _scheduleProjectionCalculator);
+            agendaItem.Reschedule(UtcInstantRange.Create(itemDto.StartTime, itemDto.EndTime), timezoneId, _scheduleProjectionCalculator);
             agendaItem.EventDayId = ResolveDayId(itemDto.DayTempKey, agendaItem.LocalStartDate, dayMaps);
             await _eventAgendaItemRepository.Create(agendaItem);
         }

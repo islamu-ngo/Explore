@@ -63,7 +63,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdMemberId);
         await Assert.That(result.Message).IsEqualTo("Member added successfully");
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
@@ -95,7 +95,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Member added successfully");
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
             member.GroupTenant.GroupId == dto.GroupId
@@ -110,7 +110,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, Guid.NewGuid()), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Group not found");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -132,7 +132,7 @@ public sealed class AddGroupMemberCommandHandlerTests
             RequesterUserId = "not-a-guid"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invalid requester User ID.");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -158,7 +158,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("You do not have permission to add members.");
         await _userRepository.DidNotReceive().GetUserByEmail(Arg.Any<string>());
         await _groupMemberRepository.DidNotReceive().Exists(Arg.Any<Guid>(), Arg.Any<Guid>());
@@ -175,7 +175,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("User with this email not found.");
         await _groupMemberRepository.DidNotReceive().Exists(Arg.Any<Guid>(), Arg.Any<Guid>());
         await _groupMemberRepository.DidNotReceive().Create(Arg.Any<GroupMember>());
@@ -193,7 +193,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("User is already a member of this group.");
         await _groupMemberRepository.DidNotReceive().Create(Arg.Any<GroupMember>());
     }
@@ -213,7 +213,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(dto, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
             member.GroupTenant.GroupId == dto.GroupId
             && member.UserId == targetUser.Id

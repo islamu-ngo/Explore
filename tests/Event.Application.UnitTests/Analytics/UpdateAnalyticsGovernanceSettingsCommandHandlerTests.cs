@@ -87,7 +87,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
         await Assert.That(result.Errors!.Count).IsGreaterThan(0);
     }
@@ -99,7 +99,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
     }
 
@@ -110,7 +110,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
     }
 
@@ -121,7 +121,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -131,7 +131,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     // --- Validation: Cookieless DeclineBehavior ---
@@ -147,7 +147,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
     }
 
@@ -162,7 +162,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -176,7 +176,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -190,7 +190,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     // --- Validation failure blocks persistence ---
@@ -206,7 +206,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -236,7 +236,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.AdminRequired);
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -265,7 +265,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, cts.Token);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.Received(1).IsInstanceAdminAsync(command.UserId, cts.Token);
         await _settingsResolver.Received(1).ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(),
@@ -307,7 +307,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _settingsResolver.Received(1).SetValueAsync(
             GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
             "90",
@@ -341,7 +341,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _settingsResolver.DidNotReceive().SetValueAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -369,7 +369,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsNotNull();
     }
 
@@ -391,7 +391,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsNotNull();
     }
 
@@ -408,7 +408,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsNotNull();
     }
 
@@ -421,7 +421,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _settingsResolver.Received(10).SetValueAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<SettingScope>(), Arg.Any<Guid>(), Arg.Any<Guid>(),
@@ -435,7 +435,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsNull();
     }
 
@@ -469,7 +469,7 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         // Should have both session replay warning and no unnecessary-banner warning
         // (PostHog is not inherently cookieless, so banner warning won't fire)
         await Assert.That(result.Message).IsNotNull();

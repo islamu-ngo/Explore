@@ -156,7 +156,7 @@ public class CreateOrganizationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(organizationId);
         await _organizationRepository.Received(1).Create(Arg.Any<Organization>());
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
@@ -203,7 +203,7 @@ public class CreateOrganizationCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _adminContext.DidNotReceive().IsTenantAdminAsync(
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
@@ -258,7 +258,7 @@ public class CreateOrganizationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _organizationTenantRepository.Received(1).Create(Arg.Is<OrganizationTenant>(o =>
             o.ApprovalStatusId == (int)ApprovalStatusEnum.Pending
             && o.ApprovedAt == null
@@ -308,7 +308,7 @@ public class CreateOrganizationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _organizationTenantRepository.Received(1).Create(Arg.Is<OrganizationTenant>(o =>
             o.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
             && o.ApprovedAt.HasValue
@@ -356,7 +356,7 @@ public class CreateOrganizationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _organizationTenantRepository.Received(1).Create(Arg.Is<OrganizationTenant>(o => o.TenantId == tenantId));
     }
 
@@ -401,7 +401,7 @@ public class CreateOrganizationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _organizationMemberRepository.Received(1).Create(
             Arg.Is<OrganizationMember>(m =>
                 m != null &&

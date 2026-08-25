@@ -43,7 +43,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
         await Assert.That(PayloadJson(result)).Contains("publicUrl");
         await Assert.That(PayloadJson(result)).DoesNotContain("internalNote");
 
-        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!.Value);
         await Assert.That(parsed.RootElement.GetProperty("tenantId").GetGuid()).IsEqualTo(TenantId);
         await Assert.That(parsed.RootElement.GetProperty("data").GetProperty("eventId").GetString()).IsEqualTo(AggregateId.ToString());
     }
@@ -119,7 +119,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Envelope!.Version).IsEqualTo(2);
-        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!.Value);
         var data = parsed.RootElement.GetProperty("data");
         await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsFalse();
         await Assert.That(data.TryGetProperty("attendeeEmail", out _)).IsFalse();
@@ -145,7 +145,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Envelope!.Version).IsEqualTo(2);
-        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!.Value);
         var data = parsed.RootElement.GetProperty("data");
         await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsTrue();
         await Assert.That(data.GetProperty("attendeeEmail").GetString()).IsEqualTo("attendee@example.test");
@@ -202,5 +202,5 @@ public sealed class DefaultWebhookPayloadBuilderTests
             data);
 
     private static string PayloadJson(WebhookPayloadBuildResult result) =>
-        Encoding.UTF8.GetString(result.PayloadBytes!);
+        Encoding.UTF8.GetString(result.PayloadBytes!.Value.Span);
 }

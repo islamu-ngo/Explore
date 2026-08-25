@@ -55,7 +55,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
             CancellationToken.None);
 
         EventTicketType ticket = catalog.TicketTypes.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(ticket.Name).IsEqualTo("Verified adult admission");
         await Assert.That(ticket.FixedPriceMinor).IsEqualTo(2_500);
         await Assert.That(ticket.CapacityPoolId).IsEqualTo(pool.Id);
@@ -126,7 +126,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
             new CreateEventTicketTypeCommand { EventId = _eventId, TicketType = FreeTicketDto() },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.Attempts).IsEqualTo(2);
         await Assert.That(catalog.TicketTypes).HasSingleItem();
         await Assert.That(catalog.TicketTypes.Single().Id).IsEqualTo(result.Id);

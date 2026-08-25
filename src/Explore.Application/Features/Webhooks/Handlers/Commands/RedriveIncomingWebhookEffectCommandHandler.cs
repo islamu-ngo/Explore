@@ -120,12 +120,7 @@ public sealed class RedriveIncomingWebhookEffectCommandHandler(
                     ConfigurationVersion: $"effect-processing-generation-v{pointer.ProcessingGeneration}"),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = pointer.Id,
-                Success = true,
-                Message = "Incoming Coop effect redrive scheduled."
-            };
+            return BaseCommandResponse.Success(pointer.Id, "Incoming Coop effect redrive scheduled.");
         }, cancellationToken);
     }
 
@@ -136,12 +131,6 @@ public sealed class RedriveIncomingWebhookEffectCommandHandler(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) =>
+        BaseCommandResponse.Failure(code, message, errors ?? [message], id);
 }

@@ -35,11 +35,11 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateModuleSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one module setting must be provided.");
+            return Invalid("At least one module setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.EnableIslamicModule.HasValue)
@@ -52,21 +52,11 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
             : null;
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
             _service.ApplyModuleSettingsPatchAsync(defaultTenantId, request.Patch, settings.Modules, request.UserId, ct), cancellationToken);
-        response.Success = true;
-        response.Message = "Module settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Module settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicyCommand, BaseCommandResponse<Guid>>
@@ -86,11 +76,11 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventPolicyCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one event policy setting must be provided.");
+            return Invalid("At least one event policy setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.AllowUserSubmittedEvents.HasValue)
@@ -111,21 +101,11 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "Event policy updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Event policy updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrganizationPolicyCommand, BaseCommandResponse<Guid>>
@@ -143,11 +123,11 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateOrganizationPolicyCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one organization policy setting must be provided.");
+            return Invalid("At least one organization policy setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.RequireOrganizationVerification.HasValue)
@@ -161,21 +141,11 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
             _service.ApplyOrganizationPolicyPatchAsync(request.Patch, settings.OrganizationPolicy, request.UserId), cancellationToken);
-        response.Success = true;
-        response.Message = "Organization policy updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Organization policy updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandingSettingsCommand, BaseCommandResponse<Guid>>
@@ -205,11 +175,11 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateBrandingSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one branding setting must be provided.");
+            return Invalid("At least one branding setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.DefaultBrandDisplayName.HasValue)
@@ -245,21 +215,11 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "Branding settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Branding settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSettingsCommand, BaseCommandResponse<Guid>>
@@ -279,11 +239,11 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateDomainSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one domain setting must be provided.");
+            return Invalid("At least one domain setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.InstanceBaseDomain.HasValue)
@@ -304,21 +264,11 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "Domain settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Domain settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<UpdateTenantDelegationSettingsCommand, BaseCommandResponse<Guid>>
@@ -338,11 +288,11 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantDelegationSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one tenant delegation setting must be provided.");
+            return Invalid("At least one tenant delegation setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.AllowTenantSelfServiceRegistration.HasValue)
@@ -374,21 +324,11 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "Tenant delegation settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Tenant delegation settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateAdminPortalSettingsCommandHandler : IRequestHandler<UpdateAdminPortalSettingsCommand, BaseCommandResponse<Guid>>
@@ -406,11 +346,11 @@ public class UpdateAdminPortalSettingsCommandHandler : IRequestHandler<UpdateAdm
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAdminPortalSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one admin portal setting must be provided.");
+            return Invalid("At least one admin portal setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.Enabled.HasValue)
@@ -422,21 +362,11 @@ public class UpdateAdminPortalSettingsCommandHandler : IRequestHandler<UpdateAdm
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
             _service.ApplyAdminPortalSettingsPatchAsync(request.Patch, settings.AdminPortal, request.UserId), cancellationToken);
-        response.Success = true;
-        response.Message = "Admin portal settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Admin portal settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateMcpGovernanceSettingsCommand, BaseCommandResponse<Guid>>
@@ -456,11 +386,11 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateMcpGovernanceSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one MCP governance setting must be provided.");
+            return Invalid("At least one MCP governance setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.Enabled.HasValue)
@@ -479,21 +409,11 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "MCP governance settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "MCP governance settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler<UpdateAiAssistantGovernanceSettingsCommand, BaseCommandResponse<Guid>>
@@ -513,13 +433,13 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAiAssistantGovernanceSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one AI Assistant governance setting must be provided.");
+            return Invalid("At least one AI Assistant governance setting must be provided.");
         if (request.Patch.ProviderConfiguration is { HasValue: true, Value: null })
-            return Invalid(response, "AI provider configuration must be complete.");
+            return Invalid("AI provider configuration must be complete.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.Enabled.HasValue)
@@ -548,21 +468,11 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
         }, cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
-        response.Success = true;
-        response.Message = "AI Assistant governance settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "AI Assistant governance settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }
 
 public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRenderPolicySettingsCommand, BaseCommandResponse<Guid>>
@@ -580,11 +490,11 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateRenderPolicySettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
-            return Unauthorized(response);
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update instance governance settings.");
         if (!request.Patch.HasChanges())
-            return Invalid(response, "At least one render policy setting must be provided.");
+            return Invalid("At least one render policy setting must be provided.");
 
         var settings = await _service.ReadSettingsAsync();
         if (request.Patch.RenderPolicyPreset.HasValue)
@@ -624,27 +534,16 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
         var validation = await validator.ValidateAsync(settings.RenderPolicy, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid render policy settings.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Invalid render policy settings.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
             _service.ApplyRenderPolicySettingsPatchAsync(request.Patch, settings.RenderPolicy, request.UserId), cancellationToken);
-        response.Success = true;
-        response.Message = "Render policy settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Render policy settings updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
-    {
-        r.Success = false;
-        r.Message = "Only instance administrators can update instance governance settings.";
-        r.FailureCode = FailureCodes.AdminRequired;
-        return r;
-    }
-
-    private static BaseCommandResponse<Guid> Invalid(BaseCommandResponse<Guid> response, string message)
-        => new() { Success = false, Message = message };
+    private static BaseCommandResponse<Guid> Invalid(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }

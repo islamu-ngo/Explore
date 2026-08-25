@@ -41,7 +41,7 @@ public sealed class ConfigureEventParticipationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(configuration.ParticipationHandlingModeId)
             .IsEqualTo((int)ParticipationHandlingModeEnum.ExternalManaged);
         await configurations.Received(1).UpdateAsync(configuration, Arg.Any<CancellationToken>());
@@ -71,7 +71,7 @@ public sealed class ConfigureEventParticipationCommandHandlerTests
             ParticipationConfiguration = InformationOnly()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_participation_configuration_concurrency_conflict");
         await configurations.DidNotReceive().UpdateAsync(Arg.Any<EventParticipationConfiguration>(), Arg.Any<CancellationToken>());
     }
@@ -103,7 +103,7 @@ public sealed class ConfigureEventParticipationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_participation_configuration_validation_failed");
         await Assert.That(result.Errors).Contains(error => error.Contains(
             nameof(EventParticipationConfigurationErrorCode.AdvanceRegistrationObligationNotAllowed),
@@ -158,7 +158,7 @@ public sealed class ConfigureEventParticipationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode)
             .IsEqualTo("event_participation_configuration_attachment_conflict");
         await configurations.DidNotReceive().UpdateAsync(

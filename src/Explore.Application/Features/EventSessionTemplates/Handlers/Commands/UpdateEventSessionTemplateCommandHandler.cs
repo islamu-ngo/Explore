@@ -48,43 +48,33 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionTemplateCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.SessionTemplateId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "Event session template update failed.";
-            response.Errors = ["SessionTemplateId and ExpectedConcurrencyStamp are required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["SessionTemplateId and ExpectedConcurrencyStamp are required."],
+                "Event session template update failed.");
         }
 
         var validator = new UpdateEventSessionTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.SessionTemplateDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session template update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session template update failed.");
         }
 
         var sessionTemplate = await _sessionTemplateRepository.GetTrackedSessionTemplateWithDefinitions(request.SessionTemplateId, cancellationToken);
         if (sessionTemplate == null)
         {
-            response.Success = false;
-            response.Message = "Event session template not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session template not found.");
         }
 
         request = request with { TenantId = sessionTemplate.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != sessionTemplate.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event session template not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session template not found.");
         }
 
         if (sessionTemplate.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -113,10 +103,9 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
         var candidateValidation = await new CreateEventSessionTemplateDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session template update failed.";
-            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                candidateValidation.Errors.Select(error => error.ErrorMessage),
+                "Event session template update failed.");
         }
 
         if (await _sessionTemplateRepository.ExistsSessionTemplateKey(
@@ -125,10 +114,9 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                 candidate.Version,
                 sessionTemplate.Id))
         {
-            response.Success = false;
-            response.Message = "Event session template update failed.";
-            response.Errors = ["A session template with the same SessionTemplateKey and Version already exists for this event template."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A session template with the same SessionTemplateKey and Version already exists for this event template."],
+                "Event session template update failed.");
         }
 
         IReadOnlyCollection<SessionTemplateDefinitionWithOptions>? definitions = null;
@@ -140,7 +128,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                 cancellationToken);
             if (candidate.Definitions.Count > maxDefinitions)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event session template update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
@@ -149,7 +137,6 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                         candidate.Definitions.Count,
                         "event_session_template_definitions",
                         sessionTemplate.TenantId));
-                return response;
             }
 
             var maxOptions = await _quotaResolver.GetIntAsync(
@@ -160,7 +147,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                 .FirstOrDefault(definition => definition.Options.Count > maxOptions);
             if (overOptionDefinition is not null)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event session template update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -169,16 +156,14 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                         overOptionDefinition.Options.Count,
                         "event_session_template_definition_options",
                         sessionTemplate.TenantId));
-                return response;
             }
 
             var definitionsResult = BuildDefinitionEntities(candidate.Definitions, sessionTemplate.TenantId);
             if (definitionsResult.Errors.Count > 0)
             {
-                response.Success = false;
-                response.Message = "Event session template update failed.";
-                response.Errors = definitionsResult.Errors;
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    definitionsResult.Errors,
+                    "Event session template update failed.");
             }
 
             definitions = definitionsResult.Definitions;
@@ -207,13 +192,9 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
                 cancellationToken);
         }
 
-        response.Success = true;
-        response.Id = sessionTemplate.Id;
-        response.Message = "Event session template updated successfully.";
-
         await InvalidateCaches(sessionTemplate.EventTemplateId, sessionTemplate.Id, cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(sessionTemplate.Id, "Event session template updated successfully.");
     }
 
     private static void ApplyPatch(CreateEventSessionTemplateDto candidate, UpdateEventSessionTemplateDto patch)
@@ -234,7 +215,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
     }
 
     private (IReadOnlyCollection<SessionTemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
-        List<CreateEventSessionTemplateDefinitionDto> definitionDtos,
+        IReadOnlyList<CreateEventSessionTemplateDefinitionDto> definitionDtos,
         Guid tenantId)
     {
         var errors = new List<string>();

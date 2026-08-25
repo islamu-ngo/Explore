@@ -177,7 +177,7 @@ public sealed class IncomingWebhookEffectProcessingService(
             var response = await mediator.Send(
                 new ProcessCoopDecisionCallbackCommand { Request = request },
                 cancellationToken);
-            if (response.Success)
+            if (response.IsSuccess)
             {
                 return await CompleteAsync(claim, cancellationToken);
             }

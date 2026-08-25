@@ -28,14 +28,11 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
         CancellationToken cancellationToken)
     {
         Guid tenantId = tenantContext.TenantId == Guid.Empty ? request.TenantId : tenantContext.TenantId;
-        var response = new BaseCommandResponse<Guid>();
 
         if (!await IsUserAuthorizedAsync(tenantId, request.UserId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Only tenant administrators or instance administrators can update moderation reporting routing settings.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only tenant administrators or instance administrators can update moderation reporting routing settings.");
         }
 
         TenantDelegationSettingGroup delegation = await settingsResolver.ResolveGroupAsync<TenantDelegationSettingGroup>(
@@ -60,10 +57,9 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
         List<string> validationErrors = Validate(request.Settings);
         if (validationErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Moderation reporting routing settings validation failed.";
-            response.Errors = validationErrors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationErrors,
+                "Moderation reporting routing settings validation failed.");
         }
 
         await unitOfWork.ExecuteInTransactionAsync(
@@ -72,10 +68,9 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
 
         settingsResolver.InvalidateCache(SettingScope.Tenant, tenantId);
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = "Moderation reporting routing settings updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            tenantId,
+            "Moderation reporting routing settings updated successfully.");
     }
 
     private async Task<bool> IsUserAuthorizedAsync(
@@ -97,13 +92,11 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
         return await adminContext.IsInstanceAdminAsync(userId, cancellationToken);
     }
 
-    private static BaseCommandResponse<Guid> Locked(string message) => new()
-    {
-        Success = false,
-        FailureCode = FailureCodes.ReportingTenantOverridesLocked,
-        Message = message,
-        Errors = ["Instance reporting delegation must be unlocked before tenant reporting provider overrides can be saved."]
-    };
+    private static BaseCommandResponse<Guid> Locked(string message) =>
+        BaseCommandResponse.Failure<Guid>(
+            FailureCodes.ReportingTenantOverridesLocked,
+            message,
+            ["Instance reporting delegation must be unlocked before tenant reporting provider overrides can be saved."]);
 
     private static List<string> Validate(UpdateReportingRoutingSettingsDto settings)
     {

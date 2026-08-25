@@ -228,6 +228,6 @@ public sealed class PublishRegistrationProviderBindingCommandValidator : Abstrac
 
 file static class RegistrationProviderCommandResponses
 {
-    public static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
-    public static BaseCommandResponse<Guid> Failure(Guid id, string code) => new() { Id = id, Success = false, FailureCode = code, Message = code };
+    public static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
+    public static BaseCommandResponse<Guid> Failure(Guid id, string code) => BaseCommandResponse.Failure<Guid>(code, code, id: id);
 }

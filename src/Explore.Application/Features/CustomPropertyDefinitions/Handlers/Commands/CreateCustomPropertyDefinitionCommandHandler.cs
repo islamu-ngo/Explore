@@ -50,25 +50,21 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Custom-property definition creation failed.");
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);
         if (!governance.IsValid)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition creation failed.";
-            response.Errors = governance.Errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                governance.Errors,
+                "Custom-property definition creation failed.");
         }
 
         if (await _customPropertyDefinitionRepository.ExistsScopedMachineKey(
@@ -77,10 +73,9 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
                 governance.NormalizedNamespace,
                 governance.NormalizedKey))
         {
-            response.Success = false;
-            response.Message = "Custom-property definition creation failed.";
-            response.Errors = ["A custom-property definition with the same Namespace + Key already exists in this scope."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A custom-property definition with the same Namespace + Key already exists in this scope."],
+                "Custom-property definition creation failed.");
         }
 
         var maxDefinitions = await _quotaResolver.GetIntAsync(
@@ -93,7 +88,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             cancellationToken);
         if (currentDefinitionCount >= maxDefinitions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Custom-property definition creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key,
@@ -102,7 +97,6 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
                     currentDefinitionCount + 1,
                     "custom_property_definition_scope",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var maxOptions = await _quotaResolver.GetIntAsync(
@@ -111,7 +105,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             cancellationToken);
         if (request.DefinitionDto.Options.Count > maxOptions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Custom-property definition creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -120,7 +114,6 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
                     request.DefinitionDto.Options.Count,
                     "custom_property_definition_options",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var definition = _mapper.Map<CustomPropertyDefinition>(request.DefinitionDto);
@@ -137,13 +130,9 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             ct => _customPropertyDefinitionRepository.CreateWithOptions(definition, options, defaultOption?.Id, ct),
             cancellationToken);
 
-        response.Success = true;
-        response.Id = definition.Id;
-        response.Message = "Custom-property definition created successfully.";
-
         await _cache.RemoveAsync(GetListCacheKey(request.DefinitionDto.EntityTypeName, 1, PaginatedResult<object>.DefaultPageSize), cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(definition.Id, "Custom-property definition created successfully.");
     }
 
     private List<CustomPropertyOption> CreateOptionEntities(IReadOnlyCollection<DTOs.CustomPropertyDefinition.CreateCustomPropertyOptionDto> optionDtos, Guid definitionId)

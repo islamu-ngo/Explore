@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Handlers;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Promotions.Handlers.Commands;
@@ -33,14 +34,8 @@ public sealed class ApplyGuestPromotionCodeToRegistrationOrderCommandHandler(
             ? Unavailable(request.OrderId)
             : await sender.Send(new ApplyPromotionCodeToRegistrationOrderCommand(request.OrderId, request.Code), cancellationToken);
 
-    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Message = "Promotion cannot be changed for this order.",
-        Errors = [PromotionRedemptionFailureCodes.Unavailable]
-    };
+    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) =>
+        PromotionRedemptionAccessFailures.Unavailable(orderId);
 }
 
 public sealed class RemoveGuestPromotionFromRegistrationOrderCommandHandler(
@@ -66,14 +61,8 @@ public sealed class RemoveGuestPromotionFromRegistrationOrderCommandHandler(
             ? Unavailable(request.OrderId)
             : await sender.Send(new RemovePromotionFromRegistrationOrderCommand(request.OrderId), cancellationToken);
 
-    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Message = "Promotion cannot be changed for this order.",
-        Errors = [PromotionRedemptionFailureCodes.Unavailable]
-    };
+    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) =>
+        PromotionRedemptionAccessFailures.Unavailable(orderId);
 }
 
 public sealed class ApplyAuthenticatedPromotionCodeToRegistrationOrderCommandHandler(
@@ -96,14 +85,8 @@ public sealed class ApplyAuthenticatedPromotionCodeToRegistrationOrderCommandHan
             ? Unavailable(request.OrderId)
             : await sender.Send(new ApplyPromotionCodeToRegistrationOrderCommand(request.OrderId, request.Code), cancellationToken);
 
-    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Message = "Promotion cannot be changed for this order.",
-        Errors = [PromotionRedemptionFailureCodes.Unavailable]
-    };
+    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) =>
+        PromotionRedemptionAccessFailures.Unavailable(orderId);
 }
 
 public sealed class RemoveAuthenticatedPromotionFromRegistrationOrderCommandHandler(
@@ -126,12 +109,16 @@ public sealed class RemoveAuthenticatedPromotionFromRegistrationOrderCommandHand
             ? Unavailable(request.OrderId)
             : await sender.Send(new RemovePromotionFromRegistrationOrderCommand(request.OrderId), cancellationToken);
 
-    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
-        Message = "Promotion cannot be changed for this order.",
-        Errors = [PromotionRedemptionFailureCodes.Unavailable]
-    };
+    private static PromotionRedemptionResponseDto Unavailable(Guid orderId) =>
+        PromotionRedemptionAccessFailures.Unavailable(orderId);
+}
+
+file static class PromotionRedemptionAccessFailures
+{
+    public static PromotionRedemptionResponseDto Unavailable(Guid orderId) =>
+        PromotionRedemptionResponseDto.Failure(BaseCommandResponse.Failure<Guid>(
+            PromotionRedemptionFailureCodes.Unavailable,
+            "Promotion cannot be changed for this order.",
+            [PromotionRedemptionFailureCodes.Unavailable],
+            orderId));
 }

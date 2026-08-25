@@ -48,18 +48,15 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateActorCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateActorDtoValidator(
             _actorTypeRepository,
             _storageObjectRepository);
         var validationResult = await validator.ValidateAsync(request.UpdateActorDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Actor update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Actor update failed.");
         }
 
         var transactionResponse = await _unitOfWork.ExecuteInTransactionAsync(async token =>
@@ -67,9 +64,7 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             var actor = await _actorRepository.GetById(request.ActorId);
             if (actor == null)
             {
-                response.Success = false;
-                response.Message = "Actor not found.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(["Actor not found."], "Actor not found.");
             }
 
             await EnsureCanUpdatePresentGroupsAsync(actor, request.UpdateActorDto, token);
@@ -85,9 +80,9 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
 
             if (!await ApplyProfileImageAsync(actor, request.UpdateActorDto.ProfileImage))
             {
-                response.Success = false;
-                response.Message = "Profile image was not found in the current tenant.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Profile image was not found in the current tenant."],
+                    "Profile image was not found in the current tenant.");
             }
 
             ApplyAppearance(actor, request.UpdateActorDto.Appearance);
@@ -95,13 +90,10 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
 
             await _actorRepository.Update(actor);
 
-            response.Success = true;
-            response.Id = actor.Id;
-            response.Message = "Actor updated successfully.";
-            return response;
+            return BaseCommandResponse.Success(actor.Id, "Actor updated successfully.");
         }, cancellationToken);
 
-        if (transactionResponse.Success)
+        if (transactionResponse.IsSuccess)
         {
             await _cache.RemoveAsync($"actor:detail:{transactionResponse.Id}", cancellationToken);
         }

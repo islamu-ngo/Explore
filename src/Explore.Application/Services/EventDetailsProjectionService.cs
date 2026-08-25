@@ -69,10 +69,11 @@ public sealed class EventDetailsProjectionService : IEventDetailsProjectionServi
         var categories = await _eventCategoriesRepository.GetCategoriesByEvent(eventId);
 
         dto.IsUnmoderationEligible = latestModerationRecord?.AllowsUnmoderation == true;
-        dto.Tags = _mapper.Map<List<TagListDto>>(tags);
-        dto.Categories = _mapper.Map<List<CategoryListDto>>(categories);
-
-        return dto;
+        return dto with
+        {
+            Tags = _mapper.Map<List<TagListDto>>(tags),
+            Categories = _mapper.Map<List<CategoryListDto>>(categories)
+        };
     }
 
     public async Task ResolveImageUrlsAsync(EventDto eventDto, CancellationToken cancellationToken)

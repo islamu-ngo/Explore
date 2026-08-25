@@ -50,7 +50,7 @@ public sealed class CreateEventDraftAiToolExecutor(IMediator mediator)
             EventDto = draft.ToCreateEventDto()
         }, cancellationToken);
 
-        if (!createResult.Success || createResult.Id == Guid.Empty)
+        if (!createResult.IsSuccess || createResult.Id == Guid.Empty)
         {
             return CreateEventDraftAiToolExecutionResult.Failure(
                 createResult.FailureCode ?? "event_creation_failed",

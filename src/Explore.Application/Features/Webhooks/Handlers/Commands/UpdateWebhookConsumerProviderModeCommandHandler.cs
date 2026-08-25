@@ -145,12 +145,7 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
             var warning = uncertainPublicationCount > 0
                 ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
                 : string.Empty;
-            return new BaseCommandResponse<Guid>
-            {
-                Id = persisted.Id,
-                Success = true,
-                Message = $"Webhook consumer provider mode changed; existing pending work preserved.{warning}"
-            };
+            return BaseCommandResponse.Success(persisted.Id, $"Webhook consumer provider mode changed; existing pending work preserved.{warning}");
         }, cancellationToken);
     }
 
@@ -243,11 +238,5 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }

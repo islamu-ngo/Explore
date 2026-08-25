@@ -195,13 +195,10 @@ public sealed class StartSupportAccessSessionCommandHandler(
                 session.ExpiresAtUtc);
         }
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Id = session.Id,
-            Session = SupportAccessMapper.ToDto(session, DateTimeOffset.UtcNow),
-            Success = true,
-            Message = "Support-access session started."
-        };
+        return SupportAccessSessionCommandResponseDto.Success(
+            session.Id,
+            "Support-access session started.",
+            SupportAccessMapper.ToDto(session, DateTimeOffset.UtcNow));
     }
 
     private SupportAccessSessionCommandResponseDto Failure(
@@ -220,12 +217,7 @@ public sealed class StartSupportAccessSessionCommandHandler(
             actorUserId,
             targetTenantId);
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = errors.ToList()
-        };
+        return SupportAccessSessionCommandResponseDto.Failure(
+            BaseCommandResponse.Failure<Guid>(failureCode, message, errors));
     }
 }

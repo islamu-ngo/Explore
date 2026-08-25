@@ -49,7 +49,7 @@ public sealed class BootstrapAtprotoSessionCommandValidatorTests
         "https://pds.example/",
         "oauth-active",
         AtprotoSubjectClassification.Person,
-        [1],
+        new byte[] { 1 },
         canonicalActorId,
         expectedCanonicalActorConcurrencyStamp);
 }

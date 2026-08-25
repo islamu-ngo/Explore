@@ -112,12 +112,7 @@ public sealed class PauseWebhookEndpointCommandHandler(
                     PrincipalReference: $"user:{request.ActorUserId:D}"),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.EndpointId,
-                Success = true,
-                Message = "Webhook endpoint paused."
-            };
+            return BaseCommandResponse.Success(request.EndpointId, "Webhook endpoint paused.");
         }, cancellationToken);
     }
 
@@ -129,12 +124,5 @@ public sealed class PauseWebhookEndpointCommandHandler(
         string code,
         string message,
         IEnumerable<string>? errors = null) =>
-        new()
-        {
-            Id = endpointId,
-            Success = false,
-            Message = message,
-            FailureCode = code,
-            Errors = errors?.ToList() ?? [message]
-        };
+        BaseCommandResponse.Failure(code, message, errors ?? [message], endpointId);
 }

@@ -121,7 +121,7 @@ public sealed class PlatformMonetizationHandlersTests
 
         var result = await CreateUpdateHandler(unitOfWork).Handle(CreateUpdate(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.SerializableBoundaries).IsEqualTo(1);
         await Assert.That(operations.SequenceEqual(["fee-retired", "contribution-retired", "fee-revision", "contribution-revision"])).IsTrue();
         await _feePolicies.Received(1).AddAsync(Arg.Is<PlatformFeePolicy>(policy => policy.VersionNumber == 2 && policy.IsActive), Arg.Any<CancellationToken>());
@@ -138,7 +138,7 @@ public sealed class PlatformMonetizationHandlersTests
 
         var result = await CreateUpdateHandler(unitOfWork).Handle(CreateUpdate(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.DelegateAttempts).IsEqualTo(2);
         await _feePolicies.Received(2).GetActiveAsync(Arg.Any<CancellationToken>());
         await _contributions.Received(2).GetActiveAsync(Arg.Any<CancellationToken>());

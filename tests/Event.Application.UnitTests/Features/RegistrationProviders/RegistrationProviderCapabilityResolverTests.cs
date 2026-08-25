@@ -212,7 +212,7 @@ public sealed class RegistrationProviderCapabilityResolverTests
             .Throws<OperationCanceledException>();
 
         var blocked = await handler.Handle(new(binding.TenantId, binding.Id, RegistrationProviderSchemaDriftClass.TypeChanged, Now), CancellationToken.None);
-        await Assert.That(blocked.Success).IsFalse();
+        await Assert.That(blocked.IsSuccess).IsFalse();
         await Assert.That(blocked.FailureCode).IsEqualTo("registration_provider_drift_blocks_publication");
     }
 
@@ -250,7 +250,7 @@ public sealed class RegistrationProviderCapabilityResolverTests
         var result = await handler.Handle(new(binding.TenantId, binding.Id,
             [new("attendee.email", "email", true)], []), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_mapping_pinned");
     }
 
@@ -278,7 +278,7 @@ public sealed class RegistrationProviderCapabilityResolverTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(expectedFailureCode);
         await Assert.That(binding.FieldMappings).IsEmpty();
         await Assert.That(binding.OptionMappings).IsEmpty();

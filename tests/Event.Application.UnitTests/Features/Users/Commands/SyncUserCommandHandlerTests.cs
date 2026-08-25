@@ -96,7 +96,7 @@ public class SyncUserCommandHandlerTests
         var result = await _handler.Handle(new SyncUserCommand { UserDto = dto }, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _userExternalLoginRepository.Received(1)
             .Create(Arg.Is<UserExternalLogin>(x =>
@@ -135,7 +135,7 @@ public class SyncUserCommandHandlerTests
         var result = await _handler.Handle(new SyncUserCommand { UserDto = dto }, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingUser.Id);
         await _userExternalLoginRepository.Received(1)
             .Create(Arg.Is<UserExternalLogin>(x =>
@@ -167,7 +167,7 @@ public class SyncUserCommandHandlerTests
         var result = await _handler.Handle(new SyncUserCommand { UserDto = dto }, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("explicitly linked");
         await _userRepository.DidNotReceive().Create(Arg.Any<User>());
     }

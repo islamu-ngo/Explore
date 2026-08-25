@@ -22,13 +22,8 @@ public sealed class AddRegistrationParticipantCommandHandler(RegistrationPartici
             : Invalid(request.RegistrationOrderId, validation);
     }
 
-    internal static BaseCommandResponse<Guid> Invalid(Guid id, ValidationResult validation) => new()
-    {
-        Id = id,
-        Success = false,
-        Message = "Registration participant request is invalid.",
-        Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-    };
+    internal static BaseCommandResponse<Guid> Invalid(Guid id, ValidationResult validation) => BaseCommandResponse.Validation(
+        validation.Errors.Select(error => error.ErrorMessage), "Registration participant request is invalid.", id);
 }
 
 public sealed class UpdateRegistrationParticipantCommandHandler(RegistrationParticipantCommandService service)
@@ -103,11 +98,8 @@ public sealed class ImportCompanyRegistrationAssignmentsCsvCommandHandler(Regist
         ValidationResult validation = await new ImportCompanyRegistrationAssignmentsCsvCommandValidator().ValidateAsync(request, cancellationToken);
         return validation.IsValid
             ? await service.ImportCompanyCsvAsync(request.EventId, request.RegistrationOrderId, request.CsvUtf8, request.LineageKey, cancellationToken)
-            : new BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>
-            {
-                Success = false,
-                Message = "Company assignment CSV request is invalid.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            : BaseCommandResponse.Validation<CompanyRegistrationAssignmentCsvResultDto>(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "Company assignment CSV request is invalid.");
     }
 }

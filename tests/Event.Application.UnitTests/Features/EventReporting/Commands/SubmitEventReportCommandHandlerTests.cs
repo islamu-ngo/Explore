@@ -202,7 +202,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(createdReports).Count().IsEqualTo(1);
         await Assert.That(createdTargets).Count().IsEqualTo(1);
@@ -306,7 +306,7 @@ public sealed class SubmitEventReportCommandHandlerTests
     {
         var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid(), reasonCode: "unsupported"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportReasonCodePolicy.InvalidReasonCodeFailureCode);
         await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _unitOfWork.DidNotReceive()
@@ -328,7 +328,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
         await Assert.That(result.Errors).IsNull();
         await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
@@ -352,7 +352,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid(), reasonCode: "unsupported"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
         await Assert.That(result.Errors).IsNull();
         await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
@@ -386,7 +386,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_report_duplicate");
         await _eventReportRepository.DidNotReceive().CountByReporterSinceAsync(
             Arg.Any<Guid>(),
@@ -425,7 +425,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo("reporting.max_reports_per_user_per_hour");
@@ -469,7 +469,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo("reporting.max_reports_per_event_per_user_per_day");
@@ -492,7 +492,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_report_event_invalid_status");
         await _eventReportRepository.DidNotReceive().Create(Arg.Any<EventReport>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -515,7 +515,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var report = createdReports.Single();
         await Assert.That(report.ReporterKind).IsEqualTo(EventReporterKind.Anonymous);
         await Assert.That(report.ReportCaseUpdatesConsent).IsFalse();
@@ -538,7 +538,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RecipientNotificationMaterialization receipt = _receiptMaterializations.Single();
         await Assert.That(receipt.InApp).IsNotNull();
         await Assert.That(receipt.Email).IsNull();
@@ -565,7 +565,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             CreateCommand(@event.Id),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RecipientNotificationMaterialization receipt = _receiptMaterializations.Single();
         await Assert.That(receipt.InApp).IsNotNull();
         await Assert.That(receipt.Email).IsNull();
@@ -599,7 +599,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             CreateCommand(@event.Id),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RecipientNotificationMaterialization receipt = _receiptMaterializations.Single();
         await Assert.That(receipt.InApp).IsNotNull();
         await Assert.That(receipt.Email).IsNull();
@@ -637,7 +637,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RecipientNotificationMaterialization receipt = _receiptMaterializations.Single();
         string copy = string.Join(
             "\n",

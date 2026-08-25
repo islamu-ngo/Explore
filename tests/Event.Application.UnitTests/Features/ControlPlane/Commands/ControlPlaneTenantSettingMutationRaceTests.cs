@@ -57,7 +57,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(calls.Count).IsEqualTo(3);
         await Assert.That(calls[0]).IsEqualTo("lock");
         await Assert.That(calls[1]).IsEqualTo("system-recheck");
@@ -130,7 +130,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(calls.Count).IsEqualTo(5);
         await Assert.That(calls[0]).IsEqualTo("lock");
         await Assert.That(calls[1]).IsEqualTo("mutation");
@@ -157,7 +157,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
             new LockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("setting_state_conflict");
     }
 
@@ -179,7 +179,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
             new UnlockControlPlaneTenantSettingCommand(_tenantId, key),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("setting_state_conflict");
     }
 
@@ -198,7 +198,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _tenantSettings.Received(2)
             .SetValueAsync(_tenantId, key, "\"smtp.example.test\"", Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _tenantSettings.DidNotReceiveWithAnyArgs()

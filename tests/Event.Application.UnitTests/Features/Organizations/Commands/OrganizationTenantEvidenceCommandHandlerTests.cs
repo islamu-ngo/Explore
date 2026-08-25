@@ -61,10 +61,8 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
         _sender.Send(
                 Arg.Any<CreateStorageUploadSessionCommand>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<StorageUploadSessionDto>
-            {
-                Success = true,
-                Id = new StorageUploadSessionDto
+            .Returns(BaseCommandResponse.Success(
+                new StorageUploadSessionDto
                 {
                     Provider = StorageProviders.Local,
                     ContentType = "application/pdf",
@@ -72,8 +70,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
                     Purpose = StorageObjectPurposes.Document,
                     Visibility = StorageObjectVisibilities.PrivateOwner,
                     Status = StorageUploadSessionStates.Reserved
-                }
-            });
+                }));
 
         var result = await new CreateOrganizationTenantEvidenceUploadSessionCommandHandler(
             _organizationTenantRepository,
@@ -92,7 +89,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _sender.Received(1).Send(
             Arg.Is<CreateStorageUploadSessionCommand>(command =>
                 command.TenantId == _tenantId
@@ -127,7 +124,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _evidenceRepository.DidNotReceive().Create(Arg.Any<OrganizationTenantEvidence>());
     }
 
@@ -160,7 +157,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(participation.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Pending);
         await _evidenceRepository.Received(1).Create(Arg.Is<OrganizationTenantEvidence>(evidence =>
             evidence.TenantId == _tenantId
@@ -178,7 +175,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
             CreateReviewCommand(Guid.CreateVersion7(), Guid.CreateVersion7()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _evidenceRepository.DidNotReceive()
             .GetDetailsAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
@@ -199,7 +196,7 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
             CreateReviewCommand(evidence.Id, evidence.ConcurrencyStamp),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(evidence.ReviewStatusId).IsEqualTo((int)ApprovalStatusEnum.Approved);
         await Assert.That(evidence.ReviewedByUserId).IsEqualTo(_userId);
         await Assert.That(participation.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Pending);

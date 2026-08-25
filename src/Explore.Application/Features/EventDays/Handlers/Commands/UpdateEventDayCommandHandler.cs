@@ -36,26 +36,20 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventDayCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventDayDtoValidator(_eventRepository, _eventDayRepository);
         var validationResult = await validator.ValidateAsync(request.EventDayDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event day update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event day update failed.");
         }
 
         var eventDay = await _eventDayRepository.GetById(request.EventDayId);
         if (eventDay == null)
         {
-            response.Success = false;
-            response.Message = "Event day not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event day not found.");
         }
 
         if (eventDay.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -75,10 +69,9 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event day update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event day update failed.");
         }
 
         var previousEventId = eventDay.EventId;
@@ -86,9 +79,9 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
         var parentEvent = await _eventRepository.GetById(parentEventId);
         if (parentEvent == null || parentEvent.TenantId != eventDay.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event does not belong to the same tenant as the event day.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event does not belong to the same tenant as the event day."],
+                "Event does not belong to the same tenant as the event day.");
         }
 
         Guid? bannerImageId = request.EventDayDto.BannerImage?.Value.HasValue == true
@@ -99,10 +92,9 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
                 eventDay.TenantId,
                 bannerImageId))
         {
-            response.Success = false;
-            response.Message = "Event day update failed.";
-            response.Errors = ["Banner image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Banner image must be an active public safe-raster object in the current tenant."],
+                "Event day update failed.");
         }
 
         var eventChanged = previousEventId != parentEvent.Id;
@@ -126,11 +118,7 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
         await _cache.RemoveAsync($"event:detail:{parentEvent.Id}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
 
-        response.Success = true;
-        response.Id = eventDay.Id;
-        response.Message = "Event day updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventDay.Id, "Event day updated successfully.");
     }
 
     private static void ApplyEvent(EventDay eventDay, UpdateEventDayEventDto? group)

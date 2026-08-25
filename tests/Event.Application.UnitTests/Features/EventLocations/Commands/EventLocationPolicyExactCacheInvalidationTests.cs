@@ -59,7 +59,7 @@ public sealed class EventLocationPolicyExactCacheInvalidationTests
 
         var response = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(cache.RemovedTags).IsEquivalentTo([CacheTags.EventLocation(placement.Id)]);
     }
 
@@ -105,7 +105,7 @@ public sealed class EventLocationPolicyExactCacheInvalidationTests
 
         var response = await handler.Handle(command, cancellation.Token);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(cancellation.IsCancellationRequested).IsTrue();
         await Assert.That(cache.RemovedTags).IsEquivalentTo([CacheTags.EventLocation(placement.Id)]);
     }

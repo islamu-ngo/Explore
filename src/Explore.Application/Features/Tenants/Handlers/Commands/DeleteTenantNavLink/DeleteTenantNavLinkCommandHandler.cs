@@ -31,8 +31,6 @@ public class DeleteTenantNavLinkCommandHandler : IRequestHandler<DeleteTenantNav
 
     public async Task<BaseCommandResponse<bool>> Handle(DeleteTenantNavLinkCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<bool>();
-
         // Verify the navigation link exists and belongs to the current tenant
         var existingLink = await _navigationLinkRepository.GetByIdAndTenantAsync(
             request.Id,
@@ -41,18 +39,14 @@ public class DeleteTenantNavLinkCommandHandler : IRequestHandler<DeleteTenantNav
 
         if (existingLink == null)
         {
-            response.Success = false;
-            response.Message = "Navigation link not found or does not belong to your tenant.";
-            response.Errors = new() { "Navigation link not found." };
-            return response;
+            return BaseCommandResponse.Validation<bool>(
+                ["Navigation link not found."],
+                "Navigation link not found or does not belong to your tenant.");
         }
 
         // Delete the navigation link
         await _navigationLinkRepository.Delete(existingLink);
 
-        response.Success = true;
-        response.Message = "Navigation link deleted successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(false, "Navigation link deleted successfully.");
     }
 }

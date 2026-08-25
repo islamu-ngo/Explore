@@ -38,11 +38,6 @@ public sealed class UpdateFooterLinkGroupCommandHandler(
 
         await footerLinkGroupRepository.Update(group);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = group.Id,
-            Message = "Footer link group updated successfully.",
-        };
+        return BaseCommandResponse.Success(group.Id, "Footer link group updated successfully.");
     }
 }

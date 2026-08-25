@@ -117,18 +117,9 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
         _ => throw new ArgumentOutOfRangeException(nameof(decision), decision, null)
     };
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation(errors, message, id);
 }

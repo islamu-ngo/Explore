@@ -129,12 +129,7 @@ public sealed class CreateWebhookEndpointCommandHandler(
                     EffectiveScopeId: consumer.OwnerId),
                 token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = persisted.Id,
-                Success = true,
-                Message = "Webhook endpoint created."
-            };
+            return BaseCommandResponse.Success(persisted.Id, "Webhook endpoint created.");
         }, cancellationToken);
     }
 
@@ -216,13 +211,7 @@ public sealed class CreateWebhookEndpointCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }
 
 internal static class WebhookEndpointCapabilityPolicy

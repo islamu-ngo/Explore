@@ -31,7 +31,7 @@ public sealed class DownloadAuthorizationPolicyPackageQueryHandlerTests
         var archive = new PolicyPackageArchive(
             FileName: "islamuevent-authorization-policies.zip",
             ContentType: "application/zip",
-            Content: [1, 2, 3],
+            Content: new byte[] { 1, 2, 3 },
             Manifest: manifest);
         _policyPackageService.ExportArchiveAsync(Arg.Any<CancellationToken>()).Returns(archive);
 

@@ -97,7 +97,7 @@ public class ResolveSettingGroupQueryHandler
                 CanEdit = canEdit,
                 Reason = reason,
                 Description = setting.Description ?? definition.Description,
-                AllowedValues = definition.AllowedValues is { Length: > 0 }
+                AllowedValues = definition.AllowedValues is { Count: > 0 }
                     ? string.Join(",", definition.AllowedValues)
                     : null
             });

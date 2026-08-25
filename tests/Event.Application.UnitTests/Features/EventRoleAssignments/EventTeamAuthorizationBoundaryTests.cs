@@ -76,7 +76,7 @@ public sealed class EventTeamAuthorizationBoundaryTests
             _ =>
             {
                 handlerRan = true;
-                return Task.FromResult(new BaseCommandResponse<Guid>());
+                return Task.FromResult(BaseCommandResponse.Validation<Guid>(["Handler should not run."]));
             },
             CancellationToken.None));
 

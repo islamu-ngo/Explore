@@ -27,7 +27,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = requesterId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(invitation.Id);
         await Assert.That(invitation.UserId).IsEqualTo(requesterId);
         await repository.DidNotReceiveWithAnyArgs().Update(default!);
@@ -47,7 +47,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invitation not found");
         await Assert.That(result.Id).IsEqualTo(default(Guid));
         await repository.DidNotReceiveWithAnyArgs().Update(default!);
@@ -67,7 +67,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invitation not found");
         await Assert.That(invitation.UserId).IsEqualTo(Guid.Empty);
         await repository.DidNotReceiveWithAnyArgs().Update(default!);
@@ -88,7 +88,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = requesterId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(invitation.Id);
         await repository.Received(1).Delete(invitation);
     }
@@ -107,7 +107,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invitation not found");
         await repository.DidNotReceiveWithAnyArgs().Delete(default!);
     }
@@ -126,7 +126,7 @@ public sealed class InvitationOwnershipCommandHandlerTests
             UserId = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invitation not found");
         await repository.DidNotReceiveWithAnyArgs().Delete(default!);
     }

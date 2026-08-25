@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
@@ -292,10 +293,10 @@ public sealed class RegistrationPaymentContractService(
             now);
 
     private static RegistrationPaymentCommandResultDto Success(RegistrationPaymentDto payment) =>
-        new() { Success = true, Payment = payment };
+        RegistrationPaymentCommandResultDto.Success(Guid.Empty, null, payment);
 
     private static RegistrationPaymentCommandResultDto Failure(string code, string? message) =>
-        new() { FailureCode = code, Message = message };
+        RegistrationPaymentCommandResultDto.Failure(BaseCommandResponse.Failure<Guid>(code, message));
 
     internal static RegistrationRefundDto MapRefund(RefundAttempt attempt)
     {

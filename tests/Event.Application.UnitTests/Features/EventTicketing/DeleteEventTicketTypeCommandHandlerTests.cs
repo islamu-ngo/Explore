@@ -48,7 +48,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
             new DeleteEventTicketTypeCommand { EventId = _eventId, TicketTypeId = ticket.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(ticket.IsDeleted).IsTrue();
         await Assert.That(ticket.DeletedAt).IsEqualTo(_deletedAt.UtcDateTime);
         await Assert.That(ticket.DeletedBy).IsEqualTo(_userId);

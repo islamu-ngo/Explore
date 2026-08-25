@@ -43,12 +43,9 @@ public sealed class SwitchControlPlaneTenantPlanAssignmentCommandHandler(
 
             if (current?.TenantPlanVersionId == targetVersion.Id)
             {
-                return new BaseCommandResponse<Guid>
-                {
-                    Success = true,
-                    Id = current.Id,
-                    Message = "Tenant is already assigned to this plan version."
-                };
+                return BaseCommandResponse.Success(
+                    current.Id,
+                    "Tenant is already assigned to this plan version.");
             }
 
             DateTime now = DateTime.UtcNow;
@@ -74,19 +71,10 @@ public sealed class SwitchControlPlaneTenantPlanAssignmentCommandHandler(
 
             TenantPlanAssignment created = await tenantPlanRepository.CreateAssignmentAsync(assignment, token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = created.Id,
-                Message = "Tenant plan assignment switched."
-            };
+            return BaseCommandResponse.Success(created.Id, "Tenant plan assignment switched.");
         }
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

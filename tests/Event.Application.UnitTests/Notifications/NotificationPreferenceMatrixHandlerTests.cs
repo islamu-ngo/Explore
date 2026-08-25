@@ -99,7 +99,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             }]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!).Contains("Category 'account-security' is required and cannot be disabled.");
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
@@ -122,7 +122,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             new UpdateCurrentUserNotificationPreferenceMatrixCommand(),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one preference cell is required.");
         await _preferenceRepository.DidNotReceive().UpsertUserPreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
@@ -181,7 +181,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             }]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
         await _preferenceRepository.Received(1).UpsertUserPreferenceAsync(
             TenantId,
@@ -227,7 +227,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             }]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Notification preference update failed.");
         await Assert.That(result.Errors).IsNull();
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
@@ -262,7 +262,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             }]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Notification preference update failed.");
         await Assert.That(result.Errors).IsNull();
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
@@ -335,7 +335,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             ]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(inAppId);
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
         await Assert.That(_unitOfWork.SerializableAttemptCount).IsEqualTo(2);
@@ -467,7 +467,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             }]
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
         await _preferenceRepository.Received(1).UpsertOrganizationPreferenceAsync(
             TenantId,
@@ -501,7 +501,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
 
         var result = await handler.Handle(new SetCurrentUserNotificationPreferenceMuteCommand(true), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Tenant scope");
         await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(0);
         await _profileRepository.DidNotReceive().UpsertUserMuteAsync(

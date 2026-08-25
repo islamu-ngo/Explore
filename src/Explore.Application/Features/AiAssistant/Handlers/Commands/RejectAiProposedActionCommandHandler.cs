@@ -52,23 +52,14 @@ public sealed class RejectAiProposedActionCommandHandler(
             && action.Conversation.TenantId == tenantId
             && action.Conversation.UserId == userId;
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         string message,
         IEnumerable<string> errors,
         string? failureCode = null,
-        Guid id = default) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        Guid id = default) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 }

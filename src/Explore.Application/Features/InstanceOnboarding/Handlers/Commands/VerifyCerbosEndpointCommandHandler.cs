@@ -20,27 +20,22 @@ public class VerifyCerbosEndpointCommandHandler : IRequestHandler<VerifyCerbosEn
 
     public async Task<BaseCommandResponse<Guid>> Handle(VerifyCerbosEndpointCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var normalizedEndpoint = GrpcEndpointNormalizer.Normalize(request.GrpcEndpoint);
 
         if (!GrpcEndpointNormalizer.IsValid(normalizedEndpoint))
         {
-            response.Success = false;
-            response.Message = "Cerbos gRPC endpoint must be a valid URL or host:port value.";
-            return response;
+            const string message = "Cerbos gRPC endpoint must be a valid URL or host:port value.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var isReachable = await _configurationService.VerifyCerbosEndpointAsync(normalizedEndpoint, cancellationToken);
         if (!isReachable)
         {
-            response.Success = false;
-            response.Message = "Cerbos gRPC endpoint could not be verified.";
-            response.Errors = ["Ensure the endpoint is reachable and serving the gRPC health service."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Ensure the endpoint is reachable and serving the gRPC health service."],
+                "Cerbos gRPC endpoint could not be verified.");
         }
 
-        response.Success = true;
-        response.Message = "Cerbos gRPC endpoint verified successfully.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, "Cerbos gRPC endpoint verified successfully.");
     }
 }

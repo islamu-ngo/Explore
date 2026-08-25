@@ -62,17 +62,14 @@ internal static class CustomPropertyPurgeResponseFactory
             Timestamp = DateTime.UtcNow
         };
 
-    public static void ApplyBlockedResponse(
-        BaseCommandResponse<CustomPropertyPurgeResultDto> response,
+    public static BaseCommandResponse<CustomPropertyPurgeResultDto> ToBlockedResponse(
         CustomPropertyPurgeDependencySummary summary,
         string reason,
         string message)
-    {
-        response.Success = false;
-        response.Message = message;
-        response.Id = ToResult(summary, false, null, reason);
-        response.Errors = ToBlockingErrors(summary).ToList();
-    }
+        => BaseCommandResponse.Validation(
+            ToBlockingErrors(summary),
+            message,
+            ToResult(summary, false, null, reason));
 
     public static IReadOnlyList<string> ToBlockingErrors(CustomPropertyPurgeDependencySummary summary)
     {

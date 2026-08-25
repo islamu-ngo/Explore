@@ -48,43 +48,33 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventTemplateCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.TemplateId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = ["TemplateId and ExpectedConcurrencyStamp are required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["TemplateId and ExpectedConcurrencyStamp are required."],
+                "Event template update failed.");
         }
 
         var validator = new UpdateEventTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.TemplateDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event template update failed.");
         }
 
         var template = await _eventTemplateRepository.GetTrackedTemplateWithDefinitions(request.TemplateId, cancellationToken);
         if (template == null)
         {
-            response.Success = false;
-            response.Message = "Event template not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event template not found.");
         }
 
         request = request with { TenantId = template.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != template.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event template not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event template not found.");
         }
 
         if (template.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -113,10 +103,9 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
         var candidateValidation = await new CreateEventTemplateDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                candidateValidation.Errors.Select(error => error.ErrorMessage),
+                "Event template update failed.");
         }
 
         if (await _eventTemplateRepository.ExistsTemplateKey(
@@ -125,10 +114,9 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                 candidate.Version,
                 template.Id))
         {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = ["A template with the same TemplateKey and Version already exists for this tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A template with the same TemplateKey and Version already exists for this tenant."],
+                "Event template update failed.");
         }
 
         IReadOnlyCollection<TemplateDefinitionWithOptions>? definitions = null;
@@ -140,7 +128,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                 cancellationToken);
             if (candidate.Definitions.Count > maxDefinitions)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event template update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
@@ -149,7 +137,6 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                         candidate.Definitions.Count,
                         "event_template_definitions",
                         template.TenantId));
-                return response;
             }
 
             var maxOptions = await _quotaResolver.GetIntAsync(
@@ -160,7 +147,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                 .FirstOrDefault(definition => definition.Options.Count > maxOptions);
             if (overOptionDefinition is not null)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Event template update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -169,16 +156,14 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                         overOptionDefinition.Options.Count,
                         "event_template_definition_options",
                         template.TenantId));
-                return response;
             }
 
             var definitionsResult = BuildDefinitionEntities(candidate.Definitions, template.TenantId);
             if (definitionsResult.Errors.Count > 0)
             {
-                response.Success = false;
-                response.Message = "Event template update failed.";
-                response.Errors = definitionsResult.Errors;
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    definitionsResult.Errors,
+                    "Event template update failed.");
             }
 
             definitions = definitionsResult.Definitions;
@@ -209,13 +194,9 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
                 cancellationToken);
         }
 
-        response.Success = true;
-        response.Id = template.Id;
-        response.Message = "Event template updated successfully.";
-
         await InvalidateCaches(template.TenantId, previousEventTypeId, template.EventTypeId, template.Id, cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(template.Id, "Event template updated successfully.");
     }
 
     private static void ApplyPatch(CreateEventTemplateDto candidate, UpdateEventTemplateDto patch)
@@ -237,7 +218,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
     }
 
     private (IReadOnlyCollection<TemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
-        List<CreateEventTemplateDefinitionDto> definitionDtos,
+        IReadOnlyList<CreateEventTemplateDefinitionDto> definitionDtos,
         Guid tenantId)
     {
         var errors = new List<string>();

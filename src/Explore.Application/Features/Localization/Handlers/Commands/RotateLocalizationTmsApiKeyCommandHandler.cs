@@ -30,13 +30,11 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
         RotateLocalizationTmsApiKeyCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue)
         {
-            response.Success = false;
-            response.Message = "Authentication is required to rotate the localization TMS API key.";
-            return response;
+            const string message = "Authentication is required to rotate the localization TMS API key.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var tenantId = tenantContext.TenantId;
@@ -44,19 +42,17 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
             || await adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
         if (!isAuthorized)
         {
-            response.Success = false;
-            response.Message = "Tenant or instance administrator authority is required to rotate the localization TMS API key.";
-            return response;
+            const string message = "Tenant or instance administrator authority is required to rotate the localization TMS API key.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var validator = new RotateLocalizationTmsApiKeyDtoValidator();
         var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Localization TMS API key rotation failed.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Localization TMS API key rotation failed.");
         }
 
         var instanceBinding = await secretBindingRepository.GetByKeyAndScopeAsync(
@@ -66,9 +62,8 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
             cancellationToken);
         if (instanceBinding?.IsLocked == true)
         {
-            response.Success = false;
-            response.Message = "Localization TMS API key is locked by instance policy.";
-            return response;
+            const string message = "Localization TMS API key is locked by instance policy.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var protectedSecret = secretProtector.Protect(request.Dto.TmsApiKey!.Trim());
@@ -84,7 +79,7 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
                 SettingKey,
                 SecretScope.Tenant,
                 tenantId,
-                protectedSecret.Ciphertext,
+                protectedSecret.Ciphertext.ToArray(),
                 protectedSecret.Version);
             tenantBinding.CreatedAt = DateTime.UtcNow;
             tenantBinding.CreatedBy = actor.Value;
@@ -93,7 +88,7 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
         }
         else
         {
-            tenantBinding.SwitchToInlineEncrypted(protectedSecret.Ciphertext, protectedSecret.Version);
+            tenantBinding.SwitchToInlineEncrypted(protectedSecret.Ciphertext.ToArray(), protectedSecret.Version);
             tenantBinding.UpdatedBy = actor.Value;
             tenantBinding.UpdatedAt = DateTime.UtcNow;
             await secretBindingRepository.Update(tenantBinding);
@@ -106,9 +101,6 @@ public sealed class RotateLocalizationTmsApiKeyCommandHandler(
             tenantId,
             actor.Value);
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = "Localization TMS API key rotated successfully.";
-        return response;
+        return BaseCommandResponse.Success(tenantId, "Localization TMS API key rotated successfully.");
     }
 }

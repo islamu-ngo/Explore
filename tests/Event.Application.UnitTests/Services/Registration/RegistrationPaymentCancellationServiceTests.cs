@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services.Registration;
@@ -79,7 +80,7 @@ public sealed class RegistrationPaymentCancellationServiceTests
             "BE", "EUR", Guid.CreateVersion7(), null, Now.AddMinutes(-2));
         PaymentAttempt payment = PaymentAttempt.Create(
             Guid.CreateVersion7(), tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "composition-1",
-            1_000, 75, 0, "payment:cancel", Now.AddMinutes(-2), Now.AddMinutes(30));
+            Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), "payment:cancel", Now.AddMinutes(-2), Now.AddMinutes(30));
         payment.MarkRequiresAction("cs_cancel", Now.AddMinutes(-1), "req_checkout");
         return payment;
     }

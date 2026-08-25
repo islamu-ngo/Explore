@@ -35,32 +35,25 @@ public class DeleteCustomRoleCommandHandler : IRequestHandler<DeleteCustomRoleCo
 
     public async Task<BaseCommandResponse<int>> Handle(DeleteCustomRoleCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<int>();
-
         // Rule 4: System immutability check
         var modCheck = await _capabilityCeiling.CanModifyRoleAsync(request.RoleId);
         if (!modCheck.IsAllowed)
         {
-            response.Success = false;
-            response.Message = modCheck.Error!;
-            return response;
+            return BaseCommandResponse.Validation<int>([modCheck.Error!], modCheck.Error);
         }
 
         var role = await _roleRepository.GetByIdAsync(request.RoleId);
         if (role == null)
         {
-            response.Success = false;
-            response.Message = "Role not found.";
-            return response;
+            return BaseCommandResponse.Validation<int>(["Role not found."], "Role not found.");
         }
 
         // Check for active members
         var hasMembers = await _roleRepository.HasActiveMembersAsync(request.RoleId);
         if (hasMembers)
         {
-            response.Success = false;
-            response.Message = $"Cannot delete role '{role.FullName}'. It still has active members assigned.";
-            return response;
+            string message = $"Cannot delete role '{role.FullName}'. It still has active members assigned.";
+            return BaseCommandResponse.Validation<int>([message], message);
         }
 
         // Remove all permissions first (RolePermission entries)
@@ -81,10 +74,6 @@ public class DeleteCustomRoleCommandHandler : IRequestHandler<DeleteCustomRoleCo
         // Invalidate permission cache
         _permissionRegistry.InvalidateCache();
 
-        response.Success = true;
-        response.Id = request.RoleId;
-        response.Message = $"Custom role '{role.FullName}' deleted.";
-
-        return response;
+        return BaseCommandResponse.Success(request.RoleId, $"Custom role '{role.FullName}' deleted.");
     }
 }

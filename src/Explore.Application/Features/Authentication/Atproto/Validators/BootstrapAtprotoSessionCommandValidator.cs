@@ -27,7 +27,6 @@ public sealed class BootstrapAtprotoSessionCommandValidator : AbstractValidator<
             .Matches("^[A-Za-z0-9._-]+$");
         RuleFor(command => command.Classification).IsInEnum();
         RuleFor(command => command.OAuthSessionPayload)
-            .NotNull()
             .Must(payload => payload.Length is > 0 and <= MaximumSessionPayloadBytes);
         RuleFor(command => command)
             .Must(command => command.CanonicalActorId.HasValue == command.ExpectedCanonicalActorConcurrencyStamp.HasValue

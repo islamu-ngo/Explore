@@ -138,7 +138,7 @@ public sealed class PublishEventSessionCommandHandler(
                 ConcurrencyConflictCode);
         }
 
-        if (!result.Response.Success
+        if (!result.Response.IsSuccess
             || result.ParentEventId is not { } parentEventId
             || result.TenantId is not { } tenantId)
         {
@@ -150,21 +150,13 @@ public sealed class PublishEventSessionCommandHandler(
         return result.Response;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 
     private static (BaseCommandResponse<Guid> Response, Guid? ParentEventId, Guid? TenantId) NoCache(
         BaseCommandResponse<Guid> response) => (response, null, null);

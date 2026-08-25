@@ -1,8 +1,10 @@
 // ABOUTME: Records validated requirement outcomes and drains their shared durable finalization effects.
 // ABOUTME: Keeps native and provider completion paths behind one tenant-safe fenced Application handler.
 
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using FluentValidation;
@@ -94,7 +96,8 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
     IRegistrationFinalizationRepository finalization,
     IRegistrationOrderLifecycleService lifecycle,
     ITenantContextAccessor tenantContextAccessor,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    AdmissionIssuanceService? admissionIssuance = null)
     : IRequestHandler<DrainRegistrationFinalizationEffectsCommand, int>
 {
     public async Task<int> Handle(
@@ -113,7 +116,7 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
             {
                 var result = await lifecycle.ReadyForCheckoutAsync(
                     claim.RegistrationOrderId, claim.TenantId, cancellationToken);
-                if (result.Success && result.Order?.StatusId is
+                if (result.IsSuccess && result.Order?.StatusId is
                     (int)RegistrationOrderStatusEnum.AwaitingPayment or
                     (int)RegistrationOrderStatusEnum.NeedsReconciliation)
                 {
@@ -122,7 +125,22 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
                 }
 
                 DateTime settledAt = timeProvider.GetUtcNow().UtcDateTime;
-                if (result.Success && result.Order is not null && IsSettled(result.Order.StatusId))
+                bool issuanceAllowsCompletion = true;
+                if (result.IsSuccess && result.Order?.StatusId == (int)RegistrationOrderStatusEnum.Confirmed &&
+                    admissionIssuance is not null)
+                {
+                    AdmissionIssuanceResult issuance = await admissionIssuance.IssueConfirmedAsync(
+                        new AdmissionIssuanceRequest(
+                            claim.TenantId,
+                            claim.RegistrationOrderId,
+                            claim.EffectId,
+                            "ConfirmedFreeOrder"),
+                        cancellationToken);
+                    issuanceAllowsCompletion =
+                        issuance.Outcome is not (AdmissionIssuanceOutcome.InvalidRequest or AdmissionIssuanceOutcome.CancelledBeforeCommit) &&
+                        issuance.DeliveryOutcome != AdmissionDeliveryOutcome.Unrecoverable;
+                }
+                if (result.IsSuccess && result.Order is not null && IsSettled(result.Order.StatusId) && issuanceAllowsCompletion)
                 {
                     completed += await finalization.CompleteAsync(claim, settledAt, cancellationToken) ? 1 : 0;
                 }

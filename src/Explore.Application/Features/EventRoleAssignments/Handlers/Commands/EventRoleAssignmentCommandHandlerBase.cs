@@ -14,27 +14,15 @@ namespace Explore.Application.Features.EventRoleAssignments.Handlers.Commands;
 
 public abstract class EventRoleAssignmentCommandHandlerBase
 {
-    protected static BaseCommandResponse<Guid> Failure(string message, string failureCode, Guid? id = null)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Id = id ?? Guid.Empty,
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = new List<string> { message }
-        };
-    }
+    protected static BaseCommandResponse<Guid> Failure(string message, string failureCode, Guid? id = null) =>
+        BaseCommandResponse.Failure(
+            failureCode,
+            message,
+            [message],
+            id ?? Guid.Empty);
 
-    protected static BaseCommandResponse<Guid> Success(Guid id, string message)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Id = id,
-            Success = true,
-            Message = message
-        };
-    }
+    protected static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     protected static async Task<Event?> GetEventInTenantAsync(
         IEventRepository eventRepository,

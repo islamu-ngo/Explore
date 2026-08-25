@@ -33,7 +33,7 @@ public class DeleteLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(roomId);
         await _locationRoomRepository.Received(1).Delete(Arg.Any<LocationRoom>());
     }
@@ -51,7 +51,7 @@ public class DeleteLocationRoomCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRoomRepository.DidNotReceive().Delete(Arg.Any<LocationRoom>());
     }
 }

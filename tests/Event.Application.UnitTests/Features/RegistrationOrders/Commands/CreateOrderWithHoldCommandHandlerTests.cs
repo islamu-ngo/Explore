@@ -86,7 +86,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RegistrationInventoryHold hold = _saved.Single().Holds.Single();
         await _deadlines.Received(1).ScheduleAsync(
             Arg.Is<ScheduledDeadline>(deadline =>
@@ -147,7 +147,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
     }
 
@@ -165,7 +165,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved.Single().Holds).IsEmpty();
         await _deadlines.DidNotReceive().ScheduleAsync(Arg.Any<ScheduledDeadline>(), Arg.Any<CancellationToken>());
     }
@@ -191,7 +191,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 1_000),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         RegistrationOrder order = _saved.Single().Order;
         await Assert.That(order.OrganizerDirectedTotalMinorSnapshot).IsEqualTo(1_000);
         await Assert.That(order.OrganizerEarningsTotalMinorSnapshot).IsEqualTo(1_000);
@@ -221,7 +221,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 0),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved.Single().Order.PlatformContribution).IsNull();
         await Assert.That(_saved.Single().Order.PlatformContributionTotalMinorSnapshot).IsEqualTo(0);
         _ = _contributionSettings.DidNotReceive().GetActiveAsync(Arg.Any<CancellationToken>());
@@ -240,7 +240,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 500),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
         await Assert.That(_saved).IsEmpty();
         _ = _contributionSettings.DidNotReceive().GetActiveAsync(Arg.Any<CancellationToken>());
@@ -267,7 +267,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 500),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
         await Assert.That(_saved).IsEmpty();
     }
@@ -287,7 +287,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 platformContributionBasisPoints: contributionBasisPoints),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
         await Assert.That(unitOfWork.Attempts).IsEqualTo(0);
     }
@@ -306,7 +306,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler(unitOfWork).Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 2), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(unitOfWork.Attempts).IsEqualTo(2);
         await Assert.That(_saved).Count().IsEqualTo(2);
         RegistrationOrder firstAttemptOrder = _saved[0].Order;
@@ -337,7 +337,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Waitlisted);
         await Assert.That(_saved.Single().Holds).IsEmpty();
@@ -359,7 +359,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_identity_required");
         await _inventory.DidNotReceive().AddOrderWithHoldsAsync(
             Arg.Any<RegistrationOrder>(),
@@ -383,7 +383,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)expectedStatus);
         await Assert.That(_saved.Single().Order.ExpiresAt).IsNull();
@@ -409,7 +409,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingParticipantDetails);
         await Assert.That(_saved.Single().Order.ExpiresAt).IsNull();
@@ -436,7 +436,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 new RegistrationOrderLineSelection(waitlist.Ticket.Id, 1, null)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_capacity_unavailable");
         await Assert.That(_saved).IsEmpty();
     }
@@ -460,7 +460,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 new RegistrationOrderLineSelection(waitlist.Ticket.Id, 1, null)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Waitlisted);
         await Assert.That(_saved.Single().Order.ExpiresAt).IsNull();
@@ -491,7 +491,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 new RegistrationOrderLineSelection(noHold.Ticket.Id, 1, null)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)expectedStatus);
         await Assert.That(_saved.Single().Holds).HasSingleItem();
@@ -521,7 +521,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 new RegistrationOrderLineSelection(nonAllocating.Ticket.Id, 1, null)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_capacity_unavailable");
         await Assert.That(_saved).IsEmpty();
         await _inventory.DidNotReceive().GetAllocatedQuantityAsync(nonAllocating.Pool.Id, _tenantId, Arg.Any<CancellationToken>());
@@ -545,7 +545,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 new RegistrationOrderLineSelection(approval.Ticket.Id, 1, null)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_policy_incompatible");
         await Assert.That(_saved).IsEmpty();
         await _inventory.DidNotReceive().GetAllocatedQuantityAsync(approval.Pool.Id, _tenantId, Arg.Any<CancellationToken>());
@@ -558,7 +558,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler(unitOfWork).Handle(CreateCommand(Guid.CreateVersion7(), Guid.CreateVersion7(), quantity: 0), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
         await Assert.That(unitOfWork.Attempts).IsEqualTo(0);
         await _inventory.DidNotReceive().AddOrderWithHoldsAsync(
@@ -589,7 +589,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
 
         var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1, accountUserId: Guid.CreateVersion7()), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_limit_exceeded");
         await _inventory.DidNotReceive().AddOrderWithHoldsAsync(
             Arg.Any<RegistrationOrder>(),
@@ -607,7 +607,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(Guid.CreateVersion7(), ticket.Id, quantity: 1),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _inventory.DidNotReceive().GetPoolsForUpdateAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Guid>(),
@@ -629,7 +629,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, Guid.CreateVersion7(), quantity: 1),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _inventory.DidNotReceive().GetPoolsForUpdateAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<Guid>(),
@@ -650,7 +650,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             CreateCommand(catalog.Id, ticket.Id, quantity: 1, chosenUnitPriceMinor: 1),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _inventory.DidNotReceive().AddOrderWithHoldsAsync(
             Arg.Any<RegistrationOrder>(),
             Arg.Any<IReadOnlyCollection<RegistrationInventoryHold>>(),
@@ -819,7 +819,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             "Admission",
             "USD",
             fixedPriceMinor.HasValue ? TicketPricingModeEnum.Fixed : TicketPricingModeEnum.Free,
-            fixedPriceMinor,
+            fixedPriceMinor.HasValue ? Money.Create(fixedPriceMinor.Value, "USD") : null,
             null,
             null,
             ParticipantDataCollectionModeEnum.None,

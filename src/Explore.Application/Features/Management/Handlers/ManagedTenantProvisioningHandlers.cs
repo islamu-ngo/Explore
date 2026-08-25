@@ -384,22 +384,16 @@ public sealed class ScheduleManagedTenantProvisioningCommandHandler(
 
     private static BaseCommandResponse<ManagementTenantProvisioningOperationDto> Success(
         ManagedTenantProvisioningOperation operation,
-        string message) => new()
-        {
-            Success = true,
-            Id = ManagedTenantProvisioningRequestCodec.ToDto(operation),
-            Message = message
-        };
+        string message) => BaseCommandResponse.Success(
+            ManagedTenantProvisioningRequestCodec.ToDto(operation),
+            message);
 
     private static BaseCommandResponse<ManagementTenantProvisioningOperationDto> Failure(
         string failureCode,
-        string message) => new()
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = [message]
-        };
+        string message) => BaseCommandResponse.Failure<ManagementTenantProvisioningOperationDto>(
+            failureCode,
+            message,
+            [message]);
 
     private static BaseCommandResponse<ManagementTenantProvisioningOperationDto> RecoveryConflict() =>
         Failure(
@@ -439,25 +433,19 @@ public sealed class CancelManagedTenantProvisioningOperationCommandHandler(
                 "Only a pending tenant provisioning operation can be cancelled.");
         }
 
-        return new BaseCommandResponse<ManagementTenantProvisioningOperationDto>
-        {
-            Success = true,
-            Id = ManagedTenantProvisioningRequestCodec.ToDto(operation),
-            Message = cancelled
+        return BaseCommandResponse.Success(
+            ManagedTenantProvisioningRequestCodec.ToDto(operation),
+            cancelled
                 ? "Managed tenant provisioning cancelled."
-                : "Managed tenant provisioning was already cancelled."
-        };
+                : "Managed tenant provisioning was already cancelled.");
     }
 
     private static BaseCommandResponse<ManagementTenantProvisioningOperationDto> Failure(
         string failureCode,
-        string message) => new()
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = [message]
-        };
+        string message) => BaseCommandResponse.Failure<ManagementTenantProvisioningOperationDto>(
+            failureCode,
+            message,
+            [message]);
 }
 
 public sealed class ProcessManagedTenantProvisioningOperationCommandHandler(
@@ -533,7 +521,7 @@ public sealed class ProcessManagedTenantProvisioningOperationCommandHandler(
                 operation.Id,
                 request.OutboxMessageId,
                 cancellationToken);
-        if (!result.Success || result.Id is null)
+        if (!result.IsSuccess || result.Id is null)
         {
             await EnsureTerminalTransitionAsync(
                 operation.Id,

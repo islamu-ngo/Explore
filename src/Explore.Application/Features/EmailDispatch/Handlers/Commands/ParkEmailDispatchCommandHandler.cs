@@ -95,21 +95,13 @@ public sealed class ParkEmailDispatchCommandHandler : IRequestHandler<ParkEmailD
                 ["Email dispatch state changed before it could be parked."]);
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         string message,
         string? failureCode,
-        IEnumerable<string> errors) => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = errors.ToList()
-        };
+        IEnumerable<string> errors) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors);
 }

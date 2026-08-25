@@ -98,24 +98,18 @@ public sealed class ConfigureEventParticipationCommandHandler(
         await configurations.UpdateAsync(configuration, cancellationToken);
         await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
         await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantContext.TenantId), cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = request.EventId,
-            Success = true,
-            Message = "Event participation configuration updated."
-        };
+        return BaseCommandResponse.Success(
+            request.EventId,
+            "Event participation configuration updated.");
     }
 
     private static BaseCommandResponse<Guid> Failure(
         Guid eventId,
         string failureCode,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = eventId,
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            failureCode,
+            message,
+            errors ?? [message],
+            eventId);
 }

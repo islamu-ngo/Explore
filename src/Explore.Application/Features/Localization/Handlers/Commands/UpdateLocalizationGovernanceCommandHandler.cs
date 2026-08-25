@@ -41,23 +41,20 @@ public class UpdateLocalizationGovernanceCommandHandler
         UpdateLocalizationGovernanceCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Instance administrator authority is required to update localization governance.";
-            return response;
+            const string message = "Instance administrator authority is required to update localization governance.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var validator = new UpdateLocalizationGovernanceDtoValidator();
         var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Localization governance update failed.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Localization governance update failed.");
         }
 
         var dto = request.Dto;
@@ -90,9 +87,6 @@ public class UpdateLocalizationGovernanceCommandHandler
             "[LOCALIZATION] Governance updated by {Actor}: provider={Provider}, enabled=[{Enabled}], fallback={Fallback}, pickerEnabled={Picker}, forceOffline={ForceOffline}",
             actor, dto.Tms?.Provider, enabledLanguagesCsv, dto.Languages?.FallbackLanguage, dto.Runtime?.ClientPickerEnabled, dto.Runtime?.ForceOfflineMode);
 
-        response.Success = true;
-        response.Id = actor ?? Guid.Empty;
-        response.Message = "Localization governance updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(actor.Value, "Localization governance updated successfully.");
     }
 }

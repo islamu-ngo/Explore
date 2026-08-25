@@ -53,7 +53,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             new PublishEventRegistrationProviderBindingCommand(binding.TenantId, eventId, binding.Id),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(binding.PublishedMappingRevisionHash).IsNotNull();
     }
 
@@ -78,7 +78,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             new PublishEventRegistrationProviderBindingCommand(binding.TenantId, eventId, binding.Id),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_survey_inactive");
         await mediator.DidNotReceive().Send(Arg.Any<PublishRegistrationProviderBindingCommand>(), Arg.Any<CancellationToken>());
     }
@@ -118,7 +118,7 @@ public sealed class RegistrationProviderManagementHandlerTests
                 binding.TenantId, eventId, binding.Id, DateTime.SpecifyKind(default, DateTimeKind.Utc)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_reconciliation_validation_failed");
     }
 
@@ -199,7 +199,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             new UpsertRegistrationProviderConnectionCommand(binding.TenantId, eventId, null, missing),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
     }
 
@@ -258,8 +258,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         RegistrationProviderConnectionDto dto = await new GetRegistrationProviderConnectionQueryHandler(repository)
             .Handle(new(binding.TenantId, eventId, created.Id), CancellationToken.None) ?? throw new InvalidOperationException();
 
-        await Assert.That(accepted.Success).IsTrue();
-        await Assert.That(rejected.Success).IsFalse();
+        await Assert.That(accepted.IsSuccess).IsTrue();
+        await Assert.That(rejected.IsSuccess).IsFalse();
         await Assert.That(rejected.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
         await Assert.That(created.GrantedOAuthScopes).IsEqualTo("email https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly openid");
         await Assert.That(created.WebhookSecretBindingId).IsNull();
@@ -278,7 +278,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> result = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
         await Assert.That(repository.Connections).IsEmpty();
     }
@@ -296,9 +296,9 @@ public sealed class RegistrationProviderManagementHandlerTests
         request = SecretCallbackConnectionRequest(Guid.Parse("018e4e5c-7f00-7000-8000-000000000202"));
         BaseCommandResponse<Guid> accepted = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
 
-        await Assert.That(missing.Success).IsFalse();
+        await Assert.That(missing.IsSuccess).IsFalse();
         await Assert.That(missing.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
-        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(accepted.IsSuccess).IsTrue();
         await Assert.That(repository.Connections.Single().WebhookSecretBindingId).IsEqualTo(request.WebhookSecretBindingId);
     }
 
@@ -337,9 +337,9 @@ public sealed class RegistrationProviderManagementHandlerTests
         var accepted = await handler.Handle(new RetryRegistrationProviderParkedItemCommand(
             binding.TenantId, eventId, null, effect.Id, 1, "retry"), CancellationToken.None);
 
-        await Assert.That(denied.Success).IsFalse();
+        await Assert.That(denied.IsSuccess).IsFalse();
         await Assert.That(denied.FailureCode).IsEqualTo("registration_provider_effect_not_found");
-        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(accepted.IsSuccess).IsTrue();
         await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.Pending);
         await Assert.That(effect.ProcessingGeneration).IsEqualTo(2);
     }
@@ -366,7 +366,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         var result = await handler.Handle(new RetryRegistrationProviderParkedItemCommand(
             binding.TenantId, eventId, null, effect.Id, 1, "retry"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.DeadLettered);
     }
 
@@ -399,8 +399,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         var second = await supportedHandler.Handle(new(supported.TenantId, eventId, supported.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
         var unsupportedResult = await unsupportedHandler.Handle(new(unsupported.TenantId, eventId, unsupported.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
 
-        await Assert.That(first.Success).IsTrue();
-        await Assert.That(second.Success).IsTrue();
+        await Assert.That(first.IsSuccess).IsTrue();
+        await Assert.That(second.IsSuccess).IsTrue();
         await Assert.That(supportedMessages.Messages.Count).IsEqualTo(1);
         Dictionary<string, string> queuedHeaders = JsonSerializer.Deserialize<Dictionary<string, string>>(
             supportedMessages.Messages.Single().HeadersJson!)!;
@@ -409,7 +409,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         await Assert.That(supportedEffects.Effects.Count).IsEqualTo(1);
         await Assert.That(supportedEffects.Effects.Single().Status).IsEqualTo(OutboxMessageStatus.Pending);
         await Assert.That(supportedEffects.Effects.Single().EffectKind).IsEqualTo(ProcessProviderSubmissionEffectCommandHandler.StableEffectKind);
-        await Assert.That(unsupportedResult.Success).IsFalse();
+        await Assert.That(unsupportedResult.IsSuccess).IsFalse();
         await Assert.That(unsupportedEffects.Effects).IsEmpty();
     }
 
@@ -433,7 +433,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         var result = await handler.Handle(new(binding.TenantId, eventId, binding.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(effects.Effects).IsEmpty();
     }
 
@@ -459,7 +459,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         var result = await handler.Handle(new(binding.TenantId, eventId, binding.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(messages.Messages).IsEmpty();
         await Assert.That(effects.Effects).IsEmpty();
     }
@@ -481,8 +481,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         var accepted = await handler.Handle(new ResolveRegistrationProviderQueueItemCommand(
             binding.TenantId, eventId, null, effect.Id, "accepted", "note:bounded"), CancellationToken.None);
 
-        await Assert.That(denied.Success).IsFalse();
-        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(denied.IsSuccess).IsFalse();
+        await Assert.That(accepted.IsSuccess).IsTrue();
         await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.Completed);
         await Assert.That(effect.CompletedAt).IsEqualTo(Now.AddMinutes(1));
         await Assert.That(effect.FailureCategory).IsEqualTo("organizer_accepted");
@@ -505,7 +505,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         var result = await handler.Handle(new ResolveRegistrationProviderQueueItemCommand(
             binding.TenantId, eventId, submission.Id, null, "accepted_with_operator_note", "note:bounded"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(providerRepository.Issues).HasSingleItem();
         await Assert.That(providerRepository.Issues.Single().Code).IsEqualTo("RESOLVED_ACCEPTED_WITH_OPERATOR_NOTE");
     }
@@ -603,7 +603,7 @@ public sealed class RegistrationProviderManagementHandlerTests
                 TrustLevelId = (int)RegistrationProviderTrustLevelEnum.FullCanonical
             }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_binding_validation_failed");
     }
 
@@ -642,7 +642,7 @@ public sealed class RegistrationProviderManagementHandlerTests
                 TrustLevelId = (int)RegistrationProviderTrustLevelEnum.FullCanonical
             }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_binding_validation_failed");
         await Assert.That(repository.SaveCount).IsEqualTo(0);
     }
@@ -677,7 +677,7 @@ public sealed class RegistrationProviderManagementHandlerTests
                 TrustLevelId = (int)RegistrationProviderTrustLevelEnum.FullCanonical
             }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(repository.AddedBinding!.Capabilities.Select(capability => capability.CapabilityCode)).IsEquivalentTo([
             RegistrationProviderCapabilityCodes.Embed,
             RegistrationProviderCapabilityCodes.SubmissionWrite,
@@ -700,7 +700,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         RegistrationProviderBindingDto dto = (await new GetRegistrationProviderBindingQueryHandler(new FakeProviderRepository(binding, eventId))
             .Handle(new GetRegistrationProviderBindingQuery(binding.TenantId, eventId, binding.Id), CancellationToken.None))!;
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(dto.FieldMappings.Select(mapping => mapping.PlatformFieldKey)).IsEquivalentTo(["attendee.email", "meal"]);
         await Assert.That(dto.OptionMappings).HasSingleItem();
         await Assert.That(dto.OptionMappings.Single().PlatformFieldKey).IsEqualTo("meal");
@@ -731,11 +731,11 @@ public sealed class RegistrationProviderManagementHandlerTests
             [new("name", "q_name", true)],
             []), CancellationToken.None);
 
-        await Assert.That(duplicate.Success).IsFalse();
+        await Assert.That(duplicate.IsSuccess).IsFalse();
         await Assert.That(duplicate.FailureCode).IsEqualTo("registration_provider_duplicate_field_mapping");
-        await Assert.That(missing.Success).IsFalse();
+        await Assert.That(missing.IsSuccess).IsFalse();
         await Assert.That(missing.FailureCode).IsEqualTo("registration_provider_option_field_not_found");
-        await Assert.That(published.Success).IsFalse();
+        await Assert.That(published.IsSuccess).IsFalse();
         await Assert.That(published.FailureCode).IsEqualTo("registration_provider_binding_not_draft");
     }
 
@@ -746,7 +746,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         RegistrationProviderBinding binding = Binding();
         IMediator mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ReplaceDraftRegistrationProviderMappingsCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Id = binding.Id, Success = true });
+            .Returns(BaseCommandResponse.Success(binding.Id));
         var handler = new ReplaceEventDraftRegistrationProviderMappingsCommandHandler(new FakeProviderRepository(binding, eventId), mediator);
         var request = new ReplaceRegistrationProviderMappingsRequestDto
         {
@@ -757,9 +757,9 @@ public sealed class RegistrationProviderManagementHandlerTests
         BaseCommandResponse<Guid> denied = await handler.Handle(new(binding.TenantId, Guid.CreateVersion7(), binding.Id, request), CancellationToken.None);
         BaseCommandResponse<Guid> accepted = await handler.Handle(new(binding.TenantId, eventId, binding.Id, request), CancellationToken.None);
 
-        await Assert.That(denied.Success).IsFalse();
+        await Assert.That(denied.IsSuccess).IsFalse();
         await Assert.That(denied.FailureCode).IsEqualTo("registration_provider_binding_not_found");
-        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(accepted.IsSuccess).IsTrue();
         await mediator.Received(1).Send(Arg.Is<ReplaceDraftRegistrationProviderMappingsCommand>(command =>
             command.TenantId == binding.TenantId &&
             command.BindingId == binding.Id &&
@@ -795,7 +795,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             null,
             new RegistrationChannelRequestDto { Ordinal = 1, IsNative = true }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(deleted.Id);
         await Assert.That(deleted.IsDeleted).IsFalse();
     }
@@ -846,7 +846,7 @@ public sealed class RegistrationProviderManagementHandlerTests
                 new Registry(new PresentationDescriptor(new("forms", "hosted", "v1", "policy", "evidence"), new Uri("https://forms.example.org/next"))))
             .Handle(new(originalBinding.TenantId, eventId, requirement.RegistrationWorkflowId, requirement.Id, channel.Id, switchedBinding.Id), CancellationToken.None);
 
-        await Assert.That(updateResult.Success).IsTrue();
+        await Assert.That(updateResult.IsSuccess).IsTrue();
         await Assert.That((
             existingAttempt.RegistrationChannelId,
             existingAttempt.RegistrationProviderBindingId,
@@ -881,7 +881,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             }), CancellationToken.None);
 
         RegistrationFormVersion version = repository.Forms.Single().Versions.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(version.StatusId).IsEqualTo((int)RegistrationFormStatusEnum.Published);
         await Assert.That(version.SourceKindId).IsEqualTo((int)RegistrationFormVersionSourceKindEnum.ExternalImported);
         await Assert.That(version.ExternalRegistrationProviderConnectionId).IsEqualTo(connection.Id);
@@ -904,7 +904,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> replay = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
 
-        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.IsSuccess).IsTrue();
         await Assert.That(replay.Id).IsEqualTo(first.Id);
         await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
         await Assert.That(repository.Revisions.Count).IsEqualTo(1);
@@ -925,7 +925,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> replay = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
 
-        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.IsSuccess).IsTrue();
         await Assert.That(replay.Id).IsEqualTo(first.Id);
         await Assert.That(repository.Forms.Count).IsEqualTo(1);
         await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
@@ -949,7 +949,7 @@ public sealed class RegistrationProviderManagementHandlerTests
             Field("phone", "Phone", nameof(RegistrationFieldTypeEnum.Phone), false)])))
             .Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
 
-        await Assert.That(changed.Success).IsTrue();
+        await Assert.That(changed.IsSuccess).IsTrue();
         await Assert.That(repository.Forms.Count).IsEqualTo(1);
         await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(2);
         await Assert.That(repository.Revisions.Count).IsEqualTo(2);
@@ -969,7 +969,7 @@ public sealed class RegistrationProviderManagementHandlerTests
         BaseCommandResponse<Guid> result = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id,
             new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "survey-two", Name = "Survey two", ProviderSurveyId = "survey-2", LanguageTag = "en" }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(repository.Revisions.Count).IsEqualTo(2);
         await Assert.That(repository.Revisions.Select(revision => revision.ProviderSurveyId).Order().SequenceEqual(["survey-1", "survey-2"])).IsTrue();
     }
@@ -989,7 +989,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> result = await second.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(2);
         await Assert.That(repository.Revisions.Last().DriftClassId).IsEqualTo((int)RegistrationProviderDriftClassEnum.LabelOnlyChange);
         await Assert.That(repository.Forms.Single().Versions.Select(version => version.ExternalImportMappingRevisionHash).Distinct().Count()).IsEqualTo(1);
@@ -1010,7 +1010,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> result = await blocking.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_schema_drift_blocked");
         await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
         await Assert.That(repository.Revisions.Last().DriftClassId).IsEqualTo((int)RegistrationProviderDriftClassEnum.RequiredFieldRemoved);
@@ -1034,7 +1034,7 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         BaseCommandResponse<Guid> replay = await blocking.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
 
-        await Assert.That(replay.Success).IsFalse();
+        await Assert.That(replay.IsSuccess).IsFalse();
         await Assert.That(replay.Id).IsEqualTo(firstBlock.Id);
         await Assert.That(replay.FailureCode).IsEqualTo("registration_provider_schema_drift_blocked");
         await Assert.That(repository.Revisions.Count).IsEqualTo(revisions);

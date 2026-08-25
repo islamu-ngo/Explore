@@ -54,25 +54,15 @@ public sealed class SetOrganizationNotificationPreferenceMuteCommandHandler(
             profileId = profile.Id;
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = profileId,
-            Success = true,
-            Message = request.IsMuted
+        return BaseCommandResponse.Success(
+            profileId,
+            request.IsMuted
                 ? "Organization non-essential notifications muted."
-                : "Organization non-essential notification mute disabled."
-        };
+                : "Organization non-essential notification mute disabled.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = message,
-            Errors = [message]
-        };
-    }
+    private static BaseCommandResponse<Guid> Failure(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 
     private static string ScopeName(int scopeId) => Enum.IsDefined(typeof(ConfigurationScopeEnum), scopeId)
         ? ((ConfigurationScopeEnum)scopeId).ToString()

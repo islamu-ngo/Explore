@@ -81,7 +81,7 @@ public class AuthorizationBehaviorTests
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestAttributeCommand, BaseCommandResponse<Guid>>>>());
         var command = new TestAttributeCommand();
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         _authService.AuthorizeAsync(
             Arg.Is<AuthorizationRequest>(request =>
@@ -95,7 +95,7 @@ public class AuthorizationBehaviorTests
         var result = await attrBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -114,7 +114,7 @@ public class AuthorizationBehaviorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
-            await attrBehavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
+            await attrBehavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None));
     }
 
     [Test]
@@ -125,13 +125,13 @@ public class AuthorizationBehaviorTests
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestPlainCommand, BaseCommandResponse<Guid>>>>());
         var command = new TestPlainCommand();
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         // Act
         var result = await plainBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.DidNotReceive().AuthorizeAsync(
             Arg.Any<AuthorizationRequest>(),
             Arg.Any<CancellationToken>());
@@ -145,7 +145,7 @@ public class AuthorizationBehaviorTests
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestSecureCommand, BaseCommandResponse<Guid>>>>());
         var command = new TestSecureCommand();
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
@@ -157,7 +157,7 @@ public class AuthorizationBehaviorTests
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
                 "islamuevent_organization",
@@ -182,7 +182,7 @@ public class AuthorizationBehaviorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
-            await secureBehavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
+            await secureBehavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None));
     }
 
     [Test]
@@ -193,7 +193,7 @@ public class AuthorizationBehaviorTests
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestSecureCommandWithAttributes, BaseCommandResponse<Guid>>>>());
         var command = new TestSecureCommandWithAttributes();
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
         var expectedFacts = new OrganizationAuthorizationFacts(command.TenantId, command.OrganizationId);
 
         _authService.AuthorizeAsync(
@@ -206,7 +206,7 @@ public class AuthorizationBehaviorTests
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
                 "islamuevent_organization",
@@ -238,7 +238,7 @@ public class AuthorizationBehaviorTests
                 GroupId = groupId
             }
         };
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         // No event row exists yet, so the requested owning organization and group are the only context the
         // create rules can weigh; the pre-create fact record is what carries them.
@@ -259,7 +259,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
             ResourceKinds.Event,
@@ -288,7 +288,7 @@ public class AuthorizationBehaviorTests
                 Postcode = 1000
             }
         };
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         var expectedFacts = new PreCreateAuthorizationFacts(Guid.Empty, null, null, null);
 
@@ -303,7 +303,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
             ResourceKinds.Organization,
@@ -325,7 +325,7 @@ public class AuthorizationBehaviorTests
             Id = eventId,
             Request = new PublishEventRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         };
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
@@ -338,7 +338,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
             ResourceKinds.Event,
@@ -371,7 +371,7 @@ public class AuthorizationBehaviorTests
                 Title = new UpdateEventTitleDto { Value = "Test" }
             }
         };
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
         {
@@ -424,7 +424,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).GetEventWithDetails(eventId);
     }
 
@@ -498,10 +498,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).GetEventWithDetails(eventId);
     }
 
@@ -519,7 +519,7 @@ public class AuthorizationBehaviorTests
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
             await behavior.Handle(
                 command,
-                _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+                _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
                 CancellationToken.None));
         await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
@@ -544,7 +544,7 @@ public class AuthorizationBehaviorTests
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
             await behavior.Handle(
                 command,
-                _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+                _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
                 CancellationToken.None));
         await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
@@ -560,7 +560,7 @@ public class AuthorizationBehaviorTests
                 Substitute.For<ILogger<AuthorizationBehavior<TestAuthorizationPlatformCommand, BaseCommandResponse<Guid>>>>());
             var command = new TestAuthorizationPlatformCommand(scenario.ResourceId, scenario.Facts);
             var nextCalled = false;
-            var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+            var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
             authService.AuthorizeAsync(
                 MatchesAuthorizationRequest(
@@ -584,7 +584,7 @@ public class AuthorizationBehaviorTests
             {
                 var result = await Act();
 
-                await Assert.That(result.Success).IsTrue();
+                await Assert.That(result.IsSuccess).IsTrue();
                 await Assert.That(nextCalled).IsTrue();
             }
             else
@@ -628,7 +628,7 @@ public class AuthorizationBehaviorTests
                 _ =>
                 {
                     nextCalled = true;
-                    return Task.FromResult(new BaseCommandResponse<Guid> { Success = true });
+                    return Task.FromResult(BaseCommandResponse.Success(Guid.Empty));
                 },
                 CancellationToken.None));
 
@@ -649,7 +649,7 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var command = new TestEventSessionSecureCommand(eventSessionId);
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         eventSessionRepository.GetSessionWithDetails(eventSessionId).Returns(new EventSession
         {
@@ -670,7 +670,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(1).GetSessionWithDetails(eventSessionId);
     }
 
@@ -750,7 +750,7 @@ public class AuthorizationBehaviorTests
                 }
             }
         };
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         storageObjectRepository.GetById(storageObjectId).Returns(new StorageObject
         {
@@ -789,7 +789,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await storageObjectRepository.Received(1).GetById(storageObjectId);
     }
 
@@ -804,11 +804,7 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var request = new GetEventCustomPropertyProjectionsForEventQuery { EventId = eventId };
-        var expectedResponse = new BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventCustomPropertyProjectionDto>>
-        {
-            Success = true,
-            Id = []
-        };
+        var expectedResponse = BaseCommandResponse.Success<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventCustomPropertyProjectionDto>>([]);
 
         eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
         {
@@ -833,7 +829,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).GetEventWithDetails(eventId);
     }
 
@@ -849,11 +845,7 @@ public class AuthorizationBehaviorTests
         var eventSessionId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var request = new GetEventSessionCustomPropertyProjectionsForSessionQuery { EventSessionId = eventSessionId };
-        var expectedResponse = new BaseCommandResponse<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventSessionCustomPropertyProjectionDto>>
-        {
-            Success = true,
-            Id = []
-        };
+        var expectedResponse = BaseCommandResponse.Success<IReadOnlyList<Explore.Application.DTOs.CustomPropertyProjection.EventSessionCustomPropertyProjectionDto>>([]);
 
         sessionRepository.GetSessionWithDetails(eventSessionId).Returns(new EventSession
         {
@@ -874,7 +866,7 @@ public class AuthorizationBehaviorTests
 
         var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await sessionRepository.Received(1).GetSessionWithDetails(eventSessionId);
     }
 
@@ -922,10 +914,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -982,10 +974,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1042,10 +1034,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1100,10 +1092,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(command.TemplateId).IsEqualTo(templateId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1159,10 +1151,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(command.SessionTemplateId).IsEqualTo(sessionTemplateId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1232,10 +1224,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<int> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(0)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.EventSessionId).IsEqualTo(originalSessionId);
         await Assert.That(command.EventSessionLanguageId).IsEqualTo(assignmentId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1314,7 +1306,7 @@ public class AuthorizationBehaviorTests
             new AuthorizationResourceContextResolver(eventRepository: eventRepository),
             authorizationContextEnricher: new UpdateEventCategoriesAuthorizationContextEnricher(assignmentRepository));
 
-        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+        await behavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None);
 
         await Assert.That(command.EventId).IsEqualTo(originalEventId);
         await Assert.That(command.TenantId).IsEqualTo(originalTenantId);
@@ -1395,7 +1387,7 @@ public class AuthorizationBehaviorTests
             new AuthorizationResourceContextResolver(eventRepository: eventRepository),
             authorizationContextEnricher: new UpdateEventTagsAuthorizationContextEnricher(assignmentRepository));
 
-        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+        await behavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None);
 
         await Assert.That(command.EventId).IsEqualTo(originalEventId);
         await Assert.That(command.TenantId).IsEqualTo(originalTenantId);
@@ -1463,7 +1455,7 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>>>(),
             authorizationContextEnricher: new UpdateEventSessionAgendaItemAuthorizationContextEnricher(assignmentRepository, tenantContext));
 
-        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+        await behavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None);
 
         await Assert.That(command.EventSessionAgendaItemId).IsEqualTo(assignmentId);
         await Assert.That(command.EventSessionId).IsEqualTo(Guid.Empty);
@@ -1523,7 +1515,7 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>>>(),
             authorizationContextEnricher: new UpdateEventSessionGroupAuthorizationContextEnricher(assignmentRepository, tenantContext));
 
-        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+        await behavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None);
 
         await Assert.That(command.EventSessionGroupId).IsEqualTo(assignmentId);
         await Assert.That(command.EventId).IsEqualTo(Guid.Empty);
@@ -1592,7 +1584,7 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>>>(),
             authorizationContextEnricher: new UpdateEventSessionSpeakerAuthorizationContextEnricher(assignmentRepository, sessionRepository, tenantContext));
 
-        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+        await behavior.Handle(command, _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)), CancellationToken.None);
 
         await Assert.That(command.EventSessionId).IsEqualTo(Guid.Empty);
         await Assert.That(command.EventId).IsEqualTo(Guid.Empty);
@@ -1629,7 +1621,7 @@ public class AuthorizationBehaviorTests
 
         await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None));
         await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
@@ -1678,7 +1670,7 @@ public class AuthorizationBehaviorTests
 
         await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None));
         await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
@@ -1735,10 +1727,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             request,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventRepository.Received(1).GetEventWithDetails(eventId);
     }
 
@@ -1810,10 +1802,10 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.Handle(
             request,
-            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(request.EventId).IsEqualTo(routeEventId);
         await Assert.That(request.ClaimId).IsEqualTo(claim.Id);
         await Assert.That(request.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
@@ -1838,7 +1830,7 @@ public class AuthorizationBehaviorTests
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestSecureCommandWithNullId, BaseCommandResponse<Guid>>>>());
         var command = new TestSecureCommandWithNullId();
-        var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedResponse = BaseCommandResponse.Success(Guid.Empty);
 
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
@@ -1851,7 +1843,7 @@ public class AuthorizationBehaviorTests
 
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
                 "islamuevent_organization",

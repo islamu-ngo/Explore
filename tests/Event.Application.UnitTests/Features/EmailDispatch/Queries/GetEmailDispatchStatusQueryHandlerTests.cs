@@ -20,7 +20,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
             new GetEmailDispatchStatusQuery { TenantId = Guid.Empty },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("TenantId is required.");
     }
@@ -32,7 +32,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
             new GetEmailDispatchStatusQuery { TenantId = Guid.NewGuid(), Limit = 201 },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).IsEqualTo("Limit must be between 1 and 200.");
     }
@@ -74,7 +74,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
             new GetEmailDispatchStatusQuery { TenantId = tenantId, Limit = 50 },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id).Count().IsEqualTo(1);
 

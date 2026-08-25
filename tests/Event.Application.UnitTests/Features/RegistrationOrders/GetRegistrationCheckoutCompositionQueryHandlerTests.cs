@@ -6,6 +6,7 @@ using Explore.Application.Features.RegistrationOrders.Handlers.Queries;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 using TUnit.Assertions;
@@ -47,7 +48,7 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
         var catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "EUR", 1);
         var ticket = EventTicketType.Create(
             Guid.CreateVersion7(), tenantId, catalog.Id, "Community rate", "EUR",
-            TicketPricingModeEnum.SlidingScale, null, 500, 1000,
+            TicketPricingModeEnum.SlidingScale, null, Money.Create(500, "EUR"), Money.Create(1000, "EUR"),
             ParticipantDataCollectionModeEnum.None, null, null, null, false, false,
             5, null, null, null);
         catalog.AddTicketType(ticket, null);

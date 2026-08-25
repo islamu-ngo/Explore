@@ -106,7 +106,7 @@ public sealed class FooterLinkMutationGuardTests
             new CreateFooterLinkGroupCommand { TenantId = tenantId, UserId = Guid.NewGuid(), Title = "Main" },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await groupRepository.Received(1).Create(Arg.Is<TenantFooterLinkGroup>(group =>
             group.TenantId == tenantId && group.Title == "Main" && group.Order == 3));
         await settingsResolver.DidNotReceive().ResolveGroupAsync<FooterSettingGroup>(

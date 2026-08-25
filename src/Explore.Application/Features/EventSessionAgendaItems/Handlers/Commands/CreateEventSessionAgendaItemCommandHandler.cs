@@ -46,17 +46,14 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionAgendaItemCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventSessionAgendaItemDtoValidator(_eventSessionRepository, _locationRepository);
         var validationResult = await validator.ValidateAsync(request.AgendaItemDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Agenda item creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Agenda item creation failed.");
         }
 
         var agendaItem = _mapper.Map<EventSessionAgendaItem>(request.AgendaItemDto);
@@ -67,9 +64,7 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
         EventSession? parentSession = await _eventSessionRepository.GetById(request.AgendaItemDto.EventSessionId);
         if (parentSession is null || parentSession.TenantId != agendaItem.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event session not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session not found in the current tenant.");
         }
 
         agendaItem.EventSession = parentSession;
@@ -84,10 +79,6 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
             return await _agendaItemRepository.Create(agendaItem);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = agendaItem.Id;
-        response.Message = "Agenda item created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(agendaItem.Id, "Agenda item created successfully.");
     }
 }

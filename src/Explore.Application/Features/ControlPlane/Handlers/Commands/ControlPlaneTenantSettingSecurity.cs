@@ -42,11 +42,6 @@ internal static class ControlPlaneTenantSettingSecurity
         return null;
     }
 
-    internal static BaseCommandResponse<Guid> Failure(Guid tenantId, string code, string message) => new()
-    {
-        Id = tenantId,
-        Success = false,
-        FailureCode = code,
-        Message = message
-    };
+    internal static BaseCommandResponse<Guid> Failure(Guid tenantId, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, id: tenantId);
 }

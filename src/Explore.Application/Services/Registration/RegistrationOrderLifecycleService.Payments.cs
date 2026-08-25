@@ -106,7 +106,7 @@ public sealed partial class RegistrationOrderLifecycleService
     {
         RegistrationOrderLifecycleResponseDto response = await transition;
 
-        if (response.Success &&
+        if (response.IsSuccess &&
             response.Order is not null &&
             RegistrationOrderRules.IsTerminal((RegistrationOrderStatusEnum)response.Order.StatusId))
         {

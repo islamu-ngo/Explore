@@ -57,12 +57,7 @@ public sealed class UpdateOrganizationNotificationPreferenceMatrixCommandHandler
             }
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = lastId,
-            Success = true,
-            Message = "Organization notification preferences updated."
-        };
+        return BaseCommandResponse.Success(lastId, "Organization notification preferences updated.");
     }
 
     private async Task<(List<string> Errors, List<(int CategoryId, int ChannelId, bool IsEnabled)> Cells)> ValidateCellsAsync(
@@ -128,15 +123,8 @@ public sealed class UpdateOrganizationNotificationPreferenceMatrixCommandHandler
         return (errors, validated);
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = message,
-            Errors = errors ?? [message]
-        };
-    }
+    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) =>
+        BaseCommandResponse.Validation<Guid>(errors ?? [message], message);
 
     private static string Normalize(string code) => code.Trim().ToLowerInvariant();
 }

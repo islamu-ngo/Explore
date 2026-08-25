@@ -93,7 +93,7 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             new CreateEventSessionAgendaItemCommand { AgendaItemDto = dto },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(agendaItem.EventLocationId).IsNotNull();
         await Assert.That(agendaItem.LocationId).IsEqualTo(locationId);
         await eventLocationRepository.Received(1).AddAsync(
@@ -188,7 +188,7 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(agendaItem.EventSession).IsSameReferenceAs(destinationSession);
         await Assert.That(agendaItem.EventLocationId).IsNotEqualTo(previousPlacement.Id);
         await Assert.That(agendaItem.EventLocation!.EventId).IsEqualTo(destinationSession.EventId);
@@ -226,7 +226,7 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             AgendaItemDto = UpdateDto(destinationSession.Id, locationId: null)
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("another event");
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task>>(),
@@ -443,7 +443,7 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             new CreateEventSessionAgendaItemCommand { AgendaItemDto = dto },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<EventSessionAgendaItem>>>(),
             Arg.Any<CancellationToken>());

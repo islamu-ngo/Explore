@@ -111,7 +111,7 @@ public sealed class AbandonWebhookProviderPublicationCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
-        new() { Id = id, Success = true, Message = message };
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Conflict(Guid id) => Failure(
         id,
@@ -123,12 +123,5 @@ public sealed class AbandonWebhookProviderPublicationCommandHandler(
         string code,
         string message,
         IEnumerable<string>? errors = null) =>
-        new()
-        {
-            Id = id,
-            Success = false,
-            Message = message,
-            FailureCode = code,
-            Errors = errors?.ToList() ?? [message]
-        };
+        BaseCommandResponse.Failure(code, message, errors ?? [message], id);
 }

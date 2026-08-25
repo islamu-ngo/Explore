@@ -6,14 +6,50 @@ using Explore.Application.Responses;
 
 namespace Explore.Application.Features.Promotions;
 
-public class PromotionManagementCommandResponseDto : BaseCommandResponse<Guid>
+public sealed record PromotionManagementCommandResponseDto : BaseCommandResponse<Guid>
 {
-    public PromotionManagementDto? Promotion { get; set; }
+    private PromotionManagementCommandResponseDto(BaseCommandResponse<Guid> state, PromotionManagementDto? promotion) : base(state, true)
+    {
+        Promotion = promotion;
+    }
+
+    [JsonConstructor]
+    internal PromotionManagementCommandResponseDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, PromotionManagementDto? promotion)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), promotion)
+    {
+    }
+
+    public PromotionManagementDto? Promotion { get; }
+
+    public static PromotionManagementCommandResponseDto Success(Guid id, string? message, PromotionManagementDto? promotion) =>
+        new(BaseCommandResponse.Success(id, message), promotion);
+
+    public static PromotionManagementCommandResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null);
 }
 
-public sealed class PromotionCodeIssuedCommandResponseDto : PromotionManagementCommandResponseDto
+public sealed record PromotionCodeIssuedCommandResponseDto : BaseCommandResponse<Guid>
 {
-    public string? IssuedCode { get; set; }
+    private PromotionCodeIssuedCommandResponseDto(BaseCommandResponse<Guid> state, PromotionManagementDto? promotion, string? issuedCode) : base(state, true)
+    {
+        Promotion = promotion;
+        IssuedCode = issuedCode;
+    }
+
+    [JsonConstructor]
+    internal PromotionCodeIssuedCommandResponseDto(Guid id, bool isSuccess, string? message, IReadOnlyList<string>? errors, string? failureCode, QuotaExceededDetails? quotaExceeded, PromotionManagementDto? promotion, string? issuedCode)
+        : this(BaseCommandResponse.Restore(id, isSuccess, message, errors, failureCode, quotaExceeded), promotion, issuedCode)
+    {
+    }
+
+    public PromotionManagementDto? Promotion { get; }
+    public string? IssuedCode { get; }
+
+    public static PromotionCodeIssuedCommandResponseDto Success(Guid id, string? message, PromotionManagementDto? promotion, string? issuedCode) =>
+        new(BaseCommandResponse.Success(id, message), promotion, issuedCode);
+
+    public static PromotionCodeIssuedCommandResponseDto Failure(BaseCommandResponse<Guid> failure) =>
+        new(BaseCommandResponse.RequireFailure(failure), null, null);
 }
 
 public sealed record PromotionManagementDto

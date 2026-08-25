@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
@@ -58,12 +59,8 @@ public sealed class RegistrationRefundService(
         return reservation.Disposition switch
         {
             RefundReservationDisposition.Reserved or RefundReservationDisposition.Duplicate when reservation.Attempt is not null =>
-                new RegistrationRefundCommandResultDto
-                {
-                    Success = true,
-                    Id = reservation.Attempt.Id,
-                    Refund = RegistrationPaymentContractService.MapRefund(reservation.Attempt)
-                },
+                RegistrationRefundCommandResultDto.Success(
+                    reservation.Attempt.Id, null, RegistrationPaymentContractService.MapRefund(reservation.Attempt)),
             RefundReservationDisposition.OpenDispute => Failure(
                 "refund_open_dispute", "Refund requires operator review while a dispute is open."),
             RefundReservationDisposition.CapacityExceeded => Failure(
@@ -72,9 +69,6 @@ public sealed class RegistrationRefundService(
         };
     }
 
-    private static RegistrationRefundCommandResultDto Failure(string code, string message) => new()
-    {
-        FailureCode = code,
-        Message = message
-    };
+    private static RegistrationRefundCommandResultDto Failure(string code, string message) =>
+        RegistrationRefundCommandResultDto.Failure(BaseCommandResponse.Failure<Guid>(code, message));
 }

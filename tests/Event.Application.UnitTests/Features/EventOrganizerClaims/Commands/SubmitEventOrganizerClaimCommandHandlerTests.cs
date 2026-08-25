@@ -24,7 +24,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
 
         var result = await SubmitAsync(actor, userId, activeTenantUser: false);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -36,7 +36,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
 
         var result = await SubmitAsync(actor, userId, activeTenantUser: true);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -72,7 +72,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
             organizationParticipation: participation,
             organizationPermission: true);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -98,7 +98,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
             groupParticipation: participation,
             groupPermission: true);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -108,7 +108,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
 
         var result = await SubmitAsync(ActorForUser(userId), userId, activeTenantUser: true);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -134,7 +134,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
             organizationParticipation: participation,
             organizationPermission: true);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -169,7 +169,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
             groupParticipation: participation,
             groupPermission: true);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -186,7 +186,7 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
 
         var result = await SubmitAsync(actor, Guid.CreateVersion7());
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     private static async Task<BaseCommandResponse<Guid>> SubmitAsync(

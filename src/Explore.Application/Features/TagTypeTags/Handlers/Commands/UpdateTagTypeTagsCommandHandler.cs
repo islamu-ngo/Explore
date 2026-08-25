@@ -31,25 +31,21 @@ public class UpdateTagTypeTagsCommandHandler : IRequestHandler<UpdateTagTypeTags
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTagTypeTagsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateTagTypeTagsDtoValidator();
         var validationResult = await validator.ValidateAsync(request.TagTypeTagsDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tag Type Tags update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Tag Type Tags update failed.");
         }
 
         var link = await _repository.GetById(request.TagTypeTagsId);
         if (link == null || link.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Tag Type Tags not found.";
-            return response;
+            const string message = "Tag Type Tags not found.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         Guid tagId = request.TagTypeTagsDto.Relationship?.TagId ?? link.TagId;
@@ -57,28 +53,22 @@ public class UpdateTagTypeTagsCommandHandler : IRequestHandler<UpdateTagTypeTags
         var tag = await _tagRepository.GetById(tagId);
         if (tag is null || tag.TenantId != link.TenantId || !await _tagTypeRepository.Exists(tagTypeId))
         {
-            response.Success = false;
-            response.Message = "Tag Type Tags update failed.";
-            response.Errors = ["Relationship targets were not found in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Relationship targets were not found in the current tenant."],
+                "Tag Type Tags update failed.");
         }
 
         if ((tagId != link.TagId || tagTypeId != link.TagTypeId) && await _repository.Exists(tagId, tagTypeId))
         {
-            response.Success = false;
-            response.Message = "Tag Type Tags update failed.";
-            response.Errors = ["Tag and Tag Type relationship already exists."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Tag and Tag Type relationship already exists."],
+                "Tag Type Tags update failed.");
         }
 
         link.TagId = tagId;
         link.TagTypeId = tagTypeId;
         await _repository.Update(link);
 
-        response.Success = true;
-        response.Id = link.Id;
-        response.Message = "Tag Type Tags updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(link.Id, "Tag Type Tags updated successfully.");
     }
 }

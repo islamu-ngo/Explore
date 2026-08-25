@@ -236,7 +236,7 @@ public sealed class CreateOrderWithHoldCommandHandler(
                 return Success(order.Id, isWaitlisted ? "Registration order waitlisted." : "Registration order created.");
             }, cancellationToken);
 
-            if (response.Success && earliestHoldExpiry is not null)
+            if (response.IsSuccess && earliestHoldExpiry is not null)
             {
                 await RegisterHoldExpiryDeadlineAsync(orderId, earliestHoldExpiry.Value, cancellationToken);
             }
@@ -426,68 +426,32 @@ public sealed class CreateOrderWithHoldCommandHandler(
         };
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid orderId, string message) => new()
-    {
-        Id = orderId,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid orderId, string message) => BaseCommandResponse.Success(orderId, message);
 
-    private static BaseCommandResponse<Guid> Missing(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order configuration was not found.",
-        Errors = ["Registration order configuration was not found."]
-    };
+    private static BaseCommandResponse<Guid> Missing(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_not_found", "Registration order configuration was not found.",
+        ["Registration order configuration was not found."], id);
 
     private static BaseCommandResponse<Guid> Invalid(Guid id, string error) => Invalid(id, [error]);
 
-    private static BaseCommandResponse<Guid> Invalid(Guid id, IEnumerable<string> errors) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_validation_failed",
-        Message = "Registration order configuration is invalid.",
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Invalid(Guid id, IEnumerable<string> errors) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_validation_failed", "Registration order configuration is invalid.", errors, id);
 
-    private static BaseCommandResponse<Guid> IdentityRequired(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_identity_required",
-        Message = "Registration order requires an authenticated account.",
-        Errors = ["Registration order requires an authenticated account."]
-    };
+    private static BaseCommandResponse<Guid> IdentityRequired(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_identity_required", "Registration order requires an authenticated account.",
+        ["Registration order requires an authenticated account."], id);
 
-    private static BaseCommandResponse<Guid> LimitExceeded(Guid id, string error) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_limit_exceeded",
-        Message = "Registration order quantity limit was exceeded.",
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> LimitExceeded(Guid id, string error) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_limit_exceeded", "Registration order quantity limit was exceeded.", [error], id);
 
-    private static BaseCommandResponse<Guid> CapacityUnavailable(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_capacity_unavailable",
-        Message = "Registration capacity is unavailable.",
-        Errors = ["Registration capacity is unavailable."]
-    };
+    private static BaseCommandResponse<Guid> CapacityUnavailable(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_capacity_unavailable", "Registration capacity is unavailable.",
+        ["Registration capacity is unavailable."], id);
 
-    private static BaseCommandResponse<Guid> IncompatiblePolicy(Guid id) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = "registration_order_policy_incompatible",
-        Message = "Registration capacity policies cannot produce one consistent order state.",
-        Errors = ["A waitlisted order cannot also await approval."]
-    };
+    private static BaseCommandResponse<Guid> IncompatiblePolicy(Guid id) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_policy_incompatible",
+        "Registration capacity policies cannot produce one consistent order state.",
+        ["A waitlisted order cannot also await approval."], id);
 
     private sealed record StableLineIds(Guid LineId, Guid HoldId);
 

@@ -45,7 +45,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
             new UpdateEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id, CapacityPool = FullPoolDto() },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(pool.Name).IsEqualTo("Main hall revised");
         await Assert.That(pool.MaximumQuantity).IsEqualTo(300);
         await Assert.That(pool.HoldDurationSeconds).IsEqualTo(1_200);

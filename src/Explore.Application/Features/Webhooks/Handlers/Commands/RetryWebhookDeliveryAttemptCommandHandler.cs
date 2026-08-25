@@ -59,12 +59,7 @@ public sealed class RetryWebhookDeliveryAttemptCommandHandler(
 
         return result.Outcome switch
         {
-            WebhookDeliveryDrainOutcome.RetryScheduled => new BaseCommandResponse<Guid>
-            {
-                Id = result.AttemptId ?? request.AttemptId,
-                Success = true,
-                Message = "Webhook delivery retry scheduled."
-            },
+            WebhookDeliveryDrainOutcome.RetryScheduled => BaseCommandResponse.Success(result.AttemptId ?? request.AttemptId, "Webhook delivery retry scheduled."),
             WebhookDeliveryDrainOutcome.Missing => Failure(
                 request.AttemptId,
                 "webhook_delivery_attempt_not_found",
@@ -116,12 +111,5 @@ public sealed class RetryWebhookDeliveryAttemptCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Failure(Guid attemptId, string code, string message) =>
-        new()
-        {
-            Id = attemptId,
-            Success = false,
-            Message = message,
-            FailureCode = code,
-            Errors = [message]
-        };
+        BaseCommandResponse.Failure(code, message, [message], attemptId);
 }

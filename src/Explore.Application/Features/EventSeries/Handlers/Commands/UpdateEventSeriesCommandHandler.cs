@@ -39,23 +39,15 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
         var validationResult = await validator.ValidateAsync(request.EventSeriesDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event series update failed due to validation errors.",
-                Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event series update failed due to validation errors.");
         }
 
         var series = await _eventSeriesRepository.GetEventSeriesWithEvents(request.EventSeriesId);
         if (series == null)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event series not found.",
-                FailureCode = FailureCodes.NotFound
-            };
+            return BaseCommandResponse.NotFound<Guid>("Event series not found.");
         }
 
         if (series.ActorId != request.ActorId || series.TenantId != request.TenantId)
@@ -80,12 +72,9 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
                 series.TenantId,
                 featuredImageId))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Event series update failed due to validation errors.",
-                Errors = ["Featured image must be an active public safe-raster object in the current tenant."]
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                ["Featured image must be an active public safe-raster object in the current tenant."],
+                "Event series update failed due to validation errors.");
         }
 
         ApplyTitle(series, request.EventSeriesDto.Title);
@@ -103,12 +92,7 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
 
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(series.TenantId), cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = series.Id,
-            Success = true,
-            Message = "Event series updated successfully."
-        };
+        return BaseCommandResponse.Success(series.Id, "Event series updated successfully.");
     }
 
     private static void ApplyTitle(DomainEventSeries series, UpdateEventSeriesTitleDto? group)

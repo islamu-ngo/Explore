@@ -62,7 +62,7 @@ public class CreateLocationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(locationId);
         await Assert.That(result.Message).Contains("successfully");
         await _locationRepository.Received(1).Create(Arg.Any<Location>());
@@ -88,7 +88,7 @@ public class CreateLocationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRepository.DidNotReceive().Create(Arg.Any<Location>());
     }
 
@@ -112,7 +112,7 @@ public class CreateLocationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRepository.DidNotReceive().Create(Arg.Any<Location>());
     }
 
@@ -138,7 +138,7 @@ public class CreateLocationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRepository.DidNotReceive().Create(Arg.Any<Location>());
     }
 
@@ -170,7 +170,7 @@ public class CreateLocationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _locationRepository.Received(1).Create(Arg.Is<Location>(l => l.TenantId == tenantId));
     }
 }

@@ -206,8 +206,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
 
         if (messageCount >= settings.DailyMessageLimit)
         {
-            var response = new BaseCommandResponse<Guid>();
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "AI daily message limit exceeded.",
                 new QuotaExceededDetails(
                     GovernanceSettingKeys.AiAssistant.DailyMessageLimit,
@@ -217,15 +216,13 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
                     UserDailyQuotaScope,
                     tenantId),
                 "Daily AI message quota exceeded.");
-            return response;
         }
 
         var tenantMessageCount = await _conversationRepository.CountTenantMessagesSinceAsync(todayUtc, cancellationToken);
 
         if (tenantMessageCount >= settings.DailyTenantMessageLimit)
         {
-            var response = new BaseCommandResponse<Guid>();
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "AI tenant daily message limit exceeded.",
                 new QuotaExceededDetails(
                     GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit,
@@ -235,15 +232,13 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
                     TenantDailyQuotaScope,
                     tenantId),
                 "Daily tenant AI message quota exceeded.");
-            return response;
         }
 
         var runningConversationCount = await _conversationRepository.CountRunningConversationsForUserAsync(userId, cancellationToken);
 
         if (runningConversationCount >= settings.ConcurrentRunLimit)
         {
-            var response = new BaseCommandResponse<Guid>();
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "AI concurrent run limit exceeded.",
                 new QuotaExceededDetails(
                     GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit,
@@ -253,7 +248,6 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
                     UserConcurrentQuotaScope,
                     tenantId),
                 "Concurrent AI run quota exceeded.");
-            return response;
         }
 
         conversation.ActorId = actorResolution.ActorId;
@@ -285,12 +279,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             run.Id,
             CancellationToken.None);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = run.Id,
-            Message = "AI message queued."
-        };
+        return BaseCommandResponse.Success(run.Id, "AI message queued.");
     }
 
     private async Task<BaseCommandResponse<Guid>?> TryReplayIdempotencyAsync(
@@ -323,12 +312,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
 
         if (Guid.TryParse(existing.ResponseBody, out var runId))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = runId,
-                Message = "AI message send already processed."
-            };
+            return BaseCommandResponse.Success(runId, "AI message send already processed.");
         }
 
         return Failure(
@@ -482,14 +466,8 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         string message,
         IEnumerable<string> errors,
         string? failureCode = null,
-        Guid id = default)
-        => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        Guid id = default) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 
 }

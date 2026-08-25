@@ -27,7 +27,7 @@ public class VerifyCerbosEndpointCommandHandlerTests
             GrpcEndpoint = "not a grpc endpoint"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("must be a valid URL or host:port");
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -43,7 +43,7 @@ public class VerifyCerbosEndpointCommandHandlerTests
             GrpcEndpoint = "cerbosgrpc.example.com:443"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.Received(1)
             .VerifyCerbosEndpointAsync("https://cerbosgrpc.example.com:443", Arg.Any<CancellationToken>());
     }
@@ -60,7 +60,7 @@ public class VerifyCerbosEndpointCommandHandlerTests
             GrpcEndpoint = endpoint
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _configurationService.DidNotReceive()
             .VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -76,7 +76,7 @@ public class VerifyCerbosEndpointCommandHandlerTests
             GrpcEndpoint = "https://cerbosgrpc.example.com:443"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("could not be verified");
     }
 }

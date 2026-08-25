@@ -54,7 +54,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(CreateValidConfiguration()), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Only instance administrators");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
@@ -69,7 +69,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _userRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
@@ -86,7 +86,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Setup mode is no longer active");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
@@ -105,7 +105,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(invalidConfiguration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Invalid auth provider configuration");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
@@ -128,7 +128,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(lockoutConfiguration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Cannot disable all authentication providers linked");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
@@ -174,7 +174,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthProviderConfigurationDto>(x =>
             x.GoogleSsoEnabled && x.GoogleClientId == configuration.GoogleClientId));
     }
@@ -197,7 +197,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthProviderConfigurationDto>(x =>
             x.KeycloakEnabled && x.KeycloakClientSecret == string.Empty));
     }
@@ -215,7 +215,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Invalid auth provider configuration");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
@@ -235,7 +235,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Invalid auth provider configuration");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }

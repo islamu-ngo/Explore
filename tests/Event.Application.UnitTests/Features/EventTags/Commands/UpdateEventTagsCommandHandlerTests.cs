@@ -45,7 +45,7 @@ public sealed class UpdateEventTagsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event tag update group must be provided.");
         await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventTags>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -73,7 +73,7 @@ public sealed class UpdateEventTagsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.EventId).IsEqualTo(forgedEventId);
         await Assert.That(command.TenantId).IsEqualTo(forgedTenantId);
         await _repository.Received(1).GetByEventAndTag(entity.EventId, newTagId, entity.Id);
@@ -119,7 +119,7 @@ public sealed class UpdateEventTagsCommandHandlerTests
             Tag = new UpdateEventTagsTagDto { TagId = newTagId }
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(entity.TagId).IsEqualTo(newTagId);
         await _repository.Received(1).Update(entity);
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
@@ -143,7 +143,7 @@ public sealed class UpdateEventTagsCommandHandlerTests
             Tag = new UpdateEventTagsTagDto { TagId = newTagId }
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Tag is already assigned to this event.");
         await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventTags>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());

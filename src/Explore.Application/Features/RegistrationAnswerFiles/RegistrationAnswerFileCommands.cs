@@ -55,23 +55,13 @@ public sealed class ReleaseRegistrationAnswerFileCommandHandler(
                 "registration_answer_file_not_found");
         }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = result.File.Id,
-            Success = true,
-            Message = result.WasAlreadyReleased
+        return BaseCommandResponse.Success(
+            result.File.Id,
+            result.WasAlreadyReleased
                 ? "Registration answer file was already released; the original audit was preserved."
-                : "Registration answer file released."
-        };
+                : "Registration answer file released.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string code)
-        => new()
-        {
-            Id = id,
-            Success = false,
-            Message = message,
-            FailureCode = code,
-            Errors = [message]
-        };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string code) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], id);
 }

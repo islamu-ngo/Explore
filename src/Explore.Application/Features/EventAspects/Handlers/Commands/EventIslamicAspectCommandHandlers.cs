@@ -46,25 +46,18 @@ public sealed class CreateEventIslamicAspectCommandHandler(
         return Success(aspect.Id, "Islamic aspect created successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            id);
 
     private static async Task InvalidateAsync(
         HybridCache targetCache,
@@ -129,12 +122,7 @@ public sealed class UpdateEventIslamicAspectCommandHandler(
         await aspectRepository.Update(aspect);
         await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
         await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = aspect.Id,
-            Success = true,
-            Message = "Islamic aspect updated successfully."
-        };
+        return BaseCommandResponse.Success(aspect.Id, "Islamic aspect updated successfully.");
     }
 
     private static void Apply(EventIslamicAspect aspect, UpdateEventIslamicAspectDto patch)
@@ -157,12 +145,9 @@ public sealed class UpdateEventIslamicAspectCommandHandler(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            id);
 }

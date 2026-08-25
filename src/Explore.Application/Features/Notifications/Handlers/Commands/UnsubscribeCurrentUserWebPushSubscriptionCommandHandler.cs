@@ -38,14 +38,10 @@ public sealed class UnsubscribeCurrentUserWebPushSubscriptionCommandHandler(
             cancellationToken);
 
         return removed
-            ? new BaseCommandResponse<Guid> { Id = request.SubscriptionId, Success = true, Message = "Web Push subscription removed." }
+            ? BaseCommandResponse.Success(request.SubscriptionId, "Web Push subscription removed.")
             : Failure("Web Push subscription was not found.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 }

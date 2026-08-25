@@ -99,7 +99,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await _eventRepository.Received(1).Update(@event);
         await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
@@ -261,7 +261,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(addedAfterLocalSaveInsideTransaction).IsTrue();
         await federationOutbox.Received(1).AddAsync(
             Arg.Is<PdsSyncOutbox>(row =>
@@ -283,7 +283,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_concurrency_conflict");
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -303,7 +303,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
@@ -350,7 +350,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(3).GetById(eventId);
         await _eventRepository.Received(1).Update(firstAttemptEvent);
         await _eventRepository.Received(1).Update(retryEvent);
@@ -392,7 +392,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(3).GetById(eventId);
         await _eventRepository.Received(1).Update(firstAttemptEvent);
         await _eventRepository.DidNotReceive().Update(committedEvent);
@@ -415,7 +415,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).Contains("scheduled session");
@@ -440,7 +440,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await _eventRepository.Received(1).Update(@event);
     }
@@ -461,7 +461,7 @@ public class PublishEventCommandHandlerTests
             Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
         await Assert.That(result.Errors).Contains(error => error.Contains("moderated", StringComparison.OrdinalIgnoreCase));
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);

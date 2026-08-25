@@ -26,20 +26,10 @@ public sealed class DisableTenantModuleCommandHandler(IModuleService moduleServi
             cancellationToken);
 
         return success
-            ? new BaseCommandResponse<Guid>
-            {
-                Id = request.TenantId,
-                Success = true,
-                Message = "Module disabled."
-            }
+            ? BaseCommandResponse.Success(request.TenantId, "Module disabled.")
             : Failure(request.TenantId, $"Module '{request.ModuleKey}' is not enabled for this tenant.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid tenantId, string message) => new()
-    {
-        Id = tenantId,
-        Success = false,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid tenantId, string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message, tenantId);
 }

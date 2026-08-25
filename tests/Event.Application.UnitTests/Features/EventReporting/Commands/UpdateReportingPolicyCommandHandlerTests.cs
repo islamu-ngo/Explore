@@ -36,7 +36,7 @@ public sealed class UpdateReportingPolicyCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await resolver.Received(1).SetValueAsync(
             GovernanceSettingKeys.TenantDelegation.LockReportingProviders,
             "false",
@@ -93,7 +93,7 @@ public sealed class UpdateReportingPolicyCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await resolver.Received(1).SetValueAsync(
             GovernanceSettingKeys.Reporting.TenantExternalSyncEnabled,
             "true",

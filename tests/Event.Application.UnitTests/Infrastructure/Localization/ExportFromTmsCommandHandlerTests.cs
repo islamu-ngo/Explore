@@ -54,7 +54,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Instance administrator");
         await _tmsProvider.DidNotReceive().ExportTranslationsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _bundleFileWriter.DidNotReceive().WriteBundleAsync(
@@ -97,7 +97,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("2 translations");
         await _bundleFileWriter.Received(1).WriteBundleAsync(
             "en",
@@ -128,7 +128,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "ar" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Disk full");
     }
 
@@ -140,7 +140,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("No translations found");
         await _bundleFileWriter.DidNotReceive().WriteBundleAsync(
             Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
@@ -154,7 +154,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("TMS unreachable");
     }
 
@@ -173,7 +173,7 @@ public class ExportFromTmsCommandHandlerTests
 
         var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _bundleFileWriter.Received(1).WriteBundleAsync(
             "en",
             Arg.Is<IReadOnlyDictionary<string, string>>(d => d.Count == 1 && d["ui.button.save"] == "Save"),

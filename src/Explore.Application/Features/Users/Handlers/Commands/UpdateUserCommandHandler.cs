@@ -48,36 +48,27 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateUserDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UpdateUserDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "User update failed due to validation errors.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "User update failed due to validation errors.");
         }
 
         var transactionResponse = await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             if (await _privacyErasureStateRepository.GetBySubjectAsync(request.UserId, token) is not null)
             {
-                response.Success = false;
-                response.Message = "User not found";
-                response.FailureCode = FailureCodes.NotFound;
-                return response;
+                return BaseCommandResponse.NotFound<Guid>("User not found");
             }
 
             var user = await _userRepository.GetById(request.UserId);
 
             if (user == null)
             {
-                response.Success = false;
-                response.Message = "User not found";
-                response.FailureCode = FailureCodes.NotFound;
-                return response;
+                return BaseCommandResponse.NotFound<Guid>("User not found");
             }
 
             if (user.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -104,9 +95,9 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
                     var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
                     if (!SafeRasterContentPolicy.IsEligibleImageReference(storageObject, _tenantContext.TenantId))
                     {
-                        response.Success = false;
-                        response.Message = "Profile image must be an active public safe-raster object in the current tenant.";
-                        return response;
+                        return BaseCommandResponse.Validation<Guid>(
+                            ["Profile image must be an active public safe-raster object in the current tenant."],
+                            "Profile image must be an active public safe-raster object in the current tenant.");
                     }
 
                     if (storageObject != null)
@@ -119,14 +110,10 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
 
             await _userRepository.Update(user);
 
-            response.Success = true;
-            response.Message = "User updated successfully";
-            response.Id = user.Id;
-
-            return response;
+            return BaseCommandResponse.Success(user.Id, "User updated successfully");
         }, cancellationToken);
 
-        if (transactionResponse.Success)
+        if (transactionResponse.IsSuccess)
         {
             await _cache.RemoveAsync($"user:detail:{transactionResponse.Id}", cancellationToken);
         }

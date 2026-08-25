@@ -98,7 +98,7 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
             return Success(eventLocation.Id);
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result;
         }
@@ -135,25 +135,18 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
         nameof(EventLocation),
         eventLocationId.ToString("D"));
 
-    private static BaseCommandResponse<Guid> Success(Guid eventLocationId) => new()
-    {
-        Id = eventLocationId,
-        Success = true,
-        Message = "EventLocation policy updated."
-    };
+    private static BaseCommandResponse<Guid> Success(Guid eventLocationId) =>
+        BaseCommandResponse.Success(eventLocationId, "EventLocation policy updated.");
 
     private static BaseCommandResponse<Guid> Failure(
         Guid eventLocationId,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = eventLocationId,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            eventLocationId);
 }
 
 public sealed class ConfirmEventLocationRemediationCommandHandler(
@@ -227,7 +220,7 @@ public sealed class ConfirmEventLocationRemediationCommandHandler(
             return Success(eventLocation.Id, "EventLocation privacy remediation confirmed.");
         }, cancellationToken);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return result;
         }
@@ -245,23 +238,16 @@ public sealed class ConfirmEventLocationRemediationCommandHandler(
         nameof(EventLocation),
         eventLocationId.ToString("D"));
 
-    private static BaseCommandResponse<Guid> Success(Guid eventLocationId, string message) => new()
-    {
-        Id = eventLocationId,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid eventLocationId, string message) =>
+        BaseCommandResponse.Success(eventLocationId, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid eventLocationId,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = eventLocationId,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            eventLocationId);
 }

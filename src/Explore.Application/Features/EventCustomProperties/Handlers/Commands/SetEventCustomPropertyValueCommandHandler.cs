@@ -41,34 +41,29 @@ public class SetEventCustomPropertyValueCommandHandler : IRequestHandler<SetEven
 
     public async Task<BaseCommandResponse<Guid>> Handle(SetEventCustomPropertyValueCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new SetEventCustomPropertyValueDtoValidator();
         var validationResult = await validator.ValidateAsync(request.ValueDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property value set failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event custom property value set failed.");
         }
 
         var definition = await _eventCustomPropertyRepository.GetDefinitionWithDetails(request.ValueDto.EventCustomPropertyDefinitionId);
         if (definition is null || definition.EventId != request.ValueDto.EventId)
         {
-            response.Success = false;
-            response.Message = "Event custom property value set failed.";
-            response.Errors = ["Event custom property definition was not found for the requested event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event custom property definition was not found for the requested event."],
+                "Event custom property value set failed.");
         }
 
         var runtimeValidationErrors = CustomPropertyRuntimeValueValidator.ValidateSingle(definition, request.ValueDto);
         if (runtimeValidationErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event custom property value set failed.";
-            response.Errors = runtimeValidationErrors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                runtimeValidationErrors,
+                "Event custom property value set failed.");
         }
 
         var value = _mapper.Map<EventCustomPropertyValue>(request.ValueDto);
@@ -85,10 +80,6 @@ public class SetEventCustomPropertyValueCommandHandler : IRequestHandler<SetEven
             },
             cancellationToken);
 
-        response.Success = true;
-        response.Id = persisted.Id;
-        response.Message = "Event custom property value set successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(persisted.Id, "Event custom property value set successfully.");
     }
 }

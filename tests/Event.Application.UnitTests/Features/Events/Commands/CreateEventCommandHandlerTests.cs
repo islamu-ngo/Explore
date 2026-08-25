@@ -260,7 +260,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.ParticipationConfiguration != null
@@ -320,7 +320,7 @@ public class CreateEventCommandHandlerTests
 
         BaseCommandResponse<Guid> result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(
             default,
             default,
@@ -345,7 +345,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event creation failed due to validation errors.");
         _userContext.DidNotReceive().GetRequiredUserId();
         await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default, default);
@@ -380,7 +380,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
     }
@@ -407,7 +407,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _actorResolver.Received(1).ResolveAsync(userId, null, null, Arg.Any<CancellationToken>());
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
@@ -464,7 +464,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.SessionCount == 0
@@ -531,7 +531,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.Title == "Community event"
             && entity.TenantId == tenantId
@@ -614,7 +614,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
             session.LocationId.HasValue
             && session.RoomId.HasValue
@@ -647,7 +647,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.SessionCount == 0
             && entity.FirstSessionDate == null
@@ -731,7 +731,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventIslamicAspectRepository.Received(1).Upsert(Arg.Is<EventIslamicAspect>(aspect =>
             aspect.Id == result.Id
             && aspect.GenderMode == GenderSegregationMode.Segregated));
@@ -784,7 +784,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }
@@ -821,7 +821,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("permission");
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }
@@ -861,7 +861,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRoleAssignmentRepository.Received(1).Create(Arg.Is<EventRoleAssignment>(a =>
             a.UserId == userId
             && a.RoleId == (int)RoleEnum.EventOwner
@@ -893,7 +893,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRoleAssignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
     }
 
@@ -948,7 +948,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(e => e.EventStatusId == (int)EventStatusEnum.Published));
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
             session.EventSessionStatusId == (int)EventSessionStatusEnum.Published));
@@ -1007,7 +1007,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -1034,7 +1034,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_create_status_not_supported");
         await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default, default);
         await _lifecyclePolicyProvider.DidNotReceive().GetEffectivePolicyAsync(Arg.Any<Guid?>(), Arg.Any<ValidationProfile>(), Arg.Any<CancellationToken>());
@@ -1067,7 +1067,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.EventStatusId == (int)EventStatusEnum.Draft));
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
@@ -1097,7 +1097,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(typeof(CreateEventCommandHandler)
             .GetConstructors()
             .SelectMany(constructor => constructor.GetParameters())
@@ -1124,7 +1124,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -1146,7 +1146,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()

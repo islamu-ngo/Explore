@@ -54,7 +54,7 @@ public sealed class RegistrationFormAuthoringHandlerTests
         await task;
         var response = (BaseCommandResponse<Guid>)task.GetType().GetProperty("Result")!.GetValue(task)!;
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("registration_form_validation_failed");
     }
 
@@ -102,7 +102,7 @@ public sealed class RegistrationFormAuthoringHandlerTests
         BaseCommandResponse<Guid> response = await service.PublishAsync(new(version.EventId, version.RegistrationFormId,
             version.Id, version.ConcurrencyStamp), CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(version.DataSchemaArtifact).IsEqualTo(expected.DataSchemaJson);
         await Assert.That(version.UiSchemaArtifact).IsEqualTo(expected.UiSchemaJson);
         await Assert.That(version.LogicSchemaArtifact).IsEqualTo(expected.LogicSchemaJson);
@@ -127,7 +127,7 @@ public sealed class RegistrationFormAuthoringHandlerTests
         BaseCommandResponse<Guid> response = await service.PublishAsync(new(version.EventId, version.RegistrationFormId,
             version.Id, version.ConcurrencyStamp), CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("registration_form_preflight_failed");
         await repository.DidNotReceive().UpdateVersionAsync(Arg.Any<RegistrationFormVersion>(),
             Arg.Any<CancellationToken>());

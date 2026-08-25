@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 
@@ -76,7 +77,7 @@ public sealed class RegistrationPaymentContractServiceTests
         var expiredStart = await service.StartAsync(expiredOrder, null, CancellationToken.None);
         RegistrationPaymentDto? expiredRedirectStatus = await service.GetAsync(expiredOrder, CancellationToken.None);
 
-        await Assert.That(expiredStart.Success).IsFalse();
+        await Assert.That(expiredStart.IsSuccess).IsFalse();
         await Assert.That(expiredStart.FailureCode).IsEqualTo("not_payable");
         await Assert.That(expiredRedirectStatus!.HostedRedirectAvailable).IsFalse();
         await Assert.That(await service.ResolveCheckoutTargetAsync(expiredOrder, CancellationToken.None)).IsNull();
@@ -129,9 +130,9 @@ public sealed class RegistrationPaymentContractServiceTests
             .SetValue(replacement, (int)PaymentAttemptStatusEnum.Unknown);
         RegistrationPaymentCommandResultDto unknown = await CreateService().RetryAsync(order, CancellationToken.None);
 
-        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.IsSuccess).IsTrue();
         await Assert.That(replay.Payment!.Id).IsEqualTo(replacement.Id);
-        await Assert.That(unknown.Success).IsFalse();
+        await Assert.That(unknown.IsSuccess).IsFalse();
         await Assert.That(unknown.FailureCode).IsEqualTo("payment_retry_not_available");
     }
 
@@ -149,7 +150,7 @@ public sealed class RegistrationPaymentContractServiceTests
 
         RegistrationPaymentCommandResultDto result = await CreateService().RetryAsync(order, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("payment_acceptance_stale");
         await _attempts.DidNotReceive().RetryParkedPreHandoffAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
@@ -305,7 +306,7 @@ public sealed class RegistrationPaymentContractServiceTests
             UtcNow);
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(), _tenantId, _orderId, recipient, "OrganizerDirect", "2026-08-20.acacia",
-            "composition-a", 1_000, 75, 125, "checkout:key", UtcNow, UtcNow.AddMinutes(30));
+            "composition-a", Money.Create(1_000, recipient.CurrencyCode), Money.Create(75, recipient.CurrencyCode), Money.Create(125, recipient.CurrencyCode), "checkout:key", UtcNow, UtcNow.AddMinutes(30));
         attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
             _tenantId, _orderId, Guid.CreateVersion7(), "composition-a",
             recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,

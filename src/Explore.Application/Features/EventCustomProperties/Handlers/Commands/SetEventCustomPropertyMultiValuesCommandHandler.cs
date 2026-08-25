@@ -45,8 +45,6 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
 
     public async Task<BaseCommandResponse<Guid>> Handle(SetEventCustomPropertyMultiValuesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new SetEventCustomPropertyValueDtoValidator();
         var errors = new List<string>();
         for (var i = 0; i < request.Values.Count; i++)
@@ -60,19 +58,17 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
 
         if (errors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event custom property multi-value set failed.";
-            response.Errors = errors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                errors,
+                "Event custom property multi-value set failed.");
         }
 
         var definition = await _eventCustomPropertyRepository.GetDefinitionWithDetails(request.DefinitionId);
         if (definition is null || definition.EventId != request.EventId)
         {
-            response.Success = false;
-            response.Message = "Event custom property multi-value set failed.";
-            response.Errors = ["Event custom property definition was not found for the requested event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event custom property definition was not found for the requested event."],
+                "Event custom property multi-value set failed.");
         }
 
         var maxRows = await _quotaResolver.GetIntAsync(
@@ -82,7 +78,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
 
         if (request.Values.Count > maxRows)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event custom property multi-value set failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key,
@@ -91,16 +87,14 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
                     request.Values.Count,
                     "event_custom_property_multi_values",
                     definition.TenantId));
-            return response;
         }
 
         var runtimeValidationErrors = CustomPropertyRuntimeValueValidator.ValidateMany(definition, request.Values);
         if (runtimeValidationErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event custom property multi-value set failed.";
-            response.Errors = runtimeValidationErrors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                runtimeValidationErrors,
+                "Event custom property multi-value set failed.");
         }
 
         var values = request.Values
@@ -125,10 +119,6 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
             },
             cancellationToken);
 
-        response.Success = true;
-        response.Id = request.DefinitionId;
-        response.Message = "Event custom property values set successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(request.DefinitionId, "Event custom property values set successfully.");
     }
 }

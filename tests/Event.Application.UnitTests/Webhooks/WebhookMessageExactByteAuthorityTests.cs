@@ -120,7 +120,7 @@ public sealed class WebhookMessageExactByteAuthorityTests
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.PayloadBytes).IsNotNull();
         await Assert.That(result.PayloadHash).IsEqualTo(
-            $"sha256:{Convert.ToHexString(SHA256.HashData(result.PayloadBytes!)).ToLowerInvariant()}");
+            $"sha256:{Convert.ToHexString(SHA256.HashData(result.PayloadBytes!.Value.Span)).ToLowerInvariant()}");
     }
 
     [Test]

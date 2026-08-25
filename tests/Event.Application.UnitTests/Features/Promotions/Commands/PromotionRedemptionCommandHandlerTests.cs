@@ -66,7 +66,7 @@ public sealed class PromotionRedemptionCommandHandlerTests
         await _promotions.Received(1).AddReservationAsync(Arg.Is<PromotionReservation>(reservation => reservation.RegistrationOrderId == scenario.Order.Id), Arg.Any<CancellationToken>());
         await _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _digests.DidNotReceive().ComputeActiveAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.PromotionDiscountTotalMinor).IsEqualTo(1_000);
         await Assert.That(response.TotalDueMinor).IsEqualTo(9_000);
         await Assert.That(response.AppliedPromotionDisplayLabel).IsEqualTo(scenario.Code.DisplayLabel);
@@ -93,7 +93,7 @@ public sealed class PromotionRedemptionCommandHandlerTests
 
         await _promotions.DidNotReceive().AddReservationAsync(Arg.Any<PromotionReservation>(), Arg.Any<CancellationToken>());
         await _inventory.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo(PromotionRedemptionFailureCodes.Unavailable);
         await Assert.That(response.Errors).Contains(PromotionRedemptionFailureCodes.Unavailable);
         await Assert.That(response.Message).DoesNotContain("WRONG");
@@ -168,7 +168,7 @@ public sealed class PromotionRedemptionCommandHandlerTests
         string invalidJson = JsonSerializer.Serialize(invalid);
         string exhaustedJson = JsonSerializer.Serialize(exhausted);
         string wrongTenantJson = JsonSerializer.Serialize(wrongTenant);
-        await Assert.That(new[] { invalid.Success, exhausted.Success, wrongTenant.Success })
+        await Assert.That(new[] { invalid.IsSuccess, exhausted.IsSuccess, wrongTenant.IsSuccess })
             .IsEquivalentTo([false, false, false]);
         await Assert.That(new[] { invalidJson, exhaustedJson, wrongTenantJson })
             .IsEquivalentTo([invalidJson, invalidJson, invalidJson]);
@@ -229,7 +229,7 @@ public sealed class PromotionRedemptionCommandHandlerTests
             CancellationToken.None);
 
         await _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.PromotionDiscountTotalMinor).IsEqualTo(0);
         await Assert.That(response.TotalDueMinor).IsEqualTo(10_000);
         await Assert.That(scenario.Order.ActivePromotionReservationId).IsNull();
@@ -254,9 +254,9 @@ public sealed class PromotionRedemptionCommandHandlerTests
             "Admission",
             "EUR",
             TicketPricingModeEnum.Fixed,
-            fixedPriceMinor: 10_000,
-            minimumPriceMinor: null,
-            suggestedPriceMinor: null,
+            fixedPrice: Money.Create(10_000, "EUR"),
+            minimumPrice: null,
+            suggestedPrice: null,
             ParticipantDataCollectionModeEnum.LeadBookerOnly,
             capacityPoolId: null,
             minimumAge: null,

@@ -50,12 +50,7 @@ public sealed class ClassifyLocationAsPrivateHomeCommandHandler(
         }
 
         await locations.Update(location);
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = location.Id,
-            Message = "Location classified as a private home."
-        };
+        return BaseCommandResponse.Success(location.Id, "Location classified as a private home.");
     }
 }
 
@@ -104,12 +99,7 @@ public sealed class AcceptPrivateHomeOwnershipCommandHandler(
         }
 
         await locations.Update(location);
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = location.Id,
-            Message = "Private home ownership accepted."
-        };
+        return BaseCommandResponse.Success(location.Id, "Private home ownership accepted.");
     }
 }
 
@@ -125,36 +115,20 @@ internal static class PrivateHomeConsent
             return null;
         }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = "Private home ownership requires an explicit, versioned consent acknowledgement.",
-            FailureCode = ConsentRequiredFailureCode,
-            Errors = ["Explicit household consent is required before a location becomes a private home."]
-        };
+        return BaseCommandResponse.Failure<Guid>(
+            ConsentRequiredFailureCode,
+            "Private home ownership requires an explicit, versioned consent acknowledgement.",
+            ["Explicit household consent is required before a location becomes a private home."]);
     }
 
-    public static BaseCommandResponse<Guid> AuthenticationRequired() => new()
-    {
-        Success = false,
-        Message = "An authenticated owner is required.",
-        FailureCode = FailureCodes.AuthenticationRequired
-    };
+    public static BaseCommandResponse<Guid> AuthenticationRequired() =>
+        BaseCommandResponse.Authentication<Guid>("An authenticated owner is required.");
 
-    public static BaseCommandResponse<Guid> NotFound() => new()
-    {
-        Success = false,
-        Message = "Location not found.",
-        FailureCode = FailureCodes.NotFound
-    };
+    public static BaseCommandResponse<Guid> NotFound() =>
+        BaseCommandResponse.NotFound<Guid>("Location not found.");
 
-    public static BaseCommandResponse<Guid> Rejected(string message) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = RejectedFailureCode,
-        Errors = [message]
-    };
+    public static BaseCommandResponse<Guid> Rejected(string message) =>
+        BaseCommandResponse.Failure<Guid>(RejectedFailureCode, message, [message]);
 
     public static void RequireCurrentStamp(Location location, Guid expectedConcurrencyStamp)
     {

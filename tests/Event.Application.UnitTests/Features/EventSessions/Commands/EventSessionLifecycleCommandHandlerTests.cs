@@ -16,6 +16,7 @@ using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -66,7 +67,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
             session.EventId == parentEvent.Id
             && session.TenantId == parentEvent.TenantId
@@ -116,7 +117,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.StartTime).IsEqualTo(start);
         await Assert.That(session.EndTime).IsEqualTo(end);
         await Assert.That(session.LocalStartDate).IsNotNull();
@@ -166,7 +167,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(parentEvent.SessionCount).IsEqualTo(0);
         await Assert.That(parentEvent.FirstSessionStartUtc).IsNull();
         await eventRepository.Received(1).Update(parentEvent);
@@ -207,7 +208,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_schedule_concurrency_conflict");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteSerializableAsync(
@@ -254,7 +255,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event session schedule is unchanged.");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteSerializableAsync(
@@ -311,7 +312,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event session was modified by another request.");
         await Assert.That(result.Errors).IsEquivalentTo(["Refresh the event session and try scheduling again."]);
         await Assert.That(result.FailureCode).IsEqualTo("event_session_schedule_concurrency_conflict");
@@ -385,11 +386,11 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
         await Assert.That(fanout.OutboxPointers).Count().IsEqualTo(1);
         NotificationFanoutOccurrence occurrence = fanout.CreatedOccurrences[0];
-        session.Reschedule(newStart.AddHours(1), newEnd.AddHours(1), "Europe/Brussels", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(newStart.AddHours(1), newEnd.AddHours(1)), "Europe/Brussels", new EventScheduleProjectionCalculator());
         NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory().Parse(occurrence);
         await Assert.That(occurrence.EventId).IsEqualTo(parentEvent.Id);
         await Assert.That(occurrence.SessionId).IsEqualTo(session.Id);
@@ -449,7 +450,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(fanout.CreatedOccurrences).IsEmpty();
         await Assert.That(fanout.OutboxPointers).IsEmpty();
         await policyProvider.DidNotReceive().GetEffectivePolicyAsync(
@@ -496,7 +497,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event session is already published.");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await policyProvider.DidNotReceive().GetEffectivePolicyAsync(
@@ -535,7 +536,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_publish_concurrency_conflict");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await policyProvider.DidNotReceive().GetEffectivePolicyAsync(
@@ -629,7 +630,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(3).GetById(firstAttemptSession.Id);
         await Assert.That(updateAttempts).IsEqualTo(2);
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
@@ -703,7 +704,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(3).GetById(firstAttemptSession.Id);
         await eventRepository.Received(2).GetById(firstAttemptParent.Id);
         await eventSessionRepository.Received(1).UpdateWithRoomOverlapGuardAsync(firstAttemptSession, Arg.Any<CancellationToken>());
@@ -729,7 +730,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         var parentEvent = CreateEvent(EventStatusEnum.Published);
         var session = CreateSession(parentEvent, EventSessionStatusEnum.Approved);
         var start = DateTimeOffset.UtcNow.AddDays(1);
-        session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
+        session.Reschedule(UtcInstantRange.Create(start, start.AddHours(1)), "UTC", new EventScheduleProjectionCalculator());
         parentEvent.Sessions.Add(session);
         eventSessionRepository.GetById(session.Id).Returns(session);
         eventSessionRepository.GetByIdForEventAsync(
@@ -757,7 +758,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Published);
         await Assert.That(session.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await Assert.That(parentEvent.SessionCount).IsEqualTo(1);
@@ -892,7 +893,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(1).Update(firstAttemptSession);
         await eventSessionRepository.DidNotReceive().Update(retrySession);
         await eventRepository.Received(1).Update(firstAttemptParent);
@@ -962,7 +963,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_publish_concurrency_conflict");
         await eventSessionRepository.Received(1).Update(firstAttemptSession);
         await eventSessionRepository.DidNotReceive().Update(retrySession);
@@ -1037,7 +1038,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_publish_readiness_failed");
         await eventSessionRepository.Received(1).Update(firstAttemptSession);
         await eventSessionRepository.DidNotReceive().Update(retrySession);
@@ -1082,7 +1083,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_publish_concurrency_conflict");
         await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -1117,7 +1118,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_publish_readiness_failed");
         await Assert.That(result.Errors!.Any(error => error.Contains("Parent event must be published"))).IsTrue();
         await eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
@@ -1189,7 +1190,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             _ => throw new InvalidOperationException($"Unsupported lifecycle transition '{transition}'.")
         };
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event session was modified by another request.");
         await Assert.That(result.Errors).IsEquivalentTo(["Refresh the event session and try again."]);
         await Assert.That(result.FailureCode).IsEqualTo(expectedFailureCode);
@@ -1253,7 +1254,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
         await eventSessionRepository.Received(1).Update(session);
         await eventRepository.Received(1).Update(parentEvent);
@@ -1309,7 +1310,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
         await Assert.That(fanout.CreatedOccurrences).IsEmpty();
         await Assert.That(fanout.OutboxPointers).IsEmpty();
@@ -1342,7 +1343,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event session is already cancelled.");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
@@ -1415,7 +1416,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_complete_concurrency_conflict");
         await eventSessionRepository.Received(1).GetById(outerSession.Id);
         await eventSessionRepository.Received(2).GetByIdForEventAsync(
@@ -1494,7 +1495,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_complete_invalid_status");
         await eventSessionRepository.Received(1).GetById(outerSession.Id);
         await eventSessionRepository.Received(2).GetByIdForEventAsync(
@@ -1570,7 +1571,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = outerSession.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await eventSessionRepository.Received(1).GetById(outerSession.Id);
         await eventSessionRepository.Received(2).GetByIdForEventAsync(
             outerSession.Id,
@@ -1622,7 +1623,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Completed);
         await Assert.That(session.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await eventSessionRepository.Received(1).Update(session);
@@ -1651,7 +1652,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_complete_concurrency_conflict");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
@@ -1689,7 +1690,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_complete_invalid_status");
         await eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
     }
@@ -1722,7 +1723,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Archived);
         await Assert.That(session.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await eventSessionRepository.Received(1).Update(session);
@@ -1751,7 +1752,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event session is already completed.");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
@@ -1786,7 +1787,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event session is already archived.");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
@@ -1840,7 +1841,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_schedule_invalid_status");
         await Assert.That(result.Message).IsEqualTo("Event session cannot be scheduled from its current lifecycle state.");
         await Assert.That(result.Errors).IsEquivalentTo(["Event session cannot be scheduled from its current lifecycle state."]);
@@ -1916,7 +1917,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_schedule_invalid_status");
         await eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await unitOfWork.DidNotReceive().ExecuteSerializableAsync(

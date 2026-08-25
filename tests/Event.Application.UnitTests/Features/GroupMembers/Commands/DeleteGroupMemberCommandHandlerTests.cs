@@ -48,7 +48,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(memberToDelete.Id);
         await Assert.That(result.Message).IsEqualTo("Member removed successfully");
         await _groupMemberRepository.Received(1).Delete(memberToDelete);
@@ -74,7 +74,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(memberToDelete.Id);
         await _groupMemberRepository.Received(1).Delete(memberToDelete);
     }
@@ -87,7 +87,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(memberId, Guid.NewGuid()), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Member not found");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -108,7 +108,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
             RequesterUserId = "not-a-guid"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Invalid requester User ID.");
         await _groupMemberRepository.DidNotReceive().HasPermissionInGroup(
             Arg.Any<Guid>(),
@@ -134,7 +134,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("You do not have permission to remove members.");
         await _groupMemberRepository.DidNotReceive().GetMembersByGroupId(Arg.Any<Guid>());
         await _groupMemberRepository.DidNotReceive().Delete(Arg.Any<GroupMember>());
@@ -160,7 +160,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(adminToDelete.Id, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Cannot remove the last admin of the group.");
         await _groupMemberRepository.DidNotReceive().Delete(Arg.Any<GroupMember>());
     }
@@ -186,7 +186,7 @@ public sealed class DeleteGroupMemberCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(adminToDelete.Id, requesterUserId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(adminToDelete.Id);
         await _groupMemberRepository.Received(1).Delete(adminToDelete);
     }

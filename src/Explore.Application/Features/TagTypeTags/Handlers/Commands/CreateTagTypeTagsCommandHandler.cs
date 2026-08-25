@@ -35,17 +35,14 @@ public class CreateTagTypeTagsCommandHandler : IRequestHandler<CreateTagTypeTags
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateTagTypeTagsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateTagTypeTagsDtoValidator(_tagRepository, _tagTypeRepository, _repository);
         var validationResult = await validator.ValidateAsync(request.TagTypeTagsDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tag Type Tags creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Tag Type Tags creation failed.");
         }
 
         var tagTypeTags = _mapper.Map<Domain.TagTypeTags>(request.TagTypeTagsDto);
@@ -55,10 +52,6 @@ public class CreateTagTypeTagsCommandHandler : IRequestHandler<CreateTagTypeTags
 
         tagTypeTags = await _repository.Create(tagTypeTags);
 
-        response.Success = true;
-        response.Id = tagTypeTags.Id;
-        response.Message = "Tag Type Tags created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(tagTypeTags.Id, "Tag Type Tags created successfully.");
     }
 }

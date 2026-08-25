@@ -36,8 +36,6 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
 
     public async Task<BaseCommandResponse<int>> Handle(UpdateEventSessionLanguageCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<int>();
-
         var validator = new UpdateEventSessionLanguageDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventSessionLanguageDto, cancellationToken);
 
@@ -49,10 +47,7 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
         var eventSessionLanguage = await _repository.GetById(request.EventSessionLanguageId);
         if (eventSessionLanguage == null)
         {
-            response.Success = false;
-            response.Message = "Event Session Language not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<int>("Event Session Language not found.");
         }
 
         request = request with { EventSessionId = eventSessionLanguage.EventSessionId };
@@ -111,11 +106,9 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
         await _repository.Update(eventSessionLanguage);
         await InvalidateCachesAsync(previousEventId, targetSession.EventId, targetSession.TenantId, cancellationToken);
 
-        response.Success = true;
-        response.Id = eventSessionLanguage.Id;
-        response.Message = "Event Session Language updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            eventSessionLanguage.Id,
+            "Event Session Language updated successfully.");
     }
 
     private static void ApplySession(EventSessionLanguage entity, DTOs.EventSessionLanguage.UpdateEventSessionLanguageSessionDto? dto, EventSession targetSession)
@@ -155,10 +148,5 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
         ValidationFailure(new List<string> { error });
 
     private static BaseCommandResponse<int> ValidationFailure(List<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = "Event Session Language update failed.",
-            Errors = errors
-        };
+        BaseCommandResponse.Validation<int>(errors, "Event Session Language update failed.");
 }

@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 using TUnit.Assertions;
@@ -274,7 +275,7 @@ public sealed class PaidOrderAcceptanceServiceTests
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "EUR", 7);
         EventTicketType ticket = EventTicketType.Create(
             Guid.CreateVersion7(), _tenantId, catalog.Id, "General admission", "EUR", TicketPricingModeEnum.Fixed,
-            1_000, null, null, ParticipantDataCollectionModeEnum.None, null, null, null, false, false,
+            Money.Create(1_000, "EUR"), null, null, ParticipantDataCollectionModeEnum.None, null, null, null, false, false,
             null, null, null, null);
         catalog.AddTicketType(ticket, null);
         catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, _tenantId, _eventId, 1));
@@ -283,7 +284,7 @@ public sealed class PaidOrderAcceptanceServiceTests
         {
             secondTicket = EventTicketType.Create(
                 Guid.CreateVersion7(), _tenantId, catalog.Id, "Reserved admission", "EUR", TicketPricingModeEnum.Fixed,
-                500, null, null, ParticipantDataCollectionModeEnum.None, null, null, null, false, false,
+                Money.Create(500, "EUR"), null, null, ParticipantDataCollectionModeEnum.None, null, null, null, false, false,
                 null, null, null, null);
             catalog.AddTicketType(secondTicket, null);
             catalog.AddEntitlement(secondTicket, TicketTypeEntitlement.CreateForEvent(secondTicket.Id, _tenantId, _eventId, 1));

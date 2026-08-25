@@ -12,4 +12,14 @@ public interface IEventOpenGraphImageRenderer
         CancellationToken cancellationToken);
 }
 
-public sealed record EventOpenGraphImageRenderResult(byte[] PngBytes, string ETag);
+public sealed record EventOpenGraphImageRenderResult
+{
+    public EventOpenGraphImageRenderResult(ReadOnlyMemory<byte> PngBytes, string ETag)
+    {
+        this.PngBytes = PngBytes.ToArray();
+        this.ETag = ETag;
+    }
+
+    public ReadOnlyMemory<byte> PngBytes { get; }
+    public string ETag { get; }
+}

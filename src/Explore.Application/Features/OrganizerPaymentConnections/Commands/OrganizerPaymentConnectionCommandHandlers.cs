@@ -454,20 +454,15 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
     private static bool IsNavigationUrl(Uri url) =>
         url.IsAbsoluteUri && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp);
 
-    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Success(Uri onboardingUrl, bool reusedExistingConnection) => new()
-    {
-        Success = true,
-        Id = new OrganizerPaymentOnboardingLinkResult(onboardingUrl, reusedExistingConnection),
-        Message = reusedExistingConnection ? "Organizer payment onboarding link created for existing connection." : "Organizer payment onboarding link created."
-    };
+    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Success(Uri onboardingUrl, bool reusedExistingConnection) =>
+        BaseCommandResponse.Success(
+            new OrganizerPaymentOnboardingLinkResult(onboardingUrl, reusedExistingConnection),
+            reusedExistingConnection
+                ? "Organizer payment onboarding link created for existing connection."
+                : "Organizer payment onboarding link created.");
 
-    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Failure(string code, string message) => new()
-    {
-        Success = false,
-        FailureCode = code,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Failure(string code, string message) =>
+        BaseCommandResponse.Failure<OrganizerPaymentOnboardingLinkResult>(code, message, [message]);
 
     private sealed record OrganizerPaymentConnectionPersistenceResult(
         bool Succeeded,

@@ -19,8 +19,6 @@ public class UnassignSessionFromGroupCommandHandler : IRequestHandler<UnassignSe
 
     public async Task<BaseCommandResponse<Guid>> Handle(UnassignSessionFromGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var assignment = await _eventSessionGroupSessionRepository.GetExistingAssignmentAsync(
             request.EventSessionGroupId,
             request.EventSessionId,
@@ -28,23 +26,18 @@ public class UnassignSessionFromGroupCommandHandler : IRequestHandler<UnassignSe
 
         if (assignment is null)
         {
-            response.Success = false;
-            response.Message = "Session group assignment not found.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Session group assignment not found.");
         }
 
         if (assignment.EventId != request.EventId)
         {
-            response.Success = false;
-            response.Message = "Session group assignment must belong to the requested event.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Session group assignment must belong to the requested event."],
+                "Session group assignment must belong to the requested event.");
         }
 
         await _eventSessionGroupSessionRepository.Delete(assignment);
 
-        response.Success = true;
-        response.Id = assignment.Id;
-        response.Message = "Session group assignment removed successfully.";
-        return response;
+        return BaseCommandResponse.Success(assignment.Id, "Session group assignment removed successfully.");
     }
 }

@@ -72,7 +72,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
 
         var signal = report.Signals.Single();
         var link = report.ExternalLinks.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(report.Id);
         await Assert.That(signal.Provider).IsEqualTo(EventReportSignalProvider.Osprey);
         await Assert.That(signal.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
@@ -153,7 +153,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(report.Signals).Count().IsEqualTo(1);
         await Assert.That(report.ExternalLinks).Count().IsEqualTo(1);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
@@ -196,7 +196,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
 
         var signal = report.Signals.Single();
         var link = report.ExternalLinks.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(signal.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
         await Assert.That(signal.ProviderTargetId).IsEqualTo(tenantTargetId);
         await Assert.That(link.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Tenant);
@@ -245,7 +245,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
     }
@@ -274,7 +274,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.TenantUnresolved);
         await _eventReportRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -305,7 +305,7 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.EventMismatch);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
     }

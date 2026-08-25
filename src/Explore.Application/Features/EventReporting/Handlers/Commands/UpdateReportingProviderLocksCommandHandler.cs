@@ -23,24 +23,17 @@ public sealed class UpdateReportingProviderLocksCommandHandler(
     {
         if (!await adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Only instance administrators can update moderation reporting provider locks.",
-                FailureCode = FailureCodes.AdminRequired
-            };
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update moderation reporting provider locks.");
         }
 
         if (request.Locks.General is null
             && request.Locks.Osprey is null
             && request.Locks.Coop is null)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "At least one moderation reporting provider lock group is required.",
-                Errors = ["Supply general, osprey, or coop."],
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                ["Supply general, osprey, or coop."],
+                "At least one moderation reporting provider lock group is required.");
         }
 
         if (request.Locks.General is { } general)
@@ -72,12 +65,9 @@ public sealed class UpdateReportingProviderLocksCommandHandler(
 
         settingsResolver.InvalidateCache(SettingScope.Instance);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = Guid.Empty,
-            Message = "Moderation reporting provider locks updated successfully.",
-        };
+        return BaseCommandResponse.Success(
+            Guid.Empty,
+            "Moderation reporting provider locks updated successfully.");
     }
 
     private Task SetAsync(string key, bool value, Guid userId, CancellationToken cancellationToken) =>

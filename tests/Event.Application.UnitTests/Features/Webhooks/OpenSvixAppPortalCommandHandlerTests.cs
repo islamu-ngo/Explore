@@ -58,7 +58,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Url).IsEqualTo("https://svix.example/app-portal/session");
         await Assert.That(result.Id.Token).IsEqualTo("portal-token");
@@ -92,7 +92,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_portal_validation_failed");
         await _portalService.DidNotReceive().CreateAccessAsync(
             Arg.Any<WebhookProviderPortalAccessInput>(),
@@ -121,7 +121,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("svix_provider_unavailable");
         await Assert.That(result.IsRetryable).IsTrue();
         await Assert.That(result.Errors).Contains("SvixApi:503");

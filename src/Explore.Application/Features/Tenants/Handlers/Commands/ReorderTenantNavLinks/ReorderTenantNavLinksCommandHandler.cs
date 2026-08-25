@@ -33,14 +33,11 @@ public class ReorderTenantNavLinksCommandHandler : IRequestHandler<ReorderTenant
 
     public async Task<BaseCommandResponse<bool>> Handle(ReorderTenantNavLinksCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<bool>();
-
         if (request.NavigationLinkOrders?.Count == 0)
         {
-            response.Success = false;
-            response.Message = "No navigation links provided for reordering.";
-            response.Errors = new() { "Navigation link list is empty." };
-            return response;
+            return BaseCommandResponse.Validation<bool>(
+                ["Navigation link list is empty."],
+                "No navigation links provided for reordering.");
         }
 
         // Get all navigation links for the current tenant
@@ -55,10 +52,9 @@ public class ReorderTenantNavLinksCommandHandler : IRequestHandler<ReorderTenant
         var invalidIds = requestedIds.Where(id => !existingIds.Contains(id)).ToList();
         if (invalidIds.Any())
         {
-            response.Success = false;
-            response.Message = "One or more navigation links not found or do not belong to your tenant.";
-            response.Errors = new() { $"Invalid link IDs: {string.Join(", ", invalidIds)}" };
-            return response;
+            return BaseCommandResponse.Validation<bool>(
+                [$"Invalid link IDs: {string.Join(", ", invalidIds)}"],
+                "One or more navigation links not found or do not belong to your tenant.");
         }
 
         // Update the order for each navigation link
@@ -72,9 +68,6 @@ public class ReorderTenantNavLinksCommandHandler : IRequestHandler<ReorderTenant
             }
         }
 
-        response.Success = true;
-        response.Message = "Navigation links reordered successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(false, "Navigation links reordered successfully.");
     }
 }

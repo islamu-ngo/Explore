@@ -44,31 +44,26 @@ public class LockSettingCommandHandler
     public async Task<BaseCommandResponse<Guid>> Handle(
         LockSettingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         // Validate key exists
         var definition = SettingRegistry.Get(request.Key);
         if (definition is null)
         {
-            response.Success = false;
-            response.Message = $"Setting key '{request.Key}' not found in registry.";
-            return response;
+            string message = $"Setting key '{request.Key}' not found in registry.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Validate lockable
         if (!definition.IsLockable)
         {
-            response.Success = false;
-            response.Message = $"Setting '{request.Key}' is not lockable.";
-            return response;
+            string message = $"Setting '{request.Key}' is not lockable.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Validate scope (only Instance and Tenant supported)
         if (request.Scope is not SettingScope.Instance and not SettingScope.Tenant)
         {
-            response.Success = false;
-            response.Message = $"Locking is only supported at Instance and Tenant scopes, not {request.Scope}.";
-            return response;
+            string message = $"Locking is only supported at Instance and Tenant scopes, not {request.Scope}.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Authorization
@@ -76,10 +71,7 @@ public class LockSettingCommandHandler
             request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
         if (!authorized)
         {
-            response.Success = false;
-            response.Message = authError;
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(authError);
         }
 
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
@@ -104,9 +96,8 @@ public class LockSettingCommandHandler
             request.Key, null, null, lockSource,
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
 
-        response.Success = true;
-        response.Id = scopeId;
-        response.Message = $"Setting '{request.Key}' locked at {request.Scope} scope.";
-        return response;
+        return BaseCommandResponse.Success(
+            scopeId,
+            $"Setting '{request.Key}' locked at {request.Scope} scope.");
     }
 }

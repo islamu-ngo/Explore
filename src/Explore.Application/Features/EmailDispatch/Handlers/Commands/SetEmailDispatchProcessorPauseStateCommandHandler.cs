@@ -20,13 +20,10 @@ public sealed class SetEmailDispatchProcessorPauseStateCommandHandler(IEmailDisp
             .ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                FailureCode = EmailDispatchFailureCodes.ValidationFailed,
-                Message = "Email dispatch processor pause update failed validation.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                EmailDispatchFailureCodes.ValidationFailed,
+                "Email dispatch processor pause update failed validation.",
+                validation.Errors.Select(error => error.ErrorMessage));
         }
 
         var state = await repository.SetProcessorPauseState(
@@ -35,13 +32,10 @@ public sealed class SetEmailDispatchProcessorPauseStateCommandHandler(IEmailDisp
             request.ChangedBy,
             DateTime.UtcNow,
             cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = state.Id,
-            Success = true,
-            Message = request.IsPaused
+        return BaseCommandResponse.Success(
+            state.Id,
+            request.IsPaused
                 ? "Email dispatch processor paused."
-                : "Email dispatch processor resumed."
-        };
+                : "Email dispatch processor resumed.");
     }
 }

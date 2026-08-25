@@ -67,7 +67,7 @@ public class CreateUiThemeCommandHandlerTests
 
         var result = await _handler.Handle(CreateTenantThemeCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _uiThemeRepository.Received(1).ClearDefaultAsync(TestTenantId, null);
         await _uiThemeRepository.Received(1).Create(Arg.Is<UiTheme>(theme =>
             theme.TenantId == TestTenantId
@@ -82,7 +82,7 @@ public class CreateUiThemeCommandHandlerTests
 
         var result = await _handler.Handle(CreatePlatformThemeCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _uiThemeRepository.DidNotReceive().Create(Arg.Any<UiTheme>());
     }
 

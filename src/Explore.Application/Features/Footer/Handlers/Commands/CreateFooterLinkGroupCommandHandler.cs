@@ -31,11 +31,6 @@ public sealed class CreateFooterLinkGroupCommandHandler(
 
         group = await footerLinkGroupRepository.Create(group);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = group.Id,
-            Message = "Footer link group created successfully.",
-        };
+        return BaseCommandResponse.Success(group.Id, "Footer link group created successfully.");
     }
 }

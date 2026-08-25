@@ -93,17 +93,9 @@ public sealed class SubmitOrganizationTenantEvidenceCommandHandler(
             && !string.IsNullOrWhiteSpace(document.ObjectKey);
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

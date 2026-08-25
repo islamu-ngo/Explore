@@ -37,21 +37,17 @@ public class CreateCustomRoleCommandHandler : IRequestHandler<CreateCustomRoleCo
 
     public async Task<BaseCommandResponse<int>> Handle(CreateCustomRoleCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<int>();
-
         // Validate name
         if (string.IsNullOrWhiteSpace(request.FullName))
         {
-            response.Success = false;
-            response.Message = "Role name is required.";
-            return response;
+            return BaseCommandResponse.Validation<int>(["Role name is required."], "Role name is required.");
         }
 
         if (request.Scope == RoleScopeEnum.Event)
         {
-            response.Success = false;
-            response.Message = "Custom event roles are not supported in the first event-role release.";
-            return response;
+            return BaseCommandResponse.Validation<int>(
+                ["Custom event roles are not supported in the first event-role release."],
+                "Custom event roles are not supported in the first event-role release.");
         }
 
         // Generate MasterCode from scope prefix + sanitized name
@@ -69,9 +65,8 @@ public class CreateCustomRoleCommandHandler : IRequestHandler<CreateCustomRoleCo
         var existing = await _roleRepository.GetByMasterCodeAsync(masterCode);
         if (existing != null)
         {
-            response.Success = false;
-            response.Message = $"A role with code '{masterCode}' already exists.";
-            return response;
+            string message = $"A role with code '{masterCode}' already exists.";
+            return BaseCommandResponse.Validation<int>([message], message);
         }
 
         // Capability ceiling validation
@@ -83,10 +78,9 @@ public class CreateCustomRoleCommandHandler : IRequestHandler<CreateCustomRoleCo
 
         if (ceilingErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Permission assignment validation failed.";
-            response.Errors = ceilingErrors;
-            return response;
+            return BaseCommandResponse.Validation<int>(
+                ceilingErrors,
+                "Permission assignment validation failed.");
         }
 
         // Create the role
@@ -120,10 +114,8 @@ public class CreateCustomRoleCommandHandler : IRequestHandler<CreateCustomRoleCo
         // Invalidate permission cache
         _permissionRegistry.InvalidateCache();
 
-        response.Success = true;
-        response.Id = role.Id;
-        response.Message = $"Custom role '{role.FullName}' created with {request.PermissionIds.Count} permissions.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            role.Id,
+            $"Custom role '{role.FullName}' created with {request.PermissionIds.Count} permissions.");
     }
 }

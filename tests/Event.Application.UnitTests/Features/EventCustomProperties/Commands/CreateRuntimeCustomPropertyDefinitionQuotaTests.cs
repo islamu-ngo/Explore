@@ -80,7 +80,7 @@ public class CreateRuntimeCustomPropertyDefinitionQuotaTests
             new CreateEventCustomPropertyDefinitionCommand { DefinitionDto = CreateEventDto(eventId) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key);
@@ -110,7 +110,7 @@ public class CreateRuntimeCustomPropertyDefinitionQuotaTests
             new CreateEventCustomPropertyDefinitionCommand { DefinitionDto = CreateEventDto(eventId) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.Actual).IsEqualTo(4);
@@ -176,7 +176,7 @@ public class CreateRuntimeCustomPropertyDefinitionQuotaTests
             new CreateEventSessionCustomPropertyDefinitionCommand { DefinitionDto = CreateSessionDto(sessionId) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEventSession.Key);
@@ -206,7 +206,7 @@ public class CreateRuntimeCustomPropertyDefinitionQuotaTests
             new CreateEventSessionCustomPropertyDefinitionCommand { DefinitionDto = CreateSessionDto(sessionId) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.Actual).IsEqualTo(3);

@@ -35,7 +35,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
         BaseCommandResponse<Guid> draftResult = await service.CreateAsync(
             new CreateRegistrationFormTemplateCommand(Input(draft, isPlatformOwned: false)), CancellationToken.None);
 
-        await Assert.That(draftResult.Success).IsFalse();
+        await Assert.That(draftResult.IsSuccess).IsFalse();
         await Assert.That(draftResult.FailureCode).IsEqualTo("registration_form_template_source_not_published");
         await Assert.That(() => service.CreateAsync(
                 new CreateRegistrationFormTemplateCommand(Input(otherTenantPublished, isPlatformOwned: false)), CancellationToken.None))
@@ -48,7 +48,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
         BaseCommandResponse<Guid> platformResult = await platformService.CreateAsync(
             new CreateRegistrationFormTemplateCommand(Input(otherTenantPublished, isPlatformOwned: true)), CancellationToken.None);
 
-        await Assert.That(platformResult.Success).IsTrue();
+        await Assert.That(platformResult.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -90,7 +90,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
             new InstantiateRegistrationFormTemplateCommand(template.Id, new InstantiateRegistrationFormTemplateInputDto(
                 source.EventId, workflow.Id, "tenant.registration", "copy", "Copy", workflow.ConcurrencyStamp)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await forms.Received(1).CreateFormAsync(Arg.Is<RegistrationForm>(form =>
             form.TenantId == tenantId &&
             form.EventId == source.EventId &&

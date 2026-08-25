@@ -49,25 +49,21 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event custom property definition creation failed.");
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);
         if (!governance.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition creation failed.";
-            response.Errors = governance.Errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                governance.Errors,
+                "Event custom property definition creation failed.");
         }
 
         if (await _eventCustomPropertyRepository.ExistsDefinitionKey(
@@ -75,10 +71,9 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                 governance.NormalizedNamespace,
                 governance.NormalizedKey))
         {
-            response.Success = false;
-            response.Message = "Event custom property definition creation failed.";
-            response.Errors = ["A custom property definition with the same Namespace + Key already exists for this event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A custom property definition with the same Namespace + Key already exists for this event."],
+                "Event custom property definition creation failed.");
         }
 
         var maxDefinitions = await _quotaResolver.GetIntAsync(
@@ -90,7 +85,7 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             cancellationToken);
         if (currentDefinitionCount >= maxDefinitions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event custom property definition creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key,
@@ -99,7 +94,6 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                     currentDefinitionCount + 1,
                     "event_custom_property_definitions",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var maxOptions = await _quotaResolver.GetIntAsync(
@@ -108,7 +102,7 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             cancellationToken);
         if (request.DefinitionDto.Options.Count > maxOptions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event custom property definition creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -117,7 +111,6 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
                     request.DefinitionDto.Options.Count,
                     "event_custom_property_options",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var definition = _mapper.Map<EventCustomPropertyDefinition>(request.DefinitionDto);
@@ -135,15 +128,11 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             ct => _eventCustomPropertyRepository.CreateWithOptions(definition, options, defaultOption?.Id, ct),
             cancellationToken);
 
-        response.Success = true;
-        response.Id = definition.Id;
-        response.Message = "Event custom property definition created successfully.";
-
         await _cache.RemoveAsync(
             GetListCacheKey(request.DefinitionDto.EventId, 1, PaginatedResult<object>.DefaultPageSize),
             cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(definition.Id, "Event custom property definition created successfully.");
     }
 
     private List<EventCustomPropertyOption> CreateOptionEntities(

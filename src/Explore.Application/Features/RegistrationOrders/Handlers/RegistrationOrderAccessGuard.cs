@@ -133,19 +133,10 @@ internal static class RegistrationOrderAccessGuard
         return await action(request.OrderId, tenant.TenantId, cancellationToken);
     }
 
-    public static RegistrationOrderLifecycleResponseDto NotFound(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order was not found."
-    };
+    public static RegistrationOrderLifecycleResponseDto NotFound(Guid orderId) =>
+        RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.Failure<Guid>(
+            "registration_order_not_found", "Registration order was not found.", id: orderId));
 
-    public static BaseCommandResponse<Guid> ParticipantNotFound(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        FailureCode = "registration_order_not_found",
-        Message = "Registration order was not found."
-    };
+    public static BaseCommandResponse<Guid> ParticipantNotFound(Guid orderId) => BaseCommandResponse.Failure<Guid>(
+        "registration_order_not_found", "Registration order was not found.", id: orderId);
 }

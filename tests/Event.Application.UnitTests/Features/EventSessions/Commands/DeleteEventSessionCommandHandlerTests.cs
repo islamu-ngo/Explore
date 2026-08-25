@@ -30,7 +30,7 @@ public sealed class DeleteEventSessionCommandHandlerTests
             new DeleteEventSessionCommand { Id = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(session.Id);
         await _sessions.Received(1).Delete(session);
     }
@@ -49,7 +49,7 @@ public sealed class DeleteEventSessionCommandHandlerTests
             new DeleteEventSessionCommand { Id = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_ticket_entitlement_conflict");
         await _sessions.DidNotReceive().Delete(Arg.Any<EventSession>());
     }

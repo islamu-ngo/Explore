@@ -33,15 +33,11 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAuthorizationProviderConfigurationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
-            response.Success = false;
-            response.Message = "Only instance administrators can update authorization provider configuration.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update authorization provider configuration.");
         }
 
         return await ApplyConfigurationAsync(request.Patch, cancellationToken);
@@ -53,11 +49,8 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
     {
         if (!_setupSecretProvider.IsSetupModeActive)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Setup mode is no longer active."
-            };
+            const string message = "Setup mode is no longer active.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         return await ApplyConfigurationAsync(request.Patch, cancellationToken);
@@ -67,22 +60,18 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
         PatchAuthorizationProviderConfigurationDto configurationPatch,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var currentConfiguration = await _configurationService.ReadConfigurationAsync();
         if (currentConfiguration.AuthorizationProviderManagedByDeployment)
         {
-            response.Success = false;
-            response.Message = "Authorization provider configuration is managed by the deployment.";
-            response.Errors = ["Change AUTHORIZATION_PROVIDER and the related server-side settings, then restart the deployment."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Change AUTHORIZATION_PROVIDER and the related server-side settings, then restart the deployment."],
+                "Authorization provider configuration is managed by the deployment.");
         }
 
         if (!configurationPatch.HasChanges() || configurationPatch.Configuration.Value is null)
         {
-            response.Success = false;
-            response.Message = "Authorization provider patch must include a complete configuration group.";
-            return response;
+            const string message = "Authorization provider patch must include a complete configuration group.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var patch = configurationPatch.Configuration.Value;
@@ -105,10 +94,9 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
         var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid authorization provider configuration.";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(x => x.ErrorMessage),
+                "Invalid authorization provider configuration.");
         }
 
         configuration.CerbosGrpcEndpoint = GrpcEndpointNormalizer.Normalize(configuration.CerbosGrpcEndpoint);
@@ -121,10 +109,9 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
 
             if (!isReachable)
             {
-                response.Success = false;
-                response.Message = "Cerbos gRPC endpoint could not be verified.";
-                response.Errors = ["Ensure the endpoint is reachable and serving the gRPC health service."];
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Ensure the endpoint is reachable and serving the gRPC health service."],
+                    "Cerbos gRPC endpoint could not be verified.");
             }
 
             if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminEndpoint))
@@ -135,10 +122,9 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
 
                 if (!isAdminEndpointAllowed)
                 {
-                    response.Success = false;
-                    response.Message = "Cerbos Admin API endpoint is not allowed.";
-                    response.Errors = ["Use an HTTPS Admin API endpoint without credentials, query, fragment, or local/private network address components."];
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>(
+                        ["Use an HTTPS Admin API endpoint without credentials, query, fragment, or local/private network address components."],
+                        "Cerbos Admin API endpoint is not allowed.");
                 }
             }
 
@@ -147,8 +133,8 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
 
         await _configurationService.ApplyConfigurationAsync(configuration);
 
-        response.Success = true;
-        response.Message = "Authorization provider configuration updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            Guid.Empty,
+            "Authorization provider configuration updated successfully.");
     }
 }

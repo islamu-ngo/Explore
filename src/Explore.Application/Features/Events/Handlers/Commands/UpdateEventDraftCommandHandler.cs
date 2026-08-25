@@ -69,7 +69,6 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventDraftCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new UpdateEventDraftRequestDtoValidator(
             _audienceAgeRepository,
             _audienceGenderRepository,
@@ -83,18 +82,15 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         var validationResult = await validator.ValidateAsync(request.Draft, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event draft update failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Event draft update failed.");
         }
 
         var eventEntity = await _eventRepository.GetScheduleGraphForUpdateAsync(request.Id, cancellationToken);
         if (eventEntity is null)
         {
-            response.Success = false;
-            response.Message = "Event not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Event not found."], "Event not found.");
         }
 
         if (eventEntity.ConcurrencyStamp != request.Draft.ExpectedConcurrencyStamp)
@@ -109,11 +105,10 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         EventStatusEnum currentStatus = (EventStatusEnum)eventEntity.EventStatusId;
         if (!EventLifecycleRules.IsDraftEditable(currentStatus))
         {
-            response.Success = false;
-            response.Message = "Event draft update failed.";
-            response.Errors = ["Only draft events can be updated through the draft workflow."];
-            response.FailureCode = DraftNotEditableCode;
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                DraftNotEditableCode,
+                "Event draft update failed.",
+                ["Only draft events can be updated through the draft workflow."]);
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -122,10 +117,9 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 request.Draft.FeaturedImageId,
                 request.Draft.BackgroundImageId))
         {
-            response.Success = false;
-            response.Message = "Event draft update failed.";
-            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Every image must be an active public safe-raster object in the current tenant."],
+                "Event draft update failed.");
         }
 
         EventParticipationConfiguration? participationConfiguration =
@@ -135,10 +129,9 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 cancellationToken);
         if (participationConfiguration is null)
         {
-            response.Success = false;
-            response.Message = "Event participation configuration not found.";
-            response.FailureCode = "event_participation_configuration_not_found";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "event_participation_configuration_not_found",
+                "Event participation configuration not found.");
         }
 
         if (participationConfiguration.ConcurrencyStamp
@@ -186,13 +179,9 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         await _participationConfigurationRepository.UpdateAsync(participationConfiguration, cancellationToken);
         await _eventRepository.Update(eventEntity);
 
-        response.Success = true;
-        response.Id = eventEntity.Id;
-        response.Message = "Event draft updated successfully.";
-
         await _cache.RemoveAsync($"event:detail:{eventEntity.Id}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(eventEntity.Id, "Event draft updated successfully.");
     }
 }

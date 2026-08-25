@@ -107,7 +107,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             new ContinueGuestRegistrationOrderCommand(_eventId, _orderId, "guessed-token"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         _ = _capabilities.DidNotReceive().Matches(Arg.Any<string?>(), Arg.Any<CapabilityTokenHash>());
         _ = _lifecycle.DidNotReceive().SubmitAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -122,11 +122,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             _orderId, (int)ParticipantTypeEnum.Adult, null, new ParticipantDetailsDto("Guest", null, null));
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
-        sender.Send(mutation, Arg.Any<CancellationToken>()).Returns(new Explore.Application.Responses.BaseCommandResponse<Guid>
-        {
-            Id = Guid.CreateVersion7(),
-            Success = true
-        });
+        sender.Send(mutation, Arg.Any<CancellationToken>()).Returns(Explore.Application.Responses.BaseCommandResponse.Success(Guid.CreateVersion7()));
 
         var handler = new MutateGuestRegistrationParticipantsCommandHandler(
             _inventory, _capabilities, _tenant, new FixedTimeProvider(UtcNow), sender);
@@ -134,7 +130,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             new MutateGuestRegistrationParticipantsCommand(_eventId, _orderId, "guest-token", mutation),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         _ = sender.Received(1).Send(mutation, CancellationToken.None);
     }
 
@@ -153,7 +149,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             new MutateGuestRegistrationParticipantsCommand(_eventId, _orderId, "guest-token", mutation),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         _ = sender.DidNotReceive().Send(Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
@@ -162,7 +158,7 @@ public sealed class RegistrationOrderAccessHandlerTests
     public async Task ContinueGuestRegistrationOrderForwardsContributionAfterCapabilityValidation()
     {
         RegistrationOrder order = CreateGuestOrder();
-        RegistrationOrderLifecycleResponseDto expected = new() { Id = _orderId, Success = true };
+        RegistrationOrderLifecycleResponseDto expected = RegistrationOrderLifecycleResponseDto.Success(_orderId, null, null);
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
         _lifecycle.SubmitAsync(_orderId, _tenantId, 500, Arg.Any<CancellationToken>()).Returns(expected);
@@ -171,7 +167,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             new ContinueGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token", 500),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         _ = _lifecycle.Received(1).SubmitAsync(_orderId, _tenantId, 500, CancellationToken.None);
     }
 
@@ -254,7 +250,7 @@ public sealed class RegistrationOrderAccessHandlerTests
     public async Task GuestLifecycleActionWhenCapabilityIsValidDelegatesToExistingLifecycleService(GuestLifecycleAction action)
     {
         RegistrationOrder order = CreateGuestOrder();
-        RegistrationOrderLifecycleResponseDto expected = new() { Id = _orderId, Success = true };
+        RegistrationOrderLifecycleResponseDto expected = RegistrationOrderLifecycleResponseDto.Success(_orderId, null, null);
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
         if (action == GuestLifecycleAction.Finalize)
@@ -285,7 +281,7 @@ public sealed class RegistrationOrderAccessHandlerTests
                 CancellationToken.None);
 
         await Assert.That(result.Id).IsEqualTo(expected.Id);
-        await Assert.That(result.Success).IsEqualTo(expected.Success);
+        await Assert.That(result.IsSuccess).IsEqualTo(expected.IsSuccess);
         if (action == GuestLifecycleAction.Finalize)
         {
             _ = _lifecycle.Received(1).FinalizeFreeAsync(_orderId, _tenantId, CancellationToken.None);
@@ -306,12 +302,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             .Returns(call =>
             {
                 started = call.ArgAt<CreateRegistrationOrderWithHoldCommand>(0);
-                return new Explore.Application.Responses.BaseCommandResponse<Guid>
-                {
-                    Id = _orderId,
-                    Success = true,
-                    Message = "Registration order created."
-                };
+                return Explore.Application.Responses.BaseCommandResponse.Success(_orderId, "Registration order created.");
             });
 
         GuestRegistrationOrderStartDto result = await new StartGuestRegistrationOrderCommandHandler(_starter, _capabilities).Handle(
@@ -323,7 +314,7 @@ public sealed class RegistrationOrderAccessHandlerTests
                 PlatformContributionBasisPoints: 500),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.GuestCapabilityToken).IsEqualTo("guest-token");
         await Assert.That(started).IsNotNull();
         await Assert.That(started!.AccountUserId).IsNull();
@@ -391,7 +382,7 @@ public sealed class RegistrationOrderAccessHandlerTests
                 [new RegistrationOrderLineSelection(Guid.CreateVersion7(), 1, null)]),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_authentication_required");
         _ = await _starter.DidNotReceive().StartAsync(Arg.Any<CreateRegistrationOrderWithHoldCommand>(), Arg.Any<CancellationToken>());
     }
@@ -410,7 +401,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             _tenant,
             _currentUser).Handle(new CancelAuthenticatedRegistrationOrderCommand(_eventId, _orderId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         _ = _lifecycle.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -432,7 +423,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             new ContinueAuthenticatedRegistrationOrderCommand(_eventId, _orderId, 500),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         _ = _lifecycle.DidNotReceive().SubmitAsync(
             Arg.Any<Guid>(),
@@ -488,7 +479,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
             new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "bad-token"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         await Assert.That(order.AccountUserId).IsNull();
         await _inventory.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -503,7 +494,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
             new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_authentication_required");
         _ = await _inventory.DidNotReceive().GetOrderForUpdateWithPiiAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -519,7 +510,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
             new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_verified_email_required");
         _ = await _inventory.DidNotReceive().GetOrderForUpdateWithPiiAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -542,7 +533,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         RegistrationOrderDto? current = await new GetCurrentRegistrationOrderQueryHandler(
             _inventory, _lifecycle, _tenant, _currentUser).Handle(new GetCurrentRegistrationOrderQuery(_orderId), CancellationToken.None);
 
-        await Assert.That(claim.Success).IsTrue();
+        await Assert.That(claim.IsSuccess).IsTrue();
         await Assert.That(order.AccountUserId).IsEqualTo(userId);
         await Assert.That(current).IsNotNull();
         await Assert.That(current!.AccountUserId).IsEqualTo(userId);
@@ -591,9 +582,9 @@ public sealed class RegistrationOrderAccessHandlerTests
         Explore.Application.Responses.BaseCommandResponse<Guid> retry = await CreateClaimHandler().Handle(
             new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
 
-        await Assert.That(conflict.Success).IsFalse();
+        await Assert.That(conflict.IsSuccess).IsFalse();
         await Assert.That(conflict.FailureCode).IsEqualTo("registration_order_already_linked");
-        await Assert.That(retry.Success).IsTrue();
+        await Assert.That(retry.IsSuccess).IsTrue();
         await Assert.That(retry.Message).IsEqualTo("Registration order already linked to the current account.");
     }
 

@@ -31,8 +31,6 @@ public class AssignSessionToGroupCommandHandler : IRequestHandler<AssignSessionT
 
     public async Task<BaseCommandResponse<Guid>> Handle(AssignSessionToGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new AssignSessionToGroupRequestDtoValidator(
             _eventRepository,
             _eventSessionGroupRepository,
@@ -41,10 +39,9 @@ public class AssignSessionToGroupCommandHandler : IRequestHandler<AssignSessionT
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Session group assignment failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Session group assignment failed.");
         }
 
         var group = await _eventSessionGroupRepository.GetForUpdateAsync(
@@ -55,16 +52,15 @@ public class AssignSessionToGroupCommandHandler : IRequestHandler<AssignSessionT
 
         if (group is null || session is null || parentEvent is null)
         {
-            response.Success = false;
-            response.Message = "Event, session group, or event session was not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>(
+                "Event, session group, or event session was not found in the current tenant.");
         }
 
         if (group.EventId != request.Assignment.EventId || session.EventId != request.Assignment.EventId)
         {
-            response.Success = false;
-            response.Message = "Session group and event session must belong to the requested event.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Session group and event session must belong to the requested event."],
+                "Session group and event session must belong to the requested event.");
         }
 
         var existingAssignment = await _eventSessionGroupSessionRepository.GetExistingAssignmentAsync(
@@ -84,10 +80,9 @@ public class AssignSessionToGroupCommandHandler : IRequestHandler<AssignSessionT
             existingAssignment.SortOrder = request.Assignment.SortOrder;
             await _eventSessionGroupSessionRepository.Update(existingAssignment);
 
-            response.Success = true;
-            response.Id = existingAssignment.Id;
-            response.Message = "Session group assignment updated successfully.";
-            return response;
+            return BaseCommandResponse.Success(
+                existingAssignment.Id,
+                "Session group assignment updated successfully.");
         }
 
         var assignment = new EventSessionGroupSession
@@ -106,10 +101,9 @@ public class AssignSessionToGroupCommandHandler : IRequestHandler<AssignSessionT
 
         assignment = await _eventSessionGroupSessionRepository.Create(assignment);
 
-        response.Success = true;
-        response.Id = assignment.Id;
-        response.Message = "Session group assignment created successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            assignment.Id,
+            "Session group assignment created successfully.");
     }
 
     private async Task DemoteOtherPrimaryAssignmentsAsync(

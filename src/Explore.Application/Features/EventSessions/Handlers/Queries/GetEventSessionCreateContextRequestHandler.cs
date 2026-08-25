@@ -76,7 +76,13 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
                 referencedLocations.Add(location);
         }
 
-        var context = new EventSessionCreateContextDto
+        var notices = BuildNotices(
+            eventEntity.EventTimeZoneId ?? eventEntity.Timezone,
+            eventEntity.FirstSessionDate,
+            eventEntity.LastSessionDate,
+            groups.Count,
+            referencedLocations.Count);
+        return new EventSessionCreateContextDto
         {
             EventId = eventEntity.Id,
             EventTitle = eventEntity.Title,
@@ -127,33 +133,32 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
                     Color = group.Color,
                     SortOrder = group.SortOrder
                 })
-                .ToList()
+                .ToList(),
+            Notices = notices
         };
-
-        AddNotices(context);
-        return context;
     }
 
-    private static void AddNotices(EventSessionCreateContextDto context)
+    private static List<string> BuildNotices(
+        string? timeZoneId,
+        DateOnly? eventStartDate,
+        DateOnly? eventEndDate,
+        int sessionGroupCount,
+        int locationCount)
     {
-        if (string.IsNullOrWhiteSpace(context.TimeZoneId))
-        {
-            context.Notices.Add("No event timezone is configured yet. Program item times use your local timezone until the event timezone is set.");
-        }
+        var notices = new List<string>();
 
-        if (!context.EventStartDate.HasValue || !context.EventEndDate.HasValue)
-        {
-            context.Notices.Add("No event date window is configured yet. Confirm the program item date before publishing.");
-        }
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+            notices.Add("No event timezone is configured yet. Program item times use your local timezone until the event timezone is set.");
 
-        if (context.SessionGroups.Count == 0)
-        {
-            context.Notices.Add("No program sections exist yet. You can save the program item now and assign it to a track or section later.");
-        }
+        if (!eventStartDate.HasValue || !eventEndDate.HasValue)
+            notices.Add("No event date window is configured yet. Confirm the program item date before publishing.");
 
-        if (context.Locations.Count == 0)
-        {
-            context.Notices.Add("No event-associated locations are available. Venue selection remains unavailable until a location is linked through an authorized event management flow.");
-        }
+        if (sessionGroupCount == 0)
+            notices.Add("No program sections exist yet. You can save the program item now and assign it to a track or section later.");
+
+        if (locationCount == 0)
+            notices.Add("No event-associated locations are available. Venue selection remains unavailable until a location is linked through an authorized event management flow.");
+
+        return notices;
     }
 }

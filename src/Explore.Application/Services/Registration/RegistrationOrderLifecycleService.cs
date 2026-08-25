@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
@@ -1271,32 +1272,18 @@ public sealed partial class RegistrationOrderLifecycleService(
     private static RegistrationOrderLifecycleResponseDto Success(
         RegistrationOrder order,
         RegistrationOrderStatusEnum status,
-        string message) => new()
-        {
-            Id = order.Id,
-            Success = true,
-            Message = message,
-            Order = RegistrationOrderDto.From(order, status)
-        };
+        string message) => RegistrationOrderLifecycleResponseDto.Success(
+            order.Id, message, RegistrationOrderDto.From(order, status));
 
-    private static RegistrationOrderLifecycleResponseDto Missing(Guid orderId) => new()
-    {
-        Id = orderId,
-        Success = false,
-        Message = "Registration order was not found."
-    };
+    private static RegistrationOrderLifecycleResponseDto Missing(Guid orderId) =>
+        RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.NotFound(
+            "Registration order was not found.", orderId));
 
     private static RegistrationOrderLifecycleResponseDto Failure(
         Guid orderId,
         RegistrationOrder? order,
-        string error) => new()
-        {
-            Id = orderId,
-            Success = false,
-            Message = "Registration order lifecycle change failed.",
-            Errors = [error],
-            Order = order is null ? null : RegistrationOrderDto.From(order)
-        };
+        string error) => RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.Validation(
+            [error], "Registration order lifecycle change failed.", orderId));
 
 
     private sealed record FinalizationPlan(

@@ -40,13 +40,11 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
         ImportLocalizationBundleCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Instance administrator authority is required to import localization bundles.";
-            return response;
+            const string message = "Instance administrator authority is required to import localization bundles.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         if (!CultureRegistry.TryGetEntry(request.Dto.LanguageCode, out var culture))
@@ -56,11 +54,9 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
 
         if (request.Dto.Translations.Count == 0)
         {
-            response.Success = false;
-            response.Message = "Bundle import requires at least one translation.";
-            response.Errors = [response.Message];
+            const string message = "Bundle import requires at least one translation.";
             _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "validation_failure");
-            return response;
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         try
@@ -72,20 +68,16 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
 
             await _translationResolver.InvalidateLanguageAsync(culture.Code, cancellationToken);
 
-            response.Success = true;
-            response.Id = Guid.CreateVersion7();
-            response.Message = $"Imported {request.Dto.Translations.Count} translations for language '{culture.Code}' → {path}";
+            var message = $"Imported {request.Dto.Translations.Count} translations for language '{culture.Code}' → {path}";
             _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "success");
-            return response;
+            return BaseCommandResponse.Success(Guid.CreateVersion7(), message);
         }
         catch (BundleWriteException ex)
         {
             _logger.LogError(ex, "[LOCALIZATION] Static bundle import failed for {Language}", culture.Code);
-            response.Success = false;
-            response.Message = $"Failed to import bundle for '{culture.Code}': {ex.Message}";
-            response.Errors = [response.Message];
+            var message = $"Failed to import bundle for '{culture.Code}': {ex.Message}";
             _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "write_error");
-            return response;
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
     }
 }

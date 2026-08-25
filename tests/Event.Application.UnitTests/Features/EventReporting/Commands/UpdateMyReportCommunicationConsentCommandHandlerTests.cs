@@ -66,7 +66,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: false),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(report.ReportCaseUpdatesConsent).IsTrue();
         await Assert.That(report.ReportFollowUpContactConsent).IsFalse();
         await Assert.That(report.UpdatedAt).IsEqualTo(ChangedAt);
@@ -90,7 +90,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: false),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(report.UpdatedAt).IsNull();
         await Assert.That(report.ConcurrencyStamp).IsEqualTo(concurrencyStamp);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
@@ -111,7 +111,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: true),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ReportNotFound);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
     }
@@ -130,7 +130,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: true),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ReportNotFound);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
     }
@@ -149,7 +149,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(reportId, caseUpdates: true, followUp: true),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ReportNotFound);
     }
 
@@ -163,7 +163,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(Guid.CreateVersion7(), caseUpdates: true, followUp: true),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.UserUnresolved);
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
@@ -226,7 +226,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: false),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
         await Assert.That(result.Errors).IsNull();
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
@@ -252,7 +252,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             CreateCommand(report.Id, caseUpdates: true, followUp: false),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
         await Assert.That(result.Errors).IsNull();
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());

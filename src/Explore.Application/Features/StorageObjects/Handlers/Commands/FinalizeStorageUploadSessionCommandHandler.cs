@@ -86,7 +86,7 @@ public class FinalizeStorageUploadSessionCommandHandler
             async ct => await MarkUploadingAsync(request, tenantId, ct),
             cancellationToken);
 
-        if (!sessionResponse.Success || sessionResponse.Id is null)
+        if (!sessionResponse.IsSuccess || sessionResponse.Id is null)
         {
             RecordFinalizeFailure(sessionResponse, null);
             return sessionResponse;
@@ -190,7 +190,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                 async ct => await FinalizeAsync(session.Id, tenantId, writeResult, ct),
                 cancellationToken);
 
-            if (response.Success)
+            if (response.IsSuccess)
             {
                 _metrics.RecordStorageUploadSession(writeResult.Provider, "finalize", "succeeded");
                 _metrics.RecordStorageUploadBytes(writeResult.SizeBytes, writeResult.Provider, "succeeded");
@@ -416,14 +416,11 @@ public class FinalizeStorageUploadSessionCommandHandler
             await _uploadSessionRepository.Update(session);
         }
 
-        return new BaseCommandResponse<StorageUploadSessionDto>
-        {
-            Success = false,
-            Id = CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), counter),
-            Message = failureMessage,
-            Errors = errors is { Count: > 0 } ? errors.ToList() : [failureMessage],
-            FailureCode = failureCode
-        };
+        return BaseCommandResponse.Failure(
+            failureCode,
+            failureMessage,
+            errors is { Count: > 0 } ? errors : [failureMessage],
+            CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), counter));
     }
 
     private static IReadOnlyList<string> ValidateWriteResult(
@@ -469,13 +466,10 @@ public class FinalizeStorageUploadSessionCommandHandler
     private static BaseCommandResponse<StorageUploadSessionDto> Success(
         StorageUploadSession session,
         StorageUsageCounter? usageCounter,
-        string message)
-        => new()
-        {
-            Success = true,
-            Id = CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), usageCounter),
-            Message = message
-        };
+        string message) =>
+        BaseCommandResponse.Success(
+            CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), usageCounter),
+            message);
 
     private static ResolvedStoragePolicy CreatePolicyFromSession(StorageUploadSession session)
     {
@@ -512,14 +506,10 @@ public class FinalizeStorageUploadSessionCommandHandler
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation<StorageUploadSessionDto>(errors, message)
+            : BaseCommandResponse.Failure<StorageUploadSessionDto>(failureCode, message, errors);
 
     private static int ResolveFileTypeId(string contentType, string? extension)
     {
@@ -584,7 +574,9 @@ public class FinalizeStorageUploadSessionCommandHandler
     }
 
     private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
-        Failure("Upload finalization failed.", []);
+        BaseCommandResponse.Validation<StorageUploadSessionDto>(
+            ["Upload finalization failed."],
+            "Upload finalization failed.");
 
     private bool IsAccessibleSession(StorageUploadSession? session, Guid tenantId)
         => session is not null &&

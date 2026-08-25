@@ -38,8 +38,6 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
 
     public async Task<BaseCommandResponse<bool>> Handle(UpdateTenantNavLinkCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<bool>();
-
         // Validate the DTO
         bool requireHttps = await _settingsResolver.ResolveAsync<bool>(
             GovernanceSettingKeys.Security.RequireHttpsExternalUrls,
@@ -50,19 +48,15 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<bool>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Validation failed.");
         }
 
         if (request.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Navigation link not found or does not belong to your tenant.";
-            response.Errors = ["Navigation link not found."];
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<bool>(
+                "Navigation link not found or does not belong to your tenant.");
         }
 
         var existingLink = await _navigationLinkRepository.GetByIdAndTenantAsync(
@@ -72,11 +66,8 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
 
         if (existingLink == null)
         {
-            response.Success = false;
-            response.Message = "Navigation link not found or does not belong to your tenant.";
-            response.Errors = new() { "Navigation link not found." };
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<bool>(
+                "Navigation link not found or does not belong to your tenant.");
         }
 
         if (request.Update.Label is not null)
@@ -96,9 +87,6 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
         // Update the entity
         await _navigationLinkRepository.Update(existingLink);
 
-        response.Success = true;
-        response.Message = "Navigation link updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(false, "Navigation link updated successfully.");
     }
 }

@@ -41,7 +41,7 @@ public sealed class CreateEventCapacityPoolCommandHandlerTests
             new CreateEventCapacityPoolCommand { EventId = _eventId, CapacityPool = FullPoolDto() },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _catalogs.Received(1).AddCapacityPoolAsync(
             Arg.Is<EventCapacityPool>(pool =>
                 pool.TenantId == _tenantId

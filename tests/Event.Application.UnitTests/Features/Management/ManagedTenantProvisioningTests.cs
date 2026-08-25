@@ -72,7 +72,7 @@ public sealed class ManagedTenantProvisioningTests
             new ScheduleManagedTenantProvisioningCommand(Guid.CreateVersion7(), CreateRequest()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tenant_provisioning_requires_multi_tenant");
         await planRepository.DidNotReceive().GetVersionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -184,7 +184,7 @@ public sealed class ManagedTenantProvisioningTests
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tenant_provisioning_requires_multi_tenant");
         await Assert.That(mutationLock.Keys).IsEquivalentTo([GovernanceSettingKeys.Deployment.Mode]);
         await tenantRepository.DidNotReceive().GetActiveTenantCountAsync();
@@ -234,7 +234,7 @@ public sealed class ManagedTenantProvisioningTests
                 CreateRequest(modules: [], quotas: [])),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tenant_plan_not_provisionable");
         await operationRepository.DidNotReceive().Create(Arg.Any<ManagedTenantProvisioningOperation>());
         await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -271,7 +271,7 @@ public sealed class ManagedTenantProvisioningTests
                 CreateRequest(modules: [], quotas: [], externalRequestId: "new-request")),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tenant_provisioning_customer_conflict");
         await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
@@ -294,7 +294,7 @@ public sealed class ManagedTenantProvisioningTests
                 CreateRequest(modules: [], quotas: [])),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("managed_registration_api_incompatible");
         await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
@@ -360,7 +360,7 @@ public sealed class ManagedTenantProvisioningTests
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OperationId).IsEqualTo(operationId);
         await Assert.That(createdOutbox).IsNotNull();
         await Assert.That(createdOutbox!.Id).IsNotEqualTo(oldOutboxMessageId);
@@ -495,7 +495,7 @@ public sealed class ManagedTenantProvisioningTests
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.OperationId).IsEqualTo(operationId);
         await tenantRepository.DidNotReceive().GetTenantBySlug(normalized.TenantSlug);
         await tenantRepository.DidNotReceive().GetActiveTenantCountAsync();
@@ -571,7 +571,7 @@ public sealed class ManagedTenantProvisioningTests
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode)
             .IsEqualTo("tenant_provisioning_operation_provenance_conflict");
         await operationRepository.DidNotReceive().TryRetryAsync(
@@ -788,11 +788,8 @@ public sealed class ManagedTenantProvisioningTests
                 operationId,
                 outboxMessageId,
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
-            {
-                Success = false,
-                FailureCode = "tenant_provisioning_requires_multi_tenant"
-            });
+            .Returns(BaseCommandResponse.Failure<ManagedProviderClientProvisioningResultDto>(
+                "tenant_provisioning_requires_multi_tenant"));
         var handler = new ProcessManagedTenantProvisioningOperationCommandHandler(
             operationRepository,
             provisioner);
@@ -997,11 +994,8 @@ public sealed class ManagedTenantProvisioningTests
                 operationId,
                 oldOutboxMessageId,
                 Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
-            {
-                Success = false,
-                FailureCode = "transient_policy_change"
-            });
+            .Returns(BaseCommandResponse.Failure<ManagedProviderClientProvisioningResultDto>(
+                "transient_policy_change"));
         var handler = new ProcessManagedTenantProvisioningOperationCommandHandler(
             operationRepository,
             provisioner);

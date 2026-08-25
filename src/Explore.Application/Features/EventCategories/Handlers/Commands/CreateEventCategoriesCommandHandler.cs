@@ -38,17 +38,14 @@ public class CreateEventCategoriesCommandHandler : IRequestHandler<CreateEventCa
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCategoriesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventCategoriesDtoValidator(_eventRepository, _categoryRepository, _eventCategoriesRepository);
         var validationResult = await validator.ValidateAsync(request.EventCategoriesDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event Category assignment failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event Category assignment failed.");
         }
 
         var eventCategories = _mapper.Map<Domain.EventCategories>(request.EventCategoriesDto);
@@ -58,10 +55,6 @@ public class CreateEventCategoriesCommandHandler : IRequestHandler<CreateEventCa
 
         eventCategories = await _eventCategoriesRepository.Create(eventCategories);
 
-        response.Success = true;
-        response.Id = eventCategories.Id;
-        response.Message = "Event Category assigned successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventCategories.Id, "Event Category assigned successfully.");
     }
 }

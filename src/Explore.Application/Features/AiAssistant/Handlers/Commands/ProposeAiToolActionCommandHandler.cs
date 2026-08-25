@@ -74,12 +74,9 @@ public sealed class ProposeAiToolActionCommandHandler(
 
         await conversationRepository.Update(conversation);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = proposedAction.Id,
-            Message = "AI tool action proposed. Confirm before execution."
-        };
+        return BaseCommandResponse.Success(
+            proposedAction.Id,
+            "AI tool action proposed. Confirm before execution.");
     }
 
     private AiToolDefinition? ResolveDefinition(string toolName)
@@ -217,13 +214,6 @@ public sealed class ProposeAiToolActionCommandHandler(
             Guid.TryParse(property.GetString(), out value);
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, string failureCode)
-        => new()
-        {
-            Success = false,
-            Id = Guid.Empty,
-            Message = message,
-            Errors = [message],
-            FailureCode = failureCode
-        };
+    private static BaseCommandResponse<Guid> Failure(string message, string failureCode) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message, [message], Guid.Empty);
 }

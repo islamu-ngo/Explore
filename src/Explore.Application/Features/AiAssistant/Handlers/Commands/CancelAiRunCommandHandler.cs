@@ -54,19 +54,9 @@ public sealed class CancelAiRunCommandHandler(
         return Success(run.Id, "AI run cancelled.");
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(string message, string failureCode, Guid? id = null) => new()
-    {
-        Success = false,
-        Id = id ?? Guid.Empty,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, string failureCode, Guid? id = null) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message, [message], id ?? Guid.Empty);
 }

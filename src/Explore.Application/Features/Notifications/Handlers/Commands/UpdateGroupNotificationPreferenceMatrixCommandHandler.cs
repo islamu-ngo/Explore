@@ -66,12 +66,7 @@ public sealed class UpdateGroupNotificationPreferenceMatrixCommandHandler(
             }
         }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = lastId,
-            Success = true,
-            Message = "Group notification preferences updated."
-        };
+        return BaseCommandResponse.Success(lastId, "Group notification preferences updated.");
     }
 
     private async Task<(List<string> Errors, List<(int CategoryId, int ChannelId, bool IsEnabled)> Cells)> ValidateCellsAsync(
@@ -136,15 +131,8 @@ public sealed class UpdateGroupNotificationPreferenceMatrixCommandHandler(
         return (errors, validated);
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = message,
-            Errors = errors ?? [message]
-        };
-    }
+    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) =>
+        BaseCommandResponse.Validation<Guid>(errors ?? [message], message);
 
     private static string Normalize(string code) => code.Trim().ToLowerInvariant();
 }

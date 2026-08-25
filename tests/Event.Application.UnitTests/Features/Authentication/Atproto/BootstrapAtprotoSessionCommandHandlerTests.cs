@@ -558,14 +558,14 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
                 "linked.example",
                 PdsUri,
                 "oauth-active",
-                [1, 2, 3])));
+                new byte[] { 1, 2, 3 })));
         _securityGateway.PreparePersistenceAsync(
                 Arg.Any<AtprotoVerifiedOAuthSession>(),
                 _tenantId,
                 _userId,
                 Arg.Any<CancellationToken>())
             .Returns(new AtprotoPreparedOAuthSession(
-                [1, 2, 3],
+                new byte[] { 1, 2, 3 },
                 "encryption-active",
                 1,
                 _tenantId,
@@ -626,7 +626,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         PdsUri.AbsoluteUri,
         "oauth-active",
         classification,
-        [1, 2, 3],
+        new byte[] { 1, 2, 3 },
         canonicalActorId,
         expectedCanonicalActorConcurrencyStamp);
 

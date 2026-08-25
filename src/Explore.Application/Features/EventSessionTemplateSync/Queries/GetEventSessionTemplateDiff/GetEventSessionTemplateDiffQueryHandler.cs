@@ -23,11 +23,6 @@ public sealed class GetEventSessionTemplateDiffQueryHandler
         CancellationToken cancellationToken)
     {
         var diff = await _diffService.ComputeDiffAsync(request.EventSessionId, request.TargetTemplateVersion, cancellationToken);
-        return new BaseCommandResponse<TemplateDiffDto>
-        {
-            Success = true,
-            Id = diff,
-            Message = "Event session template diff retrieved successfully."
-        };
+        return BaseCommandResponse.Success(diff, "Event session template diff retrieved successfully.");
     }
 }

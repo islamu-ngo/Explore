@@ -52,14 +52,11 @@ public sealed class HeavyRedactEventCommandHandler(
                 out var reasonFailureCode,
                 out var reasonError))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.Id,
-                Success = false,
-                Message = reasonError,
-                Errors = [reasonError ?? "Moderation metadata is invalid."],
-                FailureCode = reasonFailureCode,
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                reasonFailureCode!,
+                reasonError,
+                [reasonError ?? "Moderation metadata is invalid."],
+                request.Id);
         }
 
         var moderatorUserId = currentUserService.UserId;
@@ -165,7 +162,7 @@ public sealed class HeavyRedactEventCommandHandler(
                 wasIdempotent ? "Event is already heavy-redacted." : "Event heavy-redacted successfully.");
         }, cancellationToken);
 
-        if (!transactionResponse.Success)
+        if (!transactionResponse.IsSuccess)
         {
             if (eventNotFound)
             {
@@ -236,25 +233,16 @@ public sealed class HeavyRedactEventCommandHandler(
         return transactionResponse;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 
     private static bool TryLinkSourceReportDecision(
         EventModerationRecord moderationRecord,

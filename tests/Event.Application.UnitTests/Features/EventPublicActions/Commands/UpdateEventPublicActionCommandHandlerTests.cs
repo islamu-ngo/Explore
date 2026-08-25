@@ -41,7 +41,7 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(action, EventPublicActionKindEnum.ExternalRegistration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(action.EventPublicActionKindId)
             .IsEqualTo((int)EventPublicActionKindEnum.ExternalRegistration);
         await Assert.That(action.HealthStateId)
@@ -78,7 +78,7 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(action, EventPublicActionKindEnum.ExternalRegistration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains(
             "Public action kind is not available for this event's participation mode.");
         await Assert.That(action.EventPublicActionKindId)

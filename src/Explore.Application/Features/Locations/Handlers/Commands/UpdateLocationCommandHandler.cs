@@ -8,6 +8,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.Locations.Handlers.Commands;
@@ -23,27 +24,21 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateLocationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateLocationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UpdateLocationDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Location update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Location update failed.");
         }
 
         var location = await _locationRepository.GetById(request.LocationId);
 
         if (location == null)
         {
-            response.Success = false;
-            response.Message = "Location not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Location not found.");
         }
 
         if (location.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -56,21 +51,18 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
         }
 
         ApplyFullName(location, request.UpdateLocationDto.FullName);
-        ApplyAddress(location, request.UpdateLocationDto.Address);
-        ApplyPostcode(location, request.UpdateLocationDto.Postcode);
         ApplyCountry(location, request.UpdateLocationDto.Country);
         ApplyCity(location, request.UpdateLocationDto.City);
-        ApplyLatitude(location, request.UpdateLocationDto.Latitude);
-        ApplyLongitude(location, request.UpdateLocationDto.Longitude);
+        ApplyCoordinates(location, request.UpdateLocationDto.Latitude, request.UpdateLocationDto.Longitude);
+        ApplyManualAddress(
+            location,
+            request.UpdateLocationDto.Address,
+            request.UpdateLocationDto.Postcode);
         ApplyTimezone(location, request.UpdateLocationDto.Timezone);
 
         await _locationRepository.Update(location);
 
-        response.Success = true;
-        response.Id = location.Id;
-        response.Message = "Location updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(location.Id, "Location updated successfully.");
     }
 
     private static void ApplyFullName(Location location, UpdateLocationFullNameDto? group)
@@ -81,20 +73,19 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
         }
     }
 
-    private static void ApplyAddress(Location location, UpdateLocationAddressDto? group)
+    private static void ApplyManualAddress(
+        Location location,
+        UpdateLocationAddressDto? address,
+        UpdateLocationPostcodeDto? postcode)
     {
-        if (group is not null)
+        if (address is null && postcode is null)
         {
-            location.Address = group.Value;
+            return;
         }
-    }
 
-    private static void ApplyPostcode(Location location, UpdateLocationPostcodeDto? group)
-    {
-        if (group is not null)
-        {
-            location.Postcode = group.Value;
-        }
+        location.SetManualAddress(
+            address?.Value ?? location.Address!,
+            postcode?.Value ?? location.Postcode!);
     }
 
     private static void ApplyCountry(Location location, UpdateLocationCountryDto? group)
@@ -113,20 +104,22 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
         }
     }
 
-    private static void ApplyLatitude(Location location, UpdateLocationLatitudeDto? group)
+    private static void ApplyCoordinates(
+        Location location,
+        UpdateLocationLatitudeDto? latitude,
+        UpdateLocationLongitudeDto? longitude)
     {
-        if (group?.Value.HasValue == true)
+        if (latitude is null && longitude is null)
         {
-            location.Latitude = group.Value.Value;
+            return;
         }
-    }
 
-    private static void ApplyLongitude(Location location, UpdateLocationLongitudeDto? group)
-    {
-        if (group?.Value.HasValue == true)
-        {
-            location.Longitude = group.Value.Value;
-        }
+        double? latitudeValue = latitude!.Value.Value;
+        double? longitudeValue = longitude!.Value.Value;
+        GeoCoordinate? coordinate = latitudeValue.HasValue
+            ? GeoCoordinate.Create(latitudeValue.Value, longitudeValue!.Value)
+            : null;
+        location.SetProviderAddress(location.Address!, location.Postcode!, coordinate);
     }
 
     private static void ApplyTimezone(Location location, UpdateLocationTimezoneDto? group)

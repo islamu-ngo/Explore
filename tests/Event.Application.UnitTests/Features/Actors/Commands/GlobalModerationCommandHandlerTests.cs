@@ -132,7 +132,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(actor.Id, GlobalModerationAction.Suspend, "policy-violation"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.IsSuspended).IsTrue();
         await Assert.That(actor.ModerationRecords.Single().Action).IsEqualTo(GlobalModerationAction.Suspend);
         await Assert.That(actor.ModerationRecords.Single().CreatedBy).IsEqualTo(_operatorUserId);
@@ -156,7 +156,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(actor.Id, GlobalModerationAction.Suspend, "retry"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.ModerationRecords.Count).IsEqualTo(1);
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
         await _cache.Received(1).RemoveAsync($"actor:detail:{actor.Id}", Arg.Any<CancellationToken>());
@@ -215,7 +215,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(actor.Id, GlobalModerationAction.Suspend, "retry"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.ModerationRecords.Count).IsEqualTo(1);
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
         await _pdsSyncOutboxRepository.Received(1).AddAsync(
@@ -290,7 +290,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(actor.Id, GlobalModerationAction.Suspend),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _pdsSyncOutboxRepository.Received(1).AddAsync(
             Arg.Is<PdsSyncOutbox>(outbox =>
                 outbox.Operation == PdsSyncOperation.Delete
@@ -310,7 +310,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(actor.Id, GlobalModerationAction.Reinstate),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _recordRepository.DidNotReceive().GetLiveGroundedEventOwnershipsForActorAsync(
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
@@ -325,7 +325,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(Guid.CreateVersion7(), GlobalModerationAction.Suspend),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().GetById(Arg.Any<Guid>());
     }
 
@@ -338,7 +338,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(Guid.CreateVersion7(), GlobalModerationAction.Suspend),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().GetById(Arg.Any<Guid>());
     }
 
@@ -349,7 +349,7 @@ public sealed class GlobalModerationCommandHandlerTests
             ActorCommand(Guid.CreateVersion7(), GlobalModerationAction.Suspend, " "),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _actorRepository.DidNotReceive().GetById(Arg.Any<Guid>());
     }
 
@@ -390,7 +390,7 @@ public sealed class GlobalModerationCommandHandlerTests
             IdentityCommand(identity.Id, GlobalModerationAction.Reinstate, "key-rotated"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(identity.IsActive).IsFalse();
         await Assert.That(identity.IsSuspended).IsFalse();
         await Assert.That(identity.ModerationRecords.Single().Action).IsEqualTo(GlobalModerationAction.Reinstate);
@@ -454,7 +454,7 @@ public sealed class GlobalModerationCommandHandlerTests
             IdentityCommand(identity.Id, GlobalModerationAction.Suspend),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _pdsSyncOutboxRepository.Received(1).AddAsync(
             Arg.Is<PdsSyncOutbox>(outbox =>
                 outbox.Operation == PdsSyncOperation.Delete
@@ -476,7 +476,7 @@ public sealed class GlobalModerationCommandHandlerTests
             IdentityCommand(identity.Id, GlobalModerationAction.Reinstate),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(identity.ModerationRecords.Count).IsZero();
         await _identityRepository.DidNotReceive().Update(Arg.Any<AtprotoIdentity>());
         await _recordRepository.DidNotReceive().GetLiveGroundedEventOwnershipsForActorAndDidAsync(
@@ -523,7 +523,7 @@ public sealed class GlobalModerationCommandHandlerTests
             IdentityCommand(Guid.CreateVersion7(), (GlobalModerationAction)999),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _identityRepository.DidNotReceive().GetById(Arg.Any<Guid>());
     }
 

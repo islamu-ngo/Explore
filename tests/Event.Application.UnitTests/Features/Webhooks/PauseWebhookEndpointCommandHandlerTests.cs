@@ -46,7 +46,7 @@ public sealed class PauseWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.maintenance"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).TryPauseAsync(
             endpoint.TenantId,
             endpoint.Id,
@@ -83,7 +83,7 @@ public sealed class PauseWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.maintenance"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_pause_unsupported");
         await repository.DidNotReceiveWithAnyArgs().TryPauseAsync(
             default,
@@ -115,7 +115,7 @@ public sealed class PauseWebhookEndpointCommandHandlerTests
             ReasonCode = "operator.maintenance"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_not_active");
     }
 

@@ -16,12 +16,10 @@ public sealed class TestListmonkConnectionCommandHandler(IListmonkConnectionTest
         CancellationToken cancellationToken)
     {
         var connected = await connectionTester.TestConnectionAsync(cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Success = connected,
-            Message = connected
-                ? "Listmonk connection successful."
-                : "Listmonk connection failed. Check provider settings and API credentials."
-        };
+        return connected
+            ? BaseCommandResponse.Success(Guid.Empty, "Listmonk connection successful.")
+            : BaseCommandResponse.Validation<Guid>(
+                ["Listmonk connection failed. Check provider settings and API credentials."],
+                "Listmonk connection failed. Check provider settings and API credentials.");
     }
 }

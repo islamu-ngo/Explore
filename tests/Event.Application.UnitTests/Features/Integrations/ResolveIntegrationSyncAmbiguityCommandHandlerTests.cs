@@ -46,7 +46,7 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).ResolveAmbiguousAsync(
             Arg.Is<IntegrationSyncRecoveryRequest>(request =>
                 request.TenantId == tenantId &&
@@ -83,7 +83,7 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await repository.DidNotReceive().ResolveAmbiguousAsync(
             Arg.Any<IntegrationSyncRecoveryRequest>(),
             Arg.Any<CancellationToken>());
@@ -111,7 +111,7 @@ public sealed class ResolveIntegrationSyncAmbiguityCommandHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await adminContext.DidNotReceive().IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await repository.DidNotReceive().ResolveAmbiguousAsync(
             Arg.Any<IntegrationSyncRecoveryRequest>(),

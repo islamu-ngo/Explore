@@ -59,16 +59,13 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateGroupDtoValidator();
         var validationResult = await validator.ValidateAsync(request.GroupDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Validation failed.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -76,10 +73,9 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
                 _tenantContext.TenantId,
                 request.GroupDto.ProfilePictureId))
         {
-            response.Success = false;
-            response.Message = "Validation failed.";
-            response.Errors = ["Profile picture must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Profile picture must be an active public safe-raster object in the current tenant."],
+                "Validation failed.");
         }
 
         var result = await _groupRepository.ExecuteWithHierarchyMutationLock(
@@ -89,10 +85,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
                 var hierarchyErrors = await ValidateHierarchy(request.GroupDto.ParentOrganizationId, request.GroupDto.ParentGroupId, lockedCancellationToken);
                 if (hierarchyErrors.Count > 0)
                 {
-                    response.Success = false;
-                    response.Message = "Validation failed.";
-                    response.Errors = hierarchyErrors;
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>(hierarchyErrors, "Validation failed.");
                 }
 
                 var currentUserId = request.CreatorUserId;
@@ -158,19 +151,17 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
 
                 await _groupMemberRepository.Create(groupMember);
 
-                response.Success = true;
-                response.Message = "Group created successfully. You are now the creator and admin of this group.";
-                response.Id = group.Id;
-
                 _metrics.RecordOrganizationCreated(_tenantContext.TenantId.ToString());
 
                 await _cache.RemoveAsync($"group:detail:{group.Id}", lockedCancellationToken);
 
-                return response;
+                return BaseCommandResponse.Success(
+                    group.Id,
+                    "Group created successfully. You are now the creator and admin of this group.");
             },
             cancellationToken);
 
-        if (result.Success)
+        if (result.IsSuccess)
         {
             _adminCacheInvalidator.InvalidateUser(request.CreatorUserId);
         }

@@ -85,7 +85,7 @@ public class EventSessionGroupCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(groupId);
         await _groupRepository.Received(1).Create(Arg.Is<EventSessionGroup>(group =>
             group.TenantId == tenantId &&
@@ -125,7 +125,7 @@ public class EventSessionGroupCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Slug must be unique within the event.");
         await _groupRepository.DidNotReceive().Create(Arg.Any<EventSessionGroup>());
     }
@@ -171,7 +171,7 @@ public class EventSessionGroupCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Slug must be unique within the event.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<EventSessionGroup>());
     }
@@ -208,7 +208,7 @@ public class EventSessionGroupCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventSessionGroupSession>());
     }
 
@@ -270,7 +270,7 @@ public class EventSessionGroupCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(assignmentId);
         await _assignmentRepository.Received(1).Update(Arg.Is<EventSessionGroupSession>(assignment =>
             assignment.Id == oldPrimary.Id && !assignment.IsPrimary));

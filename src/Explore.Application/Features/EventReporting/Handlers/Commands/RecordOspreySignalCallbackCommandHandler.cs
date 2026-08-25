@@ -89,7 +89,7 @@ public sealed class RecordOspreySignalCallbackCommandHandler(
                 request.Request.ProviderTargetScope,
                 request.Request.ProviderTargetId);
             var targetValidation = ValidateProviderTarget(report, request.Request, providerTarget.Scope, providerTarget.TargetId);
-            if (!targetValidation.Success)
+            if (!targetValidation.IsSuccess)
             {
                 return targetValidation;
             }
@@ -380,20 +380,15 @@ public sealed class RecordOspreySignalCallbackCommandHandler(
         return value.Trim().Replace('-', '_').ToLowerInvariant();
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(
+        Guid id,
+        string message,
+        IEnumerable<string> errors,
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 
 }

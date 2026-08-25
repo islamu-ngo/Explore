@@ -44,25 +44,20 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventSessionGroupRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventSessionGroup, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session group update failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Event session group update failed.");
         }
 
         var group = await _eventSessionGroupRepository.GetForUpdateAsync(request.EventSessionGroupId, cancellationToken);
         if (group is null)
         {
-            response.Success = false;
-            response.Message = "Event session group not found.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event session group not found.");
         }
 
         request = request with
@@ -82,7 +77,7 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
 
         Event? parentEvent = await _eventRepository.GetById(group.EventId);
         if (parentEvent is null || parentEvent.TenantId != group.TenantId)
-            return Failure(response, "Event session group parent event was not found in the current tenant.");
+            return ValidationFailure("Event session group parent event was not found in the current tenant.");
 
         string name = request.EventSessionGroup.Metadata?.Name ?? group.Name;
         string? slug = request.EventSessionGroup.Metadata?.Slug.HasValue == true
@@ -96,20 +91,20 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             : group.RoomId;
 
         if (string.IsNullOrWhiteSpace(name))
-            return Failure(response, "Event session group name is required.");
+            return ValidationFailure("Event session group name is required.");
 
         if (locationId.HasValue)
         {
             Location? location = await _locationRepository.GetById(locationId.Value);
             if (location is null || location.TenantId != group.TenantId)
-                return Failure(response, "Location does not belong to the current tenant.");
+                return ValidationFailure("Location does not belong to the current tenant.");
         }
 
         if (roomId.HasValue)
         {
             LocationRoom? room = await _locationRoomRepository.GetById(roomId.Value);
             if (room is null || !locationId.HasValue || room.LocationId != locationId.Value)
-                return Failure(response, "Room must belong to the selected location.");
+                return ValidationFailure("Room must belong to the selected location.");
         }
 
         if (await SlugExistsForEventAsync(
@@ -118,10 +113,9 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
                 group.Id,
                 cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Event session group update failed.";
-            response.Errors = ["Slug must be unique within the event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Slug must be unique within the event."],
+                "Event session group update failed.");
         }
 
         Guid? previousEventLocationId = group.EventLocationId;
@@ -157,19 +151,11 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
         await _cache.RemoveAsync($"event:detail:{group.EventId}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(group.TenantId), cancellationToken);
 
-        response.Success = true;
-        response.Id = group.Id;
-        response.Message = "Event session group updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(group.Id, "Event session group updated successfully.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(BaseCommandResponse<Guid> response, string message)
-    {
-        response.Success = false;
-        response.Message = message;
-        response.Errors = [message];
-        return response;
-    }
+    private static BaseCommandResponse<Guid> ValidationFailure(string message) =>
+        BaseCommandResponse.Validation<Guid>([message], message);
 
     private async Task<bool> SlugExistsForEventAsync(Guid eventId, string? slug, Guid currentGroupId, CancellationToken cancellationToken)
     {

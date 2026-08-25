@@ -38,8 +38,6 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCategoriesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventCategoriesDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventCategoriesDto, cancellationToken);
 
@@ -52,9 +50,7 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
 
         if (eventCategories == null)
         {
-            response.Success = false;
-            response.Message = "Event Category not found.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event Category not found.");
         }
 
         request = request with
@@ -113,11 +109,7 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
         await _eventCategoriesRepository.Update(eventCategories);
         await InvalidateCachesAsync(previousEventId, eventCategories.EventId, targetEvent.TenantId, cancellationToken);
 
-        response.Success = true;
-        response.Id = eventCategories.Id;
-        response.Message = "Event Category updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventCategories.Id, "Event Category updated successfully.");
     }
 
     private static void ApplyEvent(Explore.Domain.EventCategories entity, DTOs.EventCategories.UpdateEventCategoriesEventDto? dto, Event targetEvent)
@@ -157,10 +149,5 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
         ValidationFailure(new List<string> { error });
 
     private static BaseCommandResponse<Guid> ValidationFailure(List<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = "Event Category update failed.",
-            Errors = errors
-        };
+        BaseCommandResponse.Validation<Guid>(errors, "Event Category update failed.");
 }

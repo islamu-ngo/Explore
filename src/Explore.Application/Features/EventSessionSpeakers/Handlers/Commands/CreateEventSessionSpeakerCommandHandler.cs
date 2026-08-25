@@ -45,17 +45,14 @@ public class CreateEventSessionSpeakerCommandHandler : IRequestHandler<CreateEve
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionSpeakerCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventSessionSpeakerDtoValidator(_actorRepository, _eventSessionRepository);
         var validationResult = await validator.ValidateAsync(request.SpeakerDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Speaker assignment creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Speaker assignment creation failed.");
         }
 
         var eventSession = await _eventSessionRepository.GetById(request.SpeakerDto.EventSessionId);
@@ -92,18 +89,9 @@ public class CreateEventSessionSpeakerCommandHandler : IRequestHandler<CreateEve
         await _cache.RemoveAsync($"event:detail:{eventSession.EventId}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(eventSession.TenantId), cancellationToken);
 
-        response.Success = true;
-        response.Id = speaker.Id;
-        response.Message = "Speaker assigned to session successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(speaker.Id, "Speaker assigned to session successfully.");
     }
 
     private static BaseCommandResponse<Guid> ValidationFailure(string error) =>
-        new()
-        {
-            Success = false,
-            Message = "Speaker assignment creation failed.",
-            Errors = new List<string> { error }
-        };
+        BaseCommandResponse.Validation<Guid>([error], "Speaker assignment creation failed.");
 }

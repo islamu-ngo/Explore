@@ -98,7 +98,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new CreateControlPlaneTenantPlanDraftCommand(CreateValidDraft()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await repository.Received(1).Create(Arg.Any<TenantPlan>());
         await Assert.That(captured).IsNotNull();
@@ -124,7 +124,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new CreateControlPlaneTenantPlanDraftCommand(draft),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains(TenantPlanValidationErrorCodes.SensitiveSettingKey);
         await repository.DidNotReceiveWithAnyArgs().Create(default!);
     }
@@ -196,7 +196,7 @@ public sealed class TenantPlanCqrsHandlerTests
             }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         TenantPlanVersion draft = plan.Versions.Single(version => version.VersionNumber == 2);
         await Assert.That(draft.TenantPlanStatusId).IsEqualTo((int)TenantPlanStatusEnum.Draft);
         await Assert.That(draft.PriceAmount).IsEqualTo(39m);
@@ -233,7 +233,7 @@ public sealed class TenantPlanCqrsHandlerTests
                 TenantPlanExistingAssignmentPolicy.LeaveExistingTenantsPinned),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(draftVersion.TenantPlanStatusId).IsEqualTo((int)TenantPlanStatusEnum.Published);
         await Assert.That(assignment.TenantPlanVersionId).IsEqualTo(currentVersion.Id);
         await repository.DidNotReceive().ListActiveAssignmentsForPlanAsync(plan.Id, Arg.Any<CancellationToken>());
@@ -271,7 +271,7 @@ public sealed class TenantPlanCqrsHandlerTests
                 TenantPlanExistingAssignmentPolicy.MoveExistingTenantsToPublishedVersion),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(newVersion.TenantPlanStatusId).IsEqualTo((int)TenantPlanStatusEnum.Published);
         await Assert.That(assignment.TenantPlanVersionId).IsEqualTo(newVersion.Id);
         await Assert.That(assignment.TenantPlanVersion).IsEqualTo(newVersion);
@@ -313,7 +313,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new SwitchControlPlaneTenantPlanAssignmentCommand(tenantId, newVersion.Id, operatorId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(oldAssignment.TenantPlanAssignmentStatusId).IsEqualTo((int)TenantPlanAssignmentStatusEnum.Superseded);
         await Assert.That(oldAssignment.EndedAt).IsNotNull();
         await Assert.That(createdAssignment).IsNotNull();
@@ -368,7 +368,7 @@ public sealed class TenantPlanCqrsHandlerTests
             }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(draft.PriceAmount).IsEqualTo(49m);
         await Assert.That(draft.Settings.Single().SettingKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.Enabled);
         await Assert.That(draft.Quotas.Single().QuotaKey).IsEqualTo(TenantPlanQuotaKeys.AiDailyTenantMessages);
@@ -413,7 +413,7 @@ public sealed class TenantPlanCqrsHandlerTests
                 }),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(draft.PriceAmount).IsEqualTo(49m);
         await Assert.That(draft.Settings.Single()).IsEqualTo(existingSetting);
         await Assert.That(draft.Quotas.Single()).IsEqualTo(existingQuota);
@@ -433,7 +433,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new ArchiveControlPlaneTenantPlanVersionCommand(version.Id),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(version.TenantPlanStatusId).IsEqualTo((int)TenantPlanStatusEnum.Archived);
         await Assert.That(version.IsActiveForProvisioning).IsFalse();
         await repository.Received(1).UpdateVersionAsync(version, Arg.Any<CancellationToken>());
@@ -469,7 +469,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new CloneControlPlaneTenantPlanCommand(sourceVersion.Id, "enterprise", "Enterprise"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(captured).IsNotNull();
         await Assert.That(captured!.Key).IsEqualTo("enterprise");
         await Assert.That(captured.DisplayName).IsEqualTo("Enterprise");
@@ -564,7 +564,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new RollbackControlPlaneTenantPlanAssignmentCommand(tenantId, previousAssignment.Id, operatorId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(currentAssignment.TenantPlanAssignmentStatusId).IsEqualTo((int)TenantPlanAssignmentStatusEnum.RolledBack);
         await Assert.That(currentAssignment.EndedAt).IsNotNull();
         await Assert.That(previousAssignment.TenantPlanAssignmentStatusId).IsEqualTo((int)TenantPlanAssignmentStatusEnum.Active);
@@ -594,7 +594,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new RollbackControlPlaneTenantPlanAssignmentCommand(tenantId, Guid.NewGuid(), Guid.NewGuid()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("tenant_plan_rollback_assignment_not_found");
         await repository.DidNotReceiveWithAnyArgs().UpdateAssignmentAsync(default!, default);
         await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
@@ -631,7 +631,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("tenant_plan_setting_locked");
         await tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
         await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
@@ -663,7 +663,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(assignmentId);
         await Assert.That(assignment.TenantPlanAssignmentStatusId)
             .IsEqualTo((int)TenantPlanAssignmentStatusEnum.Active);
@@ -717,7 +717,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, operatorId),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(captured).IsNotNull();
         TenantSettingOverrideUpsert upsert = captured!.Single();
         await Assert.That(upsert.SettingKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.Enabled);
@@ -776,7 +776,7 @@ public sealed class TenantPlanCqrsHandlerTests
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, Guid.NewGuid()),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("tenant_plan_quota_ceiling_exceeded");
         await tenantSettings.DidNotReceiveWithAnyArgs().UpsertManyForTenantAsync(default, default!, default);
         await Assert.That(mutationLock.Keys).Contains(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes);

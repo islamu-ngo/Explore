@@ -65,7 +65,7 @@ public class UpdateEventCustomPropertyDefinitionConcurrencyTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).Update(definition);
         await repository.DidNotReceive().UpdateWithOptions(
             Arg.Any<EventCustomPropertyDefinition>(),

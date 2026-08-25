@@ -48,7 +48,7 @@ public sealed class ResolveEmailDispatchWithoutReplayCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await repository.Received(1).TryResolveWithoutReplay(
             tenantId,
             outboxId,
@@ -86,7 +86,7 @@ public sealed class ResolveEmailDispatchWithoutReplayCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EmailDispatchFailureCodes.InvalidTransition);
         await repository.DidNotReceiveWithAnyArgs().TryResolveWithoutReplay(default, default, default!, default, default, default);
     }

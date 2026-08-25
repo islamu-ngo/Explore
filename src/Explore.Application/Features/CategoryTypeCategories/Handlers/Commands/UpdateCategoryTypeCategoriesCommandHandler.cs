@@ -31,25 +31,21 @@ public class UpdateCategoryTypeCategoriesCommandHandler : IRequestHandler<Update
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateCategoryTypeCategoriesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateCategoryTypeCategoriesDtoValidator();
         var validationResult = await validator.ValidateAsync(request.CategoryTypeCategoriesDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Category Type Categories update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Category Type Categories update failed.");
         }
 
         var link = await _repository.GetById(request.CategoryTypeCategoriesId);
         if (link == null || link.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Category Type Categories not found.";
-            return response;
+            const string message = "Category Type Categories not found.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         Guid categoryId = request.CategoryTypeCategoriesDto.Relationship?.CategoryId ?? link.CategoryId;
@@ -57,29 +53,23 @@ public class UpdateCategoryTypeCategoriesCommandHandler : IRequestHandler<Update
         var category = await _categoryRepository.GetById(categoryId);
         if (category is null || category.TenantId != link.TenantId || !await _categoryTypeRepository.Exists(categoryTypeId))
         {
-            response.Success = false;
-            response.Message = "Category Type Categories update failed.";
-            response.Errors = ["Relationship targets were not found in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Relationship targets were not found in the current tenant."],
+                "Category Type Categories update failed.");
         }
 
         if ((categoryId != link.CategoryId || categoryTypeId != link.CategoryTypeId)
             && await _repository.Exists(categoryId, categoryTypeId))
         {
-            response.Success = false;
-            response.Message = "Category Type Categories update failed.";
-            response.Errors = ["Category and Category Type relationship already exists."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Category and Category Type relationship already exists."],
+                "Category Type Categories update failed.");
         }
 
         link.CategoryId = categoryId;
         link.CategoryTypeId = categoryTypeId;
         await _repository.Update(link);
 
-        response.Success = true;
-        response.Id = link.Id;
-        response.Message = "Category Type Categories updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(link.Id, "Category Type Categories updated successfully.");
     }
 }

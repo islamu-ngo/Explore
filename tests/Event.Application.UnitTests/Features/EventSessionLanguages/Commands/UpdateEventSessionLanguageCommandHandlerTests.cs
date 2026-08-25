@@ -43,7 +43,7 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event session language update group must be provided.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionLanguage>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -87,7 +87,7 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
             Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
         }), cancellation.Token);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(entity.LanguageId).IsEqualTo(2);
         await _repository.Received(1).GetBySessionAndLanguage(sessionId, 2, entity.Id, cancellation.Token);
         await _repository.Received(1).Update(entity);
@@ -112,7 +112,7 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
             Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Language is already assigned to this event session.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionLanguage>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -136,7 +136,7 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
             Session = new UpdateEventSessionLanguageSessionDto { EventSessionId = targetSessionId }
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Event session must belong to the same event as the language assignment.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionLanguage>());
     }

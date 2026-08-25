@@ -173,7 +173,10 @@ public class CreateEventDtoValidatorTests
     public async Task Validate_WithInvalidTempReference_ReturnsError()
     {
         var request = CreateValidRequest();
-        request.Sessions[0] = request.Sessions[0] with { RoomTempKey = "missing-room" };
+        request = request with
+        {
+            Sessions = [request.Sessions[0] with { RoomTempKey = "missing-room" }]
+        };
 
         _eventTypeRepository.Exists(request.EventTypeId!.Value).Returns(true);
         _audienceGenderRepository.Exists(request.AudienceGenderId!.Value).Returns(true);

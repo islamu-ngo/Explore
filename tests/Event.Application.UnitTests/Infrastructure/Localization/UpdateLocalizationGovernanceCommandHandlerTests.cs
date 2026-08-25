@@ -54,7 +54,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Instance administrator");
         await _settingRepository.DidNotReceive().UpsertAsync(
             Arg.Any<Explore.Domain.SystemSetting>(),
@@ -91,7 +91,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("successfully");
         _configResolver.Received(1).InvalidateCache(Arg.Any<Guid?>());
     }
@@ -105,7 +105,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -117,7 +117,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
     }
 
@@ -132,7 +132,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -144,7 +144,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -156,7 +156,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -168,7 +168,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -188,7 +188,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -200,7 +200,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -212,7 +212,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -245,7 +245,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _settingRepository.Received(1).UpsertAsync(
             Arg.Is<Explore.Domain.SystemSetting>((Explore.Domain.SystemSetting setting) =>
                 setting.SettingKey == GovernanceSettingKeys.Localization.ClientPickerEnabled),

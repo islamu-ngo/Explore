@@ -35,17 +35,14 @@ public class CreateCategoryTypeCategoriesCommandHandler : IRequestHandler<Create
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateCategoryTypeCategoriesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateCategoryTypeCategoriesDtoValidator(_categoryRepository, _categoryTypeRepository, _repository);
         var validationResult = await validator.ValidateAsync(request.CategoryTypeCategoriesDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Category Type Categories creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Category Type Categories creation failed.");
         }
 
         var categoryTypeCategories = _mapper.Map<Domain.CategoryTypeCategories>(request.CategoryTypeCategoriesDto);
@@ -55,10 +52,8 @@ public class CreateCategoryTypeCategoriesCommandHandler : IRequestHandler<Create
 
         categoryTypeCategories = await _repository.Create(categoryTypeCategories);
 
-        response.Success = true;
-        response.Id = categoryTypeCategories.Id;
-        response.Message = "Category Type Categories created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            categoryTypeCategories.Id,
+            "Category Type Categories created successfully.");
     }
 }

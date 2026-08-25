@@ -59,7 +59,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
     {
         var result = await HandleAsync(new UpdateUserAppearancePreferencesDto());
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _unitOfWork.DidNotReceive().ExecuteSerializableAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
             Arg.Any<CancellationToken>());
@@ -73,7 +73,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
             Localization = new UpdateAppearanceLocalizationDto()
         });
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _userPreferenceRepository.DidNotReceive().Create(Arg.Any<UserPreference>());
     }
 
@@ -85,7 +85,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
             Localization = new UpdateAppearanceLocalizationDto { Direction = "rtl" }
         });
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _userPreferenceRepository.Received(1).Create(Arg.Is<UserPreference>(preference =>
             preference.SettingKey == GovernanceSettingKeys.Appearance.Direction));
         await _userPreferenceRepository.DidNotReceive().Create(Arg.Is<UserPreference>(preference =>
@@ -101,7 +101,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
             Localization = new UpdateAppearanceLocalizationDto { Language = "en" }
         });
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _userPreferenceRepository.Received(1).RemoveOverride(
             TestTenantId,
             TestUserId,
@@ -124,7 +124,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
             Localization = new UpdateAppearanceLocalizationDto { Direction = "ltr" }
         });
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _userPreferenceRepository.DidNotReceive().Create(Arg.Any<UserPreference>());
         _hierarchicalSettingsResolver.DidNotReceive().InvalidateUserCache(Arg.Any<Guid>(), Arg.Any<Guid>());
     }

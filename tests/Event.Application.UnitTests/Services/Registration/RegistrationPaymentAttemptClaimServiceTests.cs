@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 using TUnit.Assertions;
@@ -547,17 +548,18 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
 
     private PaymentAttempt CreateAttempt(PaymentAttemptStatusEnum status, bool withAcceptance = true)
     {
+        OrganizerPaymentRecipientSnapshot recipient = RecipientSnapshot();
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(),
             _tenantId,
             _orderId,
-            RecipientSnapshot(),
+            recipient,
             "OrganizerDirect",
             "2026-08-20.acacia",
             Guid.Empty.ToString("N"),
-            1_000,
-            75,
-            125,
+            Money.Create(1_000, recipient.CurrencyCode),
+            Money.Create(75, recipient.CurrencyCode),
+            Money.Create(125, recipient.CurrencyCode),
             "checkout:" + _tenantId.ToString("N") + ":" + _orderId.ToString("N") + ":abc",
             UtcNow,
             UtcNow.AddMinutes(30));

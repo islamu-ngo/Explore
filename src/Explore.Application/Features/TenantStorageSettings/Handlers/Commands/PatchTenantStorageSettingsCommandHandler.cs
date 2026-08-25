@@ -47,45 +47,39 @@ public sealed class PatchTenantStorageSettingsCommandHandler
         CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
-        var response = new BaseCommandResponse<Guid>();
 
         if (!await IsUserAuthorizedAsync(tenantId, request.UserId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Only tenant administrators or instance administrators can patch tenant storage settings.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only tenant administrators or instance administrators can patch tenant storage settings.");
         }
 
         var currentSettings = await _storageSettingService.ReadSettingsAsync(tenantId, cancellationToken);
         if (currentSettings.IsReadOnly)
         {
-            response.Success = false;
-            response.FailureCode = LockedFailureCode;
-            response.Message = "Tenant storage settings are locked by instance policy.";
-            response.Errors = ["Storage delegation must be unlocked by an instance administrator before tenant overrides can be saved."];
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                LockedFailureCode,
+                "Tenant storage settings are locked by instance policy.",
+                ["Storage delegation must be unlocked by an instance administrator before tenant overrides can be saved."]);
         }
 
         var patchValidator = new PatchTenantStorageSettingsDtoValidator();
         var validationResult = await patchValidator.ValidateAsync(request.Settings, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant storage settings validation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant storage settings validation failed.");
         }
 
-        MergePatch(currentSettings, request.Settings);
+        currentSettings = MergePatch(currentSettings, request.Settings);
         var settingsValidator = new TenantStorageSettingsDtoValidator(currentSettings.EffectivePolicy.InstanceMaxUploadBytes);
         validationResult = await settingsValidator.ValidateAsync(currentSettings, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant storage settings validation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant storage settings validation failed.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(
@@ -95,13 +89,10 @@ public sealed class PatchTenantStorageSettingsCommandHandler
         _settingsResolver.InvalidateCache(SettingScope.Tenant, tenantId);
         _s3ConfigResolver.InvalidateCache(tenantId);
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = "Tenant storage settings patched successfully.";
-        return response;
+        return BaseCommandResponse.Success(tenantId, "Tenant storage settings patched successfully.");
     }
 
-    private static void MergePatch(
+    private static TenantStorageSettingsDto MergePatch(
         TenantStorageSettingsDto current,
         PatchTenantStorageSettingsDto patch)
     {
@@ -122,7 +113,7 @@ public sealed class PatchTenantStorageSettingsCommandHandler
 
         if (patch.Policy?.Routes is { HasValue: true } routes)
         {
-            current.Routes = routes.Value ?? [];
+            current = current with { Routes = routes.Value ?? [] };
         }
 
         if (patch.S3?.Endpoint is { HasValue: true } endpoint)
@@ -164,6 +155,8 @@ public sealed class PatchTenantStorageSettingsCommandHandler
         {
             current.S3UploadUrlExpirationMinutes = expirationMinutes.Value;
         }
+
+        return current;
     }
 
     private async Task<bool> IsUserAuthorizedAsync(

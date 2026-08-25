@@ -196,7 +196,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
     }
 
@@ -218,7 +218,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
     [Test]
@@ -230,7 +230,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Authentication required");
     }
 
@@ -244,7 +244,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("administrators");
     }
 
@@ -260,7 +260,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Only tenant administrators");
     }
 
@@ -274,7 +274,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "invalid-mode", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not allowed");
     }
 
@@ -287,7 +287,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestIntKey, Value = "abc", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not a valid integer");
     }
 
@@ -300,7 +300,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Locked by");
     }
 
@@ -315,7 +315,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _userPrefRepo.Received(1).Create(Arg.Is<UserPreference>(p =>
             p.SettingKey == TestKey && p.UserId == TestUserId));
     }
@@ -340,7 +340,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _userPrefRepo.Received(1).Update(Arg.Is<UserPreference>(p => p.Id == existing.Id));
     }
 
@@ -354,7 +354,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.Tenant };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).SetValueAsync(
             TestKey, Arg.Any<string>(), SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -374,7 +374,7 @@ public class SettingHandlerTests
             Scope = SettingScope.Tenant
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         _resolver.Received(1).InvalidateCache(SettingScope.Tenant, TestTenantId);
     }
 
@@ -403,7 +403,7 @@ public class SettingHandlerTests
             Scope = SettingScope.Tenant
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("instance");
         await _resolver.DidNotReceiveWithAnyArgs()
             .SetValueAsync(default!, default!, default, default, default, default);
@@ -454,7 +454,7 @@ public class SettingHandlerTests
             Scope = SettingScope.Tenant
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(calls.Count).IsEqualTo(2);
         await Assert.That(calls[0]).IsEqualTo("committed");
         await Assert.That(calls[1]).IsEqualTo("invalidated");
@@ -483,7 +483,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         cerbosConfigResolver.Received(1).InvalidateCache(TestTenantId);
     }
 
@@ -503,7 +503,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).SetValueAsync(
             Arg.Is<string>(GovernanceSettingKeys.Cerbos.CustomEndpoint),
             Arg.Is<string>(value =>
@@ -526,7 +526,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = key, Value = organizationId, Scope = SettingScope.Tenant };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).SetValueAsync(
             key, Arg.Any<string>(), SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -544,7 +544,7 @@ public class SettingHandlerTests
         var cmd = new UpdateSettingCommand { Key = key, Value = presetsJson, Scope = SettingScope.Tenant };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).SetValueAsync(
             key, presetsJson, SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -910,7 +910,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
     }
 
@@ -922,7 +922,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Cannot reset instance-level");
     }
 
@@ -935,7 +935,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Authentication required");
     }
 
@@ -949,7 +949,7 @@ public class SettingHandlerTests
         var cmd = new ResetSettingCommand { Key = TestKey, Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _userPrefRepo.Received(1).RemoveOverride(TestTenantId, TestUserId, TestKey);
     }
 
@@ -963,7 +963,7 @@ public class SettingHandlerTests
         var cmd = new ResetSettingCommand { Key = TestKey, Scope = SettingScope.User };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("No user override found");
     }
 
@@ -977,7 +977,7 @@ public class SettingHandlerTests
         var cmd = new ResetSettingCommand { Key = TestKey, Scope = SettingScope.Tenant };
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).RemoveOverrideAsync(
             TestKey, SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -1001,7 +1001,7 @@ public class SettingHandlerTests
             new ResetSettingCommand { Key = TestKey, Scope = SettingScope.Tenant },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(SettingSystemLockedException.Code);
         await _mediator.DidNotReceive().Publish(
             Arg.Any<SettingChangedNotification>(),
@@ -1024,7 +1024,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
     }
 
@@ -1042,7 +1042,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).LockAsync(
             TestKey, SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -1056,7 +1056,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("only supported at Instance and Tenant");
     }
 
@@ -1070,7 +1070,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("administrators");
     }
 
@@ -1117,7 +1117,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not found");
     }
 
@@ -1129,7 +1129,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("only supported at Instance and Tenant");
     }
 
@@ -1143,7 +1143,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("administrators");
     }
 
@@ -1156,7 +1156,7 @@ public class SettingHandlerTests
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _resolver.Received(1).UnlockAsync(
             TestKey, SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -1196,13 +1196,13 @@ public class SettingHandlerTests
                 IsLocked = isLocked,
                 Description = definition.Description,
                 Category = definition.Category,
-                AllowedValues = definition.AllowedValues is { Length: > 0 }
+                AllowedValues = definition.AllowedValues is { Count: > 0 }
                     ? string.Join(",", definition.AllowedValues) : null
             });
     }
 
-    private static string? JoinAllowedValues(string[]? values) =>
-        values is { Length: > 0 } ? string.Join(",", values) : null;
+    private static string? JoinAllowedValues(IEnumerable<string>? values) =>
+        values is not null && values.Any() ? string.Join(",", values) : null;
 
     private void SetupResolverBatchForEventList()
     {

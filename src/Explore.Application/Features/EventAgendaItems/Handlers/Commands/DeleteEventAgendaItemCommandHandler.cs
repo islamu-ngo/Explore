@@ -27,14 +27,12 @@ public class DeleteEventAgendaItemCommandHandler : IRequestHandler<DeleteEventAg
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteEventAgendaItemCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var agendaItem = await _eventAgendaItemRepository.GetById(request.Id);
         if (agendaItem == null)
         {
-            response.Success = false;
-            response.Message = "Event agenda item not found.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event agenda item not found."],
+                "Event agenda item not found.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async token =>
@@ -47,10 +45,6 @@ public class DeleteEventAgendaItemCommandHandler : IRequestHandler<DeleteEventAg
                 token);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = agendaItem.Id;
-        response.Message = "Event agenda item deleted successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(agendaItem.Id, "Event agenda item deleted successfully.");
     }
 }

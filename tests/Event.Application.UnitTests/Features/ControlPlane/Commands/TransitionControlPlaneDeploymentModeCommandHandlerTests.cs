@@ -48,7 +48,7 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandlerTests
                 "SingleTenant"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode)
             .IsEqualTo(FailureCodes.DeploymentModeChangeBlockedByActiveTenants);
         await Assert.That(calls.SequenceEqual(
@@ -97,7 +97,7 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandlerTests
                 "MultiTenant"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(bootstrap.SelectedDeploymentMode).IsEqualTo("MultiTenant");
         await Assert.That(calls.SequenceEqual(
             [

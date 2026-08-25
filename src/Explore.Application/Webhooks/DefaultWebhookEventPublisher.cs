@@ -117,7 +117,7 @@ public sealed class DefaultWebhookEventPublisher(
             context.AggregateKind,
             context.AggregateId,
             consumerId,
-            payload.PayloadBytes,
+            payload.PayloadBytes.Value.Span,
             "application/json",
             "utf-8",
             context.OccurredAt.UtcDateTime,

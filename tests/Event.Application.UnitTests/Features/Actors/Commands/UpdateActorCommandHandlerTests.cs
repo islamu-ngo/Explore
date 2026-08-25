@@ -68,7 +68,7 @@ public class UpdateActorCommandHandlerTests
             UpdateActorDto = new UpdateActorDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Actor update failed.");
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -152,7 +152,7 @@ public class UpdateActorCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.DisplayName).IsEqualTo("Updated Actor");
         await Assert.That(actor.ActorTypeId).IsEqualTo(1);
         await _actorRepository.Received(1).Update(actor);
@@ -182,7 +182,7 @@ public class UpdateActorCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.BackgroundColor).IsNull();
         await Assert.That(actor.BackgroundEffect).IsEqualTo("SoftOverlay");
         await Assert.That(actor.BannerColor).IsEqualTo("#112233");
@@ -212,7 +212,7 @@ public class UpdateActorCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(actor.ProfilePictureUri).IsEqualTo(storageObject.Uri);
         await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
         await _actorRepository.Received(1).Update(actor);
@@ -242,7 +242,7 @@ public class UpdateActorCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(actor.ProfilePictureUri).IsNull();
         await Assert.That(storageObject.ActorId).IsNull();
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
@@ -261,7 +261,7 @@ public class UpdateActorCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Appearance group must include at least one field operation.");
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
     }

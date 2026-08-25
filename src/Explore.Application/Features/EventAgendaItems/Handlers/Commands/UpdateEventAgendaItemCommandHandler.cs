@@ -11,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -55,8 +56,6 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventAgendaItemCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventAgendaItemDtoValidator(
             _eventRepository,
             _locationRepository,
@@ -66,19 +65,15 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event agenda item update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event agenda item update failed.");
         }
 
         var agendaItem = await _eventAgendaItemRepository.GetById(request.EventAgendaItemId);
         if (agendaItem == null)
         {
-            response.Success = false;
-            response.Message = "Event agenda item not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event agenda item not found.");
         }
 
         if (agendaItem.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -95,18 +90,17 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         var parentEvent = await _eventRepository.GetById(parentEventId);
         if (parentEvent == null || parentEvent.TenantId != agendaItem.TenantId)
         {
-            response.Success = false;
-            response.Message = "Event does not belong to the same tenant as the agenda item.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event does not belong to the same tenant as the agenda item."],
+                "Event does not belong to the same tenant as the agenda item.");
         }
 
         var relationshipValidation = await ValidateLocationRoomRelationshipAsync(agendaItem, request.EventAgendaItemDto, cancellationToken);
         if (!relationshipValidation.Success)
         {
-            response.Success = false;
-            response.Message = "Event agenda item update failed.";
-            response.Errors = [relationshipValidation.Message];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                [relationshipValidation.Message],
+                "Event agenda item update failed.");
         }
 
         Guid? previousEventLocationId = agendaItem.EventLocationId;
@@ -154,11 +148,7 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         await _cache.RemoveAsync($"event:detail:{parentEvent.Id}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
 
-        response.Success = true;
-        response.Id = agendaItem.Id;
-        response.Message = "Event agenda item updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(agendaItem.Id, "Event agenda item updated successfully.");
     }
 
     private async Task<(bool Success, string Message, Guid? LocationId, Guid? RoomId)> ValidateLocationRoomRelationshipAsync(
@@ -209,8 +199,7 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         if (group is not null)
         {
             agendaItem.Reschedule(
-                group.StartTime,
-                group.EndTime,
+                UtcInstantRange.Create(group.StartTime, group.EndTime),
                 parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
                 _scheduleProjectionCalculator);
             await RelinkEventDayAsync(agendaItem, parentEvent.Id, cancellationToken);

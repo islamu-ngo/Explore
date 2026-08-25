@@ -45,8 +45,8 @@ public sealed class RegistrationParticipantCommandHandlerTests
         RegistrationOrderLifecycleResponseDto finalized = await fixture.Lifecycle.FinalizeFreeAsync(
             fixture.Order.Id, fixture.TenantId, CancellationToken.None);
 
-        await Assert.That(updated.Success && singlyAssigned.Success && assigned.Success).IsTrue();
-        await Assert.That(finalized.Success).IsTrue();
+        await Assert.That(updated.IsSuccess && singlyAssigned.IsSuccess && assigned.IsSuccess).IsTrue();
+        await Assert.That(finalized.IsSuccess).IsTrue();
         await Assert.That(fixture.ParticipantRows).Count().IsEqualTo(5);
         await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(5);
         await Assert.That(fixture.AssignmentRows.Select(value => (value.RegistrationOrderLineId, value.Ordinal)).Distinct()).Count().IsEqualTo(5);
@@ -81,7 +81,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         Guid replayStamp = fixture.Order.ConcurrencyStamp;
         BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> replay = await fixture.ImportCompanyCsv.Handle(amendment, CancellationToken.None);
 
-        await Assert.That(deferred.Success && finalized.Success && first.Success && replay.Success).IsTrue();
+        await Assert.That(deferred.IsSuccess && finalized.IsSuccess && first.IsSuccess && replay.IsSuccess).IsTrue();
         await Assert.That(fixture.Admissions).Count().IsEqualTo(2);
         await Assert.That(fixture.AmendmentRows).Count().IsEqualTo(2);
         await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.FirstLine.Id).Id).IsEqualTo(optionalAdmissionId);
@@ -109,7 +109,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
                 $"registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone\n{fixture.FirstLine.Id},1",
                 "import-2"), CancellationToken.None);
 
-        await Assert.That(formula.Success || malformed.Success).IsFalse();
+        await Assert.That(formula.IsSuccess || malformed.IsSuccess).IsFalse();
         await Assert.That(fixture.AssignmentRows).IsEmpty();
         await Assert.That(fixture.AmendmentRows).IsEmpty();
     }
@@ -131,7 +131,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         BaseCommandResponse<Guid> expired = await fixture.Defer.Handle(new DeferRegistrationTicketCommand(
             fixture.Order.Id, fixture.SecondLine.Id, 1, fixture.UtcNow), CancellationToken.None);
 
-        await Assert.That(duplicate.Success || crossOrder.Success || expired.Success).IsFalse();
+        await Assert.That(duplicate.IsSuccess || crossOrder.IsSuccess || expired.IsSuccess).IsFalse();
         await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(originalAssignments);
         await Assert.That(fixture.Admissions).IsEmpty();
     }
@@ -153,7 +153,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
             new AssignRegistrationTicketCommand(fixture.Order.Id, fixture.FirstLine.Id, 2, participant),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(fixture.AssignmentRows).IsEmpty();
         await Assert.That(fixture.SerializableExecutions).IsEqualTo(1);
     }
@@ -183,7 +183,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> replayed = await fixture.ImportCompanyCsv.Handle(
             new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-001"), CancellationToken.None);
 
-        await Assert.That(finalized.Success && imported.Success && replayed.Success).IsTrue();
+        await Assert.That(finalized.IsSuccess && imported.IsSuccess && replayed.IsSuccess).IsTrue();
         await Assert.That(imported.Id!.AssignmentCount).IsEqualTo(2);
         await Assert.That(replayed.Id!.AlreadyApplied).IsTrue();
         await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).Count().IsEqualTo(2);
@@ -215,7 +215,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> imported = await fixture.ImportCompanyCsv.Handle(
             new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-002"), CancellationToken.None);
 
-        await Assert.That(imported.Success).IsFalse();
+        await Assert.That(imported.IsSuccess).IsFalse();
         await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).IsEmpty();
         await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(originalAssignmentCount);
         await Assert.That(fixture.AmendmentRows).IsEmpty();
@@ -244,7 +244,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> imported = await fixture.ImportCompanyCsv.Handle(
             new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-duplicate"), CancellationToken.None);
 
-        await Assert.That(imported.Success).IsFalse();
+        await Assert.That(imported.IsSuccess).IsFalse();
         await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).IsEmpty();
         await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(originalAssignmentCount);
         await Assert.That(fixture.AmendmentRows).IsEmpty();
@@ -347,7 +347,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         {
             BaseCommandResponse<Guid> response = await Add.Handle(
                 new AddRegistrationParticipantCommand(Order.Id, (int)type, guardianId, details), CancellationToken.None);
-            await Assert.That(response.Success).IsTrue();
+            await Assert.That(response.IsSuccess).IsTrue();
             return response.Id;
         }
 

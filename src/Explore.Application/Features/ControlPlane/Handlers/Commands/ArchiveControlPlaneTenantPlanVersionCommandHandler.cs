@@ -32,18 +32,9 @@ public sealed class ArchiveControlPlaneTenantPlanVersionCommandHandler(ITenantPl
         version.IsActiveForProvisioning = false;
         await tenantPlanRepository.UpdateVersionAsync(version, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = version.Id,
-            Message = "Tenant plan version archived."
-        };
+        return BaseCommandResponse.Success(version.Id, "Tenant plan version archived.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

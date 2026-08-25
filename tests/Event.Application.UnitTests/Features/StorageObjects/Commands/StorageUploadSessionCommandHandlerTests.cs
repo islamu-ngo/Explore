@@ -89,7 +89,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.Local);
         await Assert.That(result.Id.Status).IsEqualTo(StorageUploadSessionStates.Reserved);
@@ -124,7 +124,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _storagePolicyResolver.DidNotReceive().ResolveAsync(
             Arg.Any<Guid>(),
             Arg.Any<StoragePolicyIntent>(),
@@ -169,7 +169,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
         await Assert.That(result.Errors).IsEmpty();
         await _privacyErasureStateRepository.Received(2)
@@ -208,7 +208,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
         await Assert.That(result.Errors).IsEmpty();
         await _privacyErasureStateRepository.Received(2)
@@ -251,7 +251,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
         await Assert.That(result.Id.ContentType).IsEqualTo("application/pdf");
 
@@ -273,7 +273,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadTooLarge);
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
@@ -314,7 +314,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
         await Assert.That(result.Id.RouteKey).IsEqualTo(StorageRouteKeys.Documents);
         await Assert.That(result.Id.PolicyMaxUploadBytes).IsEqualTo(80);
@@ -354,7 +354,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Finalized);
         await Assert.That(result.Id.StorageObjectId).IsNotNull();
         await Assert.That(result.Id.Sha256Checksum).IsEqualTo(ValidSha256Checksum);
@@ -405,7 +405,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
         await Assert.That(result.Id.RouteKey).IsEqualTo(StorageRouteKeys.Documents);
         await Assert.That(result.Id.PolicyMaxUploadBytes).IsEqualTo(80);
@@ -436,7 +436,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).Contains("already finalized");
         await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Finalized);
         await Assert.That(result.Id.StorageObjectId).IsEqualTo(storageObjectId);
@@ -468,7 +468,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSizeMismatch);
         await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
         await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
@@ -502,7 +502,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadContentSignatureMismatch);
         await Assert.That(result.Errors).Contains("Upload bytes did not match the reserved content type signature.");
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
@@ -539,7 +539,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadContentSignatureMismatch);
         await Assert.That(result.Errors).Contains("File extension did not match the reserved content type.");
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
@@ -589,7 +589,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedBytes).IsEquivalentTo(bytes);
         await _storageObjectRepository.Received(1).Create(Arg.Is<StorageObject>(storageObject =>
             storageObject.ObjectKey == objectKey &&
@@ -614,7 +614,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
         await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
             Arg.Any<Guid>(),
@@ -642,7 +642,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
         await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
             Arg.Any<Guid>(),
@@ -672,7 +672,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionInvalidState);
         await Assert.That(result.Errors).Contains($"Upload session status is {StorageUploadSessionStates.Canceled}.");
         await _provider.DidNotReceive().WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
@@ -701,7 +701,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadWriteFailed);
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
         await Assert.That(counter.ReservedBytes).IsEqualTo(0);
@@ -736,7 +736,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadWriteFailed);
         await Assert.That(result.Message).IsEqualTo("Storage provider returned invalid upload metadata.");
         await Assert.That(result.Errors).Contains("Storage provider result did not match the reserved provider.");
@@ -799,7 +799,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload finalization failed.");
         await Assert.That(result.Errors).IsEmpty();
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
@@ -826,7 +826,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await _uploadSessionRepository.DidNotReceive().Create(Arg.Any<StorageUploadSession>());
         await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
@@ -866,7 +866,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await _uploadSessionRepository.DidNotReceive().Create(Arg.Any<StorageUploadSession>());
         await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
@@ -890,7 +890,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Id).IsEqualTo(existing.Id);
         await Assert.That(result.Message).Contains("already exists");
         await _usageCounterRepository.DidNotReceive().GetOrCreateAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -907,7 +907,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors![0]).Contains("Idempotency Key is required");
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
@@ -927,7 +927,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Canceled);
         await Assert.That(counter.ReservedBytes).IsEqualTo(30);
         await _usageCounterRepository.Received(1).Update(counter);
@@ -951,7 +951,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Status).IsEqualTo(StorageUploadSessionStates.Expired);
         await Assert.That(result.Id.FailedAt).IsNotNull();
         await Assert.That(counter.ReservedBytes).IsEqualTo(0);
@@ -969,7 +969,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionFinalized);
         await Assert.That(counter.ReservedBytes).IsEqualTo(10);
         await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
@@ -987,7 +987,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
         await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
             Arg.Any<Guid>(),
@@ -1008,7 +1008,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = session.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.StorageUploadSessionNotFound);
         await _usageCounterRepository.DidNotReceive().GetByTenantAndProviderAsync(
             Arg.Any<Guid>(),
@@ -1025,7 +1025,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CancelStorageUploadSessionCommand { UploadSessionId = Guid.Empty },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors![0]).IsEqualTo("UploadSessionId is required.");
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),

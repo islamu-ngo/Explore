@@ -28,35 +28,26 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTagCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateTagDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Update, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tag update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Tag update failed.");
         }
 
         if (request.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Tag not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Tag not found.");
         }
 
         var tag = await _tagRepository.GetById(request.TagId);
 
         if (tag == null || tag.TenantId != _tenantContext.TenantId)
         {
-            response.Success = false;
-            response.Message = "Tag not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Tag not found.");
         }
 
         if (request.Update.MasterCode is not null)
@@ -67,10 +58,6 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
 
         await _tagRepository.Update(tag);
 
-        response.Success = true;
-        response.Id = tag.Id;
-        response.Message = "Tag updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(tag.Id, "Tag updated successfully.");
     }
 }

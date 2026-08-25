@@ -138,7 +138,7 @@ public class PublishEventCommandHandler(
             return Success(attemptEvent.Id, "Event published successfully.");
         }, cancellationToken);
 
-        if (response.Success && tenantIdToInvalidate.HasValue)
+        if (response.IsSuccess && tenantIdToInvalidate.HasValue)
         {
             await cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdToInvalidate.Value), cancellationToken);
@@ -147,25 +147,16 @@ public class PublishEventCommandHandler(
         return response;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 
     private static string PublishTransitionReadinessError(EventStatusEnum status) => status switch
     {

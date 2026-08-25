@@ -192,7 +192,7 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             }
         }, cancellationToken);
 
-        if (!uploadSession.Success || uploadSession.Id is null || uploadSession.Id.Id == Guid.Empty)
+        if (!uploadSession.IsSuccess || uploadSession.Id is null || uploadSession.Id.Id == Guid.Empty)
         {
             return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
                 uploadSession.FailureCode ?? "ai_image_upload_session_failed",
@@ -209,7 +209,7 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             TenantId = action.TenantId
         }, cancellationToken);
 
-        if (!finalizeResult.Success || finalizeResult.Id?.StorageObjectId is not { } storageObjectId || storageObjectId == Guid.Empty)
+        if (!finalizeResult.IsSuccess || finalizeResult.Id?.StorageObjectId is not { } storageObjectId || storageObjectId == Guid.Empty)
         {
             return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
                 finalizeResult.FailureCode ?? "ai_image_upload_failed",
@@ -373,23 +373,14 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             && action.Conversation.TenantId == tenantId
             && action.Conversation.UserId == userId;
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         string message,
         IEnumerable<string> errors,
         string? failureCode = null,
-        Guid id = default) => new()
-        {
-            Success = false,
-            Id = id,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        Guid id = default) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 }

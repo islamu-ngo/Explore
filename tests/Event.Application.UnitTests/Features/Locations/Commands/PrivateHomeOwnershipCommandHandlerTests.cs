@@ -42,7 +42,7 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("private_home_consent_required");
         await locations.DidNotReceive().GetById(Arg.Any<Guid>());
         await locations.DidNotReceive().Update(Arg.Any<Location>());
@@ -61,7 +61,7 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             Classify(location, actorId),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(location.LocationKindId).IsEqualTo((int)LocationKindEnum.PrivateHome);
         await Assert.That(location.OwnerUserId).IsEqualTo(actorId);
         await locations.Received(1).Update(location);
@@ -82,7 +82,7 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             Classify(location, intruderId),
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("private_home_ownership_rejected");
         await Assert.That(location.OwnerUserId).IsEqualTo(ownerId);
         await locations.DidNotReceive().Update(Arg.Any<Location>());
@@ -156,7 +156,7 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(location.OwnerUserId).IsEqualTo(newOwnerId);
         await Assert.That(location.UpdatedBy).IsEqualTo(newOwnerId);
         await Assert.That(location.UpdatedAt).IsEqualTo(Now.UtcDateTime);
@@ -183,7 +183,7 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("private_home_ownership_rejected");
         await locations.DidNotReceive().Update(Arg.Any<Location>());
     }

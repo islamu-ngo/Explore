@@ -90,7 +90,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new UpdateEventDtoValidator(
             _audienceAgeRepository,
             _audienceGenderRepository,
@@ -104,10 +103,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         var validationResult = await validator.ValidateAsync(request.UpdateEventDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event update failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Event update failed.");
         }
 
         Guid currentUserId = _userContext.GetRequiredUserId();
@@ -118,17 +116,12 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         Guid eventIdForCache = Guid.Empty;
         Guid tenantIdForCache = Guid.Empty;
 
-        response = await _unitOfWork.ExecuteSerializableAsync(async token =>
+        BaseCommandResponse<Guid> response = await _unitOfWork.ExecuteSerializableAsync(async token =>
         {
             Explore.Domain.Event? eventEntity = await _eventRepository.GetScheduleGraphForUpdateAsync(request.EventId, token);
             if (eventEntity is null)
             {
-                return new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = "Event not found.",
-                    FailureCode = FailureCodes.NotFound
-                };
+                return BaseCommandResponse.NotFound<Guid>("Event not found.");
             }
 
             if (eventEntity.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -153,12 +146,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                     featuredImageId,
                     backgroundImageId))
             {
-                return new BaseCommandResponse<Guid>
-                {
-                    Success = false,
-                    Message = "Event update failed.",
-                    Errors = ["Every image must be an active public safe-raster object in the current tenant."]
-                };
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Every image must be an active public safe-raster object in the current tenant."],
+                    "Event update failed.");
             }
 
             string previousTitle = eventEntity.Title;
@@ -278,15 +268,10 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
             eventIdForCache = eventEntity.Id;
             tenantIdForCache = eventEntity.TenantId;
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = eventEntity.Id,
-                Message = "Event updated successfully."
-            };
+            return BaseCommandResponse.Success(eventEntity.Id, "Event updated successfully.");
         }, cancellationToken);
 
-        if (!response.Success)
+        if (!response.IsSuccess)
         {
             return response;
         }

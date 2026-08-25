@@ -44,7 +44,7 @@ public class GetEventListAggregateViewQueryHandlerTests
             new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 2, 1),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.PageNumber).IsEqualTo(2);
         await Assert.That(result.Id.PageSize).IsEqualTo(1);
@@ -103,7 +103,7 @@ public class GetEventListAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 1, 20), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Items.Count).IsEqualTo(2);
         await Assert.That(result.Id.Items.All(x => x.SearchableFacets.Count == 1)).IsTrue();
         await Assert.That(result.Id.Items.All(x => x.SearchableFacets[0].Key == "public-facet")).IsTrue();
@@ -128,7 +128,7 @@ public class GetEventListAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 1, 20), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var facet = result.Id!.Items.Single().SearchableFacets.Single();
         await Assert.That(facet.Key).IsEqualTo("public-facet");
         await Assert.That(facet.ExposureLevel).IsEqualTo(ExposureLevel.Public);
@@ -156,7 +156,7 @@ public class GetEventListAggregateViewQueryHandlerTests
 
         var result = await _handler.Handle(new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 1, 20), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Items.Single().SearchableFacets).IsEmpty();
     }
 

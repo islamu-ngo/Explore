@@ -29,7 +29,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(Guid.NewGuid(), TenantStatusEnum.Suspended, reason: null),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("Suspended requires a reason.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -60,7 +60,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Suspended, "  policy breach  "),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id.OldStatusId).IsEqualTo((int)TenantStatusEnum.Active);
         await Assert.That(result.Id.NewStatusId).IsEqualTo((int)TenantStatusEnum.Suspended);
         await Assert.That(result.Id.Reason).IsEqualTo("policy breach");
@@ -95,7 +95,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Active, reason: null),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Cannot transition tenant from Purged to Active.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -112,7 +112,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(Guid.NewGuid(), TenantStatusEnum.Purged, reason: null),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors ?? []).Contains("Purged requires a reason.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -135,7 +135,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
                 confirmationText: "wrong-slug"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains($"Purged requires confirmation with tenant slug '{tenant.Slug}'.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -175,7 +175,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
                 confirmationText: tenant.Slug),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Tenant purge scheduled.");
         await Assert.That(result.Id.OldStatusId).IsEqualTo((int)TenantStatusEnum.Archived);
         await Assert.That(result.Id.NewStatusId).IsEqualTo((int)TenantStatusEnum.Purged);
@@ -214,7 +214,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Purged, "confirmed", tenant.Slug),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Cannot transition tenant from Active to Purged.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -233,7 +233,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             new TransitionControlPlaneTenantLifecycleCommand(tenant.Id, TenantStatusEnum.Active, reason: null),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Tenant already has the requested lifecycle status.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);

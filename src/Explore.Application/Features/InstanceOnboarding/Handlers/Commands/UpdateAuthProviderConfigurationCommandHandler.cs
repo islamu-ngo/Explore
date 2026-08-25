@@ -46,15 +46,11 @@ public class UpdateAuthProviderConfigurationCommandHandler :
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAuthProviderConfigurationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
-            response.Success = false;
-            response.Message = "Only instance administrators can update auth provider configuration.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only instance administrators can update auth provider configuration.");
         }
 
         return await ApplyConfigurationAsync(request.Patch, request.UserId, cancellationToken);
@@ -66,11 +62,8 @@ public class UpdateAuthProviderConfigurationCommandHandler :
     {
         if (!_setupSecretProvider.IsSetupModeActive)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Setup mode is no longer active."
-            };
+            const string message = "Setup mode is no longer active.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         return await ApplyConfigurationAsync(request.Patch, currentAdminUserId: null, cancellationToken);
@@ -81,14 +74,11 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         Guid? currentAdminUserId,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var currentConfiguration = await _configurationService.ReadConfigurationAsync();
         if (!configurationPatch.HasChanges() || configurationPatch.Configuration.Value is null)
         {
-            response.Success = false;
-            response.Message = "Authentication provider patch must include a complete configuration group.";
-            return response;
+            const string message = "Authentication provider patch must include a complete configuration group.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var patch = configurationPatch.Configuration.Value;
@@ -113,10 +103,9 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid auth provider configuration.";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(x => x.ErrorMessage),
+                "Invalid auth provider configuration.");
         }
 
         if (currentAdminUserId.HasValue)
@@ -124,26 +113,24 @@ public class UpdateAuthProviderConfigurationCommandHandler :
             var currentUser = await _userRepository.GetById(currentAdminUserId.Value);
             if (currentUser == null)
             {
-                response.Success = false;
-                response.Message = "Current user could not be resolved.";
-                return response;
+                const string message = "Current user could not be resolved.";
+                return BaseCommandResponse.Validation<Guid>([message], message);
             }
 
             var currentUserLogins = await _userExternalLoginRepository.GetByUser(currentAdminUserId.Value);
             if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, configuration))
             {
-                response.Success = false;
-                response.Message = "Cannot disable all authentication providers linked to your current admin account.";
-                return response;
+                const string message = "Cannot disable all authentication providers linked to your current admin account.";
+                return BaseCommandResponse.Validation<Guid>([message], message);
             }
         }
 
         await _configurationService.ApplyConfigurationAsync(configuration);
         await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
 
-        response.Success = true;
-        response.Message = "Authentication provider configuration updated successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            Guid.Empty,
+            "Authentication provider configuration updated successfully.");
     }
 
     private static bool WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(

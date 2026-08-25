@@ -41,25 +41,21 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
     public async Task<BaseCommandResponse<SharedContactExportResultDto>> Handle(
         ExportSharedContactsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<SharedContactExportResultDto>();
-
         var format = NormalizeFormat(request.Format);
         if (format is null)
         {
-            response.Success = false;
-            response.Message = "Invalid export format. Supported formats: csv, tsv.";
-            response.Errors = ["Invalid export format."];
-            return response;
+            return BaseCommandResponse.Validation<SharedContactExportResultDto>(
+                ["Invalid export format."],
+                "Invalid export format. Supported formats: csv, tsv.");
         }
 
         // Validate actor is an approved organisation
         var actor = await _actorRepository.GetById(request.RecipientActorId);
         if (actor?.OrganizationId == null || actor.OrganizationId != request.OrganizationId)
         {
-            response.Success = false;
-            response.Message = "Recipient actor is not an organisation.";
-            response.Errors = ["Actor is not an organisation."];
-            return response;
+            return BaseCommandResponse.Validation<SharedContactExportResultDto>(
+                ["Actor is not an organisation."],
+                "Recipient actor is not an organisation.");
         }
 
         var org = await _organizationRepository.GetById(actor.OrganizationId.Value);
@@ -67,10 +63,9 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
                 participation => participation.TenantId == request.TenantId &&
                     participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
-            response.Success = false;
-            response.Message = "Organisation is not approved.";
-            response.Errors = ["Organisation is not approved."];
-            return response;
+            return BaseCommandResponse.Validation<SharedContactExportResultDto>(
+                ["Organisation is not approved."],
+                "Organisation is not approved.");
         }
 
         // Fetch granted consents
@@ -127,19 +122,17 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
             "Exported {RowCount} shared contacts for actor {ActorId} by user {UserId} in {Format} format (export {ExportId})",
             consents.Count, request.RecipientActorId, request.ExportedByUserId, format, export.Id);
 
-        response.Success = true;
-        response.Id = new SharedContactExportResultDto
-        {
-            ExportId = export.Id,
-            RowCount = consents.Count,
-            Format = format,
-            FileContent = fileBytes,
-            FileName = fileName,
-            ContentType = contentType
-        };
-        response.Message = $"Exported {consents.Count} contacts.";
-
-        return response;
+        return BaseCommandResponse.Success(
+            new SharedContactExportResultDto
+            {
+                ExportId = export.Id,
+                RowCount = consents.Count,
+                Format = format,
+                FileContent = fileBytes,
+                FileName = fileName,
+                ContentType = contentType
+            },
+            $"Exported {consents.Count} contacts.");
     }
 
     private static string? NormalizeFormat(string? format)

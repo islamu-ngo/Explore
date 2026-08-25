@@ -78,7 +78,7 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
         var result = await _handler.Handle(new CreateTenantUserRoleGrantCommand { TenantUserRoleGrantDto = dto }, CancellationToken.None);
         var afterHandle = DateTime.UtcNow;
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdId);
         await Assert.That(result.Message).IsEqualTo("Tenant user role grant created successfully.");
         await _tenantUserRoleGrantRepository.Received(1).Create(Arg.Is<TenantUserRoleGrant>(grant =>
@@ -101,7 +101,7 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
 
         var result = await _handler.Handle(new CreateTenantUserRoleGrantCommand { TenantUserRoleGrantDto = dto }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Tenant user role grant creation failed.");
         await Assert.That(result.Errors).Contains("Tenant-local user must be active before a role can be granted.");
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
@@ -116,7 +116,7 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
 
         var result = await _handler.Handle(new CreateTenantUserRoleGrantCommand { TenantUserRoleGrantDto = dto }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Tenant user role grant creation failed.");
         await Assert.That(result.Errors).Contains("Tenant user does not exist");
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
@@ -145,7 +145,7 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
 
         var result = await _handler.Handle(new CreateTenantUserRoleGrantCommand { TenantUserRoleGrantDto = dto }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("An active grant for this tenant user and role already exists.");
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }

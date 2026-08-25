@@ -102,7 +102,7 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
                 },
                 cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             await deploymentModeProvider.InvalidateCacheAsync();
         }
@@ -135,20 +135,11 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
 
     private static BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto> Success(
         ControlPlaneDeploymentModeTransitionDto transition,
-        string message) => new()
-        {
-            Success = true,
-            Id = transition,
-            Message = message
-        };
+        string message) => BaseCommandResponse.Success(transition, message);
 
     private static BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto> Failure(
         string message,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            Errors = [message]
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<ControlPlaneDeploymentModeTransitionDto>([message], message)
+            : BaseCommandResponse.Failure<ControlPlaneDeploymentModeTransitionDto>(failureCode, message, [message]);
 }

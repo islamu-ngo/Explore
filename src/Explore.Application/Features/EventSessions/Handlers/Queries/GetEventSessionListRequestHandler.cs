@@ -135,7 +135,7 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
                 EventSessionCustomPropertyProjectionFilter.OptionMatch(criterion.Namespace, criterion.Key, criterion.OptionId.Value),
 
             CustomPropertyFilterOperator.OptionIn when criterion.OptionIds is { Count: > 0 } =>
-                EventSessionCustomPropertyProjectionFilter.OptionsMatchAny(criterion.Namespace, criterion.Key, criterion.OptionIds),
+                EventSessionCustomPropertyProjectionFilter.OptionsMatchAny(criterion.Namespace, criterion.Key, criterion.OptionIds.ToList()),
 
             CustomPropertyFilterOperator.NumberRange when criterion.MinNumber.HasValue || criterion.MaxNumber.HasValue =>
                 EventSessionCustomPropertyProjectionFilter.NumberRange(criterion.Namespace, criterion.Key, criterion.MinNumber, criterion.MaxNumber),

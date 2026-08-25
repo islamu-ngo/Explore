@@ -1,7 +1,7 @@
 // ABOUTME: Rotates an active admission credential and creates its one-time recovery document.
 // ABOUTME: Keeps digest persistence in the aggregate while plaintext exists only in the returned document.
 
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
 using Explore.Domain.Enums;

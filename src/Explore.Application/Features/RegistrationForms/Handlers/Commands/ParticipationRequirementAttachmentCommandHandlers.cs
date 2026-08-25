@@ -87,7 +87,7 @@ public sealed class AttachRegistrationRequirementCommandHandler(
                 await repository.SaveChangesAsync(token);
                 return Success(request.RequirementId, "Registration requirement attached.");
             }, cancellationToken);
-            if (response.Success)
+            if (response.IsSuccess)
             {
                 await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
                 await cache.RemoveByTagAsync(
@@ -113,12 +113,7 @@ public sealed class AttachRegistrationRequirementCommandHandler(
         }
     }
 
-    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
     internal static BaseCommandResponse<Guid> Missing(Guid id) => Failure(
         id, "registration_requirement_not_found", ["Registration requirement was not found."]);
@@ -127,14 +122,8 @@ public sealed class AttachRegistrationRequirementCommandHandler(
         id, "registration_requirement_concurrency_conflict",
         ["Participation configuration changed since it was loaded."]);
 
-    internal static BaseCommandResponse<Guid> Failure(Guid id, string code, IEnumerable<string> errors) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = code,
-        Message = errors.First(),
-        Errors = errors.ToList()
-    };
+    internal static BaseCommandResponse<Guid> Failure(Guid id, string code, IEnumerable<string> errors) =>
+        BaseCommandResponse.Failure<Guid>(code, errors.First(), errors, id);
 }
 
 public sealed class DetachRegistrationRequirementCommandHandler(
@@ -181,7 +170,7 @@ public sealed class DetachRegistrationRequirementCommandHandler(
                 return AttachRegistrationRequirementCommandHandler.Success(
                     request.RequirementId, "Registration requirement detached.");
             }, cancellationToken);
-            if (response.Success)
+            if (response.IsSuccess)
             {
                 await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
                 await cache.RemoveByTagAsync(

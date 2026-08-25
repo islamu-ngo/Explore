@@ -169,7 +169,7 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
                 ConcurrencyFailureCode);
         }
 
-        if (!response.Success || !eventIdToInvalidate.HasValue || !tenantIdToInvalidate.HasValue)
+        if (!response.IsSuccess || !eventIdToInvalidate.HasValue || !tenantIdToInvalidate.HasValue)
         {
             return response;
         }
@@ -195,21 +195,13 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
         await eventRepository.Update(scheduleGraph);
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) =>
+        failureCode is null
+            ? BaseCommandResponse.Validation(errors, message, id)
+            : BaseCommandResponse.Failure(failureCode, message, errors, id);
 
     protected sealed record TransitionAttempt(
         DateTime OccurredAt,

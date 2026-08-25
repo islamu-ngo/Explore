@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
 
@@ -165,9 +166,9 @@ public sealed class PaidOrderAcceptanceFreshnessServiceTests
             "OrganizerDirect",
             "2026-08-24",
             attempt.CompositionRevision,
-            attempt.OrganizerAmountMinor,
-            attempt.PlatformFeeMinor,
-            attempt.PlatformContributionMinor,
+            Money.Create(attempt.OrganizerAmountMinor, attempt.CurrencyCode),
+            Money.Create(attempt.PlatformFeeMinor, attempt.CurrencyCode),
+            Money.Create(attempt.PlatformContributionMinor, attempt.CurrencyCode),
             "checkout:missing-snapshot",
             UtcNow,
             UtcNow.AddMinutes(30));
@@ -267,9 +268,9 @@ public sealed class PaidOrderAcceptanceFreshnessServiceTests
             "OrganizerDirect",
             "2026-08-24",
             snapshot.CompositionRevision,
-            snapshot.OrganizerAmountMinor,
-            snapshot.PlatformFeeMinor,
-            snapshot.PlatformContributionMinor,
+            Money.Create(snapshot.OrganizerAmountMinor, snapshot.CurrencyCode),
+            Money.Create(snapshot.PlatformFeeMinor, snapshot.CurrencyCode),
+            Money.Create(snapshot.PlatformContributionMinor, snapshot.CurrencyCode),
             "checkout:fabricated",
             UtcNow,
             UtcNow.AddMinutes(30));

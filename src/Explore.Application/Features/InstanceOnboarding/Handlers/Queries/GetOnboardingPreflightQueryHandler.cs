@@ -359,7 +359,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
 
     private static void AddBlocking(OnboardingPreflightDto result, string code, string name, string status, string message, string? detail = null)
     {
-        result.BlockingChecks.Add(new OnboardingPreflightCheckDto
+        result.AddBlockingCheck(new OnboardingPreflightCheckDto
         {
             Code = code,
             Name = name,
@@ -372,7 +372,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
 
     private static void AddWarning(OnboardingPreflightDto result, string code, string name, string message, string? detail = null)
     {
-        result.WarningChecks.Add(new OnboardingPreflightCheckDto
+        result.AddWarningCheck(new OnboardingPreflightCheckDto
         {
             Code = code,
             Name = name,

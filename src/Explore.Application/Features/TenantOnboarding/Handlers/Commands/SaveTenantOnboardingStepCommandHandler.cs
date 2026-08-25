@@ -42,14 +42,12 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
 
     public async Task<BaseCommandResponse<Guid>> Handle(SaveTenantOnboardingStepCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var tenantId = _tenantContext.TenantId;
 
         if (!await IsUserAuthorizedAsync(tenantId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Only tenant administrators or instance administrators can update tenant onboarding progress.";
-            return response;
+            const string message = "Only tenant administrators or instance administrators can update tenant onboarding progress.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
@@ -74,13 +72,9 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
             await _tenantOnboardingStateRepository.Update(onboardingState);
         }
 
-        response.Success = true;
-        response.Message = "Tenant onboarding progress saved.";
-        response.Id = onboardingState.Id;
-
         await TrackStepAsync(request.UserId, onboardingState.CurrentStep, onboardingState.TotalSteps, request.CompletedSteps.ToArray(), cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(onboardingState.Id, "Tenant onboarding progress saved.");
     }
 
     private async Task TrackStepAsync(

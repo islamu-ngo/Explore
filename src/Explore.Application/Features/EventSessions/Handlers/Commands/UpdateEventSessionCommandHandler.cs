@@ -16,6 +16,7 @@ using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -84,8 +85,6 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventSessionDtoValidator(
             _eventRepository,
             _locationRepository,
@@ -96,10 +95,9 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session update failed.");
         }
 
         DateTime occurredAt = _timeProvider.GetUtcNow().UtcDateTime;
@@ -321,11 +319,10 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         }
         catch (RoomScheduleConflictException ex)
         {
-            response.Success = false;
-            response.Message = "Event session update failed.";
-            response.Errors = [ex.Message];
-            response.FailureCode = "room_schedule_conflict";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "room_schedule_conflict",
+                "Event session update failed.",
+                [ex.Message]);
         }
 
         if (eventChangedForCache)
@@ -336,22 +333,17 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         await _cache.RemoveAsync($"event:detail:{parentEventIdForCache}", cancellationToken);
         await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdForCache), cancellationToken);
 
-        response.Success = true;
-        response.Id = updatedSessionId;
-        response.Message = "Event session updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(updatedSessionId, "Event session updated successfully.");
     }
 
     private static BaseCommandResponse<Guid> CreateFailureResponse(
         string message,
         string? error = null,
-        string? failureCode = null) => new()
+        string? failureCode = null) => failureCode switch
         {
-            Success = false,
-            Message = message,
-            Errors = error is null ? null : [error],
-            FailureCode = failureCode
+            FailureCodes.NotFound => BaseCommandResponse.NotFound<Guid>(message),
+            null => BaseCommandResponse.Validation<Guid>([error ?? message], message),
+            _ => BaseCommandResponse.Failure<Guid>(failureCode, message, error is null ? null : [error])
         };
 
     private static NotificationFanoutChangeField[] GetMaterialFanoutChanges(
@@ -452,20 +444,46 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             eventSession.EndTimeType = group.EndTimeType.Value;
         }
 
-        if (group.StartTime.Value is null || group.EndTime.Value is null)
+        DateTimeOffset? startTime = group.StartTime.Value;
+        DateTimeOffset? endTime = group.EndTime.Value;
+        string timezone = parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty;
+
+        if (startTime is null)
         {
-            eventSession.StartTime = null;
-            eventSession.EndTime = null;
-            eventSession.ReprojectLocalTimes(parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty, _scheduleProjectionCalculator);
+            eventSession.Unschedule();
             eventSession.EventDayId = null;
             return;
         }
 
-        eventSession.Reschedule(
-            group.StartTime.Value.Value,
-            group.EndTime.Value.Value,
-            parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
-            _scheduleProjectionCalculator);
+        switch (eventSession.EndTimeType)
+        {
+            case SessionEndTimeType.Fixed when endTime is { } fixedEnd:
+                eventSession.Reschedule(
+                    UtcInstantRange.Create(startTime.Value, fixedEnd),
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.OpenEnded:
+                eventSession.ScheduleOpenEnded(
+                    startTime.Value,
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.RelativeToPrayer when endTime is { } relativeEnd:
+                eventSession.ScheduleRelativeToPrayer(
+                    UtcInstantRange.Create(startTime.Value, relativeEnd),
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.RelativeToPrayer:
+                eventSession.ScheduleRelativeToPrayer(
+                    startTime.Value,
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            default:
+                throw new InvalidOperationException("Event session schedule shape is not supported.");
+        }
         await RelinkEventDayAsync(eventSession, parentEvent.Id, cancellationToken);
     }
 

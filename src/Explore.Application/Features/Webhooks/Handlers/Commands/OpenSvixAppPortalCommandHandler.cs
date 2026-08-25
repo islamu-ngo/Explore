@@ -76,17 +76,17 @@ public sealed class OpenSvixAppPortalCommandHandler(
 
         await CreateAuditAsync(request, consumer, result, "issued", failureCategory: null);
 
-        return new WebhookProviderPortalAccessCommandResponse
+        var access = new WebhookProviderPortalAccessDto
         {
-            Success = true,
-            Message = "Webhook provider portal access created.",
-            Id = new WebhookProviderPortalAccessDto
-            {
-                Url = result.Url!,
-                Token = result.Token,
-                ExpiresAt = result.ExpiresAt!.Value
-            }
+            Url = result.Url!,
+            Token = result.Token,
+            ExpiresAt = result.ExpiresAt!.Value
         };
+
+        return WebhookProviderPortalAccessCommandResponse.Success(
+            access,
+            "Webhook provider portal access created.",
+            isRetryable: false);
     }
 
     private async Task CreateAuditAsync(
@@ -148,14 +148,13 @@ public sealed class OpenSvixAppPortalCommandHandler(
         string failureCode,
         bool isRetryable,
         List<string> errors)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            FailureCode = failureCode,
-            IsRetryable = isRetryable,
-            Errors = errors
-        };
+    {
+        var failure = BaseCommandResponse.Failure<WebhookProviderPortalAccessDto>(
+            failureCode,
+            message,
+            errors);
+        return WebhookProviderPortalAccessCommandResponse.Failure(failure, isRetryable);
+    }
 
     private static string ResolveFailureMessage(string failureCategory) => failureCategory switch
     {

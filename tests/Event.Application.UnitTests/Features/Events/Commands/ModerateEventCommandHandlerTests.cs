@@ -89,7 +89,7 @@ public sealed class ModerateEventCommandHandlerTests
             SourceReportDecisionId = sourceReportDecisionId
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(firstSession.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Moderated);
         await Assert.That(secondSession.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Moderated);
@@ -154,7 +154,7 @@ public sealed class ModerateEventCommandHandlerTests
 
         var result = await handler.Handle(new ModerateEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
@@ -195,7 +195,7 @@ public sealed class ModerateEventCommandHandlerTests
             new ModerateEventCommand { Id = @event.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Moderated);
         await Assert.That(session.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await _eventSessionRepository.Received(1).Update(session);
@@ -247,7 +247,7 @@ public sealed class ModerateEventCommandHandlerTests
             new ModerateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _moderationRecordRepository.Received(2).Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.Received(2).Create(Arg.Any<OutboxMessage>());
         await Assert.That(createdRecords.Select(record => record.Id).Distinct()).Count().IsEqualTo(1);
@@ -291,7 +291,7 @@ public sealed class ModerateEventCommandHandlerTests
             new ModerateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _moderationRecordRepository.Received(1).Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.Received(1).Create(Arg.Any<OutboxMessage>());
         await _eventRepository.Received(1).Update(firstAttemptEvent);
@@ -331,7 +331,7 @@ public sealed class ModerateEventCommandHandlerTests
             new ModerateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_light_moderation_invalid_status");
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -373,7 +373,7 @@ public sealed class ModerateEventCommandHandlerTests
             new ModerateEventCommand { Id = firstAttemptEvent.Id },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventSessionRepository.Received(1).Update(firstAttemptSession);
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
@@ -407,7 +407,7 @@ public sealed class ModerateEventCommandHandlerTests
         }, CancellationToken.None);
 
         var record = createdRecords.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(record.ModeratorUserId).IsNull();
         await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
         await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
@@ -424,7 +424,7 @@ public sealed class ModerateEventCommandHandlerTests
 
         var result = await _handler.Handle(new ModerateEventCommand { Id = @event.Id }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_light_moderation_invalid_status");
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());

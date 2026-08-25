@@ -74,7 +74,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedValues).IsNotNull();
         var values = capturedValues ?? throw new InvalidOperationException("Repository payload was not captured.");
         await Assert.That(values.Select(value => value.Ordinal).SequenceEqual([0, 1, 2])).IsTrue();
@@ -88,7 +88,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("  Alpha ", "alpha"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("Duplicate normalized values", StringComparison.Ordinal))).IsTrue();
         await _repository.DidNotReceiveWithAnyArgs().SetMultiValues(default, default, default!, default);
     }
@@ -103,7 +103,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("third", "first", "second"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedValues).IsNotNull();
         var values = capturedValues ?? throw new InvalidOperationException("Repository payload was not captured.");
         await Assert.That(values.OrderBy(value => value.Ordinal).Select(value => value.TextValue ?? string.Empty).SequenceEqual(["third", "first", "second"])).IsTrue();
@@ -116,7 +116,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("alpha", "beta"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That((result.Errors ?? []).Any(error => error.Contains("Single-value", StringComparison.Ordinal))).IsTrue();
         await _repository.DidNotReceiveWithAnyArgs().SetMultiValues(default, default, default!, default);
     }
@@ -130,7 +130,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key);
@@ -152,7 +152,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
 
         var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.FailureCode).IsNotEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNull();
         await _repository.Received(1).SetMultiValues(

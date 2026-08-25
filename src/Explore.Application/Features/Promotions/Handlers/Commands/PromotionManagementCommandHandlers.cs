@@ -32,13 +32,13 @@ public sealed class CreatePromotionDraftCommandHandler(
             Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(request.EventId, token);
             if (!PromotionManagementHandlerSupport.IsPlatformManaged(eventTarget, tenant.TenantId))
             {
-                return PromotionManagementHandlerSupport.NotFound<PromotionCodeIssuedCommandResponseDto>();
+                return PromotionManagementHandlerSupport.IssuedNotFound();
             }
 
             EventTicketCatalogVersion? catalog = await PromotionManagementHandlerSupport.GetScopedCatalogAsync(catalogs, request.EventId, tenant.TenantId, request.TicketCatalogVersionId, token);
             if (catalog is null)
             {
-                return PromotionManagementHandlerSupport.NotFound<PromotionCodeIssuedCommandResponseDto>();
+                return PromotionManagementHandlerSupport.IssuedNotFound();
             }
 
             PromotionDefinition definition;
@@ -57,11 +57,11 @@ public sealed class CreatePromotionDraftCommandHandler(
             }
             catch (ArgumentOutOfRangeException exception)
             {
-                return PromotionManagementHandlerSupport.ValidationFailed<PromotionCodeIssuedCommandResponseDto>(exception.Message);
+                return PromotionManagementHandlerSupport.IssuedValidationFailed(exception.Message);
             }
             catch (ArgumentException exception)
             {
-                return PromotionManagementHandlerSupport.ValidationFailed<PromotionCodeIssuedCommandResponseDto>(exception.Message);
+                return PromotionManagementHandlerSupport.IssuedValidationFailed(exception.Message);
             }
 
             await digests.ComputeActiveAsync(tenant.TenantId, request.EventId, request.Code, token);
@@ -240,13 +240,13 @@ public sealed class RotatePromotionCodeCommandHandler(
             Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(request.EventId, token);
             if (!PromotionManagementHandlerSupport.IsPlatformManaged(eventTarget, tenant.TenantId))
             {
-                return PromotionManagementHandlerSupport.NotFound<PromotionCodeIssuedCommandResponseDto>();
+                return PromotionManagementHandlerSupport.IssuedNotFound();
             }
 
             PromotionDefinition? definition = await promotions.GetDefinitionForUpdateAsync(tenant.TenantId, request.EventId, request.PromotionDefinitionId, token);
             if (definition is null)
             {
-                return PromotionManagementHandlerSupport.NotFound<PromotionCodeIssuedCommandResponseDto>();
+                return PromotionManagementHandlerSupport.IssuedNotFound();
             }
 
             try
@@ -259,7 +259,7 @@ public sealed class RotatePromotionCodeCommandHandler(
             }
             catch (ArgumentException exception)
             {
-                return PromotionManagementHandlerSupport.ValidationFailed<PromotionCodeIssuedCommandResponseDto>(exception.Message);
+                return PromotionManagementHandlerSupport.IssuedValidationFailed(exception.Message);
             }
         }, cancellationToken);
     }
@@ -306,40 +306,31 @@ internal static class PromotionManagementHandlerSupport
     public static string MaskSuffix(string normalizedCode) =>
         normalizedCode.Length <= 8 ? normalizedCode : normalizedCode[^8..];
 
-    public static TResponse NotFound<TResponse>() where TResponse : BaseCommandResponse<Guid>, new() => new()
-    {
-        Success = false,
-        Message = "Promotion management resource was not found.",
-        FailureCode = NotFoundFailureCode,
-        Errors = ["Promotion management resource was not found."]
-    };
+    public static PromotionManagementCommandResponseDto NotFound() =>
+        PromotionManagementCommandResponseDto.Failure(NotFoundFailure());
 
-    public static TResponse ValidationFailed<TResponse>(string message) where TResponse : BaseCommandResponse<Guid>, new() => new()
-    {
-        Success = false,
-        Message = "Promotion management request is invalid.",
-        FailureCode = ValidationFailureCode,
-        Errors = [message]
-    };
+    public static PromotionCodeIssuedCommandResponseDto IssuedNotFound() =>
+        PromotionCodeIssuedCommandResponseDto.Failure(NotFoundFailure());
 
-    public static PromotionManagementCommandResponseDto NotFound() => NotFound<PromotionManagementCommandResponseDto>();
+    public static PromotionManagementCommandResponseDto ValidationFailed(string message) =>
+        PromotionManagementCommandResponseDto.Failure(ValidationFailure(message));
 
-    public static PromotionManagementCommandResponseDto ValidationFailed(string message) => ValidationFailed<PromotionManagementCommandResponseDto>(message);
+    public static PromotionCodeIssuedCommandResponseDto IssuedValidationFailed(string message) =>
+        PromotionCodeIssuedCommandResponseDto.Failure(ValidationFailure(message));
 
-    public static PromotionManagementCommandResponseDto Success(Guid id, string message, PromotionManagementDto promotion) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message,
-        Promotion = promotion
-    };
+    private static BaseCommandResponse<Guid> NotFoundFailure() => BaseCommandResponse.Failure<Guid>(
+        NotFoundFailureCode,
+        "Promotion management resource was not found.",
+        ["Promotion management resource was not found."]);
 
-    public static PromotionCodeIssuedCommandResponseDto IssuedSuccess(Guid id, string message, PromotionManagementDto promotion, string issuedCode) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message,
-        Promotion = promotion,
-        IssuedCode = issuedCode
-    };
+    private static BaseCommandResponse<Guid> ValidationFailure(string message) => BaseCommandResponse.Failure<Guid>(
+        ValidationFailureCode,
+        "Promotion management request is invalid.",
+        [message]);
+
+    public static PromotionManagementCommandResponseDto Success(Guid id, string message, PromotionManagementDto promotion) =>
+        PromotionManagementCommandResponseDto.Success(id, message, promotion);
+
+    public static PromotionCodeIssuedCommandResponseDto IssuedSuccess(Guid id, string message, PromotionManagementDto promotion, string issuedCode) =>
+        PromotionCodeIssuedCommandResponseDto.Success(id, message, promotion, issuedCode);
 }

@@ -198,7 +198,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(draft.Id);
         await Assert.That(unitOfWork.TransactionBoundaries).IsEqualTo(1);
         await Assert.That(flushes.Count).IsEqualTo(2);
@@ -273,7 +273,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(draft.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
         await _catalogs.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
         await Assert.That(cacheObservedCommittedUow).IsTrue();
@@ -324,7 +324,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(retryDraft.Id);
         await Assert.That(unitOfWork.TransactionBoundaries).IsEqualTo(1);
         await Assert.That(unitOfWork.DelegateAttempts).IsEqualTo(2);
@@ -418,9 +418,9 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
             "Paid admission",
             catalog.CurrencyCode,
             TicketPricingModeEnum.Fixed,
-            fixedPriceMinor: 2_500,
-            minimumPriceMinor: null,
-            suggestedPriceMinor: null,
+            fixedPrice: Money.Create(2_500, catalog.CurrencyCode),
+            minimumPrice: null,
+            suggestedPrice: null,
             participantDataCollectionMode: ParticipantDataCollectionModeEnum.None,
             capacityPoolId: null,
             minimumAge: null,
@@ -453,9 +453,9 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         "General admission",
         catalog.CurrencyCode,
         TicketPricingModeEnum.Free,
-        fixedPriceMinor: null,
-        minimumPriceMinor: null,
-        suggestedPriceMinor: null,
+        fixedPrice: null,
+        minimumPrice: null,
+        suggestedPrice: null,
         participantDataCollectionMode: ParticipantDataCollectionModeEnum.None,
         capacityPoolId: null,
         minimumAge: null,

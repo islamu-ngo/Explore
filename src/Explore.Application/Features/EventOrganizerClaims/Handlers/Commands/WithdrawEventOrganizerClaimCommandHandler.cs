@@ -68,18 +68,9 @@ public sealed class WithdrawEventOrganizerClaimCommandHandler(
         return Success(claim.Id, "Organizer claim withdrawn.");
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string error) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string message, string error) =>
+        BaseCommandResponse.Validation<Guid>([error], message, id);
 }

@@ -59,19 +59,10 @@ public sealed class RollbackControlPlaneTenantPlanAssignmentCommandHandler(
             previous.EndedAt = null;
             await tenantPlanRepository.UpdateAssignmentAsync(previous, token);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = previous.Id,
-                Message = "Tenant plan assignment rolled back."
-            };
+            return BaseCommandResponse.Success(previous.Id, "Tenant plan assignment rolled back.");
         }
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

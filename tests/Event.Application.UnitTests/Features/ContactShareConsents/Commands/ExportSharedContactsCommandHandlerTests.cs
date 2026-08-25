@@ -55,7 +55,7 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Invalid export format");
     }
 
@@ -77,7 +77,7 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not an organisation");
     }
 
@@ -90,7 +90,7 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("not approved");
     }
 
@@ -102,7 +102,7 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _exportRepository.DidNotReceive().Create(Arg.Any<EventContactShareExport>());
     }
 
@@ -124,14 +124,14 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
 
         var dto = result.Id!;
         await Assert.That(dto.Format).IsEqualTo("csv");
         await Assert.That(dto.RowCount).IsEqualTo(2);
         await Assert.That(dto.ContentType).IsEqualTo("text/csv");
 
-        var content = System.Text.Encoding.UTF8.GetString(dto.FileContent!);
+        var content = System.Text.Encoding.UTF8.GetString(dto.FileContent!.Value.Span);
         await Assert.That(content).Contains("Email,GrantedAtUtc,EventId,EventTitle,OrganizationId,OrganizationName,PurposeCode");
         await Assert.That(content).Contains(consents[0].EmailSnapshot);
         await Assert.That(content).Contains(consents[1].EmailSnapshot);
@@ -153,11 +153,11 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.Format).IsEqualTo("csv");
         await Assert.That(result.Id.FileName).Contains("shared-contacts-approved-org-");
 
-        var content = System.Text.Encoding.UTF8.GetString(result.Id.FileContent!);
+        var content = System.Text.Encoding.UTF8.GetString(result.Id.FileContent!.Value.Span);
         await Assert.That(content).Contains("'=cmd|' /C calc'!A0");
         await Assert.That(content).Contains("'=Approved/Org");
     }
@@ -180,13 +180,13 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
 
         var dto = result.Id!;
         await Assert.That(dto.Format).IsEqualTo("tsv");
         await Assert.That(dto.ContentType).IsEqualTo("text/tab-separated-values");
 
-        var content = System.Text.Encoding.UTF8.GetString(dto.FileContent!);
+        var content = System.Text.Encoding.UTF8.GetString(dto.FileContent!.Value.Span);
         await Assert.That(content).Contains("Email\tGrantedAtUtc\tEventId\tEventTitle\tOrganizationId\tOrganizationName\tPurposeCode");
     }
 
@@ -229,7 +229,7 @@ public class ExportSharedContactsCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.RowCount).IsEqualTo(0);
         await _exportRepository.Received(1).Create(Arg.Is<EventContactShareExport>(e => e.RowCount == 0));
     }

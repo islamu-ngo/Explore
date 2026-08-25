@@ -43,13 +43,10 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
             .ValidateAsync(request.Moderation, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.AtprotoIdentityId,
-                Success = false,
-                Message = "AT Protocol identity moderation failed validation.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "AT Protocol identity moderation failed validation.",
+                request.AtprotoIdentityId);
         }
 
         Guid? operatorUserId = await adminContext.ResolveUserIdAsync(cancellationToken);
@@ -118,14 +115,11 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
             }
 
             return (
-                Response: new BaseCommandResponse<Guid>
-                {
-                    Id = identity.Id,
-                    Success = true,
-                    Message = changed
+                Response: BaseCommandResponse.Success(
+                    identity.Id,
+                    changed
                         ? "AT Protocol identity moderation updated successfully."
-                        : "AT Protocol identity already has the requested moderation state."
-                },
+                        : "AT Protocol identity already has the requested moderation state."),
                 Changed: changed);
         }, cancellationToken);
 
@@ -190,11 +184,10 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
     private static BaseCommandResponse<Guid> ValidationFailure(
         Guid identityId,
         string message,
-        string? failureCode = null) => new()
+        string? failureCode = null) => failureCode switch
         {
-            Id = identityId,
-            Success = false,
-            Message = message,
-            FailureCode = failureCode
+            FailureCodes.AuthenticationRequired => BaseCommandResponse.Authentication<Guid>(message),
+            FailureCodes.AdminRequired => BaseCommandResponse.Authorization<Guid>(message),
+            _ => BaseCommandResponse.Validation<Guid>([message], message, identityId)
         };
 }

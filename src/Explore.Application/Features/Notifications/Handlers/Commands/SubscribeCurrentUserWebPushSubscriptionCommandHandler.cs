@@ -44,12 +44,7 @@ public sealed class SubscribeCurrentUserWebPushSubscriptionCommandHandler(
                 DateTime.UtcNow,
                 cancellationToken);
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = subscription.Id,
-                Success = true,
-                Message = "Web Push subscription saved."
-            };
+            return BaseCommandResponse.Success(subscription.Id, "Web Push subscription saved.");
         }
         catch (ArgumentException ex)
         {
@@ -111,10 +106,6 @@ public sealed class SubscribeCurrentUserWebPushSubscriptionCommandHandler(
         }
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors ?? [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) =>
+        BaseCommandResponse.Validation<Guid>(errors ?? [message], message);
 }

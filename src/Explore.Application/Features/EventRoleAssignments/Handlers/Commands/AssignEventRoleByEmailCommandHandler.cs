@@ -37,10 +37,6 @@ public sealed class AssignEventRoleByEmailCommandHandler(
         }, cancellationToken);
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, string failureCode) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, string failureCode) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message);
 }

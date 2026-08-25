@@ -46,11 +46,11 @@ public class CreateEventSessionCommandSecurityTests
             _ =>
             {
                 handlerRunCount++;
-                return Task.FromResult(new BaseCommandResponse<Guid> { Success = true, Id = eventId });
+                return Task.FromResult(BaseCommandResponse.Success(eventId));
             },
             CancellationToken.None);
 
-        await Assert.That(allowed.Success).IsTrue();
+        await Assert.That(allowed.IsSuccess).IsTrue();
         await Assert.That(((ISecureRequest)command).ResourceId).IsEqualTo(eventId.ToString("D"));
         await Assert.That(((PreCreateAuthorizationFacts)((ISecureRequest)command).AuthorizationFacts!).TenantId)
             .IsEqualTo(tenantId);
@@ -76,7 +76,7 @@ public class CreateEventSessionCommandSecurityTests
                 _ =>
                 {
                     handlerRunCount++;
-                    return Task.FromResult(new BaseCommandResponse<Guid> { Success = true });
+                    return Task.FromResult(BaseCommandResponse.Success(Guid.Empty));
                 },
                 CancellationToken.None));
         }

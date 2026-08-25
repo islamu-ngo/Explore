@@ -20,7 +20,7 @@ public class GetEventSessionTemplateDiffQueryHandlerTests
 
         var result = await handler.Handle(new GetEventSessionTemplateDiffQuery(Guid.NewGuid(), 2), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(diff);
     }
 }

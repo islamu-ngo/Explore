@@ -67,19 +67,9 @@ public sealed class GrantAiConsentCommandHandler : IRequestHandler<GrantAiConsen
         return Success(grant.Id, "AI consent grant created.");
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(string failureCode, string message) => new()
-    {
-        Success = false,
-        Id = Guid.Empty,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string failureCode, string message) =>
+        BaseCommandResponse.Failure<Guid>(failureCode, message, [message], Guid.Empty);
 }

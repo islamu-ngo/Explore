@@ -38,8 +38,6 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventTagsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateEventTagsDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventTagsDto, cancellationToken);
 
@@ -52,9 +50,7 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
 
         if (eventTags == null)
         {
-            response.Success = false;
-            response.Message = "Event Tag not found.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event Tag not found.");
         }
 
         request = request with
@@ -113,11 +109,7 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
         await _eventTagsRepository.Update(eventTags);
         await InvalidateCachesAsync(previousEventId, eventTags.EventId, targetEvent.TenantId, cancellationToken);
 
-        response.Success = true;
-        response.Id = eventTags.Id;
-        response.Message = "Event Tag updated successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventTags.Id, "Event Tag updated successfully.");
     }
 
     private static void ApplyEvent(Explore.Domain.EventTags entity, DTOs.EventTags.UpdateEventTagsEventDto? dto, Event targetEvent)
@@ -157,10 +149,5 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
         ValidationFailure(new List<string> { error });
 
     private static BaseCommandResponse<Guid> ValidationFailure(List<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = "Event Tag update failed.",
-            Errors = errors
-        };
+        BaseCommandResponse.Validation<Guid>(errors, "Event Tag update failed.");
 }

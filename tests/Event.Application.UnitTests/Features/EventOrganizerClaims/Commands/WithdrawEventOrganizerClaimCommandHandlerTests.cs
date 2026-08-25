@@ -21,7 +21,7 @@ public sealed class WithdrawEventOrganizerClaimCommandHandlerTests
     {
         var (result, claim, claimRepository) = await WithdrawAsync(canControl: true);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(claim.StatusId).IsEqualTo((int)EventOrganizerClaimStatusEnum.Withdrawn);
         await claimRepository.Received(1).Update(claim);
     }
@@ -31,7 +31,7 @@ public sealed class WithdrawEventOrganizerClaimCommandHandlerTests
     {
         var (result, claim, claimRepository) = await WithdrawAsync(canControl: false);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(claim.StatusId).IsEqualTo((int)EventOrganizerClaimStatusEnum.Pending);
         await claimRepository.DidNotReceive().Update(Arg.Any<EventOrganizerClaim>());
     }

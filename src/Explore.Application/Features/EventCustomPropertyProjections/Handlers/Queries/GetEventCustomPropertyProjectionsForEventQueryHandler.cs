@@ -28,14 +28,11 @@ public class GetEventCustomPropertyProjectionsForEventQueryHandler
         GetEventCustomPropertyProjectionsForEventQuery request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<IReadOnlyList<EventCustomPropertyProjectionDto>>();
-
         if (request.EventId == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "EventId is required.";
-            response.Errors = ["EventId is required."];
-            return response;
+            return BaseCommandResponse.Validation<IReadOnlyList<EventCustomPropertyProjectionDto>>(
+                ["EventId is required."],
+                "EventId is required.");
         }
 
         var projections = await _projectionRepository.GetForEventAsync(
@@ -45,10 +42,8 @@ public class GetEventCustomPropertyProjectionsForEventQueryHandler
 
         var dtos = _mapper.Map<List<EventCustomPropertyProjectionDto>>(projections);
 
-        response.Success = true;
-        response.Id = dtos;
-        response.Message = "Projection rows retrieved.";
-
-        return response;
+        return BaseCommandResponse.Success<IReadOnlyList<EventCustomPropertyProjectionDto>>(
+            dtos,
+            "Projection rows retrieved.");
     }
 }

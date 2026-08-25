@@ -45,7 +45,7 @@ public class DeleteEventDayCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(eventDayId);
         await _eventDayRepository.Received(1).Delete(Arg.Any<EventDay>());
     }
@@ -63,7 +63,7 @@ public class DeleteEventDayCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _eventDayRepository.DidNotReceive().Delete(Arg.Any<EventDay>());
     }
 
@@ -86,7 +86,7 @@ public class DeleteEventDayCommandHandlerTests
 
         var result = await _handler.Handle(new DeleteEventDayCommand { Id = eventDayId }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_day_ticket_entitlement_conflict");
         await Assert.That(result.Message).IsEqualTo("Event day is referenced by a published ticket catalog.");
         await _eventDayRepository.DidNotReceive().Delete(Arg.Any<EventDay>());

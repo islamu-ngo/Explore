@@ -43,13 +43,10 @@ public sealed class ModerateActorCommandHandler(
             .ValidateAsync(request.Moderation, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.ActorId,
-                Success = false,
-                Message = "Actor moderation failed validation.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "Actor moderation failed validation.",
+                request.ActorId);
         }
 
         Guid? operatorUserId = await adminContext.ResolveUserIdAsync(cancellationToken);
@@ -114,14 +111,11 @@ public sealed class ModerateActorCommandHandler(
             }
 
             return (
-                Response: new BaseCommandResponse<Guid>
-                {
-                    Id = actor.Id,
-                    Success = true,
-                    Message = changed
+                Response: BaseCommandResponse.Success(
+                    actor.Id,
+                    changed
                         ? "Actor moderation updated successfully."
-                        : "Actor already has the requested moderation state."
-                },
+                        : "Actor already has the requested moderation state."),
                 Changed: changed);
         }, cancellationToken);
 
@@ -187,11 +181,10 @@ public sealed class ModerateActorCommandHandler(
     private static BaseCommandResponse<Guid> ValidationFailure(
         Guid actorId,
         string message,
-        string? failureCode = null) => new()
+        string? failureCode = null) => failureCode switch
         {
-            Id = actorId,
-            Success = false,
-            Message = message,
-            FailureCode = failureCode
+            FailureCodes.AuthenticationRequired => BaseCommandResponse.Authentication<Guid>(message),
+            FailureCodes.AdminRequired => BaseCommandResponse.Authorization<Guid>(message),
+            _ => BaseCommandResponse.Validation<Guid>([message], message, actorId)
         };
 }

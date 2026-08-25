@@ -33,16 +33,13 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
         RebuildEventCustomPropertyProjectionCommand request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<RebuildProjectionResponseDto>();
-
         var validator = new RebuildProjectionRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.RequestDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Projection rebuild request validation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<RebuildProjectionResponseDto>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Projection rebuild request validation failed.");
         }
 
         if (request.RequestDto.BatchSize.HasValue)
@@ -61,7 +58,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
                     CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
                     scope);
 
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<RebuildProjectionResponseDto>(
                     "Projection rebuild request validation failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
@@ -70,7 +67,6 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
                         request.RequestDto.BatchSize.Value,
                         scope,
                         request.RequestDto.TenantId));
-                return response;
             }
         }
 
@@ -90,20 +86,20 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
             durationSeconds,
             result.LockAcquired);
 
-        response.Success = true;
-        response.Id = new RebuildProjectionResponseDto
-        {
-            LockAcquired = result.LockAcquired,
-            RowsProcessed = result.RowsProcessed,
-            RowsFailed = result.RowsFailed,
-            DrainedDirtyScopes = result.DrainedDirtyScopes,
-            StartedAt = startedAt,
-            CompletedAt = completedAt
-        };
-        response.Message = result.LockAcquired
+        var message = result.LockAcquired
             ? $"Projection rebuild completed. {result.RowsProcessed} rows processed, {result.DrainedDirtyScopes} dirty scopes drained."
             : "Projection rebuild skipped — another rebuild is already in progress.";
 
-        return response;
+        return BaseCommandResponse.Success(
+            new RebuildProjectionResponseDto
+            {
+                LockAcquired = result.LockAcquired,
+                RowsProcessed = result.RowsProcessed,
+                RowsFailed = result.RowsFailed,
+                DrainedDirtyScopes = result.DrainedDirtyScopes,
+                StartedAt = startedAt,
+                CompletedAt = completedAt
+            },
+            message);
     }
 }

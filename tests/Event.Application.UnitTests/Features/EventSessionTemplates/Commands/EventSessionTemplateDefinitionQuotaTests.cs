@@ -36,7 +36,7 @@ public class EventSessionTemplateDefinitionQuotaTests
             new CreateEventSessionTemplateCommand { SessionTemplateDto = CreateSessionTemplateDto(eventTemplateId, definitionCount: 2) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key);
@@ -67,7 +67,7 @@ public class EventSessionTemplateDefinitionQuotaTests
             new CreateEventSessionTemplateCommand { SessionTemplateDto = CreateSessionTemplateDtoWithOptionDefinition(eventTemplateId, optionCount: 2) },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
@@ -107,7 +107,7 @@ public class EventSessionTemplateDefinitionQuotaTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key);
@@ -148,7 +148,7 @@ public class EventSessionTemplateDefinitionQuotaTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
@@ -191,7 +191,7 @@ public class EventSessionTemplateDefinitionQuotaTests
             },
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(template.DisplayName).IsEqualTo("Updated Session");
         await repository.Received(1).Update(template);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);

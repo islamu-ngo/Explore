@@ -33,18 +33,17 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateActorSubscriptionNotificationLevelCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new UpdateActorSubscriptionNotificationLevelDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Patch, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return Failure(response, "Actor subscription update failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
+            return Failure("Actor subscription update failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
         }
 
         var tenantUser = await GetActiveCurrentTenantUserAsync(cancellationToken);
         if (tenantUser is null)
         {
-            return Failure(response, "Actor subscription update failed.", ["An active tenant-local user is required before updating subscriptions."]);
+            return Failure("Actor subscription update failed.", ["An active tenant-local user is required before updating subscriptions."]);
         }
 
         var subscription = await _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(
@@ -57,7 +56,6 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
         if (subscription is null)
         {
             return Failure(
-                response,
                 "Actor subscription update failed.",
                 ["Subscription was not found."],
                 "actor_subscription_not_found");
@@ -65,21 +63,20 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
 
         if (subscription.StatusId != (int)ActorSubscriptionStatusEnum.Active)
         {
-            return Failure(response, "Actor subscription update failed.", ["Only active subscriptions can change notification level."]);
+            return Failure("Actor subscription update failed.", ["Only active subscriptions can change notification level."]);
         }
 
         if (subscription.ConcurrencyStamp != request.Patch.ExpectedConcurrencyStamp)
         {
-            return Failure(response, "Actor subscription update failed.", ["Subscription changed since it was loaded."]);
+            return Failure("Actor subscription update failed.", ["Subscription changed since it was loaded."]);
         }
 
         subscription.NotificationLevelId = request.Patch.NotificationLevel!.Id;
         await _actorSubscriptionRepository.Update(subscription);
 
-        response.Success = true;
-        response.Id = subscription.Id;
-        response.Message = "Actor subscription notification level updated.";
-        return response;
+        return BaseCommandResponse.Success(
+            subscription.Id,
+            "Actor subscription notification level updated.");
     }
 
     private async Task<TenantUser?> GetActiveCurrentTenantUserAsync(CancellationToken cancellationToken)
@@ -98,15 +95,9 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
     }
 
     private static BaseCommandResponse<Guid> Failure(
-        BaseCommandResponse<Guid> response,
         string message,
         List<string> errors,
-        string? failureCode = null)
-    {
-        response.Success = false;
-        response.Message = message;
-        response.Errors = errors;
-        response.FailureCode = failureCode;
-        return response;
-    }
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors);
 }

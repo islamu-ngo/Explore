@@ -25,7 +25,6 @@ public class CreateOrganizationReviewCommandHandler : IRequestHandler<CreateOrga
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationReviewCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var organizationReview = _mapper.Map<OrganizationReview>(request.CreateOrganizationReviewDto);
 
         organizationReview.UserId = request.ReviewerUserId;
@@ -39,10 +38,6 @@ public class CreateOrganizationReviewCommandHandler : IRequestHandler<CreateOrga
 
         organizationReview = await _organizationReviewRepository.Create(organizationReview);
 
-        response.Success = true;
-        response.Message = "Review Created Successfully";
-        response.Id = organizationReview.Id;
-
-        return response;
+        return BaseCommandResponse.Success(organizationReview.Id, "Review Created Successfully");
     }
 }

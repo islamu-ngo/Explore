@@ -64,12 +64,7 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
 
         if (mutationKeys.Length == 0)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = request.AssignmentId,
-                Success = true,
-                Message = "Tenant plan applied."
-            };
+            return BaseCommandResponse.Success(request.AssignmentId, "Tenant plan applied.");
         }
 
         (BaseCommandResponse<Guid> Response, IReadOnlyList<SettingChangedNotification> Notifications) outcome =
@@ -119,12 +114,7 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
                         request.AppliedByUserId,
                         innerToken);
                     return (
-                        Response: new BaseCommandResponse<Guid>
-                        {
-                            Id = request.AssignmentId,
-                            Success = true,
-                            Message = "Tenant plan applied."
-                        },
+                        Response: BaseCommandResponse.Success(request.AssignmentId, "Tenant plan applied."),
                         Notifications: (IReadOnlyList<SettingChangedNotification>)notifications);
                 },
                 token),
@@ -142,11 +132,6 @@ public sealed class ApplyControlPlaneTenantPlanAssignmentCommandHandler(
         return outcome.Response;
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid assignmentId, string error) => new()
-    {
-        Id = assignmentId,
-        Success = false,
-        Message = error,
-        Errors = [error]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid assignmentId, string error) =>
+        BaseCommandResponse.Validation([error], error, assignmentId);
 }

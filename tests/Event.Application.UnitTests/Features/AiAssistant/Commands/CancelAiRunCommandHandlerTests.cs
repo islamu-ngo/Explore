@@ -34,7 +34,7 @@ public sealed class CancelAiRunCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
         await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -50,7 +50,7 @@ public sealed class CancelAiRunCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("run_not_found");
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
@@ -66,7 +66,7 @@ public sealed class CancelAiRunCommandHandlerTests
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
         var run = conversation.Runs.Single();
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_runId);
         await Assert.That(run.Status).IsEqualTo(AiRunStatus.Cancelled);
         await Assert.That(run.CompletedAt).IsNotNull();
@@ -84,7 +84,7 @@ public sealed class CancelAiRunCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_runId);
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
@@ -99,7 +99,7 @@ public sealed class CancelAiRunCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("run_not_cancellable");
         await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());

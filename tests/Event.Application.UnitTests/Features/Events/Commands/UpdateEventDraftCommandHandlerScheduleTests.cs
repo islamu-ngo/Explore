@@ -79,7 +79,7 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(eventEntity.EventTimeZoneId).IsEqualTo("Europe/Brussels");
         await Assert.That(eventEntity.Timezone).IsEqualTo("Europe/Brussels");
         await Assert.That(session.LocalStartTime).IsEqualTo(new TimeOnly(12, 0));

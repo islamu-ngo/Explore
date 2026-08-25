@@ -82,13 +82,10 @@ public sealed class StopSupportAccessSessionCommandHandler(
             (SupportAccessSessionStatusEnum)stopped.StatusId,
             stopped.EndedAtUtc);
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Id = stopped.Id,
-            Session = SupportAccessMapper.ToDto(stopped, DateTimeOffset.UtcNow),
-            Success = true,
-            Message = "Support-access session stopped."
-        };
+        return SupportAccessSessionCommandResponseDto.Success(
+            stopped.Id,
+            "Support-access session stopped.",
+            SupportAccessMapper.ToDto(stopped, DateTimeOffset.UtcNow));
     }
 
     private async Task<SupportAccessSession> StopSessionAsync(
@@ -143,12 +140,7 @@ public sealed class StopSupportAccessSessionCommandHandler(
             sessionId,
             actorUserId);
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = errors.ToList()
-        };
+        return SupportAccessSessionCommandResponseDto.Failure(
+            BaseCommandResponse.Failure<Guid>(failureCode, message, errors));
     }
 }

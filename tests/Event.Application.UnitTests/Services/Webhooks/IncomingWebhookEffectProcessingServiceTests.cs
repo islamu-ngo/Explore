@@ -33,7 +33,7 @@ public sealed class IncomingWebhookEffectProcessingServiceTests
         var setup = CreateClaim(CreatePayload());
         ConfigureRepositories(setup);
         _mediator.Send(Arg.Any<ProcessCoopDecisionCallbackCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = Guid.CreateVersion7() });
+            .Returns(BaseCommandResponse.Success(Guid.CreateVersion7()));
 
         var result = await CreateService(setup.Now).ProcessAsync(setup.Claim, CancellationToken.None);
 

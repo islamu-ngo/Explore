@@ -32,18 +32,9 @@ public sealed class CreateControlPlaneTenantPlanDraftCommandHandler(ITenantPlanR
         var plan = ControlPlaneTenantPlanDraftMapper.ToPlan(request.Draft);
         await tenantPlanRepository.Create(plan);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = plan.Id,
-            Message = "Tenant plan draft created."
-        };
+        return BaseCommandResponse.Success(plan.Id, "Tenant plan draft created.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

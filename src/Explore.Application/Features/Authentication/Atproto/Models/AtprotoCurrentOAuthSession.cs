@@ -8,8 +8,22 @@ public sealed record AtprotoCurrentSessionIdentity(
     Guid UserId,
     string Did);
 
-public sealed record AtprotoCurrentOAuthSession(
-    string Did,
-    Uri ExpectedPdsUri,
-    string OAuthClientKeyId,
-    byte[] OAuthSessionPayload);
+public sealed record AtprotoCurrentOAuthSession
+{
+    public AtprotoCurrentOAuthSession(
+        string Did,
+        Uri ExpectedPdsUri,
+        string OAuthClientKeyId,
+        ReadOnlyMemory<byte> OAuthSessionPayload)
+    {
+        this.Did = Did;
+        this.ExpectedPdsUri = ExpectedPdsUri;
+        this.OAuthClientKeyId = OAuthClientKeyId;
+        this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
+    }
+
+    public string Did { get; }
+    public Uri ExpectedPdsUri { get; }
+    public string OAuthClientKeyId { get; }
+    public ReadOnlyMemory<byte> OAuthSessionPayload { get; }
+}

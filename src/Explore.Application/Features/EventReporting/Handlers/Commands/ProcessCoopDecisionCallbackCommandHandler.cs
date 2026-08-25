@@ -70,7 +70,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             executionId,
             capturedAtUtc,
             cancellationToken);
-        if (!stage.Response.Success || !stage.ShouldExecute)
+        if (!stage.Response.IsSuccess || !stage.ShouldExecute)
         {
             return stage.Response;
         }
@@ -85,7 +85,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             CorrelationId = decision.CorrelationId
         }, cancellationToken);
 
-        return execution.Success
+        return execution.IsSuccess
             ? Success(stage.DecisionId, "Coop decision callback processed successfully.")
             : Failure(
                 stage.DecisionId,
@@ -105,14 +105,14 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
         {
             var report = await eventReportRepository.GetByIdForUpdateAsync(decision.TenantId, decision.ReportId, token);
             var target = ValidateReportCase(report, decision);
-            if (!target.Response.Success)
+            if (!target.Response.IsSuccess)
             {
                 return CoopDecisionStageResult.NoExecution(target.Response);
             }
 
             var reportCase = target.Case!;
             var targetValidation = ValidateProviderTarget(report!, decision);
-            if (!targetValidation.Response.Success)
+            if (!targetValidation.Response.IsSuccess)
             {
                 return CoopDecisionStageResult.NoExecution(targetValidation.Response);
             }
@@ -473,19 +473,14 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
     private static string? TruncateNullable(string? value, int maxLength) =>
         string.IsNullOrWhiteSpace(value) ? null : Truncate(value.Trim(), maxLength);
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(
+        Guid id,
+        string message,
+        IEnumerable<string> errors,
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors, id);
 }

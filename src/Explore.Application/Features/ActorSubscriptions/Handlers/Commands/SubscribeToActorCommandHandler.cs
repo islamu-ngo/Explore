@@ -36,18 +36,17 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
 
     public async Task<BaseCommandResponse<Guid>> Handle(SubscribeToActorCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new SubscribeToActorDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Subscription, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return Failure(response, "Actor subscription failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
+            return Failure("Actor subscription failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
         }
 
         var tenantUser = await GetActiveCurrentTenantUserAsync(cancellationToken);
         if (tenantUser is null)
         {
-            return Failure(response, "Actor subscription failed.", ["An active tenant-local user is required before subscribing."]);
+            return Failure("Actor subscription failed.", ["An active tenant-local user is required before subscribing."]);
         }
 
         var targetActor = await _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
@@ -56,12 +55,12 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
             cancellationToken);
         if (targetActor is null)
         {
-            return Failure(response, "Actor subscription failed.", ["Target actor must be an organization or group in the current tenant."]);
+            return Failure("Actor subscription failed.", ["Target actor must be an organization or group in the current tenant."]);
         }
 
         if (tenantUser.ActorId == targetActor.Id)
         {
-            return Failure(response, "Actor subscription failed.", ["Users cannot subscribe to their own actor."]);
+            return Failure("Actor subscription failed.", ["Users cannot subscribe to their own actor."]);
         }
 
         var subscription = await _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(
@@ -96,7 +95,7 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
         }
         else if (subscription.StatusId == (int)ActorSubscriptionStatusEnum.Blocked)
         {
-            return Failure(response, "Actor subscription failed.", ["Subscription is administratively blocked."]);
+            return Failure("Actor subscription failed.", ["Subscription is administratively blocked."]);
         }
         else if (subscription.StatusId != (int)ActorSubscriptionStatusEnum.Active)
         {
@@ -109,10 +108,7 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
             await _actorSubscriptionRepository.Update(subscription);
         }
 
-        response.Success = true;
-        response.Id = subscription.Id;
-        response.Message = "Actor subscription is active.";
-        return response;
+        return BaseCommandResponse.Success(subscription.Id, "Actor subscription is active.");
     }
 
     private async Task<TenantUser?> GetActiveCurrentTenantUserAsync(CancellationToken cancellationToken)
@@ -130,11 +126,6 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
                 : null;
     }
 
-    private static BaseCommandResponse<Guid> Failure(BaseCommandResponse<Guid> response, string message, List<string> errors)
-    {
-        response.Success = false;
-        response.Message = message;
-        response.Errors = errors;
-        return response;
-    }
+    private static BaseCommandResponse<Guid> Failure(string message, List<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

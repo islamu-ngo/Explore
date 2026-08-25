@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
@@ -95,17 +96,9 @@ public sealed class RegistrationMaterialChangeChoiceService(
 
     private static RegistrationMaterialChangeChoiceCommandResultDto Success(
         RegistrationMaterialChangeChoice choice,
-        RegistrationRefundDto? refund) => new()
-        {
-            Success = true,
-            Id = choice.Id,
-            Choice = RegistrationPaymentContractService.MapMaterialChangeChoice(choice),
-            Refund = refund
-        };
+        RegistrationRefundDto? refund) => RegistrationMaterialChangeChoiceCommandResultDto.Success(
+            choice.Id, null, RegistrationPaymentContractService.MapMaterialChangeChoice(choice), refund);
 
-    private static RegistrationMaterialChangeChoiceCommandResultDto Failure(string code, string message) => new()
-    {
-        FailureCode = code,
-        Message = message
-    };
+    private static RegistrationMaterialChangeChoiceCommandResultDto Failure(string code, string message) =>
+        RegistrationMaterialChangeChoiceCommandResultDto.Failure(BaseCommandResponse.Failure<Guid>(code, message));
 }

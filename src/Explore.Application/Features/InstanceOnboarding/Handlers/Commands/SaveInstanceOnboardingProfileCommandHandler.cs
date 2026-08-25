@@ -28,24 +28,20 @@ public sealed class SaveInstanceOnboardingProfileCommandHandler(
         var bootstrap = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
         if (bootstrap?.IsCompleted == true || !setupSecretProvider.IsSetupModeActive)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Id = bootstrap?.Id ?? Guid.Empty,
-                Success = false,
-                Message = "Setup mode is no longer active."
-            };
+            const string message = "Setup mode is no longer active.";
+            return BaseCommandResponse.Validation(
+                [message],
+                message,
+                bootstrap?.Id ?? Guid.Empty);
         }
 
         var validator = new SelfHostOnboardingProfileDtoValidator();
         var validation = await validator.ValidateAsync(request.Profile, cancellationToken);
         if (!validation.IsValid)
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid onboarding profile.",
-                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
-            };
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(error => error.ErrorMessage),
+                "Invalid onboarding profile.");
         }
 
         var profile = InstanceOnboardingProfileSettingHelpers.Normalize(request.Profile);
@@ -61,11 +57,8 @@ public sealed class SaveInstanceOnboardingProfileCommandHandler(
             Operation: "instance_onboarding_profile_save",
             Outcome: "saved"));
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = bootstrap?.Id ?? Guid.Empty,
-            Success = true,
-            Message = "Instance onboarding profile saved successfully."
-        };
+        return BaseCommandResponse.Success(
+            bootstrap?.Id ?? Guid.Empty,
+            "Instance onboarding profile saved successfully.");
     }
 }

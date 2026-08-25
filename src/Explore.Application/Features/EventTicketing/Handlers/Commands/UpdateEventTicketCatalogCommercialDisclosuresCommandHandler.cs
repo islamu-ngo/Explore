@@ -55,17 +55,11 @@ public sealed class UpdateEventTicketCatalogCommercialDisclosuresCommandHandler(
         }
 
         await catalogs.SaveChangesAsync(cancellationToken);
-        return new BaseCommandResponse<Guid> { Id = draft.Id, Success = true, Message = "Ticket catalog commercial disclosures updated." };
+        return BaseCommandResponse.Success(draft.Id, "Ticket catalog commercial disclosures updated.");
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) => new()
-    {
-        Id = id,
-        Success = false,
-        FailureCode = code,
-        Message = message,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], id);
 }
 
 public sealed class UpdateEventTicketCatalogCommercialDisclosuresCommandValidator

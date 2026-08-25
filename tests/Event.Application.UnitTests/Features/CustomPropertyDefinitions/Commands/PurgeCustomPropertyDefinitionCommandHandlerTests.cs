@@ -61,7 +61,7 @@ public sealed class PurgeCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Purged).IsFalse();
         await Assert.That(result.Id.ValueCount).IsEqualTo(1);
@@ -99,7 +99,7 @@ public sealed class PurgeCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Purged).IsTrue();
         await Assert.That(result.Id.AuditLogId).IsNotNull();
@@ -141,7 +141,7 @@ public sealed class PurgeCustomPropertyDefinitionCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Custom-property definition purge blocked.");
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.Purged).IsFalse();

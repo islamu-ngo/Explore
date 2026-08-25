@@ -77,7 +77,7 @@ public class ExternalApiKeyObservabilityTests
 
         var response = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
 
         var measurement = await metricsCapture.SingleAsync("explore.external_api_keys.created");
         await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId.ToString());
@@ -143,7 +143,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.ApiKey).IsNotNull();
         await Assert.That(persisted).IsNotNull();
         await Assert.That(ApiKeyHashing.TryParsePersistedApiKey(response.ApiKey!, out var keyId, out var secret)).IsTrue();
@@ -205,7 +205,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error.Contains("Invalid scopes", StringComparison.OrdinalIgnoreCase));
         await Assert.That(response.Errors).Contains(error => error.Contains("mcp:teleport", StringComparison.OrdinalIgnoreCase));
         await externalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
@@ -323,7 +323,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error.Contains("Invalid scopes", StringComparison.OrdinalIgnoreCase));
         await Assert.That(response.Errors).Contains(error => error.Contains("mcp:teleport", StringComparison.OrdinalIgnoreCase));
         await externalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
@@ -390,7 +390,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error.Contains("same name", StringComparison.OrdinalIgnoreCase));
         await externalApiKeyRepository.Received(1).ExistsByOwnerAndNameIgnoringTenantFilter(
             ExternalApiKeyOwnerType.InstanceAdmin,
@@ -423,7 +423,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error == "API key name must not contain control characters.");
         await fixture.ExternalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
     }
@@ -447,7 +447,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error == "API key description cannot exceed 1000 characters.");
         await fixture.ExternalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
     }
@@ -476,7 +476,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error == "An API key with the same name already exists for this owner.");
         await fixture.ExternalApiKeyRepository.Received(1).ExistsByOwnerAndName(
             ExternalApiKeyOwnerType.User,
@@ -519,7 +519,7 @@ public class ExternalApiKeyObservabilityTests
             },
             CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.Errors).Contains(error => error == "API key name must not contain control characters.");
         await fixture.ExternalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
     }

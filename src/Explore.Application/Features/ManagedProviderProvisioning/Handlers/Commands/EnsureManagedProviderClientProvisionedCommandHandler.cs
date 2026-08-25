@@ -82,17 +82,15 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         Guid? expectedOutboxMessageId,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>();
         var dto = provisioningDto;
 
         var validator = new ManagedProviderClientProvisioningDtoValidator();
         var validation = await validator.ValidateAsync(dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Managed provider client provisioning failed due to validation errors.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<ManagedProviderClientProvisioningResultDto>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Managed provider client provisioning failed due to validation errors.");
         }
 
         var normalizedProviderKey = dto.ProviderKey.Trim();
@@ -567,10 +565,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 SettingsDocumentKeys.Tenant.Branding);
         }
 
-        response.Success = true;
-        response.Id = result;
-        response.Message = "Managed provider client provisioned successfully.";
-        return response;
+        return BaseCommandResponse.Success(
+            result,
+            "Managed provider client provisioned successfully.");
     }
 
     private async Task<Tenant> CreateTenantAsync(ManagedProviderClientProvisioningDto dto, string normalizedTenantSlug, Guid tenantId)
@@ -1195,11 +1192,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 "The existing provider customer binding is missing the tenant user state, user actor, external login, or tenant-admin role grant.");
         }
 
-        var response = new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
-        {
-            Success = true,
-            Message = "Managed provider client already provisioned.",
-            Id = new ManagedProviderClientProvisioningResultDto
+        return BaseCommandResponse.Success(
+            new ManagedProviderClientProvisioningResultDto
             {
                 TenantId = tenant.Id,
                 UserId = user.Id,
@@ -1208,10 +1202,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 UserActorId = actorBinding.InternalId,
                 UserExternalLoginId = loginBinding.InternalId,
                 TenantUserRoleGrantId = tenantUserRoleGrant.Id
-            }
-        };
-
-        return response;
+            },
+            "Managed provider client already provisioned.");
     }
 
     private async Task<ExternalBinding> EnsureExternalBindingAsync(
@@ -1264,13 +1256,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     private static BaseCommandResponse<ManagedProviderClientProvisioningResultDto> Failure(
         string message,
         string error,
-        string? failureCode = null) => new()
-        {
-            Success = false,
-            Message = message,
-            Errors = [error],
-            FailureCode = failureCode
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<ManagedProviderClientProvisioningResultDto>([error], message)
+            : BaseCommandResponse.Failure<ManagedProviderClientProvisioningResultDto>(failureCode, message, [error]);
 
     private static string[] BuildManagedMutationKeys(
         ManagedTenantProvisioningResolvedBootstrap bootstrap)

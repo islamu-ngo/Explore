@@ -45,7 +45,7 @@ public sealed class UpdateLookupRelationshipCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(link.TagId).IsEqualTo(tagId);
         await Assert.That(link.TagTypeId).IsEqualTo(2);
         await repository.Received(1).Update(link);
@@ -79,7 +79,7 @@ public sealed class UpdateLookupRelationshipCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await repository.DidNotReceive().Update(Arg.Any<TagTypeTags>());
     }
 
@@ -112,7 +112,7 @@ public sealed class UpdateLookupRelationshipCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Category and Category Type relationship already exists.");
         await repository.DidNotReceive().Update(Arg.Any<CategoryTypeCategories>());
     }
@@ -147,7 +147,7 @@ public sealed class UpdateLookupRelationshipCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(link.CategoryId).IsEqualTo(targetCategoryId);
         await Assert.That(link.CategoryTypeId).IsEqualTo(3);
         await repository.Received(1).Update(link);

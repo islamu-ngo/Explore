@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Services.Registration;
 
@@ -242,9 +243,9 @@ public sealed class RegistrationPaymentAttemptClaimService(
                 descriptor.ProfileCode,
                 descriptor.ApiRevision,
                 lockedCompositionRevision,
-                order.OrganizerDirectedTotalMinorSnapshot,
-                order.PlatformFeeTotalMinorSnapshot,
-                order.PlatformContributionTotalMinorSnapshot,
+                Money.Create(order.OrganizerDirectedTotalMinorSnapshot, order.CurrencyCode),
+                Money.Create(order.PlatformFeeTotalMinorSnapshot, order.CurrencyCode),
+                Money.Create(order.PlatformContributionTotalMinorSnapshot, order.CurrencyCode),
                 request.TerminalAttemptId.HasValue
                     ? $"checkout:{attemptId:N}"
                     : CreateIdempotencyKey(order, lockedCompositionRevision),

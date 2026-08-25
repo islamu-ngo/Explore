@@ -32,7 +32,7 @@ public class ApplyEventTemplateSyncCommandHandlerTests
 
         var result = await handler.Handle(new ApplyEventTemplateSyncCommand(Guid.NewGuid(), plan, 1), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(outcome);
         await service.Received(1).ApplySyncAsync(Arg.Any<Guid>(), plan, 1, Arg.Any<CancellationToken>());
     }

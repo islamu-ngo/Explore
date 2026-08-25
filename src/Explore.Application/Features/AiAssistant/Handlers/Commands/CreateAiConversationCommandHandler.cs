@@ -99,23 +99,13 @@ public sealed class CreateAiConversationCommandHandler
 
         var created = await _conversationRepository.Create(conversation);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = created.Id,
-            Message = "AI conversation created."
-        };
+        return BaseCommandResponse.Success(created.Id, "AI conversation created.");
     }
 
     private static BaseCommandResponse<Guid> Failure(
         string message,
         IEnumerable<string> errors,
-        string? failureCode = null)
-        => new()
-        {
-            Success = false,
-            Message = message,
-            Errors = errors.ToList(),
-            FailureCode = failureCode
-        };
+        string? failureCode = null) => failureCode is null
+            ? BaseCommandResponse.Validation<Guid>(errors, message)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, errors);
 }

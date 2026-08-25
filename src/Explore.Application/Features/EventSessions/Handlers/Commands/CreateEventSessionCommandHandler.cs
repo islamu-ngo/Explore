@@ -16,6 +16,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 
@@ -78,8 +79,6 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventSessionDtoValidator(
             _eventRepository,
             _locationRepository,
@@ -91,19 +90,18 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session creation failed.");
         }
 
         // Fetch the parent event to inherit its TenantId (defense-in-depth: global query filter already scopes by tenant)
         var parentEvent = await _eventRepository.GetById(request.EventSessionDto.EventId);
         if (parentEvent == null)
         {
-            response.Success = false;
-            response.Message = "Event not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event not found in the current tenant."],
+                "Event not found in the current tenant.");
         }
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
@@ -111,10 +109,9 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
                 parentEvent.TenantId,
                 request.EventSessionDto.FeaturedImageId))
         {
-            response.Success = false;
-            response.Message = "Event session creation failed.";
-            response.Errors = ["Featured image must be an active public safe-raster object in the current tenant."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Featured image must be an active public safe-raster object in the current tenant."],
+                "Event session creation failed.");
         }
 
         var eventSession = _mapper.Map<EventSession>(request.EventSessionDto);
@@ -123,11 +120,37 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
         // Populate cached local projection fields via the single authorized write path on EventSession.
         // Handlers never touch LocalStart*/LocalEnd* directly; the aggregate method consumes the calculator.
-        eventSession.Reschedule(
-            request.EventSessionDto.StartTime,
-            request.EventSessionDto.EndTime,
-            parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
-            _scheduleProjectionCalculator);
+        string timezone = parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty;
+
+        switch (request.EventSessionDto.EndTimeType)
+        {
+            case SessionEndTimeType.Fixed:
+                eventSession.Reschedule(
+                    UtcInstantRange.Create(request.EventSessionDto.StartTime, request.EventSessionDto.EndTime!.Value),
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.OpenEnded:
+                eventSession.ScheduleOpenEnded(
+                    request.EventSessionDto.StartTime,
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.RelativeToPrayer when request.EventSessionDto.EndTime is { } endTime:
+                eventSession.ScheduleRelativeToPrayer(
+                    UtcInstantRange.Create(request.EventSessionDto.StartTime, endTime),
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            case SessionEndTimeType.RelativeToPrayer:
+                eventSession.ScheduleRelativeToPrayer(
+                    request.EventSessionDto.StartTime,
+                    timezone,
+                    _scheduleProjectionCalculator);
+                break;
+            default:
+                throw new InvalidOperationException("Event session end time type is not supported.");
+        }
 
         // Auto-link to the matching EventDay by (EventId, LocalStartDate).
         // Returns null when no EventDay exists for this date — EventDayId stays nullable during transition.
@@ -152,11 +175,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         }
         catch (RoomScheduleConflictException ex)
         {
-            response.Success = false;
-            response.Message = "Event session creation failed.";
-            response.Errors = new List<string> { ex.Message };
-            response.FailureCode = "room_schedule_conflict";
-            return response;
+            return BaseCommandResponse.Failure<Guid>(
+                "room_schedule_conflict",
+                "Event session creation failed.",
+                [ex.Message]);
         }
 
         if (request.EventSessionDto.IslamicAspect != null)
@@ -212,11 +234,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
             }
         }
 
-        response.Success = true;
-        response.Id = eventSession.Id;
-        response.Message = "Event session created successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(eventSession.Id, "Event session created successfully.");
     }
 
     private static void ApplyIslamicAspectDto(

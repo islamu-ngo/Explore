@@ -148,19 +148,8 @@ internal static class OrganizerPaymentConnectionMapper
 
 internal static class OrganizerPaymentConnectionResponses
 {
-    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    internal static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    internal static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) => new()
-    {
-        Success = false,
-        Id = id,
-        FailureCode = code,
-        Message = message,
-        Errors = [message]
-    };
+    internal static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [message], id);
 }

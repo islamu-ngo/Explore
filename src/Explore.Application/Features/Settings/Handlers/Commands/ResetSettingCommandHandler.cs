@@ -54,23 +54,19 @@ public class ResetSettingCommandHandler
     public async Task<BaseCommandResponse<Guid>> Handle(
         ResetSettingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         // Validate key exists
         var definition = SettingRegistry.Get(request.Key);
         if (definition is null)
         {
-            response.Success = false;
-            response.Message = $"Setting key '{request.Key}' not found in registry.";
-            return response;
+            string message = $"Setting key '{request.Key}' not found in registry.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Instance scope cannot be reset (it IS the root)
         if (request.Scope == SettingScope.Instance)
         {
-            response.Success = false;
-            response.Message = "Cannot reset instance-level settings. Use update to change the value.";
-            return response;
+            const string message = "Cannot reset instance-level settings. Use update to change the value.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
         // Authorization
@@ -78,9 +74,7 @@ public class ResetSettingCommandHandler
             request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
         if (!authorized)
         {
-            response.Success = false;
-            response.Message = authError;
-            return response;
+            return BaseCommandResponse.Validation<Guid>([authError!], authError);
         }
 
         // Get current value for notification
@@ -100,9 +94,8 @@ public class ResetSettingCommandHandler
                 _tenantContext.TenantId, actorId, request.Key);
             if (!removed)
             {
-                response.Success = false;
-                response.Message = $"No user override found for '{request.Key}'.";
-                return response;
+                string message = $"No user override found for '{request.Key}'.";
+                return BaseCommandResponse.Validation<Guid>([message], message);
             }
 
             _resolver.InvalidateUserCache(_tenantContext.TenantId, actorId);
@@ -116,10 +109,9 @@ public class ResetSettingCommandHandler
             }
             catch (SettingSystemLockedException exception)
             {
-                response.Success = false;
-                response.FailureCode = SettingSystemLockedException.Code;
-                response.Message = exception.Message;
-                return response;
+                return BaseCommandResponse.Failure<Guid>(
+                    SettingSystemLockedException.Code,
+                    exception.Message);
             }
 
             _resolver.InvalidateCache(request.Scope, scopeId);
@@ -143,9 +135,8 @@ public class ResetSettingCommandHandler
             SettingCommandHelper.MapScopeToSource(request.Scope),
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
 
-        response.Success = true;
-        response.Id = scopeId;
-        response.Message = $"Setting '{request.Key}' reset to inherited value.";
-        return response;
+        return BaseCommandResponse.Success(
+            scopeId,
+            $"Setting '{request.Key}' reset to inherited value.");
     }
 }

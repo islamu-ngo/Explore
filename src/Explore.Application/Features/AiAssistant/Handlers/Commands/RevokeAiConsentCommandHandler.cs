@@ -53,19 +53,11 @@ public sealed class RevokeAiConsentCommandHandler : IRequestHandler<RevokeAiCons
         return Success(request.GrantId, "AI consent grant revoked.");
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Success = true,
-        Id = id,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(string failureCode, string message, Guid id = default) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = [message]
-    };
+    private static BaseCommandResponse<Guid> Failure(string failureCode, string message, Guid id = default) =>
+        failureCode == FailureCodes.NotFound
+            ? BaseCommandResponse.NotFound<Guid>(message, id)
+            : BaseCommandResponse.Failure<Guid>(failureCode, message, [message], id);
 }

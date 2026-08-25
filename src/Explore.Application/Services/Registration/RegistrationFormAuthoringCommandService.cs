@@ -382,14 +382,11 @@ public sealed class RegistrationFormAuthoringCommandService(
         var result = preflight.Check(version);
         if (!result.CanPublish)
         {
-            return new()
-            {
-                Id = version.Id,
-                Success = false,
-                Message = "Registration form publication preflight failed.",
-                FailureCode = "registration_form_preflight_failed",
-                Errors = [.. result.Issues.Select(issue => $"{issue.Code}: {issue.Message}")]
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                "registration_form_preflight_failed",
+                "Registration form publication preflight failed.",
+                result.Issues.Select(issue => $"{issue.Code}: {issue.Message}"),
+                version.Id);
         }
 
         publication.Publish(version, UtcNow());
@@ -482,19 +479,8 @@ public sealed class RegistrationFormAuthoringCommandService(
             orderedIds.All(id => id != Guid.Empty && active.Contains(id));
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) => new()
-    {
-        Id = id,
-        Success = false,
-        Message = message,
-        FailureCode = code,
-        Errors = [$"{code}: {message}"]
-    };
+    private static BaseCommandResponse<Guid> Failure(Guid id, string code, string message) =>
+        BaseCommandResponse.Failure<Guid>(code, message, [$"{code}: {message}"], id);
 }

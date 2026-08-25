@@ -60,7 +60,7 @@ public sealed class AssignEventReportCommandHandlerTests
             ExpectedCaseConcurrencyStamp = caseItem.ConcurrencyStamp
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(report.Id);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.Assigned);
@@ -89,7 +89,7 @@ public sealed class AssignEventReportCommandHandlerTests
             ExpectedCaseConcurrencyStamp = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.AssigneeUnavailable);
         await _eventReportRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive()
@@ -121,7 +121,7 @@ public sealed class AssignEventReportCommandHandlerTests
             ExpectedCaseConcurrencyStamp = Guid.CreateVersion7()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.CaseConcurrencyConflict);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.Open);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());

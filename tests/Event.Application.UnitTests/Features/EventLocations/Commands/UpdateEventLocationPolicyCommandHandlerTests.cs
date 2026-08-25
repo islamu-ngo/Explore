@@ -104,7 +104,7 @@ public sealed class UpdateEventLocationPolicyCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(placement.Id);
         await Assert.That(placement.PolicyVersion).IsEqualTo(2);
         await Assert.That(placement.NeedsPrivacyReview).IsFalse();
@@ -171,7 +171,7 @@ public sealed class UpdateEventLocationPolicyCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(placement.ShowVenueName).IsTrue();
         await Assert.That(placement.ShowCity).IsFalse();
         await Assert.That(placement.FullDetailsAudienceId)
@@ -212,7 +212,7 @@ public sealed class UpdateEventLocationPolicyCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_location_policy_not_found");
         await Assert.That(placement.PolicyVersion).IsEqualTo(1);
         await audits.DidNotReceive().AppendAsync(

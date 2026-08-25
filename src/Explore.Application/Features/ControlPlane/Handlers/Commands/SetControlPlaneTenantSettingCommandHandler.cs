@@ -72,12 +72,9 @@ public sealed class SetControlPlaneTenantSettingCommandHandler(
                     serializedValue!,
                     token,
                     actorUserId);
-                var response = new BaseCommandResponse<Guid>
-                {
-                    Id = request.TenantId,
-                    Success = true,
-                    Message = "Tenant setting updated.",
-                };
+                BaseCommandResponse<Guid> response = BaseCommandResponse.Success(
+                    request.TenantId,
+                    "Tenant setting updated.");
                 var notification = new SettingChangedNotification(
                     request.Key,
                     existing?.Value,

@@ -119,33 +119,20 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
                 lastId = preference.Id;
             }
 
-            return new BaseCommandResponse<Guid>
-            {
-                Id = lastId,
-                Success = true,
-                Message = "Notification preferences updated."
-            };
+            return BaseCommandResponse.Success(lastId, "Notification preferences updated.");
         }, cancellationToken);
     }
 
     private async Task<bool> IsFencedAsync(Guid userId, CancellationToken cancellationToken) =>
         await privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null;
 
-    private static BaseCommandResponse<Guid> FencedFailure() => new()
-    {
-        Success = false,
-        Message = "Notification preference update failed."
-    };
+    private static BaseCommandResponse<Guid> FencedFailure() =>
+        BaseCommandResponse.Validation<Guid>(
+            ["Notification preference update failed."],
+            "Notification preference update failed.");
 
-    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null)
-    {
-        return new BaseCommandResponse<Guid>
-        {
-            Success = false,
-            Message = message,
-            Errors = errors ?? [message]
-        };
-    }
+    private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) =>
+        BaseCommandResponse.Validation<Guid>(errors ?? [message], message);
 
     private static string Normalize(string code) => code.Trim().ToLowerInvariant();
 }

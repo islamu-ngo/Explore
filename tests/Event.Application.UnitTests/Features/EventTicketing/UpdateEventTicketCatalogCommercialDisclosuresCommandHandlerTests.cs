@@ -43,7 +43,7 @@ public sealed class UpdateEventTicketCatalogCommercialDisclosuresCommandHandlerT
             SupportContactDisclosureText = " Support "
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(draft.Id);
         await Assert.That(draft.MerchantDisclosureText).IsEqualTo("Merchant");
         await Assert.That(draft.RefundPolicyDisclosureText).IsEqualTo("Refund");

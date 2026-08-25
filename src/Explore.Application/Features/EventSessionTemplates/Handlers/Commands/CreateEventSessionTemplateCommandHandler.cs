@@ -50,16 +50,13 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionTemplateCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventSessionTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.SessionTemplateDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session template creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session template creation failed.");
         }
 
         if (await _sessionTemplateRepository.ExistsSessionTemplateKey(
@@ -67,10 +64,9 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
                 request.SessionTemplateDto.SessionTemplateKey,
                 request.SessionTemplateDto.Version))
         {
-            response.Success = false;
-            response.Message = "Event session template creation failed.";
-            response.Errors = ["A session template with the same SessionTemplateKey and Version already exists for this event template."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A session template with the same SessionTemplateKey and Version already exists for this event template."],
+                "Event session template creation failed.");
         }
 
         var maxDefinitions = await _quotaResolver.GetIntAsync(
@@ -79,7 +75,7 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
             cancellationToken);
         if (request.SessionTemplateDto.Definitions.Count > maxDefinitions)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event session template creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
@@ -88,7 +84,6 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
                     request.SessionTemplateDto.Definitions.Count,
                     "event_session_template_definitions",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var maxOptions = await _quotaResolver.GetIntAsync(
@@ -99,7 +94,7 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
             .FirstOrDefault(definition => definition.Options.Count > maxOptions);
         if (overOptionDefinition is not null)
         {
-            response.SetQuotaExceeded(
+            return BaseCommandResponse.Quota<Guid>(
                 "Event session template creation failed.",
                 new QuotaExceededDetails(
                     CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -108,16 +103,14 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
                     overOptionDefinition.Options.Count,
                     "event_session_template_definition_options",
                     _tenantContext.TenantId));
-            return response;
         }
 
         var definitionsResult = BuildDefinitionEntities(request.SessionTemplateDto.Definitions);
         if (definitionsResult.Errors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event session template creation failed.";
-            response.Errors = definitionsResult.Errors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                definitionsResult.Errors,
+                "Event session template creation failed.");
         }
 
         var sessionTemplate = _mapper.Map<EventSessionTemplate>(request.SessionTemplateDto);
@@ -129,19 +122,15 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
             ct => _sessionTemplateRepository.CreateWithDefinitions(sessionTemplate, definitionsResult.Definitions, ct),
             cancellationToken);
 
-        response.Success = true;
-        response.Id = sessionTemplate.Id;
-        response.Message = "Event session template created successfully.";
-
         await _cache.RemoveAsync(
             GetListCacheKey(request.SessionTemplateDto.EventTemplateId, 1, PaginatedResult<object>.DefaultPageSize),
             cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(sessionTemplate.Id, "Event session template created successfully.");
     }
 
     private (IReadOnlyCollection<SessionTemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
-        List<CreateEventSessionTemplateDefinitionDto> definitionDtos)
+        IReadOnlyList<CreateEventSessionTemplateDefinitionDto> definitionDtos)
     {
         var errors = new List<string>();
         var definitions = new List<SessionTemplateDefinitionWithOptions>();

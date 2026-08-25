@@ -22,13 +22,10 @@ public sealed class UnsubscribeFromEmailCategoryCommandHandler(
     {
         if (!NotificationPreferenceCategories.IsKnown(request.Category))
         {
-            return new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Unknown notification category.",
-                Errors = ["Unknown notification category."],
-                FailureCode = "unknown_notification_category"
-            };
+            return BaseCommandResponse.Failure<Guid>(
+                "unknown_notification_category",
+                "Unknown notification category.",
+                ["Unknown notification category."]);
         }
 
         var normalizedCategory = NotificationPreferenceCategories.Normalize(request.Category);
@@ -67,11 +64,6 @@ public sealed class UnsubscribeFromEmailCategoryCommandHandler(
             request.UserId,
             normalizedCategory);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = request.UserId,
-            Message = "Email notification preference updated."
-        };
+        return BaseCommandResponse.Success(request.UserId, "Email notification preference updated.");
     }
 }

@@ -215,12 +215,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             var warning = uncertainPublicationCount > 0
                 ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
                 : string.Empty;
-            return new BaseCommandResponse<Guid>
-            {
-                Id = persisted.Id,
-                Success = true,
-                Message = $"Webhook endpoint updated; {migratedTargetCount} eligible pending target(s) migrated.{warning}"
-            };
+            return BaseCommandResponse.Success(persisted.Id, $"Webhook endpoint updated; {migratedTargetCount} eligible pending target(s) migrated.{warning}");
         }, cancellationToken);
     }
 
@@ -353,11 +348,5 @@ public sealed class UpdateWebhookEndpointCommandHandler(
         Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.IdnHost : "unknown";
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }

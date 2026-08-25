@@ -35,7 +35,7 @@ public class UpdateLocationCommandHandlerTests
             UpdateLocationDto = new UpdateLocationDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _locationRepository.DidNotReceive().Update(Arg.Any<Location>());
     }
 
@@ -55,14 +55,14 @@ public class UpdateLocationCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.FullName).IsEqualTo("Updated Venue");
         await Assert.That(location.Address).IsEqualTo("Existing address");
         await _locationRepository.Received(1).Update(location);
     }
 
     [Test]
-    public async Task Handle_WhenLatitudeExplicitlyClears_SetsLatitudeToNull()
+    public async Task HandleWhenCoordinatesExplicitlyClearSetsBothToNull()
     {
         var location = CreateLocation();
         _locationRepository.GetById(location.Id).Returns(location);
@@ -76,12 +76,17 @@ public class UpdateLocationCommandHandlerTests
                 Latitude = new UpdateLocationLatitudeDto
                 {
                     Value = OptionalUpdate<double?>.Set(null)
+                },
+                Longitude = new UpdateLocationLongitudeDto
+                {
+                    Value = OptionalUpdate<double?>.Set(null)
                 }
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.Latitude).IsNull();
+        await Assert.That(location.Longitude).IsNull();
         await _locationRepository.Received(1).Update(location);
     }
 

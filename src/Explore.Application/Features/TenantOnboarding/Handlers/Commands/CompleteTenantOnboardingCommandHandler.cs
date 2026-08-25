@@ -46,15 +46,12 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteTenantOnboardingCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var tenantId = _tenantContext.TenantId;
 
         if (!await IsUserAuthorizedAsync(tenantId, cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Only tenant administrators or instance administrators can complete tenant onboarding.";
-            response.FailureCode = FailureCodes.AdminRequired;
-            return response;
+            return BaseCommandResponse.Authorization<Guid>(
+                "Only tenant administrators or instance administrators can complete tenant onboarding.");
         }
 
         // Pre-read for create-or-update decision — BEFORE transaction (fast rejection, no write)
@@ -101,10 +98,9 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             await _mediator.Publish(notification, cancellationToken);
         }
 
-        response.Success = true;
-        response.Message = "Tenant onboarding completed successfully.";
-        response.Id = outcome.OnboardingStateId;
-        return response;
+        return BaseCommandResponse.Success(
+            outcome.OnboardingStateId,
+            "Tenant onboarding completed successfully.");
     }
 
     private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, CancellationToken cancellationToken)

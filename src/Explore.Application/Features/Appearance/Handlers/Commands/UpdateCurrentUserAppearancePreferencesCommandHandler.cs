@@ -41,14 +41,12 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateCurrentUserAppearancePreferencesCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var userId = _currentUserService.UserId;
         if (userId == null)
         {
-            response.Success = false;
-            response.Message = "User not authenticated.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["User not authenticated."],
+                "User not authenticated.");
         }
 
         if (await IsFencedAsync(userId.Value, cancellationToken))
@@ -60,20 +58,20 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
         var validationResult = await validator.ValidateAsync(request.Preferences, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Appearance preference update failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return await MaskIfFencedAsync(userId.Value, response, cancellationToken);
+            var validationResponse = BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Appearance preference update failed.");
+            return await MaskIfFencedAsync(userId.Value, validationResponse, cancellationToken);
         }
 
         var tenantId = _tenantContext.TenantId;
 
         DateTime utcNow = DateTime.UtcNow;
-        response = await _unitOfWork.ExecuteSerializableAsync(
+        var response = await _unitOfWork.ExecuteSerializableAsync(
             async ct => await PersistPreferencesAsync(request, tenantId, userId.Value, utcNow, ct),
             cancellationToken);
 
-        if (response.Success)
+        if (response.IsSuccess)
         {
             _hierarchicalSettingsResolver.InvalidateUserCache(tenantId, userId.Value);
         }
@@ -120,12 +118,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
                 utcNow);
         }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = userId,
-            Message = "Appearance preferences updated successfully."
-        };
+        return BaseCommandResponse.Success(userId, "Appearance preferences updated successfully.");
     }
 
     private async Task<bool> IsFencedAsync(Guid userId, CancellationToken cancellationToken) =>
@@ -137,11 +130,10 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
         CancellationToken cancellationToken) =>
         await IsFencedAsync(userId, cancellationToken) ? FencedResponse() : response;
 
-    private static BaseCommandResponse<Guid> FencedResponse() => new()
-    {
-        Success = false,
-        Message = "Appearance preference update failed."
-    };
+    private static BaseCommandResponse<Guid> FencedResponse() =>
+        BaseCommandResponse.Validation<Guid>(
+            ["Appearance preference update failed."],
+            "Appearance preference update failed.");
 
     private async Task UpsertOrRemoveOverrideAsync(
         Guid tenantId,

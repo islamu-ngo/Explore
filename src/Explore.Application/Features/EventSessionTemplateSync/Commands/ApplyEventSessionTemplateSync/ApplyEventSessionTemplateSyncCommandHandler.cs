@@ -48,15 +48,15 @@ public sealed class ApplyEventSessionTemplateSyncCommandHandler
                 request.EventSessionId.ToString());
         }
 
-        return new BaseCommandResponse<TemplateSyncOutcomeDto>
+        if (outcome.Conflicts.Count == 0)
         {
-            Success = outcome.Conflicts.Count == 0,
-            Id = outcome,
-            Message = outcome.Conflicts.Count == 0
-                ? "Event session template sync applied successfully."
-                : "Event session template sync completed with conflicts.",
-            Errors = outcome.Conflicts.Select(x => $"{x.Key}:{x.Reason}").ToList(),
-            FailureCode = outcome.Conflicts.Count == 0 ? null : outcome.Conflicts[0].Reason
-        };
+            return BaseCommandResponse.Success(outcome, "Event session template sync applied successfully.");
+        }
+
+        return BaseCommandResponse.Failure(
+            outcome.Conflicts[0].Reason,
+            "Event session template sync completed with conflicts.",
+            outcome.Conflicts.Select(x => $"{x.Key}:{x.Reason}"),
+            outcome);
     }
 }

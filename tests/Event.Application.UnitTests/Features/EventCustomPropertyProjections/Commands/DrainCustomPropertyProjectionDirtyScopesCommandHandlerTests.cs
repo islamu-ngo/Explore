@@ -47,7 +47,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotNull();
         await Assert.That(result.Id!.DrainedCount).IsEqualTo(5);
         await _eventUpdater.Received(1).DrainDirtyScopesForTenantAsync(tenantId, Arg.Any<CancellationToken>());
@@ -72,7 +72,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.DrainedCount).IsEqualTo(2);
         await _sessionUpdater.Received(1).DrainDirtyScopesForTenantAsync(tenantId, Arg.Any<CancellationToken>());
     }
@@ -91,7 +91,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message!).Contains("Unknown projection name");
     }
 
@@ -109,7 +109,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -126,7 +126,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
     }
 
     [Test]
@@ -148,7 +148,7 @@ public class DrainCustomPropertyProjectionDirtyScopesCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id!.DrainedCount).IsEqualTo(0);
     }
 }

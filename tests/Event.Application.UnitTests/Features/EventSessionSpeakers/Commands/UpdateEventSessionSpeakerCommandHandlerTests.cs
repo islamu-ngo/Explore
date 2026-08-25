@@ -45,7 +45,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event session speaker update group must be provided.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -89,7 +89,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
         }, eventId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(entity.ActorId).IsEqualTo(newActorId);
         await _repository.Received(1).Update(entity);
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
@@ -114,7 +114,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
         }, eventId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Actor is already assigned as a speaker for this event session.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -145,7 +145,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(command.EventSessionId).IsEqualTo(forgedSessionId);
         await Assert.That(command.EventId).IsEqualTo(forgedEventId);
         await Assert.That(command.TenantId).IsEqualTo(forgedTenantId);
@@ -173,7 +173,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
             Session = new UpdateEventSessionSpeakerSessionDto { EventSessionId = targetSessionId }
         }, eventId), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors)
             .Contains("Event session must belong to the same event as the speaker assignment.");
         await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());

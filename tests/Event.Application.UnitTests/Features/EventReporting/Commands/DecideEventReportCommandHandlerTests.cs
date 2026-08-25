@@ -62,7 +62,7 @@ public sealed class DecideEventReportCommandHandlerTests
             SafeNote = "Visible title violates listing rules."
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -108,7 +108,7 @@ public sealed class DecideEventReportCommandHandlerTests
             ReasonCode = "duplicate_report"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(report.DuplicateGroupId).IsNull();
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
@@ -128,7 +128,7 @@ public sealed class DecideEventReportCommandHandlerTests
             ReasonCode = "duplicate_report"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.ValidationFailed);
         await _unitOfWork.DidNotReceive()
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
@@ -159,7 +159,7 @@ public sealed class DecideEventReportCommandHandlerTests
             ReasonCode = "no_violation"
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.AssignmentMismatch);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.Assigned);
         await _eventReportRepository.DidNotReceive().PersistDecisionCaptureAsync(

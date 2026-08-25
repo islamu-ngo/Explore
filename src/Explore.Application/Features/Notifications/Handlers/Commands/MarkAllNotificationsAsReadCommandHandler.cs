@@ -24,21 +24,15 @@ public class MarkAllNotificationsAsReadCommandHandler : IRequestHandler<MarkAllN
 
     public async Task<BaseCommandResponse<Guid>> Handle(MarkAllNotificationsAsReadCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var userId = _currentUserService.UserId;
         if (userId == null)
         {
-            response.Success = false;
-            response.Message = "User not authenticated.";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["User not authenticated."], "User not authenticated.");
         }
 
         var cutoff = DateTime.UtcNow;
         var count = await _notificationRepository.MarkAllAsRead(userId.Value, cutoff);
 
-        response.Success = true;
-        response.Message = $"{count} notification(s) marked as read.";
-        return response;
+        return BaseCommandResponse.Success(Guid.Empty, $"{count} notification(s) marked as read.");
     }
 }

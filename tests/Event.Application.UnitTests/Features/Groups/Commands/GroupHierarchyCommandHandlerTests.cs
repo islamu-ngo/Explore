@@ -107,7 +107,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Parent organization does not exist in the current tenant.");
         await _groupRepository.DidNotReceive().Create(Arg.Any<Group>());
         _adminCacheInvalidator.DidNotReceiveWithAnyArgs().InvalidateUser(default);
@@ -143,7 +143,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(groupId);
         _adminCacheInvalidator.Received(1).InvalidateUser(userId);
     }
@@ -182,7 +182,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await CreateCreateHandler().Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await _groupRepository.DidNotReceive().ExecuteWithHierarchyMutationLock(
             Arg.Any<Guid>(),
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
@@ -209,7 +209,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("A group can have either a parent organization or a parent group, not both.");
         await _groupRepository.DidNotReceive().Create(Arg.Any<Group>());
     }
@@ -247,7 +247,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("A group cannot be its own parent.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
     }
@@ -288,7 +288,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Parent group would create a hierarchy cycle.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
     }
@@ -330,7 +330,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Parent group hierarchy exceeds the maximum supported depth.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
     }
@@ -349,7 +349,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("At least one group update group must be provided.");
         await _groupRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
@@ -424,7 +424,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(group.FullName).IsEqualTo("Updated Group");
         await Assert.That(group.Description).IsEqualTo("Existing description");
         await _groupRepository.Received(1).Update(group);
@@ -466,7 +466,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(group.Description).IsNull();
         await _groupRepository.Received(1).Update(group);
     }
@@ -487,7 +487,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Errors).Contains("Description group must include Value.");
         await _groupRepository.DidNotReceive().Update(Arg.Any<Group>());
     }

@@ -58,7 +58,7 @@ public sealed class TriageEventReportCommandHandlerTests
             Priority = EventReportPriority.Urgent
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Id).IsEqualTo(report.Id);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.Triaged);
         await Assert.That(report.Priority).IsEqualTo(EventReportPriority.Urgent);
@@ -91,7 +91,7 @@ public sealed class TriageEventReportCommandHandlerTests
             Priority = EventReportPriority.Urgent
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.CaseConcurrencyConflict);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.Submitted);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
@@ -121,7 +121,7 @@ public sealed class TriageEventReportCommandHandlerTests
             Priority = EventReportPriority.High
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.EventMismatch);
         await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
     }

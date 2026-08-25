@@ -51,19 +51,10 @@ public sealed class PublishControlPlaneTenantPlanVersionCommandHandler(
                 }
             }
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = version.Id,
-                Message = "Tenant plan version published."
-            };
+            return BaseCommandResponse.Success(version.Id, "Tenant plan version published.");
         }
     }
 
-    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+    private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) =>
+        BaseCommandResponse.Validation<Guid>(errors, message);
 }

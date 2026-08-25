@@ -108,13 +108,10 @@ public sealed class ForceStopSupportAccessSessionCommandHandler(
             (SupportAccessModeEnum)revoked.ModeId,
             revoked.EndedAtUtc);
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Id = revoked.Id,
-            Session = SupportAccessMapper.ToDto(revoked, DateTimeOffset.UtcNow),
-            Success = true,
-            Message = "Support-access session force-stopped."
-        };
+        return SupportAccessSessionCommandResponseDto.Success(
+            revoked.Id,
+            "Support-access session force-stopped.",
+            SupportAccessMapper.ToDto(revoked, DateTimeOffset.UtcNow));
     }
 
     private SupportAccessSessionCommandResponseDto Failure(
@@ -132,12 +129,7 @@ public sealed class ForceStopSupportAccessSessionCommandHandler(
             sessionId,
             operatorUserId);
 
-        return new SupportAccessSessionCommandResponseDto
-        {
-            Success = false,
-            FailureCode = failureCode,
-            Message = message,
-            Errors = errors.ToList()
-        };
+        return SupportAccessSessionCommandResponseDto.Failure(
+            BaseCommandResponse.Failure<Guid>(failureCode, message, errors));
     }
 }

@@ -44,20 +44,13 @@ public class DeleteEventSeriesCommandHandler : IRequestHandler<DeleteEventSeries
         var series = await _eventSeriesRepository.GetById(request.Id);
         if (series == null)
         {
-            return new BaseCommandResponse<bool>
-            {
-                Success = false,
-                Message = "Event series not found."
-            };
+            return BaseCommandResponse.Validation<bool>(
+                ["Event series not found."],
+                "Event series not found.");
         }
 
         await _eventSeriesRepository.Delete(series);
 
-        return new BaseCommandResponse<bool>
-        {
-            Id = true,
-            Success = true,
-            Message = "Event series deleted successfully."
-        };
+        return BaseCommandResponse.Success(true, "Event series deleted successfully.");
     }
 }

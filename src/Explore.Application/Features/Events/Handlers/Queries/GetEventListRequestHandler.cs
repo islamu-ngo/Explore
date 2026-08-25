@@ -357,7 +357,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 EventCustomPropertyProjectionFilter.OptionMatch(criterion.Namespace, criterion.Key, criterion.OptionId.Value),
 
             CustomPropertyFilterOperator.OptionIn when criterion.OptionIds is { Count: > 0 } =>
-                EventCustomPropertyProjectionFilter.OptionsMatchAny(criterion.Namespace, criterion.Key, criterion.OptionIds),
+                EventCustomPropertyProjectionFilter.OptionsMatchAny(criterion.Namespace, criterion.Key, criterion.OptionIds.ToList()),
 
             CustomPropertyFilterOperator.NumberRange when criterion.MinNumber.HasValue || criterion.MaxNumber.HasValue =>
                 EventCustomPropertyProjectionFilter.NumberRange(criterion.Namespace, criterion.Key, criterion.MinNumber, criterion.MaxNumber),

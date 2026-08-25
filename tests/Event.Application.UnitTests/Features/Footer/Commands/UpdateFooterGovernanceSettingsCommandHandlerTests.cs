@@ -36,7 +36,7 @@ public sealed class UpdateFooterGovernanceSettingsCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await settingsResolver.Received(1).SetValueAsync(
             GovernanceSettingKeys.Footer.LockTenantTemplate,
             Arg.Any<string>(),
@@ -69,7 +69,7 @@ public sealed class UpdateFooterGovernanceSettingsCommandHandlerTests
             Patch = new PatchFooterGovernanceSettingsDto()
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await settingsResolver.DidNotReceive().SetValueAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SettingScope>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         settingsResolver.DidNotReceive().InvalidateCache(Arg.Any<SettingScope?>(), Arg.Any<Guid?>());

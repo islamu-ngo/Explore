@@ -51,26 +51,23 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var dto = request.TenantDto;
 
         var validator = new CreateTenantDtoValidator();
         var validation = await validator.ValidateAsync(dto, cancellationToken);
         if (!validation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Invalid tenant data.";
-            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validation.Errors.Select(e => e.ErrorMessage),
+                "Invalid tenant data.");
         }
 
         var existingTenant = await _tenantRepository.GetTenantBySlug(dto.Slug);
         if (existingTenant != null)
         {
-            response.Success = false;
-            response.Message = "A tenant with this slug already exists.";
-            response.Errors = ["Slug must be unique across all tenants."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Slug must be unique across all tenants."],
+                "A tenant with this slug already exists.");
         }
 
         var statusId = dto.IsActive ? (int)TenantStatusEnum.Active : (int)TenantStatusEnum.Provisioning;
@@ -85,13 +82,10 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                     cancellationToken: ct);
                 if (!capacity.Allowed)
                 {
-                    return new BaseCommandResponse<Guid>
-                    {
-                        Success = false,
-                        FailureCode = capacity.FailureCode,
-                        Message = capacity.Error,
-                        Errors = [capacity.Error!]
-                    };
+                    return BaseCommandResponse.Failure<Guid>(
+                        capacity.FailureCode!,
+                        capacity.Error,
+                        [capacity.Error!]);
                 }
             }
 
@@ -110,14 +104,11 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                 await AssignRequestingUserAsTenantAdminAsync(tenant.Id, request.RequestingUserId!.Value, ct);
             }
 
-            return new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = tenant.Id,
-                Message = assignAdmin
+            return BaseCommandResponse.Success(
+                tenant.Id,
+                assignAdmin
                     ? "Tenant created successfully. You have been assigned as tenant administrator."
-                    : "Tenant created successfully."
-            };
+                    : "Tenant created successfully.");
         }
 
         return _capacityPolicy.IsEnforced

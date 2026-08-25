@@ -42,26 +42,18 @@ public sealed class CreateEventTechAspectCommandHandler(
         await aspectRepository.Create(aspect);
         await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
         await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = aspect.Id,
-            Success = true,
-            Message = "Tech aspect created successfully."
-        };
+        return BaseCommandResponse.Success(aspect.Id, "Tech aspect created successfully.");
     }
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            id);
 }
 
 public sealed class UpdateEventTechAspectCommandHandler(
@@ -120,12 +112,7 @@ public sealed class UpdateEventTechAspectCommandHandler(
         await aspectRepository.Update(aspect);
         await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
         await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
-        return new BaseCommandResponse<Guid>
-        {
-            Id = aspect.Id,
-            Success = true,
-            Message = "Tech aspect updated successfully."
-        };
+        return BaseCommandResponse.Success(aspect.Id, "Tech aspect updated successfully.");
     }
 
     private static void Apply(EventTechAspect aspect, UpdateEventTechAspectDto patch)
@@ -154,12 +141,9 @@ public sealed class UpdateEventTechAspectCommandHandler(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) => BaseCommandResponse.Failure<Guid>(
+            code,
+            message,
+            errors ?? [message],
+            id);
 }

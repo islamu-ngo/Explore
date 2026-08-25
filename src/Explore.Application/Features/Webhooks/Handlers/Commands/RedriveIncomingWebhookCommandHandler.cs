@@ -151,23 +151,13 @@ public sealed class RedriveIncomingWebhookCommandHandler(
         return false;
     }
 
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
-    {
-        Id = id,
-        Success = true,
-        Message = message
-    };
+    private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         Guid id,
         string code,
         string message,
-        IEnumerable<string>? errors = null) => new()
-        {
-            Id = id,
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        IEnumerable<string>? errors = null) =>
+        BaseCommandResponse.Failure(code, message, errors ?? [message], id);
 }

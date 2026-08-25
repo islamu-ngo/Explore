@@ -24,29 +24,21 @@ public class WithdrawContactShareConsentCommandHandler : IRequestHandler<Withdra
 
     public async Task<BaseCommandResponse<Guid>> Handle(WithdrawContactShareConsentCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         try
         {
             await _consentService.WithdrawConsent(request.TenantId, request.UserId, request.ConsentId);
 
-            response.Success = true;
-            response.Id = request.ConsentId;
-            response.Message = "Contact sharing consent withdrawn successfully.";
+            return BaseCommandResponse.Success(
+                request.ConsentId,
+                "Contact sharing consent withdrawn successfully.");
         }
         catch (KeyNotFoundException ex)
         {
-            response.Success = false;
-            response.Message = ex.Message;
-            response.Errors = [ex.Message];
+            return BaseCommandResponse.Validation<Guid>([ex.Message], ex.Message);
         }
         catch (UnauthorizedAccessException ex)
         {
-            response.Success = false;
-            response.Message = ex.Message;
-            response.Errors = [ex.Message];
+            return BaseCommandResponse.Validation<Guid>([ex.Message], ex.Message);
         }
-
-        return response;
     }
 }

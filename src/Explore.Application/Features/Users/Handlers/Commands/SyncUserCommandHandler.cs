@@ -48,7 +48,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
     public async Task<BaseCommandResponse<Guid>> Handle(SyncUserCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var userDto = request.UserDto;
 
         try
@@ -60,9 +59,9 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
             if (string.IsNullOrWhiteSpace(providerUserId))
             {
-                response.Success = false;
-                response.Message = "Provider user id is required to synchronize the user.";
-                return response;
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Provider user id is required to synchronize the user."],
+                    "Provider user id is required to synchronize the user.");
             }
 
             if (!supportsEmailAutoMatch && string.IsNullOrWhiteSpace(email))
@@ -70,10 +69,9 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                 var existingProviderLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
                 if (existingProviderLogin == null)
                 {
-                    response.Success = false;
-                    response.Message =
+                    const string message =
                         "AT Protocol identity must be explicitly linked to an existing account before sign-in sync without email.";
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>([message], message);
                 }
             }
 
@@ -103,9 +101,9 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                 safeEmail = ResolveEmailForCreation(provider, email);
                 if (string.IsNullOrWhiteSpace(safeEmail))
                 {
-                    response.Success = false;
-                    response.Message = "Email is required to create a new account for this provider.";
-                    return response;
+                    return BaseCommandResponse.Validation<Guid>(
+                        ["Email is required to create a new account for this provider."],
+                        "Email is required to create a new account for this provider.");
                 }
             }
 
@@ -180,18 +178,14 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                 }
             }, cancellationToken);
 
-            response.Success = true;
-            response.Message = "User synchronized successfully.";
-            response.Id = syncedUser.Id;
             await _cache.RemoveAsync($"user:detail:{syncedUser.Id}", cancellationToken);
+            return BaseCommandResponse.Success(syncedUser.Id, "User synchronized successfully.");
         }
         catch (Exception ex)
         {
-            response.Success = false;
-            response.Message = $"Error syncing user: {ex.Message}";
+            string message = $"Error syncing user: {ex.Message}";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
-
-        return response;
     }
 
     private async Task EnsureExternalLoginLinkInTransactionAsync(

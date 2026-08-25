@@ -41,34 +41,29 @@ public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<
 
     public async Task<BaseCommandResponse<Guid>> Handle(SetEventSessionCustomPropertyValueCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new SetEventSessionCustomPropertyValueDtoValidator();
         var validationResult = await validator.ValidateAsync(request.ValueDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session custom property value set failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Event session custom property value set failed.");
         }
 
         var definition = await _sessionCustomPropertyRepository.GetDefinitionWithDetails(request.ValueDto.EventSessionCustomPropertyDefinitionId);
         if (definition is null || definition.EventSessionId != request.ValueDto.EventSessionId)
         {
-            response.Success = false;
-            response.Message = "Event session custom property value set failed.";
-            response.Errors = ["Event session custom property definition was not found for the requested session."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Event session custom property definition was not found for the requested session."],
+                "Event session custom property value set failed.");
         }
 
         var runtimeValidationErrors = CustomPropertyRuntimeValueValidator.ValidateSingle(definition, request.ValueDto);
         if (runtimeValidationErrors.Count > 0)
         {
-            response.Success = false;
-            response.Message = "Event session custom property value set failed.";
-            response.Errors = runtimeValidationErrors;
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                runtimeValidationErrors,
+                "Event session custom property value set failed.");
         }
 
         var value = _mapper.Map<EventSessionCustomPropertyValue>(request.ValueDto);
@@ -85,10 +80,6 @@ public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<
             },
             cancellationToken);
 
-        response.Success = true;
-        response.Id = persisted.Id;
-        response.Message = "Event session custom property value set successfully.";
-
-        return response;
+        return BaseCommandResponse.Success(persisted.Id, "Event session custom property value set successfully.");
     }
 }

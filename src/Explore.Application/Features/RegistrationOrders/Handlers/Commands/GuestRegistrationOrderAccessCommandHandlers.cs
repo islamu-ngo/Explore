@@ -33,15 +33,9 @@ public sealed class StartGuestRegistrationOrderCommandHandler(
             Lines = request.Lines
         }, cancellationToken);
 
-        return new GuestRegistrationOrderStartDto
-        {
-            Id = response.Id,
-            Success = response.Success,
-            Message = response.Message,
-            FailureCode = response.FailureCode,
-            Errors = response.Errors,
-            GuestCapabilityToken = response.Success ? capability.RawToken : null
-        };
+        return response.IsSuccess
+            ? GuestRegistrationOrderStartDto.Success(response.Id, response.Message, capability.RawToken)
+            : GuestRegistrationOrderStartDto.Failure(response);
     }
 }
 

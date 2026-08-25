@@ -42,8 +42,6 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionGroupCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new CreateEventSessionGroupRequestDtoValidator(
             _eventRepository,
             _locationRepository,
@@ -52,18 +50,15 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Event session group creation failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Event session group creation failed.");
         }
 
         var parentEvent = await _eventRepository.GetById(request.EventSessionGroup.EventId);
         if (parentEvent is null)
         {
-            response.Success = false;
-            response.Message = "Event not found in the current tenant.";
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Event not found in the current tenant.");
         }
 
         if (await SlugExistsForEventAsync(
@@ -71,10 +66,9 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
                 request.EventSessionGroup.Slug,
                 cancellationToken))
         {
-            response.Success = false;
-            response.Message = "Event session group creation failed.";
-            response.Errors = ["Slug must be unique within the event."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["Slug must be unique within the event."],
+                "Event session group creation failed.");
         }
 
         var group = _mapper.Map<EventSessionGroup>(request.EventSessionGroup);
@@ -91,10 +85,7 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
             return await _eventSessionGroupRepository.Create(group);
         }, cancellationToken);
 
-        response.Success = true;
-        response.Id = group.Id;
-        response.Message = "Event session group created successfully.";
-        return response;
+        return BaseCommandResponse.Success(group.Id, "Event session group created successfully.");
     }
 
     private async Task<bool> SlugExistsForEventAsync(Guid eventId, string? slug, CancellationToken cancellationToken)

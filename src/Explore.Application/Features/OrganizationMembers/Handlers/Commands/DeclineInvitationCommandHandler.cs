@@ -22,29 +22,20 @@ public class DeclineInvitationCommandHandler : IRequestHandler<DeclineInvitation
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeclineInvitationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var invitation = await _organizationMemberRepository.GetById(request.InvitationId);
 
         if (invitation == null)
         {
-            response.Success = false;
-            response.Message = "Invitation not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Invitation not found"], "Invitation not found");
         }
 
         if (invitation.UserId == Guid.Empty || invitation.UserId != request.UserId)
         {
-            response.Success = false;
-            response.Message = "Invitation not found";
-            return response;
+            return BaseCommandResponse.Validation<Guid>(["Invitation not found"], "Invitation not found");
         }
 
         await _organizationMemberRepository.Delete(invitation);
 
-        response.Success = true;
-        response.Message = "Invitation declined";
-        response.Id = invitation.Id;
-
-        return response;
+        return BaseCommandResponse.Success(invitation.Id, "Invitation declined");
     }
 }

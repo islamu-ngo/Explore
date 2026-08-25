@@ -23,16 +23,14 @@ public sealed class PatchTenantFooterSettingsCommandHandler(
     public async Task<BaseCommandResponse<Guid>> Handle(
         PatchTenantFooterSettingsCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
         var validator = new PatchTenantFooterSettingsDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Patch, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Tenant footer settings patch failed.";
-            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(error => error.ErrorMessage),
+                "Tenant footer settings patch failed.");
         }
 
         var tenantId = request.TenantId;
@@ -102,9 +100,6 @@ public sealed class PatchTenantFooterSettingsCommandHandler(
 
         settingsResolver.InvalidateCache(SettingScope.Tenant, tenantId);
 
-        response.Success = true;
-        response.Id = tenantId;
-        response.Message = "Tenant footer settings patched successfully.";
-        return response;
+        return BaseCommandResponse.Success(tenantId, "Tenant footer settings patched successfully.");
     }
 }

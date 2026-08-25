@@ -3,29 +3,83 @@
 
 namespace Explore.Application.Features.Authentication.Atproto.Models;
 
-public sealed record AtprotoOAuthVerificationInput(
-    string ExpectedDid,
-    Uri ExpectedPdsUri,
-    string OAuthClientKeyId,
-    byte[] OAuthSessionPayload);
+public sealed record AtprotoOAuthVerificationInput
+{
+    public AtprotoOAuthVerificationInput(
+        string ExpectedDid,
+        Uri ExpectedPdsUri,
+        string OAuthClientKeyId,
+        ReadOnlyMemory<byte> OAuthSessionPayload)
+    {
+        this.ExpectedDid = ExpectedDid;
+        this.ExpectedPdsUri = ExpectedPdsUri;
+        this.OAuthClientKeyId = OAuthClientKeyId;
+        this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
+    }
 
-public sealed record AtprotoVerifiedOAuthSession(
-    string Did,
-    string Handle,
-    Uri PdsUri,
-    string OAuthClientKeyId,
-    byte[] OAuthSessionPayload);
+    public string ExpectedDid { get; }
+    public Uri ExpectedPdsUri { get; }
+    public string OAuthClientKeyId { get; }
+    public ReadOnlyMemory<byte> OAuthSessionPayload { get; }
+}
 
-public sealed record AtprotoPreparedOAuthSession(
-    byte[] SessionCiphertext,
-    string EncryptionKeyId,
-    int EnvelopeVersion,
-    Guid TenantId,
-    Guid UserId,
-    string SubjectDid,
-    string PdsHost,
-    string OAuthClientKeyId,
-    DateTime? ExpiresAt);
+public sealed record AtprotoVerifiedOAuthSession
+{
+    public AtprotoVerifiedOAuthSession(
+        string Did,
+        string Handle,
+        Uri PdsUri,
+        string OAuthClientKeyId,
+        ReadOnlyMemory<byte> OAuthSessionPayload)
+    {
+        this.Did = Did;
+        this.Handle = Handle;
+        this.PdsUri = PdsUri;
+        this.OAuthClientKeyId = OAuthClientKeyId;
+        this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
+    }
+
+    public string Did { get; }
+    public string Handle { get; }
+    public Uri PdsUri { get; }
+    public string OAuthClientKeyId { get; }
+    public ReadOnlyMemory<byte> OAuthSessionPayload { get; }
+}
+
+public sealed record AtprotoPreparedOAuthSession
+{
+    public AtprotoPreparedOAuthSession(
+        ReadOnlyMemory<byte> SessionCiphertext,
+        string EncryptionKeyId,
+        int EnvelopeVersion,
+        Guid TenantId,
+        Guid UserId,
+        string SubjectDid,
+        string PdsHost,
+        string OAuthClientKeyId,
+        DateTime? ExpiresAt)
+    {
+        this.SessionCiphertext = SessionCiphertext.ToArray();
+        this.EncryptionKeyId = EncryptionKeyId;
+        this.EnvelopeVersion = EnvelopeVersion;
+        this.TenantId = TenantId;
+        this.UserId = UserId;
+        this.SubjectDid = SubjectDid;
+        this.PdsHost = PdsHost;
+        this.OAuthClientKeyId = OAuthClientKeyId;
+        this.ExpiresAt = ExpiresAt;
+    }
+
+    public ReadOnlyMemory<byte> SessionCiphertext { get; }
+    public string EncryptionKeyId { get; }
+    public int EnvelopeVersion { get; }
+    public Guid TenantId { get; }
+    public Guid UserId { get; }
+    public string SubjectDid { get; }
+    public string PdsHost { get; }
+    public string OAuthClientKeyId { get; }
+    public DateTime? ExpiresAt { get; }
+}
 
 public sealed record AtprotoOAuthVerificationResult(
     AtprotoVerifiedOAuthSession? Session,

@@ -33,25 +33,19 @@ public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizati
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateOrganizationCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         var validator = new UpdateOrganizationDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UpdateOrganizationDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Organization update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Organization update failed.");
         }
 
         var organization = await _organizationRepository.GetById(request.OrganizationId);
         if (organization == null)
         {
-            response.Success = false;
-            response.Message = "Organization not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Organization not found.");
         }
 
         var authorizationFailure = await AuthorizeOrganizationAdminAsync(request, cancellationToken);
@@ -79,12 +73,8 @@ public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizati
 
         await _organizationRepository.Update(organization);
 
-        response.Success = true;
-        response.Message = "Organization updated successfully.";
-        response.Id = organization.Id;
-
         await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
-        return response;
+        return BaseCommandResponse.Success(organization.Id, "Organization updated successfully.");
     }
 
     private async Task<string?> AuthorizeOrganizationAdminAsync(UpdateOrganizationCommand request, CancellationToken cancellationToken)

@@ -45,7 +45,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
             Provider = "local"
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Only instance administrators");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
@@ -63,7 +63,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthorizationProviderConfigurationDto>(x =>
             x.Provider == "local"));
@@ -83,7 +83,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Setup mode is no longer active");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
@@ -99,7 +99,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
             CerbosGrpcEndpoint = string.Empty
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Invalid authorization provider configuration");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
@@ -116,7 +116,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthorizationProviderConfigurationDto>(x =>
             x.Provider == "local"));
@@ -137,7 +137,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
             Provider = "local"
         }), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("managed by the deployment");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
@@ -158,7 +158,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _configurationService.Received(1)
             .VerifyCerbosEndpointAsync("https://cerbosgrpc.example.com:443", Arg.Any<CancellationToken>());
         await _configurationService.Received(1)
@@ -187,7 +187,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Admin API endpoint");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
@@ -208,7 +208,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("could not be verified");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }

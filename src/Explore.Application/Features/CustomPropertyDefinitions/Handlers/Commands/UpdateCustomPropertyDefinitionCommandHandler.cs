@@ -49,43 +49,33 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
         if (request.DefinitionId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition update failed.";
-            response.Errors = ["DefinitionId and ExpectedConcurrencyStamp are required."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["DefinitionId and ExpectedConcurrencyStamp are required."],
+                "Custom-property definition update failed.");
         }
 
         var validator = new UpdateCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                validationResult.Errors.Select(e => e.ErrorMessage),
+                "Custom-property definition update failed.");
         }
 
         var definition = await _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(request.DefinitionId, cancellationToken);
         if (definition == null)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Custom-property definition not found.");
         }
 
         request = request with { TenantId = definition.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition not found.";
-            response.FailureCode = FailureCodes.NotFound;
-            return response;
+            return BaseCommandResponse.NotFound<Guid>("Custom-property definition not found.");
         }
 
         if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -129,26 +119,24 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             MaxNumber = definition.MaxNumber,
             MinDateTime = definition.MinDateTime,
             MaxDateTime = definition.MaxDateTime,
-            AllowedUrlSchemes = definition.AllowedUrlSchemes
+            AllowedUrlSchemes = definition.AllowedUrlSchemes,
+            Options = definition.Options.Select(option => new CreateCustomPropertyOptionDto { Namespace = option.Namespace, Key = option.Key, DisplayName = option.DisplayName, Description = option.Description, Value = option.Value, IsDefault = option.IsDefault, IsActive = option.IsActive, SortOrder = option.SortOrder }).ToList()
         };
-        candidate.Options = definition.Options.Select(option => new CreateCustomPropertyOptionDto { Namespace = option.Namespace, Key = option.Key, DisplayName = option.DisplayName, Description = option.Description, Value = option.Value, IsDefault = option.IsDefault, IsActive = option.IsActive, SortOrder = option.SortOrder }).ToList();
         candidate = ApplyPatch(candidate, request.DefinitionDto);
         var candidateValidation = await new CreateCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition update failed.";
-            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                candidateValidation.Errors.Select(error => error.ErrorMessage),
+                "Custom-property definition update failed.");
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(candidate.Namespace, candidate.Key);
         if (!governance.IsValid)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition update failed.";
-            response.Errors = governance.Errors.ToList();
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                governance.Errors,
+                "Custom-property definition update failed.");
         }
 
         if (await _customPropertyDefinitionRepository.ExistsScopedMachineKey(
@@ -158,10 +146,9 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                 governance.NormalizedKey,
                 definition.Id))
         {
-            response.Success = false;
-            response.Message = "Custom-property definition update failed.";
-            response.Errors = ["A custom-property definition with the same Namespace + Key already exists in this scope."];
-            return response;
+            return BaseCommandResponse.Validation<Guid>(
+                ["A custom-property definition with the same Namespace + Key already exists in this scope."],
+                "Custom-property definition update failed.");
         }
 
         if (request.DefinitionDto.Options is not null)
@@ -172,7 +159,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                 cancellationToken);
             if (candidate.Options.Count > maxOptions)
             {
-                response.SetQuotaExceeded(
+                return BaseCommandResponse.Quota<Guid>(
                     "Custom-property definition update failed.",
                     new QuotaExceededDetails(
                         CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
@@ -181,7 +168,6 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                         candidate.Options.Count,
                         "custom_property_definition_options",
                         definition.TenantId));
-                return response;
             }
         }
 
@@ -206,13 +192,9 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                 cancellationToken);
         }
 
-        response.Success = true;
-        response.Id = definition.Id;
-        response.Message = "Custom-property definition updated successfully.";
-
         await InvalidateCaches(previousEntityTypeName, definition.EntityTypeName, definition.Id, cancellationToken);
 
-        return response;
+        return BaseCommandResponse.Success(definition.Id, "Custom-property definition updated successfully.");
     }
 
     private List<CustomPropertyOption> CreateOptionEntities(IReadOnlyCollection<CreateCustomPropertyOptionDto> optionDtos, Guid definitionId)
@@ -262,8 +244,9 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             candidate.PropertyType = v.PropertyType ?? candidate.PropertyType; candidate.IsRequired = v.IsRequired ?? candidate.IsRequired; candidate.IsMulti = v.IsMulti ?? candidate.IsMulti;
             if (v.DefaultTextValue.HasValue) candidate.DefaultTextValue = v.DefaultTextValue.Value; if (v.DefaultNumberValue.HasValue) candidate.DefaultNumberValue = v.DefaultNumberValue.Value; if (v.DefaultBooleanValue.HasValue) candidate.DefaultBooleanValue = v.DefaultBooleanValue.Value; if (v.DefaultDateTimeValue.HasValue) candidate.DefaultDateTimeValue = v.DefaultDateTimeValue.Value; if (v.MinLength.HasValue) candidate.MinLength = v.MinLength.Value; if (v.MaxLength.HasValue) candidate.MaxLength = v.MaxLength.Value; if (v.RegexPattern.HasValue) candidate.RegexPattern = v.RegexPattern.Value; if (v.MinNumber.HasValue) candidate.MinNumber = v.MinNumber.Value; if (v.MaxNumber.HasValue) candidate.MaxNumber = v.MaxNumber.Value; if (v.MinDateTime.HasValue) candidate.MinDateTime = v.MinDateTime.Value; if (v.MaxDateTime.HasValue) candidate.MaxDateTime = v.MaxDateTime.Value; if (v.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = v.AllowedUrlSchemes.Value;
         }
-        if (patch.Options is not null) candidate.Options = patch.Options.Items!;
-        return candidate;
+        return patch.Options is null
+            ? candidate
+            : candidate with { Options = patch.Options.Items! };
     }
 
     private async Task InvalidateCaches(

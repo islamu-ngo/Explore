@@ -52,7 +52,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Reason = reason
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.RetryDue);
         await Assert.That(message.ProcessingGeneration).IsEqualTo(2);
         await Assert.That(message.RedriveRecords).HasSingleItem();
@@ -102,7 +102,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Reason = "stale-request"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("incoming_webhook_redrive_generation_conflict");
         await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.DeadLettered);
         await Assert.That(message.ProcessingGeneration).IsEqualTo(1);
@@ -141,7 +141,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Reason = "expired-replay-window"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.IsSuccess).IsFalse();
         await Assert.That(response.FailureCode).IsEqualTo("incoming_webhook_redrive_payload_unavailable");
         await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.DeadLettered);
         await repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -174,7 +174,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
 
         var missingActorResponse = await handler.Handle(request, CancellationToken.None);
 
-        await Assert.That(missingActorResponse.Success).IsFalse();
+        await Assert.That(missingActorResponse.IsSuccess).IsFalse();
         await Assert.That(missingActorResponse.FailureCode).IsEqualTo("incoming_webhook_redrive_actor_required");
         await repository.DidNotReceive().GetByTenantAndIdForUpdateAsync(
             Arg.Any<Guid>(),
@@ -269,7 +269,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Reason = "operator-reviewed-effect"
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(pointer.Status).IsEqualTo(OutboxMessageStatus.Pending);
         await Assert.That(pointer.ProcessingGeneration).IsEqualTo(2);
         await pointerRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

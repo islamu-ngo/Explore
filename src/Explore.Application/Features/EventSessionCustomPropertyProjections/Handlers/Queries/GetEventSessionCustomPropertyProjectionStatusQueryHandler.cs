@@ -33,14 +33,11 @@ public class GetEventSessionCustomPropertyProjectionStatusQueryHandler
         GetEventSessionCustomPropertyProjectionStatusQuery request,
         CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>();
-
         if (request.TenantId == Guid.Empty)
         {
-            response.Success = false;
-            response.Message = "TenantId is required.";
-            response.Errors = ["TenantId is required."];
-            return response;
+            return BaseCommandResponse.Validation<IReadOnlyList<ProjectionStatusDto>>(
+                ["TenantId is required."],
+                "TenantId is required.");
         }
 
         var status = await _statusRepository.GetAsync(
@@ -63,10 +60,8 @@ public class GetEventSessionCustomPropertyProjectionStatusQueryHandler
             dtos.Add(dto);
         }
 
-        response.Success = true;
-        response.Id = dtos;
-        response.Message = "Session projection status retrieved.";
-
-        return response;
+        return BaseCommandResponse.Success<IReadOnlyList<ProjectionStatusDto>>(
+            dtos,
+            "Session projection status retrieved.");
     }
 }

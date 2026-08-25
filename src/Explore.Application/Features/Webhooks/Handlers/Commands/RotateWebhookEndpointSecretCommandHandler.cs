@@ -184,12 +184,7 @@ public sealed class RotateWebhookEndpointSecretCommandHandler(
             var warning = uncertainPublicationCount > 0
                 ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
                 : string.Empty;
-            return new BaseCommandResponse<Guid>
-            {
-                Id = persisted.Id,
-                Success = true,
-                Message = $"Webhook endpoint signing credential rotated; {migratedTargetCount} eligible pending target(s) migrated.{warning}"
-            };
+            return BaseCommandResponse.Success(persisted.Id, $"Webhook endpoint signing credential rotated; {migratedTargetCount} eligible pending target(s) migrated.{warning}");
         }, cancellationToken);
     }
 
@@ -257,11 +252,5 @@ public sealed class RotateWebhookEndpointSecretCommandHandler(
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>
-        new()
-        {
-            Success = false,
-            Message = errors[0],
-            FailureCode = code,
-            Errors = errors.ToList()
-        };
+        BaseCommandResponse.Failure<Guid>(code, errors[0], errors);
 }

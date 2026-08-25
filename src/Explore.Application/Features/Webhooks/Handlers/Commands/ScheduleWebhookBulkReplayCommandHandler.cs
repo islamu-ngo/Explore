@@ -179,17 +179,11 @@ public sealed class ScheduleWebhookBulkReplayCommandHandler(
         };
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) =>
-        new() { Id = id, Success = true, Message = message };
+        BaseCommandResponse.Success(id, message);
 
     private static BaseCommandResponse<Guid> Failure(
         string code,
         string message,
         IEnumerable<string>? errors = null) =>
-        new()
-        {
-            Success = false,
-            FailureCode = code,
-            Message = message,
-            Errors = errors?.ToList() ?? [message]
-        };
+        BaseCommandResponse.Failure<Guid>(code, message, errors ?? [message]);
 }
