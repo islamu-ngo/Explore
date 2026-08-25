@@ -10,7 +10,7 @@ related_intents: [add-cqrs-handler, add-get-endpoint, add-write-endpoint, update
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.Application CQRS handlers, requests, DTOs, and validators. -->
-<!-- ABOUTME: Twin copy at .omo/rules/application-layer.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/application-layer.md. When modifying this file, update both paths. -->
 
 # Application Layer Rules
 

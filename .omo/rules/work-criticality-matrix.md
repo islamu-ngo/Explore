@@ -24,7 +24,7 @@ related_intents:
   - update-ai-context-disclosure
 ---
 <!-- ABOUTME: Path-scoped rule defining the Dynamic Tier Execution Matrix (DTEM) and operational gates. -->
-<!-- ABOUTME: Twin copy at .omo/rules/work-criticality-matrix.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/work-criticality-matrix.md. When modifying this file, update both paths. -->
 
 # Dynamic Work Criticality Matrix
 

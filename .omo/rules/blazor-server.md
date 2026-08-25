@@ -11,7 +11,7 @@ related_intents: [bff-auth-bug]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.Blazor server-side BFF, auth, proxy, and SSR code. -->
-<!-- ABOUTME: Twin copy at .omo/rules/blazor-server.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/blazor-server.md. When modifying this file, update both paths. -->
 
 # Blazor Server / BFF Rules
 

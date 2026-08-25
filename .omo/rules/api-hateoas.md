@@ -10,7 +10,7 @@ related_intents: [add-hal-link, add-get-endpoint, add-write-endpoint, blazor-com
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.API HAL assemblers, link policies, and HATEOAS infrastructure. -->
-<!-- ABOUTME: Twin copy at .omo/rules/api-hateoas.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/api-hateoas.md. When modifying this file, update both paths. -->
 
 # API HATEOAS Rules
 

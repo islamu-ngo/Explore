@@ -1,5 +1,5 @@
 <!-- ABOUTME: Schema for path-scoped rule files under .agents/rules/. -->
-<!-- ABOUTME: Twin copy at .omo/rules/_schema.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/_schema.md. When modifying this file, update both paths. -->
 
 # Rule File Schema
 

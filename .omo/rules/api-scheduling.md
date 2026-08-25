@@ -12,7 +12,7 @@ related_intents: [schedule-background-work, add-cqrs-handler, external-infrastru
 ---
 
 <!-- ABOUTME: Path-scoped rules for Quartz jobs, scheduler composition, and API-hosted background services. -->
-<!-- ABOUTME: Twin copy at .omo/rules/api-scheduling.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/api-scheduling.md. When modifying this file, update both paths. -->
 
 # API Scheduling And Background Work Rules
 

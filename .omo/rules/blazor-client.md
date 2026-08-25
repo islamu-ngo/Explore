@@ -12,7 +12,7 @@ related_intents: [blazor-component-affordance, add-hal-link]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.Blazor.Client components, styles, and UI services. -->
-<!-- ABOUTME: Twin copy at .omo/rules/blazor-client.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/blazor-client.md. When modifying this file, update both paths. -->
 
 # Blazor Client Rules
 

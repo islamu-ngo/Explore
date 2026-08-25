@@ -71,8 +71,10 @@ storage-data/
 # sisyphus
 .sisyphus/
 
-# omo
-.omo/
+# omo — track project rules for OmO rules-injector hook; ignore runtime state
+.omo/*
+!.omo/rules/
+!.omo/rules/**
 
 # Build results
 [Dd]ebug/

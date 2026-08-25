@@ -140,6 +140,83 @@ A handoff is written directly into the task-owned context and contains only:
 
 Generic dev-directory README and handoff templates are intentionally absent because directory-context systems may inject them into every nested read.
 
+## Multi-Harness Rule Architecture
+
+This repository supports multiple AI agent harnesses. Each harness has its own native rule-discovery mechanism that scans specific filesystem paths on every prompt or tool execution. To ensure automatic path-scoped rule injection across all harnesses, architectural rules are maintained as identical twin copies:
+
+| Location | Consumed By | Discovery Mechanism |
+|---|---|---|
+| `.agents/rules/*.md` | ISLAMU contract system (all agents via `AGENTS.md`), Gemini/Antigravity | Intent registry `must_read_docs` + manual load from matching `paths` |
+| `.omo/rules/*.md` | OmO (OpenCode plugin, Senpi, Codex LazyCodex) | `rules-injector` hook: picomatch glob/path matching with YAML frontmatter, distance weighting, and char-budget truncation (12K/rule, 40K total) |
+| `.claude/rules/` | Claude Code | Native Claude rules injection |
+| `.cursor/rules/` | Cursor / Windsurf | Native Cursor rules injection |
+| `.github/instructions/` | GitHub Copilot | Copilot instructions injection |
+
+### Twin Synchronization Contract
+
+Rules in `.agents/rules/*.md` and `.omo/rules/*.md` are identical copies. Each file's second `ABOUTME:` line documents its twin path. When modifying any rule:
+
+1. Edit the file you are working in.
+2. Apply the identical change to its twin at the path stated in the `ABOUTME:` header.
+3. Never use symlinks — OmO's `rules-engine` resolves real paths and deduplicates by `realpathSync`, which would collapse symlinked twins into a single candidate.
+
+### OmO Rule Frontmatter Compatibility
+
+OmO's `rules-engine` parses YAML frontmatter fields for automatic path matching. The ISLAMU contract rules already use compatible frontmatter. OmO's matcher accepts:
+
+- `globs:` — Picomatch glob patterns (e.g. `"src/Explore.API/Controllers/**/*.cs"`)
+- `paths:` — Same as globs, treated identically
+- `alwaysApply: true` — Inject this rule on every prompt regardless of file context
+- `description:` — Human-readable summary shown in OmO's rule list
+- Negative globs (`!pattern`) — Exclude matching paths
+
+### Authority Order With OmO
+
+When an agent runs through OmO, rule authority follows:
+
+1. **CRITICAL RULES** (`AGENTS.md` § 5)
+2. **`docs/QUICK_REFERENCE.md`** — Global project invariants
+3. **OmO-injected `.omo/rules/*.md`** — Auto-matched by edited file path (highest priority in OmO's `SOURCE_PRIORITY` map)
+4. **`docs/GOVERNANCE.md`** — Coding conventions and patterns
+5. **Matching `.agents/rules/*.md`** — Manually loaded via intent `must_read_docs`
+
+OmO-injected rules and intent-loaded rules are identical twins, so no conflict is possible.
+
+## QA Evidence Gate
+
+For Tier 0 (Sovereign), Tier 1 (Security), and Tier 2 (Privacy) changes, agents MUST record verification evidence as plain files under `.omo/evidence/<YYYYMMDD>-<task-slug>/` or `evidence/<YYYYMMDD>-<task-slug>/`. This evidence is reviewer-readable proof that the verification actually happened.
+
+### Required Evidence Artifacts (Tiers 0–2)
+
+| Artifact | Contents | When Required |
+|---|---|---|
+| `test-results.txt` | Fast-loop TUnit slice output (`--treenode-filter`) or full project test output | Every code change |
+| `invariant-breaker-results.txt` | Concurrency race, tenant spoofing, double-capture, or replay adversarial test logs | Tiers 0–1 |
+| `stryker-report.txt` | Stryker mutation score (>85%) for the modified handler/aggregate | Tiers 0–2 |
+| `blast-radius.yaml` | Pre-flight knowledge graph dump (callers, callees, impacted flows, tests) | Multi-layer changes |
+| `summary.md` | What was tested, what was observed, why it is sufficient, what was omitted | Always |
+
+### Evidence Rules
+
+- **No evidence file == verification did not happen.** Do not claim "tests passed" without captured output.
+- Redact or summarize secret-bearing logs, tokens, connection strings, and credentials — never copy raw secrets into evidence files.
+- Evidence for Tier 3 (Domain State) and Tier 4 (Standard) changes is optional but encouraged for complex behavioral changes.
+- OmO's `work-with-pr` skill and QA skills (`opencode-qa`, `codex-qa`, `senpi-qa`) natively write evidence to `.omo/evidence/` — this aligns with the repository convention.
+
+## Hashline Edit Support
+
+When agents operate through OmO with `hashline_edit` enabled, every file-read operation tags output lines with content hashes (`LINE#HASH|` via xxhash32). Subsequent edits validate these hashes against the current file state — if code shifted under the agent (due to concurrent edits, rebases, or context compaction), the edit is rejected immediately rather than silently overwriting the wrong lines.
+
+### When Hashline Helps
+
+- Large C# files (>200 lines) where line-number drift causes silent overwrites.
+- Concurrent editing sessions where multiple agents or the developer modify the same file.
+- Post-compaction resumption where the agent's cached file state may be stale.
+
+### Compatibility
+
+Hashline is an OmO-specific feature. Agents running through Claude Code, Cursor, Copilot, or Gemini/Antigravity use their native edit tools and are unaffected. The twin rules, intent registry, and verification policies apply identically regardless of whether hashline is active.
+
 ## Measurement
 
 Cold-start benchmarks record first-turn input tokens, maximum live context, cumulative input/cache-read tokens, tool-result bytes, duplicate bytes by content hash, full-file reads, and scout result size. Correctness is required, but a scenario that exceeds its context budget is not a pass.

@@ -11,7 +11,7 @@ related_intents: [update-repository-query, add-ef-migration, add-cqrs-handler]
 ---
 
 <!-- ABOUTME: Apply when editing Explore.Persistence repositories, DbContext, filters, or entity configurations outside migrations. -->
-<!-- ABOUTME: Twin copy at .omo/rules/efcore-persistence.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/efcore-persistence.md. When modifying this file, update both paths. -->
 
 # EF Core Persistence Rules
 

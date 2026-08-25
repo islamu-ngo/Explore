@@ -68,6 +68,18 @@ strategy changed -> update plan
 decision/blocker/handoff -> update context
 ```
 
+## OmO Prometheus Integration (Optional)
+
+When working through Oh-My-OpenAgent (OpenCode plugin or Senpi), OmO's **Prometheus** agent can serve as an interactive intake interviewer for this skill's planning workflow:
+
+1. Switch to Prometheus in OmO (`/agent prometheus` or agent selector → Prometheus).
+2. Instruct Prometheus to follow the `implementation-plan` skill when interviewing and planning.
+3. Prometheus conducts the interview (clarifying scope, edge cases, architectural decisions), consults Metis (gap analysis) and Momus (plan review), and writes the resulting plan.
+4. **Output target**: Prometheus writes directly into `dev/active/<task>/<task>-plan.md`, `dev/active/<task>/<task>-context.md`, and `dev/active/<task>/<task>-tasks.md` — the canonical ISLAMU Event plan artifacts.
+5. **Authority**: `dev/active/<task>/` remains the single source of truth. OmO's `.omo/plans/` is a runtime workspace that may hold OmO-internal state, but the authoritative plan lives in `dev/active/<task>/`.
+
+This synergy combines Prometheus's structured interview capability (Metis gap analysis, Momus review) with the ISLAMU Event implementation-plan skill's domain-specific investigation workflow (I-VSD evaluation, `/grill-me` intake, Clean Architecture slicing, Test-First Invariant Sequencing).
+
 ## Verification Hooks
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 - `git diff --check -- .agents/skills/implementation-plan dev/active`
@@ -81,3 +93,4 @@ decision/blocker/handoff -> update context
 - [../conventional-commit/SKILL.md](../conventional-commit/SKILL.md)
 - [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
 - [../skill-authoring/SKILL.md](../skill-authoring/SKILL.md)
+

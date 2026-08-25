@@ -147,11 +147,15 @@ The final summary must be medium-sized and technically specific. Include the arc
 
 ## 10. Tool-Specific Bootloaders
 
-| Tool | Entry File |
-|---|---|
-| Claude Code | `AGENTS.md` (this) |
-| GitHub Copilot | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) |
-| Gemini / Others | [`AGENTS.md`](AGENTS.md) |
+| Tool / Harness | Entry File | Dynamic Rules Injected Via |
+|---|---|---|
+| OmO (OpenCode / Senpi / Codex LazyCodex) | `AGENTS.md` (this) | [`.omo/rules/*.md`](.omo/rules/) (Hook: `rules-injector`, picomatch + distance) |
+| Claude Code | `AGENTS.md` (this) | `.claude/rules/` + `AGENTS.md` |
+| Cursor / Windsurf | `.cursorrules` | `.cursor/rules/` + `AGENTS.md` |
+| GitHub Copilot | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | `.github/instructions/` |
+| Gemini / Antigravity | [`AGENTS.md`](AGENTS.md) | Session rules injection |
+
+> **Twin Rules Policy**: Path-scoped rules are maintained as identical copies in both `.agents/rules/*.md` (for the canonical ISLAMU contract system) and `.omo/rules/*.md` (for OmO's native `rules-injector` hook). When editing a rule, update both twin files — each twin's `ABOUTME:` header documents its counterpart path. This dual presence ensures that agents running through **any** harness receive automatic path-scoped rule injection without manual loading.
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph

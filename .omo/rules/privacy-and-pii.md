@@ -14,7 +14,7 @@ related_intents: [platform-privacy-erasure, update-ai-context-disclosure]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Tier 2 Privacy & PII Compliance and GDPR Erasure Authority. -->
-<!-- ABOUTME: Twin copy at .omo/rules/privacy-and-pii.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/privacy-and-pii.md. When modifying this file, update both paths. -->
 
 # Privacy and PII Rules (Tier 2 — Privacy)
 

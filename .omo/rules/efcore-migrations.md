@@ -10,7 +10,7 @@ related_intents: [add-ef-migration]
 ---
 
 <!-- ABOUTME: Apply when editing Explore.Persistence migration files or model snapshots. -->
-<!-- ABOUTME: Twin copy at .omo/rules/efcore-migrations.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/efcore-migrations.md. When modifying this file, update both paths. -->
 
 # EF Core Migration Rules
 

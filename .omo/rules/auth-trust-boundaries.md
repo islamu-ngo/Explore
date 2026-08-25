@@ -14,7 +14,7 @@ related_intents: [bff-auth-bug, cerbos-policy-change, add-write-endpoint]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Tier 1 Security & Identity Trust Boundaries. -->
-<!-- ABOUTME: Twin copy at .omo/rules/auth-trust-boundaries.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/auth-trust-boundaries.md. When modifying this file, update both paths. -->
 
 # Auth & Trust Boundary Rules (Tier 1 — Security)
 

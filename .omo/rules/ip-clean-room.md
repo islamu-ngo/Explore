@@ -12,7 +12,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-h
 ---
 
 <!-- ABOUTME: Apply when source, documentation, or active planning may be externally informed or change dependency licensing. -->
-<!-- ABOUTME: Twin copy at .omo/rules/ip-clean-room.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/ip-clean-room.md. When modifying this file, update both paths. -->
 
 # IP Clean-Room And Outbound-License Protection
 

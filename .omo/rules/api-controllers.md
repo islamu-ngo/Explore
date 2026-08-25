@@ -10,7 +10,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change,
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.API controller actions and route contracts. -->
-<!-- ABOUTME: Twin copy at .omo/rules/api-controllers.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/api-controllers.md. When modifying this file, update both paths. -->
 
 # API Controller Rules
 

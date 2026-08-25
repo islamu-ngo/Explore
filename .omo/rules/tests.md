@@ -16,7 +16,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 ---
 
 <!-- ABOUTME: Apply when editing unit, integration, architecture, or end-to-end test source files. -->
-<!-- ABOUTME: Twin copy at .omo/rules/tests.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/tests.md. When modifying this file, update both paths. -->
 
 # Test Rules
 

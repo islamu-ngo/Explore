@@ -17,7 +17,7 @@ related_intents: [registration-data-collection, webhook-delivery-redesign]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Tier 0 Sovereign Financial workflows, Stripe Connect, and payment contracts. -->
-<!-- ABOUTME: Twin copy at .omo/rules/payments-commerce.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/payments-commerce.md. When modifying this file, update both paths. -->
 
 # Payments and Commerce Rules (Tier 0 — Sovereign)
 

@@ -10,7 +10,7 @@ related_intents: [add-ef-migration]
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.Domain entities, value objects, enums, and domain services. -->
-<!-- ABOUTME: Twin copy at .omo/rules/domain.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copy at .agents/rules/domain.md. When modifying this file, update both paths. -->
 
 # Domain Rules
 
