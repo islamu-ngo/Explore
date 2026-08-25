@@ -88,6 +88,12 @@ public static class SecretDefinitionRegistry
             public const string CodeLookupHmacKey = "promotions.code_lookup_hmac_key";
         }
 
+        public static class Admissions
+        {
+            public const string CredentialLookupHmacKey = "admissions.credential_lookup_hmac_key";
+            public const string RecoveryCapabilityHmacKey = "admissions.recovery_capability_hmac_key";
+        }
+
         public static class Atproto
         {
             public const string OAuthClientPrivateJwks = "auth.atproto.oauth_client_private_jwks";
@@ -390,6 +396,28 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "PROMOTIONS_CODE_LOOKUP_HMAC_KEY",
                 IsBootstrapSecret = false,
                 Description = "Versioned backend-only HMAC key for promotion-code lookup digests.",
+            },
+            new()
+            {
+                Key = Keys.Admissions.CredentialLookupHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/admissions",
+                DefaultInfisicalKey = "ADMISSIONS_CREDENTIAL_LOOKUP_HMAC_KEY",
+                DefaultEnvironmentVariableName = "ADMISSIONS_CREDENTIAL_LOOKUP_HMAC_KEY",
+                IsBootstrapSecret = false,
+                Description = "Versioned backend-only HMAC key for admission credential lookup digests.",
+            },
+            new()
+            {
+                Key = Keys.Admissions.RecoveryCapabilityHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/admissions",
+                DefaultInfisicalKey = "ADMISSIONS_RECOVERY_CAPABILITY_HMAC_KEY",
+                DefaultEnvironmentVariableName = "ADMISSIONS_RECOVERY_CAPABILITY_HMAC_KEY",
+                IsBootstrapSecret = false,
+                Description = "Versioned backend-only HMAC key for admission recovery capability digests.",
             },
 
             new()

@@ -341,7 +341,7 @@ public sealed class RegistrationOrderTests
             "General admission",
             "USD",
             TicketPricingModeEnum.Fixed,
-            1_000,
+            Money.Create(1_000, "USD"),
             null,
             null,
             ParticipantDataCollectionModeEnum.None,

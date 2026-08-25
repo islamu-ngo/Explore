@@ -73,6 +73,7 @@ public static class LookupTableSeeder
         await SeedTicketingLookupsAsync(context, cancellationToken);
         await SeedParticipantLookupsAsync(context, cancellationToken);
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
+        await SeedAdmissionLookupsAsync(context, cancellationToken);
         await SeedPromotionLookupsAsync(context, cancellationToken);
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedRegistrationFormLookupsAsync(context, cancellationToken);
@@ -1838,6 +1839,36 @@ public static class LookupTableSeeder
             new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Released, MasterCode = "RELEASED", FullName = "Released" },
             new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
             new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" }
+        ], row => row.Id, ct);
+    }
+
+    private static async Task SeedAdmissionLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active" },
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Suspended, MasterCode = "SUSPENDED", FullName = "Suspended" },
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked" },
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" },
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Transferred, MasterCode = "TRANSFERRED", FullName = "Transferred" },
+            new AdmissionTicketStatus { Id = (int)AdmissionTicketStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new AdmissionTicketCredentialStatus { Id = (int)AdmissionTicketCredentialStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active" },
+            new AdmissionTicketCredentialStatus { Id = (int)AdmissionTicketCredentialStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Issued, MasterCode = "ISSUED", FullName = "Issued" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Suspended, MasterCode = "SUSPENDED", FullName = "Suspended" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Reactivated, MasterCode = "REACTIVATED", FullName = "Reactivated" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Transferred, MasterCode = "TRANSFERRED", FullName = "Transferred" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.FullyRefunded, MasterCode = "FULLY_REFUNDED", FullName = "Fully refunded" },
+            new AdmissionTicketTransitionReason { Id = (int)AdmissionTicketTransitionReasonEnum.CredentialRotated, MasterCode = "CREDENTIAL_ROTATED", FullName = "Credential rotated" }
         ], row => row.Id, ct);
     }
 

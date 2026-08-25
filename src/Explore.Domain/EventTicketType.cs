@@ -11,6 +11,7 @@ namespace Explore.Domain;
 public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     private readonly List<TicketTypeEntitlement> _entitlements = [];
+    private Guid _tenantId;
 
     private EventTicketType()
     {
@@ -60,7 +61,11 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
 
     public Guid Id { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(EventTicketType));
+    }
 
     public Guid CatalogId { get; private set; }
 
@@ -125,9 +130,9 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         string name,
         string currencyCode,
         TicketPricingModeEnum pricingMode,
-        long? fixedPriceMinor,
-        long? minimumPriceMinor,
-        long? suggestedPriceMinor,
+        Money? fixedPrice,
+        Money? minimumPrice,
+        Money? suggestedPrice,
         ParticipantDataCollectionModeEnum participantDataCollectionMode,
         Guid? capacityPoolId,
         int? minimumAge,
@@ -162,14 +167,19 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         ValidateEligibility(minimumAge, maximumAge);
         ValidateLimits(perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
 
-        TicketPricingRules.ValidateConfiguration(pricingMode, currencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+        string normalizedCurrencyCode = CurrencyMetadata.Get(currencyCode).Code;
+        EnsurePricingCurrency(normalizedCurrencyCode, fixedPrice, minimumPrice, suggestedPrice);
+        long? fixedPriceMinor = fixedPrice?.MinorUnits;
+        long? minimumPriceMinor = minimumPrice?.MinorUnits;
+        long? suggestedPriceMinor = suggestedPrice?.MinorUnits;
+        TicketPricingRules.ValidateConfiguration(pricingMode, normalizedCurrencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
 
         return new EventTicketType(
             id,
             tenantId,
             catalogId,
             name.Trim(),
-            CurrencyMetadata.Get(currencyCode).Code,
+            normalizedCurrencyCode,
             pricingMode,
             fixedPriceMinor,
             minimumPriceMinor,
@@ -188,10 +198,14 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
 
     internal void UpdatePricing(
         TicketPricingModeEnum pricingMode,
-        long? fixedPriceMinor,
-        long? minimumPriceMinor,
-        long? suggestedPriceMinor)
+        Money? fixedPrice,
+        Money? minimumPrice,
+        Money? suggestedPrice)
     {
+        EnsurePricingCurrency(CurrencyCode, fixedPrice, minimumPrice, suggestedPrice);
+        long? fixedPriceMinor = fixedPrice?.MinorUnits;
+        long? minimumPriceMinor = minimumPrice?.MinorUnits;
+        long? suggestedPriceMinor = suggestedPrice?.MinorUnits;
         TicketPricingRules.ValidateConfiguration(pricingMode, CurrencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
         TicketPricingModeId = (int)pricingMode;
         FixedPriceMinor = fixedPriceMinor;
@@ -199,12 +213,12 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         SuggestedPriceMinor = suggestedPriceMinor;
     }
 
-    internal void Update(string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit)
+    internal void Update(string name, TicketPricingModeEnum pricingMode, Money? fixedPrice, Money? minimumPrice, Money? suggestedPrice, ParticipantDataCollectionModeEnum participantDataCollectionMode, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ticket type name is required.", nameof(name));
         ValidateEligibility(minimumAge, maximumAge);
         ValidateLimits(perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
-        UpdatePricing(pricingMode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+        UpdatePricing(pricingMode, fixedPrice, minimumPrice, suggestedPrice);
         Name = name.Trim(); ParticipantDataCollectionModeId = (int)ValidateParticipantDataCollectionMode(participantDataCollectionMode);
         MinimumAge = minimumAge; MaximumAge = maximumAge; RequiresGuardian = requiresGuardian; RequiresApproval = requiresApproval;
         PerOrderLimit = perOrderLimit; PerAccountLimit = perAccountLimit; PerVerifiedContactLimit = perVerifiedContactLimit; PerBookingPartyLimit = perBookingPartyLimit;
@@ -281,6 +295,15 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         }
 
         return clone;
+    }
+
+    private static void EnsurePricingCurrency(string currencyCode, params Money?[] amounts)
+    {
+        if (amounts.Any(amount => amount is not null &&
+            !string.Equals(amount.CurrencyCode, currencyCode, StringComparison.Ordinal)))
+        {
+            throw new ArgumentException("Ticket price amounts must use the ticket currency.", nameof(amounts));
+        }
     }
 
     private static ParticipantDataCollectionModeEnum ValidateParticipantDataCollectionMode(ParticipantDataCollectionModeEnum mode)

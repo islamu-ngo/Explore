@@ -11,6 +11,7 @@ using Azure.Identity;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
 using Explore.Application.Configuration;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
@@ -186,6 +187,13 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IRegistrationProviderDescriptor>(sp => sp.GetRequiredService<WebhookRegistrationProviderSubmissionSink>());
         services.AddScoped<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
         services.AddScoped<IPromotionCodeDigestService, PromotionCodeDigestService>();
+        services.AddScoped<IAdmissionCredentialDigestService, AdmissionCredentialDigestService>();
+        services.AddScoped<IAdmissionRecoveryCapabilityService, AdmissionRecoveryCapabilityService>();
+        services.AddSingleton<IAdmissionQrRenderer, AdmissionQrSvgRenderer>();
+        services.AddScoped<IAdmissionDeliveryEnvelopeProtector, AdmissionDeliveryEnvelopeProtector>();
+        services.AddScoped<IAdmissionRecoveryDeliveryEnvelopeProtector, AdmissionRecoveryDeliveryEnvelopeProtector>();
+        services.AddScoped<IAdmissionCredentialDirectDeliveryChannel, AdmissionEmailCredentialDeliveryChannel>();
+        services.AddScoped<IAdmissionRecoveryDirectDeliveryChannel, AdmissionRecoveryEmailDeliveryChannel>();
         services.AddSingleton<IGooglePubSubOidcTokenValidator, GooglePubSubOidcTokenValidator>();
         services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
         services.AddHttpClient(FormbricksRegistrationProviderAdapter.HttpClientName, client =>

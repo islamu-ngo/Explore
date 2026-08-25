@@ -636,6 +636,9 @@
           "Yarp.ReverseProxy": "[2.3.0, )"
         }
       },
+      "event.wire.contracts": {
+        "type": "Project"
+      },
       "explore.api": {
         "type": "Project",
         "dependencies": {
@@ -693,6 +696,7 @@
         "dependencies": {
           "AutoMapper": "[14.0.0, )",
           "EntityFramework": "[6.5.2, )",
+          "Event.Wire.Contracts": "[1.0.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.1.1, )",
           "MediatR": "[12.5.0, )",
@@ -736,6 +740,7 @@
           "Blazouter": "[1.0.14, )",
           "Blazouter.WebAssembly": "[1.0.14, )",
           "DiffPlex": "[1.9.0, )",
+          "Event.Wire.Contracts": "[1.0.0, )",
           "FluentValidation": "[12.1.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.10, )",
@@ -768,6 +773,7 @@
           "Microsoft.Extensions.AI.OpenAI": "[10.8.3, )",
           "Microsoft.Extensions.Http.Resilience": "[10.8.0, )",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.22.0, )",
+          "Net.Codecrete.QrCodeGenerator": "[3.1.0, )",
           "Npgsql": "[10.0.3, )",
           "OpenFeature": "[2.14.0, )",
           "Polly": "[8.7.0, )",
@@ -1394,6 +1400,12 @@
         "requested": "[2.6.1, )",
         "resolved": "2.6.1",
         "contentHash": "MzNSfnHWBc0Mo3zVbYxG+556zuex9obs8NYtwcPCwFahel40e49stH+osjX4k/doEHp4LT/zTtGdax4nlGWhcw=="
+      },
+      "Net.Codecrete.QrCodeGenerator": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.0, )",
+        "resolved": "3.1.0",
+        "contentHash": "2b9mz9C5vNdpwFT1o4j/1DijuNAzP0wHZo3EqJe7zIQDO3/e38NNJuQ3+kJ22oJakJtieRI0wYCwbBVUbesVTg=="
       },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",

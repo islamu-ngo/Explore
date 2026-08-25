@@ -5,6 +5,7 @@ using System.Reflection;
 
 using Explore.Domain.Enums;
 
+using Explore.Domain.ValueObjects;
 namespace Event.Domain.UnitTests.Entities;
 
 public sealed class EventTicketCatalogVersionTests
@@ -18,7 +19,7 @@ public sealed class EventTicketCatalogVersionTests
         catalog.Publish();
 
         await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
-        await Assert.That(() => catalog.UpdateTicketPricing(ticketType, TicketPricingModeEnum.Fixed, 1_000, null, null))
+        await Assert.That(() => catalog.UpdateTicketPricing(ticketType, TicketPricingModeEnum.Fixed, Money.Create(1_000, "USD"), null, null))
             .Throws<InvalidOperationException>();
 
         catalog.Retire();
@@ -140,7 +141,7 @@ public sealed class EventTicketCatalogVersionTests
         EventTicketCatalogVersion clone = catalog.CloneToDraft();
         EventTicketType clonedTicketType = clone.TicketTypes.Single();
 
-        clone.UpdateTicketPricing(clonedTicketType, TicketPricingModeEnum.Fixed, 1_235, null, null);
+        clone.UpdateTicketPricing(clonedTicketType, TicketPricingModeEnum.Fixed, Money.Create(1_235, "USD"), null, null);
 
         await Assert.That(clone.Id).IsNotEqualTo(catalog.Id);
         await Assert.That(clone.VersionNumber).IsEqualTo(2);
@@ -176,7 +177,7 @@ public sealed class EventTicketCatalogVersionTests
         EventTicketCatalogVersion catalog = CreateCatalog();
         EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
 
-        catalog.UpdateTicketType(ticketType, "Student", TicketPricingModeEnum.Fixed, 2_500, null, null,
+        catalog.UpdateTicketType(ticketType, "Student", TicketPricingModeEnum.Fixed, Money.Create(2_500, "USD"), null, null,
             ParticipantDataCollectionModeEnum.PerTicketRequired, null, 12, 18, true, true, 2, 3, 4, 5, ticketType.Entitlements);
 
         await Assert.That(ticketType.Name).IsEqualTo("Student");
@@ -390,9 +391,9 @@ public sealed class EventTicketCatalogVersionTests
         "General admission",
         currencyCode,
         pricingMode,
-        fixedPriceMinor,
-        minimumPriceMinor,
-        suggestedPriceMinor,
+        CreateMoney(fixedPriceMinor, currencyCode),
+        CreateMoney(minimumPriceMinor, currencyCode),
+        CreateMoney(suggestedPriceMinor, currencyCode),
         ParticipantDataCollectionModeEnum.None,
         null,
         null,
@@ -409,6 +410,9 @@ public sealed class EventTicketCatalogVersionTests
         catalog.TenantId,
         catalog.EventId,
         1);
+
+    private static Money? CreateMoney(long? minorUnits, string currencyCode) =>
+        minorUnits.HasValue ? Money.Create(minorUnits.Value, currencyCode) : null;
 
     private static EventSession CreateSession(Guid eventId, Guid tenantId) => new()
     {

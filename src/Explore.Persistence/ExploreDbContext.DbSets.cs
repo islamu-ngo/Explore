@@ -198,6 +198,11 @@ public partial class ExploreDbContext
     public DbSet<RegistrationSensitiveAnswerValue> RegistrationSensitiveAnswerValues { get; set; }
     public DbSet<RegistrationRequirementFulfillment> RegistrationRequirementFulfillments { get; set; }
     public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
+    public DbSet<AdmissionTicket> AdmissionTickets { get; set; }
+    public DbSet<AdmissionTicketCredential> AdmissionTicketCredentials { get; set; }
+    public DbSet<AdmissionRecoveryCapability> AdmissionRecoveryCapabilities { get; set; }
+    public DbSet<Explore.Application.Contracts.Admissions.AdmissionRecoveryDeliveryIntent> AdmissionRecoveryDeliveryIntents { get; set; }
+    public DbSet<Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent> AdmissionDeliveryIntents { get; set; }
     public DbSet<RegistrationProviderSubmissionWriteEffect> RegistrationProviderSubmissionWriteEffects { get; set; }
     public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }
     public DbSet<ContactShareConsentSubjectType> ContactShareConsentSubjectTypes { get; set; }
@@ -232,6 +237,9 @@ public partial class ExploreDbContext
     public DbSet<ParticipantType> ParticipantTypes { get; set; }
     public DbSet<AssignmentStatus> AssignmentStatuses { get; set; }
     public DbSet<RegistrationOrderStatus> RegistrationOrderStatuses { get; set; }
+    public DbSet<AdmissionTicketStatus> AdmissionTicketStatuses { get; set; }
+    public DbSet<AdmissionTicketCredentialStatus> AdmissionTicketCredentialStatuses { get; set; }
+    public DbSet<AdmissionTicketTransitionReason> AdmissionTicketTransitionReasons { get; set; }
     public DbSet<RegistrationInventoryHoldStatus> RegistrationInventoryHoldStatuses { get; set; }
     public DbSet<PromotionDefinitionStatus> PromotionDefinitionStatuses { get; set; }
     public DbSet<PromotionReservationStatus> PromotionReservationStatuses { get; set; }

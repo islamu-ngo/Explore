@@ -8,6 +8,8 @@ namespace Explore.Domain;
 
 public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    private Guid _tenantId;
+
     private RegistrationParticipant()
     {
     }
@@ -31,7 +33,11 @@ public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, I
 
     public Guid Id { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(RegistrationParticipant));
+    }
 
     public Guid RegistrationOrderId { get; private set; }
 
@@ -103,6 +109,16 @@ public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, I
         }
 
         return new RegistrationParticipant(id, tenantId, registrationOrderId, linkedUserId, participantType, guardian);
+    }
+
+    internal void AttachToOrder(RegistrationOrder order)
+    {
+        if (RegistrationOrder is not null && !ReferenceEquals(RegistrationOrder, order))
+        {
+            throw new InvalidOperationException("Participant is already attached to another order graph.");
+        }
+
+        RegistrationOrder = order;
     }
 
     public void SetPii(RegistrationParticipantPii pii)

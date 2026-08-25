@@ -2,6 +2,7 @@
 // ABOUTME: Handles notification fanout and provider synchronization after durable transaction commits.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -27,6 +28,8 @@ public sealed class CompositeOutboxMessageDispatcher(
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
     LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
     PrivacyErasureCacheInvalidationDispatcher privacyErasureCacheInvalidationDispatcher,
+    IAdmissionCredentialDeliveryOutboxHandler admissionCredentialDeliveryHandler,
+    IAdmissionRecoveryDeliveryOutboxHandler admissionRecoveryDeliveryHandler,
     IOutboxRepository outboxRepository,
     IRefundCampaignRepository refundCampaignRepository,
     RefundCampaignProcessor refundCampaignProcessor,
@@ -76,6 +79,14 @@ public sealed class CompositeOutboxMessageDispatcher(
             case RegistrationOrderOutboxMessageFactory.CancelledEventType:
             case RegistrationOrderOutboxMessageFactory.RejectedEventType:
                 logger.LogInformation("Recorded registration-order lifecycle outbox message {MessageId} after commit.", message.Id);
+                return;
+
+            case AdmissionDeliveryEvents.CredentialDeliveryRequested:
+                await admissionCredentialDeliveryHandler.HandleAsync(message, ct);
+                return;
+
+            case AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested:
+                await admissionRecoveryDeliveryHandler.HandleAsync(message, ct);
                 return;
 
             case RefundOutboxMessageFactory.CampaignProcessRequested:

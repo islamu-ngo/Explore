@@ -86,6 +86,9 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
         builder.HasOne(order => order.RegistrationOrderStatus).WithMany().HasForeignKey(order => order.RegistrationOrderStatusId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(order => order.Lines).WithOne().HasForeignKey(line => new { line.TenantId, line.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(order => order.Participants).WithOne(participant => participant.RegistrationOrder)
+            .HasForeignKey(participant => new { participant.TenantId, participant.RegistrationOrderId })
+            .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(order => order.Pii).WithOne(pii => pii.RegistrationOrder).HasForeignKey<RegistrationOrderPii>(pii => new { pii.TenantId, pii.RegistrationOrderId })
             .HasPrincipalKey<RegistrationOrder>(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(order => order.PlatformContribution).WithOne().HasForeignKey<RegistrationOrderPlatformContribution>(contribution => new { contribution.TenantId, contribution.RegistrationOrderId })

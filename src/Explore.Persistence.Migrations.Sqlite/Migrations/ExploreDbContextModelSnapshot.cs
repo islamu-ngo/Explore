@@ -18,6 +18,87 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
 
+            modelBuilder.Entity("Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FinalizationEffectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("finalization_effect_id");
+
+                    b.Property<DateTime?>("HandoffCompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("handoff_completed_at");
+
+                    b.Property<string>("HandoffReceiptId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("handoff_receipt_id");
+
+                    b.Property<string>("ProtectedCredential")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("protected_credential");
+
+                    b.Property<int>("ProtectionVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("protection_version");
+
+                    b.Property<Guid>("RegistrationTicketAssignmentId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_ticket_assignment_id");
+
+                    b.Property<DateTime?>("RoutedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("routed_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_delivery_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_delivery_intents_tenant_id_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId")
+                        .HasDatabaseName("ix_ie_admission_delivery_intents_tenant_id_admission_ticket_id");
+
+                    b.HasIndex("TenantId", "RegistrationTicketAssignmentId")
+                        .HasDatabaseName("ix_ie_admission_delivery_intents_tenant_id_registration_ticket_assignment_id");
+
+                    b.HasIndex("HandoffCompletedAt", "RoutedAt", "CreatedAt")
+                        .HasDatabaseName("ix_admission_delivery_intents_pending");
+
+                    b.HasIndex("TenantId", "FinalizationEffectId", "RegistrationTicketAssignmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_delivery_intents_assignment");
+
+                    b.ToTable("ie_admission_delivery_intents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_delivery_intents_handoff_receipt", "(handoff_completed_at IS NULL AND handoff_receipt_id IS NULL) OR (handoff_completed_at IS NOT NULL AND handoff_receipt_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_admission_delivery_intents_protection_version", "protection_version > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.AccountAuthorityKindLookup", b =>
                 {
                     b.Property<int>("Id")
@@ -573,6 +654,296 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("pk_ie_actor_types");
 
                     b.ToTable("ie_actor_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AdmissionTicketStatusId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("admission_ticket_status_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DisplayReference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("display_reference");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventTicketTypeId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_ticket_type_id");
+
+                    b.Property<DateTime>("LastTransitionAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_transition_at");
+
+                    b.Property<int>("LastTransitionReasonId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_transition_reason_id");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("participant_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<Guid>("RegistrationTicketAssignmentId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_ticket_assignment_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_tickets");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_tickets_tenant_id_id");
+
+                    b.HasIndex("AdmissionTicketStatusId")
+                        .HasDatabaseName("ix_ie_admission_tickets_admission_ticket_status_id");
+
+                    b.HasIndex("LastTransitionReasonId")
+                        .HasDatabaseName("ix_ie_admission_tickets_last_transition_reason_id");
+
+                    b.HasIndex("TenantId", "EventTicketTypeId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_event_ticket_type_id");
+
+                    b.HasIndex("TenantId", "RegistrationTicketAssignmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_tickets_assignment");
+
+                    b.HasIndex("TenantId", "TicketCatalogVersionId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_ticket_catalog_version_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_event_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_participant_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_registration_order_line_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_registration_ticket_assignment_id_registration_order_line_id");
+
+                    b.ToTable("ie_admission_tickets", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActiveUniquenessSlot")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("active_uniqueness_slot")
+                        .HasComputedColumnSql("CASE WHEN admission_ticket_credential_status_id = 1 THEN 0 ELSE credential_version END", true);
+
+                    b.Property<int>("AdmissionTicketCredentialStatusId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("admission_ticket_credential_status_id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CredentialVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("credential_version");
+
+                    b.Property<string>("LookupDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("lookup_digest")
+                        .IsFixedLength();
+
+                    b.Property<int>("LookupKeyVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lookup_key_version");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_ticket_credentials");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_ticket_credentials_tenant_id_id");
+
+                    b.HasIndex("AdmissionTicketCredentialStatusId")
+                        .HasDatabaseName("ix_ie_admission_ticket_credentials_admission_ticket_credential_status_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_ticket_credentials_active");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "CredentialVersion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_ticket_credentials_version");
+
+                    b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_ticket_credentials_digest");
+
+                    b.ToTable("ie_admission_ticket_credentials", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_ticket_credentials_versions", "credential_version > 0 AND lookup_key_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketCredentialStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_ticket_credential_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_admission_ticket_credential_statuses_master_code");
+
+                    b.ToTable("ie_admission_ticket_credential_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_ticket_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_admission_ticket_statuses_master_code");
+
+                    b.ToTable("ie_admission_ticket_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketTransitionReason", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_ticket_transition_reasons");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_admission_ticket_transition_reasons_master_code");
+
+                    b.ToTable("ie_admission_ticket_transition_reasons", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AdvanceRegistrationObligation", b =>
@@ -31392,6 +31763,40 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.ToTable("ie_webhook_retention_subject_kinds", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_delivery_intents_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_delivery_intents_admission_tickets_tenant_id_admission_ticket_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFinalizationEffect", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FinalizationEffectId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_delivery_intents_registration_finalization_effects_tenant_id_finalization_effect_id");
+
+                    b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationTicketAssignmentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_delivery_intents_registration_ticket_assignments_tenant_id_registration_ticket_assignment_id");
+                });
+
             modelBuilder.Entity("Explore.Domain.Actor", b =>
                 {
                     b.HasOne("Explore.Domain.ActorType", "ActorType")
@@ -31575,6 +31980,102 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("TargetActorType");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
+                {
+                    b.HasOne("Explore.Domain.AdmissionTicketStatus", "AdmissionTicketStatus")
+                        .WithMany()
+                        .HasForeignKey("AdmissionTicketStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_admission_ticket_statuses_admission_ticket_status_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicketTransitionReason", "LastTransitionReason")
+                        .WithMany()
+                        .HasForeignKey("LastTransitionReasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_admission_ticket_transition_reasons_last_transition_reason_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventTicketType", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventTicketTypeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_event_ticket_types_tenant_id_event_ticket_type_id");
+
+                    b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_registration_orders_tenant_id_event_id_registration_order_id");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_registration_participants_tenant_id_registration_order_id_participant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_registration_order_lines_tenant_id_registration_order_id_registration_order_line_id");
+
+                    b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_tickets_registration_ticket_assignments_tenant_id_registration_order_id_registration_ticket_assignment_id_registration_order_line_id");
+
+                    b.Navigation("AdmissionTicketStatus");
+
+                    b.Navigation("LastTransitionReason");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketCredential", b =>
+                {
+                    b.HasOne("Explore.Domain.AdmissionTicketCredentialStatus", "AdmissionTicketCredentialStatus")
+                        .WithMany()
+                        .HasForeignKey("AdmissionTicketCredentialStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_ticket_credentials_admission_ticket_credential_statuses_admission_ticket_credential_status_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany("Credentials")
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_ticket_credentials_ie_admission_tickets_tenant_id_admission_ticket_id");
+
+                    b.Navigation("AdmissionTicketCredentialStatus");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
@@ -39359,7 +39860,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasConstraintName("fk_ie_registration_participants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
-                        .WithMany()
+                        .WithMany("Participants")
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -39853,7 +40354,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_participants_tenant_id_registration_order_id_participant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
-                        .WithMany()
+                        .WithMany("Assignments")
                         .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -42136,6 +42637,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
+                {
+                    b.Navigation("Credentials");
+                });
+
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
                 {
                     b.Navigation("Messages");
@@ -42433,9 +42939,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 {
                     b.Navigation("Lines");
 
+                    b.Navigation("Participants");
+
                     b.Navigation("Pii");
 
                     b.Navigation("PlatformContribution");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderLine", b =>
+                {
+                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>

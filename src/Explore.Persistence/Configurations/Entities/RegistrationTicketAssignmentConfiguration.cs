@@ -29,7 +29,7 @@ public sealed class RegistrationTicketAssignmentConfiguration : IEntityTypeConfi
         builder.HasOne(assignment => assignment.RegistrationOrder).WithMany()
             .HasForeignKey(assignment => new { assignment.TenantId, assignment.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(assignment => assignment.RegistrationOrderLine).WithMany()
+        builder.HasOne(assignment => assignment.RegistrationOrderLine).WithMany(line => line.Assignments)
             .HasForeignKey(assignment => new { assignment.TenantId, assignment.RegistrationOrderId, assignment.RegistrationOrderLineId })
             .HasPrincipalKey(line => new { line.TenantId, line.RegistrationOrderId, line.Id })
             .OnDelete(DeleteBehavior.Restrict);

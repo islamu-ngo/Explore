@@ -144,6 +144,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationRefreshStreamClient, NotificationRefreshStreamClient>();
         services.AddScoped<IWebPushBrowserInterop, WebPushBrowserInterop>();
         services.AddScoped<IHomeDiscoveryGeolocation, HomeDiscoveryGeolocation>();
+        services.AddScoped<IAdmissionQrScanner, AdmissionQrScannerInterop>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddBffRefitClient<IBffAuthApi>(configureBffRefitClient)

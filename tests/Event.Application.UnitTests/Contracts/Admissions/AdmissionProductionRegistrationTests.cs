@@ -1,0 +1,35 @@
+// ABOUTME: Proves the real Application composition root registers admission issuance and credential options.
+// ABOUTME: Prevents isolated builds from replacing or excluding production admission registration.
+
+using Explore.Application;
+using Explore.Application.Configuration;
+using Explore.Application.Services.Registration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace ApplicationUnitTests.Contracts.Admissions;
+
+public sealed class AdmissionProductionRegistrationTests
+{
+    [Test]
+    public async Task RealApplicationRegistrationBindsAdmissionOptionsAndService()
+    {
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{AdmissionCredentialOptions.SectionName}:ActiveKeyVersion"] = "9"
+            })
+            .Build();
+        var services = new ServiceCollection();
+
+        services.ConfigureApplicationServices(configuration);
+
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(AdmissionIssuanceService) &&
+            descriptor.Lifetime == ServiceLifetime.Scoped)).IsTrue();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        await Assert.That(provider.GetRequiredService<IOptions<AdmissionCredentialOptions>>().Value.ActiveKeyVersion)
+            .IsEqualTo(9);
+    }
+}

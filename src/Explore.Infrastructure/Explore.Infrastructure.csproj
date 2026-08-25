@@ -29,6 +29,7 @@
     <PackageReference Include="Grpc.Net.Client" />
     <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />

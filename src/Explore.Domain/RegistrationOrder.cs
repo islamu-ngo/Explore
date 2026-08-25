@@ -11,6 +11,8 @@ namespace Explore.Domain;
 public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     private readonly List<RegistrationOrderLine> _lines = [];
+    private readonly List<RegistrationParticipant> _participants = [];
+    private Guid _tenantId;
 
     private RegistrationOrder()
     {
@@ -50,7 +52,11 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
 
     public Guid Id { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(RegistrationOrder));
+    }
 
     public Guid EventId { get; private set; }
 
@@ -117,6 +123,8 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
     public long TotalDueMinorSnapshot { get; private set; }
 
     public IReadOnlyCollection<RegistrationOrderLine> Lines => _lines.AsReadOnly();
+
+    public IReadOnlyCollection<RegistrationParticipant> Participants => _participants.AsReadOnly();
 
     public Guid ConcurrencyStamp { get; set; }
 
@@ -220,6 +228,40 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         }
 
         _lines.Add(line);
+    }
+
+    public void AddParticipant(RegistrationParticipant participant)
+    {
+        ArgumentNullException.ThrowIfNull(participant);
+        EnsureCommercialFactsMutable();
+        if (participant.TenantId != TenantId || participant.RegistrationOrderId != Id ||
+            _participants.Any(existing => existing.Id == participant.Id))
+        {
+            throw new ArgumentException("Participant does not belong to this order or is already attached.", nameof(participant));
+        }
+
+        participant.AttachToOrder(this);
+        _participants.Add(participant);
+    }
+
+    public void AddAssignment(
+        RegistrationOrderLine line,
+        RegistrationTicketAssignment assignment,
+        RegistrationParticipant? participant)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        ArgumentNullException.ThrowIfNull(assignment);
+        EnsureCommercialFactsMutable();
+        if (!_lines.Contains(line) || assignment.TenantId != TenantId || assignment.RegistrationOrderId != Id ||
+            assignment.RegistrationOrderLineId != line.Id ||
+            (participant is null) != (assignment.ParticipantId is null) ||
+            participant is not null && (!_participants.Contains(participant) || assignment.ParticipantId != participant.Id))
+        {
+            throw new ArgumentException("Ticket assignment does not belong to this order line and participant graph.", nameof(assignment));
+        }
+
+        assignment.AttachToGraph(this, line, participant);
+        line.AddAssignment(assignment);
     }
 
     public void SetPii(RegistrationOrderPii pii)

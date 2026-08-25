@@ -859,11 +859,15 @@
         "resolved": "8.0.0",
         "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
       },
+      "event.wire.contracts": {
+        "type": "Project"
+      },
       "explore.application": {
         "type": "Project",
         "dependencies": {
           "AutoMapper": "[14.0.0, )",
           "EntityFramework": "[6.5.2, )",
+          "Event.Wire.Contracts": "[1.0.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.1.1, )",
           "MediatR": "[12.5.0, )",

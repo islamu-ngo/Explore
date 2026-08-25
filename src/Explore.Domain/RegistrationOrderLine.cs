@@ -10,6 +10,9 @@ namespace Explore.Domain;
 
 public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
+    private readonly List<RegistrationTicketAssignment> _assignments = [];
+    private Guid _tenantId;
+
     private RegistrationOrderLine()
     {
     }
@@ -47,7 +50,11 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
 
     public Guid RegistrationOrderId { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(RegistrationOrderLine));
+    }
 
     public Guid TicketTypeId { get; private set; }
 
@@ -78,6 +85,8 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
     public Guid TicketCatalogVersionId { get; private set; }
 
     public int? PlatformFeePolicyVersionSnapshot { get; private set; }
+
+    public IReadOnlyCollection<RegistrationTicketAssignment> Assignments => _assignments.AsReadOnly();
 
     public Guid ConcurrencyStamp { get; set; }
 
@@ -153,6 +162,16 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
             unitPriceAmount,
             chosenSnapshot,
             policyVersionSnapshot);
+    }
+
+    internal void AddAssignment(RegistrationTicketAssignment assignment)
+    {
+        if (_assignments.Any(existing => existing.Id == assignment.Id || existing.Ordinal == assignment.Ordinal))
+        {
+            throw new ArgumentException("Ticket assignment identity and ordinal must be unique within the order line.", nameof(assignment));
+        }
+
+        _assignments.Add(assignment);
     }
 
     internal void ApplyPromotionDiscount(PromotionLineDiscountAllocation allocation)

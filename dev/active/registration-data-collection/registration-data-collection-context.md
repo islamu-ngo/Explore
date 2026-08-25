@@ -5,6 +5,43 @@
 
 Last Updated: 2026-08-25 Europe/Brussels
 
+## PHASE 20 TASK 20.3 COMPLETE / TASK 20.4 CURRENT (2026-08-25 Europe/Brussels)
+
+### Current Outcome
+
+Tasks 20.0–20.3 are complete and independently confirmed. The shared package-free
+admission contract owns one exact payload grammar: `islamu-admission:v1:` plus the canonical
+43-character unpadded Base64url 32-byte bearer. Infrastructure alone references
+`Net.Codecrete.QrCodeGenerator` 3.1.0 and renders deterministic quartile-ECC black-on-white
+SVG with a four-module quiet zone, bounded output, no plaintext credential metadata, and an
+exact golden geometry digest.
+
+Blazor uses only secure-context native `BarcodeDetector` after explicit `qr_code` support
+detection. Unknown, numeric, missing, malformed, or null JavaScript results fail closed
+through an exact JSON converter and `Unknown = 0`; no credential enters URL, DOM storage,
+network, console, telemetry, referrer, or diagnostic output. HID and manual input remain
+first-class. The clean-room record names separate research, source-free implementation, and
+independent AFC/SSO contexts, limits the MIT decision to engineering policy rather than legal
+certification, and links its durable journal conclusion.
+
+### Verification
+
+- Payload codec `10/10`, deterministic renderer/DI `3/3`, and scanner/production-DI/browser-safety `9/9`.
+- Clean Architecture `15/15`, naming `11/11`, targeted locked restore, dependency-license policy for 653 package/version pairs, and scoped diff hygiene are green.
+- Fresh serial Release builds of Event.Wire.Contracts, Application, Infrastructure, and Blazor Client pass with zero warnings and zero errors.
+- The original RED artifact remains hash-bound; independent review RED separately proves malformed/null interop and absent renderer-geometry binding before repair.
+- Independent security reviewer `st_01a03a03` returned `CONFIRMED` at `0.98`; independent clean-room/AFC reviewer `st_01a03a04` returned `CONFIRMED` at `0.99`.
+
+### Next
+
+Task 20.4 is current: implement account-authorized ticket listing plus uniform same-origin
+guest recovery, resend, single-use expiring keyed capabilities, trusted normalized
+rate-limit partitions, verified side-channel delivery, audit, key rotation, and restore
+behavior. Email and display IDs never grant access; resend rotates recovery authority rather
+than the admission credential unless explicit reissue is requested. Do not start Task 20.5
+API/UI self-service or Task 20.6 paid/refund integration until Task 20.4 is independently
+confirmed.
+
 ## PHASE 19 COMPLETE / BROAD PERSISTENCE HARNESS FOLLOW-UP (2026-08-25 Europe/Brussels)
 
 ### Current Outcome

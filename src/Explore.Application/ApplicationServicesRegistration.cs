@@ -6,6 +6,7 @@ using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Configuration;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
@@ -180,6 +181,25 @@ public static class ApplicationServicesRegistration
                 options => options.ActiveKeyVersion >= 1,
                 "Promotions:CodeLookup:ActiveKeyVersion must be greater than or equal to 1.")
             .ValidateOnStart();
+        services.AddOptions<AdmissionCredentialOptions>()
+            .Bind(configuration.GetSection(AdmissionCredentialOptions.SectionName))
+            .Validate(
+                options => options.ActiveKeyVersion >= 1,
+                "Admissions:CredentialLookup:ActiveKeyVersion must be greater than or equal to 1.")
+            .ValidateOnStart();
+        services.AddOptions<AdmissionRecoveryOptions>()
+            .Bind(configuration.GetSection(AdmissionRecoveryOptions.SectionName))
+            .Validate(
+                options => options.ActiveKeyVersion >= 1 &&
+                    options.RetainedKeyVersions.All(version => version >= 1) &&
+                    options.RetainedKeyVersions.Distinct().Count() == options.RetainedKeyVersions.Length &&
+                    options.CapabilityLifetimeMinutes is >= 5 and <= 1440,
+                "Admissions:Recovery configuration is invalid.")
+            .ValidateOnStart();
+        services.AddScoped<AdmissionIssuanceService>();
+        services.AddScoped<AdmissionRecoveryService>();
+        services.AddScoped<IAdmissionRecoveryTicketDocumentService, AdmissionRecoveryTicketDocumentService>();
+        services.AddScoped<IAdmissionRecoveryAuditService, AdmissionRecoveryAuditService>();
         services.AddScoped<IOrganizerPaymentCommerceConfiguration>(provider =>
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OrganizerPaymentCommerceOptions>>().Value);
         services.AddScoped<IPaidCheckoutGovernance>(provider =>

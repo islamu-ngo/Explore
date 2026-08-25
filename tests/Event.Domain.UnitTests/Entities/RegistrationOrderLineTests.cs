@@ -2,6 +2,7 @@
 // ABOUTME: Proves buyer-priced lines honor pinned minimums and retain zero-allowed donation semantics.
 
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 namespace Event.Domain.UnitTests.Entities;
 
@@ -16,7 +17,7 @@ public sealed class RegistrationOrderLineTests
         EventTicketCatalogVersion nextCatalog = catalog.CloneToDraft();
         EventTicketType nextTicketType = nextCatalog.TicketTypes.Single();
 
-        nextCatalog.UpdateTicketPricing(nextTicketType, TicketPricingModeEnum.Fixed, 2_000, null, null);
+        nextCatalog.UpdateTicketPricing(nextTicketType, TicketPricingModeEnum.Fixed, Money.Create(2_000, "USD"), null, null);
 
         await Assert.That(line.TicketCatalogVersionId).IsEqualTo(catalog.Id);
         await Assert.That(line.TicketTypeNameSnapshot).IsEqualTo("General admission");
@@ -90,9 +91,9 @@ public sealed class RegistrationOrderLineTests
             "General admission",
             "USD",
             pricingMode,
-            fixedPriceMinor,
-            minimumPriceMinor,
-            pricingMode == TicketPricingModeEnum.PayWhatYouCan ? 1_000 : null,
+            CreateMoney(fixedPriceMinor),
+            CreateMoney(minimumPriceMinor),
+            pricingMode == TicketPricingModeEnum.PayWhatYouCan ? Money.Create(1_000, "USD") : null,
             ParticipantDataCollectionModeEnum.None,
             null,
             null,
@@ -110,4 +111,7 @@ public sealed class RegistrationOrderLineTests
         catalog.Publish();
         return catalog;
     }
+
+    private static Money? CreateMoney(long? minorUnits) =>
+        minorUnits.HasValue ? Money.Create(minorUnits.Value, "USD") : null;
 }

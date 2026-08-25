@@ -1,0 +1,29 @@
+// ABOUTME: Defines the Application-owned boundary for deterministic admission QR rendering.
+// ABOUTME: Carries bounded SVG geometry metadata while redacting the rendered representation from diagnostics.
+
+using Event.Wire.Contracts.Admissions;
+
+namespace Explore.Application.Contracts.Admissions;
+
+public interface IAdmissionQrRenderer
+{
+    AdmissionQrSvg Render(AdmissionQrPayload payload);
+}
+
+public sealed class AdmissionQrSvg
+{
+    public AdmissionQrSvg(string content, int moduleCount, int quietZoneModules)
+    {
+        Content = content;
+        ModuleCount = moduleCount;
+        QuietZoneModules = quietZoneModules;
+    }
+
+    public string Content { get; }
+    public int ModuleCount { get; }
+    public int QuietZoneModules { get; }
+    public int ViewBoxSize => ModuleCount + (QuietZoneModules * 2);
+
+    public override string ToString() =>
+        $"AdmissionQrSvg(modules={ModuleCount}, quietZone={QuietZoneModules}, <redacted>)";
+}

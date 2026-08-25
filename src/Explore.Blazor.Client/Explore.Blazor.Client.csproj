@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Blazored.FluentValidation" />
     <PackageReference Include="Blazouter" />
     <PackageReference Include="Blazouter.WebAssembly" />

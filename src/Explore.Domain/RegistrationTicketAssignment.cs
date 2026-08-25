@@ -8,6 +8,8 @@ namespace Explore.Domain;
 
 public sealed class RegistrationTicketAssignment : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
+    private Guid _tenantId;
+
     private RegistrationTicketAssignment()
     {
     }
@@ -36,7 +38,11 @@ public sealed class RegistrationTicketAssignment : ITenantEntity, IAuditableEnti
 
     public Guid Id { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(RegistrationTicketAssignment));
+    }
 
     public Guid RegistrationOrderId { get; private set; }
 
@@ -142,6 +148,23 @@ public sealed class RegistrationTicketAssignment : ITenantEntity, IAuditableEnti
             createdAt);
         assignment.Participant = participant;
         return assignment;
+    }
+
+    internal void AttachToGraph(
+        RegistrationOrder order,
+        RegistrationOrderLine line,
+        RegistrationParticipant? participant)
+    {
+        if (RegistrationOrder is not null && !ReferenceEquals(RegistrationOrder, order) ||
+            RegistrationOrderLine is not null && !ReferenceEquals(RegistrationOrderLine, line) ||
+            Participant is not null && !ReferenceEquals(Participant, participant))
+        {
+            throw new InvalidOperationException("Ticket assignment is already attached to another authority graph.");
+        }
+
+        RegistrationOrder = order;
+        RegistrationOrderLine = line;
+        Participant = participant;
     }
 
     public void Assign(RegistrationParticipant participant, Guid concurrencyStamp)

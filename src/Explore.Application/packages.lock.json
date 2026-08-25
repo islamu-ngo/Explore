@@ -236,6 +236,9 @@
           "System.Drawing.Common": "6.0.0"
         }
       },
+      "event.wire.contracts": {
+        "type": "Project"
+      },
       "explore.domain": {
         "type": "Project",
         "dependencies": {

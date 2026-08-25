@@ -888,6 +888,9 @@
           "Yarp.ReverseProxy": "[2.3.0, )"
         }
       },
+      "event.wire.contracts": {
+        "type": "Project"
+      },
       "explore.atproto.transport": {
         "type": "Project"
       },
@@ -924,6 +927,7 @@
           "Blazouter": "[1.0.14, )",
           "Blazouter.WebAssembly": "[1.0.14, )",
           "DiffPlex": "[1.9.0, )",
+          "Event.Wire.Contracts": "[1.0.0, )",
           "FluentValidation": "[12.1.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.10, )",

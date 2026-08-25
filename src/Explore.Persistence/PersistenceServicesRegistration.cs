@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Configuration;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Notifications;
@@ -230,6 +231,20 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationRetentionCleanupRepository, RegistrationRetentionCleanupRepository>();
         services.AddScoped<IRegistrationAnswerFileRepository, RegistrationAnswerFileRepository>();
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
+        services.AddScoped<IAdmissionIssuanceRepository, AdmissionIssuanceRepository>();
+        services.AddScoped<IAdmissionRecoveryRepository, AdmissionRecoveryRepository>();
+        services.AddScoped<AdmissionTicketRepository>();
+        services.AddScoped<IAdmissionTicketRecoveryRepository>(provider =>
+            provider.GetRequiredService<AdmissionTicketRepository>());
+        services.AddScoped<IAdmissionTicketAccountRepository, AdmissionTicketAccountRepository>();
+        services.AddScoped<AdmissionRecoveryProtectedDeliveryService>();
+        services.AddScoped<IAdmissionRecoveryDeliveryStager>(provider =>
+            provider.GetRequiredService<AdmissionRecoveryProtectedDeliveryService>());
+        services.AddScoped<IAdmissionRecoveryDeliveryService>(provider =>
+            provider.GetRequiredService<AdmissionRecoveryProtectedDeliveryService>());
+        services.AddScoped<IAdmissionRecoveryDeliveryOutboxHandler, AdmissionRecoveryDeliveryOutboxHandler>();
+        services.AddScoped<IAdmissionCredentialDeliveryOutboxHandler, AdmissionCredentialDeliveryOutboxHandler>();
+        services.AddScoped<IAdmissionDeliveryDispatcher, AdmissionDeliveryIntentDispatcher>();
         services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();
         services.AddScoped<IPaidEventPolicyRepository, PaidEventPolicyRepository>();
         services.AddScoped<IPaidCheckoutActivationRepository, PaidCheckoutActivationRepository>();

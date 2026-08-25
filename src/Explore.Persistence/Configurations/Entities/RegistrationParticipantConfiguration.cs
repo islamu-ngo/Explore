@@ -19,7 +19,7 @@ public sealed class RegistrationParticipantConfiguration : IEntityTypeConfigurat
         builder.HasAlternateKey(participant => new { participant.TenantId, participant.Id });
         builder.HasAlternateKey(participant => new { participant.TenantId, participant.RegistrationOrderId, participant.Id });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(participant => participant.TenantId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(participant => participant.RegistrationOrder).WithMany()
+        builder.HasOne(participant => participant.RegistrationOrder).WithMany(order => order.Participants)
             .HasForeignKey(participant => new { participant.TenantId, participant.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(participant => participant.GuardianParticipant).WithMany()

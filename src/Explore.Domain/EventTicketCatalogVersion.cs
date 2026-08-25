@@ -13,6 +13,7 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
     public const int MaxCommercialDisclosureTextLength = 2000;
 
     private readonly List<EventTicketType> _ticketTypes = [];
+    private Guid _tenantId;
 
     private EventTicketCatalogVersion()
     {
@@ -30,7 +31,11 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
 
     public Guid Id { get; private set; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId
+    {
+        get => _tenantId;
+        set => TenantIdentity.Set(ref _tenantId, value, nameof(EventTicketCatalogVersion));
+    }
 
     public Guid EventId { get; private set; }
 
@@ -109,13 +114,13 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
     public void UpdateTicketPricing(
         EventTicketType ticketType,
         TicketPricingModeEnum pricingMode,
-        long? fixedPriceMinor,
-        long? minimumPriceMinor,
-        long? suggestedPriceMinor)
+        Money? fixedPrice,
+        Money? minimumPrice,
+        Money? suggestedPrice)
     {
         EnsureDraft();
         EnsureContains(ticketType);
-        ticketType.UpdatePricing(pricingMode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+        ticketType.UpdatePricing(pricingMode, fixedPrice, minimumPrice, suggestedPrice);
     }
 
     public void AddEntitlement(EventTicketType ticketType, TicketTypeEntitlement entitlement)
@@ -140,10 +145,10 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
-    public void UpdateTicketType(EventTicketType ticketType, string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, EventCapacityPool? capacityPool, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit, IEnumerable<TicketTypeEntitlement> entitlements)
+    public void UpdateTicketType(EventTicketType ticketType, string name, TicketPricingModeEnum pricingMode, Money? fixedPrice, Money? minimumPrice, Money? suggestedPrice, ParticipantDataCollectionModeEnum participantDataCollectionMode, EventCapacityPool? capacityPool, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit, IEnumerable<TicketTypeEntitlement> entitlements)
     {
         EnsureDraft(); EnsureContains(ticketType); TicketCatalogRules.ValidateCapacityPool(this, capacityPool);
-        ticketType.Update(name, pricingMode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor, participantDataCollectionMode, minimumAge, maximumAge, requiresGuardian, requiresApproval, perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
+        ticketType.Update(name, pricingMode, fixedPrice, minimumPrice, suggestedPrice, participantDataCollectionMode, minimumAge, maximumAge, requiresGuardian, requiresApproval, perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
         ticketType.SetCapacityPool(capacityPool);
         foreach (var entitlement in entitlements) TicketCatalogRules.ValidateEntitlement(this, ticketType, entitlement);
         ticketType.ReplaceEntitlements(entitlements);

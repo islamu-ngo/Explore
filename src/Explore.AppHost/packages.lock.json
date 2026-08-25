@@ -1178,11 +1178,15 @@
         "resolved": "0.8.7",
         "contentHash": "+4VpxvzEKaHpfTjsLRMhQHx6brqGBkIA+fjUM3wUW8ZoWpPFAeKrO2Nf4uZDeBjjzNDNxSRvLQH4b3S9Ku4JJQ=="
       },
+      "event.wire.contracts": {
+        "type": "Project"
+      },
       "explore.application": {
         "type": "Project",
         "dependencies": {
           "AutoMapper": "[14.0.0, )",
           "EntityFramework": "[6.5.2, )",
+          "Event.Wire.Contracts": "[1.0.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.1.1, )",
           "MediatR": "[12.5.0, )",
@@ -1221,6 +1225,7 @@
           "Microsoft.Extensions.AI.OpenAI": "[10.8.3, )",
           "Microsoft.Extensions.Http.Resilience": "[10.8.0, )",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.22.0, )",
+          "Net.Codecrete.QrCodeGenerator": "[3.1.0, )",
           "Npgsql": "[10.0.3, )",
           "OpenFeature": "[2.14.0, )",
           "Polly": "[8.7.0, )",
@@ -1665,6 +1670,12 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
         }
+      },
+      "Net.Codecrete.QrCodeGenerator": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.0, )",
+        "resolved": "3.1.0",
+        "contentHash": "2b9mz9C5vNdpwFT1o4j/1DijuNAzP0wHZo3EqJe7zIQDO3/e38NNJuQ3+kJ22oJakJtieRI0wYCwbBVUbesVTg=="
       },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
