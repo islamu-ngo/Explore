@@ -37,6 +37,34 @@ public sealed class RegistrationOrderLifecycleServiceTests
     }
 
     [Test]
+    public async Task GetAsyncWhenPaidCheckoutAcceptanceIsAvailableReturnsActivationAffordance()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 100);
+        MoveToAwaitingPayment(order);
+        ConfigureOrder(order, []);
+        var paidAcceptance = Substitute.For<IPaidOrderAcceptanceService>();
+        PaidOrderAcceptanceSnapshot snapshot = PaidAcceptanceTestFacts.Create(
+            _tenantId,
+            order.Id,
+            _eventId,
+            "checkout:current",
+            Guid.CreateVersion7(),
+            tenantPolicyVersionId: null,
+            organizerAmountMinor: 100,
+            platformFeeMinor: 0,
+            platformContributionMinor: 0,
+            UtcNow);
+        paidAcceptance.DescribeAsync(order, Arg.Any<CancellationToken>()).Returns(
+            new PaidOrderAcceptanceResult(PaidAcceptanceTestFacts.ToDisclosure(snapshot), snapshot, null, null));
+
+        RegistrationOrderDto? result = await CreateService(paidAcceptance: paidAcceptance)
+            .GetAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result!.PaidCheckoutActivationAvailable).IsTrue();
+        await paidAcceptance.Received(1).DescribeAsync(order, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task FinalizePaidAsyncWhenSucceededAndEligibleConfirmsOnceWithAdmissionIssuanceIntent()
     {
         (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(unitPriceMinor: 100, capacityBacked: true);
@@ -1786,7 +1814,9 @@ public sealed class RegistrationOrderLifecycleServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    private RegistrationOrderLifecycleService CreateService(IUnitOfWork? unitOfWork = null) => new(
+    private RegistrationOrderLifecycleService CreateService(
+        IUnitOfWork? unitOfWork = null,
+        IPaidOrderAcceptanceService? paidAcceptance = null) => new(
         _inventory,
         _promotions,
         _participants,
@@ -1799,7 +1829,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _paymentAttempts,
         _deadlines,
         new FixedTimeProvider(UtcNow),
-        Substitute.For<IPaidOrderAcceptanceService>());
+        paidAcceptance ?? Substitute.For<IPaidOrderAcceptanceService>());
 
     private static PromotionReservation CreateActivePromotionReservation(
         RegistrationOrder order,

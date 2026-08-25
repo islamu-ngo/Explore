@@ -6,10 +6,12 @@ namespace Event.Architecture.Tests
 
 using System.CodeDom.Compiler;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Explore.API.Controllers;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.CustomPropertyProjection.Validators;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Application.Responses;
 using Explore.Domain.Interfaces;
@@ -233,6 +235,29 @@ public sealed class RecordContractArchitectureTests
         ReportApplicationContractRecordDebt(classContracts);
         await Assert.That(classContracts).IsEmpty()
             .Because("every compiled Application-owned DTO contract outside the ten mutable BaseCommandResponse hierarchies must use record semantics independently of the shrinking class baseline");
+    }
+
+    [Test]
+    public async Task PaymentProjectionRecordsExposeNoPostConstructionSetters()
+    {
+        Type[] paymentProjectionTypes =
+        [
+            typeof(RegistrationOrderDto),
+            typeof(RegistrationPaymentDto),
+        ];
+
+        string[] mutableProperties = paymentProjectionTypes
+            .SelectMany(type => type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(property => property.SetMethod?.IsPublic == true
+                && !property.SetMethod.ReturnParameter
+                    .GetRequiredCustomModifiers()
+                    .Contains(typeof(IsExternalInit)))
+            .Select(property => $"{property.DeclaringType!.FullName}.{property.Name}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(mutableProperties).IsEmpty()
+            .Because("payment and refund projections are authoritative immutable snapshots after construction");
     }
 
     [Test]

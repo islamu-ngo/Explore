@@ -81,8 +81,8 @@ public sealed class RegistrationPaymentContractService(
             order.TenantId, row.Value.Attempt.Id, cancellationToken);
         IReadOnlyList<PaymentDispute> disputes = await refunds.GetDisputesAsync(
             order.TenantId, row.Value.Attempt.Id, cancellationToken);
-        result.Refunds = refundAttempts.Select(MapRefund).ToArray();
-        result.Disputes = disputes.Select(dispute => new RegistrationPaymentDisputeDto
+        IReadOnlyList<RegistrationRefundDto> refundDtos = refundAttempts.Select(MapRefund).ToArray();
+        IReadOnlyList<RegistrationPaymentDisputeDto> disputeDtos = disputes.Select(dispute => new RegistrationPaymentDisputeDto
         {
             Id = dispute.Id,
             StageCode = dispute.Stage.ToString(),
@@ -92,12 +92,12 @@ public sealed class RegistrationPaymentContractService(
             LastObservedAt = dispute.LastObservedAt,
             ResponseDueAt = dispute.ResponseDueAt
         }).ToArray();
-        result.MaterialChangeChoices = (await materialChangeChoices.GetByPaymentAsync(
+        IReadOnlyList<RegistrationMaterialChangeChoiceDto> materialChangeChoiceDtos = (await materialChangeChoices.GetByPaymentAsync(
             order.TenantId, row.Value.Attempt.Id, cancellationToken)).Select(MapMaterialChangeChoice).ToArray();
-        result.RefundedAmountMinor = refundAttempts
+        long refundedAmountMinor = refundAttempts
             .Where(attempt => attempt.BuyerRefundSucceededAt.HasValue)
             .Sum(attempt => attempt.Allocation.TotalMinor);
-        result.RefundPendingAmountMinor = refundAttempts
+        long refundPendingAmountMinor = refundAttempts
             .Where(attempt => attempt.ReservesCapacity && !attempt.BuyerRefundSucceededAt.HasValue)
             .Sum(attempt => attempt.Allocation.TotalMinor);
         bool providerProvenCapture = row.Value.Attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded &&
@@ -105,14 +105,21 @@ public sealed class RegistrationPaymentContractService(
             !string.IsNullOrWhiteSpace(row.Value.Attempt.ProviderPaymentId);
         if (!providerProvenCapture)
         {
-            result.MaterialChangeChoices = [];
+            materialChangeChoiceDtos = [];
         }
         bool refundCapacityAvailable = providerProvenCapture &&
-            checked(result.RefundedAmountMinor + result.RefundPendingAmountMinor) < row.Value.Attempt.TotalMinor;
+            checked(refundedAmountMinor + refundPendingAmountMinor) < row.Value.Attempt.TotalMinor;
         bool refundBlockedByDispute = disputes.Any(dispute => dispute.IsOpen);
-        result.BuyerRefundRequestAvailable = buyerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute;
-        result.OrganizerRefundAvailable = organizerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute;
-        return result;
+        return result with
+        {
+            RefundedAmountMinor = refundedAmountMinor,
+            RefundPendingAmountMinor = refundPendingAmountMinor,
+            Refunds = refundDtos,
+            Disputes = disputeDtos,
+            MaterialChangeChoices = materialChangeChoiceDtos,
+            BuyerRefundRequestAvailable = buyerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute,
+            OrganizerRefundAvailable = organizerRefundAllowed && refundCapacityAvailable && !refundBlockedByDispute,
+        };
     }
 
     public async Task<RegistrationPaymentCommandResultDto> RetryAsync(RegistrationOrder order, CancellationToken cancellationToken)

@@ -38,7 +38,7 @@ public sealed record RegistrationOrderDto
     public DateTime? CancelledAt { get; init; }
     public IReadOnlyList<RegistrationOrderLineDto> Lines { get; init; } = [];
     [JsonIgnore]
-    public bool PaidCheckoutActivationAvailable { get; set; }
+    public bool PaidCheckoutActivationAvailable { get; init; }
 
     public static RegistrationOrderDto From(
         RegistrationOrder order,

@@ -17,13 +17,13 @@ public sealed record RegistrationPaymentDto
     public DateTime CreatedAt { get; init; }
     public DateTime LastUpdatedAt { get; init; }
     public DateTime? ExpiresAt { get; init; }
-    public long RefundedAmountMinor { get; set; }
-    public long RefundPendingAmountMinor { get; set; }
-    public IReadOnlyList<RegistrationRefundDto> Refunds { get; set; } = [];
-    public IReadOnlyList<RegistrationPaymentDisputeDto> Disputes { get; set; } = [];
-    public IReadOnlyList<RegistrationMaterialChangeChoiceDto> MaterialChangeChoices { get; set; } = [];
-    public bool BuyerRefundRequestAvailable { get; set; }
-    public bool OrganizerRefundAvailable { get; set; }
+    public long RefundedAmountMinor { get; init; }
+    public long RefundPendingAmountMinor { get; init; }
+    public IReadOnlyList<RegistrationRefundDto> Refunds { get; init; } = [];
+    public IReadOnlyList<RegistrationPaymentDisputeDto> Disputes { get; init; } = [];
+    public IReadOnlyList<RegistrationMaterialChangeChoiceDto> MaterialChangeChoices { get; init; } = [];
+    public bool BuyerRefundRequestAvailable { get; init; }
+    public bool OrganizerRefundAvailable { get; init; }
     public long CapturedAmountMinor { get; init; }
     public string CurrencyCode { get; init; } = string.Empty;
     public int CurrencyMinorUnitDigits { get; init; }
