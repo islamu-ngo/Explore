@@ -58,12 +58,12 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **💳 Direct Ticket Payments (OrganizerDirect):** Connect your own payment account (via Stripe Connect) with no platform intermediary holding your funds. Ticket proceeds flow directly to your linked bank account with transparent fee breakdowns and automated refund handling — see [Payments][payments-doc]
 - **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
-- **🌍 Decentralization / Federation:** Depending on if event federation support is enabled, publish once and have your event appear on all the event platforms that support federation. Depenging on if atproto authentication is enabled, Records are on your pds -> full ownership, no vendor lock-in.
+- **🌍 Decentralization / Federation:** Depending on if event federation support is enabled, publish once and have your event appear on all the event platforms that support federation. Depending on if AT-Protocol Auth is enabled, store records directly on your personal data server (PDS) and be independent of ISLAMU Event data-wise.
 
 ### Platform Owners & Self-Hosters
 
-- **🆓 100% Free & Open Source:** Licensed under AGPL-3.0-or-later. Fully Open Source, not open core !
-- **🐳 Minimal Standalone Deployment:** One `Event.Standalone` container combines the ISLAMU Event API and Blazor BFF/UI with SQLite persistence. No external service is required for this minimum operational topology
+- **🆓 100% Free & Open Source:** No feature paywalls, telemetry traps, or enterprise tiers. Licensed under AGPL-3.0-or-later.
+- **🐳 Minimal Standalone Deployment:** All-in-one lightweight single-binary / single-container distribution. One `Event.Standalone` container combines the ISLAMU Event API and Blazor BFF/UI with embedded SQLite persistence — no external service or sidecar required for this minimum operational topology
 - **🐳 Deployment:** Standalone Docker image, split Docker Compose topology, and .NET Aspire for local development
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
@@ -78,7 +78,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, built-in local authorization, environment-first secrets, and HATEOAS REST API; Cerbos, Keycloak, and Infisical integrations remain optional
 - **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
-- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. (Still in development ! Not yet available)
+- **🎛️ ISLAMU Event Control Plane *(optional, commercial)* (Coming Soon):** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. (Coming Soon)
 
 ## Deployment & Hosting Options
 
@@ -179,7 +179,7 @@ Please read [Contribution Guidelines][contribution-guidelines] for details on th
 
 ### ✍️ Contributor License Agreement
 
-Before your pull request can be reviewed or merged, every non-bot contributor must sign the [ISLAMU Contributor License Agreement][cla-link]. Signing is done in-PR: a bot posts instructions when the PR opens, and you reply with the exact sign phrase for the current CLA version. The v1.0 signature is recorded in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch together with your GitHub username, user ID, pull request number, signing comment ID, comment body, and timestamp. See the CLA document for the current version and the full legal text.
+All non-bot contributors must sign the [ISLAMU Contributor License Agreement][cla-link] before a pull request can be merged. Signing is handled automatically directly in your PR with a simple comment reply—see [`legal/CLA.md`][cla-link] for full terms.
 
 ## 📚 Documentation
 
@@ -320,15 +320,6 @@ This project is licensed under the terms of [GNU AGPL-3.0-or-later][license-link
 The minimum operational deployment is the single `Event.Standalone` image: the ISLAMU Event API and Blazor BFF/UI run in one process with SQLite persistence. Application, Data Protection, and embedded privacy-erasure migrations run in that process before it accepts traffic. PostgreSQL, SQL Server, MariaDB, MySQL, Redis, Keycloak, Cerbos, MinIO/S3, SMTP/Mailpit, Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation services, and external observability backends are optional capabilities, not requirements of the standalone core.
 
 The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Guide](docs/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
-
-### Contributor License Agreement
-
-ISLAMU Event inbound contributions are governed by the [ISLAMU Contributor License Agreement][cla-link] (CLA). Every non-bot contributor must sign the CLA before a pull request can be merged.
-
-**Why a CLA alongside AGPL-3.0-or-later?** ISLAMU Event remains publicly available under AGPL-3.0-or-later. The CLA gives the ISLAMU project steward an additional inbound license from contributors so the future nonprofit can also offer ISLAMU-owned material under alternative terms for sustainability, enterprise adoption, public-sector procurement, hosted-service, nonprofit, humanitarian, or special social-impact deployments. It does not override any third-party license.
-
-The CLA is versioned. The current version and full legal text live in [`legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch and are committed automatically by the CLA workflow.
-
 <div align="right">
 
 [![][back-to-top]][back-to-top-link]
