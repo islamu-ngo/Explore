@@ -9,58 +9,58 @@ using Explore.Domain;
 /// <summary>
 /// DTO representing the Islamic aspect of an event.
 /// </summary>
-public class EventIslamicAspectDto
+public sealed record EventIslamicAspectDto
 {
-    public int? MadhabId { get; set; }
-    public string? MadhabName { get; set; }
-    public PrayerTime? ReferencePrayer { get; set; }
-    public int? PrayerTimeOffset { get; set; }
-    public GenderSegregationMode GenderMode { get; set; }
+    public int? MadhabId { get; init; }
+    public string? MadhabName { get; init; }
+    public PrayerTime? ReferencePrayer { get; init; }
+    public int? PrayerTimeOffset { get; init; }
+    public GenderSegregationMode GenderMode { get; init; }
     public string GenderModeName => GenderMode.ToString();
-    public bool IncludesQuranRecitation { get; set; }
-    public int? PrimaryLanguageId { get; set; }
-    public string? PrimaryLanguageName { get; set; }
+    public bool IncludesQuranRecitation { get; init; }
+    public int? PrimaryLanguageId { get; init; }
+    public string? PrimaryLanguageName { get; init; }
 }
 
 /// <summary>
 /// DTO for creating or updating the Islamic aspect of an event.
 /// </summary>
-public class CreateUpdateIslamicAspectDto
+public sealed record CreateUpdateIslamicAspectDto
 {
-    public int? MadhabId { get; set; }
-    public PrayerTime? ReferencePrayer { get; set; }
-    public int? PrayerTimeOffset { get; set; }
-    public GenderSegregationMode GenderMode { get; set; } = GenderSegregationMode.Mixed;
-    public bool IncludesQuranRecitation { get; set; }
-    public int? PrimaryLanguageId { get; set; }
+    public int? MadhabId { get; init; }
+    public PrayerTime? ReferencePrayer { get; init; }
+    public int? PrayerTimeOffset { get; init; }
+    public GenderSegregationMode GenderMode { get; init; } = GenderSegregationMode.Mixed;
+    public bool IncludesQuranRecitation { get; init; }
+    public int? PrimaryLanguageId { get; init; }
 }
 
-public sealed class UpdateEventIslamicAspectDto
+public sealed record UpdateEventIslamicAspectDto
 {
-    public UpdateEventIslamicJurisprudenceDto? Jurisprudence { get; set; }
-    public UpdateEventIslamicPrayerScheduleDto? PrayerSchedule { get; set; }
-    public UpdateEventIslamicParticipationDto? Participation { get; set; }
-    public UpdateEventIslamicLanguageDto? Language { get; set; }
+    public UpdateEventIslamicJurisprudenceDto? Jurisprudence { get; init; }
+    public UpdateEventIslamicPrayerScheduleDto? PrayerSchedule { get; init; }
+    public UpdateEventIslamicParticipationDto? Participation { get; init; }
+    public UpdateEventIslamicLanguageDto? Language { get; init; }
 }
 
-public sealed class UpdateEventIslamicJurisprudenceDto
+public sealed record UpdateEventIslamicJurisprudenceDto
 {
-    public OptionalUpdate<int?> MadhabId { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> MadhabId { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public sealed class UpdateEventIslamicPrayerScheduleDto
+public sealed record UpdateEventIslamicPrayerScheduleDto
 {
-    public OptionalUpdate<PrayerTime?> ReferencePrayer { get; set; } = OptionalUpdate<PrayerTime?>.Unspecified();
-    public OptionalUpdate<int?> PrayerTimeOffset { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<PrayerTime?> ReferencePrayer { get; init; } = OptionalUpdate<PrayerTime?>.Unspecified();
+    public OptionalUpdate<int?> PrayerTimeOffset { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public sealed class UpdateEventIslamicParticipationDto
+public sealed record UpdateEventIslamicParticipationDto
 {
-    public GenderSegregationMode? GenderMode { get; set; }
-    public bool? IncludesQuranRecitation { get; set; }
+    public GenderSegregationMode? GenderMode { get; init; }
+    public bool? IncludesQuranRecitation { get; init; }
 }
 
-public sealed class UpdateEventIslamicLanguageDto
+public sealed record UpdateEventIslamicLanguageDto
 {
-    public OptionalUpdate<int?> PrimaryLanguageId { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> PrimaryLanguageId { get; init; } = OptionalUpdate<int?>.Unspecified();
 }

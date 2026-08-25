@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.Localization;
 
-public class ImportLocalizationBundleDto
+public sealed record ImportLocalizationBundleDto
 {
-    public string LanguageCode { get; set; } = string.Empty;
+    public string LanguageCode { get; init; } = string.Empty;
 
-    public Dictionary<string, string> Translations { get; set; } = [];
+    public Dictionary<string, string> Translations { get; init; } = [];
 }

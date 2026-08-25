@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.SupportAccess.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.SupportAccessSession, AuthorizationActions.SupportAccessSessions.List)]
-public sealed class ListSupportAccessSessionsQuery : IRequest<PaginatedResult<SupportAccessSessionDto>>, ISecureRequest
+public sealed record ListSupportAccessSessionsQuery : IRequest<PaginatedResult<SupportAccessSessionDto>>, ISecureRequest
 {
     public Guid TargetTenantId { get; init; }
     public int Limit { get; init; } = 100;

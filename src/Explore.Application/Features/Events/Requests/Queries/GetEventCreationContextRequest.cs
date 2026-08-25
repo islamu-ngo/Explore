@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
 
-public class GetEventCreationContextRequest : IRequest<EventCreationContextDto>
+public sealed record GetEventCreationContextRequest : IRequest<EventCreationContextDto>
 {
 }

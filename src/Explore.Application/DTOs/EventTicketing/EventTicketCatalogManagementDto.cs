@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class EventTicketCatalogManagementDto
+public sealed record EventTicketCatalogManagementDto
 {
     public Guid EventId { get; init; }
     public Guid? CatalogId { get; init; }

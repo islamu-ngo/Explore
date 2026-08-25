@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Actor;
 
-public sealed class GlobalModerationRequestDto
+public sealed record GlobalModerationRequestDto
 {
     public string ReasonCode { get; init; } = string.Empty;
 }

@@ -141,7 +141,7 @@ public class EventManagementReadController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventProgramSummaryDto>> GetProgramSummary(Guid id, CancellationToken cancellationToken = default)
     {
-        var summary = await _mediator.Send(new GetEventProgramSummaryRequest { EventId = id }, cancellationToken);
+        var summary = await _mediator.Send(new GetEventProgramSummaryRequest(id), cancellationToken);
         if (summary is null)
             return this.ToNotFoundProblem(EventNotFoundProblem);
 

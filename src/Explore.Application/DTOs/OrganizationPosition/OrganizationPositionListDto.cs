@@ -1,9 +1,9 @@
 namespace Explore.Application.DTOs.OrganizationPosition;
 
-public class OrganizationPositionListDto
+public sealed record OrganizationPositionListDto
 {
-    public int Id { get; set; }
-    public required string MasterCode { get; set; } // For i18n with Tolgee
-    public required string FullName { get; set; } // Fallback default
-    public string? Description { get; set; }
+    public int Id { get; init; }
+    public required string MasterCode { get; init; } // For i18n with Tolgee
+    public required string FullName { get; init; } // Fallback default
+    public string? Description { get; init; }
 }

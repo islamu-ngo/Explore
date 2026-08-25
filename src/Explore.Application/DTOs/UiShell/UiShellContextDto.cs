@@ -3,45 +3,45 @@
 
 namespace Explore.Application.DTOs.UiShell;
 
-public sealed class UiShellContextDto
+public sealed record UiShellContextDto
 {
-    public Guid TenantId { get; set; }
-    public string DeploymentMode { get; set; } = "SingleTenant";
-    public WorkspaceAvailabilityDto Workspaces { get; set; } = new();
-    public IReadOnlyList<ManagedActorDto> ManagedActors { get; set; } = [];
-    public IReadOnlyList<SettingsScopeDto> SettingsScopes { get; set; } = [];
-    public Guid? PinnedActorId { get; set; }
-    public UiShellNavigationDefaultsDto NavigationDefaults { get; set; } = new();
+    public Guid TenantId { get; init; }
+    public string DeploymentMode { get; init; } = "SingleTenant";
+    public WorkspaceAvailabilityDto Workspaces { get; init; } = new();
+    public IReadOnlyList<ManagedActorDto> ManagedActors { get; init; } = [];
+    public IReadOnlyList<SettingsScopeDto> SettingsScopes { get; init; } = [];
+    public Guid? PinnedActorId { get; init; }
+    public UiShellNavigationDefaultsDto NavigationDefaults { get; init; } = new();
 }
 
-public sealed class WorkspaceAvailabilityDto
+public sealed record WorkspaceAvailabilityDto
 {
-    public bool Events { get; set; } = true;
-    public bool Studio { get; set; }
-    public bool Ai { get; set; }
-    public bool Settings { get; set; } = true;
+    public bool Events { get; init; } = true;
+    public bool Studio { get; init; }
+    public bool Ai { get; init; }
+    public bool Settings { get; init; } = true;
 }
 
-public sealed class ManagedActorDto
+public sealed record ManagedActorDto
 {
-    public Guid ActorId { get; set; }
-    public Guid ScopeId { get; set; }
-    public string ActorType { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
+    public Guid ActorId { get; init; }
+    public Guid ScopeId { get; init; }
+    public string ActorType { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
 }
 
-public sealed class SettingsScopeDto
+public sealed record SettingsScopeDto
 {
-    public string Scope { get; set; } = string.Empty;
-    public Guid? ScopeId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string Scope { get; init; } = string.Empty;
+    public Guid? ScopeId { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
 }
 
-public sealed class UiShellNavigationDefaultsDto
+public sealed record UiShellNavigationDefaultsDto
 {
-    public string Events { get; set; } = "Docked";
-    public string Studio { get; set; } = "Docked";
-    public string Ai { get; set; } = "Docked";
-    public bool AllowUserOverride { get; set; } = true;
-    public string OrganizerDefaultWorkspace { get; set; } = "Events";
+    public string Events { get; init; } = "Docked";
+    public string Studio { get; init; } = "Docked";
+    public string Ai { get; init; } = "Docked";
+    public bool AllowUserOverride { get; init; } = true;
+    public string OrganizerDefaultWorkspace { get; init; } = "Events";
 }

@@ -9,11 +9,17 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomProperties.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class SetEventCustomPropertyMultiValuesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record SetEventCustomPropertyMultiValuesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid DefinitionId { get; set; }
-    public Guid EventId { get; set; }
-    public required List<SetEventCustomPropertyValueDto> Values { get; set; }
+    public Guid DefinitionId { get; init; }
+    public Guid EventId { get; init; }
+    private IReadOnlyList<SetEventCustomPropertyValueDto> _values = Array.AsReadOnly(Array.Empty<SetEventCustomPropertyValueDto>());
+
+    public required IReadOnlyList<SetEventCustomPropertyValueDto> Values
+    {
+        get => _values;
+        init => _values = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 
     string? ISecureRequest.ResourceId => null;
 }

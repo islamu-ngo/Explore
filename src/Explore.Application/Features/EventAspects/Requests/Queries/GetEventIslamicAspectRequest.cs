@@ -11,18 +11,12 @@ using MediatR;
 /// <summary>
 /// Request to retrieve the Islamic aspect for a specific event.
 /// </summary>
-public class GetEventIslamicAspectRequest : IRequest<EventIslamicAspectDto?>
-{
-    /// <summary>
-    /// The event ID to get the Islamic aspect for.
-    /// </summary>
-    public Guid EventId { get; set; }
-}
+public sealed record GetEventIslamicAspectRequest(Guid EventId) : IRequest<EventIslamicAspectDto?>;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventIslamicAspectRequest : IRequest<EventIslamicAspectDto?>, ISecureRequest
+public sealed record GetManagedEventIslamicAspectRequest : IRequest<EventIslamicAspectDto?>, ISecureRequest
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

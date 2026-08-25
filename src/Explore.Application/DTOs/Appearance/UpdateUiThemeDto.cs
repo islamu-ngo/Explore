@@ -5,30 +5,30 @@ namespace Explore.Application.DTOs.Appearance;
 
 using Explore.Application.Models.Common;
 
-public class UpdateUiThemeDto
+public sealed record UpdateUiThemeDto
 {
-    public required uint RowVersion { get; set; }
-    public UpdateUiThemeMetadataDto? Metadata { get; set; }
-    public UpdateUiThemeStateDto? State { get; set; }
-    public UpdateUiThemePalettesDto? Palettes { get; set; }
+    public required uint RowVersion { get; init; }
+    public UpdateUiThemeMetadataDto? Metadata { get; init; }
+    public UpdateUiThemeStateDto? State { get; init; }
+    public UpdateUiThemePalettesDto? Palettes { get; init; }
 }
 
-public sealed class UpdateUiThemeMetadataDto
+public sealed record UpdateUiThemeMetadataDto
 {
-    public string? ThemeKey { get; set; }
-    public string? DisplayName { get; set; }
-    public OptionalUpdate<string> Description { get; set; } = OptionalUpdate<string>.Unspecified();
+    public string? ThemeKey { get; init; }
+    public string? DisplayName { get; init; }
+    public OptionalUpdate<string> Description { get; init; } = OptionalUpdate<string>.Unspecified();
 }
 
-public sealed class UpdateUiThemeStateDto
+public sealed record UpdateUiThemeStateDto
 {
-    public bool? IsActive { get; set; }
-    public bool? IsDefault { get; set; }
-    public int? SortOrder { get; set; }
+    public bool? IsActive { get; init; }
+    public bool? IsDefault { get; init; }
+    public int? SortOrder { get; init; }
 }
 
-public sealed class UpdateUiThemePalettesDto
+public sealed record UpdateUiThemePalettesDto
 {
-    public UiThemePaletteDto? Light { get; set; }
-    public UiThemePaletteDto? Dark { get; set; }
+    public UiThemePaletteDto? Light { get; init; }
+    public UiThemePaletteDto? Dark { get; init; }
 }

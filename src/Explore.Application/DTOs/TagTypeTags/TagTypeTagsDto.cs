@@ -2,14 +2,14 @@ using System;
 
 namespace Explore.Application.DTOs.TagTypeTags;
 
-public class TagTypeTagsDto
+public sealed record TagTypeTagsDto
 {
-    public Guid Id { get; set; }
-    public Guid TagId { get; set; }
-    public string? TagFullName { get; set; }
-    public string? TagMasterCode { get; set; } // For i18n with Tolgee
-    public int TagTypeId { get; set; }
-    public string? TagTypeFullName { get; set; }
-    public string? TagTypeMasterCode { get; set; } // For i18n with Tolgee
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid TagId { get; init; }
+    public string? TagFullName { get; init; }
+    public string? TagMasterCode { get; init; } // For i18n with Tolgee
+    public int TagTypeId { get; init; }
+    public string? TagTypeFullName { get; init; }
+    public string? TagTypeMasterCode { get; init; } // For i18n with Tolgee
+    public Guid TenantId { get; init; }
 }

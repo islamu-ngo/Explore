@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.EmailDispatch.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetEmailDispatchProcessorControlQuery : IRequest<EmailDispatchProcessorControlDto>, ISecureRequest
+public sealed record GetEmailDispatchProcessorControlQuery : IRequest<EmailDispatchProcessorControlDto>, ISecureRequest
 {
     string ISecureRequest.ResourceId => EmailDispatchProcessorControl.SettingKey;
 

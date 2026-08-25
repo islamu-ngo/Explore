@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Notification;
 
-public sealed class WebPushSubscriptionDto
+public sealed record WebPushSubscriptionDto
 {
     public Guid Id { get; init; }
     public required string DeviceIdentifier { get; init; }

@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.ActorSubscriptions.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.View)]
-public class GetActorSubscriptionRequest : IRequest<ActorSubscriptionDto?>, ISecureRequest
+public sealed record GetActorSubscriptionRequest : IRequest<ActorSubscriptionDto?>, ISecureRequest
 {
-    public Guid TargetActorId { get; set; }
+    public Guid TargetActorId { get; init; }
 
     public string? ResourceId => TargetActorId == Guid.Empty ? null : TargetActorId.ToString();
 

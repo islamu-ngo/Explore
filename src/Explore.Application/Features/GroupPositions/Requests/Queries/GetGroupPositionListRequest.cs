@@ -7,6 +7,6 @@ using MediatR;
 
 namespace Explore.Application.Features.GroupPositions.Requests.Queries;
 
-public class GetGroupPositionListRequest : IRequest<List<GroupPositionListDto>>
+public sealed record GetGroupPositionListRequest : IRequest<List<GroupPositionListDto>>
 {
 }

@@ -4,7 +4,7 @@ using System;
 
 namespace Explore.Application.DTOs.User;
 
-public class UpdateUserProfileImageDto
+public sealed record UpdateUserProfileImageDto
 {
-    public Guid ProfilePictureId { get; set; }
+    public Guid ProfilePictureId { get; init; }
 }

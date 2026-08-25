@@ -7,9 +7,9 @@ using MediatR;
 namespace Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class DeleteCustomPropertyDefinitionCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteCustomPropertyDefinitionCommand : IRequest<bool>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

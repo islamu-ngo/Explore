@@ -5,55 +5,55 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventOrganizerClaim;
 
-public sealed class EventOrganizerClaimDto
+public sealed record EventOrganizerClaimDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
     [JsonIgnore]
-    public Guid TenantId { get; set; }
-    public Guid EventId { get; set; }
-    public Guid ClaimantActorId { get; set; }
-    public string? ClaimantActorDisplayName { get; set; }
-    public int StatusId { get; set; }
-    public string? StatusCode { get; set; }
-    public string? StatusName { get; set; }
-    public required string EvidenceType { get; set; }
-    public required string EvidenceReference { get; set; }
-    public Guid? ReviewerUserId { get; set; }
-    public string? DecisionReasonCode { get; set; }
-    public DateTime? DecidedAt { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid TenantId { get; init; }
+    public Guid EventId { get; init; }
+    public Guid ClaimantActorId { get; init; }
+    public string? ClaimantActorDisplayName { get; init; }
+    public int StatusId { get; init; }
+    public string? StatusCode { get; init; }
+    public string? StatusName { get; init; }
+    public required string EvidenceType { get; init; }
+    public required string EvidenceReference { get; init; }
+    public Guid? ReviewerUserId { get; init; }
+    public string? DecisionReasonCode { get; init; }
+    public DateTime? DecidedAt { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 
     [JsonIgnore]
-    public Guid EventActorId { get; set; }
+    public Guid EventActorId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorUserId { get; set; }
+    public Guid? EventActorUserId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorOrganizationId { get; set; }
+    public Guid? EventActorOrganizationId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventActorGroupId { get; set; }
+    public Guid? EventActorGroupId { get; init; }
 
     [JsonIgnore]
-    public int EventProvenanceTypeId { get; set; }
+    public int EventProvenanceTypeId { get; init; }
 
     [JsonIgnore]
-    public string? EventProvenanceTypeCode { get; set; }
+    public string? EventProvenanceTypeCode { get; init; }
 
     [JsonIgnore]
-    public Guid? EventOrganizerActorId { get; set; }
+    public Guid? EventOrganizerActorId { get; init; }
 
     [JsonIgnore]
-    public Guid? EventSubmittedByUserId { get; set; }
+    public Guid? EventSubmittedByUserId { get; init; }
 
     [JsonIgnore]
-    public Guid? ClaimantActorUserId { get; set; }
+    public Guid? ClaimantActorUserId { get; init; }
 
     [JsonIgnore]
-    public Guid? ClaimantActorOrganizationId { get; set; }
+    public Guid? ClaimantActorOrganizationId { get; init; }
 
     [JsonIgnore]
-    public Guid? ClaimantActorGroupId { get; set; }
+    public Guid? ClaimantActorGroupId { get; init; }
 }

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class RunKeycloakRealmDoctorQuery : IRequest<KeycloakRealmDoctorResultDto>
+public sealed record RunKeycloakRealmDoctorQuery : IRequest<KeycloakRealmDoctorResultDto>
 {
-    public KeycloakRealmDoctorRequestDto Request { get; set; } = new();
+    public KeycloakRealmDoctorRequestDto Request { get; init; } = new();
 }

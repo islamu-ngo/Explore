@@ -989,7 +989,7 @@ The repository evidence below is newer than some task-status checkboxes and the 
 - `806/806` compiled concrete MediatR requests are records; request classes: `0`.
 - Public mutable request setters were reduced from `19` to `6`; all six are required by `IEventSessionLifecycleTransitionCommand`.
 - `816/816` eligible handwritten Application contracts are records.
-- The Application class baseline contains exactly `8` retained `BaseCommandResponse<>` hierarchy classes.
+- The Application class baseline contains exactly `10` retained `BaseCommandResponse<>` hierarchy classes after integrating the paid-registration response envelopes added on `develop`.
 - All `28/28` HTTP/input DTO candidates are sealed nominal records.
 - All `8/8` current-user/current-tenant body authority members were removed.
 - The body-authority baseline contains exactly `7` legitimate target identifiers and no current-authority exceptions.

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
-public sealed class EventSessionLifecycleRequestDto
+public sealed record EventSessionLifecycleRequestDto
 {
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

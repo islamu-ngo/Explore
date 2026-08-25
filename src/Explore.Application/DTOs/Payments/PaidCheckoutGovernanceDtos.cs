@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Payments;
 
-public sealed class PaidCheckoutSaleControlDto
+public sealed record PaidCheckoutSaleControlDto
 {
     public Guid TenantId { get; init; }
     public Guid? EventId { get; init; }
@@ -13,7 +13,7 @@ public sealed class PaidCheckoutSaleControlDto
     public IReadOnlyList<PaidCheckoutSaleControlAuditDto> AuditTrail { get; init; } = [];
 }
 
-public sealed class PaidCheckoutSaleControlAuditDto
+public sealed record PaidCheckoutSaleControlAuditDto
 {
     public int Sequence { get; init; }
     public required string ActionCode { get; init; }
@@ -21,18 +21,18 @@ public sealed class PaidCheckoutSaleControlAuditDto
     public DateTime OccurredAt { get; init; }
 }
 
-public sealed class PaidCheckoutSaleControlMutationDto
+public sealed record PaidCheckoutSaleControlMutationDto
 {
     public string ReasonCode { get; init; } = string.Empty;
 }
 
-public sealed class PaidCheckoutResumeReviewDto
+public sealed record PaidCheckoutResumeReviewDto
 {
     public bool Approved { get; init; }
     public string ReasonCode { get; init; } = string.Empty;
 }
 
-public sealed class PaidCheckoutReviewApprovalDto
+public sealed record PaidCheckoutReviewApprovalDto
 {
     public Guid Id { get; init; }
     public Guid TenantId { get; init; }
@@ -45,7 +45,7 @@ public sealed class PaidCheckoutReviewApprovalDto
     public DateTime? ReviewedAt { get; init; }
 }
 
-public sealed class RequestPaidCheckoutReviewDto
+public sealed record RequestPaidCheckoutReviewDto
 {
     public int TriggerId { get; init; }
     public string CurrencyCode { get; init; } = string.Empty;
@@ -53,7 +53,7 @@ public sealed class RequestPaidCheckoutReviewDto
     public string ReasonCode { get; init; } = string.Empty;
 }
 
-public sealed class DecidePaidCheckoutReviewDto
+public sealed record DecidePaidCheckoutReviewDto
 {
     public bool Approved { get; init; }
     public string ReasonCode { get; init; } = string.Empty;

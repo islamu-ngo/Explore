@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetEventManagementDetailsRequest : IRequest<EventDto?>, ISecureRequest
+public sealed record GetEventManagementDetailsRequest : IRequest<EventDto?>, ISecureRequest
 {
     public Guid Id { get; init; }
 

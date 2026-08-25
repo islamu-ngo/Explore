@@ -7,7 +7,7 @@ using Explore.Domain;
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class InstanceStorageSettingsDto
+public sealed record InstanceStorageSettingsDto
 {
     public string Provider { get; set; } = StorageProviders.Local;
     public long DefaultMaxUploadBytes { get; set; } = 10 * 1024 * 1024;
@@ -21,58 +21,58 @@ public class InstanceStorageSettingsDto
     public string S3BucketName { get; set; } = string.Empty;
     public string S3AccessKeyId { get; set; } = string.Empty;
     public string S3SecretAccessKey { get; set; } = string.Empty;
-    public bool S3AccessKeyConfigured { get; set; }
-    public bool S3SecretAccessKeyConfigured { get; set; }
+    public bool S3AccessKeyConfigured { get; init; }
+    public bool S3SecretAccessKeyConfigured { get; init; }
     public string S3Region { get; set; } = string.Empty;
     public bool S3ForcePathStyle { get; set; } = true;
     public int S3UploadUrlExpirationMinutes { get; set; } = 60;
 
-    public InstanceStorageEffectivePolicyDto EffectivePolicy { get; set; } = new();
-    public InstanceStorageUsageDto Usage { get; set; } = new();
-    public InstanceStorageProviderStatusDto ProviderStatus { get; set; } = new();
+    public InstanceStorageEffectivePolicyDto EffectivePolicy { get; init; } = new();
+    public InstanceStorageUsageDto Usage { get; init; } = new();
+    public InstanceStorageProviderStatusDto ProviderStatus { get; init; } = new();
 }
 
-public class InstanceStorageEffectivePolicyDto
+public sealed record InstanceStorageEffectivePolicyDto
 {
-    public string Provider { get; set; } = StorageProviders.Local;
-    public long MaxUploadBytes { get; set; } = 10 * 1024 * 1024;
-    public long TenantQuotaBytes { get; set; } = 1024L * 1024 * 1024;
-    public long InstanceMaxUploadBytes { get; set; } = 100L * 1024 * 1024;
-    public bool TenantOverridesAllowed { get; set; }
-    public bool TenantStorageLocked { get; set; } = true;
-    public string ProviderSource { get; set; } = "SystemDefault";
-    public string MaxUploadSource { get; set; } = "SystemDefault";
-    public string QuotaSource { get; set; } = "SystemDefault";
-    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
+    public string Provider { get; init; } = StorageProviders.Local;
+    public long MaxUploadBytes { get; init; } = 10 * 1024 * 1024;
+    public long TenantQuotaBytes { get; init; } = 1024L * 1024 * 1024;
+    public long InstanceMaxUploadBytes { get; init; } = 100L * 1024 * 1024;
+    public bool TenantOverridesAllowed { get; init; }
+    public bool TenantStorageLocked { get; init; } = true;
+    public string ProviderSource { get; init; } = "SystemDefault";
+    public string MaxUploadSource { get; init; } = "SystemDefault";
+    public string QuotaSource { get; init; } = "SystemDefault";
+    public List<StorageRouteSettingsDto> Routes { get; init; } = [];
 }
 
-public class InstanceStorageUsageDto
+public sealed record InstanceStorageUsageDto
 {
-    public long UsedBytes { get; set; }
-    public long ReservedBytes { get; set; }
-    public long QuarantinedBytes { get; set; }
-    public long ObjectCount { get; set; }
-    public DateTime? LastRecalculatedAt { get; set; }
-    public List<InstanceStorageProviderUsageDto> Providers { get; set; } = [];
+    public long UsedBytes { get; init; }
+    public long ReservedBytes { get; init; }
+    public long QuarantinedBytes { get; init; }
+    public long ObjectCount { get; init; }
+    public DateTime? LastRecalculatedAt { get; init; }
+    public List<InstanceStorageProviderUsageDto> Providers { get; init; } = [];
 }
 
-public class InstanceStorageProviderUsageDto
+public sealed record InstanceStorageProviderUsageDto
 {
-    public string Provider { get; set; } = StorageProviders.Local;
-    public long UsedBytes { get; set; }
-    public long ReservedBytes { get; set; }
-    public long QuarantinedBytes { get; set; }
-    public long ObjectCount { get; set; }
-    public DateTime? LastRecalculatedAt { get; set; }
+    public string Provider { get; init; } = StorageProviders.Local;
+    public long UsedBytes { get; init; }
+    public long ReservedBytes { get; init; }
+    public long QuarantinedBytes { get; init; }
+    public long ObjectCount { get; init; }
+    public DateTime? LastRecalculatedAt { get; init; }
 }
 
-public class InstanceStorageProviderStatusDto
+public sealed record InstanceStorageProviderStatusDto
 {
-    public string Provider { get; set; } = StorageProviders.Local;
-    public bool IsAvailable { get; set; }
-    public bool SupportsServerSideStreaming { get; set; }
-    public bool SupportsBrowserDirectUpload { get; set; }
-    public string? FailureCode { get; set; }
-    public string? Message { get; set; }
-    public S3PreflightResult? Preflight { get; set; }
+    public string Provider { get; init; } = StorageProviders.Local;
+    public bool IsAvailable { get; init; }
+    public bool SupportsServerSideStreaming { get; init; }
+    public bool SupportsBrowserDirectUpload { get; init; }
+    public string? FailureCode { get; init; }
+    public string? Message { get; init; }
+    public S3PreflightResult? Preflight { get; init; }
 }

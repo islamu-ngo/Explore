@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class BootstrapKeycloakRealmCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record BootstrapKeycloakRealmCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required KeycloakBootstrapRequestDto BootstrapRequest { get; set; } = new();
+    public required KeycloakBootstrapRequestDto BootstrapRequest { get; init; } = new();
 }

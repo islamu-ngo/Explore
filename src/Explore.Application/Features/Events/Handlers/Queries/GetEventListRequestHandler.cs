@@ -133,22 +133,22 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
             spec = spec.And(EventFilter.SearchTerm(request.SearchTerm.Trim()));
 
         if (request.FormatIds is { Count: > 0 })
-            spec = spec.And(EventFilter.Formats(request.FormatIds));
+            spec = spec.And(EventFilter.Formats(request.FormatIds.ToList()));
 
         if (request.MadhabIds is { Count: > 0 })
-            spec = spec.And(EventFilter.Madhabs(request.MadhabIds));
+            spec = spec.And(EventFilter.Madhabs(request.MadhabIds.ToList()));
 
         if (request.EventTypeIds is { Count: > 0 })
-            spec = spec.And(EventFilter.EventTypes(request.EventTypeIds));
+            spec = spec.And(EventFilter.EventTypes(request.EventTypeIds.ToList()));
 
         if (request.AudienceGenderIds is { Count: > 0 })
-            spec = spec.And(EventFilter.AudienceGenders(request.AudienceGenderIds));
+            spec = spec.And(EventFilter.AudienceGenders(request.AudienceGenderIds.ToList()));
 
         if (request.AudienceAgeIds is { Count: > 0 })
-            spec = spec.And(EventFilter.AudienceAges(request.AudienceAgeIds));
+            spec = spec.And(EventFilter.AudienceAges(request.AudienceAgeIds.ToList()));
 
         if (request.EventStatusIds is { Count: > 0 })
-            spec = spec.And(EventFilter.Statuses(request.EventStatusIds));
+            spec = spec.And(EventFilter.Statuses(request.EventStatusIds.ToList()));
 
         if (request.DateFrom.HasValue)
             spec = spec.And(EventFilter.DateFrom(request.DateFrom.Value));
@@ -164,39 +164,39 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         if (request.IncludedCategoryIds is { Count: > 0 })
         {
             spec = request.CategoryInclusionMode == TagFilterMode.And
-                ? spec.And(EventSubqueryFilter.CategoriesIncludedAll(request.IncludedCategoryIds))
-                : spec.And(EventSubqueryFilter.CategoriesIncludedAny(request.IncludedCategoryIds));
+                ? spec.And(EventSubqueryFilter.CategoriesIncludedAll(request.IncludedCategoryIds.ToList()))
+                : spec.And(EventSubqueryFilter.CategoriesIncludedAny(request.IncludedCategoryIds.ToList()));
         }
 
         if (request.ExcludedCategoryIds is { Count: > 0 })
         {
             spec = request.CategoryExclusionMode == TagFilterMode.Or
-                ? spec.And(EventSubqueryFilter.CategoriesExcludedAny(request.ExcludedCategoryIds))
-                : spec.And(EventSubqueryFilter.CategoriesExcludedAll(request.ExcludedCategoryIds));
+                ? spec.And(EventSubqueryFilter.CategoriesExcludedAny(request.ExcludedCategoryIds.ToList()))
+                : spec.And(EventSubqueryFilter.CategoriesExcludedAll(request.ExcludedCategoryIds.ToList()));
         }
 
         if (request.IncludedTagIds is { Count: > 0 })
         {
             spec = request.InclusionMode == TagFilterMode.And
-                ? spec.And(EventSubqueryFilter.TagsIncludedAll(request.IncludedTagIds))
-                : spec.And(EventSubqueryFilter.TagsIncludedAny(request.IncludedTagIds));
+                ? spec.And(EventSubqueryFilter.TagsIncludedAll(request.IncludedTagIds.ToList()))
+                : spec.And(EventSubqueryFilter.TagsIncludedAny(request.IncludedTagIds.ToList()));
         }
 
         if (request.ExcludedTagIds is { Count: > 0 })
         {
             spec = request.ExclusionMode == TagFilterMode.Or
-                ? spec.And(EventSubqueryFilter.TagsExcludedAny(request.ExcludedTagIds))
-                : spec.And(EventSubqueryFilter.TagsExcludedAll(request.ExcludedTagIds));
+                ? spec.And(EventSubqueryFilter.TagsExcludedAny(request.ExcludedTagIds.ToList()))
+                : spec.And(EventSubqueryFilter.TagsExcludedAll(request.ExcludedTagIds.ToList()));
         }
 
         if (request.LocationIds is { Count: > 0 })
-            spec = spec.And(EventSubqueryFilter.Locations(request.LocationIds));
+            spec = spec.And(EventSubqueryFilter.Locations(request.LocationIds.ToList()));
 
         if (request.LanguageIds is { Count: > 0 })
-            spec = spec.And(EventSubqueryFilter.Languages(request.LanguageIds));
+            spec = spec.And(EventSubqueryFilter.Languages(request.LanguageIds.ToList()));
 
         if (request.RegistrationModeIds is { Count: > 0 })
-            spec = spec.And(EventSubqueryFilter.RegistrationModes(request.RegistrationModeIds));
+            spec = spec.And(EventSubqueryFilter.RegistrationModes(request.RegistrationModeIds.ToList()));
 
         // ===== Islamic aspect filters (module-conditional) =====
 
@@ -214,16 +214,16 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 spec = spec.And(AspectPresenceFilter.HasIslamicAspect());
 
             if (request.GenderModeIds is { Count: > 0 })
-                spec = spec.And(IslamicAspectFilter.GenderModes(request.GenderModeIds));
+                spec = spec.And(IslamicAspectFilter.GenderModes(request.GenderModeIds.ToList()));
 
             if (request.IncludesQuranRecitation is true)
                 spec = spec.And(IslamicAspectFilter.IncludesQuranRecitation());
 
             if (request.ReferencePrayerIds is { Count: > 0 })
-                spec = spec.And(IslamicAspectFilter.ReferencePrayers(request.ReferencePrayerIds));
+                spec = spec.And(IslamicAspectFilter.ReferencePrayers(request.ReferencePrayerIds.ToList()));
 
             if (request.IslamicPrimaryLanguageIds is { Count: > 0 })
-                spec = spec.And(IslamicAspectFilter.PrimaryLanguages(request.IslamicPrimaryLanguageIds));
+                spec = spec.And(IslamicAspectFilter.PrimaryLanguages(request.IslamicPrimaryLanguageIds.ToList()));
         }
 
         // ===== Tech aspect filters (module-conditional) =====

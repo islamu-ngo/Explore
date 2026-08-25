@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.EventAggregateView;
 
-public sealed class AggregateViewFilterDto
+public sealed record AggregateViewFilterDto
 {
-    public string? Title { get; set; }
-    public DateTimeOffset? StartAtFrom { get; set; }
-    public DateTimeOffset? StartAtTo { get; set; }
-    public string? Status { get; set; }
-    public string? Visibility { get; set; }
+    public string? Title { get; init; }
+    public DateTimeOffset? StartAtFrom { get; init; }
+    public DateTimeOffset? StartAtTo { get; init; }
+    public string? Status { get; init; }
+    public string? Visibility { get; init; }
 }

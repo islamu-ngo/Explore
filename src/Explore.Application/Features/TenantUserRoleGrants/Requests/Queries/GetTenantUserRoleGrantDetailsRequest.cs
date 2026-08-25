@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.TenantUserRoleGrants.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.TenantUserRoleGrant, AuthorizationActions.TenantUserRoleGrants.View)]
-public class GetTenantUserRoleGrantDetailsRequest : IRequest<TenantUserRoleGrantDto?>, ISecureRequest
+public sealed record GetTenantUserRoleGrantDetailsRequest : IRequest<TenantUserRoleGrantDto?>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     public Guid TenantId { get; init; }
 

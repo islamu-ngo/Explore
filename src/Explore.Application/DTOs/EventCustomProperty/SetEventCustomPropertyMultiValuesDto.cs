@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.EventCustomProperty;
 
-public class SetEventCustomPropertyMultiValuesDto
+public sealed record SetEventCustomPropertyMultiValuesDto
 {
-    public Guid DefinitionId { get; set; }
-    public Guid EventId { get; set; }
-    public List<SetEventCustomPropertyValueDto> Values { get; set; } = [];
+    public Guid DefinitionId { get; init; }
+    public Guid EventId { get; init; }
+    public List<SetEventCustomPropertyValueDto> Values { get; init; } = [];
 }

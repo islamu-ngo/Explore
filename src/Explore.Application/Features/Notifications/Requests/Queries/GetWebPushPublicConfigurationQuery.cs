@@ -6,4 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Queries;
 
-public sealed class GetWebPushPublicConfigurationQuery : IRequest<WebPushPublicConfiguration>;
+public sealed record GetWebPushPublicConfigurationQuery : IRequest<WebPushPublicConfiguration>;

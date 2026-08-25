@@ -9,6 +9,6 @@ namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 /// <summary>
 /// Downloads the current authorization policy package archive for manual operator installation.
 /// </summary>
-public sealed class DownloadAuthorizationPolicyPackageQuery : IRequest<PolicyPackageArchive>
+public sealed record DownloadAuthorizationPolicyPackageQuery : IRequest<PolicyPackageArchive>
 {
 }

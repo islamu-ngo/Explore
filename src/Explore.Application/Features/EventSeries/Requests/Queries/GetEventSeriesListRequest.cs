@@ -7,9 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSeries.Requests.Queries;
 
-public class GetEventSeriesListRequest : IRequest<PaginatedResult<EventSeriesListDto>>
+public sealed record GetEventSeriesListRequest : IRequest<PaginatedResult<EventSeriesListDto>>
 {
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
-    public Guid? ActorId { get; set; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 10;
+    public Guid? ActorId { get; init; }
 }

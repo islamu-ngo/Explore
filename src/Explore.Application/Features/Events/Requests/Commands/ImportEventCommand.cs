@@ -9,12 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Create)]
-public sealed class ImportEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ImportEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required ImportEventRequestDto Request { get; set; }
+    public required ImportEventRequestDto Request { get; init; }
+    public Guid TenantId { get; init; }
 
-    string? ISecureRequest.ResourceId => Request.TenantId.ToString();
+    string? ISecureRequest.ResourceId => TenantId.ToString();
 
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
-        new TenantScopedAuthorizationFacts(Request.TenantId);
+        new TenantScopedAuthorizationFacts(TenantId);
 }

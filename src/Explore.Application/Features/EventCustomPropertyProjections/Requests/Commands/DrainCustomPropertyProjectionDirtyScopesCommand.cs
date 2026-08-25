@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
-public class DrainCustomPropertyProjectionDirtyScopesCommand : IRequest<BaseCommandResponse<DrainDirtyScopesResponseDto>>, ISecureRequest
+public sealed record DrainCustomPropertyProjectionDirtyScopesCommand : IRequest<BaseCommandResponse<DrainDirtyScopesResponseDto>>, ISecureRequest
 {
-    public required DrainDirtyScopesRequestDto RequestDto { get; set; }
+    public required DrainDirtyScopesRequestDto RequestDto { get; init; }
 
     private Guid TenantId => RequestDto?.TenantId ?? Guid.Empty;
     private string ProjectionName => RequestDto?.ProjectionName ?? string.Empty;

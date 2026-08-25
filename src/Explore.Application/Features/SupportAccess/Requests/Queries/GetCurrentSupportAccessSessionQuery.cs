@@ -6,4 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.SupportAccess.Requests.Queries;
 
-public sealed class GetCurrentSupportAccessSessionQuery : IRequest<CurrentSupportAccessSessionDto>;
+public sealed record GetCurrentSupportAccessSessionQuery : IRequest<CurrentSupportAccessSessionDto>;

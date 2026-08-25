@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class TenantOnboardingStatusDto
+public sealed record TenantOnboardingStatusDto
 {
-    public bool IsCompleted { get; set; }
-    public bool IsAuthenticated { get; set; }
+    public bool IsCompleted { get; init; }
+    public bool IsAuthenticated { get; init; }
     public bool IsCurrentUserTenantAdministrator { get; set; }
     public bool IsCurrentUserPlatformAdministrator { get; set; }
-    public Guid TenantId { get; set; }
-    public int CurrentStep { get; set; }
-    public int TotalSteps { get; set; }
-    public string[] CompletedSteps { get; set; } = Array.Empty<string>();
-    public int ProgressPercentage { get; set; }
+    public Guid TenantId { get; init; }
+    public int CurrentStep { get; init; }
+    public int TotalSteps { get; init; }
+    public string[] CompletedSteps { get; init; } = Array.Empty<string>();
+    public int ProgressPercentage { get; init; }
 }

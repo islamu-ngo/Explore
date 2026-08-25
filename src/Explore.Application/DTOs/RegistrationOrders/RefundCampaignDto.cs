@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class RefundCampaignDto
+public sealed record RefundCampaignDto
 {
     public Guid Id { get; init; }
     public Guid EventId { get; init; }

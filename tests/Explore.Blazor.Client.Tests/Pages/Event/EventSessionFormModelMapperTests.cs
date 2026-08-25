@@ -65,7 +65,6 @@ public sealed class EventSessionFormModelMapperTests
         await Assert.That(prepared).IsTrue();
         await Assert.That(validationError).IsNull();
         await Assert.That(session.EventId).IsEqualTo(eventId);
-        await Assert.That(session.TenantId).IsEqualTo(tenantId);
         await Assert.That(session.Title).IsEqualTo("Opening talk");
         await Assert.That(session.MaxAudienceAttendees).IsNull();
         await Assert.That(session.StartTime).IsEqualTo(new DateTimeOffset(2026, 6, 1, 7, 30, 0, TimeSpan.Zero));

@@ -3,31 +3,31 @@
 
 namespace Explore.Application.DTOs.EmailDispatch;
 
-public sealed class EmailDispatchStatusDto
+public sealed record EmailDispatchStatusDto
 {
-    public Guid OutboxId { get; set; }
-    public Guid TenantId { get; set; }
-    public string SourceType { get; set; } = string.Empty;
-    public Guid SourceId { get; set; }
-    public string DeliveryStatus { get; set; } = string.Empty;
-    public int AttemptCount { get; set; }
-    public DateTime? NextRetryAt { get; set; }
-    public string? LastFailureCategory { get; set; }
-    public DateTime? LastFailureAt { get; set; }
-    public DateTime? UnknownAt { get; set; }
-    public DateTime? DeliveredAt { get; set; }
-    public DateTime? ParkedAt { get; set; }
-    public DateTime? ContentRedactedAt { get; set; }
-    public string? CorrelationId { get; set; }
+    public Guid OutboxId { get; init; }
+    public Guid TenantId { get; init; }
+    public string SourceType { get; init; } = string.Empty;
+    public Guid SourceId { get; init; }
+    public string DeliveryStatus { get; init; } = string.Empty;
+    public int AttemptCount { get; init; }
+    public DateTime? NextRetryAt { get; init; }
+    public string? LastFailureCategory { get; init; }
+    public DateTime? LastFailureAt { get; init; }
+    public DateTime? UnknownAt { get; init; }
+    public DateTime? DeliveredAt { get; init; }
+    public DateTime? ParkedAt { get; init; }
+    public DateTime? ContentRedactedAt { get; init; }
+    public string? CorrelationId { get; init; }
 }
 
-public sealed class EmailDispatchProcessorControlDto
+public sealed record EmailDispatchProcessorControlDto
 {
-    public string ProcessorCode { get; set; } = "smtp";
-    public bool IsPaused { get; set; }
-    public string? PauseReason { get; set; }
-    public DateTime? PausedAt { get; set; }
-    public int? GlobalSmtpRateLimitPerMinuteOverride { get; set; }
-    public bool OptionalRemindersDeferred { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public string ProcessorCode { get; init; } = "smtp";
+    public bool IsPaused { get; init; }
+    public string? PauseReason { get; init; }
+    public DateTime? PausedAt { get; init; }
+    public int? GlobalSmtpRateLimitPerMinuteOverride { get; init; }
+    public bool OptionalRemindersDeferred { get; init; }
+    public DateTime? UpdatedAt { get; init; }
 }

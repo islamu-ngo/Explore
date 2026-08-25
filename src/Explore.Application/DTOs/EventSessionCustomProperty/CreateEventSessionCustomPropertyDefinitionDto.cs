@@ -5,9 +5,9 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSessionCustomProperty;
 
-public class CreateEventSessionCustomPropertyDefinitionDto
+public sealed record CreateEventSessionCustomPropertyDefinitionDto
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
     public string Namespace { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
@@ -30,7 +30,7 @@ public class CreateEventSessionCustomPropertyDefinitionDto
     public decimal? DefaultNumberValue { get; set; }
     public bool? DefaultBooleanValue { get; set; }
     public DateTimeOffset? DefaultDateTimeValue { get; set; }
-    public Guid? DefaultOptionId { get; set; }
+    public Guid? DefaultOptionId { get; init; }
 
     public int? MinLength { get; set; }
     public int? MaxLength { get; set; }

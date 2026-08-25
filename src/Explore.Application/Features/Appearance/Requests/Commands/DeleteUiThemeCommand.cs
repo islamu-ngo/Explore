@@ -5,7 +5,4 @@ namespace Explore.Application.Features.Appearance.Requests.Commands;
 
 using MediatR;
 
-public class DeleteUiThemeCommand : IRequest<bool>
-{
-    public Guid Id { get; set; }
-}
+public sealed record DeleteUiThemeCommand(Guid Id = default) : IRequest<bool>;

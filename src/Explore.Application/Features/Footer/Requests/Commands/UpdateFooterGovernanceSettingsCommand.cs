@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
-public class UpdateFooterGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateFooterGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchFooterGovernanceSettingsDto Patch { get; set; }
+    public Guid UserId { get; init; }
+    public required PatchFooterGovernanceSettingsDto Patch { get; init; }
 }

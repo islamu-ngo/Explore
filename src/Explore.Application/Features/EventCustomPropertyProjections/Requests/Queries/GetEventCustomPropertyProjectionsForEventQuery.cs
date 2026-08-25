@@ -10,10 +10,10 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.CustomPropertyProjections.View)]
-public class GetEventCustomPropertyProjectionsForEventQuery : IRequest<BaseCommandResponse<IReadOnlyList<EventCustomPropertyProjectionDto>>>, ISecureRequest
+public sealed record GetEventCustomPropertyProjectionsForEventQuery : IRequest<BaseCommandResponse<IReadOnlyList<EventCustomPropertyProjectionDto>>>, ISecureRequest
 {
-    public Guid EventId { get; set; }
-    public ExposureLevel? ExposureCeiling { get; set; }
+    public Guid EventId { get; init; }
+    public ExposureLevel? ExposureCeiling { get; init; }
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 

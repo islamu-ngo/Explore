@@ -9,12 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.EventTemplates.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TemplateId { get; set; }
-    public required UpdateEventTemplateDto TemplateDto { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid TemplateId { get; init; }
+    public required UpdateEventTemplateDto TemplateDto { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString();
 

@@ -6,6 +6,6 @@ namespace Explore.Application.Features.Appearance.Requests.Queries;
 using Explore.Application.DTOs.Appearance;
 using MediatR;
 
-public class GetAvailableThemesQuery : IRequest<IReadOnlyList<AvailableThemeDto>>
+public sealed record GetAvailableThemesQuery : IRequest<IReadOnlyList<AvailableThemeDto>>
 {
 }

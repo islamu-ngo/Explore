@@ -146,6 +146,12 @@ No PostGIS extension, spatial entity/index, proximity endpoint, or readiness che
 1. `PerformanceBehavior` — logs any request taking >500ms as a warning.
 2. `AuthorizationBehavior` — checks `IAuthorizedRequest` interface or `[AuthorizeResource]` attribute. Optionally enhanced by `ISecureRequest` for dynamic resource context. Throws `AuthorizationException` on deny. Uses `ConcurrentDictionary` reflection caching for attribute lookups and emits activity spans via the `Explore.Authorization` ActivitySource for distributed tracing.
 
+## Contract Value Semantics
+
+Handwritten immutable contracts follow the [canonical record-selection policy](GOVERNANCE.md#canonical-record-selection-policy). Concrete Application MediatR requests and immutable DTO/payload snapshots use record semantics; EF entities, persisted outbox lifecycle rows, generated NSwag contracts, mutable command responses, and Blazor edit/component state remain classes. This is a shallow immutability boundary: mutable collection inputs are copied only where the published contract promises a stable snapshot, and record equality does not make sequence contents structurally equal or imply thread safety.
+
+HTTP adapters supply the current tenant and user from the authenticated principal, resolved tenant context, authoritative route, or trusted adapter. Body identifiers are retained only when they name the operation's legitimate target and are independently authorized server-side.
+
 ## Idempotency
 Write operations support `Idempotency-Key` header for safe retries. `IdempotencyMiddleware` caches responses by `(Key, TenantId)` in PostgreSQL and replays them within 24 hours. Entity: `IdempotencyRecord` in Domain layer, persisted via `IIdempotencyRepository`.
 

@@ -2,10 +2,9 @@ using System;
 
 namespace Explore.Application.DTOs.Category;
 
-public class CreateCategoryDto
+public sealed record CreateCategoryDto
 {
-    public required string MasterCode { get; set; }
-    public required string FullName { get; set; }
-    public Guid? ParentId { get; set; }
-    public Guid TenantId { get; set; }
+    public required string MasterCode { get; init; }
+    public required string FullName { get; init; }
+    public Guid? ParentId { get; init; }
 }

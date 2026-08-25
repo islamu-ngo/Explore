@@ -8,17 +8,24 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class RollbackControlPlaneTenantPlanAssignmentCommand(
-    Guid tenantId,
-    Guid assignmentId,
-    Guid operatorId)
+public sealed record RollbackControlPlaneTenantPlanAssignmentCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public RollbackControlPlaneTenantPlanAssignmentCommand(
+        Guid tenantId,
+        Guid assignmentId,
+        Guid operatorId)
+    {
+        TenantId = tenantId;
+        AssignmentId = assignmentId;
+        OperatorId = operatorId;
+    }
+
     public const string SettingKey = "control-plane.tenant-plan-assignments";
 
-    public Guid TenantId { get; } = tenantId;
-    public Guid AssignmentId { get; } = assignmentId;
-    public Guid OperatorId { get; } = operatorId;
+    public Guid TenantId { get; }
+    public Guid AssignmentId { get; }
+    public Guid OperatorId { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

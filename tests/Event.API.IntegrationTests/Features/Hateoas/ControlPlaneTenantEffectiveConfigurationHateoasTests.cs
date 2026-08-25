@@ -91,8 +91,11 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     {
         var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
         var configuration = CreateConfiguration();
-        configuration.PlanAssignment = null;
-        configuration.RollbackAssignment = null;
+        configuration = configuration with
+        {
+            PlanAssignment = null,
+            RollbackAssignment = null
+        };
 
         var links = policy.GetLinks(configuration, user: null).ToArray();
 
@@ -106,7 +109,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     {
         var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
         ControlPlaneTenantEffectiveConfigurationDto configuration = CreateConfiguration();
-        configuration.RollbackAssignment = null;
+        configuration = configuration with { RollbackAssignment = null };
 
         LinkDefinition[] links = policy.GetLinks(configuration, user: null).ToArray();
 
@@ -119,8 +122,10 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     {
         var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
         var configuration = CreateConfiguration();
-        configuration.Settings =
-        [
+        configuration = configuration with
+        {
+            Settings =
+            [
             new ControlPlaneTenantEffectiveSettingDto
             {
                 Key = "branding.display_name",
@@ -148,7 +153,8 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
                 IsLocked = false,
                 IsSensitive = true
             }
-        ];
+            ]
+        };
 
         var relations = policy.GetLinks(configuration, user: null).Select(link => link.Rel).ToArray();
 
@@ -161,8 +167,10 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     public async Task SettingLinks_FollowEffectiveStateMatrix()
     {
         var configuration = CreateConfiguration();
-        configuration.Settings =
-        [
+        configuration = configuration with
+        {
+            Settings =
+            [
             Setting(InfrastructureSecretSettingKeys.Email.SmtpPassword, "TenantOverride", isSensitive: true),
             Setting(GovernanceSettingKeys.Email.SmtpHost, "SystemLocked", isLocked: true),
             Setting(GovernanceSettingKeys.Email.SmtpHost, "SystemDefault"),
@@ -171,7 +179,8 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
             Setting(GovernanceSettingKeys.Email.SmtpSecurity, "TenantLocked", isLocked: true),
             Setting("unknown.setting", "TenantOverride"),
             Setting(GovernanceSettingKeys.AdminPortal.Enabled, "TenantOverride")
-        ];
+            ]
+        };
 
         var result = await AssembleAsync(configuration, _ => true);
 
@@ -191,7 +200,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     {
         var configuration = CreateConfiguration();
         const string targetKey = GovernanceSettingKeys.Branding.DisplayName;
-        configuration.Settings = [Setting(targetKey, "TenantOverride")];
+        configuration = configuration with { Settings = [Setting(targetKey, "TenantOverride")] };
 
         var result = await AssembleAsync(configuration, definition => definition.Rel != "lock");
 
@@ -228,7 +237,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     {
         var configuration = CreateConfiguration();
         const string targetKey = GovernanceSettingKeys.Email.SmtpSecurity;
-        configuration.Settings = [Setting(targetKey, "TenantLocked", isLocked: true)];
+        configuration = configuration with { Settings = [Setting(targetKey, "TenantLocked", isLocked: true)] };
 
         var result = await AssembleAsync(configuration, _ => true);
 
@@ -248,7 +257,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     public async Task SettingLinks_AreOmittedForMinimalResponse()
     {
         var configuration = CreateConfiguration();
-        configuration.Settings = [Setting(GovernanceSettingKeys.Branding.DisplayName, "TenantOverride")];
+        configuration = configuration with { Settings = [Setting(GovernanceSettingKeys.Branding.DisplayName, "TenantOverride")] };
 
         var result = await AssembleAsync(configuration, _ => true, minimal: true);
 
@@ -261,7 +270,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     public async Task SettingLinks_AreOmittedWhenRootHasNoAuthorizedLinks()
     {
         var configuration = CreateConfiguration();
-        configuration.Settings = [Setting(GovernanceSettingKeys.Branding.DisplayName, "TenantOverride")];
+        configuration = configuration with { Settings = [Setting(GovernanceSettingKeys.Branding.DisplayName, "TenantOverride")] };
 
         var result = await AssembleAsync(configuration, _ => false);
 
@@ -275,7 +284,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
     public async Task EffectiveSettingJson_RoundTripsNestedLinksAndOmitsNullLinks()
     {
         var setting = Setting(GovernanceSettingKeys.Branding.DisplayName, "TenantOverride");
-        setting.Value = "smtp.example.test";
+        setting = setting with { Value = "smtp.example.test" };
         setting.Links = new Dictionary<string, HalLink>
         {
             ["override"] = new HalLink

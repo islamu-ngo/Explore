@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.OrganizationMembers.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.OrganizationMember, AuthorizationActions.OrganizationMembers.View)]
-public class GetOrganizationMembersRequest : IRequest<List<OrganizationMemberDto>>, ISecureRequest
+public sealed record GetOrganizationMembersRequest : IRequest<List<OrganizationMemberDto>>, ISecureRequest
 {
-    public Guid OrganizationId { get; set; }
+    public Guid OrganizationId { get; init; }
 
     public Guid TenantId { get; init; }
 

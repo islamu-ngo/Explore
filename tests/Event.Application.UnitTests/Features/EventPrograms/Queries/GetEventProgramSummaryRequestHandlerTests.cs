@@ -46,7 +46,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.EventId).IsEqualTo(eventId);
@@ -92,7 +92,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
         var section = result!.Sections.Single().SessionGroups.Single();
         var item = section.Days.Single().Items.Single();
         var leakedFields = new[]
@@ -112,7 +112,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         var eventId = Guid.NewGuid();
         _eventRepository.GetEventWithDetails(eventId).Returns((Explore.Domain.Event?)null);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
@@ -129,7 +129,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -203,7 +203,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Sections.Single().SectionKey).IsEqualTo("unassigned");
@@ -243,7 +243,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
 
-        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest(eventId), CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].startTime")).IsTrue();

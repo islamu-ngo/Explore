@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantOnboarding.Requests.Queries;
 
-public class GetTenantPolicySettingsQuery : IRequest<TenantPolicySettingsDto>
+public sealed record GetTenantPolicySettingsQuery : IRequest<TenantPolicySettingsDto>
 {
 }

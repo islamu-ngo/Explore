@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class OspreySignalCallbackItemDto
+public sealed record OspreySignalCallbackItemDto
 {
     public required string SignalType { get; init; }
     public required string PolicyCode { get; init; }

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning;
 
-public class ManagedProviderClientProvisioningResultDto
+public sealed record ManagedProviderClientProvisioningResultDto
 {
     public Guid TenantId { get; init; }
     public Guid UserId { get; init; }

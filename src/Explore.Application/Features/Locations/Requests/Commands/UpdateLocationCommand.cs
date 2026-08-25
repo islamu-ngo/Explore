@@ -9,13 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Update)]
-public class UpdateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid LocationId { get; set; }
+    public Guid LocationId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateLocationDto UpdateLocationDto { get; set; }
+    public required UpdateLocationDto UpdateLocationDto { get; init; }
 
     string? ISecureRequest.ResourceId => LocationId.ToString();
 }

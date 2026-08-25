@@ -5,13 +5,13 @@ namespace Explore.Application.DTOs.EventSession;
 
 using Explore.Domain;
 
-public class EventSessionIslamicAspectDto
+public sealed record EventSessionIslamicAspectDto
 {
-    public SessionStartTimeType StartTimeType { get; set; } = SessionStartTimeType.RelativeToPrayer;
-    public PrayerTime? ReferencePrayer { get; set; }
-    public int? OffsetMinutes { get; set; }
-    public PrayerTime? EndReferencePrayer { get; set; }
-    public int? EndOffsetMinutes { get; set; }
-    public bool RequiresWudu { get; set; }
-    public string? RitualRequirementsJson { get; set; }
+    public SessionStartTimeType StartTimeType { get; init; } = SessionStartTimeType.RelativeToPrayer;
+    public PrayerTime? ReferencePrayer { get; init; }
+    public int? OffsetMinutes { get; init; }
+    public PrayerTime? EndReferencePrayer { get; init; }
+    public int? EndOffsetMinutes { get; init; }
+    public bool RequiresWudu { get; init; }
+    public string? RitualRequirementsJson { get; init; }
 }

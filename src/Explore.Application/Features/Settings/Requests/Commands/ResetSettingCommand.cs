@@ -11,7 +11,7 @@ using MediatR;
 /// Removes the override for a setting key at the specified scope. The effective value
 /// reverts to the next higher scope in the cascade (e.g., removing user override → tenant value applies).
 /// </summary>
-public class ResetSettingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record ResetSettingCommand : IRequest<BaseCommandResponse<Guid>>
 {
     /// <summary>
     /// Fully qualified setting key (e.g., "event_list.page_size"). Must exist in SettingRegistry.

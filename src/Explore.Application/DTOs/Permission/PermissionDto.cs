@@ -3,20 +3,20 @@
 
 namespace Explore.Application.DTOs.Permission;
 
-public class PermissionDto
+public sealed record PermissionDto
 {
-    public int Id { get; set; }
-    public required string MasterCode { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
-    public required string ResourceKind { get; set; }
-    public required string Action { get; set; }
-    public string? FieldScope { get; set; }
-    public required string GroupName { get; set; }
-    public int RoleScopeId { get; set; }
-    public required string RoleScopeCode { get; set; }
-    public required string RoleScopeName { get; set; }
-    public bool IsSystem { get; set; }
-    public bool IsFiltered { get; set; }
-    public bool IsActive { get; set; }
+    public int Id { get; init; }
+    public required string MasterCode { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
+    public required string ResourceKind { get; init; }
+    public required string Action { get; init; }
+    public string? FieldScope { get; init; }
+    public required string GroupName { get; init; }
+    public int RoleScopeId { get; init; }
+    public required string RoleScopeCode { get; init; }
+    public required string RoleScopeName { get; init; }
+    public bool IsSystem { get; init; }
+    public bool IsFiltered { get; init; }
+    public bool IsActive { get; init; }
 }

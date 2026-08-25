@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookEndpointSubscriptionDto
+public sealed record WebhookEndpointSubscriptionDto
 {
     public Guid Id { get; init; }
 

@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.VisibilityTypes.Requests.Queries;
 
-public class GetVisibilityTypeDetailsRequest : IRequest<VisibilityTypeDto>
-{
-    public int Id { get; set; }
-}
+public sealed record GetVisibilityTypeDetailsRequest(int Id = default) : IRequest<VisibilityTypeDto>;

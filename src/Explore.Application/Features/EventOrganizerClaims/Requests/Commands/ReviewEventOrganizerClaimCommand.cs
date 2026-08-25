@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventOrganizerClaim, AuthorizationActions.Events.ReviewOrganizerClaim)]
-public sealed class ReviewEventOrganizerClaimCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ReviewEventOrganizerClaimCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid ClaimId { get; init; }

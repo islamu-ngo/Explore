@@ -11,17 +11,9 @@ using MediatR;
 
 namespace Explore.Application.Features.Organizations.Requests.Queries;
 
-public class GetOrganizationListRequest : IRequest<PaginatedResult<OrganizationListDto>>
+public sealed record GetOrganizationListRequest : IRequest<PaginatedResult<OrganizationListDto>>
 {
-    public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the page number (1-based). Defaults to 1.
-    /// </summary>
-    public int PageNumber { get; set; } = 1;
-
-    /// <summary>
-    /// Gets or sets the page size. Defaults to 20.
-    /// </summary>
-    public int PageSize { get; set; } = 20;
+    public Guid Id { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }

@@ -5,67 +5,67 @@ using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventProgram;
 
-public class EventProgramSummaryDto
+public sealed record EventProgramSummaryDto
 {
-    public Guid EventId { get; set; }
-    public string EventTitle { get; set; } = string.Empty;
-    public string? TimeZoneId { get; set; }
+    public Guid EventId { get; init; }
+    public string EventTitle { get; init; } = string.Empty;
+    public string? TimeZoneId { get; init; }
     public List<EventProgramSectionDto> Sections { get; set; } = [];
-    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; set; } = [];
+    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; init; } = [];
 }
 
-public class EventProgramSectionDto
+public sealed record EventProgramSectionDto
 {
-    public string SectionKey { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public int SortOrder { get; set; }
-    public List<EventProgramSessionGroupSectionDto> SessionGroups { get; set; } = [];
+    public string SectionKey { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
+    public int SortOrder { get; init; }
+    public List<EventProgramSessionGroupSectionDto> SessionGroups { get; init; } = [];
 }
 
-public class EventProgramSessionGroupSectionDto
+public sealed record EventProgramSessionGroupSectionDto
 {
-    public Guid? SessionGroupId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public int SortOrder { get; set; }
-    public string? Color { get; set; }
-    public string? LocationName { get; set; }
-    public string? RoomName { get; set; }
-    public EventLocationPublicDto? EventLocation { get; set; }
-    public List<EventProgramDayGroupDto> Days { get; set; } = [];
+    public Guid? SessionGroupId { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public int SortOrder { get; init; }
+    public string? Color { get; init; }
+    public string? LocationName { get; init; }
+    public string? RoomName { get; init; }
+    public EventLocationPublicDto? EventLocation { get; init; }
+    public List<EventProgramDayGroupDto> Days { get; init; } = [];
 }
 
-public class EventProgramDayGroupDto
+public sealed record EventProgramDayGroupDto
 {
-    public DateOnly? LocalDate { get; set; }
-    public string DisplayLabel { get; set; } = string.Empty;
-    public List<EventProgramItemDto> Items { get; set; } = [];
+    public DateOnly? LocalDate { get; init; }
+    public string DisplayLabel { get; init; } = string.Empty;
+    public List<EventProgramItemDto> Items { get; init; } = [];
 }
 
-public class EventProgramItemDto
+public sealed record EventProgramItemDto
 {
-    public Guid SessionId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public int? EventSessionKindId { get; set; }
-    public string? EventSessionKindName { get; set; }
-    public string? EventSessionKindMasterCode { get; set; }
-    public DateTimeOffset? StartsAtUtc { get; set; }
-    public DateTimeOffset? EndsAtUtc { get; set; }
-    public DateOnly? LocalDate { get; set; }
-    public TimeOnly? LocalStartTime { get; set; }
-    public TimeOnly? LocalEndTime { get; set; }
-    public int SortOrder { get; set; }
-    public Guid? SessionGroupId { get; set; }
-    public string? LocationName { get; set; }
-    public string? RoomName { get; set; }
-    public EventLocationPublicDto? EventLocation { get; set; }
-    public int? Capacity { get; set; }
-    public string? RegistrationModeName { get; set; }
-    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; set; } = [];
+    public Guid SessionId { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public int? EventSessionKindId { get; init; }
+    public string? EventSessionKindName { get; init; }
+    public string? EventSessionKindMasterCode { get; init; }
+    public DateTimeOffset? StartsAtUtc { get; init; }
+    public DateTimeOffset? EndsAtUtc { get; init; }
+    public DateOnly? LocalDate { get; init; }
+    public TimeOnly? LocalStartTime { get; init; }
+    public TimeOnly? LocalEndTime { get; init; }
+    public int SortOrder { get; init; }
+    public Guid? SessionGroupId { get; init; }
+    public string? LocationName { get; init; }
+    public string? RoomName { get; init; }
+    public EventLocationPublicDto? EventLocation { get; init; }
+    public int? Capacity { get; init; }
+    public string? RegistrationModeName { get; init; }
+    public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; init; } = [];
 }
 
-public class EventProgramReadinessWarningDto
+public sealed record EventProgramReadinessWarningDto
 {
-    public string Path { get; set; } = string.Empty;
-    public string Severity { get; set; } = "warning";
-    public string Message { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
+    public string Severity { get; init; } = "warning";
+    public string Message { get; init; } = string.Empty;
 }

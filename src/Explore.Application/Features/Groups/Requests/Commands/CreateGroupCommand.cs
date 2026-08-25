@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Groups.Requests.Commands;
 
-public class CreateGroupCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateGroupCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required CreateGroupDto GroupDto { get; set; }
+    public required CreateGroupDto GroupDto { get; init; }
     public required Guid CreatorUserId { get; init; }
 }

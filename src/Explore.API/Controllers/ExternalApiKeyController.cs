@@ -64,7 +64,7 @@ public class ExternalApiKeyController(IMediator mediator) : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<ExternalApiKeyListDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var key = await mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
+        var key = await mediator.Send(new GetExternalApiKeyDetailsRequest(id), cancellationToken);
         if (key == null)
             return this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
 
@@ -136,7 +136,7 @@ public class ExternalApiKeyController(IMediator mediator) : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var revoked = await mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
+        var revoked = await mediator.Send(new RevokeExternalApiKeyCommand(id), cancellationToken);
 
         return revoked ? NoContent() : this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
     }

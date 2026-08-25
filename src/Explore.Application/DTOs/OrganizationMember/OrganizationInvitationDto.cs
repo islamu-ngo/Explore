@@ -4,11 +4,11 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.OrganizationMember;
 
-public class OrganizationInvitationDto
+public sealed record OrganizationInvitationDto
 {
-    public Guid Id { get; set; }
-    public Guid OrganizationId { get; set; }
-    public required string OrganizationName { get; set; }
-    public RoleEnum Role { get; set; }
-    public required string Email { get; set; }
+    public Guid Id { get; init; }
+    public Guid OrganizationId { get; init; }
+    public required string OrganizationName { get; init; }
+    public RoleEnum Role { get; init; }
+    public required string Email { get; init; }
 }

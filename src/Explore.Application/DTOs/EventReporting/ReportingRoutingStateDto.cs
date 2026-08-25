@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class ReportingRoutingStateDto
+public sealed record ReportingRoutingStateDto
 {
     public Guid TenantId { get; init; }
 
@@ -32,7 +32,7 @@ public sealed class ReportingRoutingStateDto
     public ReportingProviderStateDto Coop { get; init; } = new();
 }
 
-public sealed class ReportingProviderStateDto
+public sealed record ReportingProviderStateDto
 {
     public int ProviderId { get; init; }
 
@@ -47,7 +47,7 @@ public sealed class ReportingProviderStateDto
     public IReadOnlyList<ReportingProviderTargetDto> Targets { get; init; } = [];
 }
 
-public sealed class ReportingProviderTargetDto
+public sealed record ReportingProviderTargetDto
 {
     public int ProviderId { get; init; }
 

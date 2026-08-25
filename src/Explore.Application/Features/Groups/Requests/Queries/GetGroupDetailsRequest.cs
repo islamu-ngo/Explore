@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Groups.Requests.Queries;
 
-public class GetGroupDetailsRequest : IRequest<GroupDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetGroupDetailsRequest(Guid Id = default) : IRequest<GroupDto>;

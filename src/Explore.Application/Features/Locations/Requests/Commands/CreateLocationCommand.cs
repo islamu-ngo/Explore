@@ -9,11 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Create)]
-public class CreateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateLocationDto LocationDto { get; set; }
+    public required CreateLocationDto LocationDto { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => null;
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
-        new TenantScopedAuthorizationFacts(LocationDto.TenantId);
+        new TenantScopedAuthorizationFacts(TenantId);
 }

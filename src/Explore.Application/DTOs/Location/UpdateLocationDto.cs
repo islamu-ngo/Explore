@@ -5,54 +5,54 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Location;
 
-public class UpdateLocationDto
+public sealed record UpdateLocationDto
 {
-    public UpdateLocationFullNameDto? FullName { get; set; }
-    public UpdateLocationAddressDto? Address { get; set; }
-    public UpdateLocationPostcodeDto? Postcode { get; set; }
-    public UpdateLocationCountryDto? Country { get; set; }
-    public UpdateLocationCityDto? City { get; set; }
-    public UpdateLocationLatitudeDto? Latitude { get; set; }
-    public UpdateLocationLongitudeDto? Longitude { get; set; }
-    public UpdateLocationTimezoneDto? Timezone { get; set; }
+    public UpdateLocationFullNameDto? FullName { get; init; }
+    public UpdateLocationAddressDto? Address { get; init; }
+    public UpdateLocationPostcodeDto? Postcode { get; init; }
+    public UpdateLocationCountryDto? Country { get; init; }
+    public UpdateLocationCityDto? City { get; init; }
+    public UpdateLocationLatitudeDto? Latitude { get; init; }
+    public UpdateLocationLongitudeDto? Longitude { get; init; }
+    public UpdateLocationTimezoneDto? Timezone { get; init; }
 }
 
-public class UpdateLocationFullNameDto
+public sealed record UpdateLocationFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationAddressDto
+public sealed record UpdateLocationAddressDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationPostcodeDto
+public sealed record UpdateLocationPostcodeDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationCountryDto
+public sealed record UpdateLocationCountryDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationCityDto
+public sealed record UpdateLocationCityDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationLatitudeDto
+public sealed record UpdateLocationLatitudeDto
 {
-    public OptionalUpdate<double?> Value { get; set; } = OptionalUpdate<double?>.Unspecified();
+    public OptionalUpdate<double?> Value { get; init; } = OptionalUpdate<double?>.Unspecified();
 }
 
-public class UpdateLocationLongitudeDto
+public sealed record UpdateLocationLongitudeDto
 {
-    public OptionalUpdate<double?> Value { get; set; } = OptionalUpdate<double?>.Unspecified();
+    public OptionalUpdate<double?> Value { get; init; } = OptionalUpdate<double?>.Unspecified();
 }
 
-public class UpdateLocationTimezoneDto
+public sealed record UpdateLocationTimezoneDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }

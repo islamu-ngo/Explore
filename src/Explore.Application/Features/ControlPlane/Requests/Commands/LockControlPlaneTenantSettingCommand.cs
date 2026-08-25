@@ -11,11 +11,17 @@ namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 /// tenant from editing it. Used by instance administrators from the Control Plane.
 /// </summary>
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class LockControlPlaneTenantSettingCommand(Guid tenantId, string key)
+public sealed record LockControlPlaneTenantSettingCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TenantId { get; } = tenantId;
-    public string Key { get; } = key;
+    public LockControlPlaneTenantSettingCommand(Guid tenantId, string key)
+    {
+        TenantId = tenantId;
+        Key = key;
+    }
+
+    public Guid TenantId { get; }
+    public string Key { get; }
 
     public const string SettingKey = "control-plane.tenant-effective-configuration";
 

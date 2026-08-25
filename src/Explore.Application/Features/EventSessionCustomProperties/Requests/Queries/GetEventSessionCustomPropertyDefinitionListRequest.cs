@@ -7,9 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionCustomProperties.Requests.Queries;
 
-public class GetEventSessionCustomPropertyDefinitionListRequest : IRequest<PaginatedResult<EventSessionCustomPropertyDefinitionListDto>>
+public sealed record GetEventSessionCustomPropertyDefinitionListRequest : IRequest<PaginatedResult<EventSessionCustomPropertyDefinitionListDto>>
 {
-    public Guid EventSessionId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = PaginatedResult<EventSessionCustomPropertyDefinitionListDto>.DefaultPageSize;
+    public Guid EventSessionId { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = PaginatedResult<EventSessionCustomPropertyDefinitionListDto>.DefaultPageSize;
 }

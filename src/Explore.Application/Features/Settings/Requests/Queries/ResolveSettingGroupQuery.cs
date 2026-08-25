@@ -11,7 +11,7 @@ using MediatR;
 /// Resolves all settings for a category through the hierarchical cascade at the requested scope.
 /// The scope determines context depth: User sees full cascade, Tenant sees instance+tenant only.
 /// </summary>
-public class ResolveSettingGroupQuery : IRequest<SettingGroupResponseDto>
+public sealed record ResolveSettingGroupQuery : IRequest<SettingGroupResponseDto>
 {
     /// <summary>
     /// Setting category (e.g., "EventList", "Appearance"). Must exist in SettingRegistry.
@@ -24,5 +24,13 @@ public class ResolveSettingGroupQuery : IRequest<SettingGroupResponseDto>
     /// </summary>
     public required SettingScope Scope { get; init; }
 
-    public IReadOnlySet<string>? IncludedKeys { get; init; }
+    private IReadOnlyCollection<string>? _includedKeys;
+
+    public IReadOnlyCollection<string>? IncludedKeys
+    {
+        get => _includedKeys;
+        init => _includedKeys = value is null
+            ? null
+            : Array.AsReadOnly(value.Distinct(StringComparer.Ordinal).ToArray());
+    }
 }

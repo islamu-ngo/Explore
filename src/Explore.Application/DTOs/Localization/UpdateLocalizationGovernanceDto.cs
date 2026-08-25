@@ -3,30 +3,30 @@
 
 namespace Explore.Application.DTOs.Localization;
 
-public sealed class UpdateLocalizationGovernanceDto
+public sealed record UpdateLocalizationGovernanceDto
 {
-    public LocalizationTmsUpdateDto? Tms { get; set; }
-    public LocalizationLanguagePolicyUpdateDto? Languages { get; set; }
-    public LocalizationRuntimeUpdateDto? Runtime { get; set; }
+    public LocalizationTmsUpdateDto? Tms { get; init; }
+    public LocalizationLanguagePolicyUpdateDto? Languages { get; init; }
+    public LocalizationRuntimeUpdateDto? Runtime { get; init; }
 }
 
-public sealed class LocalizationTmsUpdateDto
+public sealed record LocalizationTmsUpdateDto
 {
-    public required string Provider { get; set; }
-    public string? ApiUrl { get; set; }
-    public string? ProjectId { get; set; }
-    public string? Component { get; set; }
+    public required string Provider { get; init; }
+    public string? ApiUrl { get; init; }
+    public string? ProjectId { get; init; }
+    public string? Component { get; init; }
 }
 
-public sealed class LocalizationLanguagePolicyUpdateDto
+public sealed record LocalizationLanguagePolicyUpdateDto
 {
-    public required string DefaultLanguage { get; set; }
-    public string[] EnabledLanguages { get; set; } = [];
-    public required string FallbackLanguage { get; set; }
+    public required string DefaultLanguage { get; init; }
+    public string[] EnabledLanguages { get; init; } = [];
+    public required string FallbackLanguage { get; init; }
 }
 
-public sealed class LocalizationRuntimeUpdateDto
+public sealed record LocalizationRuntimeUpdateDto
 {
-    public bool ClientPickerEnabled { get; set; }
-    public bool ForceOfflineMode { get; set; }
+    public bool ClientPickerEnabled { get; init; }
+    public bool ForceOfflineMode { get; init; }
 }

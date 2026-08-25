@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Queries;
 
-public class GetNotificationByIdRequest : IRequest<NotificationDto?>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetNotificationByIdRequest(Guid Id = default) : IRequest<NotificationDto?>;

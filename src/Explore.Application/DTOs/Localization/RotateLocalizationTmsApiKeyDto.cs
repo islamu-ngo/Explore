@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Localization;
 
-public class RotateLocalizationTmsApiKeyDto
+public sealed record RotateLocalizationTmsApiKeyDto
 {
-    public string? TmsApiKey { get; set; }
+    public string? TmsApiKey { get; init; }
 }

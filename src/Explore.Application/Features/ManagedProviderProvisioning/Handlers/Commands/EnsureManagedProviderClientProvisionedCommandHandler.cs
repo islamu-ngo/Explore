@@ -711,7 +711,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
 
         if (tenantAdminRole == null)
         {
-            logger.LogWarning("tenant.admin role not found during managed provider provisioning for TenantId={TenantId}.", tenantId);
+            logger.LogWarning("tenant.admin role not found during managed provider provisioning.");
             tenantAdminRole = new Role
             {
                 Id = (int)RoleEnum.TenantAdmin,

@@ -13,8 +13,20 @@ namespace Explore.Blazor.Client.Helpers;
 /// Holds URL-derived filter values for the event list page.
 /// Built from <c>[SupplyParameterFromQuery]</c> properties; passed to EventFilterBar as initial state.
 /// </summary>
-public sealed class EventFilterUrlState
+public sealed record EventFilterUrlState
 {
+    private IReadOnlyList<int>? _formatIds;
+    private IReadOnlyList<int>? _eventTypeIds;
+    private IReadOnlyList<Guid>? _categoryIds;
+    private IReadOnlyList<Guid>? _tagIds;
+    private IReadOnlyList<int>? _madhabIds;
+    private IReadOnlyList<int>? _registrationModeIds;
+    private IReadOnlyList<int>? _languageIds;
+    private IReadOnlyList<int>? _audienceGenderIds;
+    private IReadOnlyList<int>? _audienceAgeIds;
+    private IReadOnlyList<int>? _genderModeIds;
+    private IReadOnlyList<int>? _referencePrayerIds;
+
     public string? SearchTerm { get; init; }
     public Guid? ActorId { get; init; }
     public Guid? OrganizationId { get; init; }
@@ -24,17 +36,61 @@ public sealed class EventFilterUrlState
     public TemporalView? View { get; init; }
     public DateOnly? DateFrom { get; init; }
     public DateOnly? DateTo { get; init; }
-    public List<int>? FormatIds { get; init; }
-    public List<int>? EventTypeIds { get; init; }
-    public List<Guid>? CategoryIds { get; init; }
-    public List<Guid>? TagIds { get; init; }
-    public List<int>? MadhabIds { get; init; }
-    public List<int>? RegistrationModeIds { get; init; }
-    public List<int>? LanguageIds { get; init; }
-    public List<int>? AudienceGenderIds { get; init; }
-    public List<int>? AudienceAgeIds { get; init; }
-    public List<int>? GenderModeIds { get; init; }
-    public List<int>? ReferencePrayerIds { get; init; }
+    public IReadOnlyList<int>? FormatIds
+    {
+        get => _formatIds;
+        init => _formatIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? EventTypeIds
+    {
+        get => _eventTypeIds;
+        init => _eventTypeIds = Snapshot(value);
+    }
+    public IReadOnlyList<Guid>? CategoryIds
+    {
+        get => _categoryIds;
+        init => _categoryIds = Snapshot(value);
+    }
+    public IReadOnlyList<Guid>? TagIds
+    {
+        get => _tagIds;
+        init => _tagIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? MadhabIds
+    {
+        get => _madhabIds;
+        init => _madhabIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? RegistrationModeIds
+    {
+        get => _registrationModeIds;
+        init => _registrationModeIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? LanguageIds
+    {
+        get => _languageIds;
+        init => _languageIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? AudienceGenderIds
+    {
+        get => _audienceGenderIds;
+        init => _audienceGenderIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? AudienceAgeIds
+    {
+        get => _audienceAgeIds;
+        init => _audienceAgeIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? GenderModeIds
+    {
+        get => _genderModeIds;
+        init => _genderModeIds = Snapshot(value);
+    }
+    public IReadOnlyList<int>? ReferencePrayerIds
+    {
+        get => _referencePrayerIds;
+        init => _referencePrayerIds = Snapshot(value);
+    }
     public int? SkillLevelId { get; init; }
     public string? TechStackTag { get; init; }
 
@@ -61,6 +117,9 @@ public sealed class EventFilterUrlState
         ReferencePrayerIds is { Count: > 0 } ||
         SkillLevelId is not null ||
         !string.IsNullOrEmpty(TechStackTag);
+
+    private static IReadOnlyList<T>? Snapshot<T>(IEnumerable<T>? values) =>
+        values is null ? null : Array.AsReadOnly(values.ToArray());
 }
 
 public static class EventFilterUrlHelper

@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.EventCategories.Requests.Queries;
 
-public class GetEventCategoriesDetailsRequest : IRequest<EventCategoriesDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetEventCategoriesDetailsRequest(Guid Id) : IRequest<EventCategoriesDto>;

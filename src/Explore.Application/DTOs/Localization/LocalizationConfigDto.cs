@@ -3,18 +3,18 @@
 
 namespace Explore.Application.DTOs.Localization;
 
-public class LocalizationConfigDto
+public sealed record LocalizationConfigDto
 {
-    public string DefaultLanguage { get; set; } = "en";
-    public string TmsProvider { get; set; } = "None";
-    public string? TmsApiUrl { get; set; }
-    public string? TmsProjectId { get; set; }
-    public string? TmsComponent { get; set; }
-    public bool IsConnected { get; set; }
-    public List<string> AvailableLanguages { get; set; } = [];
-    public List<string> EnabledLanguages { get; set; } = [];
-    public string FallbackLanguage { get; set; } = "en";
-    public bool ClientPickerEnabled { get; set; } = true;
-    public bool ForceOfflineMode { get; set; }
-    public bool TmsApiKeyConfigured { get; set; }
+    public string DefaultLanguage { get; init; } = "en";
+    public string TmsProvider { get; init; } = "None";
+    public string? TmsApiUrl { get; init; }
+    public string? TmsProjectId { get; init; }
+    public string? TmsComponent { get; init; }
+    public bool IsConnected { get; init; }
+    public List<string> AvailableLanguages { get; init; } = [];
+    public List<string> EnabledLanguages { get; init; } = [];
+    public string FallbackLanguage { get; init; } = "en";
+    public bool ClientPickerEnabled { get; init; } = true;
+    public bool ForceOfflineMode { get; init; }
+    public bool TmsApiKeyConfigured { get; init; }
 }

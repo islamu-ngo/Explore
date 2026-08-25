@@ -5,42 +5,42 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.LocationRoom;
 
-public class UpdateLocationRoomDto
+public sealed record UpdateLocationRoomDto
 {
-    public UpdateLocationRoomLocationDto? Location { get; set; }
-    public UpdateLocationRoomNameDto? Name { get; set; }
-    public UpdateLocationRoomSlugDto? Slug { get; set; }
-    public UpdateLocationRoomDescriptionDto? Description { get; set; }
-    public UpdateLocationRoomCapacityDto? Capacity { get; set; }
-    public UpdateLocationRoomSortOrderDto? SortOrder { get; set; }
+    public UpdateLocationRoomLocationDto? Location { get; init; }
+    public UpdateLocationRoomNameDto? Name { get; init; }
+    public UpdateLocationRoomSlugDto? Slug { get; init; }
+    public UpdateLocationRoomDescriptionDto? Description { get; init; }
+    public UpdateLocationRoomCapacityDto? Capacity { get; init; }
+    public UpdateLocationRoomSortOrderDto? SortOrder { get; init; }
 }
 
-public class UpdateLocationRoomLocationDto
+public sealed record UpdateLocationRoomLocationDto
 {
-    public Guid LocationId { get; set; }
+    public Guid LocationId { get; init; }
 }
 
-public class UpdateLocationRoomNameDto
+public sealed record UpdateLocationRoomNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateLocationRoomSlugDto
+public sealed record UpdateLocationRoomSlugDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateLocationRoomDescriptionDto
+public sealed record UpdateLocationRoomDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateLocationRoomCapacityDto
+public sealed record UpdateLocationRoomCapacityDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateLocationRoomSortOrderDto
+public sealed record UpdateLocationRoomSortOrderDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }

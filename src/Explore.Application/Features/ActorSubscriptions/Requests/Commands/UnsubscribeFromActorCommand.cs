@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.ActorSubscriptions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.Delete)]
-public class UnsubscribeFromActorCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UnsubscribeFromActorCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UnsubscribeFromActorDto Subscription { get; set; }
+    public required UnsubscribeFromActorDto Subscription { get; init; }
 
     public string? ResourceId => Subscription.TargetActorId == Guid.Empty ? null : Subscription.TargetActorId.ToString();
 

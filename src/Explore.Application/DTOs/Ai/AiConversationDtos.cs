@@ -6,110 +6,110 @@ using Explore.Application.Hateoas;
 
 namespace Explore.Application.DTOs.Ai;
 
-public sealed class CreateAiConversationRequestDto
+public sealed record CreateAiConversationRequestDto
 {
-    public string? Title { get; set; }
-    public Guid? ActorId { get; set; }
+    public string? Title { get; init; }
+    public Guid? ActorId { get; init; }
 }
 
-public sealed class SendAiMessageRequestDto
+public sealed record SendAiMessageRequestDto
 {
-    public string Content { get; set; } = string.Empty;
-    public IReadOnlyList<AiMessageImageInputDto> Images { get; set; } = [];
-    public IReadOnlyList<AiSelectedReferenceDto> References { get; set; } = [];
-    public string IdempotencyKey { get; set; } = string.Empty;
-    public Guid? ActorId { get; set; }
-    public string? ModelId { get; set; }
-    public string Mode { get; set; } = AiAssistantInteractionModes.Build;
+    public string Content { get; init; } = string.Empty;
+    public IReadOnlyList<AiMessageImageInputDto> Images { get; init; } = [];
+    public IReadOnlyList<AiSelectedReferenceDto> References { get; init; } = [];
+    public string IdempotencyKey { get; init; } = string.Empty;
+    public Guid? ActorId { get; init; }
+    public string? ModelId { get; init; }
+    public string Mode { get; init; } = AiAssistantInteractionModes.Build;
 }
 
-public sealed class AiMessageImageInputDto
+public sealed record AiMessageImageInputDto
 {
-    public string MediaType { get; set; } = string.Empty;
-    public string Data { get; set; } = string.Empty;
-    public string? FileName { get; set; }
-    public long? SizeBytes { get; set; }
+    public string MediaType { get; init; } = string.Empty;
+    public string Data { get; init; } = string.Empty;
+    public string? FileName { get; init; }
+    public long? SizeBytes { get; init; }
 }
 
-public sealed class AiMessageImageDto
+public sealed record AiMessageImageDto
 {
-    public string MediaType { get; set; } = string.Empty;
-    public string? FileName { get; set; }
-    public long? SizeBytes { get; set; }
+    public string MediaType { get; init; } = string.Empty;
+    public string? FileName { get; init; }
+    public long? SizeBytes { get; init; }
 }
 
-public class AiConversationSummaryDto
+public record AiConversationSummaryDto
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid UserId { get; set; }
-    public Guid? ActorId { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string? Title { get; set; }
-    public string? Provider { get; set; }
-    public string? ModelId { get; set; }
-    public string? BlockedReason { get; set; }
-    public long LastMessageSequence { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid UserId { get; init; }
+    public Guid? ActorId { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string? Title { get; init; }
+    public string? Provider { get; init; }
+    public string? ModelId { get; init; }
+    public string? BlockedReason { get; init; }
+    public long LastMessageSequence { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
 }
 
-public sealed class AiConversationDto : AiConversationSummaryDto
+public sealed record AiConversationDto : AiConversationSummaryDto
 {
-    public IReadOnlyList<AiMessageDto> Messages { get; set; } = [];
-    public IReadOnlyList<AiRunDto> Runs { get; set; } = [];
-    public IReadOnlyList<AiConversationReferenceDto> References { get; set; } = [];
-    public IReadOnlyList<AiProposedActionDto> ProposedActions { get; set; } = [];
+    public IReadOnlyList<AiMessageDto> Messages { get; init; } = [];
+    public IReadOnlyList<AiRunDto> Runs { get; init; } = [];
+    public IReadOnlyList<AiConversationReferenceDto> References { get; init; } = [];
+    public IReadOnlyList<AiProposedActionDto> ProposedActions { get; init; } = [];
 }
 
-public sealed class AiMessageDto
+public sealed record AiMessageDto
 {
-    public Guid Id { get; set; }
-    public long Sequence { get; set; }
-    public string Role { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-    public IReadOnlyList<AiMessageImageDto> Images { get; set; } = [];
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public long Sequence { get; init; }
+    public string Role { get; init; } = string.Empty;
+    public string Content { get; init; } = string.Empty;
+    public IReadOnlyList<AiMessageImageDto> Images { get; init; } = [];
+    public DateTime CreatedAt { get; init; }
 }
 
-public sealed class AiRunDto
+public sealed record AiRunDto
 {
-    public Guid Id { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string Provider { get; set; } = string.Empty;
-    public string ModelId { get; set; } = string.Empty;
-    public DateTime QueuedAt { get; set; }
-    public DateTime? StartedAt { get; set; }
-    public DateTime? CompletedAt { get; set; }
-    public string? FailureCode { get; set; }
-    public string? FailureMessage { get; set; }
+    public Guid Id { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string Provider { get; init; } = string.Empty;
+    public string ModelId { get; init; } = string.Empty;
+    public DateTime QueuedAt { get; init; }
+    public DateTime? StartedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    public string? FailureCode { get; init; }
+    public string? FailureMessage { get; init; }
 }
 
-public sealed class AiConversationReferenceDto
+public sealed record AiConversationReferenceDto
 {
-    public Guid Id { get; set; }
-    public string Kind { get; set; } = string.Empty;
-    public Guid ReferenceId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Summary { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public string Kind { get; init; } = string.Empty;
+    public Guid ReferenceId { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string? Summary { get; init; }
+    public DateTime CreatedAt { get; init; }
 }
 
-public sealed class AiProposedActionDto
+public sealed record AiProposedActionDto
 {
-    public Guid Id { get; set; }
-    public Guid? MessageId { get; set; }
-    public string Kind { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string PayloadJson { get; set; } = string.Empty;
-    public Guid? ConfirmedBy { get; set; }
-    public DateTime? ConfirmedAt { get; set; }
-    public Guid? RejectedBy { get; set; }
-    public DateTime? RejectedAt { get; set; }
-    public Guid? ResultResourceId { get; set; }
-    public string? FailureCode { get; set; }
-    public string? FailureMessage { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public Guid? MessageId { get; init; }
+    public string Kind { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string PayloadJson { get; init; } = string.Empty;
+    public Guid? ConfirmedBy { get; init; }
+    public DateTime? ConfirmedAt { get; init; }
+    public Guid? RejectedBy { get; init; }
+    public DateTime? RejectedAt { get; init; }
+    public Guid? ResultResourceId { get; init; }
+    public string? FailureCode { get; init; }
+    public string? FailureMessage { get; init; }
+    public DateTime CreatedAt { get; init; }
 
     [JsonPropertyName("_links")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

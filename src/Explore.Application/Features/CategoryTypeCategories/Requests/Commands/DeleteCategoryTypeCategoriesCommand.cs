@@ -4,7 +4,4 @@ using MediatR;
 
 namespace Explore.Application.Features.CategoryTypeCategories.Requests.Commands;
 
-public class DeleteCategoryTypeCategoriesCommand : IRequest<bool>
-{
-    public Guid Id { get; set; }
-}
+public sealed record DeleteCategoryTypeCategoriesCommand(Guid Id = default) : IRequest<bool>;

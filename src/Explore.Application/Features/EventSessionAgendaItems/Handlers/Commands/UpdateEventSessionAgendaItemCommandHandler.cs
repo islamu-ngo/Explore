@@ -74,9 +74,12 @@ public class UpdateEventSessionAgendaItemCommandHandler : IRequestHandler<Update
             return response;
         }
 
-        request.EventSessionId = agendaItem.EventSessionId;
-        request.EventId = currentSession.EventId;
-        request.TenantId = agendaItem.TenantId;
+        request = request with
+        {
+            EventSessionId = agendaItem.EventSessionId,
+            EventId = currentSession.EventId,
+            TenantId = agendaItem.TenantId,
+        };
 
         if (parentSession.EventId != currentSession.EventId)
         {

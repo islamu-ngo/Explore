@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 
-public class CreateExternalApiKeyCommand : IRequest<CreateExternalApiKeyCommandResponse>
+public sealed record CreateExternalApiKeyCommand : IRequest<CreateExternalApiKeyCommandResponse>
 {
-    public required CreateExternalApiKeyDto ExternalApiKeyDto { get; set; }
+    public required CreateExternalApiKeyDto ExternalApiKeyDto { get; init; }
 }

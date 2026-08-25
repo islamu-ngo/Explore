@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Queries;
 
-public sealed class GetCurrentUserNotificationPreferenceMatrixQuery : IRequest<NotificationPreferenceMatrixDto>
+public sealed record GetCurrentUserNotificationPreferenceMatrixQuery : IRequest<NotificationPreferenceMatrixDto>
 {
 }

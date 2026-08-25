@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class EventReportReasonOptionDto
+public sealed record EventReportReasonOptionDto
 {
     public int ReasonId { get; init; }
     public required string ReasonCode { get; init; }

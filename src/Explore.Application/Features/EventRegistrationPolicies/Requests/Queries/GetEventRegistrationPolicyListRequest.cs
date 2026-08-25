@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.EventRegistrationPolicies.Requests.Queries;
 
-public class GetEventRegistrationPolicyListRequest : IRequest<List<EventRegistrationPolicyListDto>>
+public sealed record GetEventRegistrationPolicyListRequest : IRequest<List<EventRegistrationPolicyListDto>>
 {
 }

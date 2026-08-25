@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.EventCustomProperty;
 
-public class EventCustomPropertyValueDto
+public sealed record EventCustomPropertyValueDto
 {
-    public Guid Id { get; set; }
-    public Guid EventCustomPropertyDefinitionId { get; set; }
-    public Guid EventId { get; set; }
-    public int Ordinal { get; set; }
-    public string? TextValue { get; set; }
-    public decimal? NumberValue { get; set; }
-    public bool? BooleanValue { get; set; }
-    public DateTimeOffset? DateTimeValue { get; set; }
-    public Guid? OptionId { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventCustomPropertyDefinitionId { get; init; }
+    public Guid EventId { get; init; }
+    public int Ordinal { get; init; }
+    public string? TextValue { get; init; }
+    public decimal? NumberValue { get; init; }
+    public bool? BooleanValue { get; init; }
+    public DateTimeOffset? DateTimeValue { get; init; }
+    public Guid? OptionId { get; init; }
 }

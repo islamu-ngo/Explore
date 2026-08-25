@@ -6,9 +6,9 @@ using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Requests.Queries;
 
-public class GetExternalApiKeyUsageReportRequest : IRequest<List<ExternalApiKeyUsageReportDto>>
+public sealed record GetExternalApiKeyUsageReportRequest : IRequest<List<ExternalApiKeyUsageReportDto>>
 {
-    public DateOnly From { get; set; }
-    public DateOnly To { get; set; }
-    public Guid? TenantId { get; set; }
+    public DateOnly From { get; init; }
+    public DateOnly To { get; init; }
+    public Guid? TenantId { get; init; }
 }

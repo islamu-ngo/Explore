@@ -11,129 +11,129 @@ using Explore.Application.DTOs.Tag;
 
 namespace Explore.Application.DTOs.Event;
 
-public class EventDto
+public sealed record EventDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public required string Title { get; set; }
-    public string? Subtitle { get; set; }
-    public string? Description { get; set; }
-    public string? Content { get; set; }
-    public string? Slug { get; set; }
-    public string? PublicCode { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public required string Title { get; init; }
+    public string? Subtitle { get; init; }
+    public string? Description { get; init; }
+    public string? Content { get; init; }
+    public string? Slug { get; init; }
+    public string? PublicCode { get; init; }
 
     // Event Type
-    public int? EventTypeId { get; set; }
-    public string? EventTypeFullName { get; set; }
-    public string? EventTypeMasterCode { get; set; }
+    public int? EventTypeId { get; init; }
+    public string? EventTypeFullName { get; init; }
+    public string? EventTypeMasterCode { get; init; }
 
     // Audience
-    public int? AudienceGenderId { get; set; }
-    public string? AudienceGenderFullName { get; set; }
-    public string? AudienceGenderMasterCode { get; set; }
-    public int? AudienceAgeId { get; set; }
-    public string? AudienceAgeFullName { get; set; }
-    public string? AudienceAgeMasterCode { get; set; }
-    public int? AudienceAgeMinAge { get; set; }
-    public int? AudienceAgeMaxAge { get; set; }
+    public int? AudienceGenderId { get; init; }
+    public string? AudienceGenderFullName { get; init; }
+    public string? AudienceGenderMasterCode { get; init; }
+    public int? AudienceAgeId { get; init; }
+    public string? AudienceAgeFullName { get; init; }
+    public string? AudienceAgeMasterCode { get; init; }
+    public int? AudienceAgeMinAge { get; init; }
+    public int? AudienceAgeMaxAge { get; init; }
 
     // Actor (Owner - User or Organization)
-    public Guid ActorId { get; set; }
-    public required string ActorDisplayName { get; set; }
-    public string? ActorHandle { get; set; }
-    public string? ActorDid { get; set; }
-    public int ActorTypeId { get; set; }
-    public required string ActorTypeFullName { get; set; }
-    public Guid? ActorUserId { get; set; }
-    public Guid? ActorOrganizationId { get; set; }
-    public Guid? ActorGroupId { get; set; }
-    public Guid? ActorProfilePictureId { get; set; }
+    public Guid ActorId { get; init; }
+    public required string ActorDisplayName { get; init; }
+    public string? ActorHandle { get; init; }
+    public string? ActorDid { get; init; }
+    public int ActorTypeId { get; init; }
+    public required string ActorTypeFullName { get; init; }
+    public Guid? ActorUserId { get; init; }
+    public Guid? ActorOrganizationId { get; init; }
+    public Guid? ActorGroupId { get; init; }
+    public Guid? ActorProfilePictureId { get; init; }
     public string? ActorProfilePictureUri { get; set; }
 
-    public int ProvenanceTypeId { get; set; }
-    public string? ProvenanceTypeCode { get; set; }
-    public string? ProvenanceTypeName { get; set; }
-    public Guid? SubmittedByUserId { get; set; }
-    public Guid? OrganizerActorId { get; set; }
+    public int ProvenanceTypeId { get; init; }
+    public string? ProvenanceTypeCode { get; init; }
+    public string? ProvenanceTypeName { get; init; }
+    public Guid? SubmittedByUserId { get; init; }
+    public Guid? OrganizerActorId { get; init; }
     [JsonIgnore]
-    public Guid? OrganizerActorUserId { get; set; }
+    public Guid? OrganizerActorUserId { get; init; }
     [JsonIgnore]
-    public Guid? OrganizerActorOrganizationId { get; set; }
+    public Guid? OrganizerActorOrganizationId { get; init; }
     [JsonIgnore]
-    public Guid? OrganizerActorGroupId { get; set; }
+    public Guid? OrganizerActorGroupId { get; init; }
     [JsonIgnore]
     public bool IsPubliclyEligible { get; set; }
     [JsonIgnore]
     public bool IsManagementView { get; set; }
-    public string? SourcePublisherName { get; set; }
-    public List<EventPublicActionDto> PublicActions { get; set; } = new();
+    public string? SourcePublisherName { get; init; }
+    public List<EventPublicActionDto> PublicActions { get; init; } = new();
 
-    public EventTicketPriceSummaryDto? TicketPriceSummary { get; set; }
+    public EventTicketPriceSummaryDto? TicketPriceSummary { get; init; }
 
     // Featured Image
-    public Guid FeaturedImageId { get; set; }
+    public Guid FeaturedImageId { get; init; }
     public string? FeaturedImageUri { get; set; }
 
     public EventParticipationConfigurationDto? ParticipationConfiguration { get; set; }
-    public int? RegistrationPolicyId { get; set; }
-    public string? RegistrationPolicyFullName { get; set; }
-    public string? RegistrationPolicyMasterCode { get; set; }
+    public int? RegistrationPolicyId { get; init; }
+    public string? RegistrationPolicyFullName { get; init; }
+    public string? RegistrationPolicyMasterCode { get; init; }
 
     // Status & Visibility
-    public int EventStatusId { get; set; }
-    public required string EventStatusFullName { get; set; }
-    public required string EventStatusMasterCode { get; set; }
+    public int EventStatusId { get; init; }
+    public required string EventStatusFullName { get; init; }
+    public required string EventStatusMasterCode { get; init; }
     public bool IsUnmoderationEligible { get; set; }
-    public int VisibilityTypeId { get; set; }
-    public required string VisibilityTypeFullName { get; set; }
-    public required string VisibilityTypeMasterCode { get; set; }
+    public int VisibilityTypeId { get; init; }
+    public required string VisibilityTypeFullName { get; init; }
+    public required string VisibilityTypeMasterCode { get; init; }
 
     // Format
-    public int EventFormatId { get; set; }
-    public required string EventFormatFullName { get; set; }
-    public required string EventFormatMasterCode { get; set; }
+    public int EventFormatId { get; init; }
+    public required string EventFormatFullName { get; init; }
+    public required string EventFormatMasterCode { get; init; }
 
     // Islamic Context
-    public int? MadhabId { get; set; }
-    public string? MadhabFullName { get; set; }
-    public string? MadhabMasterCode { get; set; }
+    public int? MadhabId { get; init; }
+    public string? MadhabFullName { get; init; }
+    public string? MadhabMasterCode { get; init; }
 
     // Session Info
-    public int? SessionCount { get; set; }
-    public DateOnly? FirstSessionDate { get; set; }
-    public DateOnly? LastSessionDate { get; set; }
-    public string? Timezone { get; set; }
+    public int? SessionCount { get; init; }
+    public DateOnly? FirstSessionDate { get; init; }
+    public DateOnly? LastSessionDate { get; init; }
+    public string? Timezone { get; init; }
 
     // Metadata
-    public int TotalViews { get; set; }
+    public int TotalViews { get; init; }
 
     // ATProto Federation
-    public Guid? AtprotoRecordId { get; set; }
-    public string? AtprotoRecordUri { get; set; }
-    public string? AtprotoRecordCid { get; set; }
+    public Guid? AtprotoRecordId { get; init; }
+    public string? AtprotoRecordUri { get; init; }
+    public string? AtprotoRecordCid { get; init; }
 
     // ===== Aspects =====
     // List of active aspect types for this event (e.g., ["Islamic", "Tech"])
-    public List<string> AvailableAspects { get; set; } = new();
+    public List<string> AvailableAspects { get; init; } = new();
 
     // Islamic Aspect (only populated if event has Islamic characteristics)
-    public EventAspects.EventIslamicAspectDto? IslamicAspect { get; set; }
+    public EventAspects.EventIslamicAspectDto? IslamicAspect { get; init; }
 
     // Tech Aspect (only populated if event has Tech characteristics)
-    public EventAspects.EventTechAspectDto? TechAspect { get; set; }
+    public EventAspects.EventTechAspectDto? TechAspect { get; init; }
 
     // Appearance
-    public string? BackgroundColor { get; set; }
-    public string? BackgroundEffect { get; set; }
-    public Guid? BackgroundImageId { get; set; }
-    public string? BackgroundImageUri { get; set; }
+    public string? BackgroundColor { get; init; }
+    public string? BackgroundEffect { get; init; }
+    public Guid? BackgroundImageId { get; init; }
+    public string? BackgroundImageUri { get; init; }
 
     // Tags & Categories (populated via junction tables)
     public List<TagListDto> Tags { get; set; } = new();
     public List<CategoryListDto> Categories { get; set; } = new();
 
     // Tenant
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     internal EventDto CreateRequestCopy() => (EventDto)MemberwiseClone();
 }

@@ -49,6 +49,19 @@ public class ContractInvariantsTests
         "PATCH", "PATCH2", "PATCH3"
     ];
 
+    private static readonly IReadOnlyDictionary<string, string[]> TrustedBodyRecordSchemas =
+        new Dictionary<string, string[]>(System.StringComparer.Ordinal)
+        {
+            ["CreateCategoryDto"] = ["masterCode", "fullName"],
+            ["ImportEventRequestDto"] = ["title", "ownerActorId", "provenanceSource", "provenanceExternalId", "participationConfiguration"],
+            ["CreateEventSessionDto"] = [],
+            ["CreateEventSessionAgendaItemDto"] = ["title"],
+            ["CreateEventSessionLanguageDto"] = [],
+            ["CreateEventSessionSpeakerDto"] = [],
+            ["CreateLocationDto"] = ["fullName", "address", "postcode", "country", "city"],
+            ["CreateTagDto"] = ["masterCode", "fullName"],
+        };
+
     private readonly ContractApiFixture _fixture;
 
     public ContractInvariantsTests(ContractApiFixture fixture)
@@ -79,6 +92,23 @@ public class ContractInvariantsTests
             .DoesNotContain(path => path.StartsWith("/api/actorkeystore", System.StringComparison.OrdinalIgnoreCase));
         await Assert.That(paths)
             .DoesNotContain(path => path.StartsWith("/api/syncstate", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Test]
+    public async Task OpenApiDocument_TrustedBodyRecordsOmitTenantAuthorityAndPreserveRequiredMetadata()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        foreach (var (schemaName, expectedRequired) in TrustedBodyRecordSchemas)
+        {
+            var schema = GetSchema(document, schemaName);
+            var properties = GetSchemaPropertyNames(schema);
+
+            await Assert.That(properties).DoesNotContain("tenantId")
+                .Because($"{schemaName} must not accept current-tenant authority from JSON.");
+            await Assert.That(GetRequiredPropertyNames(schema)).IsEquivalentTo(expectedRequired)
+                .Because($"{schemaName} requiredness must match runtime record binding.");
+        }
     }
 
     [Test]

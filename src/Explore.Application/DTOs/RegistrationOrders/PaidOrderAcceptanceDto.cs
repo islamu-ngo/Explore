@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class PaidOrderAcceptanceDisclosureDto
+public sealed record PaidOrderAcceptanceDisclosureDto
 {
     public required string DisclosureRevision { get; init; }
     public required string MerchantDisclosureText { get; init; }
@@ -43,7 +43,7 @@ public sealed class PaidOrderAcceptanceDisclosureDto
     public required IReadOnlyList<PaidOrderAcceptanceLineDto> Lines { get; init; }
 }
 
-public sealed class PaidOrderAcceptanceLineDto
+public sealed record PaidOrderAcceptanceLineDto
 {
     public required Guid OrderLineId { get; init; }
     public required string Name { get; init; }
@@ -53,7 +53,7 @@ public sealed class PaidOrderAcceptanceLineDto
     public required long LineTotalMinor { get; init; }
 }
 
-public sealed class PaidOrderAcceptanceAcknowledgementDto
+public sealed record PaidOrderAcceptanceAcknowledgementDto
 {
     public string? DisclosureRevision { get; init; }
     public required bool Acknowledged { get; init; }

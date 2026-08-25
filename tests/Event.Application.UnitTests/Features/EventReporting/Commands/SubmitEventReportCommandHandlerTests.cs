@@ -534,7 +534,7 @@ public sealed class SubmitEventReportCommandHandlerTests
         Guid userId = Guid.CreateVersion7();
         Explore.Domain.Event @event = ConfigureAcceptedAuthenticatedReport(tenantId, userId, CreateUser(userId));
         SubmitEventReportCommand command = CreateCommand(@event.Id);
-        command.Request.ReportCaseUpdatesConsent = false;
+        command = command with { Request = command.Request with { ReportCaseUpdatesConsent = false } };
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(command, CancellationToken.None);
 

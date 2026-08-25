@@ -3,26 +3,26 @@
 
 namespace Explore.Application.DTOs.ExternalApiKey;
 
-public class ExternalApiKeyListDto
+public sealed record ExternalApiKeyListDto
 {
-    public Guid Id { get; set; }
-    public required string Name { get; set; }
-    public string? Description { get; set; }
-    public required string KeyId { get; set; }
-    public required string MaskedKeyId { get; set; }
-    public int ExternalApiKeyOwnerTypeId { get; set; }
-    public required string ExternalApiKeyOwnerTypeCode { get; set; }
-    public required string ExternalApiKeyOwnerTypeName { get; set; }
-    public Guid OwnerId { get; set; }
-    public List<string> Scopes { get; set; } = [];
-    public int ExternalApiKeyStatusId { get; set; }
-    public required string ExternalApiKeyStatusCode { get; set; }
-    public required string ExternalApiKeyStatusName { get; set; }
-    public DateTime? ExpiresAt { get; set; }
-    public DateTime? LastUsedAt { get; set; }
-    public int ExternalApiKeyCreditPeriodId { get; set; }
-    public required string ExternalApiKeyCreditPeriodCode { get; set; }
-    public required string ExternalApiKeyCreditPeriodName { get; set; }
-    public int? CreditLimit { get; set; }
-    public int? MaxRolloverCredits { get; set; }
+    public Guid Id { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public required string KeyId { get; init; }
+    public required string MaskedKeyId { get; init; }
+    public int ExternalApiKeyOwnerTypeId { get; init; }
+    public required string ExternalApiKeyOwnerTypeCode { get; init; }
+    public required string ExternalApiKeyOwnerTypeName { get; init; }
+    public Guid OwnerId { get; init; }
+    public List<string> Scopes { get; init; } = [];
+    public int ExternalApiKeyStatusId { get; init; }
+    public required string ExternalApiKeyStatusCode { get; init; }
+    public required string ExternalApiKeyStatusName { get; init; }
+    public DateTime? ExpiresAt { get; init; }
+    public DateTime? LastUsedAt { get; init; }
+    public int ExternalApiKeyCreditPeriodId { get; init; }
+    public required string ExternalApiKeyCreditPeriodCode { get; init; }
+    public required string ExternalApiKeyCreditPeriodName { get; init; }
+    public int? CreditLimit { get; init; }
+    public int? MaxRolloverCredits { get; init; }
 }

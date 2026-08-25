@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ViewDelivery)]
-public sealed class GetIncomingWebhookEffectStatusQuery
+public sealed record GetIncomingWebhookEffectStatusQuery
     : IRequest<BaseCommandResponse<IReadOnlyList<IncomingWebhookEffectStatusDto>>>, ISecureRequest
 {
     public Guid TenantId { get; init; }

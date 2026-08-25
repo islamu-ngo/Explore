@@ -7,7 +7,4 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Requests.Queries;
 
-public class GetSessionsByEventRequest : IRequest<List<EventSessionListDto>>
-{
-    public Guid EventId { get; set; }
-}
+public sealed record GetSessionsByEventRequest(Guid EventId = default) : IRequest<List<EventSessionListDto>>;

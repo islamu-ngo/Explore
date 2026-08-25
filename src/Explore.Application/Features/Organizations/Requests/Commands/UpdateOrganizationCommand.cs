@@ -9,15 +9,15 @@ using MediatR;
 namespace Explore.Application.Features.Organizations.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Update)]
-public class UpdateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid OrganizationId { get; set; }
+    public Guid OrganizationId { get; init; }
 
-    public required string UserId { get; set; }
+    public required string UserId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateOrganizationDto UpdateOrganizationDto { get; set; }
+    public required UpdateOrganizationDto UpdateOrganizationDto { get; init; }
 
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
 }

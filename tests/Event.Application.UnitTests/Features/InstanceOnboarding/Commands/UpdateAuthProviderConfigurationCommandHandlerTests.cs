@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Secrets;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.Common;
@@ -186,7 +187,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         {
             KeycloakAuthority = "https://keycloak.example.com/realms/test",
             KeycloakClientId = "client-id",
-            KeycloakClientSecretOwnership = { Configured = true }
+            KeycloakClientSecretOwnership = new SecretOwnershipDto { Configured = true }
         });
         _userRepository.GetById(TestUserId).Returns(CreateUser("keycloak"));
         _userExternalLoginRepository.GetByUser(TestUserId).Returns(new List<UserExternalLogin>());
@@ -207,7 +208,10 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         var configuration = CreateValidConfiguration();
         configuration.KeycloakClientSecret = string.Empty;
-        configuration.KeycloakClientSecretOwnership.Configured = true;
+        configuration = configuration with
+        {
+            KeycloakClientSecretOwnership = configuration.KeycloakClientSecretOwnership with { Configured = true }
+        };
 
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
@@ -224,7 +228,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         {
             KeycloakAuthority = "https://keycloak.example.com/realms/test",
             KeycloakClientId = "current-client",
-            KeycloakClientSecretOwnership = { Configured = true }
+            KeycloakClientSecretOwnership = new SecretOwnershipDto { Configured = true }
         });
         var configuration = CreateValidConfiguration();
         configuration.KeycloakClientSecret = string.Empty;

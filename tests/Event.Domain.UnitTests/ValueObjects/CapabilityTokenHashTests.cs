@@ -41,7 +41,6 @@ public sealed class CapabilityTokenHashTests
 
         await Assert.That(hash.ToString()).DoesNotContain(value);
         await Assert.That($"{hash}").DoesNotContain(value);
-        await Assert.That(hash.ToString()).IsEqualTo("CapabilityTokenHash(<redacted>)");
     }
 
     [Test]

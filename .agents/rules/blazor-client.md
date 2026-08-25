@@ -22,6 +22,7 @@ related_intents: [blazor-component-affordance, add-hal-link]
 - **CSS Isolation (BEM)**: Every `.razor` file should have a matching `.razor.css`. Use BEM naming for scoped classes.
 - **Deep Selectors**: Use `::deep` only as a last resort for third-party component overrides.
 - **Accessibility**: Structural semantics (headings, focus, labels) take precedence over visual shortcuts.
+- **Record-Owned State**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Use records only for handwritten immutable snapshots, results, filters, or dialog payloads; generated NSwag contracts and mutable edit/component state remain classes.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rule #21)

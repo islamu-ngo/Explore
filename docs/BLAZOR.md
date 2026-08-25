@@ -266,6 +266,10 @@ The browser authentication state is intentionally display-only:
 
 Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; deployment-managed retry refreshes the authoritative DTO after the server completes reconciliation, and the browser never owns Cerbos Admin API credentials or access tokens.
 
+`EventApiClient.g.cs` and every NSwag DTO remain generated classes; correct the API/OpenAPI source and rerun `GenerateApiClient` rather than patching generated output or wrapping it solely to obtain record syntax. Handwritten immutable presentation results, filters, and persistence snapshots may be sealed records. Forms, edit models, component/service identity state, auth/PII hydration state, and framework-deserialized BFF payloads remain classes when their lifecycle is mutable.
+
+Local record state is only shallowly immutable. Snapshot constructors or `init` members copy mutable input collections when later caller mutation would violate the published state; record equality still compares collection members by their own equality semantics. `AppJsonSerializerContext` registers only local/browser-safe contracts actually used by AOT paths. Provider credential contracts are not registered, and local-storage round trips use the source-generated options.
+
 ### Localization Admin Service Boundary
 
 Localization administration in `Explore.Blazor.Client` goes through

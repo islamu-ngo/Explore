@@ -1,9 +1,9 @@
 namespace Explore.Application.DTOs.Event;
 
-public class EventPublishReadinessErrorDto
+public sealed record EventPublishReadinessErrorDto
 {
-    public required string Code { get; set; }
-    public required string FieldPath { get; set; }
-    public required string Message { get; set; }
-    public string Severity { get; set; } = "error";
+    public required string Code { get; init; }
+    public required string FieldPath { get; init; }
+    public required string Message { get; init; }
+    public string Severity { get; init; } = "error";
 }

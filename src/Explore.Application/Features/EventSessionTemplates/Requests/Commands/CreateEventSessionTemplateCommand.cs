@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class CreateEventSessionTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventSessionTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventSessionTemplateDto SessionTemplateDto { get; set; }
+    public required CreateEventSessionTemplateDto SessionTemplateDto { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

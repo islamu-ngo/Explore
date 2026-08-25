@@ -39,7 +39,7 @@ public class GetEventAgendaItemsByEventRequestHandlerTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var request = new GetEventAgendaItemsByEventRequest { EventId = eventId };
+        var request = new GetEventAgendaItemsByEventRequest(eventId);
 
         var agendaItems = new List<EventAgendaItem>
         {
@@ -71,7 +71,7 @@ public class GetEventAgendaItemsByEventRequestHandlerTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var request = new GetEventAgendaItemsByEventRequest { EventId = eventId };
+        var request = new GetEventAgendaItemsByEventRequest(eventId);
 
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());

@@ -336,7 +336,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 ## Phase 6: Governance Closure And Release Contribution — COMPLETE
 
 - [x] **6.1 Tighten Final Ratchets And Remove Resolved Debt**
-  - **Status:** COMPLETE — final schemas accept only eight retained mutable response hierarchies and seven legitimate targets; zero concrete MediatR class debt and exact bidirectional stale/missing checks pass 10/10.
+  - **Status:** COMPLETE — final schemas accept only ten retained mutable response hierarchies and seven legitimate targets after integrating the paid-registration response envelopes from `develop`; zero concrete MediatR class debt and exact bidirectional stale/missing checks pass 10/10.
   - **Files:** `RecordContractArchitectureTests.cs`; both baseline JSON files.
   - **Acceptance:**
     - [x] No eligible concrete MediatR class debt remains.

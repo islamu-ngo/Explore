@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.ScheduleItemKinds.Requests.Queries;
 
-public class GetScheduleItemKindListRequest : IRequest<List<ScheduleItemKindListDto>>
+public sealed record GetScheduleItemKindListRequest : IRequest<List<ScheduleItemKindListDto>>
 {
 }

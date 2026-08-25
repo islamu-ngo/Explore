@@ -2,7 +2,7 @@
 // ABOUTME: Omits the persisted ticket identifier; update identity comes from the route.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class ManageEventTicketTypeDto
+public sealed record ManageEventTicketTypeDto
 {
     public string Name { get; init; } = string.Empty;
     public int TicketPricingModeId { get; init; }

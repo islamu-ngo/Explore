@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public sealed class SaveInstanceOnboardingProfileCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record SaveInstanceOnboardingProfileCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required SelfHostOnboardingProfileDto Profile { get; set; }
+    public required SelfHostOnboardingProfileDto Profile { get; init; }
 }

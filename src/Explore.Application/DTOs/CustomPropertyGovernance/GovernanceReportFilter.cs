@@ -5,10 +5,10 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.CustomPropertyGovernance;
 
-public class GovernanceReportFilterDto
+public sealed record GovernanceReportFilterDto
 {
-    public string? EntityScope { get; set; }
-    public PromotionRecommendation? Recommendation { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public string? EntityScope { get; init; }
+    public PromotionRecommendation? Recommendation { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }

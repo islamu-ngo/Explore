@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetInstanceSmtpSettingsQuery : IRequest<InstanceSmtpSettingsDto>
+public sealed record GetInstanceSmtpSettingsQuery : IRequest<InstanceSmtpSettingsDto>
 {
 }

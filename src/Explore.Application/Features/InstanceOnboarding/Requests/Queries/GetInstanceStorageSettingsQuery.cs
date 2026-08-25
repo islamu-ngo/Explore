@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public class GetInstanceStorageSettingsQuery : IRequest<InstanceStorageSettingsDto>
+public sealed record GetInstanceStorageSettingsQuery : IRequest<InstanceStorageSettingsDto>
 {
 }

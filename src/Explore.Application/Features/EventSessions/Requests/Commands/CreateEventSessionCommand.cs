@@ -9,11 +9,11 @@ using MediatR;
 namespace Explore.Application.Features.EventSessions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Create)]
-public class CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventSessionDto EventSessionDto { get; set; }
+    public required CreateEventSessionDto EventSessionDto { get; init; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionDto.EventId.ToString();
 

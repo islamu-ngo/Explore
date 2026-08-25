@@ -9,14 +9,14 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionGroups.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSessionGroup, AuthorizationActions.Update)]
-public class UpdateEventSessionGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventSessionGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid EventSessionGroupId { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
-    public required UpdateEventSessionGroupRequestDto EventSessionGroup { get; set; }
+    public Guid EventSessionGroupId { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public required UpdateEventSessionGroupRequestDto EventSessionGroup { get; init; }
 
-    public Guid EventId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid EventId { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => EventSessionGroupId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

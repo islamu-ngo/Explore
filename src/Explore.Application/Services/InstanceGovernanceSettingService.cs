@@ -122,7 +122,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         if (!settings.RenderPolicy.AllowTenantRenderPolicyOverride)
             return settings;
 
-        _logger.LogDebug("Resolving tenant {TenantId} render policy overrides", tenantId);
+        _logger.LogDebug("Resolving tenant render policy overrides");
 
         var tenantContext = new SettingContext(TenantId: tenantId);
         var tenantResolved = await _resolver.ResolveBatchAsync(RenderPolicySettingGroup.SettingKeys, tenantContext);

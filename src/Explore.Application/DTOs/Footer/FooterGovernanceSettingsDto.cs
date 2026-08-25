@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterGovernanceSettingsDto
+public sealed record FooterGovernanceSettingsDto
 {
-    public bool LockTenantTemplate { get; set; }
-    public bool LockTenantLinkGroups { get; set; }
-    public bool LockTenantSocialLinks { get; set; }
-    public bool LockTenantDescription { get; set; }
-    public bool LockTenantCopyright { get; set; }
+    public bool LockTenantTemplate { get; init; }
+    public bool LockTenantLinkGroups { get; init; }
+    public bool LockTenantSocialLinks { get; init; }
+    public bool LockTenantDescription { get; init; }
+    public bool LockTenantCopyright { get; init; }
 }

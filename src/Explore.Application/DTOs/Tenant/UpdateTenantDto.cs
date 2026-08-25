@@ -5,18 +5,18 @@ using System;
 
 namespace Explore.Application.DTOs.Tenant;
 
-public class UpdateTenantDto
+public sealed record UpdateTenantDto
 {
-    public UpdateTenantFullNameDto? FullName { get; set; }
-    public UpdateTenantSlugDto? Slug { get; set; }
+    public UpdateTenantFullNameDto? FullName { get; init; }
+    public UpdateTenantSlugDto? Slug { get; init; }
 }
 
-public class UpdateTenantFullNameDto
+public sealed record UpdateTenantFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateTenantSlugDto
+public sealed record UpdateTenantSlugDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }

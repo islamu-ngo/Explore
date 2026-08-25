@@ -10,7 +10,7 @@ using Explore.Application.Responses;
 using MediatR;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class CreateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public required CreateUpdateTechAspectDto AspectDto { get; init; }
@@ -18,7 +18,7 @@ public sealed class CreateEventTechAspectCommand : IRequest<BaseCommandResponse<
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class UpdateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public required UpdateEventTechAspectDto AspectDto { get; init; }

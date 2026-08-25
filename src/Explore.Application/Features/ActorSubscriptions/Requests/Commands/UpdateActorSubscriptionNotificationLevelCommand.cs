@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.ActorSubscriptions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.Update)]
-public class UpdateActorSubscriptionNotificationLevelCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateActorSubscriptionNotificationLevelCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid TargetActorId { get; set; }
-    public required UpdateActorSubscriptionNotificationLevelDto Patch { get; set; }
+    public Guid TargetActorId { get; init; }
+    public required UpdateActorSubscriptionNotificationLevelDto Patch { get; init; }
 
     public string? ResourceId => TargetActorId == Guid.Empty ? null : TargetActorId.ToString();
 

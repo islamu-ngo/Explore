@@ -2,10 +2,10 @@ using Explore.Application.DTOs.Category;
 
 namespace Explore.Application.DTOs.CategoryType;
 
-public class CategoryTypeWithCategoriesDto
+public sealed record CategoryTypeWithCategoriesDto
 {
-    public int? Id { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
-    public List<CategoryListDto> Categories { get; set; } = [];
+    public int? Id { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
+    public List<CategoryListDto> Categories { get; init; } = [];
 }

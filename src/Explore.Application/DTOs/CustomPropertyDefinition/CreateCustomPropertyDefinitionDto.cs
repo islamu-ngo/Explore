@@ -5,12 +5,12 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
-public class CreateCustomPropertyDefinitionDto
+public sealed record CreateCustomPropertyDefinitionDto
 {
     public EntityTypeName EntityTypeName { get; set; }
-    public required string Namespace { get; set; }
-    public required string Key { get; set; }
-    public required string DisplayName { get; set; }
+    public required string Namespace { get; init; }
+    public required string Key { get; init; }
+    public required string DisplayName { get; init; }
     public string? Description { get; set; }
     public PropertyType PropertyType { get; set; }
     public bool IsRequired { get; set; }

@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class CoopDecisionCallbackItemDto
+public sealed record CoopDecisionCallbackItemDto
 {
     public string? Id { get; init; }
     public string? TypeId { get; init; }

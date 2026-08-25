@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.Secrets;
 
-public class SecretOwnershipDto
+public sealed record SecretOwnershipDto
 {
-    public string Mode { get; set; } = "application-managed";
-    public string Source { get; set; } = "application";
-    public string Badge { get; set; } = "Managed by Application";
-    public string Description { get; set; } = "Stored securely by the platform and editable from Admin UI.";
-    public bool Editable { get; set; } = true;
-    public bool Configured { get; set; }
-    public bool BootstrapAvailable { get; set; }
+    public string Mode { get; init; } = "application-managed";
+    public string Source { get; init; } = "application";
+    public string Badge { get; init; } = "Managed by Application";
+    public string Description { get; init; } = "Stored securely by the platform and editable from Admin UI.";
+    public bool Editable { get; init; } = true;
+    public bool Configured { get; init; }
+    public bool BootstrapAvailable { get; init; }
 }

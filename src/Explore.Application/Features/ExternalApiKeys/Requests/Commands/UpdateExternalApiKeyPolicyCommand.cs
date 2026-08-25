@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 
-public class UpdateExternalApiKeyPolicyCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateExternalApiKeyPolicyCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid ExternalApiKeyId { get; init; }
-    public required UpdateExternalApiKeyPolicyDto ExternalApiKeyPolicyDto { get; set; }
+    public required UpdateExternalApiKeyPolicyDto ExternalApiKeyPolicyDto { get; init; }
 }

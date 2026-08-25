@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.PlatformMonetization.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetPlatformMonetizationSettingsQuery : IRequest<PlatformMonetizationSettingsDto>, ISecureRequest
+public sealed record GetPlatformMonetizationSettingsQuery : IRequest<PlatformMonetizationSettingsDto>, ISecureRequest
 {
     public const string SettingKey = "platform-monetization";
 

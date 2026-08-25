@@ -126,7 +126,8 @@ public sealed class TenantStorageSettingsControllerTests
             .Returns(new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Only tenant administrators or instance administrators can update tenant storage settings."
+                Message = "Only tenant administrators or instance administrators can update tenant storage settings.",
+                FailureCode = FailureCodes.AdminRequired
             });
         var controller = CreateController(mediator, Guid.NewGuid());
 

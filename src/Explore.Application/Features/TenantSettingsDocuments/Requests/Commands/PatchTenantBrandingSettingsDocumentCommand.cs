@@ -9,7 +9,7 @@ using Explore.Application.Responses;
 using MediatR;
 
 [AuthorizeResource(ResourceKinds.TenantSetting, AuthorizationActions.Update)]
-public sealed class PatchTenantBrandingSettingsDocumentCommand
+public sealed record PatchTenantBrandingSettingsDocumentCommand
     : IRequest<BaseCommandResponse<TenantBrandingSettingsDocumentDto>>, ISecureRequest
 {
     public required Guid TenantId { get; init; }

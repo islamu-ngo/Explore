@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.TenantUserRoleGrant;
 
-public class CreateTenantUserRoleGrantDto
+public sealed record CreateTenantUserRoleGrantDto
 {
-    public Guid TenantUserId { get; set; }
-    public int RoleId { get; set; }
+    public Guid TenantUserId { get; init; }
+    public int RoleId { get; init; }
 }

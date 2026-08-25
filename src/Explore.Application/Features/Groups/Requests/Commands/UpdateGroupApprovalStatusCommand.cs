@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.Groups.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Group, AuthorizationActions.Update)]
-public class UpdateGroupApprovalStatusCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateGroupApprovalStatusCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required UpdateGroupApprovalStatusDto GroupApprovalStatusDto { get; set; }
+    public Guid Id { get; init; }
+    public required UpdateGroupApprovalStatusDto GroupApprovalStatusDto { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

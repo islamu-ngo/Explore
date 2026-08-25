@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning;
 
-public class ManagedProviderOrganizerDto
+public sealed record ManagedProviderOrganizerDto
 {
     public ManagedProviderOrganizerKindDto Kind { get; init; } = ManagedProviderOrganizerKindDto.Organization;
     public required string FullName { get; init; }

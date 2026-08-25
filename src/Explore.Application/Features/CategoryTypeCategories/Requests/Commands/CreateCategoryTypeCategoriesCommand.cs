@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.CategoryTypeCategories.Requests.Commands;
 
-public class CreateCategoryTypeCategoriesCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateCategoryTypeCategoriesCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required CreateCategoryTypeCategoriesDto CategoryTypeCategoriesDto { get; set; }
+    public required CreateCategoryTypeCategoriesDto CategoryTypeCategoriesDto { get; init; }
 }

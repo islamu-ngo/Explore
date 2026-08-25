@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class CoopDecisionCallbackRequestDto
+public sealed record CoopDecisionCallbackRequestDto
 {
     public Guid TenantId { get; init; }
 

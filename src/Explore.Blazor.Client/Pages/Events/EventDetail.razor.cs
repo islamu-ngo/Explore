@@ -351,13 +351,13 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         _eventDetails = PersistedState.EventDetails;
         RemovePhysicalLocationExtensionData(_eventDetails?.AdditionalProperties);
-        _eventSessions = RemovePhysicalLocationData(PersistedState.EventSessions);
+        _eventSessions = RemovePhysicalLocationData(PersistedState.EventSessions.ToList());
         _primarySession = _eventSessions.FirstOrDefault();
         _islamicAspect = PersistedState.IslamicAspect;
         _techAspect = PersistedState.TechAspect;
-        _eventDays = PersistedState.EventDays;
-        _eventAgendaItems = PersistedState.EventAgendaItems;
-        _agendaItems = RemovePhysicalLocationData(PersistedState.SessionAgendaItems);
+        _eventDays = PersistedState.EventDays.ToList();
+        _eventAgendaItems = PersistedState.EventAgendaItems.ToList();
+        _agendaItems = RemovePhysicalLocationData(PersistedState.SessionAgendaItems.ToList());
         _appearance = PersistedState.Appearance ?? new AppearanceSettings();
         _imageLoadFailed = false;
         PublishMainContentAppearance();
@@ -420,17 +420,38 @@ public partial class EventDetail : ComponentBase, IDisposable
         };
     }
 
-    public sealed class EventDetailState
+    public sealed record EventDetailState
     {
+        private IReadOnlyList<EventSessionListDto> _eventSessions = Array.Empty<EventSessionListDto>();
+        private IReadOnlyList<EventDayListDto> _eventDays = Array.Empty<EventDayListDto>();
+        private IReadOnlyList<EventAgendaItemListDto> _eventAgendaItems = Array.Empty<EventAgendaItemListDto>();
+        private IReadOnlyList<EventSessionAgendaItemListDto> _sessionAgendaItems = Array.Empty<EventSessionAgendaItemListDto>();
+
         public Guid EventId { get; init; }
         public EventDto? EventDetails { get; init; }
-        public List<EventSessionListDto> EventSessions { get; init; } = new();
+        public IReadOnlyList<EventSessionListDto> EventSessions
+        {
+            get => _eventSessions;
+            init => _eventSessions = Array.AsReadOnly(value.ToArray());
+        }
         public EventSessionListDto? PrimarySession { get; init; }
         public EventIslamicAspectDto? IslamicAspect { get; init; }
         public EventTechAspectDto? TechAspect { get; init; }
-        public List<EventDayListDto> EventDays { get; init; } = new();
-        public List<EventAgendaItemListDto> EventAgendaItems { get; init; } = new();
-        public List<EventSessionAgendaItemListDto> SessionAgendaItems { get; init; } = new();
+        public IReadOnlyList<EventDayListDto> EventDays
+        {
+            get => _eventDays;
+            init => _eventDays = Array.AsReadOnly(value.ToArray());
+        }
+        public IReadOnlyList<EventAgendaItemListDto> EventAgendaItems
+        {
+            get => _eventAgendaItems;
+            init => _eventAgendaItems = Array.AsReadOnly(value.ToArray());
+        }
+        public IReadOnlyList<EventSessionAgendaItemListDto> SessionAgendaItems
+        {
+            get => _sessionAgendaItems;
+            init => _sessionAgendaItems = Array.AsReadOnly(value.ToArray());
+        }
         public AppearanceSettings? Appearance { get; init; }
     }
 

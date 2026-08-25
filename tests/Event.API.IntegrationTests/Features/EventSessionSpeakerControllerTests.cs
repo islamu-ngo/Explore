@@ -103,7 +103,6 @@ public sealed class EventSessionSpeakerControllerTests
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var clientSuppliedSessionId = Guid.NewGuid();
-        var clientSuppliedTenantId = Guid.NewGuid();
 
         using var mediator = new EventSessionSpeakerMediatorStub(request => request switch
         {
@@ -129,8 +128,7 @@ public sealed class EventSessionSpeakerControllerTests
             new CreateEventSessionSpeakerDto
             {
                 ActorId = actorId,
-                EventSessionId = clientSuppliedSessionId,
-                TenantId = clientSuppliedTenantId
+                EventSessionId = clientSuppliedSessionId
             });
 
         var response = await client.SendAsync(request);
@@ -143,8 +141,6 @@ public sealed class EventSessionSpeakerControllerTests
         await Assert.That(command.SpeakerDto.ActorId).IsEqualTo(actorId);
         await Assert.That(command.SpeakerDto.EventSessionId).IsEqualTo(eventSessionId);
         await Assert.That(command.SpeakerDto.EventSessionId).IsNotEqualTo(clientSuppliedSessionId);
-        await Assert.That(command.SpeakerDto.TenantId).IsEqualTo(tenantId);
-        await Assert.That(command.SpeakerDto.TenantId).IsNotEqualTo(clientSuppliedTenantId);
     }
 
     [Test]

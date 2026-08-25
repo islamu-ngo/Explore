@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.LocationRooms.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.LocationRoom, AuthorizationActions.Create)]
-public class CreateLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateLocationRoomDto LocationRoomDto { get; set; }
+    public required CreateLocationRoomDto LocationRoomDto { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

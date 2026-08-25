@@ -9,15 +9,15 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomProperties.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class UpdateEventCustomPropertyDefinitionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventCustomPropertyDefinitionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid DefinitionId { get; set; }
+    public Guid DefinitionId { get; init; }
 
-    public required UpdateEventCustomPropertyDefinitionDto DefinitionDto { get; set; }
+    public required UpdateEventCustomPropertyDefinitionDto DefinitionDto { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString();
 

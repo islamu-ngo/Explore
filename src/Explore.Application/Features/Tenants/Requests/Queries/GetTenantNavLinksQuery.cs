@@ -10,6 +10,6 @@ namespace Explore.Application.Features.Tenants.Requests.Queries;
 /// Query to retrieve all navigation links for the current tenant.
 /// Returns links ordered by their display order.
 /// </summary>
-public class GetTenantNavLinksQuery : IRequest<List<TenantNavigationLinkDto>>
+public sealed record GetTenantNavLinksQuery : IRequest<List<TenantNavigationLinkDto>>
 {
 }

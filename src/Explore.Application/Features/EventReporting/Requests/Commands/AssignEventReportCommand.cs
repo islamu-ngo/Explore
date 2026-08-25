@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.EventReporting.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ModerateLight)]
-public sealed class AssignEventReportCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record AssignEventReportCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid ReportId { get; init; }

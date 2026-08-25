@@ -5,4 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public sealed class GetAnalyticsGovernanceSettingsQuery : IRequest<AnalyticsGovernanceSettingsDto>;
+public sealed record GetAnalyticsGovernanceSettingsQuery : IRequest<AnalyticsGovernanceSettingsDto>;

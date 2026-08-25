@@ -3,14 +3,14 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class UpdateReportingProviderLocksDto
+public sealed record UpdateReportingProviderLocksDto
 {
-    public ReportingProviderLockUpdateDto? General { get; set; }
-    public ReportingProviderLockUpdateDto? Osprey { get; set; }
-    public ReportingProviderLockUpdateDto? Coop { get; set; }
+    public ReportingProviderLockUpdateDto? General { get; init; }
+    public ReportingProviderLockUpdateDto? Osprey { get; init; }
+    public ReportingProviderLockUpdateDto? Coop { get; init; }
 }
 
-public sealed class ReportingProviderLockUpdateDto
+public sealed record ReportingProviderLockUpdateDto
 {
-    public bool Locked { get; set; }
+    public bool Locked { get; init; }
 }

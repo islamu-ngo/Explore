@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.TagTypeTags.Requests.Commands;
 
-public class UpdateTagTypeTagsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateTagTypeTagsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid TagTypeTagsId { get; set; }
-    public required UpdateTagTypeTagsDto TagTypeTagsDto { get; set; }
+    public Guid TagTypeTagsId { get; init; }
+    public required UpdateTagTypeTagsDto TagTypeTagsDto { get; init; }
 }

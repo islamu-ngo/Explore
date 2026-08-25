@@ -6,30 +6,30 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Group;
 
-public class UpdateGroupDto
+public sealed record UpdateGroupDto
 {
-    public UpdateGroupFullNameDto? FullName { get; set; }
-    public UpdateGroupDescriptionDto? Description { get; set; }
-    public UpdateGroupParentOrganizationDto? ParentOrganization { get; set; }
-    public UpdateGroupParentGroupDto? ParentGroup { get; set; }
+    public UpdateGroupFullNameDto? FullName { get; init; }
+    public UpdateGroupDescriptionDto? Description { get; init; }
+    public UpdateGroupParentOrganizationDto? ParentOrganization { get; init; }
+    public UpdateGroupParentGroupDto? ParentGroup { get; init; }
 }
 
-public class UpdateGroupFullNameDto
+public sealed record UpdateGroupFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateGroupDescriptionDto
+public sealed record UpdateGroupDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateGroupParentOrganizationDto
+public sealed record UpdateGroupParentOrganizationDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateGroupParentGroupDto
+public sealed record UpdateGroupParentGroupDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }

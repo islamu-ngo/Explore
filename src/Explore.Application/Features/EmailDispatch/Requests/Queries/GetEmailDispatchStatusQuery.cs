@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.EmailDispatch.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.View)]
-public sealed class GetEmailDispatchStatusQuery : IRequest<BaseCommandResponse<IReadOnlyList<EmailDispatchStatusDto>>>, ISecureRequest
+public sealed record GetEmailDispatchStatusQuery : IRequest<BaseCommandResponse<IReadOnlyList<EmailDispatchStatusDto>>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public int Limit { get; set; } = 50;
+    public Guid TenantId { get; init; }
+    public int Limit { get; init; } = 50;
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
 

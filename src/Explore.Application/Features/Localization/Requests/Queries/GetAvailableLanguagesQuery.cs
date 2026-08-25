@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Queries;
 
-public class GetAvailableLanguagesQuery : IRequest<List<string>>
+public sealed record GetAvailableLanguagesQuery : IRequest<List<string>>
 {
 }

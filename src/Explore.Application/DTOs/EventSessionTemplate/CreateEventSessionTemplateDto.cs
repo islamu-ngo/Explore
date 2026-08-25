@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.EventSessionTemplate;
 
-public class CreateEventSessionTemplateDto
+public sealed record CreateEventSessionTemplateDto
 {
-    public Guid EventTemplateId { get; set; }
+    public Guid EventTemplateId { get; init; }
     public string SessionTemplateKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -13,5 +13,5 @@ public class CreateEventSessionTemplateDto
     public bool IsPublished { get; set; }
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; }
-    public List<CreateEventSessionTemplateDefinitionDto> Definitions { get; set; } = [];
+    public List<CreateEventSessionTemplateDefinitionDto> Definitions { get; init; } = [];
 }

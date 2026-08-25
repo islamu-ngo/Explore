@@ -9,13 +9,13 @@ using MediatR;
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Create)]
-public class FinalizeStorageUploadSessionCommand : IRequest<BaseCommandResponse<StorageUploadSessionDto>>, ISecureRequest
+public sealed record FinalizeStorageUploadSessionCommand : IRequest<BaseCommandResponse<StorageUploadSessionDto>>, ISecureRequest
 {
-    public Guid UploadSessionId { get; set; }
-    public required Stream Content { get; set; }
-    public string? ContentType { get; set; }
-    public long? ContentLength { get; set; }
-    public Guid? TenantId { get; set; }
+    public Guid UploadSessionId { get; init; }
+    public required Stream Content { get; init; }
+    public string? ContentType { get; init; }
+    public long? ContentLength { get; init; }
+    public Guid? TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => UploadSessionId == Guid.Empty ? null : UploadSessionId.ToString();
 

@@ -46,7 +46,7 @@ public class EventFormatController(IMediator mediator) : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventFormatDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var eventFormat = await mediator.Send(new GetEventFormatDetailsRequest { Id = id }, cancellationToken);
+        var eventFormat = await mediator.Send(new GetEventFormatDetailsRequest(id), cancellationToken);
         return Ok(eventFormat);
     }
 }

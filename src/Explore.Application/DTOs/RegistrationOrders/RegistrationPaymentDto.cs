@@ -5,7 +5,7 @@ namespace Explore.Application.DTOs.RegistrationOrders;
 
 using Explore.Application.Responses;
 
-public sealed class RegistrationPaymentDto
+public sealed record RegistrationPaymentDto
 {
     public Guid Id { get; init; }
     public Guid RegistrationOrderId { get; init; }
@@ -29,7 +29,7 @@ public sealed class RegistrationPaymentDto
     public int CurrencyMinorUnitDigits { get; init; }
 }
 
-public sealed class RegistrationMaterialChangeChoiceDto
+public sealed record RegistrationMaterialChangeChoiceDto
 {
     public Guid Id { get; init; }
     public Guid CampaignId { get; init; }
@@ -38,7 +38,7 @@ public sealed class RegistrationMaterialChangeChoiceDto
     public DateTime? DecidedAt { get; init; }
 }
 
-public sealed class RegistrationMaterialChangeChoiceRequestDto
+public sealed record RegistrationMaterialChangeChoiceRequestDto
 {
     public Guid CampaignId { get; init; }
     public string ChoiceCode { get; init; } = string.Empty;
@@ -50,7 +50,7 @@ public sealed class RegistrationMaterialChangeChoiceCommandResultDto : BaseComma
     public RegistrationRefundDto? Refund { get; init; }
 }
 
-public sealed class RegistrationRefundDto
+public sealed record RegistrationRefundDto
 {
     internal bool SettlementRetryAvailable { get; init; }
     public bool ShouldAdvertiseSettlementRetry() => SettlementRetryAvailable;
@@ -66,7 +66,7 @@ public sealed class RegistrationRefundDto
     public DateTime? SucceededAt { get; init; }
 }
 
-public sealed class RegistrationPaymentDisputeDto
+public sealed record RegistrationPaymentDisputeDto
 {
     public Guid Id { get; init; }
     public string StageCode { get; init; } = string.Empty;
@@ -77,7 +77,7 @@ public sealed class RegistrationPaymentDisputeDto
     public DateTime? ResponseDueAt { get; init; }
 }
 
-public sealed class RegistrationRefundRequestDto
+public sealed record RegistrationRefundRequestDto
 {
     public long? AmountMinor { get; init; }
     public string ReasonCode { get; init; } = string.Empty;
@@ -93,7 +93,7 @@ public sealed class RegistrationPaymentCommandResultDto : BaseCommandResponse<Gu
     public RegistrationPaymentDto? Payment { get; init; }
 }
 
-public sealed class RegistrationPaymentCheckoutTargetDto
+public sealed record RegistrationPaymentCheckoutTargetDto
 {
     public required string Url { get; init; }
 }

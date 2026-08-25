@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.EventAgendaItem;
 
-public class CreateEventAgendaItemDto
+public sealed record CreateEventAgendaItemDto
 {
-    public Guid EventId { get; set; }
-    public required string Title { get; set; }
-    public string? Description { get; set; }
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
-    public Guid? LocationId { get; set; }
-    public Guid? RoomId { get; set; }
-    public int? KindId { get; set; }
-    public int SortOrder { get; set; }
+    public Guid EventId { get; init; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
+    public Guid? LocationId { get; init; }
+    public Guid? RoomId { get; init; }
+    public int? KindId { get; init; }
+    public int SortOrder { get; init; }
 }

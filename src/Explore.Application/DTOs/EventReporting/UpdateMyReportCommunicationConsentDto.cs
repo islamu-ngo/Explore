@@ -3,13 +3,13 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class UpdateMyReportCommunicationConsentDto
+public sealed record UpdateMyReportCommunicationConsentDto
 {
-    public required ReportCommunicationConsentUpdateDto Consent { get; set; }
+    public required ReportCommunicationConsentUpdateDto Consent { get; init; }
 }
 
-public sealed class ReportCommunicationConsentUpdateDto
+public sealed record ReportCommunicationConsentUpdateDto
 {
-    public bool ReportCaseUpdatesConsent { get; set; }
-    public bool ReportFollowUpContactConsent { get; set; }
+    public bool ReportCaseUpdatesConsent { get; init; }
+    public bool ReportFollowUpContactConsent { get; init; }
 }

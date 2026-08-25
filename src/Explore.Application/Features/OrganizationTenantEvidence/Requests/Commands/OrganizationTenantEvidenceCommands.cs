@@ -10,7 +10,7 @@ using MediatR;
 namespace Explore.Application.Features.OrganizationTenantEvidence.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Organizations.SubmitEvidence)]
-public sealed class CreateOrganizationTenantEvidenceUploadSessionCommand
+public sealed record CreateOrganizationTenantEvidenceUploadSessionCommand
     : IRequest<BaseCommandResponse<StorageUploadSessionDto>>, ISecureRequest
 {
     public Guid OrganizationId { get; init; }
@@ -21,7 +21,7 @@ public sealed class CreateOrganizationTenantEvidenceUploadSessionCommand
 }
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Organizations.SubmitEvidence)]
-public sealed class SubmitOrganizationTenantEvidenceCommand
+public sealed record SubmitOrganizationTenantEvidenceCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; init; }
@@ -32,7 +32,7 @@ public sealed class SubmitOrganizationTenantEvidenceCommand
 }
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Organizations.ReviewEvidence)]
-public sealed class ReviewOrganizationTenantEvidenceCommand
+public sealed record ReviewOrganizationTenantEvidenceCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; init; }

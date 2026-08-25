@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class UpdateInstanceSmtpSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateInstanceSmtpSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid UserId { get; set; }
-    public required PatchInstanceSmtpSettingsDto Patch { get; set; } = new();
+    public Guid UserId { get; init; }
+    public required PatchInstanceSmtpSettingsDto Patch { get; init; } = new();
 }

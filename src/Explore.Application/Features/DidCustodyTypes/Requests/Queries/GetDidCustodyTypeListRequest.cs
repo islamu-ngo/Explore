@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.DidCustodyTypes.Requests.Queries;
 
-public class GetDidCustodyTypeListRequest : IRequest<List<DidCustodyTypeListDto>>
+public sealed record GetDidCustodyTypeListRequest : IRequest<List<DidCustodyTypeListDto>>
 {
 }

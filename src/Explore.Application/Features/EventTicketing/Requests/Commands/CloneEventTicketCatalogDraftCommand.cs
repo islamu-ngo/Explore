@@ -7,7 +7,7 @@ using MediatR;
 namespace Explore.Application.Features.EventTicketing.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTickets)]
-public sealed class CloneEventTicketCatalogDraftCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CloneEventTicketCatalogDraftCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();

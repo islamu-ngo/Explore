@@ -9,15 +9,21 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class UpdateControlPlaneTenantPlanVersionDraftCommand(
-    Guid versionId,
-    PatchControlPlaneTenantPlanVersionDraftDto update)
+public sealed record UpdateControlPlaneTenantPlanVersionDraftCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public UpdateControlPlaneTenantPlanVersionDraftCommand(
+        Guid versionId,
+        PatchControlPlaneTenantPlanVersionDraftDto update)
+    {
+        VersionId = versionId;
+        Update = update;
+    }
+
     public const string SettingKey = "control-plane.tenant-plans";
 
-    public Guid VersionId { get; } = versionId;
-    public PatchControlPlaneTenantPlanVersionDraftDto Update { get; } = update;
+    public Guid VersionId { get; }
+    public PatchControlPlaneTenantPlanVersionDraftDto Update { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 
@@ -25,32 +31,32 @@ public sealed class UpdateControlPlaneTenantPlanVersionDraftCommand(
         InstanceScopedAuthorizationFacts.Instance;
 }
 
-public sealed class PatchControlPlaneTenantPlanVersionDraftDto
+public sealed record PatchControlPlaneTenantPlanVersionDraftDto
 {
-    public PatchTenantPlanPricingDto? Pricing { get; set; }
-    public PatchTenantPlanProvisioningDto? IsActiveForProvisioning { get; set; }
-    public PatchTenantPlanSettingOverridesDto? SettingOverrides { get; set; }
-    public PatchTenantPlanQuotaLimitsDto? QuotaLimits { get; set; }
+    public PatchTenantPlanPricingDto? Pricing { get; init; }
+    public PatchTenantPlanProvisioningDto? IsActiveForProvisioning { get; init; }
+    public PatchTenantPlanSettingOverridesDto? SettingOverrides { get; init; }
+    public PatchTenantPlanQuotaLimitsDto? QuotaLimits { get; init; }
 }
 
-public sealed class PatchTenantPlanPricingDto
+public sealed record PatchTenantPlanPricingDto
 {
-    public decimal? Amount { get; set; }
-    public string? CurrencyCode { get; set; }
-    public string? BillingPeriod { get; set; }
+    public decimal? Amount { get; init; }
+    public string? CurrencyCode { get; init; }
+    public string? BillingPeriod { get; init; }
 }
 
-public sealed class PatchTenantPlanProvisioningDto
+public sealed record PatchTenantPlanProvisioningDto
 {
-    public bool? Value { get; set; }
+    public bool? Value { get; init; }
 }
 
-public sealed class PatchTenantPlanSettingOverridesDto
+public sealed record PatchTenantPlanSettingOverridesDto
 {
-    public IReadOnlyList<TenantPlanSettingOverride>? Values { get; set; }
+    public IReadOnlyList<TenantPlanSettingOverride>? Values { get; init; }
 }
 
-public sealed class PatchTenantPlanQuotaLimitsDto
+public sealed record PatchTenantPlanQuotaLimitsDto
 {
-    public IReadOnlyList<TenantPlanQuotaLimit>? Values { get; set; }
+    public IReadOnlyList<TenantPlanQuotaLimit>? Values { get; init; }
 }

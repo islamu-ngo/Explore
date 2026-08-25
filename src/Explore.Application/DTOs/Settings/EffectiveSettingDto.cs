@@ -9,7 +9,7 @@ using Explore.Application.Contracts.Infrastructure;
 /// A fully resolved setting value with metadata for client-side rendering.
 /// Includes source provenance, lock state, and editability for the requesting scope.
 /// </summary>
-public class EffectiveSettingDto
+public sealed record EffectiveSettingDto
 {
     public required string Key { get; init; }
     public required string Value { get; init; }

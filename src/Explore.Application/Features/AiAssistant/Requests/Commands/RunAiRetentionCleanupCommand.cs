@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.AiAssistant.Requests.Commands;
 
-public sealed class RunAiRetentionCleanupCommand : IRequest<AiRetentionCleanupResult>
+public sealed record RunAiRetentionCleanupCommand : IRequest<AiRetentionCleanupResult>
 {
-    public bool DryRun { get; set; }
-    public DateTime? UtcNow { get; set; }
+    public bool DryRun { get; init; }
+    public DateTime? UtcNow { get; init; }
 }

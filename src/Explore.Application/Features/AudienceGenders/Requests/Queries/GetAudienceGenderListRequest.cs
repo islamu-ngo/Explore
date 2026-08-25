@@ -8,6 +8,6 @@ using MediatR;
 
 namespace Explore.Application.Features.AudienceGenders.Requests.Queries;
 
-public class GetAudienceGenderListRequest : IRequest<List<AudienceGenderListDto>>
+public sealed record GetAudienceGenderListRequest : IRequest<List<AudienceGenderListDto>>
 {
 }

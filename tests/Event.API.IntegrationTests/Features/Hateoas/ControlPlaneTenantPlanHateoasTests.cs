@@ -121,7 +121,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
             StatusId = (int)TenantPlanStatusEnum.Draft,
             StatusCode = "DRAFT"
         };
-        detail.Versions = [draft, detail.Versions.Single()];
+        detail = detail with { Versions = [draft, detail.Versions.Single()] };
 
         IHateoasAuthorizationEvaluator evaluator = Substitute.For<IHateoasAuthorizationEvaluator>();
         evaluator.AreLinksAllowedAsync(

@@ -12,10 +12,17 @@ namespace Explore.Application.Features.Tenants.Requests.Commands.ReorderTenantNa
 /// Accepts a list of navigation link IDs with their new order values.
 /// Returns a boolean indicating success or failure.
 /// </summary>
-public class ReorderTenantNavLinksCommand : IRequest<BaseCommandResponse<bool>>
+public sealed record ReorderTenantNavLinksCommand : IRequest<BaseCommandResponse<bool>>
 {
     /// <summary>
     /// List of navigation links with their new order values.
     /// </summary>
-    public List<UpdateTenantNavigationLinkOrderDto> NavigationLinkOrders { get; set; } = new();
+    private IReadOnlyList<UpdateTenantNavigationLinkOrderDto> _navigationLinkOrders =
+        Array.AsReadOnly(Array.Empty<UpdateTenantNavigationLinkOrderDto>());
+
+    public IReadOnlyList<UpdateTenantNavigationLinkOrderDto> NavigationLinkOrders
+    {
+        get => _navigationLinkOrders;
+        init => _navigationLinkOrders = value is null ? null! : Array.AsReadOnly(value.ToArray());
+    }
 }

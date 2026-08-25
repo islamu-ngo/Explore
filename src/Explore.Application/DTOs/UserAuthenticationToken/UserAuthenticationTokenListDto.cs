@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.UserAuthenticationToken;
 
-public class UserAuthenticationTokenListDto
+public sealed record UserAuthenticationTokenListDto
 {
-    public Guid Id { get; set; }
-    public required string Provider { get; set; }
-    public string? PdsHost { get; set; }
-    public DateTime? ExpiresAt { get; set; }
+    public Guid Id { get; init; }
+    public required string Provider { get; init; }
+    public string? PdsHost { get; init; }
+    public DateTime? ExpiresAt { get; init; }
 }

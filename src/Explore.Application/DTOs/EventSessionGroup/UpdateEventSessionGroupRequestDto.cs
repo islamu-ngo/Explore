@@ -5,34 +5,34 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventSessionGroup;
 
-public class UpdateEventSessionGroupRequestDto
+public sealed record UpdateEventSessionGroupRequestDto
 {
-    public UpdateEventSessionGroupMetadataDto? Metadata { get; set; }
-    public UpdateEventSessionGroupPlacementDto? Placement { get; set; }
-    public UpdateEventSessionGroupOrderingDto? Ordering { get; set; }
-    public UpdateEventSessionGroupPublicationDto? Publication { get; set; }
+    public UpdateEventSessionGroupMetadataDto? Metadata { get; init; }
+    public UpdateEventSessionGroupPlacementDto? Placement { get; init; }
+    public UpdateEventSessionGroupOrderingDto? Ordering { get; init; }
+    public UpdateEventSessionGroupPublicationDto? Publication { get; init; }
 }
 
-public sealed class UpdateEventSessionGroupMetadataDto
+public sealed record UpdateEventSessionGroupMetadataDto
 {
-    public string? Name { get; set; }
-    public OptionalUpdate<string?> Slug { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<string?> Description { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<string?> Color { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public string? Name { get; init; }
+    public OptionalUpdate<string?> Slug { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Description { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Color { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventSessionGroupPlacementDto
+public sealed record UpdateEventSessionGroupPlacementDto
 {
-    public OptionalUpdate<Guid?> LocationId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
-    public OptionalUpdate<Guid?> RoomId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> LocationId { get; init; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> RoomId { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public sealed class UpdateEventSessionGroupOrderingDto
+public sealed record UpdateEventSessionGroupOrderingDto
 {
-    public int? SortOrder { get; set; }
+    public int? SortOrder { get; init; }
 }
 
-public sealed class UpdateEventSessionGroupPublicationDto
+public sealed record UpdateEventSessionGroupPublicationDto
 {
-    public bool? IsPublished { get; set; }
+    public bool? IsPublished { get; init; }
 }

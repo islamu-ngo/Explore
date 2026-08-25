@@ -126,9 +126,11 @@ public sealed class KeycloakBootstrapServiceTests
     [Test]
     public async Task BootstrapAsync_PatchExistingRealmWhenSecretAlreadyMatchesAndRefreshSettingsMissing_RepairsClient()
     {
-        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
-        request.ApiClientId = null;
-        request.ApiClientSecret = null;
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm) with
+        {
+            ApiClientId = null,
+            ApiClientSecret = null
+        };
         var handler = new OrderedMessageHandler(
             Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
                 { "access_token": "admin-token" }
@@ -168,9 +170,11 @@ public sealed class KeycloakBootstrapServiceTests
     [Test]
     public async Task BootstrapAsync_PatchExistingRealmWhenSecretAlreadyMatchesAndRefreshSettingsPresent_DoesNotMutateClient()
     {
-        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
-        request.ApiClientId = null;
-        request.ApiClientSecret = null;
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm) with
+        {
+            ApiClientId = null,
+            ApiClientSecret = null
+        };
         var handler = new OrderedMessageHandler(
             Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
                 { "access_token": "admin-token" }
@@ -205,10 +209,12 @@ public sealed class KeycloakBootstrapServiceTests
     [Test]
     public async Task BootstrapAsync_PatchExistingRealmWhenBrowserUrisMissing_AddsLoginRepairSettings()
     {
-        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
-        request.ApiClientSecret = null;
-        request.BlazorRedirectUris = ["https://localhost:7177/*"];
-        request.BlazorWebOrigins = ["+"];
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm) with
+        {
+            ApiClientSecret = null,
+            BlazorRedirectUris = ["https://localhost:7177/*"],
+            BlazorWebOrigins = ["+"]
+        };
         var handler = new OrderedMessageHandler(
             Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
                 { "access_token": "admin-token" }

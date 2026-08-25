@@ -2,14 +2,14 @@ using System;
 
 namespace Explore.Application.DTOs.CategoryTypeCategories;
 
-public class CategoryTypeCategoriesDto
+public sealed record CategoryTypeCategoriesDto
 {
-    public Guid Id { get; set; }
-    public Guid CategoryId { get; set; }
-    public string? CategoryFullName { get; set; }
-    public string? CategoryMasterCode { get; set; }
-    public int CategoryTypeId { get; set; }
-    public string? CategoryTypeFullName { get; set; }
-    public string? CategoryTypeMasterCode { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid CategoryId { get; init; }
+    public string? CategoryFullName { get; init; }
+    public string? CategoryMasterCode { get; init; }
+    public int CategoryTypeId { get; init; }
+    public string? CategoryTypeFullName { get; init; }
+    public string? CategoryTypeMasterCode { get; init; }
+    public Guid TenantId { get; init; }
 }

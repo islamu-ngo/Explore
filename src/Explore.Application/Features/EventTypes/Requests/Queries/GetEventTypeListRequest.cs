@@ -5,9 +5,9 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTypes.Requests.Queries;
 
-public class GetEventTypeListRequest : IRequest<List<EventTypeListDto>>
+public sealed record GetEventTypeListRequest : IRequest<List<EventTypeListDto>>
 {
-    public int Id { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
+    public int Id { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
 }

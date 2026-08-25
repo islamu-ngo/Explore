@@ -48,7 +48,10 @@ public sealed class GetPublicEventDiscoveryRequestHandlerTests
     {
         var fixture = CreateFixture(true, [Local("Local")]);
         GetPublicEventDiscoveryRequest request = Request();
-        request.Criteria.CategoryId = Guid.CreateVersion7();
+        request = request with
+        {
+            Criteria = request.Criteria with { CategoryId = Guid.CreateVersion7() }
+        };
 
         PaginatedResult<Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto> result =
             await fixture.Handler.Handle(request, CancellationToken.None);

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class EventTicketPriceSummaryDto
+public sealed record EventTicketPriceSummaryDto
 {
     public required string SummaryCode { get; init; }
     public string? CurrencyCode { get; init; }

@@ -5,16 +5,16 @@ namespace Explore.Application.DTOs.Onboarding;
 
 using Explore.Application.Onboarding;
 
-public class KeycloakBootstrapResultDto
+public sealed record KeycloakBootstrapResultDto
 {
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public string? FailureCode { get; set; }
-    public KeycloakBootstrapMode Mode { get; set; }
-    public string Realm { get; set; } = string.Empty;
-    public string BlazorClientId { get; set; } = string.Empty;
-    public string? ApiClientId { get; set; }
-    public bool RealmCreated { get; set; }
-    public bool BlazorClientUpdated { get; set; }
-    public bool ApiClientUpdated { get; set; }
+    public bool Success { get; init; }
+    public string Message { get; init; } = string.Empty;
+    public string? FailureCode { get; init; }
+    public KeycloakBootstrapMode Mode { get; init; }
+    public string Realm { get; init; } = string.Empty;
+    public string BlazorClientId { get; init; } = string.Empty;
+    public string? ApiClientId { get; init; }
+    public bool RealmCreated { get; init; }
+    public bool BlazorClientUpdated { get; init; }
+    public bool ApiClientUpdated { get; init; }
 }

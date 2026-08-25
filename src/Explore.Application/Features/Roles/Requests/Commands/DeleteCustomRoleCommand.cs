@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Roles.Requests.Commands;
 
-public class DeleteCustomRoleCommand : IRequest<BaseCommandResponse<int>>
-{
-    public int RoleId { get; set; }
-}
+public sealed record DeleteCustomRoleCommand(int RoleId = default) : IRequest<BaseCommandResponse<int>>;

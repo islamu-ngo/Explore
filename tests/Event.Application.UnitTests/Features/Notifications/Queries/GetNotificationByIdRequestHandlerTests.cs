@@ -66,7 +66,7 @@ public class GetNotificationByIdRequestHandlerTests
         _notificationRepository.GetByIdForUser(notificationId, userId).Returns(notification);
         _mapper.Map<NotificationDto>(notification).Returns(expectedDto);
 
-        var request = new GetNotificationByIdRequest { Id = notificationId };
+        var request = new GetNotificationByIdRequest(notificationId);
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);
@@ -86,7 +86,7 @@ public class GetNotificationByIdRequestHandlerTests
 
         _notificationRepository.GetByIdForUser(Arg.Any<Guid>(), userId).Returns((Notification?)null);
 
-        var request = new GetNotificationByIdRequest { Id = Guid.NewGuid() };
+        var request = new GetNotificationByIdRequest(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);
@@ -100,7 +100,7 @@ public class GetNotificationByIdRequestHandlerTests
     {
         // Arrange
         _currentUserService.UserId.Returns((Guid?)null);
-        var request = new GetNotificationByIdRequest { Id = Guid.NewGuid() };
+        var request = new GetNotificationByIdRequest(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);

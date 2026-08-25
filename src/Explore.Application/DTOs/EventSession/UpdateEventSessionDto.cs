@@ -6,86 +6,86 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSession;
 
-public class UpdateEventSessionDto
+public sealed record UpdateEventSessionDto
 {
-    public UpdateEventSessionEventDto? Event { get; set; }
-    public UpdateEventSessionScheduleDto? Schedule { get; set; }
-    public UpdateEventSessionLocationDto? Location { get; set; }
-    public UpdateEventSessionFeaturedImageDto? FeaturedImage { get; set; }
-    public UpdateEventSessionRoomDto? Room { get; set; }
-    public UpdateEventSessionSortOrderDto? SortOrder { get; set; }
-    public UpdateEventSessionTitleDto? Title { get; set; }
-    public UpdateEventSessionKindDto? Kind { get; set; }
-    public UpdateEventSessionDescriptionDto? Description { get; set; }
-    public UpdateEventSessionSlugDto? Slug { get; set; }
-    public UpdateEventSessionMaxAudienceAttendeesDto? MaxAudienceAttendees { get; set; }
-    public UpdateEventSessionRegistrationModeDto? RegistrationMode { get; set; }
-    public UpdateEventSessionIslamicAspectUpdateDto? IslamicAspect { get; set; }
+    public UpdateEventSessionEventDto? Event { get; init; }
+    public UpdateEventSessionScheduleDto? Schedule { get; init; }
+    public UpdateEventSessionLocationDto? Location { get; init; }
+    public UpdateEventSessionFeaturedImageDto? FeaturedImage { get; init; }
+    public UpdateEventSessionRoomDto? Room { get; init; }
+    public UpdateEventSessionSortOrderDto? SortOrder { get; init; }
+    public UpdateEventSessionTitleDto? Title { get; init; }
+    public UpdateEventSessionKindDto? Kind { get; init; }
+    public UpdateEventSessionDescriptionDto? Description { get; init; }
+    public UpdateEventSessionSlugDto? Slug { get; init; }
+    public UpdateEventSessionMaxAudienceAttendeesDto? MaxAudienceAttendees { get; init; }
+    public UpdateEventSessionRegistrationModeDto? RegistrationMode { get; init; }
+    public UpdateEventSessionIslamicAspectUpdateDto? IslamicAspect { get; init; }
 }
 
-public class UpdateEventSessionEventDto
+public sealed record UpdateEventSessionEventDto
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 }
 
-public class UpdateEventSessionScheduleDto
+public sealed record UpdateEventSessionScheduleDto
 {
-    public OptionalUpdate<DateTimeOffset?> StartTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
-    public OptionalUpdate<DateTimeOffset?> EndTime { get; set; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
-    public OptionalUpdate<SessionEndTimeType> EndTimeType { get; set; } = OptionalUpdate<SessionEndTimeType>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> StartTime { get; init; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<DateTimeOffset?> EndTime { get; init; } = OptionalUpdate<DateTimeOffset?>.Unspecified();
+    public OptionalUpdate<SessionEndTimeType> EndTimeType { get; init; } = OptionalUpdate<SessionEndTimeType>.Unspecified();
 }
 
-public class UpdateEventSessionLocationDto
+public sealed record UpdateEventSessionLocationDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSessionFeaturedImageDto
+public sealed record UpdateEventSessionFeaturedImageDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSessionRoomDto
+public sealed record UpdateEventSessionRoomDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSessionSortOrderDto
+public sealed record UpdateEventSessionSortOrderDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }
 
-public class UpdateEventSessionTitleDto
+public sealed record UpdateEventSessionTitleDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSessionKindDto
+public sealed record UpdateEventSessionKindDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventSessionDescriptionDto
+public sealed record UpdateEventSessionDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSessionSlugDto
+public sealed record UpdateEventSessionSlugDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSessionMaxAudienceAttendeesDto
+public sealed record UpdateEventSessionMaxAudienceAttendeesDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventSessionRegistrationModeDto
+public sealed record UpdateEventSessionRegistrationModeDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventSessionIslamicAspectUpdateDto
+public sealed record UpdateEventSessionIslamicAspectUpdateDto
 {
-    public OptionalUpdate<EventSessionIslamicAspectDto?> Value { get; set; } = OptionalUpdate<EventSessionIslamicAspectDto?>.Unspecified();
+    public OptionalUpdate<EventSessionIslamicAspectDto?> Value { get; init; } = OptionalUpdate<EventSessionIslamicAspectDto?>.Unspecified();
 }

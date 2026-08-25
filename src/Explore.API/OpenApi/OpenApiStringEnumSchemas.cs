@@ -56,6 +56,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(GenderSegregationMode),
         typeof(HomeDiscoveryMode),
         typeof(HomeDiscoverySectionStatus),
+        typeof(IntegrationSyncRecoveryDecision),
         typeof(KeycloakBootstrapMode),
         typeof(ManagedProviderOrganizerKindDto),
         typeof(OrganizationTenantEvidenceReviewDecisionDto),

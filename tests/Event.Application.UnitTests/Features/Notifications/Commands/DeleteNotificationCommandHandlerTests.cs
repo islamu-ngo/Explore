@@ -53,7 +53,7 @@ public class DeleteNotificationCommandHandlerTests
 
         _notificationRepository.GetByIdForUser(notificationId, userId).Returns(notification);
 
-        var command = new DeleteNotificationCommand { Id = notificationId };
+        var command = new DeleteNotificationCommand(notificationId);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -71,7 +71,7 @@ public class DeleteNotificationCommandHandlerTests
         _currentUserService.UserId.Returns(userId);
         _notificationRepository.GetByIdForUser(Arg.Any<Guid>(), userId).Returns((Notification?)null);
 
-        var command = new DeleteNotificationCommand { Id = Guid.NewGuid() };
+        var command = new DeleteNotificationCommand(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -85,7 +85,7 @@ public class DeleteNotificationCommandHandlerTests
     {
         // Arrange
         _currentUserService.UserId.Returns((Guid?)null);
-        var command = new DeleteNotificationCommand { Id = Guid.NewGuid() };
+        var command = new DeleteNotificationCommand(Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

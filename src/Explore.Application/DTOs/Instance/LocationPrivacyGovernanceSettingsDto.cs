@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public sealed class LocationPrivacyGovernanceSettingsDto
+public sealed record LocationPrivacyGovernanceSettingsDto
 {
-    public bool AllowHomeLocations { get; set; }
-    public bool AllowPublicExactAddress { get; set; }
-    public bool AllowPublicCoordinates { get; set; }
-    public string MinimumHomeAudience { get; set; } = "NEVER";
-    public string DefaultRevealOffset { get; set; } = "P30D";
+    public bool AllowHomeLocations { get; init; }
+    public bool AllowPublicExactAddress { get; init; }
+    public bool AllowPublicCoordinates { get; init; }
+    public string MinimumHomeAudience { get; init; } = "NEVER";
+    public string DefaultRevealOffset { get; init; } = "P30D";
 }

@@ -3,17 +3,17 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRealmSyncApplyRequestDto
+public sealed record KeycloakRealmSyncApplyRequestDto
 {
-    public bool BackupConfirmed { get; set; }
+    public bool BackupConfirmed { get; init; }
 
-    public string? BootstrapAdminUsername { get; set; }
+    public string? BootstrapAdminUsername { get; init; }
 
-    public string? BootstrapAdminPassword { get; set; }
+    public string? BootstrapAdminPassword { get; init; }
 
-    public string? ApiClientId { get; set; } = "islamu-event-api";
+    public string? ApiClientId { get; init; } = "islamu-event-api";
 
-    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
+    public IReadOnlyList<string> BlazorRedirectUris { get; init; } = [];
 
-    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; init; } = [];
 }

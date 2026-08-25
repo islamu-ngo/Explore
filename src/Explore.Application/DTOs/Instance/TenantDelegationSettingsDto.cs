@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class TenantDelegationSettingsDto
+public sealed record TenantDelegationSettingsDto
 {
     public bool AllowTenantSelfServiceRegistration { get; set; }
     public bool AllowTenantWhiteLabeling { get; set; }
@@ -13,5 +13,5 @@ public class TenantDelegationSettingsDto
     public bool LockTenantStorage { get; set; } = true;
     public bool LockTenantAnalytics { get; set; } = true;
     public bool LockTenantAiAssistant { get; set; } = true;
-    public string AuthorizationProvider { get; set; } = "local";
+    public string AuthorizationProvider { get; init; } = "local";
 }

@@ -3,9 +3,9 @@
 
 namespace Explore.Application.DTOs.EventOrganizerClaim;
 
-public sealed class SubmitEventOrganizerClaimDto
+public sealed record SubmitEventOrganizerClaimDto
 {
-    public Guid ClaimantActorId { get; set; }
-    public required string EvidenceType { get; set; }
-    public required string EvidenceReference { get; set; }
+    public Guid ClaimantActorId { get; init; }
+    public required string EvidenceType { get; init; }
+    public required string EvidenceReference { get; init; }
 }

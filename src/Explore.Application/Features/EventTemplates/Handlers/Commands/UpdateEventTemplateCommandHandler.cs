@@ -77,7 +77,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             return response;
         }
 
-        request.TenantId = template.TenantId;
+        request = request with { TenantId = template.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != template.TenantId)
         {

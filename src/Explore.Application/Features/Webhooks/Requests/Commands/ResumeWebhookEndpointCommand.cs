@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Resume)]
-public sealed class ResumeWebhookEndpointCommand
+public sealed record ResumeWebhookEndpointCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid EndpointId { get; init; }

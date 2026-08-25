@@ -1,8 +1,8 @@
 namespace Explore.Application.DTOs.Event;
 
-public class EventPublishReadinessDto
+public sealed record EventPublishReadinessDto
 {
-    public Guid EventId { get; set; }
-    public bool IsReady { get; set; }
-    public List<EventPublishReadinessErrorDto> Errors { get; set; } = [];
+    public Guid EventId { get; init; }
+    public bool IsReady { get; init; }
+    public List<EventPublishReadinessErrorDto> Errors { get; init; } = [];
 }

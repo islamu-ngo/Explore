@@ -86,7 +86,7 @@ public class ContactShareConsentService : IContactShareConsentService
         var user = await _userRepository.GetUserWithDetails(userId);
         if (user?.Pii == null || string.IsNullOrWhiteSpace(user.Pii.Email))
         {
-            _logger.LogWarning("Cannot process consent: user {UserId} has no email", userId);
+            _logger.LogWarning("Cannot process consent: user has no email");
             return null;
         }
 

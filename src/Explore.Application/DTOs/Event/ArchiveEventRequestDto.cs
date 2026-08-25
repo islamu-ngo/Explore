@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class ArchiveEventRequestDto
+public sealed record ArchiveEventRequestDto
 {
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

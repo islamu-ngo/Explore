@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookProviderPublicationDto
+public sealed record WebhookProviderPublicationDto
 {
     public Guid Id { get; init; }
     public Guid TenantId { get; init; }

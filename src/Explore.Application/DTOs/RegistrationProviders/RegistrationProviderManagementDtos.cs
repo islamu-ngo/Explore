@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.RegistrationProviders;
 
-public sealed class RegistrationProviderBindingHealthDto
+public sealed record RegistrationProviderBindingHealthDto
 {
     public Guid TenantId { get; init; }
     public Guid EventId { get; init; }
@@ -22,7 +22,7 @@ public sealed class RegistrationProviderBindingHealthDto
     public IReadOnlyList<string> CapabilityCodes { get; init; } = [];
 }
 
-public sealed class RegistrationProviderParkedQueueItemDto
+public sealed record RegistrationProviderParkedQueueItemDto
 {
     public Guid TenantId { get; init; }
     public Guid EventId { get; init; }
@@ -37,14 +37,14 @@ public sealed class RegistrationProviderParkedQueueItemDto
     public int ProcessingGeneration { get; init; }
 }
 
-public sealed class ManualRegistrationProviderImportRequestDto
+public sealed record ManualRegistrationProviderImportRequestDto
 {
     public Guid BindingId { get; init; }
     public string StorageReference { get; init; } = string.Empty;
     public string SourceReference { get; init; } = string.Empty;
 }
 
-public sealed class RetryRegistrationProviderParkedItemRequestDto
+public sealed record RetryRegistrationProviderParkedItemRequestDto
 {
     public Guid? SubmissionId { get; init; }
     public Guid? EffectOutboxId { get; init; }
@@ -52,7 +52,7 @@ public sealed class RetryRegistrationProviderParkedItemRequestDto
     public string Reason { get; init; } = string.Empty;
 }
 
-public sealed class ResolveRegistrationProviderQueueItemRequestDto
+public sealed record ResolveRegistrationProviderQueueItemRequestDto
 {
     public Guid? SubmissionId { get; init; }
     public Guid? EffectOutboxId { get; init; }
@@ -60,7 +60,7 @@ public sealed class ResolveRegistrationProviderQueueItemRequestDto
     public string NoteReference { get; init; } = string.Empty;
 }
 
-public sealed class RegistrationProviderConnectionDto
+public sealed record RegistrationProviderConnectionDto
 {
     public Guid Id { get; init; }
     public Guid TenantId { get; init; }
@@ -86,7 +86,7 @@ public sealed class RegistrationProviderConnectionDto
     public IReadOnlyList<string> ApprovedOrigins { get; init; } = [];
 }
 
-public sealed class RegistrationProviderConnectionRequestDto
+public sealed record RegistrationProviderConnectionRequestDto
 {
     public string Name { get; init; } = string.Empty;
     public int ProviderKindId { get; init; }
@@ -106,12 +106,12 @@ public sealed class RegistrationProviderConnectionRequestDto
     public Guid WebhookSecretBindingId { get; init; }
 }
 
-public sealed class ReplaceRegistrationProviderApprovedOriginsRequestDto
+public sealed record ReplaceRegistrationProviderApprovedOriginsRequestDto
 {
     public IReadOnlyList<string> Origins { get; init; } = [];
 }
 
-public sealed class RegistrationProviderBindingDto
+public sealed record RegistrationProviderBindingDto
 {
     public Guid Id { get; init; }
     public Guid TenantId { get; init; }
@@ -135,21 +135,21 @@ public sealed class RegistrationProviderBindingDto
     public IReadOnlyList<RegistrationProviderOptionMappingDto> OptionMappings { get; init; } = [];
 }
 
-public sealed class RegistrationProviderFieldMappingDto
+public sealed record RegistrationProviderFieldMappingDto
 {
     public string PlatformFieldKey { get; init; } = string.Empty;
     public string ProviderFieldKey { get; init; } = string.Empty;
     public bool IsRequired { get; init; }
 }
 
-public sealed class RegistrationProviderOptionMappingDto
+public sealed record RegistrationProviderOptionMappingDto
 {
     public string PlatformFieldKey { get; init; } = string.Empty;
     public string PlatformOptionKey { get; init; } = string.Empty;
     public string ProviderOptionKey { get; init; } = string.Empty;
 }
 
-public sealed class RegistrationProviderBindingRequestDto
+public sealed record RegistrationProviderBindingRequestDto
 {
     public Guid ConnectionId { get; init; }
     public Guid FormId { get; init; }
@@ -164,13 +164,13 @@ public sealed class RegistrationProviderBindingRequestDto
     public int TrustLevelId { get; init; }
 }
 
-public sealed class ReplaceRegistrationProviderMappingsRequestDto
+public sealed record ReplaceRegistrationProviderMappingsRequestDto
 {
     public IReadOnlyList<RegistrationProviderFieldMappingDto> FieldMappings { get; init; } = [];
     public IReadOnlyList<RegistrationProviderOptionMappingDto> OptionMappings { get; init; } = [];
 }
 
-public sealed class ImportExternalRegistrationProviderFormVersionRequestDto
+public sealed record ImportExternalRegistrationProviderFormVersionRequestDto
 {
     public Guid? FormId { get; init; }
     public string Namespace { get; init; } = "external";
@@ -181,7 +181,7 @@ public sealed class ImportExternalRegistrationProviderFormVersionRequestDto
     public string? ProviderSurveyRevisionId { get; init; }
 }
 
-public sealed class RegistrationChannelDto
+public sealed record RegistrationChannelDto
 {
     public Guid Id { get; init; }
     public Guid TenantId { get; init; }
@@ -193,14 +193,14 @@ public sealed class RegistrationChannelDto
     public Guid? RegistrationProviderBindingId { get; init; }
 }
 
-public sealed class RegistrationChannelRequestDto
+public sealed record RegistrationChannelRequestDto
 {
     public int Ordinal { get; init; }
     public bool IsNative { get; init; }
     public Guid? RegistrationProviderBindingId { get; init; }
 }
 
-public sealed class RegistrationProviderLaunchDescriptorDto
+public sealed record RegistrationProviderLaunchDescriptorDto
 {
     public Guid BindingId { get; init; }
     public Guid ChannelId { get; init; }

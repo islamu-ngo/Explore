@@ -12,7 +12,7 @@ namespace Explore.Application.Features.Scheduling.Requests.Commands;
 /// update rather than a bespoke permission, so scheduler control follows the same authority as other operator
 /// surfaces instead of introducing a parallel policy that could drift from it.
 /// </summary>
-public abstract class SchedulerAdminCommandBase : IRequest<BaseCommandResponse<string>>, ISecureRequest
+public abstract record SchedulerAdminCommandBase : IRequest<BaseCommandResponse<string>>, ISecureRequest
 {
     public const string SettingKey = "scheduler.admin";
 
@@ -23,7 +23,7 @@ public abstract class SchedulerAdminCommandBase : IRequest<BaseCommandResponse<s
 }
 
 /// <summary>Identifies one job by its scheduler group and name, both taken from the request route.</summary>
-public abstract class SchedulerAdminJobCommandBase : SchedulerAdminCommandBase
+public abstract record SchedulerAdminJobCommandBase : SchedulerAdminCommandBase
 {
     public string Group { get; init; } = string.Empty;
 
@@ -37,27 +37,27 @@ public abstract class SchedulerAdminJobCommandBase : SchedulerAdminCommandBase
 /// narrow and carry no such guard.
 /// </summary>
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class PauseSchedulerCommand : SchedulerAdminCommandBase
+public sealed record PauseSchedulerCommand : SchedulerAdminCommandBase
 {
     public string? ConfirmationText { get; init; }
 }
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class ResumeSchedulerCommand : SchedulerAdminCommandBase;
+public sealed record ResumeSchedulerCommand : SchedulerAdminCommandBase;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class PauseSchedulerJobCommand : SchedulerAdminJobCommandBase;
+public sealed record PauseSchedulerJobCommand : SchedulerAdminJobCommandBase;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class ResumeSchedulerJobCommand : SchedulerAdminJobCommandBase;
+public sealed record ResumeSchedulerJobCommand : SchedulerAdminJobCommandBase;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class TriggerSchedulerJobCommand : SchedulerAdminJobCommandBase;
+public sealed record TriggerSchedulerJobCommand : SchedulerAdminJobCommandBase;
 
 /// <summary>Clears the scheduler's error state on a job's triggers so they resume normal firing.</summary>
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class ResetSchedulerJobErrorStateCommand : SchedulerAdminJobCommandBase;
+public sealed record ResetSchedulerJobErrorStateCommand : SchedulerAdminJobCommandBase;
 
 /// <summary>Requests cooperative cancellation of a job's currently executing instances.</summary>
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class InterruptSchedulerJobCommand : SchedulerAdminJobCommandBase;
+public sealed record InterruptSchedulerJobCommand : SchedulerAdminJobCommandBase;

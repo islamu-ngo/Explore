@@ -78,7 +78,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             return response;
         }
 
-        request.TenantId = definition.TenantId;
+        request = request with { TenantId = definition.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {
@@ -132,7 +132,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             AllowedUrlSchemes = definition.AllowedUrlSchemes
         };
         candidate.Options = definition.Options.Select(option => new CreateCustomPropertyOptionDto { Namespace = option.Namespace, Key = option.Key, DisplayName = option.DisplayName, Description = option.Description, Value = option.Value, IsDefault = option.IsDefault, IsActive = option.IsActive, SortOrder = option.SortOrder }).ToList();
-        ApplyPatch(candidate, request.DefinitionDto);
+        candidate = ApplyPatch(candidate, request.DefinitionDto);
         var candidateValidation = await new CreateCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
         if (!candidateValidation.IsValid)
         {
@@ -236,7 +236,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             .ToList();
     }
 
-    private static void ApplyPatch(CreateCustomPropertyDefinitionDto candidate, UpdateCustomPropertyDefinitionDto patch)
+    private static CreateCustomPropertyDefinitionDto ApplyPatch(CreateCustomPropertyDefinitionDto candidate, UpdateCustomPropertyDefinitionDto patch)
     {
         if (patch.Relations?.EntityTypeName is { } entityTypeName)
         {
@@ -246,7 +246,12 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
         var m = patch.Metadata;
         if (m is not null)
         {
-            candidate.Namespace = m.Namespace ?? candidate.Namespace; candidate.Key = m.Key ?? candidate.Key; candidate.DisplayName = m.DisplayName ?? candidate.DisplayName;
+            candidate = candidate with
+            {
+                Namespace = m.Namespace ?? candidate.Namespace,
+                Key = m.Key ?? candidate.Key,
+                DisplayName = m.DisplayName ?? candidate.DisplayName
+            };
             if (m.Description.HasValue) candidate.Description = m.Description.Value;
             candidate.IsActive = m.IsActive ?? candidate.IsActive; candidate.SortOrder = m.SortOrder ?? candidate.SortOrder; candidate.ExposureLevel = m.ExposureLevel ?? candidate.ExposureLevel;
             candidate.IsSearchable = m.IsSearchable ?? candidate.IsSearchable; candidate.IsFilterable = m.IsFilterable ?? candidate.IsFilterable; candidate.IsExportable = m.IsExportable ?? candidate.IsExportable; candidate.IsModerationRelevant = m.IsModerationRelevant ?? candidate.IsModerationRelevant; candidate.IsAnalyticsRelevant = m.IsAnalyticsRelevant ?? candidate.IsAnalyticsRelevant; candidate.IsSystemOwned = m.IsSystemOwned ?? candidate.IsSystemOwned;
@@ -258,6 +263,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             if (v.DefaultTextValue.HasValue) candidate.DefaultTextValue = v.DefaultTextValue.Value; if (v.DefaultNumberValue.HasValue) candidate.DefaultNumberValue = v.DefaultNumberValue.Value; if (v.DefaultBooleanValue.HasValue) candidate.DefaultBooleanValue = v.DefaultBooleanValue.Value; if (v.DefaultDateTimeValue.HasValue) candidate.DefaultDateTimeValue = v.DefaultDateTimeValue.Value; if (v.MinLength.HasValue) candidate.MinLength = v.MinLength.Value; if (v.MaxLength.HasValue) candidate.MaxLength = v.MaxLength.Value; if (v.RegexPattern.HasValue) candidate.RegexPattern = v.RegexPattern.Value; if (v.MinNumber.HasValue) candidate.MinNumber = v.MinNumber.Value; if (v.MaxNumber.HasValue) candidate.MaxNumber = v.MaxNumber.Value; if (v.MinDateTime.HasValue) candidate.MinDateTime = v.MinDateTime.Value; if (v.MaxDateTime.HasValue) candidate.MaxDateTime = v.MaxDateTime.Value; if (v.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = v.AllowedUrlSchemes.Value;
         }
         if (patch.Options is not null) candidate.Options = patch.Options.Items!;
+        return candidate;
     }
 
     private async Task InvalidateCaches(

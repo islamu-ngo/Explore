@@ -5,6 +5,6 @@ using MediatR;
 
 namespace Explore.Application.Features.CategoryTypes.Requests.Queries;
 
-public class GetCategoryTypeListRequest : IRequest<List<CategoryTypeListDto>>
+public sealed record GetCategoryTypeListRequest : IRequest<List<CategoryTypeListDto>>
 {
 }

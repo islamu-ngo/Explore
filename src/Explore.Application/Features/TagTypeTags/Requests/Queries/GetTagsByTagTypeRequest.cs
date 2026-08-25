@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TagTypeTags.Requests.Queries;
 
-public class GetTagsByTagTypeRequest : IRequest<List<TagListDto>>
+public sealed record GetTagsByTagTypeRequest : IRequest<List<TagListDto>>
 {
-    public int TagTypeId { get; set; }
+    public int TagTypeId { get; init; }
 }

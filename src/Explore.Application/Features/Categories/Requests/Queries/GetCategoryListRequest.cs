@@ -7,15 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Categories.Requests.Queries;
 
-public class GetCategoryListRequest : IRequest<PaginatedResult<CategoryListDto>>
-{
-    /// <summary>
-    /// Gets or sets the page number (1-based). Defaults to 1.
-    /// </summary>
-    public int PageNumber { get; set; } = 1;
-
-    /// <summary>
-    /// Gets or sets the page size. Defaults to 20.
-    /// </summary>
-    public int PageSize { get; set; } = 20;
-}
+public sealed record GetCategoryListRequest(
+    int PageNumber = 1,
+    int PageSize = 20
+) : IRequest<PaginatedResult<CategoryListDto>>;

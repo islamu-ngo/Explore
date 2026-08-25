@@ -9,6 +9,7 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.API.Services.Calendar;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventProgram;
 using Explore.Application.DTOs.EventSession;
@@ -80,12 +81,15 @@ public class EventLifecycleController : ExploreControllerBase
         "Event not found.");
 
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
 
 
     public EventLifecycleController(
-        IMediator mediator)
+        IMediator mediator,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -133,7 +137,8 @@ public class EventLifecycleController : ExploreControllerBase
     {
         var response = await _mediator.Send(new ImportEventCommand
         {
-            Request = request
+            Request = request,
+            TenantId = _tenantContext.TenantId
         }, cancellationToken);
 
         if (!response.Success)

@@ -130,9 +130,10 @@ public class TagController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTagDto tag, CancellationToken cancellationToken = default)
     {
-        var command = new CreateTagCommand { TagDto = tag };
+        var command = new CreateTagCommand { TagDto = tag, TenantId = _tenantContext.TenantId };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

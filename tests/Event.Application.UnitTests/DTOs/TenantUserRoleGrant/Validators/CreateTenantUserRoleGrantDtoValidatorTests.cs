@@ -36,7 +36,7 @@ public sealed class CreateTenantUserRoleGrantDtoValidatorTests
     public async Task Validate_WhenTenantUserIdIsEmpty_ReturnsRequiredError()
     {
         var dto = CreateValidDto();
-        dto.TenantUserId = Guid.Empty;
+        dto = dto with { TenantUserId = Guid.Empty };
         _roleRepository.GetByIdAsync(dto.RoleId).Returns(CreateRole(dto.RoleId, RoleScopeEnum.Tenant));
 
         var result = await _validator.ValidateAsync(dto);
@@ -65,7 +65,7 @@ public sealed class CreateTenantUserRoleGrantDtoValidatorTests
     public async Task Validate_WhenRoleIdIsEmpty_ReturnsRequiredError()
     {
         var dto = CreateValidDto();
-        dto.RoleId = 0;
+        dto = dto with { RoleId = 0 };
         _tenantUserRepository.Exists(dto.TenantUserId).Returns(true);
 
         var result = await _validator.ValidateAsync(dto);

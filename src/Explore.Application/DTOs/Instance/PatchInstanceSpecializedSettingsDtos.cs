@@ -8,115 +8,115 @@ using Explore.Domain.Enums.Analytics;
 
 namespace Explore.Application.DTOs.Instance;
 
-public sealed class PatchInstanceStorageSettingsDto
+public sealed record PatchInstanceStorageSettingsDto
 {
-    public OptionalUpdate<InstanceStoragePolicyWriteDto> Policy { get; set; } = OptionalUpdate<InstanceStoragePolicyWriteDto>.Unspecified();
-    public OptionalUpdate<InstanceS3ConfigurationWriteDto> S3Configuration { get; set; } = OptionalUpdate<InstanceS3ConfigurationWriteDto>.Unspecified();
+    public OptionalUpdate<InstanceStoragePolicyWriteDto> Policy { get; init; } = OptionalUpdate<InstanceStoragePolicyWriteDto>.Unspecified();
+    public OptionalUpdate<InstanceS3ConfigurationWriteDto> S3Configuration { get; init; } = OptionalUpdate<InstanceS3ConfigurationWriteDto>.Unspecified();
     public bool HasChanges() => Policy.HasValue || S3Configuration.HasValue;
 }
 
-public sealed class InstanceStoragePolicyWriteDto
+public sealed record InstanceStoragePolicyWriteDto
 {
-    public string Provider { get; set; } = string.Empty;
-    public long DefaultMaxUploadBytes { get; set; }
-    public long DefaultTenantQuotaBytes { get; set; }
-    public long InstanceMaxUploadBytes { get; set; }
-    public bool LockTenantStorage { get; set; }
-    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
+    public string Provider { get; init; } = string.Empty;
+    public long DefaultMaxUploadBytes { get; init; }
+    public long DefaultTenantQuotaBytes { get; init; }
+    public long InstanceMaxUploadBytes { get; init; }
+    public bool LockTenantStorage { get; init; }
+    public List<StorageRouteSettingsDto> Routes { get; init; } = [];
 }
 
-public sealed class InstanceS3ConfigurationWriteDto
+public sealed record InstanceS3ConfigurationWriteDto
 {
-    public string Endpoint { get; set; } = string.Empty;
-    public string PublicEndpoint { get; set; } = string.Empty;
-    public string BucketName { get; set; } = string.Empty;
-    public string AccessKeyId { get; set; } = string.Empty;
-    public string SecretAccessKey { get; set; } = string.Empty;
-    public string Region { get; set; } = string.Empty;
-    public bool ForcePathStyle { get; set; }
-    public int UploadUrlExpirationMinutes { get; set; }
+    public string Endpoint { get; init; } = string.Empty;
+    public string PublicEndpoint { get; init; } = string.Empty;
+    public string BucketName { get; init; } = string.Empty;
+    public string AccessKeyId { get; init; } = string.Empty;
+    public string SecretAccessKey { get; init; } = string.Empty;
+    public string Region { get; init; } = string.Empty;
+    public bool ForcePathStyle { get; init; }
+    public int UploadUrlExpirationMinutes { get; init; }
 }
 
-public sealed class PatchInstanceSmtpSettingsDto
+public sealed record PatchInstanceSmtpSettingsDto
 {
-    public OptionalUpdate<InstanceSmtpConfigurationWriteDto> Configuration { get; set; } = OptionalUpdate<InstanceSmtpConfigurationWriteDto>.Unspecified();
+    public OptionalUpdate<InstanceSmtpConfigurationWriteDto> Configuration { get; init; } = OptionalUpdate<InstanceSmtpConfigurationWriteDto>.Unspecified();
     public bool HasChanges() => Configuration.HasValue;
 }
 
-public sealed class InstanceSmtpConfigurationWriteDto
+public sealed record InstanceSmtpConfigurationWriteDto
 {
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string Security { get; set; } = string.Empty;
-    public string FromAddress { get; set; } = string.Empty;
-    public string FromName { get; set; } = string.Empty;
-    public int TimeoutSeconds { get; set; }
-    public bool SkipCertificateValidation { get; set; }
+    public string Host { get; init; } = string.Empty;
+    public int Port { get; init; }
+    public string Username { get; init; } = string.Empty;
+    public string Password { get; init; } = string.Empty;
+    public string Security { get; init; } = string.Empty;
+    public string FromAddress { get; init; } = string.Empty;
+    public string FromName { get; init; } = string.Empty;
+    public int TimeoutSeconds { get; init; }
+    public bool SkipCertificateValidation { get; init; }
 }
 
-public sealed class PatchResolverConfigurationDto
+public sealed record PatchResolverConfigurationDto
 {
-    public OptionalUpdate<bool> HeaderEnabled { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> SubdomainEnabled { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> CustomDomainEnabled { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> PathEnabled { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<string?> PathPrefix { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<string?> InstanceBaseDomain { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<bool> AllowTenantCustomDomains { get; set; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> HeaderEnabled { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> SubdomainEnabled { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> CustomDomainEnabled { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> PathEnabled { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<string?> PathPrefix { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> InstanceBaseDomain { get; init; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<bool> AllowTenantCustomDomains { get; init; } = OptionalUpdate<bool>.Unspecified();
     public bool HasChanges() => HeaderEnabled.HasValue || SubdomainEnabled.HasValue || CustomDomainEnabled.HasValue
         || PathEnabled.HasValue || PathPrefix.HasValue || InstanceBaseDomain.HasValue || AllowTenantCustomDomains.HasValue;
 }
 
-public sealed class PatchAnalyticsGovernanceSettingsDto
+public sealed record PatchAnalyticsGovernanceSettingsDto
 {
-    public OptionalUpdate<bool> CookieConsentEnabled { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<DeclineBehavior> DeclineBehavior { get; set; } = OptionalUpdate<DeclineBehavior>.Unspecified();
-    public OptionalUpdate<int> ConsentCookieLifetimeDays { get; set; } = OptionalUpdate<int>.Unspecified();
-    public OptionalUpdate<bool> GlobalDisableClientTracking { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<PosthogCookielessMode> PosthogCookielessMode { get; set; } = OptionalUpdate<PosthogCookielessMode>.Unspecified();
-    public OptionalUpdate<PosthogPersonProfiles> PosthogPersonProfiles { get; set; } = OptionalUpdate<PosthogPersonProfiles>.Unspecified();
-    public OptionalUpdate<bool> PosthogSessionReplay { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> PosthogAutocapture { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> PosthogHeatmaps { get; set; } = OptionalUpdate<bool>.Unspecified();
-    public OptionalUpdate<bool> PosthogToolbar { get; set; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> CookieConsentEnabled { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<DeclineBehavior> DeclineBehavior { get; init; } = OptionalUpdate<DeclineBehavior>.Unspecified();
+    public OptionalUpdate<int> ConsentCookieLifetimeDays { get; init; } = OptionalUpdate<int>.Unspecified();
+    public OptionalUpdate<bool> GlobalDisableClientTracking { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<PosthogCookielessMode> PosthogCookielessMode { get; init; } = OptionalUpdate<PosthogCookielessMode>.Unspecified();
+    public OptionalUpdate<PosthogPersonProfiles> PosthogPersonProfiles { get; init; } = OptionalUpdate<PosthogPersonProfiles>.Unspecified();
+    public OptionalUpdate<bool> PosthogSessionReplay { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> PosthogAutocapture { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> PosthogHeatmaps { get; init; } = OptionalUpdate<bool>.Unspecified();
+    public OptionalUpdate<bool> PosthogToolbar { get; init; } = OptionalUpdate<bool>.Unspecified();
     public bool HasChanges() => CookieConsentEnabled.HasValue || DeclineBehavior.HasValue || ConsentCookieLifetimeDays.HasValue
         || GlobalDisableClientTracking.HasValue || PosthogCookielessMode.HasValue || PosthogPersonProfiles.HasValue
         || PosthogSessionReplay.HasValue || PosthogAutocapture.HasValue || PosthogHeatmaps.HasValue || PosthogToolbar.HasValue;
 }
 
-public sealed class PatchAuthProviderConfigurationDto
+public sealed record PatchAuthProviderConfigurationDto
 {
-    public OptionalUpdate<AuthProviderConfigurationWriteDto> Configuration { get; set; } = OptionalUpdate<AuthProviderConfigurationWriteDto>.Unspecified();
+    public OptionalUpdate<AuthProviderConfigurationWriteDto> Configuration { get; init; } = OptionalUpdate<AuthProviderConfigurationWriteDto>.Unspecified();
     public bool HasChanges() => Configuration.HasValue;
 }
 
-public sealed class AuthProviderConfigurationWriteDto
+public sealed record AuthProviderConfigurationWriteDto
 {
-    public bool KeycloakEnabled { get; set; }
-    public string KeycloakAuthority { get; set; } = string.Empty;
-    public string KeycloakClientId { get; set; } = string.Empty;
-    public string KeycloakClientSecret { get; set; } = string.Empty;
-    public bool AtprotoLoginEnabled { get; set; }
-    public string AtprotoPublicUrl { get; set; } = string.Empty;
-    public bool GoogleSsoEnabled { get; set; }
-    public string GoogleClientId { get; set; } = string.Empty;
-    public string GoogleClientSecret { get; set; } = string.Empty;
-    public bool LockKeycloakEnabled { get; set; }
-    public bool LockAtprotoLoginEnabled { get; set; }
-    public bool LockGoogleSsoEnabled { get; set; }
+    public bool KeycloakEnabled { get; init; }
+    public string KeycloakAuthority { get; init; } = string.Empty;
+    public string KeycloakClientId { get; init; } = string.Empty;
+    public string KeycloakClientSecret { get; init; } = string.Empty;
+    public bool AtprotoLoginEnabled { get; init; }
+    public string AtprotoPublicUrl { get; init; } = string.Empty;
+    public bool GoogleSsoEnabled { get; init; }
+    public string GoogleClientId { get; init; } = string.Empty;
+    public string GoogleClientSecret { get; init; } = string.Empty;
+    public bool LockKeycloakEnabled { get; init; }
+    public bool LockAtprotoLoginEnabled { get; init; }
+    public bool LockGoogleSsoEnabled { get; init; }
 }
 
-public sealed class PatchAuthorizationProviderConfigurationDto
+public sealed record PatchAuthorizationProviderConfigurationDto
 {
-    public OptionalUpdate<AuthorizationProviderConfigurationWriteDto> Configuration { get; set; } = OptionalUpdate<AuthorizationProviderConfigurationWriteDto>.Unspecified();
+    public OptionalUpdate<AuthorizationProviderConfigurationWriteDto> Configuration { get; init; } = OptionalUpdate<AuthorizationProviderConfigurationWriteDto>.Unspecified();
     public bool HasChanges() => Configuration.HasValue;
 }
 
-public sealed class AuthorizationProviderConfigurationWriteDto
+public sealed record AuthorizationProviderConfigurationWriteDto
 {
-    public string Provider { get; set; } = string.Empty;
-    public string CerbosGrpcEndpoint { get; set; } = string.Empty;
-    public string CerbosAdminEndpoint { get; set; } = string.Empty;
+    public string Provider { get; init; } = string.Empty;
+    public string CerbosGrpcEndpoint { get; init; } = string.Empty;
+    public string CerbosAdminEndpoint { get; init; } = string.Empty;
 }

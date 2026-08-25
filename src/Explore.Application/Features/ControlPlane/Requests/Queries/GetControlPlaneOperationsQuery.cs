@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.View)]
-public sealed class GetControlPlaneOperationsQuery : IRequest<ControlPlaneOperationsDto>, ISecureRequest
+public sealed record GetControlPlaneOperationsQuery : IRequest<ControlPlaneOperationsDto>, ISecureRequest
 {
     public const string SettingKey = "control-plane.operations";
 

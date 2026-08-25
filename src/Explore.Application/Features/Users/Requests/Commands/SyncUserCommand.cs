@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Commands;
 
-public class SyncUserCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record SyncUserCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required UserDto UserDto { get; set; }
+    public required UserDto UserDto { get; init; }
 }

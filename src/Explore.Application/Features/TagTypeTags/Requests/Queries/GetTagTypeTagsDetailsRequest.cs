@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.TagTypeTags.Requests.Queries;
 
-public class GetTagTypeTagsDetailsRequest : IRequest<TagTypeTagsDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetTagTypeTagsDetailsRequest(Guid Id = default) : IRequest<TagTypeTagsDto>;

@@ -9,12 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.CustomPropertyProjections.View)]
-public class GetCustomPropertyProjectionDirtyScopesQuery : IRequest<PaginatedResult<ProjectionDirtyScopeDto>>, ISecureRequest
+public sealed record GetCustomPropertyProjectionDirtyScopesQuery : IRequest<PaginatedResult<ProjectionDirtyScopeDto>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
-    public string ProjectionName { get; set; } = string.Empty;
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = PaginatedResult<ProjectionDirtyScopeDto>.DefaultPageSize;
+    public Guid TenantId { get; init; }
+    public string ProjectionName { get; init; } = string.Empty;
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = PaginatedResult<ProjectionDirtyScopeDto>.DefaultPageSize;
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty
         ? null

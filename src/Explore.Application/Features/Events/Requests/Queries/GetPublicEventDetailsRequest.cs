@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
 
-public sealed class GetPublicEventDetailsRequest : IRequest<EventDto?>
+public sealed record GetPublicEventDetailsRequest : IRequest<EventDto?>
 {
     public required string SlugCode { get; init; }
 }

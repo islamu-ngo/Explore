@@ -5,7 +5,7 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventDay;
 
-public class UpdateEventDayDto
+public sealed record UpdateEventDayDto
 {
     public UpdateEventDayEventDto? Event { get; init; }
     public UpdateEventDayLocalDateDto? LocalDate { get; init; }
@@ -18,47 +18,47 @@ public class UpdateEventDayDto
     public UpdateEventDayRegistrationDto? Registration { get; init; }
 }
 
-public sealed class UpdateEventDayEventDto
+public sealed record UpdateEventDayEventDto
 {
     public Guid EventId { get; init; }
 }
 
-public sealed class UpdateEventDayLocalDateDto
+public sealed record UpdateEventDayLocalDateDto
 {
     public DateOnly Value { get; init; }
 }
 
-public sealed class UpdateEventDayLabelDto
+public sealed record UpdateEventDayLabelDto
 {
     public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventDayDescriptionDto
+public sealed record UpdateEventDayDescriptionDto
 {
     public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventDayBannerTextDto
+public sealed record UpdateEventDayBannerTextDto
 {
     public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public sealed class UpdateEventDayBannerImageDto
+public sealed record UpdateEventDayBannerImageDto
 {
     public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public sealed class UpdateEventDayPublicationDto
+public sealed record UpdateEventDayPublicationDto
 {
     public bool IsPublished { get; init; }
 }
 
-public sealed class UpdateEventDaySortOrderDto
+public sealed record UpdateEventDaySortOrderDto
 {
     public int Value { get; init; }
 }
 
-public sealed class UpdateEventDayRegistrationDto
+public sealed record UpdateEventDayRegistrationDto
 {
     public bool AllowsDayScopeRegistration { get; init; }
 }

@@ -7,87 +7,87 @@ using Explore.Application.Models.PublicExperience;
 
 namespace Explore.Application.DTOs.PublicExperience;
 
-public class PublicExperienceShellDto
+public sealed record PublicExperienceShellDto
 {
-    public int SchemaVersion { get; set; } = 1;
-    public string Revision { get; set; } = string.Empty;
-    public PublicExperienceMode Mode { get; set; } = PublicExperienceMode.DiscoveryCentric;
-    public string RailPublicVisibility { get; set; } = "AuthenticatedOnly";
-    public PublicExperienceHomeDto Home { get; set; } = new();
-    public PublicExperienceNavigationDto Navigation { get; set; } = new();
-    public PublicExperienceEventCatalogDto EventCatalog { get; set; } = new();
-    public PublicExperiencePrimaryOrganizationDto PrimaryOrganization { get; set; } = new();
-    public List<PublicExperienceEventSectionDto> EventSections { get; set; } = new();
-    public List<PublicExperienceCtaDto> Ctas { get; set; } = new();
-    public FooterConfigDto Footer { get; set; } = new();
+    public int SchemaVersion { get; init; } = 1;
+    public string Revision { get; init; } = string.Empty;
+    public PublicExperienceMode Mode { get; init; } = PublicExperienceMode.DiscoveryCentric;
+    public string RailPublicVisibility { get; init; } = "AuthenticatedOnly";
+    public PublicExperienceHomeDto Home { get; init; } = new();
+    public PublicExperienceNavigationDto Navigation { get; init; } = new();
+    public PublicExperienceEventCatalogDto EventCatalog { get; init; } = new();
+    public PublicExperiencePrimaryOrganizationDto PrimaryOrganization { get; init; } = new();
+    public List<PublicExperienceEventSectionDto> EventSections { get; init; } = new();
+    public List<PublicExperienceCtaDto> Ctas { get; init; } = new();
+    public FooterConfigDto Footer { get; init; } = new();
 }
 
-public class PublicExperienceHomeDto
+public sealed record PublicExperienceHomeDto
 {
-    public string PreferredHomePage { get; set; } = "EventList";
-    public string BrandDisplayName { get; set; } = string.Empty;
-    public string BrandLogoUrl { get; set; } = string.Empty;
-    public string BrandFaviconUrl { get; set; } = string.Empty;
-    public List<PublicExperienceHomeBlockDto> Blocks { get; set; } = new();
+    public string PreferredHomePage { get; init; } = "EventList";
+    public string BrandDisplayName { get; init; } = string.Empty;
+    public string BrandLogoUrl { get; init; } = string.Empty;
+    public string BrandFaviconUrl { get; init; } = string.Empty;
+    public List<PublicExperienceHomeBlockDto> Blocks { get; init; } = new();
 }
 
-public class PublicExperienceHomeBlockDto
+public sealed record PublicExperienceHomeBlockDto
 {
-    public string Key { get; set; } = string.Empty;
-    public PublicExperienceHomeBlockKind Kind { get; set; } = PublicExperienceHomeBlockKind.RichText;
-    public string Title { get; set; } = string.Empty;
-    public string Subtitle { get; set; } = string.Empty;
-    public string Body { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
-    public string LinkText { get; set; } = string.Empty;
-    public string LinkUrl { get; set; } = string.Empty;
-    public int SortOrder { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public PublicExperienceHomeBlockKind Kind { get; init; } = PublicExperienceHomeBlockKind.RichText;
+    public string Title { get; init; } = string.Empty;
+    public string Subtitle { get; init; } = string.Empty;
+    public string Body { get; init; } = string.Empty;
+    public string ImageUrl { get; init; } = string.Empty;
+    public string LinkText { get; init; } = string.Empty;
+    public string LinkUrl { get; init; } = string.Empty;
+    public int SortOrder { get; init; }
 }
 
-public class PublicExperienceNavigationDto
+public sealed record PublicExperienceNavigationDto
 {
-    public List<PublicExperienceNavigationLinkDto> Links { get; set; } = new();
+    public List<PublicExperienceNavigationLinkDto> Links { get; init; } = new();
 }
 
-public class PublicExperienceNavigationLinkDto
+public sealed record PublicExperienceNavigationLinkDto
 {
-    public string Label { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-    public int SortOrder { get; set; }
+    public string Label { get; init; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
+    public int SortOrder { get; init; }
 }
 
-public class PublicExperienceEventCatalogDto
+public sealed record PublicExperienceEventCatalogDto
 {
-    public string Label { get; set; } = "Events";
-    public string Url { get; set; } = "/events";
+    public string Label { get; init; } = "Events";
+    public string Url { get; init; } = "/events";
 }
 
-public class PublicExperiencePrimaryOrganizationDto
+public sealed record PublicExperiencePrimaryOrganizationDto
 {
-    public PublicExperiencePrimaryOrganizationState State { get; set; } = PublicExperiencePrimaryOrganizationState.NotConfigured;
-    public Guid? OrganizationId { get; set; }
-    public Guid? ActorId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string Handle { get; set; } = string.Empty;
-    public string WebsiteUrl { get; set; } = string.Empty;
-    public string ProfilePictureUri { get; set; } = string.Empty;
+    public PublicExperiencePrimaryOrganizationState State { get; init; } = PublicExperiencePrimaryOrganizationState.NotConfigured;
+    public Guid? OrganizationId { get; init; }
+    public Guid? ActorId { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string Handle { get; init; } = string.Empty;
+    public string WebsiteUrl { get; init; } = string.Empty;
+    public string ProfilePictureUri { get; init; } = string.Empty;
 }
 
-public class PublicExperienceEventSectionDto
+public sealed record PublicExperienceEventSectionDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
-    public string Url { get; set; } = "/events";
-    public string Icon { get; set; } = string.Empty;
-    public int SortOrder { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public string Url { get; init; } = "/events";
+    public string Icon { get; init; } = string.Empty;
+    public int SortOrder { get; init; }
 }
 
-public class PublicExperienceCtaDto
+public sealed record PublicExperienceCtaDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-    public PublicExperienceCtaPlacement Placement { get; set; }
-    public PublicExperienceCtaStyle Style { get; set; } = PublicExperienceCtaStyle.Primary;
-    public int SortOrder { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
+    public PublicExperienceCtaPlacement Placement { get; init; }
+    public PublicExperienceCtaStyle Style { get; init; } = PublicExperienceCtaStyle.Primary;
+    public int SortOrder { get; init; }
 }

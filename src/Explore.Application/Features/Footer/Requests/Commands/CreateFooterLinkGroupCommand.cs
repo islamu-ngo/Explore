@@ -8,11 +8,11 @@ using MediatR;
 namespace Explore.Application.Features.Footer.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
-public class CreateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid UserId { get; set; }
-    public Guid TenantId { get; set; }
-    public required string Title { get; set; }
+    public Guid UserId { get; init; }
+    public Guid TenantId { get; init; }
+    public required string Title { get; init; }
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
         TenantId == Guid.Empty

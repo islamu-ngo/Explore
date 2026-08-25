@@ -31,7 +31,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 - Completed Task 2.1: one independent architecture RED enumerates all 590 class requests and 12 authorization tests prove isolated forged facts fail closed.
 - Completed Tasks 2.2 and 2.3: all 590 compiled MediatR class requests are records, 18 collection-bearing requests defensively snapshot 37 properties, and slow-request logging contains no request values or user/tenant identifiers.
 - Recovered the Phase 2 gate with the Phase 3 implementation present: Release build is green and all 3,942 Application tests pass.
-- Completed Phase 3 Tasks 3.1–3.4: approved handwritten DTO/read/projection/body/payload candidates are records; the class baseline shrank from 824 to eight retained mutable response envelopes.
+- Completed Phase 3 Tasks 3.1–3.4: approved handwritten DTO/read/projection/body/payload candidates are records; the class baseline retains ten mutable response envelopes after integrating two paid-registration envelopes added later on `develop`.
 - Removed eight ambient tenant-authority body members and shrank the body disposition baseline from 15 to seven legitimate operation-target identifiers; trusted tenant facts now flow from server context on commands.
 - Preserved PATCH absent/set/clear behavior, HAL/pagination/mapping semantics, JSON/AOT serialization, and mutable persisted outbox lifecycle entities. Immutable notification payload collections now defensively snapshot inputs.
 - Reconciled the focused record ratchet to exact retained-class equality: 9/9 architecture tests pass. DTO mapping/serialization tests pass 12/12, outbox payload tests pass 7/7, and notification payload tests pass 2/2.
@@ -155,7 +155,7 @@ Last Updated: 2026-08-25 Europe/Brussels
 
 ### Phase 6 handoff — 2026-08-25
 
-- The final record/body ratchet passes 10/10: exactly eight retained mutable response hierarchies, seven legitimate operation targets, and zero concrete MediatR class requests. Candidate categories are no longer accepted, so new, missing, or stale debt fails bidirectionally.
+- The final record/body ratchet passes 10/10: exactly ten retained mutable response hierarchies, seven legitimate operation targets, and zero concrete MediatR class requests. Candidate categories are no longer accepted, so new, missing, or stale debt fails bidirectionally.
 - Canonical Architecture, API, Outbox, Blazor, Governance, and contributor rules now describe the implemented split: trusted server authority, generated ownership, PATCH presence semantics, shallow collection/equality limits, immutable payload snapshots versus mutable outbox lifecycle, and immutable presentation snapshots versus mutable edit/component state.
 - `CHG-2026-0010.yaml` is append-only, uses the approved `architecture` scope, and passes the repository `ReleaseInputPolicy` across all six impact objects. The Conventional Commit is composed but was not executed.
 - Scoped docs whitespace/link checks and `git diff --check` pass. The I-VSD and clean-room source-of-truth evidence remain linked and source-free.

@@ -6,4 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 
-public sealed class GetOnboardingPreflightQuery : IRequest<OnboardingPreflightDto>;
+public sealed record GetOnboardingPreflightQuery : IRequest<OnboardingPreflightDto>;

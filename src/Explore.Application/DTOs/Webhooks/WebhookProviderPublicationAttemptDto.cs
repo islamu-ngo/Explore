@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookProviderPublicationAttemptDto
+public sealed record WebhookProviderPublicationAttemptDto
 {
     public Guid Id { get; init; }
     public int AttemptNumber { get; init; }

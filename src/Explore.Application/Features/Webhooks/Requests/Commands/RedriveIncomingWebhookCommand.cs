@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.RedriveIncoming)]
-public sealed class RedriveIncomingWebhookCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record RedriveIncomingWebhookCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid TenantId { get; init; }
 

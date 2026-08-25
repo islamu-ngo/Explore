@@ -179,8 +179,8 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     {
         ConfigureAreas();
         var hybridEvent = CreateEvent("Hybrid event");
-        hybridEvent.EventFormatId = (int)EventFormatEnum.Hybrid;
-        hybridEvent.EventFormatFullName = "Hybrid";
+        hybridEvent = hybridEvent with { EventFormatId = (int)EventFormatEnum.Hybrid };
+        hybridEvent = hybridEvent with { EventFormatFullName = "Hybrid" };
         var requests = new List<GetEventListRequest>();
         _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>

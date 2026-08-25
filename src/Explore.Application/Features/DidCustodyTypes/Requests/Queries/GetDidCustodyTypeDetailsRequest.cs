@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.DidCustodyTypes.Requests.Queries;
 
-public class GetDidCustodyTypeDetailsRequest : IRequest<DidCustodyTypeDto>
-{
-    public int Id { get; set; }
-}
+public sealed record GetDidCustodyTypeDetailsRequest(int Id = default) : IRequest<DidCustodyTypeDto>;

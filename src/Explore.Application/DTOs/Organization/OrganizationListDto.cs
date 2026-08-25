@@ -9,33 +9,33 @@ using Explore.Domain;
 
 namespace Explore.Application.DTOs.Organization;
 
-public class OrganizationListDto
+public sealed record OrganizationListDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid TenantId { get; set; }
-    public required string FullName { get; set; }
-    public string? WebsiteUrl { get; set; }
-    public required string Email { get; set; }
-    public required string Country { get; set; }
-    public required string City { get; set; }
-    public required string Postcode { get; set; }
-    public required string Address { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid TenantId { get; init; }
+    public required string FullName { get; init; }
+    public string? WebsiteUrl { get; init; }
+    public required string Email { get; init; }
+    public required string Country { get; init; }
+    public required string City { get; init; }
+    public required string Postcode { get; init; }
+    public required string Address { get; init; }
 
-    public int ApprovalStatusId { get; set; }
-    public required string ApprovalStatusFullName { get; set; }
+    public int ApprovalStatusId { get; init; }
+    public required string ApprovalStatusFullName { get; init; }
     public string StatusTypeFullName => ApprovalStatusFullName; // Alias for backward compatibility
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; init; }
     public int? CurrentUserRoleId { get; set; }
 
     // Profile Picture (resolved to presigned URL)
-    public Guid? ActorProfilePictureId { get; set; }
+    public Guid? ActorProfilePictureId { get; init; }
     public string? ActorProfilePictureUri { get; set; }
-    public string? ActorBackgroundColor { get; set; }
-    public string? ActorBackgroundEffect { get; set; }
-    public string? ActorBannerColor { get; set; }
-    public Guid? ActorBannerPictureId { get; set; }
-    public string? ActorBannerPictureUri { get; set; }
-    public Guid? ActorBackgroundImageId { get; set; }
-    public string? ActorBackgroundImageUri { get; set; }
+    public string? ActorBackgroundColor { get; init; }
+    public string? ActorBackgroundEffect { get; init; }
+    public string? ActorBannerColor { get; init; }
+    public Guid? ActorBannerPictureId { get; init; }
+    public string? ActorBannerPictureUri { get; init; }
+    public Guid? ActorBackgroundImageId { get; init; }
+    public string? ActorBackgroundImageUri { get; init; }
 }

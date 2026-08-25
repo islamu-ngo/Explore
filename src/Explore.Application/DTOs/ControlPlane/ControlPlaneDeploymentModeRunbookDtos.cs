@@ -3,67 +3,67 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
-public sealed class ControlPlaneDeploymentModeRunbookDto
+public sealed record ControlPlaneDeploymentModeRunbookDto
 {
-    public string CurrentMode { get; set; } = string.Empty;
+    public string CurrentMode { get; init; } = string.Empty;
 
-    public int ActiveTenantCount { get; set; }
+    public int ActiveTenantCount { get; init; }
 
-    public DateTimeOffset GeneratedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset GeneratedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 
-    public List<ControlPlaneDeploymentModeTargetOptionDto> TargetOptions { get; set; } = [];
+    public List<ControlPlaneDeploymentModeTargetOptionDto> TargetOptions { get; init; } = [];
 
-    public List<ControlPlaneDeploymentModeRunbookStepDto> Steps { get; set; } = [];
+    public List<ControlPlaneDeploymentModeRunbookStepDto> Steps { get; init; } = [];
 }
 
-public sealed class ControlPlaneDeploymentModeTargetOptionDto
+public sealed record ControlPlaneDeploymentModeTargetOptionDto
 {
-    public string TargetMode { get; set; } = string.Empty;
+    public string TargetMode { get; init; } = string.Empty;
 
-    public string Label { get; set; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 
-    public bool Allowed { get; set; }
+    public bool Allowed { get; init; }
 
-    public string ConfirmationText { get; set; } = string.Empty;
+    public string ConfirmationText { get; init; } = string.Empty;
 
-    public string? BlockingReason { get; set; }
+    public string? BlockingReason { get; init; }
 
-    public string? Remediation { get; set; }
+    public string? Remediation { get; init; }
 }
 
-public sealed class ControlPlaneDeploymentModeRunbookStepDto
+public sealed record ControlPlaneDeploymentModeRunbookStepDto
 {
-    public string Key { get; set; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
 
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 
-    public string Severity { get; set; } = "info";
+    public string Severity { get; init; } = "info";
 }
 
-public sealed class ControlPlaneDeploymentModeTransitionRequestDto
+public sealed record ControlPlaneDeploymentModeTransitionRequestDto
 {
-    public string? TargetMode { get; set; }
+    public string? TargetMode { get; init; }
 
-    public string? Reason { get; set; }
+    public string? Reason { get; init; }
 
-    public string? ConfirmationText { get; set; }
+    public string? ConfirmationText { get; init; }
 }
 
-public sealed class ControlPlaneDeploymentModeTransitionDto
+public sealed record ControlPlaneDeploymentModeTransitionDto
 {
-    public string PreviousMode { get; set; } = string.Empty;
+    public string PreviousMode { get; init; } = string.Empty;
 
-    public string NewMode { get; set; } = string.Empty;
+    public string NewMode { get; init; } = string.Empty;
 
-    public int ActiveTenantCount { get; set; }
+    public int ActiveTenantCount { get; init; }
 
-    public Guid OperatorUserId { get; set; }
+    public Guid OperatorUserId { get; init; }
 
-    public string? Reason { get; set; }
+    public string? Reason { get; init; }
 
-    public DateTimeOffset TransitionedAtUtc { get; set; }
+    public DateTimeOffset TransitionedAtUtc { get; init; }
 }

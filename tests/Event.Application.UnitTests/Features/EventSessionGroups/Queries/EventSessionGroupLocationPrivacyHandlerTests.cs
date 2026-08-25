@@ -23,7 +23,7 @@ public sealed class EventSessionGroupLocationPrivacyHandlerTests
         var eventId = Guid.NewGuid();
         var entity = CreateEntity(eventId);
         var dto = CreateListDto(eventId);
-        dto.Id = entity.Id;
+        dto = dto with { Id = entity.Id };
         repository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([entity]);
         mapper.Map<List<EventSessionGroupListDto>>(Arg.Any<List<EventSessionGroup>>()).Returns([dto]);
         var handler = new GetEventSessionGroupsByEventRequestHandler(

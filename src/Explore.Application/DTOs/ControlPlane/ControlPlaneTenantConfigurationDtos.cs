@@ -6,45 +6,45 @@ namespace Explore.Application.DTOs.ControlPlane;
 using System.Text.Json.Serialization;
 using Explore.Application.Hateoas;
 
-public sealed class ControlPlaneTenantEffectiveConfigurationDto
+public sealed record ControlPlaneTenantEffectiveConfigurationDto
 {
-    public Guid TenantId { get; set; }
-    public ControlPlaneTenantPlanAssignmentDto? PlanAssignment { get; set; }
-    public ControlPlaneTenantPlanAssignmentDto? RollbackAssignment { get; set; }
-    public IReadOnlyList<ControlPlaneTenantEffectiveSettingDto> Settings { get; set; } = [];
-    public IReadOnlyList<ControlPlaneTenantQuotaUsageDto> Quotas { get; set; } = [];
+    public Guid TenantId { get; init; }
+    public ControlPlaneTenantPlanAssignmentDto? PlanAssignment { get; init; }
+    public ControlPlaneTenantPlanAssignmentDto? RollbackAssignment { get; init; }
+    public IReadOnlyList<ControlPlaneTenantEffectiveSettingDto> Settings { get; init; } = [];
+    public IReadOnlyList<ControlPlaneTenantQuotaUsageDto> Quotas { get; init; } = [];
 }
 
-public sealed class ControlPlaneTenantEffectiveSettingDto
+public sealed record ControlPlaneTenantEffectiveSettingDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string Value { get; set; } = string.Empty;
-    public int SettingValueTypeId { get; set; }
-    public string SettingValueTypeCode { get; set; } = string.Empty;
-    public string SettingValueTypeName { get; set; } = string.Empty;
-    public string ValueSource { get; set; } = string.Empty;
-    public bool IsLocked { get; set; }
-    public string? LockSource { get; set; }
-    public string? Description { get; set; }
-    public bool IsSensitive { get; set; }
-    public IReadOnlyList<string> AllowedValues { get; set; } = [];
+    public string Key { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
+    public string Value { get; init; } = string.Empty;
+    public int SettingValueTypeId { get; init; }
+    public string SettingValueTypeCode { get; init; } = string.Empty;
+    public string SettingValueTypeName { get; init; } = string.Empty;
+    public string ValueSource { get; init; } = string.Empty;
+    public bool IsLocked { get; init; }
+    public string? LockSource { get; init; }
+    public string? Description { get; init; }
+    public bool IsSensitive { get; init; }
+    public IReadOnlyList<string> AllowedValues { get; init; } = [];
 
     [JsonPropertyName("_links")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, HalLink>? Links { get; set; }
 }
 
-public sealed class ControlPlaneTenantQuotaUsageDto
+public sealed record ControlPlaneTenantQuotaUsageDto
 {
-    public string Key { get; set; } = string.Empty;
-    public long Limit { get; set; }
-    public long Used { get; set; }
-    public long Reserved { get; set; }
-    public long Quarantined { get; set; }
-    public long Available { get; set; }
-    public long ObjectCount { get; set; }
-    public string? Provider { get; set; }
-    public string Source { get; set; } = string.Empty;
-    public DateTime? LastRecalculatedAt { get; set; }
+    public string Key { get; init; } = string.Empty;
+    public long Limit { get; init; }
+    public long Used { get; init; }
+    public long Reserved { get; init; }
+    public long Quarantined { get; init; }
+    public long Available { get; init; }
+    public long ObjectCount { get; init; }
+    public string? Provider { get; init; }
+    public string Source { get; init; } = string.Empty;
+    public DateTime? LastRecalculatedAt { get; init; }
 }

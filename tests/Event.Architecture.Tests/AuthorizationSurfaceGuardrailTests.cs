@@ -40,7 +40,13 @@ public sealed class AuthorizationSurfaceGuardrailTests
     private static readonly Assembly ApplicationAssembly = typeof(AuthorizeResourceAttribute).Assembly;
     private static readonly Assembly ApiAssembly = typeof(EndpointClassificationAttribute).Assembly;
 
-    private static readonly InventoryEntry[] NamedMediatRExceptions = [];
+    private static readonly InventoryEntry[] NamedMediatRExceptions =
+    [
+        new(
+            "Explore.Application.Features.Integrations.Listmonk.Requests.Commands.ResolveIntegrationSyncAmbiguityCommand",
+            "handler-contained-admin",
+            "Tenant administrator authorization is enforced inside ResolveIntegrationSyncAmbiguityCommandHandler before repository mutation."),
+    ];
     private static readonly string[] NamedMediatRViolations =
     [
         "Explore.Application.Features.Actors.Requests.Commands.CreateActorCommand",

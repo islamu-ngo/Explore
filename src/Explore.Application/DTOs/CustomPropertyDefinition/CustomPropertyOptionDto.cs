@@ -3,15 +3,15 @@
 
 namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
-public class CustomPropertyOptionDto
+public sealed record CustomPropertyOptionDto
 {
-    public Guid Id { get; set; }
-    public required string Namespace { get; set; }
-    public required string Key { get; set; }
-    public required string DisplayName { get; set; }
-    public string? Description { get; set; }
-    public required string Value { get; set; }
-    public bool IsDefault { get; set; }
-    public bool IsActive { get; set; }
-    public int SortOrder { get; set; }
+    public Guid Id { get; init; }
+    public required string Namespace { get; init; }
+    public required string Key { get; init; }
+    public required string DisplayName { get; init; }
+    public string? Description { get; init; }
+    public required string Value { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
 }

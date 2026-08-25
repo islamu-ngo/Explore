@@ -8,9 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Notifications.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Group, AuthorizationActions.View)]
-public sealed class GetGroupNotificationPreferenceMatrixQuery : IRequest<NotificationPreferenceMatrixDto>, ISecureRequest
+public sealed record GetGroupNotificationPreferenceMatrixQuery : IRequest<NotificationPreferenceMatrixDto>, ISecureRequest
 {
-    public Guid GroupId { get; set; }
+    public Guid GroupId { get; init; }
 
     string? ISecureRequest.ResourceId => GroupId.ToString();
 }

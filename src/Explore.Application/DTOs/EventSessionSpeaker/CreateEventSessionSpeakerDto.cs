@@ -5,9 +5,8 @@ using System;
 
 namespace Explore.Application.DTOs.EventSessionSpeaker;
 
-public class CreateEventSessionSpeakerDto
+public sealed record CreateEventSessionSpeakerDto
 {
-    public Guid ActorId { get; set; }
-    public Guid EventSessionId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid ActorId { get; init; }
+    public Guid EventSessionId { get; init; }
 }

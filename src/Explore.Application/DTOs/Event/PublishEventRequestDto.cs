@@ -1,6 +1,6 @@
 namespace Explore.Application.DTOs.Event;
 
-public class PublishEventRequestDto
+public sealed record PublishEventRequestDto
 {
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 }

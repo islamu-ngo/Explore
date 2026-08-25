@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class DrainDirtyScopesRequestDto
+public sealed record DrainDirtyScopesRequestDto
 {
-    public Guid TenantId { get; set; }
-    public string ProjectionName { get; set; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public string ProjectionName { get; init; } = string.Empty;
 }

@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Delete)]
-public class CancelStorageUploadSessionCommand : IRequest<BaseCommandResponse<StorageUploadSessionDto>>, ISecureRequest
+public sealed record CancelStorageUploadSessionCommand : IRequest<BaseCommandResponse<StorageUploadSessionDto>>, ISecureRequest
 {
-    public Guid UploadSessionId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid UploadSessionId { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => UploadSessionId.ToString();
 

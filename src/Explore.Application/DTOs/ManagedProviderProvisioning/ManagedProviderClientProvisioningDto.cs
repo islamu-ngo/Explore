@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning;
 
-public class ManagedProviderClientProvisioningDto
+public sealed record ManagedProviderClientProvisioningDto
 {
     public required string ProviderKey { get; init; }
     public required string ExternalSystem { get; init; }

@@ -55,7 +55,7 @@ public class UpdateLocationRoomCommandHandlerTests
         existingRoom.Id = roomId;
         existingRoom.TenantId = tenantId;
         existingRoom.ConcurrencyStamp = Guid.NewGuid();
-        command.ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp;
+        command = command with { ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp };
         _locationRoomRepository.GetById(roomId).Returns(existingRoom);
 
         var parentLocation = DataBuilder.Location.Generate();
@@ -134,7 +134,7 @@ public class UpdateLocationRoomCommandHandlerTests
         existingRoom.Id = roomId;
         existingRoom.TenantId = Guid.NewGuid(); // Different tenant
         existingRoom.ConcurrencyStamp = Guid.NewGuid();
-        command.ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp;
+        command = command with { ExpectedConcurrencyStamp = existingRoom.ConcurrencyStamp };
         _locationRoomRepository.GetById(roomId).Returns(existingRoom);
 
         var parentLocation = DataBuilder.Location.Generate();

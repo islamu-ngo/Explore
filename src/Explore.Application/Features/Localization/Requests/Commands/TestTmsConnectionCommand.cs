@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Localization.Requests.Commands;
 
-public class TestTmsConnectionCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record TestTmsConnectionCommand : IRequest<BaseCommandResponse<Guid>>
 {
 }

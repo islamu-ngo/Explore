@@ -24,7 +24,10 @@ public class AuthProviderConfigurationDtoValidatorTests
     public async Task Validate_KeycloakWithoutSecretAndConfiguredSecret_IsValid()
     {
         var current = CreateKeycloakConfiguration();
-        current.KeycloakClientSecretOwnership.Configured = true;
+        current = current with
+        {
+            KeycloakClientSecretOwnership = current.KeycloakClientSecretOwnership with { Configured = true }
+        };
         var validator = new AuthProviderConfigurationDtoValidator(current);
 
         var result = await validator.ValidateAsync(CreateKeycloakConfiguration());
@@ -36,10 +39,13 @@ public class AuthProviderConfigurationDtoValidatorTests
     public async Task Validate_KeycloakWithoutSecretForDifferentClient_IsInvalid()
     {
         var current = CreateKeycloakConfiguration();
-        current.KeycloakClientSecretOwnership.Configured = true;
+        current = current with
+        {
+            KeycloakClientSecretOwnership = current.KeycloakClientSecretOwnership with { Configured = true }
+        };
         var validator = new AuthProviderConfigurationDtoValidator(current);
         var requested = CreateKeycloakConfiguration();
-        requested.KeycloakClientId = "replacement-client";
+        requested = requested with { KeycloakClientId = "replacement-client" };
 
         var result = await validator.ValidateAsync(requested);
 

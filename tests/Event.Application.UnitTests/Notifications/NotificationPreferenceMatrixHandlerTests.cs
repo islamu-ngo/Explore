@@ -499,7 +499,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             _tenantContext,
             _currentUserService);
 
-        var result = await handler.Handle(new SetCurrentUserNotificationPreferenceMuteCommand { IsMuted = true }, CancellationToken.None);
+        var result = await handler.Handle(new SetCurrentUserNotificationPreferenceMuteCommand(true), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("Tenant scope");

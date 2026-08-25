@@ -6,7 +6,7 @@ using Explore.Application.Responses;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class GuestRegistrationOrderDto
+public sealed record GuestRegistrationOrderDto
 {
     public Guid Id { get; init; }
     public Guid EventId { get; init; }

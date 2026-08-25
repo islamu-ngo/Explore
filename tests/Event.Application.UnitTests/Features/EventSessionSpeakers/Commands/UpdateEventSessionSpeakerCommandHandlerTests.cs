@@ -62,7 +62,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         {
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
         });
-        command.ExpectedConcurrencyStamp = Guid.NewGuid();
+        command = command with { ExpectedConcurrencyStamp = Guid.NewGuid() };
 
         await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
             .Throws<ConcurrencyConflictException>();
@@ -121,26 +121,36 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithRouteSessionMismatch_UsesPersistedSessionContext()
+    public async Task Handle_WithForgedContext_UsesPersistedContextWithoutMutatingOriginalRequest()
     {
         var entity = CreateSpeakerAssignment();
         var eventId = Guid.NewGuid();
+        var forgedSessionId = Guid.NewGuid();
+        var forgedEventId = Guid.NewGuid();
+        var forgedTenantId = Guid.NewGuid();
+        var targetActorId = Guid.NewGuid();
         var command = CreateCommand(entity, new UpdateEventSessionSpeakerDto
         {
-            Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
-        });
-        command.EventSessionId = Guid.NewGuid();
+            Actor = new UpdateEventSessionSpeakerActorDto { ActorId = targetActorId }
+        }) with
+        {
+            EventSessionId = forgedSessionId,
+            EventId = forgedEventId,
+            TenantId = forgedTenantId,
+        };
         _repository.GetById(entity.Id).Returns(entity);
         _eventSessionRepository.GetById(entity.EventSessionId)
             .Returns(CreateSession(entity.EventSessionId, entity.TenantId, eventId));
-        _actorRepository.GetById(command.SpeakerDto.Actor.ActorId).Returns(CreateActor(command.SpeakerDto.Actor.ActorId, entity.TenantId));
+        _actorRepository.GetById(targetActorId).Returns(CreateActor(targetActorId, entity.TenantId));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(command.EventSessionId).IsEqualTo(entity.EventSessionId);
-        await Assert.That(command.EventId).IsEqualTo(eventId);
-        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await Assert.That(command.EventSessionId).IsEqualTo(forgedSessionId);
+        await Assert.That(command.EventId).IsEqualTo(forgedEventId);
+        await Assert.That(command.TenantId).IsEqualTo(forgedTenantId);
+        await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(entity.TenantId), Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(entity);
     }
 

@@ -4,7 +4,4 @@ using MediatR;
 
 namespace Explore.Application.Features.TagTypeTags.Requests.Commands;
 
-public class DeleteTagTypeTagsCommand : IRequest<bool>
-{
-    public Guid Id { get; set; }
-}
+public sealed record DeleteTagTypeTagsCommand(Guid Id = default) : IRequest<bool>;

@@ -8,7 +8,7 @@ namespace Explore.Application.DTOs.Scheduling;
 /// the action deliberate rather than a mis-click: pausing stops email dispatch, retention sweeps, and storage
 /// reconciliation together, and nothing else in the UI has that blast radius.
 /// </summary>
-public sealed class SchedulerPauseRequestDto
+public sealed record SchedulerPauseRequestDto
 {
-    public string? ConfirmationText { get; set; }
+    public string? ConfirmationText { get; init; }
 }

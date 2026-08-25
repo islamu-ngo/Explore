@@ -9,39 +9,39 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Event;
 
-public class CreateEventDto
+public sealed record CreateEventDto
 {
-    public required string Title { get; set; }
-    public string? Subtitle { get; set; }
-    public string? Description { get; set; }
-    public string? Content { get; set; }
-    public string? Slug { get; set; }
-    public int? EventTypeId { get; set; }
-    public int? AudienceGenderId { get; set; }
-    public int? AudienceAgeId { get; set; }
-    public Guid? OrganizationId { get; set; }
-    public Guid? GroupId { get; set; }
-    public Guid? FeaturedImageId { get; set; }
-    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
-    public int EventStatusId { get; set; } = 1;
-    public int VisibilityTypeId { get; set; } = 1;
-    public int EventFormatId { get; set; } = 1;
-    public int? MadhabId { get; set; }
-    public string? Timezone { get; set; }
-    public string? EventTimeZoneId { get; set; }
-    public string? BackgroundColor { get; set; }
-    public string? BackgroundEffect { get; set; }
-    public Guid? BackgroundImageId { get; set; }
-    public Guid? TemplateId { get; set; }
-    public Guid? EventSeriesId { get; set; }
-    public int? SeriesOrder { get; set; }
-    public int? RegistrationPolicyId { get; set; }
-    public CreateUpdateIslamicAspectDto? IslamicAspect { get; set; }
-    public List<Guid> CategoryIds { get; set; } = new();
-    public List<Guid> TagIds { get; set; } = new();
-    public List<CreateEventLocationDto> Locations { get; set; } = new();
-    public List<CreateEventGraphSessionDto> Sessions { get; set; } = new();
-    public List<CreateEventGraphDayDto> Days { get; set; } = new();
-    public List<CreateEventRoomDto> Rooms { get; set; } = new();
-    public List<CreateEventGraphAgendaItemDto> AgendaItems { get; set; } = new();
+    public required string Title { get; init; }
+    public string? Subtitle { get; init; }
+    public string? Description { get; init; }
+    public string? Content { get; init; }
+    public string? Slug { get; init; }
+    public int? EventTypeId { get; init; }
+    public int? AudienceGenderId { get; init; }
+    public int? AudienceAgeId { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public Guid? GroupId { get; init; }
+    public Guid? FeaturedImageId { get; init; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; init; }
+    public int EventStatusId { get; init; } = 1;
+    public int VisibilityTypeId { get; init; } = 1;
+    public int EventFormatId { get; init; } = 1;
+    public int? MadhabId { get; init; }
+    public string? Timezone { get; init; }
+    public string? EventTimeZoneId { get; init; }
+    public string? BackgroundColor { get; init; }
+    public string? BackgroundEffect { get; init; }
+    public Guid? BackgroundImageId { get; init; }
+    public Guid? TemplateId { get; init; }
+    public Guid? EventSeriesId { get; init; }
+    public int? SeriesOrder { get; init; }
+    public int? RegistrationPolicyId { get; init; }
+    public CreateUpdateIslamicAspectDto? IslamicAspect { get; init; }
+    public List<Guid> CategoryIds { get; init; } = new();
+    public List<Guid> TagIds { get; init; } = new();
+    public List<CreateEventLocationDto> Locations { get; init; } = new();
+    public List<CreateEventGraphSessionDto> Sessions { get; init; } = new();
+    public List<CreateEventGraphDayDto> Days { get; init; } = new();
+    public List<CreateEventRoomDto> Rooms { get; init; } = new();
+    public List<CreateEventGraphAgendaItemDto> AgendaItems { get; init; } = new();
 }

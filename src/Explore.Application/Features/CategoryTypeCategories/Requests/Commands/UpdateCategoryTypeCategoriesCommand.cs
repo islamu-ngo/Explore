@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Explore.Application.Features.CategoryTypeCategories.Requests.Commands;
 
-public class UpdateCategoryTypeCategoriesCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateCategoryTypeCategoriesCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public Guid CategoryTypeCategoriesId { get; set; }
-    public required UpdateCategoryTypeCategoriesDto CategoryTypeCategoriesDto { get; set; }
+    public Guid CategoryTypeCategoriesId { get; init; }
+    public required UpdateCategoryTypeCategoriesDto CategoryTypeCategoriesDto { get; init; }
 }

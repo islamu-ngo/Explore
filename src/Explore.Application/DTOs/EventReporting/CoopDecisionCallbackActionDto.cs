@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class CoopDecisionCallbackActionDto
+public sealed record CoopDecisionCallbackActionDto
 {
     public string? Id { get; init; }
     public string? Name { get; init; }

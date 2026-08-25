@@ -9,10 +9,10 @@ using MediatR;
 namespace Explore.Application.Features.ActorSubscriptions.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.View)]
-public class GetActorSubscriptionsRequest : IRequest<PaginatedResult<ActorSubscriptionListDto>>, ISecureRequest
+public sealed record GetActorSubscriptionsRequest : IRequest<PaginatedResult<ActorSubscriptionListDto>>, ISecureRequest
 {
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 
     public string? ResourceId => "current-user-subscriptions";
 }

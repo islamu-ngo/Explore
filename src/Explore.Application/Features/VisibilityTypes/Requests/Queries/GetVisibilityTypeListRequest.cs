@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.VisibilityTypes.Requests.Queries;
 
-public class GetVisibilityTypeListRequest : IRequest<List<VisibilityTypeListDto>>
+public sealed record GetVisibilityTypeListRequest : IRequest<List<VisibilityTypeListDto>>
 {
 }

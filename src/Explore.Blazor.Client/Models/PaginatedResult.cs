@@ -2,6 +2,7 @@
 // ABOUTME: Keeps UI paging calculations without duplicating an API payload contract.
 
 using Explore.Blazor.Client.Clients;
+using System.Collections.ObjectModel;
 
 namespace Explore.Blazor.Client.Models;
 
@@ -10,12 +11,19 @@ namespace Explore.Blazor.Client.Models;
 /// Normalizes generated paginated and HAL responses for UI list state.
 /// </summary>
 /// <typeparam name="T">The type of items in the result set.</typeparam>
-public sealed class PaginatedResult<T>
+public sealed record PaginatedResult<T>
 {
+    private IReadOnlyList<T> _items = Array.Empty<T>();
+    private IReadOnlyDictionary<string, HalLink>? _links;
+
     /// <summary>
     /// Gets the items in the current page.
     /// </summary>
-    public required List<T> Items { get; init; }
+    public required IReadOnlyList<T> Items
+    {
+        get => _items;
+        init => _items = Array.AsReadOnly(value.ToArray());
+    }
 
     /// <summary>
     /// Gets the current page number (1-based).
@@ -32,7 +40,13 @@ public sealed class PaginatedResult<T>
     /// </summary>
     public required int TotalCount { get; init; }
 
-    public IReadOnlyDictionary<string, HalLink>? Links { get; init; }
+    public IReadOnlyDictionary<string, HalLink>? Links
+    {
+        get => _links;
+        init => _links = value is null
+            ? null
+            : new ReadOnlyDictionary<string, HalLink>(new Dictionary<string, HalLink>(value, StringComparer.Ordinal));
+    }
 
     /// <summary>
     /// Gets the total number of pages.

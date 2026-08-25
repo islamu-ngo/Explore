@@ -1,7 +1,7 @@
 namespace Explore.Application.DTOs.Group;
 
-public class UpdateGroupApprovalStatusDto
+public sealed record UpdateGroupApprovalStatusDto
 {
-    public int ApprovalStatusId { get; set; }
-    public string? ApprovalNotes { get; set; }
+    public int ApprovalStatusId { get; init; }
+    public string? ApprovalNotes { get; init; }
 }

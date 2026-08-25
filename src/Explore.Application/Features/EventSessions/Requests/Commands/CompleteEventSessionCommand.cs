@@ -7,7 +7,7 @@ using Explore.Application.DTOs.EventSession;
 namespace Explore.Application.Features.EventSessions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
-public sealed class CompleteEventSessionCommand : IEventSessionLifecycleTransitionCommand
+public sealed record CompleteEventSessionCommand : IEventSessionLifecycleTransitionCommand
 {
     public Guid Id { get; set; }
     public required EventSessionLifecycleRequestDto Request { get; set; }

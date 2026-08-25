@@ -3,19 +3,19 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public sealed class UserAppearanceProfileDto
+public sealed record UserAppearanceProfileDto
 {
-    public Guid Id { get; set; }
-    public Guid? TenantId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string ThemeMode { get; set; } = "system";
-    public required UiThemePaletteDto LightPaletteSnapshot { get; set; }
-    public required UiThemePaletteDto DarkPaletteSnapshot { get; set; }
-    public string? SourcePresetKey { get; set; }
-    public Guid? SourcePresetId { get; set; }
-    public int? SourcePresetSeedVersion { get; set; }
-    public bool IsUserEditable { get; set; }
-    public bool IsDefault { get; set; }
-    public bool IsArchived { get; set; }
-    public DateTimeOffset? ClonedAt { get; set; }
+    public Guid Id { get; init; }
+    public Guid? TenantId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string ThemeMode { get; init; } = "system";
+    public required UiThemePaletteDto LightPaletteSnapshot { get; init; }
+    public required UiThemePaletteDto DarkPaletteSnapshot { get; init; }
+    public string? SourcePresetKey { get; init; }
+    public Guid? SourcePresetId { get; init; }
+    public int? SourcePresetSeedVersion { get; init; }
+    public bool IsUserEditable { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsArchived { get; init; }
+    public DateTimeOffset? ClonedAt { get; init; }
 }

@@ -3,8 +3,8 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.OrganizationMember;
 
-public class UpdateOrganizationMemberRoleDto
+public sealed record UpdateOrganizationMemberRoleDto
 {
-    public Guid Id { get; set; } // Member ID
-    public RoleEnum Role { get; set; }
+    public Guid Id { get; init; } // Member ID
+    public RoleEnum Role { get; init; }
 }

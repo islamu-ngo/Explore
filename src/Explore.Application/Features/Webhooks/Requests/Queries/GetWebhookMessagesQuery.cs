@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ViewDelivery)]
-public sealed class GetWebhookMessagesQuery
+public sealed record GetWebhookMessagesQuery
     : IRequest<IReadOnlyList<WebhookMessageDto>>, ISecureRequest, IWebhookOwnerScopedRequest
 {
     public int OwnerKindId { get; init; }

@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakClientSecretRotationRequestDto
+public sealed record KeycloakClientSecretRotationRequestDto
 {
-    public string? ClientId { get; set; }
+    public string? ClientId { get; init; }
     public string SecretOwnershipMode { get; set; } = "application-managed";
-    public bool ConfirmApplicationManagedSecret { get; set; }
-    public string? NewClientSecret { get; set; }
-    public string? BootstrapAdminUsername { get; set; }
-    public string? BootstrapAdminPassword { get; set; }
+    public bool ConfirmApplicationManagedSecret { get; init; }
+    public string? NewClientSecret { get; init; }
+    public string? BootstrapAdminUsername { get; init; }
+    public string? BootstrapAdminPassword { get; init; }
 }

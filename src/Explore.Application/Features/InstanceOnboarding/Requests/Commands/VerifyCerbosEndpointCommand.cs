@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class VerifyCerbosEndpointCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record VerifyCerbosEndpointCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required string GrpcEndpoint { get; set; }
+    public required string GrpcEndpoint { get; init; }
 }

@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class EventModerationRequestDto
+public sealed record EventModerationRequestDto
 {
-    public string? ReasonCode { get; set; }
-    public string? CorrelationId { get; set; }
+    public string? ReasonCode { get; init; }
+    public string? CorrelationId { get; init; }
 }

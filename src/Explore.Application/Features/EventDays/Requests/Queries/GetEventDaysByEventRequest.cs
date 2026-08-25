@@ -7,15 +7,12 @@ using MediatR;
 
 namespace Explore.Application.Features.EventDays.Requests.Queries;
 
-public class GetEventDaysByEventRequest : IRequest<List<EventDayListDto>>
-{
-    public Guid EventId { get; set; }
-}
+public sealed record GetEventDaysByEventRequest(Guid EventId) : IRequest<List<EventDayListDto>>;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedEventDaysByEventRequest : IRequest<List<EventDayListDto>>, ISecureRequest
+public sealed record GetManagedEventDaysByEventRequest : IRequest<List<EventDayListDto>>, ISecureRequest
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

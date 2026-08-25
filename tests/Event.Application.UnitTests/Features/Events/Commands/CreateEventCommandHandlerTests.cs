@@ -279,7 +279,7 @@ public class CreateEventCommandHandlerTests
         var imageId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         CreateEventGraphSessionDto session = CreateSessionRequest();
-        session.FeaturedImageId = useSessionImage ? imageId : null;
+        session = session with { FeaturedImageId = useSessionImage ? imageId : null };
         var command = new CreateEventCommand
         {
             EventDto = new CreateEventDto
@@ -763,12 +763,12 @@ public class CreateEventCommandHandlerTests
     {
         var userId = Guid.NewGuid();
         var session = CreateSessionRequest();
-        session.IslamicAspect = new EventSessionIslamicAspectDto
-        {
-            StartTimeType = SessionStartTimeType.Fixed,
-            ReferencePrayer = PrayerTime.Dhuhr,
-            OffsetMinutes = 0
-        };
+        session = session with { IslamicAspect = new EventSessionIslamicAspectDto { StartTimeType = SessionStartTimeType.Fixed, ReferencePrayer = PrayerTime.Dhuhr, OffsetMinutes = 0 } };
+
+
+
+
+
 
         var command = new CreateEventCommand
         {

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class RegistrationCheckoutCompositionDto
+public sealed record RegistrationCheckoutCompositionDto
 {
     public Guid EventId { get; init; }
     public Guid TicketCatalogVersionId { get; init; }
@@ -11,7 +11,7 @@ public sealed class RegistrationCheckoutCompositionDto
     public IReadOnlyList<RegistrationCheckoutTicketTypeDto> TicketTypes { get; init; } = [];
 }
 
-public sealed class RegistrationCheckoutTicketTypeDto
+public sealed record RegistrationCheckoutTicketTypeDto
 {
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;
@@ -24,7 +24,7 @@ public sealed class RegistrationCheckoutTicketTypeDto
     public IReadOnlyList<RegistrationCheckoutSlidingScaleOptionDto> SlidingScaleOptions { get; init; } = [];
 }
 
-public sealed class RegistrationCheckoutSlidingScaleOptionDto
+public sealed record RegistrationCheckoutSlidingScaleOptionDto
 {
     public long BuyerPriceMinor { get; init; }
     public long OrganizerEarningsMinor { get; init; }

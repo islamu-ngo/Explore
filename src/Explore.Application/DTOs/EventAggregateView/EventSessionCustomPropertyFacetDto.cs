@@ -6,17 +6,17 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventAggregateView;
 
-public sealed class EventSessionCustomPropertyFacetDto
+public sealed record EventSessionCustomPropertyFacetDto
 {
-    public string Namespace { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public PropertyType PropertyType { get; set; }
-    public ExposureLevel ExposureLevel { get; set; }
-    public IReadOnlyList<JsonElement> Values { get; set; } = [];
-    public bool IsSearchable { get; set; }
-    public bool IsFilterable { get; set; }
-    public bool IsExportable { get; set; }
-    public bool IsModerationRelevant { get; set; }
-    public bool IsAnalyticsRelevant { get; set; }
+    public string Namespace { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public PropertyType PropertyType { get; init; }
+    public ExposureLevel ExposureLevel { get; init; }
+    public IReadOnlyList<JsonElement> Values { get; init; } = [];
+    public bool IsSearchable { get; init; }
+    public bool IsFilterable { get; init; }
+    public bool IsExportable { get; init; }
+    public bool IsModerationRelevant { get; init; }
+    public bool IsAnalyticsRelevant { get; init; }
 }

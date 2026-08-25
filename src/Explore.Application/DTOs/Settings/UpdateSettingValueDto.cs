@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Settings;
 
-public class UpdateSettingValueDto
+public sealed record UpdateSettingValueDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }

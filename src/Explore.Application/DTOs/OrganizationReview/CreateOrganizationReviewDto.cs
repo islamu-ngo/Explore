@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.OrganizationReview;
 
-public class CreateOrganizationReviewDto
+public sealed record CreateOrganizationReviewDto
 {
-    public Guid OrganizationId { get; set; }
-    public Guid ProgramId { get; set; }
-    public string ReviewerName { get; set; } = string.Empty;
-    public int Rating { get; set; }
-    public string Comment { get; set; } = string.Empty;
+    public Guid OrganizationId { get; init; }
+    public Guid ProgramId { get; init; }
+    public string ReviewerName { get; init; } = string.Empty;
+    public int Rating { get; init; }
+    public string Comment { get; init; } = string.Empty;
 }

@@ -100,8 +100,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_ValidWeblateConfig_RequiresComponentSlug()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Tms!.Provider = "weblate";
-        dto.Tms.Component = "my-component";
+        dto = dto with { Tms = dto.Tms! with { Provider = "weblate", Component = "my-component" } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -113,8 +112,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_WeblateWithoutComponent_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Tms!.Provider = "weblate";
-        dto.Tms.Component = null;
+        dto = dto with { Tms = dto.Tms! with { Provider = "weblate", Component = null } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -141,7 +139,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_EmptyEnabledLanguages_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Languages!.EnabledLanguages = [];
+        dto = dto with { Languages = dto.Languages! with { EnabledLanguages = [] } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -153,7 +151,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_UnknownCultureInEnabledLanguages_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Languages!.EnabledLanguages = ["en", "zz_INVALID"];
+        dto = dto with { Languages = dto.Languages! with { EnabledLanguages = ["en", "zz_INVALID"] } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -165,8 +163,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_FallbackLanguageNotInEnabledSet_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Languages!.EnabledLanguages = ["en"];
-        dto.Languages.FallbackLanguage = "fr";
+        dto = dto with { Languages = dto.Languages! with { EnabledLanguages = ["en"], FallbackLanguage = "fr" } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -178,9 +175,15 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_DefaultLanguageNotInEnabledSet_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Languages!.EnabledLanguages = ["fr"];
-        dto.Languages.DefaultLanguage = "en";
-        dto.Languages.FallbackLanguage = "fr";
+        dto = dto with
+        {
+            Languages = dto.Languages! with
+            {
+                EnabledLanguages = ["fr"],
+                DefaultLanguage = "en",
+                FallbackLanguage = "fr"
+            }
+        };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -192,7 +195,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_InvalidProvider_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Tms!.Provider = "invalid_provider";
+        dto = dto with { Tms = dto.Tms! with { Provider = "invalid_provider" } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -204,7 +207,7 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
     public async Task Handle_TolgeeWithoutApiUrl_FailsValidation()
     {
         var dto = BuildValidTolgeeDto();
-        dto.Tms!.ApiUrl = null;
+        dto = dto with { Tms = dto.Tms! with { ApiUrl = null } };
         var command = new UpdateLocalizationGovernanceCommand { Dto = dto };
 
         var result = await _handler.Handle(command, CancellationToken.None);

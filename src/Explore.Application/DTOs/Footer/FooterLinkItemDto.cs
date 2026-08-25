@@ -3,12 +3,12 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterLinkItemDto
+public sealed record FooterLinkItemDto
 {
-    public Guid Id { get; set; }
-    public string Label { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-    public bool OpenInNewTab { get; set; }
-    public bool IsActive { get; set; }
-    public int Order { get; set; }
+    public Guid Id { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
+    public bool OpenInNewTab { get; init; }
+    public bool IsActive { get; init; }
+    public int Order { get; init; }
 }

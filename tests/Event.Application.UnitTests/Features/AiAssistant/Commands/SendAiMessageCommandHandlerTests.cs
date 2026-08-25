@@ -537,7 +537,7 @@ public sealed class SendAiMessageCommandHandlerTests
             .Returns(conversation);
 
         var command = CreateCommand(content: string.Empty, images: images);
-        command.Message.Content = null!;
+        command = command with { Message = command.Message with { Content = null! } };
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();

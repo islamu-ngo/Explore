@@ -5,48 +5,48 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Organization;
 
-public class UpdateOrganizationDto
+public sealed record UpdateOrganizationDto
 {
-    public UpdateOrganizationFullNameDto? FullName { get; set; }
-    public UpdateOrganizationWebsiteUrlDto? WebsiteUrl { get; set; }
-    public UpdateOrganizationEmailDto? Email { get; set; }
-    public UpdateOrganizationCountryDto? Country { get; set; }
-    public UpdateOrganizationCityDto? City { get; set; }
-    public UpdateOrganizationPostcodeDto? Postcode { get; set; }
-    public UpdateOrganizationAddressDto? Address { get; set; }
+    public UpdateOrganizationFullNameDto? FullName { get; init; }
+    public UpdateOrganizationWebsiteUrlDto? WebsiteUrl { get; init; }
+    public UpdateOrganizationEmailDto? Email { get; init; }
+    public UpdateOrganizationCountryDto? Country { get; init; }
+    public UpdateOrganizationCityDto? City { get; init; }
+    public UpdateOrganizationPostcodeDto? Postcode { get; init; }
+    public UpdateOrganizationAddressDto? Address { get; init; }
 }
 
-public class UpdateOrganizationFullNameDto
+public sealed record UpdateOrganizationFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateOrganizationWebsiteUrlDto
+public sealed record UpdateOrganizationWebsiteUrlDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateOrganizationEmailDto
+public sealed record UpdateOrganizationEmailDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateOrganizationCountryDto
+public sealed record UpdateOrganizationCountryDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateOrganizationCityDto
+public sealed record UpdateOrganizationCityDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateOrganizationPostcodeDto
+public sealed record UpdateOrganizationPostcodeDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }
 
-public class UpdateOrganizationAddressDto
+public sealed record UpdateOrganizationAddressDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }

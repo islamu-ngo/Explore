@@ -3,8 +3,8 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.GroupMember;
 
-public class UpdateGroupMemberRoleDto
+public sealed record UpdateGroupMemberRoleDto
 {
-    public Guid Id { get; set; }
-    public RoleEnum Role { get; set; }
+    public Guid Id { get; init; }
+    public RoleEnum Role { get; init; }
 }

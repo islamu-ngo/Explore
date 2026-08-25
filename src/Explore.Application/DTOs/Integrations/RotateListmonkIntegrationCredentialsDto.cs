@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.Integrations;
 
-public sealed class RotateListmonkIntegrationCredentialsDto
+public sealed record RotateListmonkIntegrationCredentialsDto
 {
-    public string? ApiUsername { get; set; }
-    public string? ApiKey { get; set; }
+    public string? ApiUsername { get; init; }
+    public string? ApiKey { get; init; }
 }

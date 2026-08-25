@@ -7,7 +7,13 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateCurrentUserNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
+    private IReadOnlyList<UpdateNotificationPreferenceCellDto>? _cells;
+
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells
+    {
+        get => _cells;
+        init => _cells = value is null ? null : Array.AsReadOnly(value.ToArray());
+    }
 }

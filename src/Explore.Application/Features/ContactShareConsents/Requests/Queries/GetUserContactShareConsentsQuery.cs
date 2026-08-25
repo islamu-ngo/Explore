@@ -6,8 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.ContactShareConsents.Requests.Queries;
 
-public class GetUserContactShareConsentsQuery : IRequest<List<UserContactShareConsentDto>>
-{
-    public Guid UserId { get; set; }
-    public Guid TenantId { get; set; }
-}
+public sealed record GetUserContactShareConsentsQuery(
+    Guid UserId = default,
+    Guid TenantId = default
+) : IRequest<List<UserContactShareConsentDto>>;

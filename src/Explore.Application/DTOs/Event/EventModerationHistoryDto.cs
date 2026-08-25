@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Event;
 
-public sealed class EventModerationHistoryDto
+public sealed record EventModerationHistoryDto
 {
     public Guid Id { get; init; }
     public Guid EventId { get; init; }

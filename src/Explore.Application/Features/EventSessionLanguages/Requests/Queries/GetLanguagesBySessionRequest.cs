@@ -8,16 +8,16 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 
-public class GetLanguagesBySessionRequest : IRequest<List<EventSessionLanguageListDto>>
+public sealed record GetLanguagesBySessionRequest : IRequest<List<EventSessionLanguageListDto>>
 {
-    public Guid EventSessionId { get; set; }
+    public Guid EventSessionId { get; init; }
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
-public sealed class GetManagedLanguagesBySessionRequest : IRequest<List<EventSessionLanguageListDto>>, ISecureRequest
+public sealed record GetManagedLanguagesBySessionRequest : IRequest<List<EventSessionLanguageListDto>>, ISecureRequest
 {
-    public Guid EventId { get; set; }
-    public Guid EventSessionId { get; set; }
+    public Guid EventId { get; init; }
+    public Guid EventSessionId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }

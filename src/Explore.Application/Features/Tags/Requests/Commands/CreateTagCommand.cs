@@ -9,11 +9,12 @@ using MediatR;
 namespace Explore.Application.Features.Tags.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Tag, AuthorizationActions.Create)]
-public class CreateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateTagDto TagDto { get; set; }
+    public required CreateTagDto TagDto { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => null;
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
-        new TenantScopedAuthorizationFacts(TagDto.TenantId);
+        new TenantScopedAuthorizationFacts(TenantId);
 }

@@ -7,10 +7,10 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Delete)]
-public class DeleteEventCommand : IRequest<bool>, ISecureRequest
+public sealed record DeleteEventCommand : IRequest<bool>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required string UserId { get; set; }
+    public Guid Id { get; init; }
+    public required string UserId { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

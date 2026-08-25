@@ -182,7 +182,6 @@ public class EventsControllerTests
             Request = new ImportEventRequestDto
             {
                 Title = "Imported event",
-                TenantId = tenantId,
                 OwnerActorId = Guid.NewGuid(),
                 ProvenanceSource = "test",
                 ProvenanceExternalId = "external-1",
@@ -191,7 +190,8 @@ public class EventsControllerTests
                     ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
                     AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
                 }
-            }
+            },
+            TenantId = tenantId
         };
         await Assert.That(secureRequest.ResourceId).IsEqualTo(tenantId.ToString());
         await AssertProducesProblem(action, StatusCodes.Status403Forbidden);

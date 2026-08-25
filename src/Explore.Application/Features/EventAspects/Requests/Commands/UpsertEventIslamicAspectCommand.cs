@@ -10,7 +10,7 @@ using Explore.Application.Responses;
 using MediatR;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class CreateEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public required CreateUpdateIslamicAspectDto AspectDto { get; init; }
@@ -18,7 +18,7 @@ public sealed class CreateEventIslamicAspectCommand : IRequest<BaseCommandRespon
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class UpdateEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public required UpdateEventIslamicAspectDto AspectDto { get; init; }

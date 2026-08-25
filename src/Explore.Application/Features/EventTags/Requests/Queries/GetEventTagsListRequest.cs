@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTags.Requests.Queries;
 
-public class GetEventTagsListRequest : IRequest<List<EventTagsListDto>>
+public sealed record GetEventTagsListRequest : IRequest<List<EventTagsListDto>>
 {
 }

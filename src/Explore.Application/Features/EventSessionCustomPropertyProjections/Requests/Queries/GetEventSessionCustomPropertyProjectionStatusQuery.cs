@@ -10,9 +10,9 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.CustomPropertyProjections.View)]
-public class GetEventSessionCustomPropertyProjectionStatusQuery : IRequest<BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>>, ISecureRequest
+public sealed record GetEventSessionCustomPropertyProjectionStatusQuery : IRequest<BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>>, ISecureRequest
 {
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
 

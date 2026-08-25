@@ -5,35 +5,35 @@ using System;
 
 namespace Explore.Application.DTOs.Group;
 
-public class GroupDto
+public sealed record GroupDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public required string FullName { get; set; }
-    public string? Description { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public required string FullName { get; init; }
+    public string? Description { get; init; }
 
     // Approval Status
-    public int ApprovalStatusId { get; set; }
-    public string? ApprovalStatusFullName { get; set; }
-    public string? ApprovalStatusMasterCode { get; set; }
+    public int ApprovalStatusId { get; init; }
+    public string? ApprovalStatusFullName { get; init; }
+    public string? ApprovalStatusMasterCode { get; init; }
 
     // Tenant
-    public Guid TenantId { get; set; }
-    public string? TenantFullName { get; set; }
+    public Guid TenantId { get; init; }
+    public string? TenantFullName { get; init; }
 
     // Actor
-    public Guid? ActorId { get; set; }
-    public string? ActorDisplayName { get; set; }
-    public string? ActorHandle { get; set; }
+    public Guid? ActorId { get; init; }
+    public string? ActorDisplayName { get; init; }
+    public string? ActorHandle { get; init; }
 
     // Profile Picture (resolved to presigned URL)
-    public Guid? ActorProfilePictureId { get; set; }
+    public Guid? ActorProfilePictureId { get; init; }
     public string? ActorProfilePictureUri { get; set; }
-    public string? ActorBackgroundColor { get; set; }
-    public string? ActorBackgroundEffect { get; set; }
-    public string? ActorBannerColor { get; set; }
-    public Guid? ActorBannerPictureId { get; set; }
-    public string? ActorBannerPictureUri { get; set; }
-    public Guid? ActorBackgroundImageId { get; set; }
-    public string? ActorBackgroundImageUri { get; set; }
+    public string? ActorBackgroundColor { get; init; }
+    public string? ActorBackgroundEffect { get; init; }
+    public string? ActorBannerColor { get; init; }
+    public Guid? ActorBannerPictureId { get; init; }
+    public string? ActorBannerPictureUri { get; init; }
+    public Guid? ActorBackgroundImageId { get; init; }
+    public string? ActorBackgroundImageUri { get; init; }
 }

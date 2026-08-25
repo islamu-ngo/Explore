@@ -77,9 +77,9 @@ public class CreateEventDtoValidatorTests
     public async Task Validate_WithNullOptionalLookups_ReturnsTrue()
     {
         var request = CreateValidRequest();
-        request.EventTypeId = null;
-        request.AudienceGenderId = null;
-        request.AudienceAgeId = null;
+        request = request with { EventTypeId = null };
+        request = request with { AudienceGenderId = null };
+        request = request with { AudienceAgeId = null };
 
         var result = await _validator.ValidateAsync(request);
 
@@ -173,7 +173,7 @@ public class CreateEventDtoValidatorTests
     public async Task Validate_WithInvalidTempReference_ReturnsError()
     {
         var request = CreateValidRequest();
-        request.Sessions[0].RoomTempKey = "missing-room";
+        request.Sessions[0] = request.Sessions[0] with { RoomTempKey = "missing-room" };
 
         _eventTypeRepository.Exists(request.EventTypeId!.Value).Returns(true);
         _audienceGenderRepository.Exists(request.AudienceGenderId!.Value).Returns(true);
@@ -191,8 +191,8 @@ public class CreateEventDtoValidatorTests
         var organizationId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var request = CreateValidRequest();
-        request.OrganizationId = organizationId;
-        request.GroupId = groupId;
+        request = request with { OrganizationId = organizationId };
+        request = request with { GroupId = groupId };
 
         _eventTypeRepository.Exists(request.EventTypeId!.Value).Returns(true);
         _audienceGenderRepository.Exists(request.AudienceGenderId!.Value).Returns(true);

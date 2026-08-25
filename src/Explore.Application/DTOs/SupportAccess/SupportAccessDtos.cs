@@ -6,47 +6,47 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.SupportAccess;
 
-public sealed class StartSupportAccessSessionRequestDto
+public sealed record StartSupportAccessSessionRequestDto
 {
-    public Guid TargetTenantId { get; set; }
-    public Guid? TargetTenantUserId { get; set; }
-    public SupportAccessModeEnum Mode { get; set; } = SupportAccessModeEnum.ReadOnly;
-    public int DurationMinutes { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
-    public string ReasonText { get; set; } = string.Empty;
-    public string? TicketReference { get; set; }
+    public Guid TargetTenantId { get; init; }
+    public Guid? TargetTenantUserId { get; init; }
+    public SupportAccessModeEnum Mode { get; init; } = SupportAccessModeEnum.ReadOnly;
+    public int DurationMinutes { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
+    public string ReasonText { get; init; } = string.Empty;
+    public string? TicketReference { get; init; }
 }
 
-public sealed class StopSupportAccessSessionRequestDto
+public sealed record StopSupportAccessSessionRequestDto
 {
-    public string? EndReasonText { get; set; }
+    public string? EndReasonText { get; init; }
 }
 
-public sealed class ForceStopSupportAccessSessionRequestDto
+public sealed record ForceStopSupportAccessSessionRequestDto
 {
-    public string? EndReasonText { get; set; }
+    public string? EndReasonText { get; init; }
 }
 
-public sealed class SupportAccessSessionDto
+public sealed record SupportAccessSessionDto
 {
-    public Guid Id { get; set; }
-    public Guid? ActorUserId { get; set; }
-    public Guid TargetTenantId { get; set; }
-    public Guid? TargetTenantUserId { get; set; }
-    public int StatusId { get; set; }
-    public string StatusName { get; set; } = string.Empty;
-    public int ModeId { get; set; }
-    public string ModeName { get; set; } = string.Empty;
-    public bool AllowsWrites { get; set; }
-    public string ReasonCode { get; set; } = string.Empty;
-    public string TicketReference { get; set; } = string.Empty;
-    public Guid? ApprovedByUserId { get; set; }
-    public DateTimeOffset StartedAtUtc { get; set; }
-    public DateTimeOffset ExpiresAtUtc { get; set; }
-    public DateTimeOffset? EndedAtUtc { get; set; }
-    public int? EndReasonId { get; set; }
-    public string? EndReasonName { get; set; }
-    public bool IsActive { get; set; }
+    public Guid Id { get; init; }
+    public Guid? ActorUserId { get; init; }
+    public Guid TargetTenantId { get; init; }
+    public Guid? TargetTenantUserId { get; init; }
+    public int StatusId { get; init; }
+    public string StatusName { get; init; } = string.Empty;
+    public int ModeId { get; init; }
+    public string ModeName { get; init; } = string.Empty;
+    public bool AllowsWrites { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
+    public string TicketReference { get; init; } = string.Empty;
+    public Guid? ApprovedByUserId { get; init; }
+    public DateTimeOffset StartedAtUtc { get; init; }
+    public DateTimeOffset ExpiresAtUtc { get; init; }
+    public DateTimeOffset? EndedAtUtc { get; init; }
+    public int? EndReasonId { get; init; }
+    public string? EndReasonName { get; init; }
+    public bool IsActive { get; init; }
 }
 
 public sealed class SupportAccessSessionCommandResponseDto : BaseCommandResponse<Guid>
@@ -54,30 +54,30 @@ public sealed class SupportAccessSessionCommandResponseDto : BaseCommandResponse
     public SupportAccessSessionDto? Session { get; set; }
 }
 
-public sealed class CurrentSupportAccessSessionDto
+public sealed record CurrentSupportAccessSessionDto
 {
-    public bool IsActive { get; set; }
-    public SupportAccessSessionDto? Session { get; set; }
+    public bool IsActive { get; init; }
+    public SupportAccessSessionDto? Session { get; init; }
 }
 
-public sealed class SupportAccessAuditEventDto
+public sealed record SupportAccessAuditEventDto
 {
-    public Guid Id { get; set; }
-    public Guid SupportAccessSessionId { get; set; }
-    public DateTimeOffset OccurredAtUtc { get; set; }
-    public int EventTypeId { get; set; }
-    public string EventTypeName { get; set; } = string.Empty;
-    public Guid? ActorUserId { get; set; }
-    public Guid TargetTenantId { get; set; }
-    public Guid? TargetTenantUserId { get; set; }
-    public string? RouteName { get; set; }
-    public string? RequestName { get; set; }
-    public string? ResourceKind { get; set; }
-    public string? ResourceId { get; set; }
-    public string? Action { get; set; }
-    public string Outcome { get; set; } = string.Empty;
-    public int? HttpStatusCode { get; set; }
-    public string? CorrelationId { get; set; }
-    public string? TraceId { get; set; }
-    public string? SanitizedMetadataJson { get; set; }
+    public Guid Id { get; init; }
+    public Guid SupportAccessSessionId { get; init; }
+    public DateTimeOffset OccurredAtUtc { get; init; }
+    public int EventTypeId { get; init; }
+    public string EventTypeName { get; init; } = string.Empty;
+    public Guid? ActorUserId { get; init; }
+    public Guid TargetTenantId { get; init; }
+    public Guid? TargetTenantUserId { get; init; }
+    public string? RouteName { get; init; }
+    public string? RequestName { get; init; }
+    public string? ResourceKind { get; init; }
+    public string? ResourceId { get; init; }
+    public string? Action { get; init; }
+    public string Outcome { get; init; } = string.Empty;
+    public int? HttpStatusCode { get; init; }
+    public string? CorrelationId { get; init; }
+    public string? TraceId { get; init; }
+    public string? SanitizedMetadataJson { get; init; }
 }

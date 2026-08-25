@@ -6,7 +6,4 @@ namespace Explore.Application.Features.Appearance.Requests.Queries;
 using Explore.Application.DTOs.Appearance;
 using MediatR;
 
-public class GetUiThemeDetailsQuery : IRequest<UiThemeDetailsDto?>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetUiThemeDetailsQuery(Guid Id = default) : IRequest<UiThemeDetailsDto?>;

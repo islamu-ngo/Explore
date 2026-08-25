@@ -5,36 +5,36 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.EventSeries;
 
-public class UpdateEventSeriesDto
+public sealed record UpdateEventSeriesDto
 {
-    public UpdateEventSeriesTitleDto? Title { get; set; }
-    public UpdateEventSeriesDescriptionDto? Description { get; set; }
-    public UpdateEventSeriesSlugDto? Slug { get; set; }
-    public UpdateEventSeriesFeaturedImageDto? FeaturedImage { get; set; }
-    public UpdateEventSeriesPublicationDto? Publication { get; set; }
+    public UpdateEventSeriesTitleDto? Title { get; init; }
+    public UpdateEventSeriesDescriptionDto? Description { get; init; }
+    public UpdateEventSeriesSlugDto? Slug { get; init; }
+    public UpdateEventSeriesFeaturedImageDto? FeaturedImage { get; init; }
+    public UpdateEventSeriesPublicationDto? Publication { get; init; }
 }
 
-public class UpdateEventSeriesTitleDto
+public sealed record UpdateEventSeriesTitleDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateEventSeriesDescriptionDto
+public sealed record UpdateEventSeriesDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSeriesSlugDto
+public sealed record UpdateEventSeriesSlugDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSeriesFeaturedImageDto
+public sealed record UpdateEventSeriesFeaturedImageDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSeriesPublicationDto
+public sealed record UpdateEventSeriesPublicationDto
 {
-    public bool IsPublished { get; set; }
+    public bool IsPublished { get; init; }
 }

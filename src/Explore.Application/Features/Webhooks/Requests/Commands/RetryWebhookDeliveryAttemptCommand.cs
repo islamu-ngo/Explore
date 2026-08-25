@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Retry)]
-public sealed class RetryWebhookDeliveryAttemptCommand
+public sealed record RetryWebhookDeliveryAttemptCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid AttemptId { get; init; }

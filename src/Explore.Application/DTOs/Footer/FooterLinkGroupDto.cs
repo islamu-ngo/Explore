@@ -3,10 +3,10 @@
 
 namespace Explore.Application.DTOs.Footer;
 
-public class FooterLinkGroupDto
+public sealed record FooterLinkGroupDto
 {
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public int Order { get; set; }
-    public IReadOnlyList<FooterLinkItemDto> Links { get; set; } = [];
+    public Guid Id { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public int Order { get; init; }
+    public IReadOnlyList<FooterLinkItemDto> Links { get; init; } = [];
 }

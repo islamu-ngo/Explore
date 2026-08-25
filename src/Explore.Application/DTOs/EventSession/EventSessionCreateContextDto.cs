@@ -3,55 +3,55 @@
 
 namespace Explore.Application.DTOs.EventSession;
 
-public class EventSessionCreateContextDto
+public sealed record EventSessionCreateContextDto
 {
-    public Guid EventId { get; set; }
-    public string EventTitle { get; set; } = string.Empty;
-    public Guid TenantId { get; set; }
-    public string? TimeZoneId { get; set; }
-    public DateOnly? EventStartDate { get; set; }
-    public DateOnly? EventEndDate { get; set; }
-    public EventSessionCreateDefaultsDto Defaults { get; set; } = new();
-    public List<EventSessionCreateLocationOptionDto> Locations { get; set; } = [];
-    public List<EventSessionCreateRoomOptionDto> Rooms { get; set; } = [];
-    public List<EventSessionCreateGroupOptionDto> SessionGroups { get; set; } = [];
-    public List<string> Notices { get; set; } = [];
+    public Guid EventId { get; init; }
+    public string EventTitle { get; init; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public string? TimeZoneId { get; init; }
+    public DateOnly? EventStartDate { get; init; }
+    public DateOnly? EventEndDate { get; init; }
+    public EventSessionCreateDefaultsDto Defaults { get; init; } = new();
+    public List<EventSessionCreateLocationOptionDto> Locations { get; init; } = [];
+    public List<EventSessionCreateRoomOptionDto> Rooms { get; init; } = [];
+    public List<EventSessionCreateGroupOptionDto> SessionGroups { get; init; } = [];
+    public List<string> Notices { get; init; } = [];
 }
 
-public class EventSessionCreateDefaultsDto
+public sealed record EventSessionCreateDefaultsDto
 {
-    public DateOnly? SessionDate { get; set; }
-    public TimeSpan? StartTime { get; set; }
-    public TimeSpan? EndTime { get; set; }
-    public int RegistrationModeId { get; set; }
+    public DateOnly? SessionDate { get; init; }
+    public TimeSpan? StartTime { get; init; }
+    public TimeSpan? EndTime { get; init; }
+    public int RegistrationModeId { get; init; }
 }
 
-public class EventSessionCreateLocationOptionDto
+public sealed record EventSessionCreateLocationOptionDto
 {
-    public Guid Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string City { get; set; } = string.Empty;
-    public string Country { get; set; } = string.Empty;
-    public string? TimeZoneId { get; set; }
+    public Guid Id { get; init; }
+    public string FullName { get; init; } = string.Empty;
+    public string City { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
+    public string? TimeZoneId { get; init; }
 }
 
-public class EventSessionCreateRoomOptionDto
+public sealed record EventSessionCreateRoomOptionDto
 {
-    public Guid Id { get; set; }
-    public Guid LocationId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public int? Capacity { get; set; }
-    public int SortOrder { get; set; }
+    public Guid Id { get; init; }
+    public Guid LocationId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public int? Capacity { get; init; }
+    public int SortOrder { get; init; }
 }
 
-public class EventSessionCreateGroupOptionDto
+public sealed record EventSessionCreateGroupOptionDto
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public Guid? LocationId { get; set; }
-    public string? LocationName { get; set; }
-    public Guid? RoomId { get; set; }
-    public string? RoomName { get; set; }
-    public string? Color { get; set; }
-    public int SortOrder { get; set; }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public Guid? LocationId { get; init; }
+    public string? LocationName { get; init; }
+    public Guid? RoomId { get; init; }
+    public string? RoomName { get; init; }
+    public string? Color { get; init; }
+    public int SortOrder { get; init; }
 }

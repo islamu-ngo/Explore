@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class ModerationReportCaseDto
+public sealed record ModerationReportCaseDto
 {
     public Guid Id { get; init; }
     public Guid ReportId { get; init; }

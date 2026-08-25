@@ -60,7 +60,7 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
         {
             Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
         });
-        command.ExpectedConcurrencyStamp = Guid.NewGuid();
+        command = command with { ExpectedConcurrencyStamp = Guid.NewGuid() };
 
         await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
             .Throws<ConcurrencyConflictException>();

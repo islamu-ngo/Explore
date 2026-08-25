@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSeries.Requests.Commands;
 
-public class CreateEventSeriesCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record CreateEventSeriesCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public CreateEventSeriesDto EventSeriesDto { get; set; } = null!;
+    public CreateEventSeriesDto EventSeriesDto { get; init; } = null!;
 }

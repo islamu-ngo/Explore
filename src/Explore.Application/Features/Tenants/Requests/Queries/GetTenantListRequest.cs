@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Tenants.Requests.Queries;
 
-public class GetTenantListRequest : IRequest<List<TenantListDto>>
+public sealed record GetTenantListRequest : IRequest<List<TenantListDto>>
 {
 }

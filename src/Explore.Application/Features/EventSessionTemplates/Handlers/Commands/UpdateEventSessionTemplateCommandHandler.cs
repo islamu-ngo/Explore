@@ -77,7 +77,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
-        request.TenantId = sessionTemplate.TenantId;
+        request = request with { TenantId = sessionTemplate.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != sessionTemplate.TenantId)
         {

@@ -6,132 +6,132 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Event;
 
-public class UpdateEventDto
+public sealed record UpdateEventDto
 {
-    public UpdateEventTitleDto? Title { get; set; }
-    public UpdateEventSubtitleDto? Subtitle { get; set; }
-    public UpdateEventDescriptionDto? Description { get; set; }
-    public UpdateEventContentDto? Content { get; set; }
-    public UpdateEventSlugDto? Slug { get; set; }
-    public UpdateEventEventTypeDto? EventType { get; set; }
-    public UpdateEventAudienceGenderDto? AudienceGender { get; set; }
-    public UpdateEventAudienceAgeDto? AudienceAge { get; set; }
-    public UpdateEventFeaturedImageDto? FeaturedImage { get; set; }
-    public UpdateEventVisibilityDto? Visibility { get; set; }
-    public UpdateEventFormatDto? Format { get; set; }
-    public UpdateEventMadhabDto? Madhab { get; set; }
-    public UpdateEventTimezoneDto? Timezone { get; set; }
-    public UpdateEventEventTimeZoneDto? EventTimeZone { get; set; }
-    public UpdateEventBackgroundColorDto? BackgroundColor { get; set; }
-    public UpdateEventBackgroundEffectDto? BackgroundEffect { get; set; }
-    public UpdateEventBackgroundImageDto? BackgroundImage { get; set; }
-    public UpdateEventSourceTemplateDto? SourceTemplate { get; set; }
-    public UpdateEventSeriesMembershipDto? SeriesMembership { get; set; }
-    public UpdateEventSeriesOrderDto? SeriesOrder { get; set; }
-    public UpdateEventRegistrationPolicyDto? RegistrationPolicy { get; set; }
+    public UpdateEventTitleDto? Title { get; init; }
+    public UpdateEventSubtitleDto? Subtitle { get; init; }
+    public UpdateEventDescriptionDto? Description { get; init; }
+    public UpdateEventContentDto? Content { get; init; }
+    public UpdateEventSlugDto? Slug { get; init; }
+    public UpdateEventEventTypeDto? EventType { get; init; }
+    public UpdateEventAudienceGenderDto? AudienceGender { get; init; }
+    public UpdateEventAudienceAgeDto? AudienceAge { get; init; }
+    public UpdateEventFeaturedImageDto? FeaturedImage { get; init; }
+    public UpdateEventVisibilityDto? Visibility { get; init; }
+    public UpdateEventFormatDto? Format { get; init; }
+    public UpdateEventMadhabDto? Madhab { get; init; }
+    public UpdateEventTimezoneDto? Timezone { get; init; }
+    public UpdateEventEventTimeZoneDto? EventTimeZone { get; init; }
+    public UpdateEventBackgroundColorDto? BackgroundColor { get; init; }
+    public UpdateEventBackgroundEffectDto? BackgroundEffect { get; init; }
+    public UpdateEventBackgroundImageDto? BackgroundImage { get; init; }
+    public UpdateEventSourceTemplateDto? SourceTemplate { get; init; }
+    public UpdateEventSeriesMembershipDto? SeriesMembership { get; init; }
+    public UpdateEventSeriesOrderDto? SeriesOrder { get; init; }
+    public UpdateEventRegistrationPolicyDto? RegistrationPolicy { get; init; }
 }
 
-public class UpdateEventTitleDto
+public sealed record UpdateEventTitleDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateEventSubtitleDto
+public sealed record UpdateEventSubtitleDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventDescriptionDto
+public sealed record UpdateEventDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventContentDto
+public sealed record UpdateEventContentDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventSlugDto
+public sealed record UpdateEventSlugDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventEventTypeDto
+public sealed record UpdateEventEventTypeDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventAudienceGenderDto
+public sealed record UpdateEventAudienceGenderDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventAudienceAgeDto
+public sealed record UpdateEventAudienceAgeDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventFeaturedImageDto
+public sealed record UpdateEventFeaturedImageDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventVisibilityDto
+public sealed record UpdateEventVisibilityDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }
 
-public class UpdateEventFormatDto
+public sealed record UpdateEventFormatDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }
 
-public class UpdateEventMadhabDto
+public sealed record UpdateEventMadhabDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventTimezoneDto
+public sealed record UpdateEventTimezoneDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventEventTimeZoneDto
+public sealed record UpdateEventEventTimeZoneDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventBackgroundColorDto
+public sealed record UpdateEventBackgroundColorDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventBackgroundEffectDto
+public sealed record UpdateEventBackgroundEffectDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventBackgroundImageDto
+public sealed record UpdateEventBackgroundImageDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSourceTemplateDto
+public sealed record UpdateEventSourceTemplateDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSeriesMembershipDto
+public sealed record UpdateEventSeriesMembershipDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventSeriesOrderDto
+public sealed record UpdateEventSeriesOrderDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventRegistrationPolicyDto
+public sealed record UpdateEventRegistrationPolicyDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }

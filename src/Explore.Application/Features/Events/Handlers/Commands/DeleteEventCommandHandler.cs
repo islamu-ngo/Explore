@@ -168,7 +168,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         // 1. Check if user has system Admin role (full access)
         if (await IsSystemAdmin(userId, cancellationToken))
         {
-            _logger.LogDebug("User {UserId} authorized as system Admin", userId);
+            _logger.LogDebug("User authorized as system Admin");
             return true;
         }
 
@@ -201,7 +201,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         // 4. Check if this is a personal event owned by the user
         if (actor.UserId.HasValue && actor.UserId.Value == userId)
         {
-            _logger.LogDebug("User {UserId} authorized as event owner", userId);
+            _logger.LogDebug("User authorized as event owner");
             return true;
         }
 
@@ -226,7 +226,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking system admin status for user {UserId}", userId);
+            _logger.LogError(ex, "Error checking system admin status for user");
             return false;
         }
     }

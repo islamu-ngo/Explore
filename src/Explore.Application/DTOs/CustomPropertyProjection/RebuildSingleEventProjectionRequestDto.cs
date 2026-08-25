@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.CustomPropertyProjection;
 
-public class RebuildSingleEventProjectionRequestDto
+public sealed record RebuildSingleEventProjectionRequestDto
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 }

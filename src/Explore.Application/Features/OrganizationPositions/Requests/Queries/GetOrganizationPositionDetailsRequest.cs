@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.OrganizationPositions.Requests.Queries;
 
-public class GetOrganizationPositionDetailsRequest : IRequest<OrganizationPositionDto>
-{
-    public int Id { get; set; }
-}
+public sealed record GetOrganizationPositionDetailsRequest(int Id = default) : IRequest<OrganizationPositionDto>;

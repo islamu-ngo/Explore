@@ -11,7 +11,7 @@ using MediatR;
 /// Updates a single setting key at the specified scope. The scope ID (tenant/user) is derived
 /// from the authenticated context — not supplied by the caller.
 /// </summary>
-public class UpdateSettingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record UpdateSettingCommand : IRequest<BaseCommandResponse<Guid>>
 {
     /// <summary>
     /// Fully qualified setting key (e.g., "event_list.page_size"). Must exist in SettingRegistry.

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning;
 
-public class ManagedProviderExternalAdminDto
+public sealed record ManagedProviderExternalAdminDto
 {
     public required string IdentityProvider { get; init; }
     public required string Subject { get; init; }

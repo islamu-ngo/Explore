@@ -2,7 +2,7 @@
 // ABOUTME: Omits the persisted pool identifier; update identity comes from the route.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class ManageEventCapacityPoolDto
+public sealed record ManageEventCapacityPoolDto
 {
     public string Name { get; init; } = string.Empty;
     public int? MaximumQuantity { get; init; }

@@ -80,7 +80,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             return response;
         }
 
-        request.TenantId = definition.TenantId;
+        request = request with { TenantId = definition.TenantId };
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {

@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Queries;
 
-public class GetUserRequest : IRequest<UserDto>
-{
-    public Guid UserId { get; set; }
-}
+public sealed record GetUserRequest(Guid UserId = default) : IRequest<UserDto>;

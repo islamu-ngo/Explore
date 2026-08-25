@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public sealed class InstanceGovernanceSettings
+public sealed record InstanceGovernanceSettings
 {
     public required DeploymentModeDto DeploymentMode { get; init; }
     public required ModuleSettingsDto Modules { get; init; }

@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRealmDesiredStateBuildRequestDto
+public sealed record KeycloakRealmDesiredStateBuildRequestDto
 {
-    public string Realm { get; set; } = string.Empty;
-    public string BlazorClientId { get; set; } = string.Empty;
-    public string? ApiClientId { get; set; }
-    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
-    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
+    public string Realm { get; init; } = string.Empty;
+    public string BlazorClientId { get; init; } = string.Empty;
+    public string? ApiClientId { get; init; }
+    public IReadOnlyList<string> BlazorRedirectUris { get; init; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; init; } = [];
 }

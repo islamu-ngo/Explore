@@ -7,9 +7,9 @@ using MediatR;
 
 namespace Explore.Application.Features.Groups.Requests.Queries;
 
-public class GetMyGroupsRequest : IRequest<PaginatedResult<GroupListDto>>
+public sealed record GetMyGroupsRequest : IRequest<PaginatedResult<GroupListDto>>
 {
-    public required string UserId { get; set; } = string.Empty;
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public required string UserId { get; init; } = string.Empty;
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }

@@ -3,17 +3,17 @@
 
 namespace Explore.Application.DTOs.TenantUserRoleGrant;
 
-public class TenantUserRoleGrantListDto
+public sealed record TenantUserRoleGrantListDto
 {
-    public Guid Id { get; set; }
-    public Guid TenantUserId { get; set; }
-    public Guid UserId { get; set; }
-    public required string UserEmail { get; set; }
-    public required string UserFullName { get; set; }
-    public Guid TenantId { get; set; }
-    public required string TenantFullName { get; set; }
-    public int RoleId { get; set; }
-    public required string RoleName { get; set; }
-    public DateTime GrantedAt { get; set; }
-    public DateTime? RevokedAt { get; set; }
+    public Guid Id { get; init; }
+    public Guid TenantUserId { get; init; }
+    public Guid UserId { get; init; }
+    public required string UserEmail { get; init; }
+    public required string UserFullName { get; init; }
+    public Guid TenantId { get; init; }
+    public required string TenantFullName { get; init; }
+    public int RoleId { get; init; }
+    public required string RoleName { get; init; }
+    public DateTime GrantedAt { get; init; }
+    public DateTime? RevokedAt { get; init; }
 }

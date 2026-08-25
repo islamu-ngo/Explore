@@ -8,36 +8,36 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSession;
 
-public class EventSessionDto
+public sealed record EventSessionDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 
     // Event relationship
-    public Guid EventId { get; set; }
-    public required string EventTitle { get; set; }
-    public int ParentEventStatusId { get; set; }
+    public Guid EventId { get; init; }
+    public required string EventTitle { get; init; }
+    public int ParentEventStatusId { get; init; }
 
     // Day assignment (auto-linked from session start date)
-    public Guid? EventDayId { get; set; }
+    public Guid? EventDayId { get; init; }
 
     // Timing (UTC)
-    public DateTimeOffset? StartTime { get; set; }
-    public DateTimeOffset? EndTime { get; set; }
-    public SessionEndTimeType EndTimeType { get; set; }
-    public string? FormattedEndTime { get; set; }
-    public bool IsScheduled { get; set; }
+    public DateTimeOffset? StartTime { get; init; }
+    public DateTimeOffset? EndTime { get; init; }
+    public SessionEndTimeType EndTimeType { get; init; }
+    public string? FormattedEndTime { get; init; }
+    public bool IsScheduled { get; init; }
 
     // Cached local projections (event timezone)
-    public DateOnly? LocalStartDate { get; set; }
-    public DateOnly? LocalEndDate { get; set; }
-    public TimeOnly? LocalStartTime { get; set; }
-    public TimeOnly? LocalEndTime { get; set; }
-    public int? LocalStartMinuteOfDay { get; set; }
-    public int? LocalEndMinuteOfDay { get; set; }
+    public DateOnly? LocalStartDate { get; init; }
+    public DateOnly? LocalEndDate { get; init; }
+    public TimeOnly? LocalStartTime { get; init; }
+    public TimeOnly? LocalEndTime { get; init; }
+    public int? LocalStartMinuteOfDay { get; init; }
+    public int? LocalEndMinuteOfDay { get; init; }
 
     // Ordering
-    public int SortOrder { get; set; }
+    public int SortOrder { get; init; }
 
     // Location
     public Guid? LocationId { get; set; }
@@ -52,35 +52,35 @@ public class EventSessionDto
     public EventLocationPublicDto? EventLocation { get; set; }
 
     // Session Details
-    public string? Title { get; set; }
-    public int? EventSessionKindId { get; set; }
-    public string? EventSessionKindFullName { get; set; }
-    public string? EventSessionKindMasterCode { get; set; }
-    public int EventSessionStatusId { get; set; }
-    public string? EventSessionStatusFullName { get; set; }
-    public string? EventSessionStatusMasterCode { get; set; }
-    public string? Description { get; set; }
-    public string? Slug { get; set; }
+    public string? Title { get; init; }
+    public int? EventSessionKindId { get; init; }
+    public string? EventSessionKindFullName { get; init; }
+    public string? EventSessionKindMasterCode { get; init; }
+    public int EventSessionStatusId { get; init; }
+    public string? EventSessionStatusFullName { get; init; }
+    public string? EventSessionStatusMasterCode { get; init; }
+    public string? Description { get; init; }
+    public string? Slug { get; init; }
 
     // Media
-    public Guid? FeaturedImageId { get; set; }
-    public string? FeaturedImageUri { get; set; }
+    public Guid? FeaturedImageId { get; init; }
+    public string? FeaturedImageUri { get; init; }
 
     // Attendance
-    public int? MaxAudienceAttendees { get; set; }
-    public int? CurrentAudienceAttendees { get; set; }
+    public int? MaxAudienceAttendees { get; init; }
+    public int? CurrentAudienceAttendees { get; init; }
 
     // Registration
-    public int? RegistrationModeId { get; set; }
-    public string? RegistrationModeFullName { get; set; }
-    public string? RegistrationModeMasterCode { get; set; }
+    public int? RegistrationModeId { get; init; }
+    public string? RegistrationModeFullName { get; init; }
+    public string? RegistrationModeMasterCode { get; init; }
 
     // Optional Islamic extension for this session
-    public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
+    public EventSessionIslamicAspectDto? IslamicAspect { get; init; }
 
     // Program sections/tracks/devrooms this session belongs to
-    public List<EventSessionGroupAssignmentDto> SessionGroups { get; set; } = [];
+    public List<EventSessionGroupAssignmentDto> SessionGroups { get; init; } = [];
 
     // Tenant
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 }

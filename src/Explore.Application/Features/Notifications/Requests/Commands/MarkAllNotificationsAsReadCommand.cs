@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Notifications.Requests.Commands;
 
-public class MarkAllNotificationsAsReadCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record MarkAllNotificationsAsReadCommand : IRequest<BaseCommandResponse<Guid>>
 {
 }

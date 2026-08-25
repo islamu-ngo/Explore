@@ -3,19 +3,19 @@
 
 namespace Explore.Application.DTOs.EventDay;
 
-public class EventDayDto
+public sealed record EventDayDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public string? EventTitle { get; set; }
-    public DateOnly LocalDate { get; set; }
-    public string? Label { get; set; }
-    public string? Description { get; set; }
-    public string? BannerText { get; set; }
-    public Guid? BannerImageId { get; set; }
-    public bool IsPublished { get; set; }
-    public int SortOrder { get; set; }
-    public bool AllowsDayScopeRegistration { get; set; }
-    public Guid TenantId { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public string? EventTitle { get; init; }
+    public DateOnly LocalDate { get; init; }
+    public string? Label { get; init; }
+    public string? Description { get; init; }
+    public string? BannerText { get; init; }
+    public Guid? BannerImageId { get; init; }
+    public bool IsPublished { get; init; }
+    public int SortOrder { get; init; }
+    public bool AllowsDayScopeRegistration { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

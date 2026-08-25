@@ -9,9 +9,9 @@ using MediatR;
 namespace Explore.Application.Features.EventCategories.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public class CreateEventCategoriesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record CreateEventCategoriesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventCategoriesDto EventCategoriesDto { get; set; }
+    public required CreateEventCategoriesDto EventCategoriesDto { get; init; }
 
     string? ISecureRequest.ResourceId => EventCategoriesDto.EventId.ToString();
 }

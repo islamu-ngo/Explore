@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class ModuleSettingsDto
+public sealed record ModuleSettingsDto
 {
     public bool EnableIslamicModule { get; set; } = true;
     public bool EnableTechModule { get; set; } = true;

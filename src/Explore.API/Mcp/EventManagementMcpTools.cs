@@ -238,7 +238,7 @@ public sealed class EventManagementMcpTools(
             var publicEvent = await GetPublicEventOrNullAsync(eventId, cancellationToken);
             var summary = publicEvent is null
                 ? null
-                : await mediator.Send(new GetEventProgramSummaryRequest { EventId = eventId }, cancellationToken);
+                : await mediator.Send(new GetEventProgramSummaryRequest(eventId), cancellationToken);
             EventMcpProgramResultDescriptor descriptor;
             if (summary is null)
             {

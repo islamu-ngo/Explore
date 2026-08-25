@@ -3,22 +3,22 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public sealed class OnboardingPreflightDto
+public sealed record OnboardingPreflightDto
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
     public bool IsReadyToLaunch => BlockingChecks.All(check => check.Status == OnboardingPreflightCheckStatus.Pass);
-    public List<OnboardingPreflightCheckDto> BlockingChecks { get; set; } = [];
-    public List<OnboardingPreflightCheckDto> WarningChecks { get; set; } = [];
+    public List<OnboardingPreflightCheckDto> BlockingChecks { get; init; } = [];
+    public List<OnboardingPreflightCheckDto> WarningChecks { get; init; } = [];
 }
 
-public sealed class OnboardingPreflightCheckDto
+public sealed record OnboardingPreflightCheckDto
 {
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Severity { get; set; } = OnboardingPreflightCheckSeverity.Blocking;
-    public string Status { get; set; } = OnboardingPreflightCheckStatus.Pass;
-    public string Message { get; set; } = string.Empty;
-    public string? Detail { get; set; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Severity { get; init; } = OnboardingPreflightCheckSeverity.Blocking;
+    public string Status { get; init; } = OnboardingPreflightCheckStatus.Pass;
+    public string Message { get; init; } = string.Empty;
+    public string? Detail { get; init; }
 }
 
 public static class OnboardingPreflightCheckSeverity

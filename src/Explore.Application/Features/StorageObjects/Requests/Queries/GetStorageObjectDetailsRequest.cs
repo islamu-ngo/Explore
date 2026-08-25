@@ -7,11 +7,11 @@ using MediatR;
 namespace Explore.Application.Features.StorageObjects.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.StorageObjects.View)]
-public class GetStorageObjectDetailsRequest : IRequest<StorageObjectDto?>, ISecureRequest
+public sealed record GetStorageObjectDetailsRequest : IRequest<StorageObjectDto?>, ISecureRequest
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
 

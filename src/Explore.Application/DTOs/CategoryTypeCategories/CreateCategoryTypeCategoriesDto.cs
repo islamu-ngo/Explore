@@ -2,9 +2,9 @@ using System;
 
 namespace Explore.Application.DTOs.CategoryTypeCategories;
 
-public class CreateCategoryTypeCategoriesDto
+public sealed record CreateCategoryTypeCategoriesDto
 {
-    public Guid CategoryId { get; set; }
-    public int CategoryTypeId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid CategoryId { get; init; }
+    public int CategoryTypeId { get; init; }
+    public Guid TenantId { get; init; }
 }

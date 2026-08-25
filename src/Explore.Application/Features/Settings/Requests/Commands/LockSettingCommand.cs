@@ -12,7 +12,7 @@ using MediatR;
 /// Lower-scope overrides remain in storage but are suppressed during resolution.
 /// Requires administrator privileges for the target scope.
 /// </summary>
-public class LockSettingCommand : IRequest<BaseCommandResponse<Guid>>
+public sealed record LockSettingCommand : IRequest<BaseCommandResponse<Guid>>
 {
     /// <summary>
     /// Fully qualified setting key (e.g., "event_list.page_size"). Must be lockable per its definition.

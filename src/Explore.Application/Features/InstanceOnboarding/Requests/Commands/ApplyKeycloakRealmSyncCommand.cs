@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 
-public class ApplyKeycloakRealmSyncCommand : IRequest<KeycloakRealmSyncPlanDto>
+public sealed record ApplyKeycloakRealmSyncCommand : IRequest<KeycloakRealmSyncPlanDto>
 {
-    public KeycloakRealmSyncApplyRequestDto Request { get; set; } = new();
+    public KeycloakRealmSyncApplyRequestDto Request { get; init; } = new();
 }

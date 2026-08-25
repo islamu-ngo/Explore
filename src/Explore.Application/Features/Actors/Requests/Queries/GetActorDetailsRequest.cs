@@ -5,8 +5,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Actors.Requests.Queries;
 
-public class GetActorDetailsRequest : IRequest<ActorDto?>
+public sealed record GetActorDetailsRequest : IRequest<ActorDto?>
 {
-    public Guid Id { get; set; }
-    public Guid? TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid? TenantId { get; init; }
 }

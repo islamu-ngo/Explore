@@ -6,7 +6,4 @@ using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Requests.Queries;
 
-public class GetExternalApiKeyDetailsRequest : IRequest<ExternalApiKeyListDto?>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetExternalApiKeyDetailsRequest(Guid Id = default) : IRequest<ExternalApiKeyListDto?>;

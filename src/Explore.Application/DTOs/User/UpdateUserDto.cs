@@ -3,8 +3,8 @@
 
 namespace Explore.Application.DTOs.User;
 
-public class UpdateUserDto
+public sealed record UpdateUserDto
 {
-    public UpdateUserNamesDto? Names { get; set; }
-    public UpdateUserProfileImageDto? ProfileImage { get; set; }
+    public UpdateUserNamesDto? Names { get; init; }
+    public UpdateUserProfileImageDto? ProfileImage { get; init; }
 }

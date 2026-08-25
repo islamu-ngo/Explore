@@ -3,16 +3,16 @@
 
 namespace Explore.Application.DTOs.ExternalApiKey;
 
-public class CreateExternalApiKeyDto
+public sealed record CreateExternalApiKeyDto
 {
-    public required string Name { get; set; }
-    public string? Description { get; set; }
-    public int ExternalApiKeyOwnerTypeId { get; set; } = 1;
-    public Guid? OrganizationId { get; set; }
-    public Guid? GroupId { get; set; }
-    public List<string> Scopes { get; set; } = [];
-    public DateTime? ExpiresAt { get; set; }
-    public int? CreditPeriodId { get; set; }
-    public int? CreditLimit { get; set; }
-    public int? MaxRolloverCredits { get; set; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public int ExternalApiKeyOwnerTypeId { get; init; } = 1;
+    public Guid? OrganizationId { get; init; }
+    public Guid? GroupId { get; init; }
+    public List<string> Scopes { get; init; } = [];
+    public DateTime? ExpiresAt { get; init; }
+    public int? CreditPeriodId { get; init; }
+    public int? CreditLimit { get; init; }
+    public int? MaxRolloverCredits { get; init; }
 }

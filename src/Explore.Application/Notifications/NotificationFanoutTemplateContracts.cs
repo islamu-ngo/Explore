@@ -18,18 +18,58 @@ public enum NotificationFanoutChangeField
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record NotificationFanoutChangeSetV1(
-    NotificationFanoutChangeField[] Fields);
+public sealed record NotificationFanoutChangeSetV1
+{
+    private NotificationFanoutChangeField[] _fields = [];
+
+    [JsonConstructor]
+    public NotificationFanoutChangeSetV1(NotificationFanoutChangeField[] Fields) =>
+        _fields = Fields.ToArray();
+
+    public NotificationFanoutChangeField[] Fields
+    {
+        get => _fields.ToArray();
+        init => _fields = value.ToArray();
+    }
+}
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record NotificationFanoutSnapshotV1(
-    string EventTitle,
-    string? SessionTitle,
-    DateTimeOffset? StartsAt,
-    DateTimeOffset? EndsAt,
-    string? Timezone,
-    NotificationFanoutLocationSnapshotV1? Location,
-    NotificationFanoutSessionDisplayTimeV1[]? SessionDisplayTimes = null);
+public sealed record NotificationFanoutSnapshotV1
+{
+    private NotificationFanoutSessionDisplayTimeV1[]? _sessionDisplayTimes;
+
+    [JsonConstructor]
+    public NotificationFanoutSnapshotV1(
+        string EventTitle,
+        string? SessionTitle,
+        DateTimeOffset? StartsAt,
+        DateTimeOffset? EndsAt,
+        string? Timezone,
+        NotificationFanoutLocationSnapshotV1? Location,
+        NotificationFanoutSessionDisplayTimeV1[]? SessionDisplayTimes = null)
+    {
+        this.EventTitle = EventTitle;
+        this.SessionTitle = SessionTitle;
+        this.StartsAt = StartsAt;
+        this.EndsAt = EndsAt;
+        this.Timezone = Timezone;
+        this.Location = Location;
+        _sessionDisplayTimes = SessionDisplayTimes?.ToArray();
+    }
+
+    public string EventTitle { get; init; }
+    public string? SessionTitle { get; init; }
+    public DateTimeOffset? StartsAt { get; init; }
+    public DateTimeOffset? EndsAt { get; init; }
+    public string? Timezone { get; init; }
+    public NotificationFanoutLocationSnapshotV1? Location { get; init; }
+
+    public NotificationFanoutSessionDisplayTimeV1[]? SessionDisplayTimes
+    {
+        get => _sessionDisplayTimes?.ToArray();
+        init => _sessionDisplayTimes = value?.ToArray();
+    }
+}
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record NotificationFanoutSessionDisplayTimeV1(

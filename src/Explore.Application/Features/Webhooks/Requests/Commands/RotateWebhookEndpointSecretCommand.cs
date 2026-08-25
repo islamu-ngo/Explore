@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.RotateSecret)]
-public sealed class RotateWebhookEndpointSecretCommand
+public sealed record RotateWebhookEndpointSecretCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid EndpointId { get; init; }

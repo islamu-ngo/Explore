@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Actors.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class ModerateAtprotoIdentityCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record ModerateAtprotoIdentityCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public const string SettingKey = "global-actor-moderation";
 

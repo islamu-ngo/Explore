@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.ActorTypes.Requests.Queries;
 
-public class GetActorTypeListRequest : IRequest<List<ActorTypeListDto>>
+public sealed record GetActorTypeListRequest : IRequest<List<ActorTypeListDto>>
 {
 }

@@ -8,11 +8,11 @@ using MediatR;
 namespace Explore.Application.Features.EventSessionGroups.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSessionGroup, AuthorizationActions.Delete)]
-public class DeleteEventSessionGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record DeleteEventSessionGroupCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public Guid TenantId { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
     IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>

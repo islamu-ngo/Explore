@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventSessionTemplate;
 
-public class UpdateEventSessionTemplateDefinitionDto : CreateEventSessionTemplateDefinitionDto
+public sealed record UpdateEventSessionTemplateDefinitionDto : CreateEventSessionTemplateDefinitionDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 }

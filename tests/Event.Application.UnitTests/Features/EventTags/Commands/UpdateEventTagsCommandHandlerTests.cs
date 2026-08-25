@@ -52,26 +52,34 @@ public sealed class UpdateEventTagsCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithMismatchedRouteContext_UsesPersistedAuthorizationContextBeforeMutation()
+    public async Task Handle_WithForgedContext_UsesPersistedContextWithoutMutatingOriginalRequest()
     {
         var entity = CreateEventTag();
         _repository.GetById(entity.Id).Returns(entity);
         _eventRepository.GetById(entity.EventId).Returns(CreateEvent(entity.EventId, entity.TenantId));
         var newTagId = Guid.NewGuid();
+        var forgedEventId = Guid.NewGuid();
+        var forgedTenantId = Guid.NewGuid();
         _tagRepository.GetById(newTagId).Returns(CreateTag(newTagId, entity.TenantId));
         _repository.GetByEventAndTag(entity.EventId, newTagId, entity.Id).Returns((Explore.Domain.EventTags?)null);
         var command = CreateCommand(entity, new UpdateEventTagsDto
         {
             Tag = new UpdateEventTagsTagDto { TagId = newTagId }
-        });
-        command.TenantId = Guid.NewGuid();
+        }) with
+        {
+            EventId = forgedEventId,
+            TenantId = forgedTenantId,
+        };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(command.EventId).IsEqualTo(entity.EventId);
-        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await Assert.That(command.EventId).IsEqualTo(forgedEventId);
+        await Assert.That(command.TenantId).IsEqualTo(forgedTenantId);
+        await _repository.Received(1).GetByEventAndTag(entity.EventId, newTagId, entity.Id);
         await _repository.Received(1).Update(entity);
+        await _cache.Received(1).RemoveAsync($"event:detail:{entity.EventId}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(entity.TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -85,7 +93,7 @@ public sealed class UpdateEventTagsCommandHandlerTests
         {
             Tag = new UpdateEventTagsTagDto { TagId = Guid.NewGuid() }
         });
-        command.ExpectedConcurrencyStamp = Guid.NewGuid();
+        command = command with { ExpectedConcurrencyStamp = Guid.NewGuid() };
 
         await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
             .Throws<ConcurrencyConflictException>();

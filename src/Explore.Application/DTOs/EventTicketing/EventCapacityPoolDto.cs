@@ -2,7 +2,7 @@
 // ABOUTME: Includes the persisted pool identifier for management responses.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class EventCapacityPoolDto
+public sealed record EventCapacityPoolDto
 {
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;

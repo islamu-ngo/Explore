@@ -10,10 +10,10 @@ using MediatR;
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
-public sealed class UpdateEventDraftCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventDraftCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid Id { get; set; }
-    public required UpdateEventDraftRequestDto Draft { get; set; }
+    public Guid Id { get; init; }
+    public required UpdateEventDraftRequestDto Draft { get; init; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
 }

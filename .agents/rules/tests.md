@@ -33,6 +33,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 - **Assert Across a Split Family**: after a controller is partitioned, contract tests that look actions up by name must search the whole family (see `EventFamilyAction`, `WebhookFamilyAction`) rather than one hardcoded class — that is what the assertion always meant.
 - **Container Runtime**: Testcontainers-backed tests need a Docker-compatible endpoint. Under Podman, export `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock`, `TESTCONTAINERS_RYUK_DISABLED=true`, and `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`. Without them the suite reports hundreds of `DockerUnavailableException` failures that look like a mass regression — check the endpoint before the code.
 - **Zero Hard-Coded Test Secrets**: Tests must never define hard-coded passwords, tokens, API keys, or connection strings in test files or fixtures. Bind secrets via environment variables or mock secret providers (`ISecretResolver`) using keys documented in `.env.example`.
+- **Record Contract Specifications**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Start Red with consumed equality, one-fact `with` variants, JSON construction, PATCH omitted/clear/replacement behavior, and trust-boundary attacks. Keep record/body baselines exact: missing new debt and stale resolved entries must both fail.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#build-and-test-baseline](../../docs/QUICK_REFERENCE.md#build-and-test-baseline)

@@ -3,70 +3,70 @@
 
 namespace Explore.Application.DTOs.Notification;
 
-public sealed class NotificationPreferenceMatrixDto
+public sealed record NotificationPreferenceMatrixDto
 {
-    public Guid TenantId { get; set; }
-    public Guid UserId { get; set; }
-    public Guid? OrganizationId { get; set; }
-    public Guid? GroupId { get; set; }
-    public string Scope { get; set; } = "user";
-    public IReadOnlyList<NotificationPreferenceCategoryDto> Categories { get; set; } = [];
-    public IReadOnlyList<NotificationPreferenceChannelDto> Channels { get; set; } = [];
-    public IReadOnlyList<NotificationPreferenceCellDto> Cells { get; set; } = [];
-    public NotificationPreferenceMuteDto Mute { get; set; } = new();
+    public Guid TenantId { get; init; }
+    public Guid UserId { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public Guid? GroupId { get; init; }
+    public string Scope { get; init; } = "user";
+    public IReadOnlyList<NotificationPreferenceCategoryDto> Categories { get; init; } = [];
+    public IReadOnlyList<NotificationPreferenceChannelDto> Channels { get; init; } = [];
+    public IReadOnlyList<NotificationPreferenceCellDto> Cells { get; init; } = [];
+    public NotificationPreferenceMuteDto Mute { get; init; } = new();
 }
 
-public sealed class NotificationPreferenceCategoryDto
+public sealed record NotificationPreferenceCategoryDto
 {
-    public required string Code { get; set; }
-    public required string Name { get; set; }
-    public string? Description { get; set; }
-    public bool IsRequired { get; set; }
-    public int SortOrder { get; set; }
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public bool IsRequired { get; init; }
+    public int SortOrder { get; init; }
 }
 
-public sealed class NotificationPreferenceChannelDto
+public sealed record NotificationPreferenceChannelDto
 {
-    public required string Code { get; set; }
-    public required string Name { get; set; }
-    public string? Description { get; set; }
-    public int SortOrder { get; set; }
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public int SortOrder { get; init; }
 }
 
-public sealed class NotificationPreferenceCellDto
+public sealed record NotificationPreferenceCellDto
 {
-    public required string CategoryCode { get; set; }
-    public required string ChannelCode { get; set; }
-    public bool IsEnabled { get; set; }
-    public bool IsEditable { get; set; }
-    public bool IsRequired { get; set; }
-    public bool IsLocked { get; set; }
-    public bool IsMuted { get; set; }
-    public required string EffectiveSourceScope { get; set; }
-    public string? LockReason { get; set; }
+    public required string CategoryCode { get; init; }
+    public required string ChannelCode { get; init; }
+    public bool IsEnabled { get; init; }
+    public bool IsEditable { get; init; }
+    public bool IsRequired { get; init; }
+    public bool IsLocked { get; init; }
+    public bool IsMuted { get; init; }
+    public required string EffectiveSourceScope { get; init; }
+    public string? LockReason { get; init; }
 }
 
-public sealed class NotificationPreferenceMuteDto
+public sealed record NotificationPreferenceMuteDto
 {
-    public bool IsMuted { get; set; }
-    public bool IsEditable { get; set; } = true;
-    public bool IsLocked { get; set; }
-    public string? LockReason { get; set; }
+    public bool IsMuted { get; init; }
+    public bool IsEditable { get; init; } = true;
+    public bool IsLocked { get; init; }
+    public string? LockReason { get; init; }
 }
 
-public sealed class UpdateNotificationPreferenceMatrixDto
+public sealed record UpdateNotificationPreferenceMatrixDto
 {
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; init; }
 }
 
-public sealed class UpdateNotificationPreferenceCellDto
+public sealed record UpdateNotificationPreferenceCellDto
 {
-    public required string CategoryCode { get; set; }
-    public required string ChannelCode { get; set; }
-    public bool IsEnabled { get; set; }
+    public required string CategoryCode { get; init; }
+    public required string ChannelCode { get; init; }
+    public bool IsEnabled { get; init; }
 }
 
-public sealed class SetNotificationPreferenceMuteDto
+public sealed record SetNotificationPreferenceMuteDto
 {
-    public bool IsMuted { get; set; }
+    public bool IsMuted { get; init; }
 }

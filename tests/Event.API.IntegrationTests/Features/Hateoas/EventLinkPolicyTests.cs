@@ -66,7 +66,7 @@ public sealed class EventLinkPolicyTests
         await Assert.That(createTech.RouteName).IsEqualTo(RouteNames.CreateEventTechAspect);
         await Assert.That(createTech.Method).IsEqualTo(HttpMethods.Post);
 
-        dto.AvailableAspects = ["Islamic", "Tech"];
+        dto = dto with { AvailableAspects = ["Islamic", "Tech"] };
         var editLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
 
         var editIslamic = editLinks.Single(link => link.Rel == "islamic-aspect:edit");
@@ -111,7 +111,7 @@ public sealed class EventLinkPolicyTests
         Guid organizerActorId = Guid.NewGuid();
         Guid organizerOrganizationId = Guid.NewGuid();
         EventDto dto = CreateEventDto(eventId, tenantId, organizerOrganizationId, organizerActorId: organizerActorId);
-        dto.OrganizerActorOrganizationId = organizerOrganizationId;
+        dto = dto with { OrganizerActorOrganizationId = organizerOrganizationId };
         dto.IsManagementView = true;
         dto.ParticipationConfiguration = new EventParticipationConfigurationDto
         {
@@ -482,9 +482,12 @@ public sealed class EventLinkPolicyTests
             status: EventStatusEnum.Published,
             statusName: "Published",
             statusCode: "PUBLISHED");
-        dto.VisibilityTypeId = (int)VisibilityTypeEnum.Unlisted;
-        dto.VisibilityTypeFullName = "Unlisted";
-        dto.VisibilityTypeMasterCode = "UNLISTED";
+        dto = dto with
+        {
+            VisibilityTypeId = (int)VisibilityTypeEnum.Unlisted,
+            VisibilityTypeFullName = "Unlisted",
+            VisibilityTypeMasterCode = "UNLISTED"
+        };
 
         var links = new EventDetailLinkPolicy()
             .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
@@ -582,7 +585,7 @@ public sealed class EventLinkPolicyTests
             status: EventStatusEnum.Published,
             statusName: "Published",
             statusCode: "PUBLISHED");
-        baseDto.OrganizerActorUserId = organizerUserId;
+        baseDto = baseDto with { OrganizerActorUserId = organizerUserId };
 
         baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly };
         var configuredLinks = new EventDetailLinkPolicy()
@@ -614,8 +617,10 @@ public sealed class EventLinkPolicyTests
         }
 
         baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.ExternalManaged };
-        baseDto.PublicActions =
-        [
+        baseDto = baseDto with
+        {
+            PublicActions =
+            [
             new EventPublicActionDto
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
@@ -646,7 +651,8 @@ public sealed class EventLinkPolicyTests
                 SortOrder = 1,
                 IsPrimary = true
             }
-        ];
+            ]
+        };
 
         var externalLinks = new EventDetailLinkPolicy()
             .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
@@ -663,9 +669,12 @@ public sealed class EventLinkPolicyTests
         await Assert.That(externalRouteValues["actionId"]).IsEqualTo(Guid.Parse("00000000-0000-0000-0000-000000000001"));
         await Assert.That(externalRouteValues["surface"]).IsEqualTo("event_detail");
 
-        baseDto.ProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported;
-        baseDto.ProvenanceTypeCode = "IMPORTED";
-        baseDto.OrganizerActorId = null;
+        baseDto = baseDto with
+        {
+            ProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported,
+            ProvenanceTypeCode = "IMPORTED",
+            OrganizerActorId = null
+        };
 
         var importedLinks = new EventDetailLinkPolicy()
             .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
@@ -674,7 +683,7 @@ public sealed class EventLinkPolicyTests
 
         await Assert.That(importedLinks.Single().Title).IsEqualTo("View original event page");
 
-        baseDto.OrganizerActorId = organizerActorId;
+        baseDto = baseDto with { OrganizerActorId = organizerActorId };
         var verifiedImportedLink = new EventDetailLinkPolicy()
             .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
             .Single(link => link.Rel == LinkRelations.ExternalRegistration);
@@ -720,7 +729,7 @@ public sealed class EventLinkPolicyTests
             status: EventStatusEnum.Published,
             statusName: "Published",
             statusCode: "PUBLISHED");
-        dto.OrganizerActorUserId = organizerUserId;
+        dto = dto with { OrganizerActorUserId = organizerUserId };
         dto.ParticipationConfiguration = new EventParticipationConfigurationDto
         {
             ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
@@ -895,9 +904,11 @@ public sealed class EventLinkPolicyTests
             status: status,
             statusName: status.ToString(),
             statusCode: status.ToString().ToUpperInvariant());
-        dto.VisibilityTypeId = (int)visibility;
-        dto.PublicActions =
-        [
+        dto = dto with
+        {
+            VisibilityTypeId = (int)visibility,
+            PublicActions =
+            [
             new EventPublicActionDto
             {
                 Id = Guid.NewGuid(),
@@ -907,7 +918,8 @@ public sealed class EventLinkPolicyTests
                 DestinationDomain = "example.com",
                 IsPrimary = true
             }
-        ];
+            ]
+        };
 
         foreach (var mode in new[]
         {

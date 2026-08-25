@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Integrations.Listmonk.Requests.Queries;
 
-public sealed class GetListmonkIntegrationSettingsQuery : IRequest<ListmonkIntegrationSettingsDto>
+public sealed record GetListmonkIntegrationSettingsQuery : IRequest<ListmonkIntegrationSettingsDto>
 {
 }

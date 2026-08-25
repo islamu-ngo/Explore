@@ -3,11 +3,11 @@
 
 namespace Explore.Application.DTOs.Agenda;
 
-public class EventAgendaProjectionDto
+public sealed record EventAgendaProjectionDto
 {
-    public Guid EventId { get; set; }
-    public string? EventTitle { get; set; }
-    public string? Timezone { get; set; }
+    public Guid EventId { get; init; }
+    public string? EventTitle { get; init; }
+    public string? Timezone { get; init; }
 
-    public List<AgendaDayGroupDto> Days { get; set; } = [];
+    public List<AgendaDayGroupDto> Days { get; init; } = [];
 }

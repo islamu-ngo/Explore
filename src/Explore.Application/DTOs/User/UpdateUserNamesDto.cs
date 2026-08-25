@@ -2,8 +2,8 @@
 // ABOUTME: Carried optionally inside UpdateUserDto for partial profile updates.
 namespace Explore.Application.DTOs.User;
 
-public class UpdateUserNamesDto
+public sealed record UpdateUserNamesDto
 {
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
+    public string FirstName { get; init; } = string.Empty;
+    public string LastName { get; init; } = string.Empty;
 }

@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class WebhookEventDataFieldDto
+public sealed record WebhookEventDataFieldDto
 {
     public required string Name { get; init; }
 

@@ -6,8 +6,6 @@ namespace Explore.Application.Features.Appearance.Requests.Queries;
 using Explore.Application.DTOs.Appearance;
 using MediatR;
 
-public class GetUiThemeCatalogQuery : IRequest<IReadOnlyList<UiThemeListItemDto>>
-{
-    public bool IsPlatformCatalog { get; set; }
-    public bool ActiveOnly { get; set; }
-}
+public sealed record GetUiThemeCatalogQuery(
+    bool IsPlatformCatalog = default,
+    bool ActiveOnly = default) : IRequest<IReadOnlyList<UiThemeListItemDto>>;

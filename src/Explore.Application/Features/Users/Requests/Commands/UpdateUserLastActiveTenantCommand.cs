@@ -6,8 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Commands;
 
-public class UpdateUserLastActiveTenantCommand : IRequest<bool>
-{
-    public Guid UserId { get; set; }
-    public Guid TenantId { get; set; }
-}
+public sealed record UpdateUserLastActiveTenantCommand(
+    Guid UserId = default,
+    Guid TenantId = default
+) : IRequest<bool>;

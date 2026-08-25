@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Queries;
 
-public class GetUserAuthenticationTokenListRequest : IRequest<List<UserAuthenticationTokenListDto>>
+public sealed record GetUserAuthenticationTokenListRequest : IRequest<List<UserAuthenticationTokenListDto>>
 {
 }

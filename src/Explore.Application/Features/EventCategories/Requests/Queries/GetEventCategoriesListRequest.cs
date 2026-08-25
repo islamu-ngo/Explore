@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.EventCategories.Requests.Queries;
 
-public class GetEventCategoriesListRequest : IRequest<List<EventCategoriesListDto>>
+public sealed record GetEventCategoriesListRequest : IRequest<List<EventCategoriesListDto>>
 {
 }

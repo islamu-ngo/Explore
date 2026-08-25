@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ViewDelivery)]
-public sealed class GetWebhookProviderPublicationByIdQuery : IRequest<WebhookProviderPublicationDto?>, ISecureRequest
+public sealed record GetWebhookProviderPublicationByIdQuery : IRequest<WebhookProviderPublicationDto?>, ISecureRequest
 {
     public Guid TenantId { get; init; }
     public Guid PublicationId { get; init; }

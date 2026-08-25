@@ -5,55 +5,55 @@ namespace Explore.Application.DTOs.EventAgendaItem;
 
 using Explore.Application.Models.Common;
 
-public class UpdateEventAgendaItemDto
+public sealed record UpdateEventAgendaItemDto
 {
-    public UpdateEventAgendaItemEventDto? Event { get; set; }
-    public UpdateEventAgendaItemTitleDto? Title { get; set; }
-    public UpdateEventAgendaItemDescriptionDto? Description { get; set; }
-    public UpdateEventAgendaItemScheduleDto? Schedule { get; set; }
-    public UpdateEventAgendaItemLocationDto? Location { get; set; }
-    public UpdateEventAgendaItemRoomDto? Room { get; set; }
-    public UpdateEventAgendaItemKindDto? Kind { get; set; }
-    public UpdateEventAgendaItemSortOrderDto? SortOrder { get; set; }
+    public UpdateEventAgendaItemEventDto? Event { get; init; }
+    public UpdateEventAgendaItemTitleDto? Title { get; init; }
+    public UpdateEventAgendaItemDescriptionDto? Description { get; init; }
+    public UpdateEventAgendaItemScheduleDto? Schedule { get; init; }
+    public UpdateEventAgendaItemLocationDto? Location { get; init; }
+    public UpdateEventAgendaItemRoomDto? Room { get; init; }
+    public UpdateEventAgendaItemKindDto? Kind { get; init; }
+    public UpdateEventAgendaItemSortOrderDto? SortOrder { get; init; }
 }
 
-public class UpdateEventAgendaItemEventDto
+public sealed record UpdateEventAgendaItemEventDto
 {
-    public Guid EventId { get; set; }
+    public Guid EventId { get; init; }
 }
 
-public class UpdateEventAgendaItemTitleDto
+public sealed record UpdateEventAgendaItemTitleDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateEventAgendaItemDescriptionDto
+public sealed record UpdateEventAgendaItemDescriptionDto
 {
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public OptionalUpdate<string?> Value { get; init; } = OptionalUpdate<string?>.Unspecified();
 }
 
-public class UpdateEventAgendaItemScheduleDto
+public sealed record UpdateEventAgendaItemScheduleDto
 {
-    public DateTimeOffset StartTime { get; set; }
-    public DateTimeOffset EndTime { get; set; }
+    public DateTimeOffset StartTime { get; init; }
+    public DateTimeOffset EndTime { get; init; }
 }
 
-public class UpdateEventAgendaItemLocationDto
+public sealed record UpdateEventAgendaItemLocationDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventAgendaItemRoomDto
+public sealed record UpdateEventAgendaItemRoomDto
 {
-    public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> Value { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }
 
-public class UpdateEventAgendaItemKindDto
+public sealed record UpdateEventAgendaItemKindDto
 {
-    public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<int?> Value { get; init; } = OptionalUpdate<int?>.Unspecified();
 }
 
-public class UpdateEventAgendaItemSortOrderDto
+public sealed record UpdateEventAgendaItemSortOrderDto
 {
-    public int Value { get; set; }
+    public int Value { get; init; }
 }

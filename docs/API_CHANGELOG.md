@@ -3,6 +3,11 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-25
+
+- **Breaking (pre-v1): eight create/import request bodies no longer accept current-tenant authority.** `CreateCategoryDto`, `ImportEventRequestDto`, `CreateEventSessionDto`, `CreateEventSessionAgendaItemDto`, `CreateEventSessionLanguageDto`, `CreateEventSessionSpeakerDto`, `CreateLocationDto`, and `CreateTagDto` omit `tenantId`. Controllers derive tenant identity from `ITenantContext` or the route-selected persisted session/event context; sending the removed property now fails closed as an unsupported JSON field with a 400 validation ProblemDetails response. Routes, operation IDs, HAL relations, and authorized success behavior are unchanged. Regenerated clients must stop populating these tenant properties; no compatibility alias or reader is provided.
+- **Contract metadata correction: affected authenticated create/import operations document authorization denials as 403 ProblemDetails.** Runtime behavior is unchanged; OpenAPI now accurately describes the existing fail-closed MediatR authorization path for category, tag, location, event-session agenda-item, and event-session language creation.
+
 ## 2026-08-24
 
 - **Breaking (pre-v1): paid start requires explicit current acceptance.** Authenticated and guest payment-start requests now carry `PaidOrderAcceptanceAcknowledgementDto`; absent, false, or stale acknowledgement fails closed. New private/no-store `GET .../payment/acceptance` operations return exact merchant, independent instance operator/official status, delivery, line/money, refund language/version/text, support/complaint, provider/charge, and statement facts. HAL adds `payment-acceptance`; clients must render and acknowledge those server facts before using `start-payment`.

@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.OpenProviderPortal)]
-public sealed class OpenSvixAppPortalCommand
+public sealed record OpenSvixAppPortalCommand
     : IRequest<WebhookProviderPortalAccessCommandResponse>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid ConsumerId { get; init; }

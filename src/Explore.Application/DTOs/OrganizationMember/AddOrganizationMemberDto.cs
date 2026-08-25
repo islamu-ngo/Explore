@@ -3,9 +3,9 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.OrganizationMember;
 
-public class AddOrganizationMemberDto
+public sealed record AddOrganizationMemberDto
 {
-    public Guid OrganizationId { get; set; }
-    public required string Email { get; set; }
-    public RoleEnum Role { get; set; } = RoleEnum.OrgMember;
+    public Guid OrganizationId { get; init; }
+    public required string Email { get; init; }
+    public RoleEnum Role { get; init; } = RoleEnum.OrgMember;
 }

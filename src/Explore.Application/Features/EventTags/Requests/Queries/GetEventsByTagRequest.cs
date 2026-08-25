@@ -7,7 +7,4 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTags.Requests.Queries;
 
-public class GetEventsByTagRequest : IRequest<List<EventListDto>>
-{
-    public Guid TagId { get; set; }
-}
+public sealed record GetEventsByTagRequest(Guid TagId = default) : IRequest<List<EventListDto>>;

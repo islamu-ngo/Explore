@@ -8,17 +8,24 @@ using MediatR;
 namespace Explore.Application.Features.ControlPlane.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class SwitchControlPlaneTenantPlanAssignmentCommand(
-    Guid tenantId,
-    Guid tenantPlanVersionId,
-    Guid assignedByUserId)
+public sealed record SwitchControlPlaneTenantPlanAssignmentCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public SwitchControlPlaneTenantPlanAssignmentCommand(
+        Guid tenantId,
+        Guid tenantPlanVersionId,
+        Guid assignedByUserId)
+    {
+        TenantId = tenantId;
+        TenantPlanVersionId = tenantPlanVersionId;
+        AssignedByUserId = assignedByUserId;
+    }
+
     public const string SettingKey = "control-plane.tenant-plan-assignments";
 
-    public Guid TenantId { get; } = tenantId;
-    public Guid TenantPlanVersionId { get; } = tenantPlanVersionId;
-    public Guid AssignedByUserId { get; } = assignedByUserId;
+    public Guid TenantId { get; }
+    public Guid TenantPlanVersionId { get; }
+    public Guid AssignedByUserId { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

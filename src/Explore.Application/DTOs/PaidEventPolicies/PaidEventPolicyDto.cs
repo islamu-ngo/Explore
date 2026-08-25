@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.PaidEventPolicies;
 
-public sealed class PaidEventPolicyDto
+public sealed record PaidEventPolicyDto
 {
     [JsonIgnore]
     public Guid Id { get; init; }
@@ -25,7 +25,7 @@ public sealed class PaidEventPolicyDto
     public int? FarFutureReviewThresholdDays { get; init; }
 }
 
-public sealed class TenantPaidEventPolicyConfigurationDto
+public sealed record TenantPaidEventPolicyConfigurationDto
 {
     [JsonIgnore]
     public Guid TenantId { get; init; }
@@ -34,7 +34,7 @@ public sealed class TenantPaidEventPolicyConfigurationDto
     public PaidEventPolicyDto EffectivePolicy { get; init; } = default!;
 }
 
-public sealed class PaidEventPolicyCurrencyRiskLimitDto
+public sealed record PaidEventPolicyCurrencyRiskLimitDto
 {
     public string CurrencyCode { get; init; } = string.Empty;
     public long? PerEventSalesCeilingMinor { get; init; }
@@ -45,7 +45,7 @@ public sealed class PaidEventPolicyCurrencyRiskLimitDto
     public long? HighValueReviewThresholdMinor { get; init; }
 }
 
-public sealed class RevisePaidEventPolicyDto
+public sealed record RevisePaidEventPolicyDto
 {
     public bool IsPaymentsEnabled { get; init; }
     public IReadOnlyList<int> AllowedOrganizerKindIds { get; init; } = [];

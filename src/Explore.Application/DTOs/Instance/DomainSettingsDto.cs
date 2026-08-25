@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Instance;
 
-public class DomainSettingsDto
+public sealed record DomainSettingsDto
 {
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string AdminHost { get; set; } = string.Empty;

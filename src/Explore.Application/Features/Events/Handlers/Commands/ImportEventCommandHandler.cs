@@ -41,7 +41,7 @@ public sealed class ImportEventCommandHandler(
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
                 storageObjectRepository,
-                request.TenantId,
+                command.TenantId,
                 request.FeaturedImageId))
         {
             return Failure(
@@ -60,7 +60,7 @@ public sealed class ImportEventCommandHandler(
             Event? existing = await eventRepository.GetById(eventId);
             if (existing is not null)
             {
-                if (existing.TenantId != request.TenantId
+                if (existing.TenantId != command.TenantId
                     || existing.EventProvenanceTypeId != (int)EventProvenanceTypeEnum.Imported
                     || existing.ProvenanceSource != request.ProvenanceSource
                     || existing.ProvenanceExternalId != request.ProvenanceExternalId)
@@ -81,7 +81,7 @@ public sealed class ImportEventCommandHandler(
                 Id = eventId,
                 Title = request.Title,
                 Description = request.Description,
-                TenantId = request.TenantId,
+                TenantId = command.TenantId,
                 ActorId = request.OwnerActorId,
                 EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported,
                 ProvenanceSource = request.ProvenanceSource,
@@ -105,14 +105,14 @@ public sealed class ImportEventCommandHandler(
 
             eventEntity.ParticipationConfiguration = EventParticipationConfiguration.Create(
                 eventEntity.Id,
-                request.TenantId,
+                command.TenantId,
                 request.ParticipationConfiguration.ParticipationHandlingModeId,
                 request.ParticipationConfiguration.AdvanceRegistrationObligationId,
                 request.ParticipationConfiguration.IdentityAccessModeId,
                 request.ParticipationConfiguration.GuestRecoveryPolicy,
                 utcNow);
 
-            EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(request.TenantId, ValidationProfile.EventImportCreate, token);
+            EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(command.TenantId, ValidationProfile.EventImportCreate, token);
             LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(eventEntity, ValidationProfile.EventImportCreate, policy);
             if (!readiness.IsReady)
             {

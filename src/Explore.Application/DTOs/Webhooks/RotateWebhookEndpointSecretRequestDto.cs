@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Webhooks;
 
-public sealed class RotateWebhookEndpointSecretRequestDto
+public sealed record RotateWebhookEndpointSecretRequestDto
 {
     public required string NewSecretRef { get; init; }
 

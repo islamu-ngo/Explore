@@ -3,14 +3,14 @@
 
 namespace Explore.Application.DTOs.EventDay;
 
-public class EventDayListDto
+public sealed record EventDayListDto
 {
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public DateOnly LocalDate { get; set; }
-    public string? Label { get; set; }
-    public bool IsPublished { get; set; }
-    public int SortOrder { get; set; }
-    public bool AllowsDayScopeRegistration { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public DateOnly LocalDate { get; init; }
+    public string? Label { get; init; }
+    public bool IsPublished { get; init; }
+    public int SortOrder { get; init; }
+    public bool AllowsDayScopeRegistration { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
 }

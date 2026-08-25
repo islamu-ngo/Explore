@@ -2,7 +2,7 @@
 // ABOUTME: Carries target IDs and selection semantics used by ticket authoring.
 namespace Explore.Application.DTOs.EventTicketing;
 
-public sealed class TicketTypeEntitlementDto
+public sealed record TicketTypeEntitlementDto
 {
     public int EntitlementScopeTypeId { get; init; }
     public string? EntitlementScopeTypeCode { get; init; }

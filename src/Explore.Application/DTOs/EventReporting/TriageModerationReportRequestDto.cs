@@ -5,7 +5,7 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class TriageModerationReportRequestDto
+public sealed record TriageModerationReportRequestDto
 {
     public Guid CaseId { get; init; }
     public Guid ExpectedCaseConcurrencyStamp { get; init; }

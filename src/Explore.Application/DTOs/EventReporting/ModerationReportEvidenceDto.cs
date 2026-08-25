@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.EventReporting;
 
-public sealed class ModerationReportEvidenceDto
+public sealed record ModerationReportEvidenceDto
 {
     public Guid Id { get; init; }
     public Guid ReportId { get; init; }

@@ -195,9 +195,9 @@ public sealed class PublicEventLocationProjectionTests
         mapper.Map<List<EventAgendaItemListDto>>(Arg.Any<List<EventAgendaItem>>()).Returns([listDto]);
 
         EventAgendaItemDto? detail = await new GetEventAgendaItemDetailRequestHandler(repository, mapper, disclosureService)
-            .Handle(new GetEventAgendaItemDetailRequest { Id = item.Id }, CancellationToken.None);
+            .Handle(new GetEventAgendaItemDetailRequest(item.Id), CancellationToken.None);
         EventAgendaItemListDto byEvent = (await new GetEventAgendaItemsByEventRequestHandler(repository, mapper, disclosureService)
-            .Handle(new GetEventAgendaItemsByEventRequest { EventId = eventId }, CancellationToken.None)).Single();
+            .Handle(new GetEventAgendaItemsByEventRequest(eventId), CancellationToken.None)).Single();
 
         await AssertPublicLocationAsync(detail!.EventLocation, eventLocationId, expectRoom: true);
         await AssertPublicLocationAsync(byEvent.EventLocation, eventLocationId, expectRoom: true);
@@ -339,7 +339,7 @@ public sealed class PublicEventLocationProjectionTests
             disclosureService);
 
         var summary = await handler.Handle(
-            new GetEventProgramSummaryRequest { EventId = eventId },
+            new GetEventProgramSummaryRequest(eventId),
             CancellationToken.None);
         var groupDto = summary!.Sections.Single().SessionGroups.Single();
         var itemDto = groupDto.Days.Single().Items.Single();

@@ -3,16 +3,16 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class InstanceOnboardingStatusDto
+public sealed record InstanceOnboardingStatusDto
 {
-    public bool IsCompleted { get; set; }
-    public bool IsAuthenticated { get; set; }
+    public bool IsCompleted { get; init; }
+    public bool IsAuthenticated { get; init; }
     public bool IsCurrentUserInstanceAdmin { get; set; }
-    public string? SelectedDeploymentMode { get; set; }
-    public bool IsSetupModeActive { get; set; }
-    public bool SetupSecretFromEnvironment { get; set; }
-    public bool SetupTimedOut { get; set; }
-    public DateTime? InstanceStartedAt { get; set; }
+    public string? SelectedDeploymentMode { get; init; }
+    public bool IsSetupModeActive { get; init; }
+    public bool SetupSecretFromEnvironment { get; init; }
+    public bool SetupTimedOut { get; init; }
+    public DateTime? InstanceStartedAt { get; init; }
     public string SetupSecretState { get; set; } = "Unavailable";
     public string SetupSecretGuidance { get; set; } = "Setup access is not currently available.";
 }

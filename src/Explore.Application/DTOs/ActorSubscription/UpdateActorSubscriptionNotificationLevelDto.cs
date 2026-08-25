@@ -5,16 +5,16 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Explore.Application.DTOs.ActorSubscription;
 
-public class UpdateActorSubscriptionNotificationLevelDto
+public sealed record UpdateActorSubscriptionNotificationLevelDto
 {
-    public UpdateActorSubscriptionNotificationLevelValueDto? NotificationLevel { get; set; }
+    public UpdateActorSubscriptionNotificationLevelValueDto? NotificationLevel { get; init; }
 
     [Required]
-    public required Guid ExpectedConcurrencyStamp { get; set; }
+    public required Guid ExpectedConcurrencyStamp { get; init; }
 }
 
-public class UpdateActorSubscriptionNotificationLevelValueDto
+public sealed record UpdateActorSubscriptionNotificationLevelValueDto
 {
     [Required]
-    public required int Id { get; set; }
+    public required int Id { get; init; }
 }

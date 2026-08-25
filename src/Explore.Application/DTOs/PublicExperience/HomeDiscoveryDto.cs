@@ -7,9 +7,9 @@ using Explore.Application.Models.PublicExperience;
 
 namespace Explore.Application.DTOs.PublicExperience;
 
-public sealed class HomeDiscoveryDto
+public sealed record HomeDiscoveryDto
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; init; } = 1;
     public HomeDiscoveryContextDto Context { get; set; } = new();
     public List<EventDiscoveryItemDto> Hero { get; set; } = [];
     public List<EventDiscoveryItemDto> UpcomingInArea { get; set; } = [];
@@ -18,60 +18,65 @@ public sealed class HomeDiscoveryDto
     public List<EventDiscoveryItemDto> MostViewedOnline { get; set; } = [];
     public List<HomeDiscoverySectionDto> CuratedSections { get; set; } = [];
     public List<EventDiscoveryItemDto> RecentlyAdded { get; set; } = [];
-    public Dictionary<string, HomeDiscoverySectionStatus> SectionStatuses { get; set; } = [];
-    public DateTimeOffset GeneratedAtUtc { get; set; }
+    public Dictionary<string, HomeDiscoverySectionStatus> SectionStatuses { get; init; } = [];
+    public DateTimeOffset GeneratedAtUtc { get; init; }
 }
 
-public sealed class HomeDiscoveryContextDto
+public sealed record HomeDiscoveryContextDto
 {
-    public HomeDiscoveryMode Mode { get; set; } = HomeDiscoveryMode.All;
-    public Guid? SelectedAreaId { get; set; }
-    public Guid? DefaultAreaId { get; set; }
-    public string SelectedAreaDisplayName { get; set; } = string.Empty;
-    public List<PublicDiscoveryAreaDto> AvailableAreas { get; set; } = [];
+    public HomeDiscoveryMode Mode { get; init; } = HomeDiscoveryMode.All;
+    public Guid? SelectedAreaId { get; init; }
+    public Guid? DefaultAreaId { get; init; }
+    public string SelectedAreaDisplayName { get; init; } = string.Empty;
+    public List<PublicDiscoveryAreaDto> AvailableAreas { get; init; } = [];
 }
 
-public sealed class EventDiscoveryItemDto
+public sealed record EventDiscoveryItemDto
 {
-    public string Source { get; set; } = "local";
-    public EventListDto? Event { get; set; }
-    public FederatedEventDto? FederatedEvent { get; set; }
-    public EventFederationMetadataDto? Federation { get; set; }
-    public double? DistanceMeters { get; set; }
-    public Guid? NearestSessionId { get; set; }
-    public Guid? NearestLocationId { get; set; }
-    public string? NearestLocationName { get; set; }
-    public DateTimeOffset? NearestOccurrenceStartsAtUtc { get; set; }
+    [JsonConstructor]
+    public EventDiscoveryItemDto()
+    {
+    }
+
+    public string Source { get; init; } = "local";
+    public EventListDto? Event { get; init; }
+    public FederatedEventDto? FederatedEvent { get; init; }
+    public EventFederationMetadataDto? Federation { get; init; }
+    public double? DistanceMeters { get; init; }
+    public Guid? NearestSessionId { get; init; }
+    public Guid? NearestLocationId { get; init; }
+    public string? NearestLocationName { get; init; }
+    public DateTimeOffset? NearestOccurrenceStartsAtUtc { get; init; }
 
     [JsonExtensionData]
     public Dictionary<string, object> AdditionalProperties { get; set; } = [];
 }
 
-public sealed class FederatedEventDto
+public sealed record FederatedEventDto
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public DateTimeOffset CreatedAtUtc { get; set; }
-    public DateTimeOffset? StartsAtUtc { get; set; }
-    public DateTimeOffset? EndsAtUtc { get; set; }
-    public string? Mode { get; set; }
-    public string? Status { get; set; }
-    public bool? RsvpExpected { get; set; }
-    public string? LocationSummary { get; set; }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public DateTimeOffset CreatedAtUtc { get; init; }
+    public DateTimeOffset? StartsAtUtc { get; init; }
+    public DateTimeOffset? EndsAtUtc { get; init; }
+    public string? Mode { get; init; }
+    public string? Status { get; init; }
+    public bool? RsvpExpected { get; init; }
+    public string? LocationSummary { get; init; }
 }
 
-public sealed class EventFederationMetadataDto
+public sealed record EventFederationMetadataDto
 {
-    public Guid AtprotoRecordId { get; set; }
-    public string Provenance { get; set; } = string.Empty;
-    public bool IsLocalEcho { get; set; }
+    public Guid AtprotoRecordId { get; init; }
+    public string Provenance { get; init; } = string.Empty;
+    public bool IsLocalEcho { get; init; }
     public bool HasSourceLink { get; set; }
 }
 
-public sealed class HomeDiscoverySectionDto
+public sealed record HomeDiscoverySectionDto
 {
-    public string Key { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
-    public List<EventDiscoveryItemDto> Items { get; set; } = [];
+    public string Key { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public List<EventDiscoveryItemDto> Items { get; init; } = [];
 }

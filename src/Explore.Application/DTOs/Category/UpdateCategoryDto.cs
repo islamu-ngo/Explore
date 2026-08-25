@@ -5,24 +5,24 @@ using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Category;
 
-public class UpdateCategoryDto
+public sealed record UpdateCategoryDto
 {
-    public UpdateCategoryMasterCodeDto? MasterCode { get; set; }
-    public UpdateCategoryFullNameDto? FullName { get; set; }
-    public UpdateCategoryParentDto? Parent { get; set; }
+    public UpdateCategoryMasterCodeDto? MasterCode { get; init; }
+    public UpdateCategoryFullNameDto? FullName { get; init; }
+    public UpdateCategoryParentDto? Parent { get; init; }
 }
 
-public class UpdateCategoryMasterCodeDto
+public sealed record UpdateCategoryMasterCodeDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateCategoryFullNameDto
+public sealed record UpdateCategoryFullNameDto
 {
-    public required string Value { get; set; }
+    public required string Value { get; init; }
 }
 
-public class UpdateCategoryParentDto
+public sealed record UpdateCategoryParentDto
 {
-    public OptionalUpdate<Guid?> ParentId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
+    public OptionalUpdate<Guid?> ParentId { get; init; } = OptionalUpdate<Guid?>.Unspecified();
 }

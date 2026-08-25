@@ -6,6 +6,6 @@ using MediatR;
 
 namespace Explore.Application.Features.Languages.Requests.Queries;
 
-public class GetLanguageListRequest : IRequest<List<LanguageListDto>>
+public sealed record GetLanguageListRequest : IRequest<List<LanguageListDto>>
 {
 }

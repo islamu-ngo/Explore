@@ -8,13 +8,13 @@ using MediatR;
 namespace Explore.Application.Features.Users.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.User, AuthorizationActions.Update)]
-public class UpdateUserCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateUserCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public Guid UserId { get; set; }
+    public Guid UserId { get; init; }
 
-    public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
 
-    public required UpdateUserDto UpdateUserDto { get; set; }
+    public required UpdateUserDto UpdateUserDto { get; init; }
 
     string? ISecureRequest.ResourceId => UserId.ToString();
 }

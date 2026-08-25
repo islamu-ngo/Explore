@@ -5,14 +5,14 @@ using System;
 
 namespace Explore.Application.DTOs.EventSessionSpeaker;
 
-public class EventSessionSpeakerDto
+public sealed record EventSessionSpeakerDto
 {
-    public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; }
-    public Guid ActorId { get; set; }
-    public string? ActorDisplayName { get; set; }
-    public Guid EventSessionId { get; set; }
-    public string? EventSessionTitle { get; set; }
-    public Guid EventId { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid Id { get; init; }
+    public Guid ConcurrencyStamp { get; init; }
+    public Guid ActorId { get; init; }
+    public string? ActorDisplayName { get; init; }
+    public Guid EventSessionId { get; init; }
+    public string? EventSessionTitle { get; init; }
+    public Guid EventId { get; init; }
+    public Guid TenantId { get; init; }
 }

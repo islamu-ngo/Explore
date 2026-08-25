@@ -5,7 +5,4 @@ using MediatR;
 
 namespace Explore.Application.Features.Tenants.Requests.Queries;
 
-public class GetTenantDetailsRequest : IRequest<TenantDto>
-{
-    public Guid Id { get; set; }
-}
+public sealed record GetTenantDetailsRequest(Guid Id = default) : IRequest<TenantDto>;

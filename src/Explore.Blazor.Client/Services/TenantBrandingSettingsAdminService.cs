@@ -211,7 +211,7 @@ public sealed class TenantBrandingSettingsAdminModel
         };
 }
 
-public sealed class TenantBrandingSettingsSaveResult
+public sealed record TenantBrandingSettingsSaveResult
 {
     public bool Success { get; init; }
     public bool IsConcurrencyConflict { get; init; }

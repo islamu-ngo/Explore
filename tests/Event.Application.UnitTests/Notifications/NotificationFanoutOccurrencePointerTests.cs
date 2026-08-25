@@ -4,6 +4,8 @@
 using System.Text.Json;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
+using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Event.Application.UnitTests.Notifications;
 
@@ -30,6 +32,46 @@ public sealed class NotificationFanoutOccurrencePointerTests
         await Assert.That(json).DoesNotContain("title", StringComparison.OrdinalIgnoreCase);
         await Assert.That(json).DoesNotContain("location", StringComparison.OrdinalIgnoreCase);
         await Assert.That(json).DoesNotContain("evidence", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task Create_PreservesCallerOwnedReplayIdAndVersionedEnvelopeFacts()
+    {
+        DateTime occurredAt = new(2026, 8, 24, 10, 0, 0, DateTimeKind.Utc);
+        Guid eventId = Guid.CreateVersion7();
+        NotificationFanoutOccurrence occurrence = NotificationFanoutOccurrence.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            eventId,
+            sessionId: null,
+            occurredAt,
+            audienceCutoffAt: occurredAt,
+            Guid.CreateVersion7(),
+            "{\"fields\":[\"startTime\"]}",
+            "{\"startsAt\":\"2026-08-24T10:00:00Z\"}",
+            "{\"startsAt\":\"2026-08-24T11:00:00Z\"}",
+            "event.updated",
+            templateVersion: 1,
+            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            policyVersion: 1,
+            priority: 30,
+            notBefore: occurredAt,
+            sourceType: "event",
+            sourceId: eventId,
+            coalescingKey: $"event:{eventId:N}:schedule",
+            coalescingWindowEndsAt: occurredAt);
+        Guid messageId = Guid.CreateVersion7();
+
+        OutboxMessage message = NotificationFanoutOccurrenceOutboxMessageFactory.Create(occurrence, messageId);
+        NotificationFanoutOccurrenceRequested pointer =
+            NotificationFanoutOccurrenceOutboxMessageFactory.DeserializePointer(message.Payload!);
+
+        await Assert.That(message.Id).IsEqualTo(messageId);
+        await Assert.That(message.EventType).IsEqualTo(NotificationFanoutOccurrenceOutboxMessageFactory.EventType);
+        await Assert.That(message.AggregateId).IsEqualTo(occurrence.Id);
+        await Assert.That(pointer.TenantId).IsEqualTo(occurrence.TenantId);
+        await Assert.That(pointer.OccurrenceId).IsEqualTo(occurrence.Id);
+        await Assert.That(pointer.Version).IsEqualTo(NotificationFanoutOccurrenceRequested.CurrentVersion);
     }
 
     [Test]

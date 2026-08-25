@@ -9,7 +9,7 @@ using MediatR;
 namespace Explore.Application.Features.EventPublicActions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManagePublicActions)]
-public sealed class UpdateEventPublicActionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed record UpdateEventPublicActionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public Guid ActionId { get; init; }

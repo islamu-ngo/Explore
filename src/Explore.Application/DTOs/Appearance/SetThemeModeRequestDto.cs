@@ -3,7 +3,7 @@
 
 namespace Explore.Application.DTOs.Appearance;
 
-public sealed class SetThemeModeRequestDto
+public sealed record SetThemeModeRequestDto
 {
-    public string ThemeMode { get; set; } = "system";
+    public string ThemeMode { get; init; } = "system";
 }

@@ -14,15 +14,21 @@ public enum TenantPlanExistingAssignmentPolicy
 }
 
 [AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
-public sealed class PublishControlPlaneTenantPlanVersionCommand(
-    Guid versionId,
-    TenantPlanExistingAssignmentPolicy existingTenantPolicy)
+public sealed record PublishControlPlaneTenantPlanVersionCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public PublishControlPlaneTenantPlanVersionCommand(
+        Guid versionId,
+        TenantPlanExistingAssignmentPolicy existingTenantPolicy)
+    {
+        VersionId = versionId;
+        ExistingTenantPolicy = existingTenantPolicy;
+    }
+
     public const string SettingKey = "control-plane.tenant-plans";
 
-    public Guid VersionId { get; } = versionId;
-    public TenantPlanExistingAssignmentPolicy ExistingTenantPolicy { get; } = existingTenantPolicy;
+    public Guid VersionId { get; }
+    public TenantPlanExistingAssignmentPolicy ExistingTenantPolicy { get; }
 
     string? ISecureRequest.ResourceId => SettingKey;
 

@@ -3,16 +3,16 @@
 
 namespace Explore.Application.DTOs.Onboarding;
 
-public class KeycloakRealmSyncOperationDto
+public sealed record KeycloakRealmSyncOperationDto
 {
-    public string OperationId { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string TargetType { get; set; } = string.Empty;
-    public string Target { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string Summary { get; set; } = string.Empty;
-    public string Reason { get; set; } = string.Empty;
-    public IReadOnlyList<string> Changes { get; set; } = [];
-    public bool RequiresBackupBeforeApply { get; set; }
+    public string OperationId { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
+    public string TargetType { get; init; } = string.Empty;
+    public string Target { get; init; } = string.Empty;
+    public string Action { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string Summary { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
+    public IReadOnlyList<string> Changes { get; init; } = [];
+    public bool RequiresBackupBeforeApply { get; init; }
 }
