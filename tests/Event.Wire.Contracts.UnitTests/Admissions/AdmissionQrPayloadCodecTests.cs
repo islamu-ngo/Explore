@@ -2,9 +2,9 @@
 // ABOUTME: Proves one canonical codec round-trips v1 material and rejects malformed input without echoing it.
 
 using System.Diagnostics;
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 
-namespace Event.Application.UnitTests.Contracts.Admissions;
+namespace ISLAMU.Wire.Contracts.UnitTests.Admissions;
 
 public sealed class AdmissionQrPayloadCodecTests
 {
