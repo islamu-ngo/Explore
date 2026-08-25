@@ -11,7 +11,13 @@ public sealed class EventTicketTypeConfiguration : IEntityTypeConfiguration<Even
 {
     public void Configure(EntityTypeBuilder<EventTicketType> builder)
     {
-        builder.ToTable("event_ticket_types");
+        builder.ToTable("event_ticket_types", table => table.HasCheckConstraint(
+            "CK_EventTicketType_MoneyNonnegative",
+            """
+            (fixed_price_minor IS NULL OR fixed_price_minor >= 0)
+            AND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)
+            AND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)
+            """));
         builder.Property(ticketType => ticketType.Id).ValueGeneratedNever();
         builder.Property(ticketType => ticketType.Name).IsRequired().HasMaxLength(200);
         builder.Property(ticketType => ticketType.CurrencyCode).IsRequired().HasMaxLength(3);

@@ -141,9 +141,9 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
         string providerProfileCode,
         string providerApiRevision,
         string compositionRevision,
-        long organizerAmountMinor,
-        long platformFeeMinor,
-        long platformContributionMinor,
+        Money organizerAmount,
+        Money platformFee,
+        Money platformContribution,
         string providerIdempotencyKey,
         DateTime createdAt,
         DateTime? expiresAt)
@@ -154,10 +154,14 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
         }
 
         ArgumentNullException.ThrowIfNull(recipientSnapshot);
+        ArgumentNullException.ThrowIfNull(organizerAmount);
+        ArgumentNullException.ThrowIfNull(platformFee);
+        ArgumentNullException.ThrowIfNull(platformContribution);
         if (recipientSnapshot.TenantId != tenantId)
         {
             throw new ArgumentException("Recipient snapshot must match the payment attempt tenant.", nameof(recipientSnapshot));
         }
+        EnsureRecipientCurrency(recipientSnapshot, organizerAmount, platformFee, platformContribution);
 
         string normalizedProfileCode = NormalizeRequiredText(providerProfileCode, nameof(providerProfileCode), 80, preserveCase: true);
         if (!string.Equals(normalizedProfileCode, recipientSnapshot.ProfileCode, StringComparison.Ordinal))
@@ -175,6 +179,9 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
             throw new ArgumentException("Payment attempt expiry must be after creation.", nameof(expiresAt));
         }
 
+        long organizerAmountMinor = organizerAmount.MinorUnits;
+        long platformFeeMinor = platformFee.MinorUnits;
+        long platformContributionMinor = platformContribution.MinorUnits;
         EnsureMoneyComposition(organizerAmountMinor, platformFeeMinor, platformContributionMinor);
         return new PaymentAttempt(
             id,
@@ -565,6 +572,19 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
         if (ProviderPaymentId is not null && !string.Equals(ProviderPaymentId, normalized, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Provider payment identity is already bound.");
+        }
+    }
+
+    private static void EnsureRecipientCurrency(
+        OrganizerPaymentRecipientSnapshot recipientSnapshot,
+        params Money[] amounts)
+    {
+        if (amounts.Any(amount => !string.Equals(
+                amount.CurrencyCode,
+                recipientSnapshot.CurrencyCode,
+                StringComparison.Ordinal)))
+        {
+            throw new ArgumentException("Payment amounts must use the recipient currency.", nameof(amounts));
         }
     }
 

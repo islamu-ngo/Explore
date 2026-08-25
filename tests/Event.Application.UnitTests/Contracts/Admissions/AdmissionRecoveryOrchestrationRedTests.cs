@@ -133,6 +133,73 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
         await Assert.That(absent.DigestIssueCalls).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task RepeatedPublicRequestRotatesExistingTicketRecoveryAuthority()
+    {
+        AdmissionTestScenario scenario = await PresentScenarioAsync();
+        object service = AdmissionRecoveryPorts.Service(scenario);
+
+        object first = await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "RequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+        object second = await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "RequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+
+        await AssertUniformReceiptAsync(first);
+        await AssertUniformReceiptAsync(second);
+        await Assert.That(scenario.RecoveryStoreCalls).IsEqualTo(1);
+        await Assert.That(scenario.RecoveryRotationCalls).IsEqualTo(1);
+        await Assert.That(scenario.RecoveryDeliveryCalls).IsEqualTo(2);
+        await Assert.That(scenario.RecoveryByDigest.Count).IsEqualTo(2);
+        await Assert.That(scenario.RecoveryByDigest.Values.Count(value => value.Rotated))
+            .IsEqualTo(1);
+        await Assert.That(scenario.ActiveRecoveryCount).IsEqualTo(1);
+        await Assert.That(scenario.RecoveryByDigest.Values.Select(value => value.RecoveryRequestId)
+            .Distinct().Single()).IsEqualTo(scenario.RecoveryRequestId);
+    }
+
+    [Test]
+    public async Task NewPublicRequestAfterConsumptionIssuesNextGeneration()
+    {
+        AdmissionTestScenario scenario = await PresentScenarioAsync();
+        object service = AdmissionRecoveryPorts.Service(scenario);
+        await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "RequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+        string firstCapability = scenario.TakeDeliveredCapability();
+        object consumed = await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "ConsumeAsync",
+            AdmissionRecoveryPorts.Consume(
+                scenario,
+                firstCapability,
+                "TicketRecovery",
+                scenario.TenantId),
+            CancellationToken.None);
+
+        object requestedAgain = await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "RequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+
+        await Assert.That(AdmissionContractRuntime.Outcome(consumed)).IsEqualTo("Consumed");
+        await AssertUniformReceiptAsync(requestedAgain);
+        await Assert.That(scenario.RecoveryStoreCalls).IsEqualTo(2);
+        await Assert.That(scenario.RecoveryRotationCalls).IsEqualTo(0);
+        await Assert.That(scenario.ConsumedRecoveryCount).IsEqualTo(1);
+        await Assert.That(scenario.ActiveRecoveryCount).IsEqualTo(1);
+        await Assert.That(scenario.RecoveryByDigest.Values.Select(value => value.RecoveryRequestId)
+            .Distinct().Single()).IsEqualTo(scenario.RecoveryRequestId);
+    }
+
     private static async Task<AdmissionTestScenario> PresentScenarioAsync()
     {
         AdmissionTestScenario scenario = AdmissionTestScenario.Recovery(UtcNow, identityPresent: true);

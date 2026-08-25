@@ -129,6 +129,9 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
                 "CK_EventSession_EndAfterStart",
                 "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
             t.HasCheckConstraint(
+                "CK_EventSession_LocalDateRange",
+                "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date");
+            t.HasCheckConstraint(
                 "CK_EventSession_EndTimeTypeState",
                 "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
             t.HasCheckConstraint(

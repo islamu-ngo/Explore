@@ -4,7 +4,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Secrets;

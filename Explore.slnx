@@ -41,6 +41,7 @@
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
     <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />
+    <Project Path="tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj" />
     <Project Path="tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj" />
     <Project Path="tests/Event.Benchmarks/Event.Benchmarks.csproj" />
     <Project Path="tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj" />

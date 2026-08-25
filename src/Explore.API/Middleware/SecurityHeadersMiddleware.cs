@@ -29,7 +29,10 @@ public sealed class SecurityHeadersMiddleware
             headers["X-Frame-Options"] = "DENY";
 
             // Control referrer information sent with requests
-            headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            if (!headers.ContainsKey("Referrer-Policy"))
+            {
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            }
 
             // Restrict browser features the API does not use
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()";

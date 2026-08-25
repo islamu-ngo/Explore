@@ -76,6 +76,9 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
                 "CK_EventAgendaItem_EndAfterStart",
                 "end_time > start_time");
             t.HasCheckConstraint(
+                "CK_EventAgendaItem_LocalDateRange",
+                "local_end_date >= local_start_date");
+            t.HasCheckConstraint(
                 "CK_EventAgendaItem_LocalStartMinuteRange",
                 "local_start_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(

@@ -4,6 +4,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Domain;
 
@@ -80,16 +81,18 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     public string? Address
     {
         get => Pii?.Address;
-        set => RequireMutablePii().Address = value
-            ?? throw new ArgumentNullException(nameof(value));
+        set => SetManualAddress(
+            value ?? throw new ArgumentNullException(nameof(value)),
+            RequireMutablePii().Postcode);
     }
 
     [NotMapped]
     public string? Postcode
     {
         get => Pii?.Postcode;
-        set => RequireMutablePii().Postcode = value
-            ?? throw new ArgumentNullException(nameof(value));
+        set => SetManualAddress(
+            RequireMutablePii().Address,
+            value ?? throw new ArgumentNullException(nameof(value)));
     }
 
     [ForeignKey("Tenant")]
@@ -100,15 +103,15 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     public double? Latitude
     {
         get => Pii?.Latitude;
-        set => RequireMutablePii().Latitude = value;
     }
 
     [NotMapped]
     public double? Longitude
     {
         get => Pii?.Longitude;
-        set => RequireMutablePii().Longitude = value;
     }
+
+    public GeoCoordinate? GetCoordinate() => Pii?.GetCoordinate();
 
     public string? Timezone { get; set; }
 
@@ -144,6 +147,33 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
         }
 
         Pii = pii;
+    }
+
+    public void SetManualAddress(string address, string postcode) =>
+        SetAddress(address, postcode, coordinate: null);
+
+    public void SetProviderAddress(
+        string address,
+        string postcode,
+        GeoCoordinate? coordinate) =>
+        SetAddress(address, postcode, coordinate);
+
+    private void SetAddress(
+        string address,
+        string postcode,
+        GeoCoordinate? coordinate)
+    {
+        EnsureNotErased();
+        ArgumentNullException.ThrowIfNull(address);
+        ArgumentNullException.ThrowIfNull(postcode);
+
+        if (Pii is null)
+        {
+            AttachPii(LocationPii.Create(address, postcode, coordinate));
+            return;
+        }
+
+        Pii.SetAddress(address, postcode, coordinate);
     }
 
     public void ClassifyAsPrivateHome(Guid currentUserId)

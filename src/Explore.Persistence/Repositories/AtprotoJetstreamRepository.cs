@@ -1083,19 +1083,22 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
     {
         if (import.StartsAt is null)
         {
-            session.StartTime = null;
-            session.EndTime = null;
             session.EndTimeType = SessionEndTimeType.Fixed;
-            session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
+            session.Unschedule();
             return;
         }
 
-        session.EndTimeType = import.EndsAt is null
-            ? SessionEndTimeType.OpenEnded
-            : SessionEndTimeType.Fixed;
+        if (import.EndsAt is null)
+        {
+            session.ScheduleOpenEnded(
+                import.StartsAt.Value,
+                import.TimeZoneId,
+                ScheduleProjectionCalculator);
+            return;
+        }
+
         session.Reschedule(
-            import.StartsAt.Value,
-            import.EndsAt,
+            UtcInstantRange.Create(import.StartsAt.Value, import.EndsAt.Value),
             import.TimeZoneId,
             ScheduleProjectionCalculator);
     }

@@ -62,7 +62,11 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.EventSessionKindMasterCode, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.MasterCode : null))
             .ForMember(dest => dest.EventSessionStatusFullName, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.FullName : null))
             .ForMember(dest => dest.EventSessionStatusMasterCode, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.MasterCode : null))
-            .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue && src.EndTime.HasValue))
+            .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue &&
+                ((src.EndTimeType == SessionEndTimeType.Fixed && src.EndTime > src.StartTime) ||
+                 (src.EndTimeType == SessionEndTimeType.OpenEnded && src.EndTime == null) ||
+                 (src.EndTimeType == SessionEndTimeType.RelativeToPrayer &&
+                  (src.EndTime == null || src.EndTime > src.StartTime)))))
             .ForMember(dest => dest.LocationId, opt => opt.Ignore())
             .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
             .ForMember(dest => dest.LocationAddress, opt => opt.Ignore())
@@ -84,7 +88,11 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.EventSessionKindMasterCode, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.MasterCode : null))
             .ForMember(dest => dest.EventSessionStatusFullName, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.FullName : null))
             .ForMember(dest => dest.EventSessionStatusMasterCode, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.MasterCode : null))
-            .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue && src.EndTime.HasValue))
+            .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue &&
+                ((src.EndTimeType == SessionEndTimeType.Fixed && src.EndTime > src.StartTime) ||
+                 (src.EndTimeType == SessionEndTimeType.OpenEnded && src.EndTime == null) ||
+                 (src.EndTimeType == SessionEndTimeType.RelativeToPrayer &&
+                  (src.EndTime == null || src.EndTime > src.StartTime)))))
             .ForMember(dest => dest.LocationId, opt => opt.Ignore())
             .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
             .ForMember(dest => dest.LocationCity, opt => opt.Ignore())

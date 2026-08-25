@@ -10,6 +10,7 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.Application.Authentication;
 using Explore.Application.Constants;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Telemetry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,7 @@ public static class RateLimitingExtensions
     public const string WritePolicy = "Write";
     public const string PublicIngestionPolicy = "PublicIngestion";
     public const string PublicTransactionalPolicy = "public_transactional";
+    public const string AdmissionTicketRecoveryPolicy = "admission_ticket_recovery";
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
@@ -68,6 +70,12 @@ public static class RateLimitingExtensions
 
         var publicTransactionalPermitLimit = section.GetValue("PublicTransactional:PermitLimit", 10);
         var publicTransactionalWindowSeconds = section.GetValue("PublicTransactional:WindowSeconds", 60);
+        var admissionRecoveryPermitLimit = section.GetValue(
+            "AdmissionTicketRecovery:PermitLimit",
+            5);
+        var admissionRecoveryWindowSeconds = section.GetValue(
+            "AdmissionTicketRecovery:WindowSeconds",
+            900);
 
         // Analytics relay limits
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
@@ -108,6 +116,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(PublicIngestionPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(PublicTransactionalPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AdmissionTicketRecoveryPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
@@ -192,6 +202,7 @@ public static class RateLimitingExtensions
             options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateControlPlaneConcurrencyPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateSetupSecretGlobalPartition),
+                PartitionedRateLimiter.Create<HttpContext, string>(CreateAdmissionRecoveryGlobalPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition));
             options.AddPolicy(GlobalPolicy, CreateGlobalPartition);
 
@@ -260,6 +271,18 @@ public static class RateLimitingExtensions
                     });
             });
 
+            options.AddPolicy(AdmissionTicketRecoveryPolicy, _ =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    RecoveryTenantPartitionKey(_),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = admissionRecoveryPermitLimit,
+                        Window = TimeSpan.FromSeconds(admissionRecoveryWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+
             options.AddPolicy(SetupSecretPolicy, _ => RateLimitPartition.GetNoLimiter(SetupSecretPolicy));
 
             RateLimitPartition<string> CreateSetupSecretPartition(HttpContext httpContext)
@@ -288,6 +311,22 @@ public static class RateLimitingExtensions
                 UsesSetupSecretGlobalPartition(httpContext)
                     ? CreateSetupSecretPartition(httpContext)
                     : RateLimitPartition.GetNoLimiter(SetupSecretPolicy);
+
+            RateLimitPartition<string> CreateAdmissionRecoveryGlobalPartition(HttpContext httpContext) =>
+                httpContext.GetEndpoint()?.Metadata
+                    .GetMetadata<EnableRateLimitingAttribute>()?.PolicyName ==
+                        AdmissionTicketRecoveryPolicy
+                    ? RateLimitPartition.GetFixedWindowLimiter(
+                        RecoveryTenantPartitionKey(httpContext),
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = admissionRecoveryPermitLimit,
+                            Window = TimeSpan.FromSeconds(admissionRecoveryWindowSeconds),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        })
+                    : RateLimitPartition.GetNoLimiter(AdmissionTicketRecoveryPolicy);
 
             options.AddPolicy(AnalyticsRelayPolicy, httpContext =>
             {
@@ -425,6 +464,7 @@ public static class RateLimitingExtensions
             WritePolicy => writePermitLimit,
             PublicIngestionPolicy => publicIngestionPermitLimit,
             PublicTransactionalPolicy => publicTransactionalPermitLimit,
+            AdmissionTicketRecoveryPolicy => admissionRecoveryPermitLimit,
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
@@ -488,8 +528,14 @@ public static class RateLimitingExtensions
             return SetupSecretPolicy;
         }
 
-        if (context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName
-            == PublicTransactionalPolicy)
+        string? endpointPolicy = context.GetEndpoint()?
+            .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+        if (endpointPolicy == AdmissionTicketRecoveryPolicy)
+        {
+            return AdmissionTicketRecoveryPolicy;
+        }
+
+        if (endpointPolicy == PublicTransactionalPolicy)
         {
             return PublicTransactionalPolicy;
         }
@@ -518,6 +564,21 @@ public static class RateLimitingExtensions
         }
 
         return context.User.Identity?.IsAuthenticated == true ? AuthenticatedPolicy : GlobalPolicy;
+    }
+
+    private static string RecoveryTenantPartitionKey(HttpContext context)
+    {
+        try
+        {
+            Guid tenantId = context.RequestServices.GetRequiredService<ITenantContext>().TenantId;
+            return tenantId == Guid.Empty
+                ? $"{AdmissionTicketRecoveryPolicy}:unresolved"
+                : $"{AdmissionTicketRecoveryPolicy}:{tenantId:N}";
+        }
+        catch (InvalidOperationException)
+        {
+            return $"{AdmissionTicketRecoveryPolicy}:unresolved";
+        }
     }
 
     private static bool IsEventOpenGraphImageRequest(HttpContext context)

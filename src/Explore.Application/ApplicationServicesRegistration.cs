@@ -193,7 +193,10 @@ public static class ApplicationServicesRegistration
                 options => options.ActiveKeyVersion >= 1 &&
                     options.RetainedKeyVersions.All(version => version >= 1) &&
                     options.RetainedKeyVersions.Distinct().Count() == options.RetainedKeyVersions.Length &&
-                    options.CapabilityLifetimeMinutes is >= 5 and <= 1440,
+                    options.CapabilityLifetimeMinutes is >= 5 and <= 1440 &&
+                    options.RateLimitBucketCount is >= 64 and <= 65_536 &&
+                    options.RateLimitPermitCount is >= 1 and <= 100 &&
+                    options.RateLimitWindowSeconds is >= 60 and <= 86_400,
                 "Admissions:Recovery configuration is invalid.")
             .ValidateOnStart();
         services.AddScoped<AdmissionIssuanceService>();

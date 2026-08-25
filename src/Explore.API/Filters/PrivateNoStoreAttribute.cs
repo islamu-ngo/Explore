@@ -1,5 +1,5 @@
 // ABOUTME: Marks sensitive read responses as browser-private and forbidden from storage.
-// ABOUTME: Prevents physical-location payloads from entering shared or persistent HTTP caches.
+// ABOUTME: Prevents sensitive payload caching and cross-navigation referrer disclosure.
 
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Net.Http.Headers;
@@ -12,5 +12,6 @@ public sealed class PrivateNoStoreAttribute : ActionFilterAttribute
     public override void OnResultExecuting(ResultExecutingContext context)
     {
         context.HttpContext.Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+        context.HttpContext.Response.Headers["Referrer-Policy"] = "no-referrer";
     }
 }

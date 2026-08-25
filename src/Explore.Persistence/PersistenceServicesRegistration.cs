@@ -233,6 +233,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
         services.AddScoped<IAdmissionIssuanceRepository, AdmissionIssuanceRepository>();
         services.AddScoped<IAdmissionRecoveryRepository, AdmissionRecoveryRepository>();
+        services.AddScoped<IAdmissionRecoveryIdentityResolver, AdmissionRecoveryIdentityResolver>();
         services.AddScoped<AdmissionTicketRepository>();
         services.AddScoped<IAdmissionTicketRecoveryRepository>(provider =>
             provider.GetRequiredService<AdmissionTicketRepository>());

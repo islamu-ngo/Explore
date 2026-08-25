@@ -7,7 +7,9 @@ using Explore.Application.Models;
 
 namespace Explore.Infrastructure.Services.Registration;
 
-public sealed class AdmissionRecoveryEmailDeliveryChannel(IEmailService emailService) :
+public sealed class AdmissionRecoveryEmailDeliveryChannel(
+    IEmailService emailService,
+    IPublicUrlBuilder publicUrlBuilder) :
     IAdmissionRecoveryDirectDeliveryChannel
 {
     public async Task<AdmissionRecoveryDirectDeliveryResult> DeliverAsync(
@@ -24,13 +26,22 @@ public sealed class AdmissionRecoveryEmailDeliveryChannel(IEmailService emailSer
         }
 
         string idempotencyKey = request.DeliveryIntentId.ToString("N");
+        string baseUrl = publicUrlBuilder.GetBaseUrl().TrimEnd('/');
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? origin) ||
+            origin.Scheme is not ("http" or "https"))
+        {
+            return new AdmissionRecoveryDirectDeliveryResult(
+                AdmissionRecoveryDirectDeliveryOutcome.Ambiguous);
+        }
+
+        string recoveryUrl =
+            $"{baseUrl}/tickets/recovery?requestId={request.RecoveryRequestId:D}" +
+            $"&capability={Uri.EscapeDataString(request.Capability)}";
         EmailResult result = await emailService.SendAsync(new EmailMessage
         {
             To = request.RecipientAddress,
             Subject = "Recover your admission ticket",
-            PlainTextBody =
-                $"Recovery request: {request.RecoveryRequestId:N}\n" +
-                $"Recovery capability: {request.Capability}",
+            PlainTextBody = $"Open this same-origin one-time recovery link:\n{recoveryUrl}",
             CustomHeaders =
             {
                 ["X-Admission-Recovery-Idempotency-Key"] = idempotencyKey

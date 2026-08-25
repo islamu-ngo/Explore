@@ -8,6 +8,7 @@ using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Domain;
 
@@ -32,14 +33,14 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public Guid? EventDayId { get; set; }
     public EventDay? EventDay { get; set; }
 
-    // Nullable for draft/unscheduled sessions. Scheduled sessions require both non-null with EndTime > StartTime.
-    // When null, all cached local projections must also be null (enforced by ReprojectLocalTimes and DB check constraints).
+    // Null/null represents an unscheduled session. Fixed schedules have a strict range; open-ended and relative schedules may omit EndTime.
+    // When StartTime is null, all cached local projections are null.
     public DateTimeOffset? StartTime { get; set; }
     public DateTimeOffset? EndTime { get; set; }
     public SessionEndTimeType EndTimeType { get; set; } = SessionEndTimeType.Fixed;
 
-    // Cached local projections — written exclusively via ReprojectLocalTimes/Reschedule.
-    // All null when session is unscheduled; complete and consistent when scheduled.
+    // Cached local projections — written exclusively through semantic scheduling methods or ReprojectLocalTimes.
+    // End projections remain null for valid start-only schedules.
     public DateOnly? LocalStartDate { get; private set; }
     public DateOnly? LocalEndDate { get; private set; }
     public TimeOnly? LocalStartTime { get; private set; }
@@ -225,25 +226,95 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     }
 
     /// <summary>
-    /// Reschedules UTC start/end and recomputes cached local fields in the event timezone.
-    /// Handlers call this instead of writing StartTime/EndTime directly so local projection stays in sync.
+    /// Reschedules a fixed strict UTC interval and recomputes cached local fields in the event timezone.
     /// </summary>
     public void Reschedule(
+        UtcInstantRange schedule,
+        string timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        ArgumentNullException.ThrowIfNull(schedule);
+        EventSessionLifecycleRules.EnsureCanSchedule(CurrentStatus);
+
+        EndTimeType = SessionEndTimeType.Fixed;
+        StartTime = schedule.Start;
+        EndTime = schedule.End;
+        ReprojectLocalTimes(timezoneId, calculator);
+    }
+
+    public void ScheduleOpenEnded(
         DateTimeOffset startUtc,
-        DateTimeOffset? endUtc,
+        string timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        ApplyStartOnlySchedule(startUtc, SessionEndTimeType.OpenEnded, timezoneId, calculator);
+    }
+
+    public void ScheduleRelativeToPrayer(
+        DateTimeOffset startUtc,
+        string timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        ApplyStartOnlySchedule(startUtc, SessionEndTimeType.RelativeToPrayer, timezoneId, calculator);
+    }
+
+    public void ScheduleRelativeToPrayer(
+        UtcInstantRange schedule,
+        string timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        ArgumentNullException.ThrowIfNull(schedule);
+        EventSessionLifecycleRules.EnsureCanSchedule(CurrentStatus);
+
+        EndTimeType = SessionEndTimeType.RelativeToPrayer;
+        StartTime = schedule.Start;
+        EndTime = schedule.End;
+        ReprojectLocalTimes(timezoneId, calculator);
+    }
+
+    public void Unschedule()
+    {
+        EventSessionLifecycleRules.EnsureCanSchedule(CurrentStatus);
+        StartTime = null;
+        EndTime = null;
+        ClearLocalScheduleProjection();
+    }
+
+    public UtcInstantRange? GetUtcSchedule() =>
+        StartTime is not null && EndTime is not null
+            ? UtcInstantRange.Create(StartTime.Value, EndTime.Value)
+            : null;
+
+    /// <summary>
+    /// Returns the inclusive local-calendar span when both projected boundaries exist.
+    /// </summary>
+    public LocalDateRange? GetLocalDateRange() =>
+        LocalStartDate is not null && LocalEndDate is not null
+            ? LocalDateRange.Create(LocalStartDate.Value, LocalEndDate.Value)
+            : null;
+
+    private void ApplyStartOnlySchedule(
+        DateTimeOffset startUtc,
+        SessionEndTimeType endTimeType,
         string timezoneId,
         IEventScheduleProjectionCalculator calculator)
     {
         EventSessionLifecycleRules.EnsureCanSchedule(CurrentStatus);
 
-        if (endUtc.HasValue && endUtc.Value <= startUtc)
-        {
-            throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
-        }
-
         StartTime = startUtc.ToUniversalTime();
-        EndTime = endUtc?.ToUniversalTime();
+        EndTime = null;
+        EndTimeType = endTimeType;
         ReprojectLocalTimes(timezoneId, calculator);
+    }
+
+    private void ClearLocalScheduleProjection()
+    {
+        LocalStartDate = null;
+        LocalEndDate = null;
+        LocalStartTime = null;
+        LocalEndTime = null;
+        LocalStartMinuteOfDay = null;
+        LocalEndMinuteOfDay = null;
     }
 
     public bool ContributesToPublicScheduleSummary()

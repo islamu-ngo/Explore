@@ -3,7 +3,7 @@
 
 using System.Globalization;
 using System.Text;
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 using Explore.Application.Contracts.Admissions;
 using Net.Codecrete.QrCodeGenerator;
 

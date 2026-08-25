@@ -29,12 +29,33 @@ internal class RecoveryRepositoryFake : DispatchProxy
             "GetByDigestAsync" => GetByDigest(
                 method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryCapabilityLookup")),
             "GetCurrentByRequestIdAsync" => GetCurrent(method, arguments),
+            "GetCurrentByTicketIdAsync" => GetCurrentByTicket(method, arguments),
             "ConsumeAsync" => Consume(
                 method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryCapabilityMutation")),
             "RotateAsync" => Rotate(
                 method.ReturnType, ExactRequest(arguments, "AdmissionRecoveryRotationRequest")),
             _ => throw AdmissionContractRuntime.Missing($"planned {PortName}.{method.Name}")
         };
+    }
+
+    private object? GetCurrentByTicket(MethodInfo method, object?[] arguments)
+    {
+        Require(arguments.Length == 4, "GetCurrentByTicketIdAsync(TenantId, AdmissionTicketId, Purpose, ct) signature");
+        Guid tenantId = (Guid)arguments[0]!;
+        Guid ticketId = (Guid)arguments[1]!;
+        string purpose = arguments[2]!.ToString()!;
+        StoredRecoveryCapability? stored = scenario.RecoveryByDigest.Values.LastOrDefault(value =>
+            value.TenantId == tenantId &&
+            value.AdmissionTicketId == ticketId &&
+            value.Purpose == purpose);
+        return State(
+            method.ReturnType,
+            stored,
+            stored?.Digest ?? string.Empty,
+            tenantId,
+            stored?.RecoveryRequestId ?? Guid.Empty,
+            ticketId,
+            purpose);
     }
 
     private object? FindIdentity(Type returnType, object request)

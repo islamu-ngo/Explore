@@ -30,7 +30,12 @@ public class LookupMappingProfile : Profile
     {
         CreateMap<Location, LocationDto>().ReverseMap();
         CreateMap<Location, LocationListDto>().ReverseMap();
-        CreateMap<CreateLocationDto, Location>();
+        CreateMap<CreateLocationDto, Location>()
+            .ForMember(destination => destination.Pii, options => options.Ignore())
+            .ForMember(destination => destination.Address, options => options.Ignore())
+            .ForMember(destination => destination.Postcode, options => options.Ignore())
+            .ForMember(destination => destination.Latitude, options => options.Ignore())
+            .ForMember(destination => destination.Longitude, options => options.Ignore());
 
         CreateMap<LocationRoom, LocationRoomDto>()
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));

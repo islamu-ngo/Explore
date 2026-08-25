@@ -25,8 +25,20 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
         });
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.Purpose).HasMaxLength(40).IsRequired();
-        builder.Property(value => value.LookupDigest).HasMaxLength(44).IsFixedLength().IsRequired();
-        builder.Property(value => value.LocatorDigest).HasMaxLength(44).IsFixedLength().IsRequired();
+        builder.Property(value => value.LookupDigest)
+            .HasConversion(
+                value => Convert.FromBase64String(value),
+                value => Convert.ToBase64String(value))
+            .HasMaxLength(32)
+            .IsFixedLength()
+            .IsRequired();
+        builder.Property(value => value.LocatorDigest)
+            .HasConversion(
+                value => Convert.FromBase64String(value),
+                value => Convert.ToBase64String(value))
+            .HasMaxLength(32)
+            .IsFixedLength()
+            .IsRequired();
         builder.Property(value => value.ExpiresAt).IsRequired();
         builder.Property(value => value.CreatedAt).IsRequired();
         builder.Property(value => value.ConcurrencyStamp).IsConcurrencyToken();
@@ -34,7 +46,6 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
         builder.HasIndex(value => new
             {
                 value.TenantId,
-                value.RecoveryRequestId,
                 value.AdmissionTicketId,
                 value.Purpose,
                 value.CapabilityVersion
@@ -60,7 +71,6 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
         builder.HasIndex(value => new
             {
                 value.TenantId,
-                value.RecoveryRequestId,
                 value.AdmissionTicketId,
                 value.Purpose,
                 value.ActiveUniquenessSlot

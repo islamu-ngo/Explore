@@ -4,7 +4,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Event.Wire.Contracts.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
 using Microsoft.AspNetCore.Components;
 
 namespace Explore.Blazor.Client.Contracts.Interop;

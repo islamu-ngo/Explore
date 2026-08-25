@@ -37,6 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>
 

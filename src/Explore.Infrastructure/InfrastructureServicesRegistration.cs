@@ -189,6 +189,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IPromotionCodeDigestService, PromotionCodeDigestService>();
         services.AddScoped<IAdmissionCredentialDigestService, AdmissionCredentialDigestService>();
         services.AddScoped<IAdmissionRecoveryCapabilityService, AdmissionRecoveryCapabilityService>();
+        services.AddSingleton<IAdmissionRecoveryRateLimiter, AdmissionRecoveryRateLimiter>();
         services.AddSingleton<IAdmissionQrRenderer, AdmissionQrSvgRenderer>();
         services.AddScoped<IAdmissionDeliveryEnvelopeProtector, AdmissionDeliveryEnvelopeProtector>();
         services.AddScoped<IAdmissionRecoveryDeliveryEnvelopeProtector, AdmissionRecoveryDeliveryEnvelopeProtector>();

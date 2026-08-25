@@ -32,7 +32,7 @@ public sealed class AtprotoOAuthSecurityGateway(
         OAuthSessionData session;
         try
         {
-            session = JsonSerializer.Deserialize<OAuthSessionData>(request.OAuthSessionPayload, JsonOptions)
+            session = JsonSerializer.Deserialize<OAuthSessionData>(request.OAuthSessionPayload.Span, JsonOptions)
                 ?? throw new JsonException();
         }
         catch (Exception exception) when (exception is JsonException or NotSupportedException)
@@ -97,7 +97,7 @@ public sealed class AtprotoOAuthSecurityGateway(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var session = JsonSerializer.Deserialize<OAuthSessionData>(verifiedSession.OAuthSessionPayload, JsonOptions)
+        var session = JsonSerializer.Deserialize<OAuthSessionData>(verifiedSession.OAuthSessionPayload.Span, JsonOptions)
             ?? throw new AtprotoOAuthSessionUnavailableException("invalid_session");
         var context = new AtprotoOAuthSessionStoreContext(
             tenantId,

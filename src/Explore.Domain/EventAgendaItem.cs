@@ -5,6 +5,7 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Domain;
 
@@ -85,24 +86,26 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
     }
 
     /// <summary>
-    /// Reschedules UTC start/end and recomputes cached local fields in the event timezone.
-    /// Handlers call this instead of writing StartTime/EndTime directly so local projection stays in sync.
+    /// Reschedules the strict UTC interval and recomputes cached local fields in the event timezone.
     /// </summary>
     public void Reschedule(
-        DateTimeOffset startUtc,
-        DateTimeOffset endUtc,
+        UtcInstantRange schedule,
         string timezoneId,
         IEventScheduleProjectionCalculator calculator)
     {
-        if (endUtc <= startUtc)
-        {
-            throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
-        }
+        ArgumentNullException.ThrowIfNull(schedule);
 
-        StartTime = startUtc.ToUniversalTime();
-        EndTime = endUtc.ToUniversalTime();
+        StartTime = schedule.Start;
+        EndTime = schedule.End;
         ReprojectLocalTimes(timezoneId, calculator);
     }
+
+    public UtcInstantRange GetUtcSchedule() => UtcInstantRange.Create(StartTime, EndTime);
+
+    /// <summary>
+    /// Returns the inclusive local-calendar span derived from the cached timezone projection.
+    /// </summary>
+    public LocalDateRange GetLocalDateRange() => LocalDateRange.Create(LocalStartDate, LocalEndDate);
 
     public void AssignEventLocation(EventLocation eventLocation)
     {

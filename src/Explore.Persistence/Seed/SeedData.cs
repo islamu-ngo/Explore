@@ -5,6 +5,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Modules;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Persistence.Seed;
 
@@ -475,11 +476,7 @@ public static class SeedData
         FullName = "Online / Virtual",
         Country = "Internet",
         City = "Virtual",
-        Pii = new LocationPii
-        {
-            Address = "Virtual",
-            Postcode = "00000"
-        },
+        Pii = LocationPii.Create("Virtual", "00000", coordinate: null),
         Timezone = "UTC",
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!
@@ -639,13 +636,10 @@ public static class SeedData
             FullName = "Brussels Islamic Learning Center",
             Country = "Belgium",
             City = "Brussels",
-            Pii = new LocationPii
-            {
-                Address = "Rue de l'Instruction 12",
-                Postcode = "1070",
-                Latitude = 50.8369,
-                Longitude = 4.3264
-            },
+            Pii = LocationPii.Create(
+                "Rue de l'Instruction 12",
+                "1070",
+                GeoCoordinate.Create(50.8369, 4.3264)),
             Timezone = BrusselsTimezone,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!
@@ -656,13 +650,10 @@ public static class SeedData
             FullName = "Antwerp Masjid Community Hall",
             Country = "Belgium",
             City = "Antwerp",
-            Pii = new LocationPii
-            {
-                Address = "Gemeentestraat 44",
-                Postcode = "2060",
-                Latitude = 51.2213,
-                Longitude = 4.4210
-            },
+            Pii = LocationPii.Create(
+                "Gemeentestraat 44",
+                "2060",
+                GeoCoordinate.Create(51.2213, 4.4210)),
             Timezone = BrusselsTimezone,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!
@@ -1210,7 +1201,7 @@ public static class SeedData
             ConcurrencyStamp = SeedIds.EventSessionId(spec.Number, session.Number)
         };
 
-        entity.Reschedule(session.StartUtc, session.EndUtc, BrusselsTimezone, calculator);
+        entity.Reschedule(UtcInstantRange.Create(session.StartUtc, session.EndUtc), BrusselsTimezone, calculator);
         return entity;
     }
 
@@ -1257,7 +1248,7 @@ public static class SeedData
             ConcurrencyStamp = SeedIds.EventAgendaItemId(spec.Number, item.Number)
         };
 
-        entity.Reschedule(item.StartUtc, item.EndUtc, BrusselsTimezone, calculator);
+        entity.Reschedule(UtcInstantRange.Create(item.StartUtc, item.EndUtc), BrusselsTimezone, calculator);
         return entity;
     }
 

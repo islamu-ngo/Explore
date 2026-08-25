@@ -1,17 +1,18 @@
-// ABOUTME: Persists tenant-scoped admission recovery capabilities and atomic one-time mutations.
-// ABOUTME: Resolves verified identities without storing or returning plaintext capability material.
+// ABOUTME: Persists tenant-scoped admission recovery entities with atomic lifecycle mutations.
+// ABOUTME: Resolves verified identity separately and never returns persistence-shaped DTOs.
 
 using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
-    IAdmissionRecoveryRepository
+public sealed class AdmissionRecoveryIdentityResolver(ExploreDbContext dbContext) :
+    IAdmissionRecoveryIdentityResolver
 {
-    public async Task<AdmissionRecoveryIdentityResult> FindIdentityAsync(
+    public async Task<AdmissionRecoveryIdentityResult> FindAsync(
         AdmissionRecoveryRequest request,
         CancellationToken cancellationToken)
     {
@@ -39,29 +40,41 @@ public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
             ticketIds.Length > 0,
             ticketIds);
     }
+}
 
-    public async Task<AdmissionRecoveryMutationResult> StoreAsync(
-        AdmissionRecoveryCapabilityRecord request,
+public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
+    IAdmissionRecoveryRepository
+{
+    public async Task<AdmissionRecoveryCapability> AddAsync(
+        AdmissionRecoveryCapability capability,
         CancellationToken cancellationToken)
     {
-        AdmissionRecoveryCapability entity = AdmissionRecoveryCapability.Create(
-            request.CapabilityId,
-            request.TenantId,
-            request.RecoveryRequestId,
-            request.AdmissionTicketId,
-            request.Purpose.ToString(),
-            request.CapabilityVersion,
-            request.KeyVersion,
-            request.LookupDigest,
-            request.ExpiresAtUtc.UtcDateTime,
-            request.CreatedAtUtc.UtcDateTime,
-            request.LocatorDigest);
-        await dbContext.AdmissionRecoveryCapabilities.AddAsync(entity, cancellationToken);
+        ArgumentNullException.ThrowIfNull(capability);
+        await dbContext.AdmissionRecoveryCapabilities.AddAsync(capability, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new AdmissionRecoveryMutationResult(AdmissionRecoveryMutationOutcome.Stored);
+        return capability;
     }
 
-    public async Task<AdmissionRecoveryCapabilityState> GetByLocatorAsync(
+    public Task<AdmissionRecoveryCapability?> FindByProofDigestAsync(
+        Guid tenantId,
+        Guid recoveryRequestId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
+        int keyVersion,
+        string lookupDigest,
+        CancellationToken cancellationToken) =>
+        dbContext.AdmissionRecoveryCapabilities
+            .AsNoTracking()
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == tenantId &&
+                value.RecoveryRequestId == recoveryRequestId &&
+                value.AdmissionTicketId == admissionTicketId &&
+                value.Purpose == purpose.ToString() &&
+                value.LookupKeyVersion == keyVersion &&
+                value.LookupDigest == lookupDigest,
+                cancellationToken);
+
+    public async Task<AdmissionRecoveryCapability?> FindByLocatorAsync(
         Guid tenantId,
         IReadOnlyList<AdmissionRecoveryLocatorDigest> locators,
         CancellationToken cancellationToken)
@@ -77,50 +90,19 @@ public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
                     cancellationToken);
             if (entity is not null)
             {
-                return MapState(entity);
+                return entity;
             }
         }
 
-        return new AdmissionRecoveryCapabilityState(
-            false,
-            tenantId,
-            Guid.Empty,
-            Guid.Empty,
-            string.Empty,
-            AdmissionRecoveryPurpose.TicketRecovery,
-            default,
-            false,
-            false);
+        return null;
     }
 
-    public async Task<AdmissionRecoveryCapabilityState> GetByDigestAsync(
-        AdmissionRecoveryCapabilityLookup request,
-        CancellationToken cancellationToken)
-    {
-        IQueryable<AdmissionRecoveryCapability> query = dbContext.AdmissionRecoveryCapabilities
-            .AsNoTracking()
-            .Where(value =>
-                value.TenantId == request.TenantId &&
-                value.RecoveryRequestId == request.RecoveryRequestId &&
-                value.AdmissionTicketId == request.AdmissionTicketId &&
-                value.Purpose == request.Purpose.ToString() &&
-                value.LookupDigest == request.LookupDigest);
-        if (request.KeyVersion > 0)
-        {
-            query = query.Where(value => value.LookupKeyVersion == request.KeyVersion);
-        }
-
-        AdmissionRecoveryCapability? entity = await query.SingleOrDefaultAsync(cancellationToken);
-        return MapState(entity, request);
-    }
-
-    public async Task<AdmissionRecoveryCapabilityState> GetCurrentByRequestIdAsync(
+    public Task<AdmissionRecoveryCapability?> FindLatestByRequestIdAsync(
         Guid tenantId,
         Guid recoveryRequestId,
         AdmissionRecoveryPurpose purpose,
-        CancellationToken cancellationToken)
-    {
-        AdmissionRecoveryCapability? entity = await dbContext.AdmissionRecoveryCapabilities
+        CancellationToken cancellationToken) =>
+        dbContext.AdmissionRecoveryCapabilities
             .AsNoTracking()
             .Where(value =>
                 value.TenantId == tenantId &&
@@ -128,154 +110,127 @@ public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
                 value.Purpose == purpose.ToString())
             .OrderByDescending(value => value.CapabilityVersion)
             .FirstOrDefaultAsync(cancellationToken);
-        return entity is null
-            ? new AdmissionRecoveryCapabilityState(
-                false,
-                tenantId,
-                recoveryRequestId,
-                Guid.Empty,
-                string.Empty,
-                purpose,
-                default,
-                false,
-                false)
-            : MapState(entity);
-    }
 
-    public async Task<AdmissionRecoveryMutationResult> ConsumeAsync(
-        AdmissionRecoveryCapabilityMutation request,
+    public Task<AdmissionRecoveryCapability?> FindLatestByTicketIdAsync(
+        Guid tenantId,
+        Guid admissionTicketId,
+        AdmissionRecoveryPurpose purpose,
+        CancellationToken cancellationToken) =>
+        dbContext.AdmissionRecoveryCapabilities
+            .AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId &&
+                value.AdmissionTicketId == admissionTicketId &&
+                value.Purpose == purpose.ToString())
+            .OrderByDescending(value => value.CapabilityVersion)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> TryConsumeAsync(
+        Guid tenantId,
+        Guid capabilityId,
+        int keyVersion,
+        string lookupDigest,
+        Guid expectedConcurrencyStamp,
+        DateTime occurredAtUtc,
         CancellationToken cancellationToken)
     {
-        DateTime occurredAt = request.OccurredAtUtc.UtcDateTime;
         Guid nextStamp = Guid.CreateVersion7();
-        IQueryable<AdmissionRecoveryCapability> candidate = dbContext.AdmissionRecoveryCapabilities
+        int changed = await dbContext.AdmissionRecoveryCapabilities
             .Where(value =>
-                value.TenantId == request.TenantId &&
-                value.RecoveryRequestId == request.RecoveryRequestId &&
-                value.AdmissionTicketId == request.AdmissionTicketId &&
-                value.Purpose == request.Purpose.ToString() &&
-                value.LookupDigest == request.LookupDigest &&
+                value.TenantId == tenantId &&
+                value.Id == capabilityId &&
+                value.LookupKeyVersion == keyVersion &&
+                value.LookupDigest == lookupDigest &&
+                value.ConcurrencyStamp == expectedConcurrencyStamp &&
                 value.ConsumedAt == null &&
                 value.RotatedAt == null &&
-                value.ExpiresAt > occurredAt);
-        if (request.KeyVersion > 0)
-        {
-            candidate = candidate.Where(value => value.LookupKeyVersion == request.KeyVersion);
-        }
-
-        if (request.CapabilityId != Guid.Empty)
-        {
-            candidate = candidate.Where(value => value.Id == request.CapabilityId);
-        }
-
-        if (request.ExpectedConcurrencyStamp != Guid.Empty)
-        {
-            candidate = candidate.Where(value =>
-                value.ConcurrencyStamp == request.ExpectedConcurrencyStamp);
-        }
-
-        int changed = await candidate.ExecuteUpdateAsync(
-            setters => setters
-                .SetProperty(value => value.ConsumedAt, occurredAt)
-                .SetProperty(value => value.ActiveUniquenessSlot, value => value.CapabilityVersion)
-                .SetProperty(value => value.UpdatedAt, occurredAt)
-                .SetProperty(value => value.ConcurrencyStamp, nextStamp),
-            cancellationToken);
-        return new AdmissionRecoveryMutationResult(
-            changed == 1
-                ? AdmissionRecoveryMutationOutcome.Consumed
-                : AdmissionRecoveryMutationOutcome.Rejected);
+                value.ExpiresAt > occurredAtUtc)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(value => value.ConsumedAt, occurredAtUtc)
+                    .SetProperty(
+                        value => value.ActiveUniquenessSlot,
+                        value => value.CapabilityVersion)
+                    .SetProperty(value => value.UpdatedAt, occurredAtUtc)
+                    .SetProperty(value => value.ConcurrencyStamp, nextStamp),
+                cancellationToken);
+        return changed == 1;
     }
 
-    public async Task<AdmissionRecoveryMutationResult> RotateAsync(
-        AdmissionRecoveryRotationRequest request,
+    public async Task<bool> TryRotateAsync(
+        AdmissionRecoveryCapability current,
+        AdmissionRecoveryCapability replacement,
+        DateTime rotatedAtUtc,
         CancellationToken cancellationToken)
     {
-        DateTime rotatedAt = request.RotatedAtUtc.UtcDateTime;
-        IQueryable<AdmissionRecoveryCapability> candidate = dbContext.AdmissionRecoveryCapabilities
-            .Where(value =>
-                value.TenantId == request.TenantId &&
-                value.RecoveryRequestId == request.RecoveryRequestId &&
-                value.AdmissionTicketId == request.AdmissionTicketId &&
-                value.Purpose == request.Purpose.ToString() &&
-                value.LookupDigest == request.OldLookupDigest &&
-                value.ConsumedAt == null &&
-                value.RotatedAt == null);
-        if (request.OldKeyVersion > 0)
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(replacement);
+        if (replacement.TenantId != current.TenantId ||
+            replacement.RecoveryRequestId != current.RecoveryRequestId ||
+            replacement.AdmissionTicketId != current.AdmissionTicketId ||
+            !string.Equals(replacement.Purpose, current.Purpose, StringComparison.Ordinal) ||
+            replacement.CapabilityVersion != current.CapabilityVersion + 1)
         {
-            candidate = candidate.Where(value => value.LookupKeyVersion == request.OldKeyVersion);
+            throw new ArgumentException("Recovery replacement lineage is invalid.", nameof(replacement));
         }
 
-        if (request.OldCapabilityId != Guid.Empty)
+        IDbContextTransaction? ownedTransaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        try
         {
-            candidate = candidate.Where(value => value.Id == request.OldCapabilityId);
-        }
+            int changed = await dbContext.AdmissionRecoveryCapabilities
+                .Where(value =>
+                    value.TenantId == current.TenantId &&
+                    value.Id == current.Id &&
+                    value.LookupKeyVersion == current.LookupKeyVersion &&
+                    value.LookupDigest == current.LookupDigest &&
+                    value.ConcurrencyStamp == current.ConcurrencyStamp &&
+                    value.ConsumedAt == null &&
+                    value.RotatedAt == null)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(value => value.RotatedAt, rotatedAtUtc)
+                        .SetProperty(
+                            value => value.ActiveUniquenessSlot,
+                            value => value.CapabilityVersion)
+                        .SetProperty(value => value.UpdatedAt, rotatedAtUtc)
+                        .SetProperty(value => value.ConcurrencyStamp, Guid.CreateVersion7()),
+                    cancellationToken);
+            if (changed != 1)
+            {
+                if (ownedTransaction is not null)
+                {
+                    await ownedTransaction.RollbackAsync(cancellationToken);
+                }
 
-        if (request.ExpectedConcurrencyStamp != Guid.Empty)
+                return false;
+            }
+
+            await dbContext.AdmissionRecoveryCapabilities.AddAsync(replacement, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.CommitAsync(cancellationToken);
+            }
+
+            return true;
+        }
+        catch
         {
-            candidate = candidate.Where(value =>
-                value.ConcurrencyStamp == request.ExpectedConcurrencyStamp);
-        }
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.RollbackAsync(CancellationToken.None);
+            }
 
-        int changed = await candidate.ExecuteUpdateAsync(
-            setters => setters
-                .SetProperty(value => value.RotatedAt, rotatedAt)
-                .SetProperty(value => value.ActiveUniquenessSlot, value => value.CapabilityVersion)
-                .SetProperty(value => value.UpdatedAt, rotatedAt)
-                .SetProperty(value => value.ConcurrencyStamp, Guid.CreateVersion7()),
-            cancellationToken);
-        if (changed != 1)
+            throw;
+        }
+        finally
         {
-            return new AdmissionRecoveryMutationResult(AdmissionRecoveryMutationOutcome.Rejected);
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.DisposeAsync();
+            }
         }
-
-        AdmissionRecoveryCapability replacement = AdmissionRecoveryCapability.Create(
-            request.ReplacementCapabilityId,
-            request.TenantId,
-            request.RecoveryRequestId,
-            request.AdmissionTicketId,
-            request.Purpose.ToString(),
-            request.ReplacementCapabilityVersion,
-            request.ReplacementKeyVersion,
-            request.ReplacementLookupDigest,
-            request.ReplacementExpiresAtUtc.UtcDateTime,
-            rotatedAt,
-            request.ReplacementLocatorDigest);
-        await dbContext.AdmissionRecoveryCapabilities.AddAsync(replacement, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return new AdmissionRecoveryMutationResult(AdmissionRecoveryMutationOutcome.Rotated);
     }
-
-    private static AdmissionRecoveryCapabilityState MapState(
-        AdmissionRecoveryCapability? entity,
-        AdmissionRecoveryCapabilityLookup request) =>
-        entity is null
-            ? new AdmissionRecoveryCapabilityState(
-                false,
-                request.TenantId,
-                request.RecoveryRequestId,
-                request.AdmissionTicketId,
-                request.LookupDigest,
-                request.Purpose,
-                default,
-                false,
-                false,
-                request.KeyVersion)
-            : MapState(entity);
-
-    private static AdmissionRecoveryCapabilityState MapState(AdmissionRecoveryCapability entity) =>
-        new(
-            true,
-            entity.TenantId,
-            entity.RecoveryRequestId,
-            entity.AdmissionTicketId,
-            entity.LookupDigest,
-            Enum.Parse<AdmissionRecoveryPurpose>(entity.Purpose),
-            new DateTimeOffset(entity.ExpiresAt),
-            entity.ConsumedAt.HasValue,
-            entity.RotatedAt.HasValue,
-            entity.LookupKeyVersion,
-            entity.Id,
-            entity.CapabilityVersion,
-            entity.ConcurrencyStamp);
 }

@@ -6,11 +6,19 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AutoMapper;
+using Explore.Application.DTOs.Ai;
+using Explore.Application.DTOs.Analytics;
+using Explore.Application.DTOs.ContactShareConsent;
+using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.PublicExperience;
+using Explore.Application.DTOs.Settings;
+using Explore.Application.DTOs.Studio;
 using Explore.Application.Hateoas;
 using Explore.Application.Profiles;
 using Explore.Application.Responses;
+using Explore.Application.Serialization;
 using Explore.Domain;
 
 namespace Event.Application.UnitTests.Contracts;
@@ -262,6 +270,89 @@ public sealed class DtoMappingSerializationContractTests
         await Assert.That(replacement.WebsiteUrl!.Value.HasValue).IsTrue();
         await Assert.That(replacement.WebsiteUrl.Value.Value)
             .IsEqualTo("https://new.example.test");
+    }
+
+    [Test]
+    public async Task PlatformDtoCollectionInputsAreDetachedFromCallerMutation()
+    {
+        var scopes = new List<string> { "events:read" };
+        var values = new Dictionary<string, string>(StringComparer.Ordinal) { ["mode"] = "all" };
+        var properties = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+        {
+            ["path"] = JsonSerializer.SerializeToElement("/events")
+        };
+        var sections = new List<PublicExperienceEventSectionDto>
+        {
+            new() { Key = "upcoming", Label = "Upcoming" }
+        };
+
+        var key = new CreateExternalApiKeyDto { Name = "automation", Scopes = scopes };
+        var batch = new UpdateSettingBatchDto { Values = values };
+        var analytics = new RelayAnalyticsEventDto { Properties = properties };
+        var shell = new PublicExperienceShellDto { EventSections = sections };
+
+        scopes.Add("events:write");
+        values["mode"] = "area";
+        properties["extra"] = JsonSerializer.SerializeToElement(true);
+        sections.Clear();
+
+        await Assert.That(key.Scopes).IsEquivalentTo(["events:read"]);
+        await Assert.That(batch.Values["mode"]).IsEqualTo("all");
+        await Assert.That(analytics.Properties.ContainsKey("extra")).IsFalse();
+        await Assert.That(shell.EventSections.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PlatformDtoBinaryHalAndSetInputsRetainWireAndComparerSemantics()
+    {
+        byte[] bytes = [1, 2, 3];
+        var links = new Dictionary<string, HalLink>(StringComparer.Ordinal)
+        {
+            [LinkRelations.Self] = new() { Href = "/actions/1" }
+        };
+        var relations = new HashSet<string>(StringComparer.Ordinal) { "edit" };
+        var export = new SharedContactExportResultDto { FileContent = bytes };
+        var action = new AiProposedActionDto { Links = links };
+        var studio = new StudioContextDto { AllowedLinkRelations = relations };
+
+        bytes[0] = 9;
+        links.Clear();
+        relations.Add("EDIT");
+
+        await Assert.That(export.FileContent!.Value.Span[0]).IsEqualTo((byte)1);
+        await Assert.That(action.Links!.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(studio.AllowedLinkRelations.Contains("EDIT")).IsFalse();
+
+        string json = JsonSerializer.Serialize(export);
+        using var document = JsonDocument.Parse(json);
+        await Assert.That(document.RootElement.GetProperty("FileContent").GetString()).IsEqualTo("AQID");
+    }
+
+    [Test]
+    public async Task SourceGeneratedDiscoveryJsonRetainsReadOnlyExtensionData()
+    {
+        const string json = """{"source":"remote","futureField":{"enabled":true}}""";
+
+        EventDiscoveryItemDto item = JsonSerializer.Deserialize(
+            json,
+            ExploreJsonContext.Default.EventDiscoveryItemDto)!;
+        string roundTrip = JsonSerializer.Serialize(item, ExploreJsonContext.Default.EventDiscoveryItemDto);
+
+        await Assert.That(item.AdditionalProperties.ContainsKey("futureField")).IsTrue();
+        await Assert.That(((ICollection<KeyValuePair<string, object>>)item.AdditionalProperties).IsReadOnly).IsTrue();
+        using var document = JsonDocument.Parse(roundTrip);
+        await Assert.That(document.RootElement.GetProperty("futureField").GetProperty("enabled").GetBoolean()).IsTrue();
+    }
+
+    [Test]
+    public async Task PlatformDtoCollectionsRetainNullAndEmptyDefaults()
+    {
+        CreateExternalApiKeyDto nullable = JsonSerializer.Deserialize<CreateExternalApiKeyDto>(
+            """{"Name":"automation","Scopes":null}""")!;
+        var defaults = new CreateExternalApiKeyDto { Name = "automation" };
+
+        await Assert.That(nullable.Scopes).IsNull();
+        await Assert.That(defaults.Scopes).IsEmpty();
     }
 
     private static T ConstructFromNamedFacts<T>(params (string Name, object? Value)[] facts)
