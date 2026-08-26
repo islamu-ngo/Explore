@@ -22,6 +22,11 @@ priority: critical
 - API and Blazor own transport, HTTP, rendering, and composition. HTTP adapters introduce trusted tenant/user authority; request bodies do not become current authority.
 - Generated browser contract shape remains generator-owned. Do not move generated records into handwritten mirrors or let generated DTO concerns flow into Domain.
 - Validators remain manually instantiated, specifications remain Application-owned, and HATEOAS policies/assemblers remain API-owned.
+- **Deep Modules over Shallow Pass-Throughs**: Design deep modules (large amount of behavior hidden behind a simple interface). Avoid shallow services that merely forward calls to repositories or DbSets without enforcing business invariants.
+- **The Deletion Test**: When evaluating an intermediate service or wrapper class, imagine deleting it. If complexity vanishes, it was an unnecessary pass-through (delete it). If complexity scatters across N callers, it was earning its keep as a deep module (preserve and deepen it).
+- **Leverage and Locality**:
+  - *Leverage*: Callers gain maximum capability per method/parameter learned.
+  - *Locality*: Invariants, state transitions, validation, and error handling concentrate in the owning domain aggregate or handler, ensuring fixes occur in one place.
 
 ## Workflow
 

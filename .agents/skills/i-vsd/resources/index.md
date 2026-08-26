@@ -5,19 +5,22 @@
 
 Use these resources in this order for broad reviews:
 
-1. [action-routing.md](action-routing.md) - menu behavior, action detection, and report filename mapping.
-2. [scope-boundaries.md](scope-boundaries.md) - refusal, narrowing, and attribution rules for unrelated, adjacent, and religious-legal authority requests.
-3. [context-discovery.md](context-discovery.md) - concise user-facing context gate plus deeper search across docs, text artifacts, policies, configs, tests, code, relevant project-context integrations, and user-provided paths.
-4. [framework-overview.md](framework-overview.md) - identity, scope, value hierarchy, domains, and quick workflow.
-5. [glossary.md](glossary.md) - terms used by the framework and output templates.
-6. [principles-and-domains.md](principles-and-domains.md) - core principles and six review domains.
-7. [derivation-protocol.md](derivation-protocol.md) - auditable method for deriving heuristics.
-8. [evidence-and-validation-levels.md](evidence-and-validation-levels.md) - what each claim type can and cannot prove.
-9. [scholarly-consultation-boundaries.md](scholarly-consultation-boundaries.md) - when to escalate beyond design reasoning.
+1. [integration-contract.md](integration-contract.md) - standalone, planning, and plan-review mode selection plus refresh rules.
+2. [action-routing.md](action-routing.md) - standalone menu behavior, action detection, and domain lenses.
+3. [scope-boundaries.md](scope-boundaries.md) - refusal, narrowing, and attribution rules for unrelated, adjacent, and religious-legal authority requests.
+4. [context-discovery.md](context-discovery.md) - concise user-facing context gate plus deeper search across docs, text artifacts, policies, configs, tests, code, relevant project-context integrations, and user-provided paths.
+5. [report-contract.md](report-contract.md) - canonical report identity, schema, evidence fields, finding IDs, and lifecycle.
+6. [framework-overview.md](framework-overview.md) - identity, scope, value hierarchy, domains, and quick workflow.
+7. [glossary.md](glossary.md) - terms used by the framework and output templates.
+8. [principles-and-domains.md](principles-and-domains.md) - core principles and six review domains.
+9. [derivation-protocol.md](derivation-protocol.md) - auditable method for deriving heuristics.
+10. [evidence-and-validation-levels.md](evidence-and-validation-levels.md) - what each claim type can and cannot prove.
+11. [scholarly-consultation-boundaries.md](scholarly-consultation-boundaries.md) - when to escalate beyond design reasoning.
 
 Use workflow resources for deliverables:
 
 - [consultancy-workflow.md](consultancy-workflow.md) - intake-to-recommendation sequence.
+- [Grill-Me](../../grill-me/SKILL.md) - standalone alignment after action/context routing; resolve one material decision at a time before substantive reporting.
 - [feature-risk-patterns.md](feature-risk-patterns.md) - feature-specific overlooked failures, bad outcomes, provider questions, and positive outcomes.
 - [guided-discovery-workflow.md](guided-discovery-workflow.md) - interview-led workflow for new projects, ventures, missions, or low-context users.
 - [moral-diff-review-workflow.md](moral-diff-review-workflow.md) - pre-PR/push moral review of complete local changesets across code, docs, config, and artifacts.

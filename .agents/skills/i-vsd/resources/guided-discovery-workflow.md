@@ -12,10 +12,10 @@ Do not produce a generic product strategy. I-VSD is contextual: the same Islamic
 ## Conversation Flow
 
 1. Run the concise context gate from [context-discovery.md](context-discovery.md). If little or no context exists, say this is acceptable for guided discovery.
-2. Ask the user to answer the interview questions in batches. Prefer 8 to 12 questions per batch, then continue with follow-ups based on answers.
+2. Follow [Grill-Me](../../grill-me/SKILL.md): resolve available facts directly, recommend an answer when a real choice exists, ask exactly one material question per response, and use the answer to choose the next dependent branch.
 3. Reflect back the emerging mission, stakeholders, constraints, and moral risks before making recommendations.
 4. Ask targeted follow-ups where the recommended model depends on unresolved facts.
-5. After enough answers, check whether `islamic-value-sensitive-design/i-vsd-guided-discovery.md` exists, then update it or create it.
+5. Continue until mission/decision, provider/deployment model, affected stakeholders, relevant data-money-content-AI surfaces, and operational constraints are captured or explicitly unavailable. Then resolve the canonical subject path from [report-contract.md](report-contract.md) and update or create the report.
 6. Mark unanswered areas as assumptions, validation gaps, or questions for scholarly, legal, operational, or stakeholder review.
 
 ## Interview Areas

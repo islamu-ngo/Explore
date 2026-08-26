@@ -14,6 +14,7 @@ priority: high
 - [../implementation-plan/SKILL.md](../implementation-plan/SKILL.md)
 - [../implementation-plan/resources/quality-gates.md](../implementation-plan/resources/quality-gates.md)
 - [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
+- [../i-vsd/resources/integration-contract.md](../i-vsd/resources/integration-contract.md)
 - [../grill-me/SKILL.md](../grill-me/SKILL.md)
 - [resources/input-contract.md](resources/input-contract.md)
 - [resources/islamu-event-guardrails.md](resources/islamu-event-guardrails.md)
@@ -23,19 +24,27 @@ priority: high
 - [resources/output-template.md](resources/output-template.md)
 - [resources/plan-rewrite-guidance.md](resources/plan-rewrite-guidance.md)
 
-## Top 5 Invariants
-1. Verify I-VSD compliance across the entire workstream: `plan.md`, `context.md`, and `tasks.md` must agree and link a valid `islamic-value-sensitive-design/i-vsd-*.md` report that addresses provider-controlled moral risks; block approval when the deliverable or traceability is missing.
-2. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
-3. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and edge cases; unresolved material answers block approval.
-4. **Test-First Invariant Verification**: Verify that the plan sequences failing contract/invariant tests (Red Phase) *before* production code (Green Phase); block approval for plans with post-hoc test clustering or tautological test risks.
-5. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
+## Top Invariants
+1. Follow I-VSD `plan-review` mode: bind the verdict to exact plan/tasks and I-VSD revisions, require current `IVSD-*` mappings, and block technical approval when the report is missing, stale, or unresolved.
+2. Default to read-only review plus `dev/active/<task>/<task>-cto-review.md`. An explicitly requested rewrite that changes a refresh trigger marks I-VSD stale; the reviewer cannot approve its rewritten revision in the same pass. CTO readiness never grants user or scholarly/legal approval.
+3. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
+4. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and **"The Worst Break" Adversarial Scenario** (the single most catastrophic failure mode); unresolved material answers block approval.
+5. **3-Dimensional Evaluation Model**: Evaluate the plan across three distinct dimensions:
+   - **Completeness**: Are all declared capabilities, I-VSD mitigations, and Red/Green tasks present?
+   - **Correctness**: Do invariant test scenarios cover boundary conditions, concurrency races, and negative failure paths?
+   - **Coherence**: Does the design adhere to Clean Architecture, HAL link affordances, tenant isolation, and transactional outbox patterns?
+6. **Test-First Invariant Verification**: Verify that the plan sequences failing contract/invariant tests (Red Phase) bound to named Scenarios *before* production code (Green Phase); block approval for plans with post-hoc test clustering or tautological test risks.
+7. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
+8. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
 
-## Top 5 Anti-Patterns
+## Top Anti-Patterns
 1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`, or allowing `plan.md` to be polluted with granular task checklists (`- [ ]`) and session handoffs.
-2. **Approving Post-Hoc Test Tautology ("The Ugly Mirror")**, which allows agents to write tests after implementation or rely on shallow mock-heavy tests that mirror bugs instead of enforcing invariants.
-3. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
-4. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
-5. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
+2. **Approving Oversized "And Also" Workstreams**, which allow large multi-layered changes to proceed as single monolithic plans instead of enforcing reviewable PR boundaries.
+3. **Approving Post-Hoc Test Tautology ("The Ugly Mirror")**, which allows agents to write tests after implementation or rely on shallow mock-heavy tests that mirror bugs instead of enforcing invariants.
+4. **Ignoring Missing Scenarios and Worst-Break Failure Modes**, which allows happy-path-only plans to pass review without negative boundary or concurrency tests.
+5. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
+6. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
+7. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
 
 ## Minimal Examples
 ```text

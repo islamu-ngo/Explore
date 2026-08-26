@@ -50,6 +50,10 @@ Run this mental check on the diff:
 
 If any answer is "no", split the PR or escalate to the user.
 
+### 3.1 Two-Axis Quality Gate
+- **Axis 1: Standards & Clean Architecture**: Verify layer boundaries, absence of raw DTO returns in repositories, manually instantiated validators, and check against the Fowler 12-Smell Baseline (no Primitive Obsession, Feature Envy, or Shotgun Surgery).
+- **Axis 2: Intent & Spec Fidelity**: Verify every acceptance criterion from the matched intent without unasked-for scope creep or speculative abstractions.
+
 ## Step 4 — Verification Evidence
 
 Paste the exact commands and their outputs:

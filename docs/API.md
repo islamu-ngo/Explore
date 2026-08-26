@@ -381,17 +381,17 @@ failures are bounded RFC 7807 responses, and UI controls come only from returned
 | `POST /api/events/{eventId}/admission/scanner-capabilities` | `IssueAdmissionScannerCapability` | Staff `event_check_in:manage`, `Idempotency-Key` | Issues one target-scoped capability and discloses plaintext once. |
 | `DELETE /api/events/{eventId}/admission/scanner-capabilities/{scannerCapabilityId}` | `RevokeAdmissionScannerCapability` | Staff `event_check_in:manage` | Revokes one device authority without stopping other target channels. |
 | `POST /api/events/{eventId}/admission/check-ins` | `CheckInAdmission` | Staff `event_check_in:manage`, `Idempotency-Key` | Checks in one opaque credential against one body `targetId`. |
-| `POST /api/events/{eventId}/admission/check-ins/batch` | `BatchCheckInAdmissions` | Staff `event_check_in:manage`, `Idempotency-Key` | Processes 1–100 credentials independently in input order. |
+| `POST /api/events/{eventId}/admission/check-ins/batch` | `BatchCheckInAdmissions` | Staff `event_check_in:manage`, `Idempotency-Key` | Processes 1–100 business outcomes independently in input order; a dependency outage aborts the remaining queue with `503`. |
 | `GET /api/events/{eventId}/admission/check-ins/{checkInId}` | `GetAdmissionCheckIn` | Staff `event_check_in:view` | Returns bounded fact detail and current undo affordance. |
 | `POST /api/events/{eventId}/admission/check-ins/{checkInId}/undo` | `UndoAdmissionCheckIn` | Staff `event_check_in:manage`, `Idempotency-Key` | Appends a compensation linked to the exact active fact. |
 | `GET /api/events/{eventId}/admission/check-ins/summary?targetId={targetId}` | `GetAdmissionCheckInSummary` | Staff `event_check_in:view` | Returns exact-target aggregate counts without roster data. |
-| `GET /api/events/{eventId}/admission/check-ins/audit?cursor={cursor}` | `GetAdmissionCheckInAudit` | Staff `event_check_in:view` | Traverses an export-safe immutable keyset page. |
+| `GET /api/events/{eventId}/admission/check-ins/audit?cursor={cursor}&pageSize={pageSize}` | `GetAdmissionCheckInAudit` | Staff `event_check_in:view` | Traverses an export-safe immutable keyset page of 1–100 facts. |
 | `GET /api/events/{eventId}/admission/check-ins/health?targetId={targetId}` | `GetAdmissionCheckInHealth` | Staff `event_check_in:view` | Returns `Active`, `Stopped`, or `Unavailable` plus dependency state. |
 | `POST /api/events/{eventId}/admission/check-ins/operations/stop` | `StopAdmissionCheckIn` | Staff `event_check_in:manage` | Stops every admission channel for the exact target. |
 | `POST /api/events/{eventId}/admission/check-ins/operations/restore` | `RestoreAdmissionCheckIn` | Staff `event_check_in:manage` | Restores the exact target after dependency recovery. |
 | `POST /api/events/{eventId}/admission/check-ins/operations/reconcile` | `ReconcileAdmissionCheckIn` | Staff `event_check_in:manage` | Appends a bounded post-incident decision without rewriting facts. |
 | `POST /api/admission/scanner/check-ins` | `ScannerCheckInAdmission` | `AdmissionScanner`, `Idempotency-Key` | Performs one check-in using the authenticated capability target. |
-| `POST /api/admission/scanner/check-ins/batch` | `ScannerBatchCheckInAdmissions` | `AdmissionScanner`, `Idempotency-Key` | Processes a bounded target-fixed scanner batch. |
+| `POST /api/admission/scanner/check-ins/batch` | `ScannerBatchCheckInAdmissions` | `AdmissionScanner`, `Idempotency-Key` | Processes a bounded target-fixed scanner batch and aborts remaining work on dependency outage. |
 | `POST /api/admission/scanner/check-ins/{checkInId}/undo` | `ScannerUndoAdmissionCheckIn` | `AdmissionScanner`, `Idempotency-Key` | Compensates the exact active fact when the capability permits undo. |
 
 Undo request bodies carry `reasonCode`, restricted to `OperatorCorrection`, `DuplicateScan`,

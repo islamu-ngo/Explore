@@ -31,6 +31,17 @@ When improving a workstream:
 2. update `...-context.md` so the current status, next step, and risks match the rewritten plan;
 3. update `...-tasks.md` so each phase and verification step maps to the rewritten plan;
 4. remove or rename tasks that no longer match the recommended direction.
+5. compare the rewrite against I-VSD refresh triggers and synchronize review state.
+
+## I-VSD Invalidation After Rewrites
+
+Use the refresh triggers in `.agents/skills/i-vsd/resources/integration-contract.md`.
+
+- If the rewrite changes provider authority, affected stakeholders, user defaults/rights, data/AI/telemetry, moderation, monetization, portability, deployment responsibility, an escalation gate, or an `IVSD-*` task mapping, mark the report `stale`.
+- Set CTO review to `Changes required` and user approval to `Awaiting approval` for the rewritten revision.
+- Route the updated triad through I-VSD planning-mode revalidation, then require a fresh CTO review bound to the new plan/tasks and report revisions.
+- Do not approve the same revision in the pass that rewrote it.
+- If the rewrite is wording, formatting, status, evidence-location, or architecture-detail clarification with no provider-responsibility change, preserve the current report and record why no refresh trigger fired.
 
 ## Recommended Plan Shape
 

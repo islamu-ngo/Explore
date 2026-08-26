@@ -3,37 +3,15 @@
 
 # Report Templates
 
-Every formal template must include a title, `Last Updated: xxxx-xx-xx`, scope, claim boundary, findings by severity, recommendations, stakeholders, principles/domains, validation gaps, escalation, evidence reviewed, missing evidence, and context inventory. Use [action-routing.md](action-routing.md) to decide which Markdown report file(s) to create for the requested action(s). For artifact-based reviews, use [context-discovery.md](context-discovery.md) before writing findings so project documentation, text artifacts, policies, plans, configs, tests, code, relevant project-context integrations, and user-provided paths inform the moral analysis without cluttering the user-facing intake. Generated files go under `islamic-value-sensitive-design/` relative to the current workspace or user-approved destination and must use `i-vsd-*.md` filenames.
+Use [report-contract.md](report-contract.md) for every report's canonical path, metadata, stable IDs, required headings, evidence fields, and lifecycle. Use [action-routing.md](action-routing.md) to select the standalone report kind and [context-discovery.md](context-discovery.md) before artifact-based findings.
 
-## File-First Rule
+## Persistence Boundary
 
-Every I-VSD response — including short advisories, consultations, design feedback, compliance findings, and any other I-VSD-framed output — MUST be written to a Markdown file under `islamic-value-sensitive-design/`. Never deliver I-VSD findings or recommendations only as inline conversation text. The conversation response should briefly summarize what was written and point to the file path. If no explicit action name maps to the request, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`) and write the full output to that file.
+Persist substantive findings, recommendations, advisories, audits, and consultations. Do not create reports for refusals, menus, context inventories, clarification questions, or agreement prompts.
 
 ## Required Headings For Generated Reports
 
-```text
-# <Report Title>
-
-Last Updated: xxxx-xx-xx
-
-## Scope
-## Claim Boundary
-## Findings
-## Recommendations
-## Stakeholders
-## I-VSD Principles And Domains
-## Validation Gaps
-## Escalation Needed
-## Evidence Reviewed
-## Missing Evidence
-## Context Inventory
-```
-
-Place `Last Updated: xxxx-xx-xx` directly under the report title and above `## Scope`, using the current date when creating or updating a report. Place the main findings table immediately after `## Claim Boundary` so readers see the useful assessment before source inventory. Keep `Evidence Reviewed`, `Missing Evidence`, and `Context Inventory` near the bottom unless the user explicitly asks for an evidence-first appendix.
-
-Before writing, check whether the mapped report file already exists. If it exists, update that report in place: preserve still-valid prior findings, evidence, missing-evidence notes, and action history; revise or supersede stale content only when the new evidence supports it. If it does not exist, create a new report from the mapped template.
-
-Every generated report must state that it is I-VSD design reasoning and traceability, not a fatwa, Sharia certification, product certification, or empirical proof of ethical outcomes.
+The canonical headings and ordering live only in [report-contract.md](report-contract.md#required-report-headings). Templates below add action-specific content without replacing them. Preserve stable finding/mitigation IDs and lifecycle history when updating an existing matching report.
 
 When a report reviews a concrete feature request, add `## Common Overlooked Failures And Outcomes` after `## Recommendations` or as an action-specific subsection under `## Findings`. Use [feature-risk-patterns.md](feature-risk-patterns.md) to name feature-specific mistakes, possible bad outcomes, provider questions, and positive outcomes from responsible implementation.
 

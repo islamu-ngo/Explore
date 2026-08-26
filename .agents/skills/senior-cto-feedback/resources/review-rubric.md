@@ -8,6 +8,16 @@ Score only when useful. Prefer practical judgment over mechanical scoring.
 
 The main target is a `/dev-docs` workstream, so include artifact quality in the review, not just architecture quality.
 
+## 0. The 3-Dimensional Evaluation Scorecard
+
+Evaluate every plan across three primary dimensions:
+
+| Dimension | Core Question | Primary Failure Indicators |
+|---|---|---|
+| **Completeness** | Are all declared capabilities, I-VSD mitigations, requirements, and Red/Green tasks present without gaps? | Missing edge cases, skipped I-VSD mitigations, missing rollback plan, undeclared task dependencies. |
+| **Correctness** | Do the invariant test scenarios cover boundary conditions, concurrency races, and negative failure paths? | Tautological "Ugly Mirror" tests, missing negative scenarios, unverified database queries, missing tenant predicates. |
+| **Coherence** | Does the design adhere to Clean Architecture, HAL link affordances, tenant isolation, and transactional outbox patterns? | Layer pollution (DTOs in Domain, logic in Controllers), UI-local authorization, unstated open assumptions. |
+
 ## 1. Strategic Fit
 
 | Score | Meaning |
@@ -40,16 +50,17 @@ Check:
 - Missing evidence and Sunni scholarly escalation needs are explicit.
 - Approval is blocked when the report or material traceability is missing.
 
-## 3. Socratic Stress-Testing
+## 3. Socratic Stress-Testing & "The Worst Break" Adversarial Check
 
 | Score | Meaning |
 |---|---|
-| 5 | Material claims survived evidence-grounded challenge and every unresolved fork has a decision owner or approval blocker |
+| 5 | Material claims survived evidence-grounded challenge, every unresolved fork has a decision owner, and "The Worst Break" failure mode has a dedicated Invariant-Breaker test |
 | 3 | Major risks were challenged, but some thresholds, failure modes, or edge cases remain vague |
 | 1 | The plan relies on optimistic assumptions and generic assurance instead of adversarial validation |
 
 Check:
 
+- **"The Worst Break" Check**: Has the plan identified the single most catastrophic failure mode (e.g. money double-capture, tenant data leakage, outbox message loss) and authored a dedicated failing test for it in Phase Red?
 - Rollback and recovery claims identify concrete failure points.
 - Tenant boundaries and authorization paths fail closed.
 - Performance claims state measurable thresholds and representative cardinality.
@@ -183,16 +194,21 @@ Check:
 - Each phase uses one Release build and at most one fastest relevant non-browser project test, with no app-running or manual/browser verification lane.
 - Obsolete compatibility tests are deleted when breaking changes are accepted.
 
-## 11. Sequencing and Delivery Safety
+## 11. Sequencing, Delivery Safety, and the 4-Point "Right-Sizing" Rule
 
 | Score | Meaning |
 |---|---|
-| 5 | Work is split into reviewable, independently verifiable slices |
+| 5 | Work is split into reviewable, independently verifiable slices; satisfies all 4 right-sizing checks |
 | 3 | Sequence is plausible but risks large PRs or late discovery |
-| 1 | Big-bang plan with mixed concerns and no rollback |
+| 1 | Big-bang plan with mixed concerns, oversized scope ("and also"), and no rollback |
 
 Check:
 
+- **The 4-Point "Right-Sizing" Rule** (Mandate **"Split before approval"** if 2+ match):
+  1. *Multi-Intent Scope*: The proposal or goals read like a list of distinct capabilities joined by "and also".
+  2. *Excessive Task Capacity*: The plan contains more than 8-10 major actionable tasks, making single-PR review exhausting.
+  3. *Big-Bang Layer Mixing*: Data migration, domain logic, API contract churn, and UI enablement are combined into a single phase instead of decoupled slices.
+  4. *Independent Shipping Value*: The backend application/API slice could safely ship and be verified before any UI enablement.
 - Migration and model changes happen before UI reliance.
 - Contract stabilization happens before client/UI churn.
 - Security/tenant tests land before feature expansion.

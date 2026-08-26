@@ -11,6 +11,20 @@
 | `dev/active/<task>/<task>-tasks.md` | Hot execution ledger, granular Red/Green/Refactor task breakdown (`- [ ] **N.M**`), task checkboxes, phase verification gates | Lengthy architectural narrative, design trade-off debates, deep security/I-VSD analysis |
 | `dev/active/<task>/<task>-context.md` | Active session working memory (`COMPLETED`, `IN PROGRESS`, `NEXT`, `BLOCKERS`), quick resume, validation baseline, dated session handoffs | Granular task execution checklists, full architectural specifications |
 
+## Review State Contract
+
+Plan, context, and tasks repeat only this compact shared state:
+
+```text
+- I-VSD report: <relative path>
+- I-VSD reviewed input revision: <Git object or SHA-256 digest>
+- I-VSD status / disposition: <current + plan-aligned, or blocking state>
+- CTO review: Not reviewed | Changes required | <linked review artifact>
+- User approval: Awaiting approval | Approved for <workstream revision>
+```
+
+The I-VSD report owns moral analysis; the CTO review owns technical-readiness detail. The triad stores links and current state, not duplicate narratives.
+
 ## Context File
 
 Use this structure for `dev/active/<task-name>/<task-name>-context.md`:
@@ -19,6 +33,9 @@ Use this structure for `dev/active/<task-name>/<task-name>-context.md`:
 # <Human Title> — Context
 
 Last Updated: YYYY-MM-DD Europe/Brussels
+
+## Review State
+<Use the shared Review State Contract above.>
 
 ## SESSION PROGRESS (YYYY-MM-DD Europe/Brussels)
 
@@ -87,6 +104,7 @@ Last Updated: YYYY-MM-DD Europe/Brussels
 - **Completed:** 0/N implementation tasks (phase verification tracked separately)
 - **Current priority:**
 - **Next recommended slice:**
+- **Review state:** I-VSD path/revision/disposition, CTO review, and user approval from the shared contract.
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -129,6 +147,7 @@ After writing all three artifacts, compare:
 - decisions and constraints;
 - validation baseline;
 - deferred work and risks.
+- I-VSD path/revision/status, CTO review, and user approval.
 
 Any disagreement is a planning defect; fix it before handoff.
 

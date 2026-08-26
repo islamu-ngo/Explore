@@ -3,7 +3,61 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-25 Europe/Brussels
+Last Updated: 2026-08-26 Europe/Brussels
+
+## PHASE 21 COMPLETE (2026-08-26 Europe/Brussels)
+
+### Current Outcome
+
+Published ticket catalogs now materialize reusable event/day/session admission targets and
+single-entry policies inside the publication transaction. Staff and dedicated scanner-capability
+paths converge on the same Application orchestration and append-only `AdmissionCheckInEvent`
+stream. Check-in state is a concurrency-fenced projection; undo persists the exact compensated
+UUIDv7 and one closed PII-free reason code.
+
+Credential rotation and check-in share the admission-ticket row fence. Check-in, target stop, and
+capability issuance share the target fence, making stop an all-channel serialization barrier.
+Scanner authority remains target/action/expiry scoped, digest-only at rest, disclosed once, and
+transported only by the isolated same-origin no-cookie client. Audit traversal uses an opaque
+occurrence-time/UUIDv7 keyset cursor.
+
+The API enforces exact `event_check_in:view` or `event_check_in:manage` permissions consistently in
+Cerbos, fallback authorization, direct routes, and HAL affordances. Admission infrastructure
+failures return bounded no-store 503 ProblemDetails and scanners retain no offline queue. Health
+reports explicit `Unavailable`; OpenTelemetry metrics export through the Prometheus OTLP receiver.
+
+### Generated State
+
+- Official five-provider migrations create the final target/policy/capability/fact/state model.
+- PostgreSQL, SQLite, and SQL Server use stored canonical entitlement scope; MariaDB/MySQL receive
+  generated pre-index backfill SQL and save-pipeline ownership.
+- All five providers report no pending model changes; tracked historical migration implementations
+  are unchanged.
+- Deterministic OpenAPI, API inventory, and NSwag client hashes are recorded in
+  `.omo/evidence/20260826-phase21/generated-contracts.md`.
+
+### Verification
+
+Focused Domain, Application, persistence, real PostgreSQL race/performance, API/HAL, authorization
+parity, BFF, Studio component/route/transport, telemetry, generated-contract, and migration gates
+are green. Exact receipts are in
+`.omo/evidence/20260826-phase21/migrations-and-verification.md`.
+The final isolated Release solution build passed with zero errors after the last scanner UI copy
+normalization.
+
+The complete API project executed through its built source-generated TUnit host after the
+`dotnet test` launcher deadlocked before test-host creation: 2,539 total, 2,524 passed, 14
+unrelated failed, and one governed skip. The only Phase 21-owned broad failure was the scanner
+anti-enumeration smoke expectation; its route-specific repair passes 1/1. Isolated reruns prove
+all scheduler and snapshot failures are shared-suite interference. The remaining home-discovery,
+external privacy-erasure startup, and schema-unqualified participation fixture failures reproduce
+outside Phase 21.
+
+### Current
+
+Phase 21 is closed. Preserve the generated migrations and contract hashes recorded in evidence,
+and do not start Phase 22 without a new user request. Context7 remained unavailable; official
+documentation and source-free web research were used without claiming Context7 output.
 
 ## PHASE 20 COMPLETE (2026-08-25 Europe/Brussels)
 

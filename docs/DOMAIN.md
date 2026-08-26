@@ -216,6 +216,10 @@ Drift is one of eight lookup classes: `NoDrift`, `AdditiveOptionalChange`, `Labe
 - **Included Quantity (`IncludedQuantity`)**: The number of admission units or entries granted per entitlement.
 
 Entitlements feed directly into capacity pool enforcement (`EventCapacityPool`), attendee check-in lists, and location privacy disclosure gating (`EventLocation` reveal policy).
+`ScopeId` is the canonical entitlement identity: session ID, then day ID, then target event ID.
+PostgreSQL, SQLite, and SQL Server persist it as a stored computed column; MariaDB and MySQL
+populate the same value in the save pipeline and generated migration backfill, so the unique
+tenant/ticket-type/event/scope index has identical semantics on every provider.
 
 Persisted and API ticketing amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Catalog rows carry a three-character currency code, and published Event summaries derive their currency and lowest available amount from those rows. The implemented persistence model has no scalar Event or EventSession price and defines no foreign-exchange conversion.
 

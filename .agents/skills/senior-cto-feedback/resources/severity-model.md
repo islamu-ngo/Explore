@@ -4,9 +4,19 @@
 
 Use this severity model to rank feedback.
 
+## Diagnostic Categories & Severity Mapping
+
+CTO feedback findings map to three diagnostic action categories:
+
+| Diagnostic Category | Severity Levels | Action Requirement |
+|---|---|---|
+| **CRITICAL** | **Blocker**, **Critical** | MUST be resolved in the plan before implementation can begin. Blocks approval. |
+| **WARNING** | **Major**, **Moderate** | SHOULD be corrected in the plan or scheduled as explicit tracked follow-ups with owners. |
+| **SUGGESTION** | **Minor** | Optional architectural polish or ergonomics suggestions. |
+
 ## Severity Labels
 
-### Blocker
+### Blocker (CRITICAL Diagnostic)
 
 A blocker means the plan should not proceed.
 
@@ -20,6 +30,9 @@ Use for:
 - major architecture boundary violation that will spread,
 - missing contract strategy for large API/client change,
 - background processing without idempotency when side effects matter,
+- missing I-VSD analysis or failure to trace provider-controlled moral risks,
+- post-hoc test sequencing ("The Ugly Mirror"),
+- un-split oversized workstream matching 2+ symptoms of the 4-Point Right-Sizing Rule,
 - a `/dev-docs` workstream too incomplete to execute safely.
 
 Required wording:
@@ -28,12 +41,14 @@ Required wording:
 Blocker — do not approve until fixed.
 ```
 
-### Critical
+### Critical (CRITICAL Diagnostic)
 
 A critical issue can proceed only if explicitly addressed in the plan before implementation starts.
 
 Use for:
 
+- missing "Worst Break" adversarial failure mode tests,
+- missing scenarios for edge cases and boundary conditions in Section 3,
 - insufficient tests for a high-risk change,
 - migration strategy incomplete,
 - observability missing for an operational feature,
@@ -48,7 +63,7 @@ Required wording:
 Critical — must be added to the implementation plan.
 ```
 
-### Major
+### Major (WARNING Diagnostic)
 
 A major issue is important and should normally be fixed in the same workstream.
 
@@ -60,7 +75,7 @@ Use for:
 - incomplete documentation,
 - inefficient data access likely to matter later,
 - duplicated logic that will drift,
-- tasks that are too vague for another agent to execute safely.
+- tasks that lack atomic verification criteria or are too vague for another agent to execute safely.
 
 Required wording:
 

@@ -19,10 +19,17 @@ Record:
 
 - original request and task directory;
 - planning status: Draft, User-reviewed, Approved, In implementation, or Re-baselined;
+- **Change Classification:**
+  - `Behavioral Delta` — Introduces `ADDED`, `MODIFIED`, or `REMOVED` capabilities and observable system behavior. Requires formal RFC 2119 requirements and `WHEN`/`THEN` scenarios in Section 3.
+  - `Non-Behavioral Delta` (skip-specs equivalent) — Pure refactor, performance optimization, architectural migration, tooling, or documentation with zero externally observable behavioral changes. Requires structural/performance benchmarks in place of behavioral scenarios.
 - matched intents, relevant skills, and relevant rules;
 - primary layers touched;
 - S/M/L/XL complexity with evidence-based rationale;
 - **I-VSD Document:** `[islamic-value-sensitive-design/i-vsd-<task-name>.md](../../../islamic-value-sensitive-design/i-vsd-<task-name>.md)`;
+- **I-VSD Reviewed Input Revision:** Git object or SHA-256 digest from the report handoff;
+- **I-VSD Status / Disposition:** `current` plus `plan-aligned`, or the blocking state;
+- **CTO Review:** `Not reviewed`, `Changes required`, or the linked revision-bound review artifact;
+- **User Approval:** `Awaiting approval` or `Approved` for this exact workstream revision;
 - **Grill-Me Intake:** a concise resolved-decisions summary, including recommendations accepted or rejected and any explicitly deferred branch.
 
 ## 1. Executive Summary
@@ -71,13 +78,36 @@ List relevant docs, API/OpenAPI contracts, generated clients, configuration, pol
 
 Tie concrete correctness, security, UX, accessibility, performance, maintenance, duplication, and test gaps to evidence.
 
-### 2.6 Unknowns After Investigation
+### 2.6 Unknowns After Investigation (Strict Deferrable Open Questions Rule)
 
 For each unknown, record what was searched and the implementation task that will resolve it.
 
-## 3. Proposed Future State
+> [!IMPORTANT]
+> **Open Questions Rule**: Open questions in this section are **strictly for genuinely deferrable details** that will not alter scope, architectural patterns, API contracts, or task sequencing. If an unknown would shift what gets built, how layers interact, or the task breakdown, it **MUST be resolved before writing tasks** (via repository research or Socratic `/grill-me` intake). Do not bake an unstated assumption into the task list.
 
-Describe target ownership, behavior, user/developer/operator experience, and important control/data flows.
+## 3. Proposed Future State: Behavioral Contract & Scenarios
+
+Describe the target externally observable behavior contract. Separate **Behavior (What the system does)** from **Code (How it is built)**:
+- Do **NOT** mention internal class names, repository methods, database columns, or libraries here (those belong in Section 5 Architecture).
+- Use **RFC 2119 normative keywords** (`SHALL`, `MUST`, `SHOULD`, `MAY`).
+- Every requirement MUST have at least one testable **`WHEN` / `THEN` Scenario**.
+
+```markdown
+### Requirement: <Capability / Feature Name>
+The system SHALL <observable behavior, invariant, or contract promise>.
+
+#### Scenario: <Scenario Name (Happy Path / Boundary / Error)>
+- **GIVEN** <initial state or preconditions>
+- **WHEN** <triggering action, command, or event occurs>
+- **THEN** <observable outcome, state transition, or RFC 7807 ProblemDetails returned>
+
+#### Scenario: <Adversarial / Catastrophic "Worst Break" Scenario>
+- **GIVEN** <concurrent requests, expired capability token, or tenant boundary challenge>
+- **WHEN** <adversarial race condition or unauthorized actor attempts operation>
+- **THEN** <fail-closed rejection, atomic rollback, and zero data leakage>
+```
+
+*(For `Non-Behavioral Delta` changes, summarize the structural/performance invariants that must remain strictly invariant during the refactor).*
 
 ## 4. Non-Negotiable Constraints
 
@@ -120,16 +150,23 @@ Use reviewable architectural slices. Every phase in `plan.md` defines high-level
 > - Ephemeral session progress, worktree dirty scopes, test pass counts, and handoffs belong **strictly in `context.md`**.
 
 #### Behavioral Slice Rule: Test-First Invariant Task Sequencing (in `tasks.md`)
-To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST break down its actionable tasks in **`tasks.md`** in **Test-First Invariant order**:
+To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST break down its actionable tasks in **`tasks.md`** in **Test-First Invariant order**, binding Red tasks directly to Section 3 Scenarios:
 
-1. **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests**
+1. **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests for Scenarios <X.Y>**
    - Author failing tests against public interfaces, MediatR requests, or API contracts *before* implementing production logic.
-   - Assert domain invariants, checked integer arithmetic, state transitions, fail-closed error responses (RFC 7807), tenant boundary isolation, and concurrency/race conditions.
+   - Assert domain invariants, checked integer arithmetic, state transitions, fail-closed error responses (RFC 7807), tenant boundary isolation, and the adversarial "Worst Break" scenarios from Section 3.
    - Run or verify that the test fails for the expected missing capability (red anchor).
 2. **Task N.2 (Green Phase): Implement Handlers, Entities & Domain Logic**
    - Author production C# code strictly to satisfy the test specifications.
 3. **Task N.3 (Refactor & Wire Up): Clean Architecture & Registration**
    - Refactor for performance, memory allocation, and zero-PII logging (`StarRedactor`/`HmacRedactor`), and wire DI service registrations.
+
+#### Atomic Task Verification Rule (in `tasks.md`)
+Every task checkbox in `tasks.md` MUST include its explicit verification assertion:
+```markdown
+- [ ] Task 1.1: Author failing invariant tests for Scenario 1.A (RSVP hold expiration) and verify test fails as red anchor
+- [ ] Task 1.2: Implement RsvpAggregate hold expiration logic and verify unit tests pass via `--treenode-filter`
+```
 
 Do not create standalone manual-QA, documentation-review, reporting, dev-doc maintenance, or redundant verification tasks. Run no build or test command until the phase implementation is complete.
 
@@ -168,7 +205,13 @@ Every implementation plan MUST classify its procedural changelog approach across
 
 ## 9. Islamic Value-Sensitive Design (I-VSD) & Moral Boundaries
 
-Link the mapped `[I-VSD report](../../../islamic-value-sensitive-design/i-vsd-<task-name>.md)` and trace each applicable provider-controlled decision from principle and affected stakeholder to risk, mitigation, evidence, uncertainty, and implementation task. State scholarly escalation needs and non-applicable domains explicitly. The same report link must appear in the task-owned context and task ledger.
+Link the mapped `[I-VSD report](../../../islamic-value-sensitive-design/i-vsd-<task-name>.md)` and record its reviewed-input revision, status, and disposition. Map every material report ID:
+
+| I-VSD ID | Finding / mitigation status | Scenario and task mapping | Disposition |
+|---|---|---|---|
+| `IVSD-F001` / `IVSD-M001` | Open / accepted | Scenario 3.1; Task 2.1 | Implement |
+
+Each ID maps to a named scenario/task, explicit non-applicability with rationale, or named escalation gate. Trace applicable provider-controlled decisions from principle and affected stakeholder to risk, mitigation, evidence, and uncertainty. State scholarly escalation needs and non-applicable domains explicitly. The same report path, revision, status, and disposition must appear in task-owned context and tasks.
 
 ## 10. Security, Authorization, Privacy, And Abuse Considerations
 

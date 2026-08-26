@@ -11,6 +11,7 @@ Best input is an `implementation-plan` workstream:
 - `dev/active/[task-name]/[task-name]-plan.md`
 - `dev/active/[task-name]/[task-name]-context.md`
 - `dev/active/[task-name]/[task-name]-tasks.md`
+- `islamic-value-sensitive-design/i-vsd-[task-name].md`
 
 Also useful:
 
@@ -18,6 +19,13 @@ Also useful:
 - referenced repository docs, rules, skills, and source files;
 - related `dev/active/` or `dev/pause/` workstreams;
 - a concrete user goal such as “review this before implementation” or “rewrite this plan to be executable.”
+
+Before an approval-capable review, require:
+
+- exact reviewed plan and tasks revisions (Git objects or SHA-256 digests);
+- exact reviewed I-VSD revision, `current` status, and `plan-aligned` disposition;
+- resolved mappings from every material `IVSD-*` ID to scenario/task, explicit non-applicability, or escalation;
+- current user-approval state, which the CTO review cannot change.
 
 ## Minimum Reviewable Inputs
 
@@ -34,6 +42,8 @@ You can still provide useful CTO feedback with partial inputs. Use this order:
 
 If the user provides only a vague idea and no implementation plan, this skill should recommend creating an `implementation-plan` workstream first instead of pretending there is a real plan to approve.
 
+Partial inputs may receive useful feedback but never an `Approve` verdict. A missing/stale I-VSD report or unbound revision is `Changes required`.
+
 ## Required Reviewer Checks
 
 For every review, determine:
@@ -43,6 +53,8 @@ For every review, determine:
 3. Which claims are verified by files you actually read?
 4. Which claims remain assumptions?
 5. What is missing that blocks a credible approval?
+6. Do the plan/tasks and I-VSD revisions match the review metadata?
+7. Did any proposed rewrite trigger I-VSD refresh under its integration contract?
 
 ## Missing-Context Handling
 
@@ -70,6 +82,8 @@ When the plan claims to follow `implementation-plan`, verify these concrete thin
 - `context.md` includes session progress, quick resume, key files, decisions, constraints, validation baseline, risks, and handoff notes;
 - `tasks.md` includes implementation-maintenance rules, phase breakdown, one build plus at most one selected project test at each phase end, and remaining/deferred work;
 - plan/context/tasks agree on current status and next step.
+- plan/context/tasks agree on I-VSD path, reviewed-input revision, status/disposition, CTO-review state, and user approval.
+- the report is current for the reviewed plan/tasks and every material `IVSD-*` mapping resolves.
 
 If they do not align, treat that as a planning quality issue, not a formatting nit.
 

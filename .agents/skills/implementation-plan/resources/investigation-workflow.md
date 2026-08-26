@@ -7,22 +7,12 @@
 
 Stop after the three planning artifacts are complete, internally consistent, and ready for user review. Do not implement the planned change.
 
-## 1. Mandatory Intake Phase
-
-### 1A. I-VSD Assessment
+## 1. Initialize The Integrated Intake
 
 1. Derive a stable kebab-case task name from the request.
-2. Load `.agents/skills/i-vsd/SKILL.md` and follow its action routing for provider-responsibility analysis.
-3. Check `islamic-value-sensitive-design/` for an existing `i-vsd-<task-name>.md`; update the mapped report instead of creating a duplicate.
-4. Create or update `islamic-value-sensitive-design/i-vsd-<task-name>.md` with its evidence, principle, stakeholder, mitigation, uncertainty, and escalation traceability before plan drafting.
-
-### 1B. Grill-Me Intake
-
-1. Load `.agents/skills/grill-me/SKILL.md`.
-2. Identify open architectural, product, failure-mode, and edge-case branches.
-3. Resolve every branch answerable from repository evidence instead of asking the user.
-4. For each remaining material branch, give a recommended answer with rationale and ask one targeted decision question at a time.
-5. Do not draft the plan until material branches are resolved or the user explicitly defers them with the resulting risk recorded.
+2. Load `.agents/skills/i-vsd/SKILL.md`, its `planning` mode in `resources/integration-contract.md`, and `.agents/skills/grill-me/SKILL.md`.
+3. Treat the explicit implementation-plan request as agreement to run the integrated I-VSD intake; do not ask for a redundant confirmation.
+4. Do not create the I-VSD report or interrogate the user from assumptions yet. First build the shared repository/current-state evidence packet in Sections 2–8.
 
 ## 2. Establish The Workstream
 
@@ -46,6 +36,9 @@ Treat platform descriptions as orientation only. Verify every feature-specific c
 
 Match the planned work to one or more intent entries. For each match, copy into planning metadata and relevant tasks:
 
+- **Change Classification:**
+  - `Behavioral Delta` — Introduces `ADDED`, `MODIFIED`, or `REMOVED` observable system behavior (requires formal RFC 2119 requirements and `WHEN`/`THEN` scenarios).
+  - `Non-Behavioral Delta` — Pure refactor, performance optimization, architectural migration, tooling, or docs (requires invariant/benchmark assertions instead of scenarios).
 - intent id and title;
 - `must_read_docs`;
 - `load_skills` and `load_rules`;
@@ -96,9 +89,17 @@ The current-state report must answer:
 - Which docs, configuration, schemas, and operational contracts describe it?
 - What is working well?
 - What is incomplete, duplicated, unsafe, fragile, inaccessible, or hard to maintain?
-- What remains unknown after reasonable investigation, and how will implementation resolve it?
+- What remains unknown after reasonable investigation, and how will implementation resolve it? (Remember: Unknowns must be strictly deferrable; non-deferrable unknowns block planning).
 
 Do not convert a search miss into proof of absence without recording what was searched.
+
+## 8A. Complete I-VSD And Grill-Me Intake
+
+1. Supply I-VSD with the stable task name, original request, verified current-state evidence, provider-controlled decisions, affected stakeholders, known constraints, and missing evidence.
+2. Create or update `islamic-value-sensitive-design/i-vsd-<task-name>.md` as a `draft` planning report with stable `IVSD-Fnnn` findings, `IVSD-Mnnn` mitigations, escalation gates, and refresh triggers.
+3. Resolve every material branch answerable from repository evidence.
+4. For each remaining branch that could alter scope, provider responsibility, architecture, API contracts, scenarios, or tasks, follow `grill-me`: recommend an answer with rationale, ask exactly one question, and wait.
+5. Do not design the future state until those branches are resolved or the user explicitly defers them with the resulting risk and ownership recorded. Plan open questions remain limited to genuinely deferrable details.
 
 ## 9. Design Executable Vertical Slices
 
@@ -109,6 +110,8 @@ For each phase and task, specify:
 - goal, owning layer, and dependencies;
 - verified existing files and explicitly marked new files;
 - required skills and rules;
+- **Behavior-Bound Test-First Sequencing**: Task N.1 (Red Phase) explicitly authoring failing invariant tests for named Section 3 Scenarios $\rightarrow$ Task N.2 (Green Phase) implementation $\rightarrow$ Task N.3 (Refactor/Registration);
+- **Atomic Verification Criteria**: Every task checkbox description states its concrete verification assertion;
 - observable acceptance criteria;
 - rollback, recovery, or failure-diagnosis behavior;
 - effort based on scope, test burden, and unknowns.
@@ -139,7 +142,7 @@ dev/active/<task-name>/
 
 All three files must contain `Last Updated: YYYY-MM-DD Europe/Brussels`. Cross-check status, next action, blockers, decisions, risks, phase names, task ids, and validation commands across the files before stopping.
 
-Link `islamic-value-sensitive-design/i-vsd-<task-name>.md` from the plan, context, and tasks artifacts, and include the resolved Grill-Me decisions summary in their planning metadata or resume state.
+Link `islamic-value-sensitive-design/i-vsd-<task-name>.md` from the plan, context, and tasks artifacts, include its reviewed-input revision/status and the resolved Grill-Me decisions, then revalidate the completed triad through I-VSD planning mode. Every material `IVSD-*` ID must map to a named scenario/task, explicit non-applicability, or escalation gate. A `changes-required` or `escalation-required` disposition blocks plan-aligned status.
 
 Write the maintenance contract into the artifacts themselves so implementation agents do not need to reload this skill repeatedly:
 

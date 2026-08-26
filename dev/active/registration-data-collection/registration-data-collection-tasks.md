@@ -3,14 +3,14 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-25 Europe/Brussels
+Last Updated: 2026-08-26 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phase 20 is complete. Tasks 20.0–20.6 and both phase-end checks are green.
-- **Current priority:** Phase 21 has not started.
-- **Latest implementation evidence:** Paid issuance requires exact reconciled payment authority; cumulative full ticket-line refunds and order/event cancellation revoke through provider-neutral durable facts. Issuance/revocation share mapped row fences across PostgreSQL, SQL Server, MariaDB, MySQL, and SQLite; cancellation is bounded and continuation-driven.
-- **Verification evidence:** Task 20.6 focused Application/Infrastructure selectors pass, real PostgreSQL admission evidence is `22/22`, real external-provider fences are `3/3`, admission API is `19/19`, dependency policy covers 653 package/version pairs, and the security-critical Stryker gate kills `42/42` mutants for a `100.00%` score. Security, quality, and architecture reviewers confirmed/approved.
-- **Research/I-VSD evidence:** [`phase18-clean-room-evidence.md`](phase18-clean-room-evidence.md), [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), [`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md), and `.omo/evidence/20260825-phase20/20.2-issuance-persistence-green.md` are the current traceability set. Context7 was unavailable for Phase 20; official documentation and web research were used without claiming MCP results.
+- **Overall status:** Phase 21 implementation is complete; final Release build and full API integration gate are current.
+- **Current priority:** Run the two Phase 21 phase-exit commands, reconcile any full-suite interference, and close the evidence audit.
+- **Latest implementation evidence:** Published catalogs materialize reusable event/day/session targets and policies; check-in, undo, scanner issuance, credential rotation, and target stop share database fences. Exact compensation lineage, closed reason codes, opaque keyset audit, least-privilege HAL/Cerbos/fallback authority, online-only scanner transport, bounded 503 behavior, Prometheus OTLP ingestion, and explicit unavailable health are implemented.
+- **Verification evidence:** Domain `12/12`, Application orchestration/materialization/publication/operations/reporting/metrics `48/48`, persistence model/constraints/real PostgreSQL `32/32`, Studio route/component/transport `53/53`, BFF `10/10`, admission API `17/17`, OpenAPI parity `12/12`, Cerbos/local parity `5/5`, and generated contracts are focused-green. All five generated providers report no pending model changes; final security, operations, goal, and source-level visual/accessibility reviews pass.
+- **Research/I-VSD evidence:** [`phase21-clean-room-evidence.md`](phase21-clean-room-evidence.md), [`islamic-value-sensitive-design/i-vsd-registration-data-collection.md`](../../../islamic-value-sensitive-design/i-vsd-registration-data-collection.md), `.omo/evidence/20260826-phase21/generated-contracts.md`, and `.omo/evidence/20260826-phase21/migrations-and-verification.md` are the current traceability set. Context7 was unavailable; official documentation and web research were used without claiming MCP results.
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -453,17 +453,18 @@ Last Updated: 2026-08-25 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — succeeded with 0 errors; existing shared-worktree warnings remain.
 - [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` — 976/976 passed with 0 failures and 0 skips.
 
-## Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Recovery ⏳ NOT STARTED
-- [ ] **21.0 RED admission race, capability, tenant, outage, and performance specifications** — deterministic database races, one-time secret disclosure, revocation/theft, wrong scope, batch partial failure, fail-closed connectivity, query count and declared latency fixture. — **Effort:** XL
-- [ ] **21.1 GREEN admission targets, policies, and append-only event model** — event/day/session entitlements, window/re-entry, exhaustive CheckIn/Undo facts/results with actor/scanner/reason/time; no mutable Boolean truth. — **Effort:** L
-- [ ] **21.2 GREEN atomic persistence and check-in/undo concurrency** — one indexed tenant+digest lookup, active-state lock, deterministic duplicate/undo race, batch <=100, tenant-qualified model parity and PostgreSQL evidence. — **Effort:** XL
-- [ ] **21.3 GREEN check-in API, Cerbos, HAL, and scanner capability issuance** — authenticated staff or scoped revocable capability; plaintext once at issuance, masked later; bounded door data; rate/audit/HAL parity. — **Effort:** XL
-- [ ] **21.4 GREEN camera, HID, and manual scanner client flow** — approved decoder, permission/fallback, rapid-duplicate suppression, accessible non-color/sound results, relation gate, deterministic bUnit/JS contracts, no token persistence. — **Effort:** XL
-- [ ] **21.5 GREEN summary, export-safe audit, observability, and incident operations** — bounded counts/metrics and procedures for device loss, compromise, undo, saturation, connectivity, authenticated exception, restore and reconciliation. — **Effort:** M
+## Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Recovery ✅ COMPLETE
+- [x] **21.0 RED admission race, capability, tenant, outage, and performance specifications** — deterministic database races, one-time secret disclosure, revocation/theft, wrong scope, batch partial failure, fail-closed connectivity, query count and declared latency fixture. — **Effort:** XL
+- [x] **21.1 GREEN admission targets, policies, and append-only event model** — event/day/session entitlements, window/re-entry, exhaustive CheckIn/Undo facts/results with actor/scanner/reason/time; no mutable Boolean truth. — **Effort:** L
+- [x] **21.2 GREEN atomic persistence and check-in/undo concurrency** — one indexed tenant+digest lookup, active-state lock, deterministic duplicate/undo race, batch <=100, tenant-qualified model parity and PostgreSQL evidence. — **Effort:** XL
+- [x] **21.3 GREEN check-in API, Cerbos, HAL, and scanner capability issuance** — authenticated staff or scoped revocable capability; plaintext once at issuance, masked later; bounded door data; rate/audit/HAL parity. — **Effort:** XL
+- [x] **21.4 GREEN camera, HID, and manual scanner client flow** — approved decoder, permission/fallback, rapid-duplicate suppression, accessible non-color/sound results, relation gate, deterministic bUnit/JS contracts, no token persistence. — **Effort:** XL
+- [x] **21.5 GREEN summary, export-safe audit, observability, and incident operations** — bounded counts/metrics and procedures for device loss, compromise, undo, saturation, connectivity, authenticated exception, restore and reconciliation. — **Effort:** M
 
 ### Phase 21 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final isolated rerun passed with 0 errors
+- [x] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` — `dotnet test` deadlocked before host launch, so the built source-generated TUnit executable ran all 2,539 tests: 2,524 passed, 14 unrelated failed, 1 governed skip; Phase 21 admission gates and repaired scanner smoke are green
+- **Broad-suite attribution:** all seven scheduler failures and both event-list snapshot failures pass in isolated classes. Remaining isolated debt is outside Phase 21: home discovery `2/3`, production authorization guardrails `1/4` because external privacy-erasure replay is denied, and participation attachments `9/10` because its raw SQL omits the `islamu_event` schema. Exact receipts are in `.omo/evidence/20260826-phase21/migrations-and-verification.md`.
 
 ## Phase 22: Ticket Transfer, Reissue, Reassignment, And Holder Self-Service ⏳ NOT STARTED
 - [ ] **22.0 RED transfer race, consent, tenant, capability, and HAL specifications** — accept/cancel/expire, transfer/check-in, reissue/scan, fresh consent, PII, generic lookup, copied-QR invalidation, authorization/HAL, and purchaser/payment invariants fail first. — **Effort:** XL

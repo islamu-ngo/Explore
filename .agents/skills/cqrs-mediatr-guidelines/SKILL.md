@@ -23,6 +23,12 @@ priority: high
 - Validators are manually instantiated in the handler. Cancellation flows end to end.
 - Queries may use HybridCache read-through; commands invalidate affected keys after the owning write succeeds.
 - `IQuerySpecification<T>` composition remains immutable and Application-owned; Persistence applies it to EF queries.
+- **Pre-Agreed Seam Discipline**:
+  - Application Seam: MediatR Request `IRequest<TResult>` $\rightarrow$ Immutable Result / `BaseCommandResponse<TKey>`.
+  - API Seam: HTTP Route $\rightarrow$ RFC 7807 ProblemDetails / HAL `_links` / Status code.
+  - Persistence Seam: `IQuerySpecification<T>` $\rightarrow$ Domain Aggregate Entity.
+- **Zero-Internal-Mocking Invariant**: Mock *only* external boundaries you do not control (payment gateways, external email dispatchers, clock/randomness). **Never mock internal domain entities, aggregates, or MediatR handlers.** Use real domain entities and in-memory/test-container database fixtures.
+- **SDK-Style Interfaces for External Services**: External integrations must expose strongly-typed operation methods (`IStripeGateway.ChargeAsync(...)`) rather than generic dispatchers (`IFetcher.SendAsync(...)`), ensuring mocks remain simple, type-safe, and free of internal conditional branching.
 
 ## Workflow
 

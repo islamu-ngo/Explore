@@ -16,25 +16,30 @@ priority: high
 - [resources/plan-template.md](resources/plan-template.md)
 - [resources/quality-gates.md](resources/quality-gates.md)
 - [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
+- [../i-vsd/resources/integration-contract.md](../i-vsd/resources/integration-contract.md)
 - [../grill-me/SKILL.md](../grill-me/SKILL.md)
 
-## Top 5 Invariants
+## Top Invariants
 1. Investigate and plan only; do not edit runtime code or claim implementation has started.
-2. Execute the mandatory intake gate before writing: load `i-vsd`, evaluate provider responsibilities, follow its action routing, and create or update `islamic-value-sensitive-design/i-vsd-<task-name>.md`; then load `grill-me`, resolve repository facts first, and interrogate the user—with recommended answers—about every remaining material requirement, failure mode, and edge case.
+2. Follow I-VSD `planning` mode: reuse one shared repository evidence packet, create the draft `islamic-value-sensitive-design/i-vsd-<task-name>.md`, resolve material branches through `grill-me`, draft the triad, then revalidate its `IVSD-*` mappings before declaring it plan-aligned. The plan request satisfies the normal I-VSD agreement prompt but never suppresses necessary user questions.
 3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release & Changelog Strategy** into the plan.
-4. **Test-First Invariant Sequencing**: Every behavioral implementation phase MUST sequence task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), preventing post-hoc test generation.
-5. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
+4. **Behavior vs. Code Separation & Scenario Contract**: In `plan.md`, define externally observable behavior contracts using RFC 2119 keywords (`SHALL`/`MUST`) and concrete `WHEN`/`THEN` scenarios before designing code. Implementation details (classes, handlers, migrations) belong strictly in Section 5 Architecture. Classify changes as `Behavioral Delta` (requiring scenarios) vs `Non-Behavioral Delta` (pure refactor/tooling).
+5. **Test-First Invariant Sequencing**: Every behavioral implementation phase MUST sequence task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), binding each Red task directly to named `WHEN`/`THEN` Scenarios.
+6. **Strict Deferrable Open Questions Gate**: Unknowns in `plan.md` Section 2.6 are strictly for genuinely deferrable details that will not alter scope, architectural patterns, or task breakdown. If an unknown would shift the task sequence, resolve it via `grill-me` before finalizing the plan.
+7. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
-   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes, dynamic status, and phase verification gates).
+   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, and phase verification gates).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
 
 ## Top Anti-Patterns
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
-2. **Post-Hoc Test Tautology ("The Ugly Mirror")**, which writes code first and tests afterwards, producing self-fulfilling tests that mirror implementation bugs and mock away real failure modes.
-3. Future-state-first planning, which designs changes before reporting what exists, what is missing, and what evidence supports those conclusions.
-4. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
-5. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
-6. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
+2. **Behavior/Implementation Conflation**, which describes code modifications instead of observable system behavior contracts and leaves requirements without testable `WHEN`/`THEN` scenarios.
+3. **Non-Deferrable Open Questions Debt**, which postpones foundational scope or architectural decisions into open questions instead of resolving them during intake.
+4. **Post-Hoc Test Tautology ("The Ugly Mirror")**, which writes code first and tests afterwards, producing self-fulfilling tests that mirror implementation bugs and mock away real failure modes.
+5. Future-state-first planning, which designs changes before reporting what exists, what is missing, and what evidence supports those conclusions.
+6. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
+7. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
+8. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
 
 ## Minimal Examples
 ```text
@@ -47,11 +52,10 @@ dev/active/event-rsvp/event-rsvp-tasks.md
 
 ```text
 Planning sequence:
-classify intents -> run intake gate (load i-vsd and generate
-islamic-value-sensitive-design/i-vsd-<task>.md; run grill-me on unresolved branches) ->
-(if architectural fork: load robin-neutral) -> load rules/skills/docs ->
-inspect related work -> verify code/tests/contracts -> report current state ->
-design slices -> write and cross-check plan/context/tasks (linking I-VSD)
+classify intents -> load rules/skills/docs -> inspect related work and verify
+current code/tests/contracts -> run I-VSD planning intake from the shared evidence
+packet -> grill-me unresolved branches -> (if architectural fork: robin-neutral) ->
+design and write plan/context/tasks -> revalidate I-VSD mappings -> cross-check
 ```
 
 ```text

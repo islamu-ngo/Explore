@@ -2,12 +2,24 @@
 <!-- ABOUTME: Forces decisive verdicts, artifact-specific critique, and actionable rewrite guidance for /dev-docs plans. -->
 # Output Template
 
-Use this structure for Senior CTO feedback.
+Write the full review to `dev/active/<task-name>/<task-name>-cto-review.md`; the chat response names the file, decision, top blocker, and next required gate without duplicating it. Normal review is read-only except for this artifact.
 
 ## Required Structure
 
 ```markdown
 # Senior CTO Feedback
+
+Last Updated: YYYY-MM-DD Europe/Brussels
+
+## Review Metadata
+
+- Review mode: Read-only | Rewrite requested
+- Reviewed plan revision: `<Git object or SHA-256 digest>`
+- Reviewed tasks revision: `<Git object or SHA-256 digest>`
+- Reviewed I-VSD revision: `<Git object or SHA-256 digest>`
+- I-VSD freshness: Current | Stale | Missing
+- Decision: Approve | Approve with required changes | Split before approval | Reject | Defer
+- User approval: Not granted by this review
 
 ## Executive Verdict
 
@@ -15,9 +27,17 @@ Use this structure for Senior CTO feedback.
 
 **Decision:** Approve | Approve with required changes | Split before approval | Reject | Defer
 
+## 3-Dimensional Scorecard
+
+| Dimension | Status (Pass / Warning / Blocker) | Key Finding |
+|---|---|---|
+| **Completeness** | [Pass / Issues] | [Coverage of capabilities, I-VSD mitigations, Red/Green tasks] |
+| **Correctness** | [Pass / Issues] | [Scenario validity, worst-break tests, query performance] |
+| **Coherence** | [Pass / Issues] | [Clean Architecture boundaries, HAL affordances, tenant isolation] |
+
 ## Top Risks
 
-### 1. [Severity] — [Issue]
+### 1. [CRITICAL/WARNING] [Severity: Blocker/Critical/Major] — [Issue]
 
 **Why it matters:**  
 [Enterprise/platform/operator reason.]
@@ -49,10 +69,14 @@ Use this structure for Senior CTO feedback.
 
 ## Islamic Value-Sensitive Design (I-VSD) Assessment
 
-[Name the linked `islamic-value-sensitive-design/i-vsd-*.md` report. Assess provider-controlled moral risks, principle/stakeholder traceability, mitigations, evidence limits, and scholarly escalation needs. State explicitly when missing or inadequate I-VSD evidence blocks approval.]
+[Name the linked report and reviewed revision. Assess freshness, provider-controlled risks, stable `IVSD-*` mappings, mitigations, evidence limits, refresh triggers, and scholarly escalation needs. Missing, stale, or unmapped I-VSD evidence blocks approval.]
 
-## Socratic Stress-Testing (Grill-Me Audit Findings)
+## Socratic Stress-Testing & "Worst Break" Audit Findings
 
+### "The Worst Break" Catastrophic Scenario Check
+[Name the single most catastrophic failure mode if this workstream fails in production. Does Phase Red have a dedicated Invariant-Breaker test proving it is prevented?]
+
+### Grill-Me Stress-Test Findings
 [List the strongest challenged claims and findings for rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and edge cases. For each unresolved material claim, name the evidence or decision required before approval.]
 
 ## Enterprise / Self-Hosting Assessment
@@ -119,6 +143,7 @@ Optional sections
 - Be explicit about what would block approval.
 - Prefer fewer, sharper recommendations over long unfocused lists.
 - When the user asks to improve the plan, make the rewrite guidance directly actionable for the existing `plan.md`, `context.md`, and `tasks.md`.
+- A rewrite-mode review cannot approve the revision it just changed; mark I-VSD freshness and the required revalidation path.
 - Do not write code unless explicitly requested.
 - Do not ask for clarification when a useful review can be produced with assumptions.
 

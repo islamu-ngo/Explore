@@ -3,7 +3,7 @@
 
 # Action Routing
 
-Use this resource after applying [scope-boundaries.md](scope-boundaries.md). It decides whether to refuse or narrow out-of-scope requests, ask the user what they want, perform a context inventory, run a guided discovery interview, run a pre-PR moral diff review, request confirmation, produce one Markdown report, or produce multiple Markdown reports.
+Use this resource in standalone mode after applying [scope-boundaries.md](scope-boundaries.md). [Integration contract](integration-contract.md) owns mode selection; [report contract](report-contract.md) owns canonical report identity and schema.
 
 ## Routing Rule
 
@@ -11,16 +11,28 @@ Use this resource after applying [scope-boundaries.md](scope-boundaries.md). It 
 2. If the request is software-related but adjacent and not framed around provider-mediated product responsibility, refuse as not optimized for I-VSD; invite reframing around a concrete provider-mediated product, user-facing feature, deployment, governance policy, data practice, operational duty, or stakeholder impact.
 3. If the whole request asks for halal/haram/makrooh/wajib/Sharia-compliance judgment, refuse the ruling and refer to qualified scholarly authority.
 4. If a covered provider-mediated software request includes religious-legal subquestions, continue only with design reasoning and put the excluded ruling parts under `Escalation Needed`.
-5. If the user invokes `i-vsd` without product, artifact, repository, business, architecture, policy, incident, or report context, do not guess. Return the action menu in `Available Actions` and ask the user to choose one or more actions.
-6. If the user gives covered context but no action, infer the most relevant actions and ask for confirmation before writing files unless the requested outcome is obvious.
-7. If the user names one covered action and gives enough context, run the concise context inventory gate from [context-discovery.md](context-discovery.md), send the first response contract, and ask the user to agree or provide more context before creating or updating the mapped Markdown report file.
-8. If the user names multiple covered actions, run the concise context inventory gate from [context-discovery.md](context-discovery.md), send the first response contract with all planned report filenames, and ask the user to agree or provide more context before creating or updating one Markdown report file per action and an index.
-9. If the user chooses `guided-discovery`, run the context gate, then interview the user using [guided-discovery-workflow.md](guided-discovery-workflow.md) before writing the mapped report; do not treat the absence of existing context as a blocker.
+5. If the user invokes `i-vsd` without product, artifact, repository, business, architecture, policy, incident, or report context, do not guess. Return the action menu in `Available Actions`, ask the user to choose one or more actions, and create no report.
+6. If the user gives covered context but no action, infer the most relevant actions and ask for confirmation before writing files unless the requested outcome is obvious. This routing response creates no report.
+7. If the user names one covered action and gives enough context, run the concise context inventory gate from [context-discovery.md](context-discovery.md), obtain agreement, then run the standalone alignment gate below before creating or updating the canonical report.
+8. If the user names multiple covered actions, run the context inventory gate, name all canonical report paths, obtain agreement, then run one shared standalone alignment gate before creating one report per action and an index.
+9. If the user chooses `guided-discovery`, run the context gate, then interview the user using [guided-discovery-workflow.md](guided-discovery-workflow.md) with the one-question discipline below; do not treat the absence of existing context as a blocker.
 10. If the user chooses `moral-diff-review`, collect the complete outgoing changeset using [moral-diff-review-workflow.md](moral-diff-review-workflow.md), including unpushed commits, commit titles/bodies, target/upstream branch context, code, docs, configs, tests, generated files, staged changes, unstaged changes, and untracked files intended for review. When the user explicitly asks to run the review, proceed without a separate agreement step unless the diff source, comparison base, or output location is ambiguous.
 11. If required evidence is missing for non-discovery actions, still produce the report when useful, but mark gaps as `Missing Evidence` or `Not Reviewed`; do not invent facts.
 12. If the action involves finance/riba, religious guidance, high-stakes AI, public harm, vulnerable users, contested moderation, or halal/haram/makrooh/wajib language, include a scholarly or expert escalation section.
 13. For artifact-based actions, run the context discovery protocol in [context-discovery.md](context-discovery.md) before writing findings so docs, text artifacts, policies, plans, relevant project-context integrations, user-provided paths, and implementation evidence are reviewed together.
-14. **Every I-VSD response MUST be persisted to a file.** Never deliver I-VSD findings, consultations, advisories, or recommendations only as inline conversation text. All I-VSD output — including short advisories, consultations, design feedback, compliance findings, and any other I-VSD-framed response — must be written to a Markdown file under `islamic-value-sensitive-design/` using the `i-vsd-*.md` naming pattern. The conversation response should summarize what was written and point to the file, not replace it. If no explicit action name maps to the request, infer the closest action from `Synonym Matching` or use `consultancy-report` as the default, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`), and write the full output to that file.
+14. Persist every **substantive** I-VSD finding, consultation, advisory, or recommendation to the canonical Markdown report. Refusals, action menus, context inventories, clarification questions, and agreement prompts are routing responses and must not create report files.
+
+## Standalone Alignment Gate
+
+After action selection, context discovery, and agreement, load [Grill-Me](../../grill-me/SKILL.md):
+
+1. Resolve repository/project facts directly instead of asking the user.
+2. Find the nearest unresolved decision that could change the report's scope, provider duty, stakeholder impact, recommendation, evidence level, or output identity.
+3. Give a recommended answer with concise rationale, ask exactly one question, and wait.
+4. Continue until material branches are resolved or the user explicitly defers them with the resulting uncertainty recorded.
+5. Only then produce the substantive report.
+
+Keep the gate proportional: a short advisory may need one decisive question; a detailed audit may need several. `guided-discovery` uses its own interview areas but the same one-question discipline. A moral diff review proceeds directly when scope/base are clear and invokes this gate only for a material ambiguous decision.
 
 ## Default Output Location
 
@@ -30,15 +42,15 @@ When producing reports, write them under this output folder relative to the curr
 islamic-value-sensitive-design/
 ```
 
-Create the directory if needed. Every generated report file must use the `i-vsd-*.md` naming pattern. Use the exact filenames in `Action Map` so future agents can find the outputs. For multiple actions, also create or update `i-vsd-review-index.md` listing the requested actions, produced files, evidence gaps, and recommended next action.
+Create the directory if needed. Every generated report file must use the `i-vsd-*.md` naming pattern. Derive the canonical subject-and-report-kind path from [report-contract.md](report-contract.md); the filenames in `Action Map` identify report kinds and legacy one-subject examples. For multiple actions, also create or update `i-vsd-review-index.md`.
 
 If the user specifies another output path, ask for confirmation before using it. The default remains `islamic-value-sensitive-design/`, and filenames must still use the `i-vsd-*.md` prefix pattern.
 
 ## Existing Report Rule
 
-After the context gate and user agreement, check whether each mapped output file already exists before writing. For example, `compliance-check` maps to `islamic-value-sensitive-design/i-vsd-compliance-check.md`; if that file exists, update the existing report instead of replacing it from scratch. Preserve useful prior findings, resolved history, evidence notes, and open gaps unless new evidence supersedes them. If a mapped file does not exist, create it from the relevant template.
+After the context gate, user agreement, and standalone alignment gate, check whether the canonical subject-and-report-kind path already exists. Update only a report with matching identity. Preserve useful prior findings, stable IDs, resolved history, evidence notes, and open gaps unless new evidence supersedes them.
 
-When updating an existing report, refresh the `Last Updated: xxxx-xx-xx` line under the title using the current date and keep the report structure aligned with `Report File Contract`.
+When updating an existing report, follow the lifecycle and normalization rules in [report-contract.md](report-contract.md).
 
 ## Available Actions
 
@@ -127,27 +139,7 @@ Map common user phrasing to actions:
 
 ## Report File Contract
 
-Every generated report file must include these headings:
-
-```text
-# <Report Title>
-
-Last Updated: xxxx-xx-xx
-
-## Scope
-## Claim Boundary
-## Findings
-## Recommendations
-## Stakeholders
-## I-VSD Principles And Domains
-## Validation Gaps
-## Escalation Needed
-## Evidence Reviewed
-## Missing Evidence
-## Context Inventory
-```
-
-Add action-specific sections when useful, but never remove the required headings. Every report must include `Last Updated: xxxx-xx-xx` directly under the title and above `Scope`, using the current date. Put the primary findings table immediately after `Claim Boundary`; keep `Evidence Reviewed`, `Missing Evidence`, and `Context Inventory` near the bottom. In `Claim Boundary`, state that the report is I-VSD design reasoning and traceability, not a fatwa, Sharia certification, product certification, or empirical proof of ethical outcomes.
+Use [report-contract.md](report-contract.md) as the single authority for report identity, metadata, required headings, stable findings, lifecycle, and planning handoffs. Action-specific resources may add sections but cannot remove the canonical fields.
 
 ## Multi-Report Index Contract
 
