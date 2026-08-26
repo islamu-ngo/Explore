@@ -38,7 +38,8 @@ else
                 <p>Validate each admission online for the selected target.</p>
             </div>
             <span class="studio-admission-check-in__queue"
-                  aria-label="Pending admissions"
+                  aria-live="polite"
+                  aria-atomic="true"
                   data-testid="admission-queue-depth"
                   data-depth="@_pendingCredentials.Count">@_pendingCredentials.Count pending</span>
         </header>
@@ -54,17 +55,23 @@ else
                            muted
                            playsinline
                            aria-label="Admission QR camera preview"></video>
-                    <button type="button"
-                            class="mud-button-root mud-button mud-button-filled mud-button-filled-primary"
-                            @onclick="ScanCameraAsync"
-                            data-testid="start-camera-scan">
-                        Scan QR code
-                    </button>
+                    <AppButton OnClick="ScanCameraAsync"
+                               Disabled="_cameraBusy"
+                               aria-busy="@_cameraBusy.ToString().ToLowerInvariant()"
+                               data-testid="start-camera-scan">
+                        @(_cameraBusy ? "Scanning QR code..." : "Scan QR code")
+                    </AppButton>
+                }
+                @if (!string.IsNullOrEmpty(_cameraMessage))
+                {
+                    <p class="studio-admission-check-in__message"
+                       data-testid="camera-scan-status">
+                        @_cameraMessage
+                    </p>
                 }
                 @if (_cameraFallback)
                 {
                     <p class="studio-admission-check-in__message"
-                       role="status"
                        data-testid="camera-fallback">
                         Camera scanning is unavailable. Use a keyboard scanner or manual entry.
                     </p>
@@ -122,7 +129,8 @@ else
         <div class="studio-admission-check-in__live"
              aria-live="polite"
              aria-atomic="true"
-             data-testid="admission-live-region">@_liveMessage</div>
+             data-announcement-sequence="@_liveAnnouncementSequence"
+             data-testid="admission-live-region"><span @key="_liveAnnouncementSequence">@_liveMessage</span></div>
 
         @if (_results.Count > 0)
         {
@@ -163,14 +171,17 @@ else
     private long _activeScannerStateGeneration = long.MinValue;
     private long _generation;
     private long _processingGeneration;
+    private long _liveAnnouncementSequence;
     private int _nextSequence;
     private bool _nativeQrAvailable = true;
+    private bool _cameraBusy;
     private bool _cameraFallback;
     private bool _queueSaturated;
     private bool _onlineRequired;
     private bool _disposed;
     private string _hidValue = string.Empty;
     private string _manualValue = string.Empty;
+    private string _cameraMessage = string.Empty;
     private string _liveMessage = string.Empty;
 
     private bool CanCheckIn =>
@@ -266,7 +277,16 @@ else
 
             _nativeQrAvailable = capability.NativeQrAvailable;
             _cameraFallback = !capability.NativeQrAvailable;
+            _cameraMessage = string.Empty;
+            if (_cameraFallback)
+            {
+                Announce("Camera scanning is unavailable. Use a keyboard scanner or manual entry.");
+            }
             await InvokeAsync(StateHasChanged);
+            if (_cameraFallback)
+            {
+                await Focus.FocusAsync("#manual-admission-input", preventScroll: true);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -275,23 +295,63 @@ else
 
     private async Task ScanCameraAsync()
     {
+        if (_cameraBusy)
+        {
+            return;
+        }
+
         long generation = _generation;
         CancellationToken cancellationToken = _lifetime?.Token ?? CancellationToken.None;
-        AdmissionQrScanResult result = await Scanner.DetectAsync(_cameraSource, cancellationToken);
-        if (!IsCurrent(generation, cancellationToken))
-        {
-            return;
-        }
-
-        if (result is { Outcome: AdmissionQrScanOutcome.SingleValid, Credential: not null })
-        {
-            Enqueue(result.Credential);
-            return;
-        }
-
-        _cameraFallback = true;
+        _cameraBusy = true;
+        _cameraMessage = string.Empty;
         await InvokeAsync(StateHasChanged);
-        await Focus.FocusAsync("#manual-admission-input", preventScroll: true);
+        try
+        {
+            AdmissionQrScanResult result = await Scanner.DetectAsync(_cameraSource, cancellationToken);
+            if (!IsCurrent(generation, cancellationToken))
+            {
+                return;
+            }
+
+            if (result is { Outcome: AdmissionQrScanOutcome.SingleValid, Credential: not null })
+            {
+                Enqueue(result.Credential);
+                return;
+            }
+
+            _cameraMessage = result.Outcome switch
+            {
+                AdmissionQrScanOutcome.NoCode =>
+                    "No QR code was detected. Reposition the code and try again.",
+                AdmissionQrScanOutcome.MultipleAmbiguous =>
+                    "Multiple QR codes were detected. Show one code at a time.",
+                AdmissionQrScanOutcome.Invalid =>
+                    "The detected QR code is not a valid admission credential.",
+                _ => string.Empty
+            };
+            if (!string.IsNullOrEmpty(_cameraMessage))
+            {
+                _cameraFallback = false;
+                Announce(_cameraMessage);
+                return;
+            }
+
+            _nativeQrAvailable = false;
+            _cameraFallback = true;
+            Announce("Camera scanning is unavailable. Use a keyboard scanner or manual entry.");
+            await Focus.FocusAsync("#manual-admission-input", preventScroll: true);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (IsCurrent(generation, cancellationToken))
+            {
+                _cameraBusy = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
     }
 
     private void ChangeHidValue(ChangeEventArgs args) => _hidValue = args.Value?.ToString() ?? string.Empty;
@@ -428,9 +488,9 @@ else
         ClearPending();
         _onlineRequired = status == AdmissionCheckInUiStatus.OnlineRequired;
         _queueSaturated = status == AdmissionCheckInUiStatus.Saturated;
-        _liveMessage = _onlineRequired
+        Announce(_onlineRequired
             ? "Online admission check-in is required."
-            : "Admission check-in is busy. Try again.";
+            : "Admission check-in is busy. Try again.");
     }
 
     private void AddResult(int sequence, string code)
@@ -443,7 +503,13 @@ else
             _ => "Admission could not be accepted."
         };
         _results.Add(new AdmissionResultItem(sequence, publicCode, message));
+        Announce(message);
+    }
+
+    private void Announce(string message)
+    {
         _liveMessage = message;
+        ++_liveAnnouncementSequence;
     }
 
     private void ResetGeneration()
@@ -460,8 +526,12 @@ else
         _results.Clear();
         _queueSaturated = false;
         _onlineRequired = false;
+        _cameraBusy = false;
+        _cameraFallback = false;
+        _cameraMessage = string.Empty;
         _hidValue = string.Empty;
         _manualValue = string.Empty;
+        _liveAnnouncementSequence = 0;
         _liveMessage = string.Empty;
     }
 

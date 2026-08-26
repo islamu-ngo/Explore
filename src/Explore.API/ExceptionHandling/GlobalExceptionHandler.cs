@@ -108,7 +108,7 @@ internal sealed class GlobalExceptionHandler(
         httpContext.Response.StatusCode = statusCode;
         if (exception is AdmissionCheckInUnavailableException)
         {
-            httpContext.Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+            httpContext.Response.Headers[HeaderNames.CacheControl] = "no-store";
             httpContext.Response.Headers["Referrer-Policy"] = "no-referrer";
         }
         if (exception is AdmissionRecoveryRateLimitExceededException recoveryRateLimit)

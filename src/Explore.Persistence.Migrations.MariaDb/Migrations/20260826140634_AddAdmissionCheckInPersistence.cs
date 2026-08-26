@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.MySql.Migrations
+namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     /// <inheritdoc />
     public partial class AddAdmissionCheckInPersistence : Migration
@@ -22,6 +22,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 nullable: false,
                 defaultValue: new Guid("00000000-0000-0000-0000-000000000000"))
                 .Annotation("Relational:Collation", "ascii_general_ci");
+
+            migrationBuilder.Sql("UPDATE ie_ticket_type_entitlements SET scope_id = COALESCE(event_session_id, event_day_id, target_event_id);");
 
             migrationBuilder.CreateTable(
                 name: "ie_admission_targets",

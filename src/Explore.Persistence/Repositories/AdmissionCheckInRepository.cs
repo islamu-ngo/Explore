@@ -10,9 +10,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class AdmissionCheckInRepository(ExploreDbContext dbContext) : IAdmissionCheckInTransaction
+public sealed class AdmissionCheckInRepository(
+    ExploreDbContext dbContext,
+    TimeProvider timeProvider) : IAdmissionCheckInTransaction
 {
     private const int MaximumDigestCandidates = 8;
+
+    public AdmissionCheckInRepository(ExploreDbContext dbContext)
+        : this(dbContext, TimeProvider.System)
+    {
+    }
 
     public async Task<AdmissionCheckInDecision?> ExecuteAsync(
         AdmissionCheckInTransactionRequest request,
@@ -91,7 +98,7 @@ public sealed class AdmissionCheckInRepository(ExploreDbContext dbContext) : IAd
                 !scannerCapability.Permits(
                     request.TargetId,
                     ToScannerAction(request.Action),
-                    request.OccurredAtUtc.UtcDateTime))
+                    timeProvider.GetUtcNow().UtcDateTime))
             {
                 return null;
             }

@@ -107,8 +107,20 @@ public sealed class OpenApiParityTests
     [Test]
     public async Task NativeAndSwashbuckleDocs_OmitKeycloakSecurityWithoutAuthorityAndHaveNoDanglingReferences()
     {
-        using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
-        using var swashbuckleDocument = await GetOpenApiDocumentAsync(SwashbuckleOpenApiEndpoint);
+        await using var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Keycloak:AuthorizationUrl"] = null,
+                    ["Keycloak:Authority"] = null
+                }));
+        });
+        using var client = app.CreateClient();
+        using var nativeDocument = await GetOpenApiDocumentAsync(client, NativeOpenApiEndpoint);
+        using var swashbuckleDocument = await GetOpenApiDocumentAsync(
+            client,
+            SwashbuckleOpenApiEndpoint);
 
         await Assert.That(HasKeycloakSecurityScheme(nativeDocument)).IsFalse();
         await Assert.That(HasKeycloakSecurityScheme(swashbuckleDocument)).IsFalse();
@@ -135,8 +147,8 @@ public sealed class OpenApiParityTests
         CompareKeycloakSecurityScheme(nativeDocument, swashbuckleDocument, differences);
 
         string expected = $"{authority}/protocol/openid-connect/auth";
-        await Assert.That(KeycloakAuthorizationUrl(nativeDocument)).IsEqualTo(expected);
-        await Assert.That(KeycloakAuthorizationUrl(swashbuckleDocument)).IsEqualTo(expected);
+        await Assert.That(ReadKeycloakAuthorizationUrl(nativeDocument)).IsEqualTo(expected);
+        await Assert.That(ReadKeycloakAuthorizationUrl(swashbuckleDocument)).IsEqualTo(expected);
         await Assert.That(differences).IsEmpty();
     }
 
@@ -328,7 +340,7 @@ public sealed class OpenApiParityTests
     private static bool HasKeycloakSecurityScheme(JsonDocument document)
         => TryGetKeycloakSecurityScheme(document, out _);
 
-    private static string? KeycloakAuthorizationUrl(JsonDocument document) =>
+    private static string? ReadKeycloakAuthorizationUrl(JsonDocument document) =>
         TryGetKeycloakSecurityScheme(document, out JsonElement scheme)
             ? GetStringProperty(scheme.GetProperty("flows").GetProperty("implicit"), "authorizationUrl")
             : null;

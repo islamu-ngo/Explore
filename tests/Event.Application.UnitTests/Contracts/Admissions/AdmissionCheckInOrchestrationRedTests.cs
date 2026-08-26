@@ -169,7 +169,7 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     }
 
     [Test]
-    public async Task BatchContinuesAfterOneIndependentInfrastructureFailure()
+    public async Task BatchAbortsOnInfrastructureFailureAndStopsQueuedWork()
     {
         CheckInScenario scenario = new(UtcNow);
         string unavailable = RuntimeCapability.New();
@@ -178,22 +178,20 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         scenario.CredentialStates[scenario.Digest(validLast)] = "Active";
         scenario.UnavailableCredentialDigests.Add(scenario.Digest(unavailable));
 
-        object batch = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessBatchAsync",
-            CheckInPorts.BatchRequest(
-                scenario,
-                [scenario.Credential, unavailable, validLast]),
-            CancellationToken.None);
-        object[] items = AdmissionContractRuntime.Items(batch, "Items");
+        Exception exception = await Assert.ThrowsAsync<Exception>(async () =>
+            await AdmissionContractRuntime.InvokeAsync(
+                CheckInPorts.Service(scenario),
+                "ProcessBatchAsync",
+                CheckInPorts.BatchRequest(
+                    scenario,
+                    [scenario.Credential, unavailable, validLast]),
+                CancellationToken.None));
 
-        await Assert.That(string.Join(',', items.Select(AdmissionContractRuntime.Outcome)))
-            .IsEqualTo("CheckedIn,Unavailable,CheckedIn");
-        await Assert.That(items.Select(item =>
-            AdmissionContractRuntime.Value<int>(item, "Index")).ToArray())
-            .IsEquivalentTo([0, 1, 2]);
-        await Assert.That(scenario.UnitOfWork.TransactionCount).IsEqualTo(3);
-        await Assert.That(scenario.AppendCount).IsEqualTo(2);
+        await Assert.That(exception.GetBaseException().GetType().Name)
+            .IsEqualTo("AdmissionCheckInUnavailableException");
+        await Assert.That(scenario.UnitOfWork.TransactionCount).IsEqualTo(2);
+        await Assert.That(scenario.AppendCount).IsEqualTo(1);
+        await Assert.That(scenario.TelemetryCalls.Last()).IsEqualTo("RecordBacklog");
     }
 
     [Test]

@@ -80,7 +80,7 @@ public sealed class EventApiClientSerializationTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        await Assert.That(candidates.Length).IsEqualTo(653);
+        await Assert.That(candidates.Length).IsEqualTo(664);
         await Assert.That(classDebt).IsEmpty()
             .Because($"plain generated nominal contracts must be records; first debt: {string.Join(", ", classDebt.Take(20))}");
         await Assert.That(setterDebt).IsEmpty()

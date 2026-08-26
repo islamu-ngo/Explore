@@ -73,7 +73,8 @@ public sealed class AdmissionCheckInController(
             : Ok(CheckInResource(
                 eventId,
                 result,
-                result.Outcome is AdmissionCheckInOutcome.CheckedIn or
+                canCheckIn: true,
+                canUndo: result.Outcome is AdmissionCheckInOutcome.CheckedIn or
                     AdmissionCheckInOutcome.AlreadyCheckedIn));
     }
 
@@ -104,7 +105,11 @@ public sealed class AdmissionCheckInController(
             eventId,
             PermissionCodes.EventCheckInManage,
             cancellationToken);
-        return Ok(CheckInResource(eventId, detail.Result, detail.CanUndo && canManage));
+        return Ok(CheckInResource(
+            eventId,
+            detail.Result,
+            canCheckIn: canManage,
+            canUndo: detail.CanUndo && canManage));
     }
 
     [HttpPost("batch", Name = RouteNames.BatchCheckInAdmissions)]
@@ -176,7 +181,11 @@ public sealed class AdmissionCheckInController(
             cancellationToken);
         return result.Outcome == AdmissionCheckInOutcome.Rejected
             ? GenericNotFound()
-            : Ok(CheckInResource(eventId, result, canUndo: false));
+            : Ok(CheckInResource(
+                eventId,
+                result,
+                canCheckIn: true,
+                canUndo: false));
     }
 
     [HttpGet("summary", Name = RouteNames.GetAdmissionCheckInSummary)]
@@ -268,6 +277,7 @@ public sealed class AdmissionCheckInController(
     private HalResource<AdmissionCheckInResultDto> CheckInResource(
         Guid eventId,
         AdmissionCheckInResult result,
+        bool canCheckIn,
         bool canUndo)
     {
         var dto = new AdmissionCheckInResultDto(
@@ -275,9 +285,12 @@ public sealed class AdmissionCheckInController(
             result.TargetId,
             result.OccurredAtUtc == default ? null : result.OccurredAtUtc,
             result.CheckInId);
-        var resource = new HalResource<AdmissionCheckInResultDto>(dto)
-            .WithLink(LinkRelations.CheckInAdmissions, HalLink.CreateAction(
+        var resource = new HalResource<AdmissionCheckInResultDto>(dto);
+        if (canCheckIn)
+        {
+            resource.WithLink(LinkRelations.CheckInAdmissions, HalLink.CreateAction(
                 Url.Link(RouteNames.CheckInAdmission, new { eventId })!, HttpMethods.Post));
+        }
         if (result.CheckInId is Guid checkInId)
         {
             resource.WithLink(LinkRelations.Self, HalLink.Create(
@@ -310,7 +323,8 @@ public sealed class AdmissionCheckInController(
                     item.TargetId,
                     item.OccurredAtUtc,
                     item.CheckInId),
-                item.Outcome is AdmissionCheckInOutcome.CheckedIn or
+                canCheckIn: true,
+                canUndo: item.Outcome is AdmissionCheckInOutcome.CheckedIn or
                     AdmissionCheckInOutcome.AlreadyCheckedIn))
             .ToArray();
         return new HalResource<AdmissionCheckInBatchResultDto>(dto)
@@ -507,9 +521,14 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
         var resource = new HalResource<AdmissionCheckInResultDto>(new AdmissionCheckInResultDto(
                 result.Outcome.ToString(), result.TargetId,
                 result.OccurredAtUtc == default ? null : result.OccurredAtUtc,
-                result.CheckInId))
-            .WithLink(LinkRelations.CheckInAdmissions, HalLink.CreateAction(
+                result.CheckInId));
+        if (User.TryGetAdmissionScannerScope(
+                AdmissionCheckInAction.CheckIn,
+                out _))
+        {
+            resource.WithLink(LinkRelations.CheckInAdmissions, HalLink.CreateAction(
                 "/api/admission/scanner/check-ins", HttpMethods.Post));
+        }
         if (result.CheckInId is Guid checkInId
             && result.Outcome is (AdmissionCheckInOutcome.CheckedIn or
                 AdmissionCheckInOutcome.AlreadyCheckedIn)

@@ -203,6 +203,44 @@ public sealed class AdmissionCheckInPersistenceRedTests
     }
 
     [Test]
+    public async Task MySqlFamilyMigrationsBackfillCanonicalScopeBeforeUniqueIndex()
+    {
+        DirectoryInfo? root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Explore.slnx")))
+        {
+            root = root.Parent;
+        }
+
+        await Assert.That(root).IsNotNull();
+        foreach (string project in new[]
+                 {
+                     "Explore.Persistence.Migrations.MariaDb",
+                     "Explore.Persistence.Migrations.MySql"
+                 })
+        {
+            string directory = Path.Combine(root!.FullName, "src", project, "Migrations");
+            string migration = Directory.GetFiles(
+                    directory,
+                    "*_AddAdmissionCheckInPersistence.cs",
+                    SearchOption.TopDirectoryOnly)
+                .Single(path => !path.EndsWith(".Designer.cs", StringComparison.Ordinal));
+            string source = await File.ReadAllTextAsync(migration);
+            int addScope = source.IndexOf("name: \"scope_id\"", StringComparison.Ordinal);
+            int backfill = source.IndexOf(
+                "SET scope_id = COALESCE(event_session_id, event_day_id, target_event_id)",
+                StringComparison.Ordinal);
+            int canonicalIndex = source.IndexOf(
+                "columns: new[] { \"tenant_id\", \"ticket_type_id\", \"target_event_id\", " +
+                "\"entitlement_scope_type_id\", \"scope_id\" }",
+                StringComparison.Ordinal);
+
+            await Assert.That(addScope).IsGreaterThanOrEqualTo(0);
+            await Assert.That(backfill).IsGreaterThan(addScope);
+            await Assert.That(canonicalIndex).IsGreaterThan(backfill);
+        }
+    }
+
+    [Test]
     [Arguments(EntityState.Modified)]
     [Arguments(EntityState.Deleted)]
     public async Task CheckInEventWriteGuardRejectsMutationAndDeletion(EntityState attemptedState)
@@ -357,6 +395,7 @@ public sealed class AdmissionCheckInConstraintRuntimeTests
         Guid stateTargetId = Guid.CreateVersion7();
         Guid factTargetId = mismatchedProperty == "AdmissionTargetId" ? Guid.CreateVersion7() : stateTargetId;
         Guid activeFactId = Guid.CreateVersion7();
+        Guid targetEventId = Guid.CreateVersion7();
         await using var context = CreateContext(connection, stateTenantId);
         await context.Database.EnsureCreatedAsync();
         Phase21Entities entities = Phase21PersistenceSurface.RequireEntities(context.Model);
@@ -372,9 +411,9 @@ public sealed class AdmissionCheckInConstraintRuntimeTests
             {
                 ["TenantId"] = stateTenantId,
                 ["Id"] = stateTargetId,
-                ["EventId"] = Guid.CreateVersion7(),
+                ["EventId"] = targetEventId,
                 ["AdmissionTargetTypeId"] = 1,
-                ["ScopeId"] = Guid.CreateVersion7()
+                ["ScopeId"] = targetEventId
             }),
             (entities.CheckInEvent, new Dictionary<string, object?>
             {
@@ -384,6 +423,7 @@ public sealed class AdmissionCheckInConstraintRuntimeTests
                 ["AdmissionTargetId"] = factTargetId,
                 ["Sequence"] = 1L,
                 ["AdmissionCheckInActionId"] = 1,
+                ["ActorId"] = Guid.CreateVersion7(),
                 ["OccurredAtUtc"] = UtcNow
             }));
         object state = Phase21PersistenceSurface.CreateEntity(
@@ -1123,6 +1163,66 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
     }
 
     [Test]
+    public async Task ScannerCapabilityExpiryIsReevaluatedAtThePersistenceFence()
+    {
+        await fixture.ResetAsync();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid ticketId = Guid.CreateVersion7();
+        Guid targetId = Guid.CreateVersion7();
+        Guid scannerCapabilityId = Guid.CreateVersion7();
+        string digest = Phase21PersistenceSurface.Digest(0x4f);
+        await SeedCheckInPrerequisitesAsync(
+            tenantId,
+            eventId,
+            ticketId,
+            targetId,
+            digest);
+        await using (ExploreDbContext seed = TenantContext(tenantId))
+        {
+            Phase21Entities seedEntities = Phase21PersistenceSurface.RequireEntities(seed.Model);
+            await Phase21PersistenceSurface.InsertWithForeignKeysDisabledAsync(
+                seed,
+                (seedEntities.Scanner, new Dictionary<string, object?>
+                {
+                    ["TenantId"] = tenantId,
+                    ["Id"] = scannerCapabilityId,
+                    ["IssueRequestId"] = Guid.CreateVersion7(),
+                    ["EventId"] = eventId,
+                    ["AdmissionTargetId"] = targetId,
+                    ["LookupKeyVersion"] = 7,
+                    ["LookupDigest"] = Phase21PersistenceSurface.Digest(0x5f),
+                    ["DeviceLabel"] = "Expiry fence scanner",
+                    ["AllowedActions"] = (int)AdmissionScannerCapabilityAction.CheckIn,
+                    ["ExpiresAt"] = UtcNow.AddSeconds(1),
+                    ["IssuedByActorId"] = Guid.CreateVersion7(),
+                    ["IssuedAt"] = UtcNow
+                }));
+        }
+
+        await using ExploreDbContext context = TenantContext(tenantId);
+        AdmissionCheckInDecision? decision = await ExecuteCheckInAsync(
+            context,
+            tenantId,
+            eventId,
+            targetId,
+            digest,
+            AdmissionCheckInAction.CheckIn,
+            null,
+            UtcNow,
+            CancellationToken.None,
+            linearizedAtUtc: UtcNow.AddSeconds(2),
+            scannerCapabilityId: scannerCapabilityId);
+
+        await Assert.That(decision).IsNull();
+        Phase21Entities entities = Phase21PersistenceSurface.RequireEntities(
+            context.GetService<IDesignTimeModel>().Model);
+        await Assert.That(Phase21PersistenceSurface.CountRows(
+            context,
+            entities.CheckInEvent.ClrType)).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task ConcurrentScannerCapabilityIssuanceReturnsPlaintextOnceAndPersistsOneDigestOnlyRow()
     {
         Phase21PersistenceSurface surface = Phase21PersistenceSurface.RequirePublicSurface();
@@ -1135,7 +1235,6 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
         await using ExploreDbContext metadata = fixture.CreateDbContext();
         IEntityType scanner = Phase21PersistenceSurface.RequireEntities(
             metadata.GetService<IDesignTimeModel>().Model).Scanner;
-        string scannerTable = Phase21PersistenceSurface.DelimitedTableIdentifier(metadata, scanner);
         var barrier = new AsyncCommandBarrier(2);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
@@ -1168,8 +1267,8 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
             string plaintextCapability,
             string lookupDigest)
         {
-            var interceptor = new InsertBarrierInterceptor(barrier, scannerTable);
-            await using ExploreDbContext context = TenantContext(tenantId, interceptor);
+            await barrier.ArriveAsync(timeout.Token);
+            await using ExploreDbContext context = TenantContext(tenantId);
             await context.Database.OpenConnectionAsync(timeout.Token);
             await context.Database.ExecuteSqlRawAsync(
                 "SET session_replication_role = replica;", timeout.Token);
@@ -1469,8 +1568,12 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
         AdmissionCheckInUndoReasonCodeEnum? reasonCode,
         DateTime occurredAtUtc,
         CancellationToken cancellationToken,
-        Guid? checkInId = null) => new EfCoreUnitOfWork(context).ExecuteInTransactionAsync(
-        token => new AdmissionCheckInRepository(context).ExecuteAsync(
+        Guid? checkInId = null,
+        DateTime? linearizedAtUtc = null,
+        Guid? scannerCapabilityId = null) => new EfCoreUnitOfWork(context).ExecuteInTransactionAsync(
+        token => new AdmissionCheckInRepository(
+            context,
+            new FixedAdmissionTimeProvider(linearizedAtUtc ?? occurredAtUtc)).ExecuteAsync(
             new AdmissionCheckInTransactionRequest(
                 tenantId,
                 eventId,
@@ -1478,8 +1581,8 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
                 [new AdmissionCheckInCredentialDigestCandidate(digest, 7)],
                 action,
                 reasonCode,
-                Guid.CreateVersion7(),
-                null,
+                scannerCapabilityId.HasValue ? null : Guid.CreateVersion7(),
+                scannerCapabilityId,
                 new DateTimeOffset(occurredAtUtc),
                 checkInId),
             token),
@@ -1494,7 +1597,9 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
         CancellationToken cancellationToken)
     {
         var service = new AdmissionCheckInService(
-            new AdmissionCheckInRepository(context),
+            new AdmissionCheckInRepository(
+                context,
+                new FixedAdmissionTimeProvider(UtcNow)),
             new FixedAdmissionCredentialDigestService(digest),
             new AllowAdmissionCheckInAuthority(),
             new NoOpAdmissionCheckInTelemetry(),

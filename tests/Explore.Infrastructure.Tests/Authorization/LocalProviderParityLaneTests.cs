@@ -230,6 +230,7 @@ public sealed class LocalProviderParityLaneTests
         adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         adminContext.UserId.Returns(ParityCorpus.UserId);
+        ConfigureEventAuthority(eventAuthority, [], []);
 
         switch (subject)
         {

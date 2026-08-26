@@ -5,6 +5,7 @@ using Explore.API.Middleware;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 

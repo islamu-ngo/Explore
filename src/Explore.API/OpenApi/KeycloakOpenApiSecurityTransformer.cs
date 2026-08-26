@@ -66,6 +66,11 @@ internal sealed class KeycloakOpenApiSecurityTransformer(IConfiguration configur
         Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor actionDescriptor,
         OpenApiDocument document)
     {
+        if (operation.Security is { Count: > 0 })
+        {
+            return;
+        }
+
         var metadata = actionDescriptor.EndpointMetadata;
         IAuthorizeData[] authorization = metadata.OfType<IAuthorizeData>().ToArray();
         if (metadata.OfType<IAllowAnonymous>().Any()

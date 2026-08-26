@@ -95,7 +95,8 @@ public class ApiEndpointSmokeTests
 
             var response = await _fixture.Client.SendAsync(request);
             var isUnauthorized = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
-                || (IsSetupSecretProtected(description) && response.StatusCode == HttpStatusCode.Gone);
+                || (IsSetupSecretProtected(description) && response.StatusCode == HttpStatusCode.Gone)
+                || (IsAdmissionScannerEndpoint(description) && response.StatusCode == HttpStatusCode.NotFound);
 
             if (!isUnauthorized)
             {
@@ -157,6 +158,13 @@ public class ApiEndpointSmokeTests
     private static bool IsSetupSecretProtected(ApiDescription description)
     {
         return description.ActionDescriptor.EndpointMetadata.OfType<SetupSecretRequiredAttribute>().Any();
+    }
+
+    private static bool IsAdmissionScannerEndpoint(ApiDescription description)
+    {
+        return description.RelativePath?.StartsWith(
+            "api/admission/scanner/check-ins",
+            StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static bool IsHttpMethod(ApiDescription description, HttpMethod method)

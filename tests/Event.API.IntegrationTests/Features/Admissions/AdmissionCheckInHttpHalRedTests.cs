@@ -16,6 +16,7 @@ using Explore.API.Filters;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Admissions;
+using Explore.Application.DTOs.Admissions;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Exceptions;
 using Explore.Application.DTOs.RegistrationOrders;
@@ -366,7 +367,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
     }
 
     [Test]
-    public async Task AdmissionDependencyOutageReturnsPrivateBounded503ThatStopsClientQueues()
+    public async Task AdmissionDependencyOutageReturnsNoStoreBounded503ThatStopsClientQueues()
     {
         await using var factory = new AdmissionUnavailableFactory();
         using HttpClient client = factory.CreateClient();
@@ -391,12 +392,49 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         string body = await response.Content.ReadAsStringAsync();
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
-        await Assert.That(response.Headers.CacheControl?.Private).IsTrue();
         await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
+        await Assert.That(response.Headers.Pragma.Any(value =>
+            string.Equals(value.Name, "no-cache", StringComparison.OrdinalIgnoreCase))).IsTrue();
         await Assert.That(response.Headers.GetValues("Referrer-Policy")).Contains("no-referrer");
         await Assert.That(body).Contains("\"code\":\"admission_check_in_unavailable\"");
         await Assert.That(body).Contains("Stop queued scans");
         await Assert.That(body).DoesNotContain("bounded-outage-probe");
+    }
+
+    [Test]
+    public async Task AdmissionBatchDependencyOutageAbortsWithBounded503()
+    {
+        await using var factory = new AdmissionUnavailableFactory();
+        using HttpClient client = factory.CreateClient();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/events/{Guid.CreateVersion7():D}/admission/check-ins/batch")
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    targetId = Guid.CreateVersion7(),
+                    items = new[]
+                    {
+                        new { credential = "batch-outage-one" },
+                        new { credential = "batch-outage-two" }
+                    }
+                }),
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(Guid.CreateVersion7()));
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+        string body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+        await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
+        await Assert.That(body).Contains("\"code\":\"admission_check_in_unavailable\"");
+        await Assert.That(body).DoesNotContain("batch-outage-one");
+        await Assert.That(body).DoesNotContain("batch-outage-two");
     }
 
     [Test]
@@ -494,11 +532,13 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             BindingFlags.NonPublic | BindingFlags.Instance)!;
         var deniedStaff = (HalResource<AdmissionCheckInResultDto>)staffResource.Invoke(
             staff,
-            [eventId, result, false])!;
+            [eventId, result, false, false])!;
         var allowedStaff = (HalResource<AdmissionCheckInResultDto>)staffResource.Invoke(
             staff,
-            [eventId, result, true])!;
+            [eventId, result, true, true])!;
+        await Assert.That(deniedStaff.Links).DoesNotContainKey(LinkRelations.CheckInAdmissions);
         await Assert.That(deniedStaff.Links).DoesNotContainKey(LinkRelations.UndoAdmissionCheckIn);
+        await Assert.That(allowedStaff.Links).ContainsKey(LinkRelations.CheckInAdmissions);
         await Assert.That(allowedStaff.Links).ContainsKey(LinkRelations.UndoAdmissionCheckIn);
 
         var healthResult = new AdmissionCheckInHealthResult(
@@ -551,12 +591,19 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             return (HalResource<AdmissionCheckInResultDto>)scannerResource.Invoke(controller, [result])!;
         }
 
-        await Assert.That(ScannerResource(AdmissionCheckInAction.CheckIn).Links)
-            .DoesNotContainKey(LinkRelations.UndoAdmissionCheckIn);
-        await Assert.That(ScannerResource(
-                AdmissionCheckInAction.CheckIn,
-                AdmissionCheckInAction.Undo).Links)
-            .ContainsKey(LinkRelations.UndoAdmissionCheckIn);
+        HalResource<AdmissionCheckInResultDto> checkInOnly =
+            ScannerResource(AdmissionCheckInAction.CheckIn);
+        HalResource<AdmissionCheckInResultDto> undoOnly =
+            ScannerResource(AdmissionCheckInAction.Undo);
+        HalResource<AdmissionCheckInResultDto> both = ScannerResource(
+            AdmissionCheckInAction.CheckIn,
+            AdmissionCheckInAction.Undo);
+        await Assert.That(checkInOnly.Links).ContainsKey(LinkRelations.CheckInAdmissions);
+        await Assert.That(checkInOnly.Links).DoesNotContainKey(LinkRelations.UndoAdmissionCheckIn);
+        await Assert.That(undoOnly.Links).DoesNotContainKey(LinkRelations.CheckInAdmissions);
+        await Assert.That(undoOnly.Links).ContainsKey(LinkRelations.UndoAdmissionCheckIn);
+        await Assert.That(both.Links).ContainsKey(LinkRelations.CheckInAdmissions);
+        await Assert.That(both.Links).ContainsKey(LinkRelations.UndoAdmissionCheckIn);
     }
 
     [Test]
@@ -684,8 +731,12 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
 
         JsonElement auditProperties = Schema(document, "AdmissionCheckInAuditPageDto").GetProperty("properties");
         JsonElement auditItemProperties = Schema(document, "AdmissionCheckInAuditItemDto").GetProperty("properties");
-        await Assert.That(auditProperties.GetProperty("nextCursor").GetProperty("type").GetString()).IsEqualTo("string");
-        await Assert.That(auditItemProperties.GetProperty("cursor").GetProperty("type").GetString()).IsEqualTo("string");
+        await Assert.That(HasJsonType(
+            auditProperties.GetProperty("nextCursor"),
+            "string")).IsTrue();
+        await Assert.That(HasJsonType(
+            auditItemProperties.GetProperty("cursor"),
+            "string")).IsTrue();
         foreach (string forbidden in new[]
                  {
                      "tenantId", "eventId", "targetId", "actorId", "capabilityId", "deviceLabel", "reason",
@@ -910,6 +961,16 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
 
     private static JsonElement Schema(JsonDocument document, string name) => document.RootElement
         .GetProperty("components").GetProperty("schemas").GetProperty(name);
+
+    private static bool HasJsonType(JsonElement schema, string expected)
+    {
+        JsonElement type = schema.GetProperty("type");
+        return type.ValueKind == JsonValueKind.String
+            ? string.Equals(type.GetString(), expected, StringComparison.Ordinal)
+            : type.ValueKind == JsonValueKind.Array &&
+              type.EnumerateArray().Any(value =>
+                  string.Equals(value.GetString(), expected, StringComparison.Ordinal));
+    }
 
     private static int SuccessStatus(JsonElement operation) => operation.GetProperty("responses")
         .EnumerateObject().Select(response => int.Parse(response.Name, System.Globalization.CultureInfo.InvariantCulture))

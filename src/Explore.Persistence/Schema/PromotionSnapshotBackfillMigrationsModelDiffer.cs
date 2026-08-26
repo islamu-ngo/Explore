@@ -1,5 +1,5 @@
-// ABOUTME: Adds generated backfill SQL for promotion-era monetary snapshot columns.
-// ABOUTME: Keeps historical registration orders and lines value-preserving when EF scaffolds migrations.
+// ABOUTME: Adds generated backfill SQL for portable columns that cannot be provider-computed.
+// ABOUTME: Keeps historical monetary snapshots and canonical admission scopes value-preserving.
 
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -30,6 +30,7 @@ internal sealed class PromotionSnapshotBackfillMigrationsModelDiffer(
     {
         var operations = base.GetDifferences(source, target).ToList();
         InsertAfterAddedSnapshotColumns(operations);
+        InsertAdmissionEntitlementScopeBackfill(operations);
         return operations;
     }
 
@@ -79,6 +80,34 @@ internal sealed class PromotionSnapshotBackfillMigrationsModelDiffer(
         operations.Insert(insertAfter + 1, new SqlOperation
         {
             Sql = BuildBackfillSql(template.Schema, template.Table, legacyColumn, snapshotColumns)
+        });
+    }
+
+    private static void InsertAdmissionEntitlementScopeBackfill(
+        List<MigrationOperation> operations)
+    {
+        int insertAfter = operations.FindIndex(operation =>
+            operation is AddColumnOperation
+            {
+                Name: "scope_id",
+                ComputedColumnSql: null
+            } addColumn &&
+            addColumn.Table.EndsWith(
+                "ticket_type_entitlements",
+                StringComparison.Ordinal));
+        if (insertAfter < 0 ||
+            operations[insertAfter] is not AddColumnOperation scopeColumn)
+        {
+            return;
+        }
+
+        string qualifiedTable = scopeColumn.Schema is null
+            ? scopeColumn.Table
+            : $"{scopeColumn.Schema}.{scopeColumn.Table}";
+        operations.Insert(insertAfter + 1, new SqlOperation
+        {
+            Sql = $"UPDATE {qualifiedTable} SET scope_id = " +
+                  "COALESCE(event_session_id, event_day_id, target_event_id);"
         });
     }
 

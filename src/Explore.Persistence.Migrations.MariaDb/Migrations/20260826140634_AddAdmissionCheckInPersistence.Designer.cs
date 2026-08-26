@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260826134353_AddAdmissionCheckInPersistence")]
+    [Migration("20260826140634_AddAdmissionCheckInPersistence")]
     partial class AddAdmissionCheckInPersistence
     {
         /// <inheritdoc />

@@ -135,34 +135,18 @@ public sealed class AdmissionCheckInService(
         {
             foreach (AdmissionCheckInBatchItem item in request.Items)
             {
-                AdmissionCheckInResult result;
-                try
-                {
-                    result = await ProcessAsync(
-                        new AdmissionCheckInRequest(
-                            request.TenantId,
-                            request.EventId,
-                            request.TargetId,
-                            item.Credential,
-                            item.Action,
-                            item.ReasonCode,
-                            request.StaffActorId,
-                            request.ScannerCapabilityId,
-                            item.CheckInId),
-                        cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (AdmissionCheckInUnavailableException)
-                {
-                    result = new AdmissionCheckInResult(
-                        AdmissionCheckInOutcome.Unavailable,
+                AdmissionCheckInResult result = await ProcessAsync(
+                    new AdmissionCheckInRequest(
+                        request.TenantId,
+                        request.EventId,
                         request.TargetId,
-                        default,
-                        null);
-                }
+                        item.Credential,
+                        item.Action,
+                        item.ReasonCode,
+                        request.StaffActorId,
+                        request.ScannerCapabilityId,
+                        item.CheckInId),
+                    cancellationToken);
                 results.Add(new AdmissionCheckInBatchItemResult(
                     item.Index,
                     result.Outcome,

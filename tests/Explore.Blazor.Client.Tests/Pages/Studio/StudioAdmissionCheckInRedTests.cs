@@ -107,8 +107,63 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='manual-admission-input']").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("[data-testid='hid-admission-input']").Count).IsEqualTo(1);
         await Assert.That(cut.Find("label[for='manual-admission-input']").TextContent.Trim()).IsNotEmpty();
-        await Assert.That(cut.FindAll("[data-testid='camera-fallback'][role='status']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='camera-fallback']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='start-camera-scan']")).IsEmpty();
+        await _focus.Received().FocusAsync("#manual-admission-input", Arg.Any<bool>());
         await Assert.That(_service.Calls).IsEmpty();
+    }
+
+    [Test]
+    [Arguments(
+        AdmissionQrScanOutcome.NoCode,
+        "No QR code was detected. Reposition the code and try again.")]
+    [Arguments(
+        AdmissionQrScanOutcome.MultipleAmbiguous,
+        "Multiple QR codes were detected. Show one code at a time.")]
+    [Arguments(
+        AdmissionQrScanOutcome.Invalid,
+        "The detected QR code is not a valid admission credential.")]
+    public async Task RetriableCameraOutcomesKeepCameraAvailableWithAccurateFeedback(
+        AdmissionQrScanOutcome outcome,
+        string expectedMessage)
+    {
+        _scanner.DetectAsync(Arg.Any<ElementReference>(), Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScanResult(outcome));
+        var cut = Render(Event(CheckInRelation));
+
+        await cut.Find("[data-testid='start-camera-scan']").ClickAsync(new MouseEventArgs());
+
+        await Assert.That(cut.FindAll("[data-testid='start-camera-scan']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='camera-fallback']")).IsEmpty();
+        await Assert.That(cut.Find("[data-testid='camera-scan-status']").TextContent.Trim())
+            .IsEqualTo(expectedMessage);
+    }
+
+    [Test]
+    public async Task CameraActionUsesAppButtonBusyStateToPreventConcurrentDetection()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var result = new TaskCompletionSource<AdmissionQrScanResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _scanner.DetectAsync(Arg.Any<ElementReference>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                started.TrySetResult();
+                return result.Task;
+            });
+        var cut = Render(Event(CheckInRelation));
+
+        Task click = cut.Find("[data-testid='start-camera-scan']")
+            .ClickAsync(new MouseEventArgs());
+        await started.Task;
+
+        var button = cut.Find("[data-testid='start-camera-scan']");
+        await Assert.That(button.HasAttribute("disabled")).IsTrue();
+        await Assert.That(button.GetAttribute("aria-busy")).IsEqualTo("true");
+        result.SetResult(new AdmissionQrScanResult(AdmissionQrScanOutcome.NoCode));
+        await click;
+        await Assert.That(cut.Find("[data-testid='start-camera-scan']")
+            .HasAttribute("disabled")).IsFalse();
     }
 
     [Test]
@@ -169,7 +224,11 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         int depth = int.Parse(
             cut.Find("[data-testid='admission-queue-depth']").GetAttribute("data-depth")!,
             CultureInfo.InvariantCulture);
+        var queueDepth = cut.Find("[data-testid='admission-queue-depth']");
         await Assert.That(depth).IsLessThanOrEqualTo(QueueCapacity);
+        await Assert.That(queueDepth.TextContent.Trim()).IsEqualTo($"{depth} pending");
+        await Assert.That(queueDepth.HasAttribute("aria-label")).IsFalse();
+        await Assert.That(queueDepth.GetAttribute("aria-live")).IsEqualTo("polite");
         await Assert.That(cut.FindAll("[data-testid='admission-queue-saturated'][role='alert']").Count).IsEqualTo(1);
         _service.ReleaseHeldResults("CheckedIn");
     }
@@ -217,6 +276,24 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         await Assert.That(cut.Find("[data-testid='admission-queue-depth']").TagName).IsEqualTo("SPAN");
         await Assert.That(cut.FindAll("audio, [data-feedback-only='color'], [data-feedback-only='sound']")).IsEmpty();
         await _announcer.DidNotReceive().AnnouncePoliteAsync(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task RepeatedIdenticalOutcomesReplaceTheLiveAnnouncementNode()
+    {
+        _service.EnqueueResult("CheckedIn");
+        _service.EnqueueResult("CheckedIn");
+        var cut = Render(Event(CheckInRelation));
+
+        await Submit(cut, "manual-admission-input", Bearer(126));
+        string firstSequence = cut.Find("[data-testid='admission-live-region']")
+            .GetAttribute("data-announcement-sequence")!;
+        await Submit(cut, "manual-admission-input", Bearer(127));
+
+        var liveRegion = cut.Find("[data-testid='admission-live-region']");
+        await Assert.That(liveRegion.GetAttribute("data-announcement-sequence"))
+            .IsNotEqualTo(firstSequence);
+        await Assert.That(liveRegion.TextContent.Trim()).IsEqualTo("Admission accepted.");
     }
 
     [Test]
