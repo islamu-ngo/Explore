@@ -259,7 +259,7 @@ public sealed class AddressGovernancePolicyTests
 
         object response = await InvokeTaskResultAsync(handler, "Handle", command, CancellationToken.None);
 
-        await Assert.That(RequiredBoolean(response, "Success")).IsFalse();
+        await Assert.That(RequiredBoolean(response, "IsSuccess")).IsFalse();
         string[] errors = ((IEnumerable<string>)RequiredProperty(response, "Errors")).ToArray();
         await Assert.That(errors).Count().IsEqualTo(2);
         await Assert.That(locations.ReceivedCalls()).IsEmpty();
@@ -312,7 +312,7 @@ public sealed class AddressGovernancePolicyTests
 
         object response = await InvokeTaskResultAsync(handler, "Handle", command, CancellationToken.None);
 
-        await Assert.That(RequiredBoolean(response, "Success")).IsFalse();
+        await Assert.That(RequiredBoolean(response, "IsSuccess")).IsFalse();
         await Assert.That(locations.ReceivedCalls()).IsEmpty();
         await Assert.That(authorization.ReceivedCalls()).IsEmpty();
     }
@@ -338,7 +338,7 @@ public sealed class AddressGovernancePolicyTests
 
         object response = await InvokeTaskResultAsync(handler, "Handle", command, CancellationToken.None);
 
-        await Assert.That(RequiredBoolean(response, "Success")).IsFalse();
+        await Assert.That(RequiredBoolean(response, "IsSuccess")).IsFalse();
         await Assert.That(authorization.ReceivedCalls()).IsEmpty();
         await locations.DidNotReceive().Update(Arg.Any<Location>(), Arg.Any<CancellationToken>());
     }
@@ -500,7 +500,7 @@ public sealed class AddressGovernancePolicyTests
             ExpectedConcurrencyStamp = originalStamp
         }, CancellationToken.None);
 
-        await Assert.That(response.Success).IsTrue();
+        await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(location.DisplaySortKeyVersion).IsEqualTo((short)1);
         await Assert.That(location.Pii.AddressSubstringKeyVersion).IsEqualTo((short)1);
         await Assert.That(location.ConcurrencyStamp).IsNotEqualTo(originalStamp);
@@ -512,7 +512,7 @@ public sealed class AddressGovernancePolicyTests
     {
         PromotionExecution execution = await ExecutePromotionAsync(PromotionCase.Success);
 
-        await Assert.That(RequiredBoolean(execution.Response, "Success")).IsTrue();
+        await Assert.That(RequiredBoolean(execution.Response, "IsSuccess")).IsTrue();
         await Assert.That(RequiredProperty(execution.Location, "AddressVisibility").ToString()).IsEqualTo("TenantApproved");
         await Assert.That(RequiredProperty(execution.Location, "AddressSource").ToString()).IsEqualTo("Manual");
         await Assert.That(execution.Location.Pii?.Address).IsEqualTo(execution.AddressBefore);
@@ -557,7 +557,7 @@ public sealed class AddressGovernancePolicyTests
 
         bool success = execution.Response is Exception
             ? false
-            : RequiredBoolean(execution.Response, "Success");
+            : RequiredBoolean(execution.Response, "IsSuccess");
         await Assert.That(success).IsEqualTo(expectedSuccess);
         await Assert.That(execution.UpdateCalls).IsEqualTo(expectedUpdates);
         await Assert.That(Snapshot(execution.Location)).IsEqualTo(execution.Before);
@@ -572,7 +572,7 @@ public sealed class AddressGovernancePolicyTests
     {
         PromotionExecution execution = await ExecutePromotionAsync(promotionCase);
 
-        await Assert.That(RequiredBoolean(execution.Response, "Success")).IsTrue();
+        await Assert.That(RequiredBoolean(execution.Response, "IsSuccess")).IsTrue();
         await Assert.That(RequiredProperty(execution.Location, "AddressSource").ToString()).IsEqualTo(expectedSource);
         await Assert.That(RequiredProperty(execution.Location, "AddressVisibility").ToString()).IsEqualTo("TenantApproved");
         await Assert.That(execution.UpdateCalls).IsEqualTo(1);
@@ -639,7 +639,7 @@ public sealed class AddressGovernancePolicyTests
         await Assert.That(committedUpdates).IsEqualTo(1);
         await Assert.That(staleResults).IsEqualTo(1);
         await Assert.That(outcomes.Count(outcome => outcome is ConcurrencyConflictException)).IsEqualTo(1);
-        await Assert.That(outcomes.Count(outcome => outcome is not Exception && RequiredBoolean(outcome, "Success"))).IsEqualTo(1);
+        await Assert.That(outcomes.Count(outcome => outcome is not Exception && RequiredBoolean(outcome, "IsSuccess"))).IsEqualTo(1);
     }
 
     [Test]

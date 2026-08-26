@@ -408,11 +408,11 @@ chains.
 
 | Provider | Migration head | History contract |
 |---|---|---|
-| PostgreSQL | `20260826043431_AddLocationAddressGovernance` | Retained incremental upgrade history |
-| SQLite | `20260826054219_InitialApplication` | Development rebaseline; database recreation required |
-| SQL Server | `20260826065615_InitialApplication` | Development rebaseline; database recreation required |
-| MariaDB | `20260826065711_InitialApplication` | Development rebaseline; database recreation required |
-| MySQL | `20260826065808_InitialApplication` | Development rebaseline; database recreation required |
+| PostgreSQL | `20260826183441_AddAdmissionCheckInAndLocationAddressGovernance` | Retained incremental upgrade history reconciled over the shared semantic-value predecessor |
+| SQLite | `20260826181008_InitialApplication` | Development rebaseline; database recreation required |
+| SQL Server | `20260826181024_InitialApplication` | Development rebaseline; database recreation required |
+| MariaDB | `20260826181039_InitialApplication` | Development rebaseline; database recreation required |
+| MySQL | `20260826181054_InitialApplication` | Development rebaseline; database recreation required |
 
 A deployment applies only its selected provider assembly through `Event.MigrationService`; never apply
 multiple provider chains to one database or hand-edit a migration, designer, or snapshot.

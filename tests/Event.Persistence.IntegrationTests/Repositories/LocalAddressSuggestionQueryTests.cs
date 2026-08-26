@@ -264,21 +264,25 @@ public sealed class LocalAddressSuggestionQueryTests(PostgreSqlContainerFixture 
         (string projection, string predicate) = SplitSelectAndWhere(sql);
         foreach (string authorityColumn in new[]
         {
-            "tenant_id", "address_visibility", "created_by", "address_organization_id", "user_id",
+            "tenant_id", "created_by", "address_organization_id", "user_id",
             "organization_tenant_id", "organization_id", "approval_status_id", "is_suspended", "is_deleted"
         })
         {
             await Assert.That(predicate).Contains(authorityColumn);
             await Assert.That(projection).DoesNotContain(authorityColumn);
         }
-        foreach (string resultColumn in new[] { "id", "full_name", "address", "postcode" })
+        foreach (string resultColumn in new[]
+        {
+            "id", "concurrency_stamp", "full_name", "address", "postcode",
+            "address_source_id", "address_visibility_id", "country", "city", "timezone"
+        })
         {
             await Assert.That(projection).Contains(resultColumn);
         }
         foreach (string forbiddenColumn in new[]
         {
-            "latitude", "longitude", "country", "city", "timezone", "owner_user_id", "pii_erased_at_utc",
-            "location_kind_id", "location_privacy_state_id", "concurrency_stamp", "created_at", "updated_at",
+            "latitude", "longitude", "owner_user_id", "pii_erased_at_utc",
+            "location_kind_id", "location_privacy_state_id", "created_at", "updated_at",
             "address_substring_key", "address_substring_key_version", "display_sort_key", "display_sort_key_version"
         })
         {

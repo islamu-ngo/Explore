@@ -30,10 +30,11 @@ Impacts:
     Reference: schemas/islamu-event.md
     Disposition: documented
     Detail: >-
-      Apply the generated PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL
-      PersistSemanticValueConstraints migrations. They add four reversible
-      owner-table checks, with pre-DDL malformed-row rejection for
-      non-transactional providers.
+      PostgreSQL retains the generated PersistSemanticValueConstraints
+      migration. The development-only SQLite, SQL Server, MariaDB, and MySQL
+      rebaselines include the same constraints in their current
+      InitialApplication migrations. The checks protect four owner tables and
+      reject malformed rows before non-transactional DDL.
   Configuration:
     Reference: docs/BLAZOR.md
     Disposition: not-applicable

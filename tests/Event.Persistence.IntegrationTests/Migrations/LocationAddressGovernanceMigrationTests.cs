@@ -25,7 +25,7 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 [NotInParallel("PersistenceDb")]
 public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerFixture fixture)
 {
-    private const string GovernanceMigrationSuffix = "AddLocationAddressGovernance";
+    private const string GovernanceMigrationSuffix = "LocationAddressGovernance";
     private static readonly Guid TenantId = Id(1);
     private static readonly Guid ForeignTenantId = Id(2);
     private static readonly Guid LocationId = Id(3);
@@ -34,11 +34,11 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
     private static readonly Guid ActorId = Id(6);
 
     [Test]
-    [Arguments("PostgreSql", "20260826043431_AddLocationAddressGovernance", true)]
-    [Arguments("Sqlite", "20260826054219_InitialApplication", false)]
-    [Arguments("SqlServer", "20260826065615_InitialApplication", false)]
-    [Arguments("MariaDb", "20260826065711_InitialApplication", false)]
-    [Arguments("MySql", "20260826065808_InitialApplication", false)]
+    [Arguments("PostgreSql", "20260826183441_AddAdmissionCheckInAndLocationAddressGovernance", true)]
+    [Arguments("Sqlite", "20260826181008_InitialApplication", false)]
+    [Arguments("SqlServer", "20260826181024_InitialApplication", false)]
+    [Arguments("MariaDb", "20260826181039_InitialApplication", false)]
+    [Arguments("MySql", "20260826181054_InitialApplication", false)]
     public async Task ProviderMigrationTopologyMatchesRetainedOrDevelopmentRebaselineContract(
         string provider,
         string expectedHead,

@@ -155,7 +155,7 @@ public sealed class LocationPrivateHomeApiTests
         BaseCommandResponse<Guid>? body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(body?.Success).IsTrue();
+        await Assert.That(body?.IsSuccess).IsTrue();
         await Assert.That(location.LocationKindId).IsEqualTo((int)LocationKindEnum.PrivateHome);
         await Assert.That(location.OwnerUserId).IsEqualTo(actorId);
         await repository.Received(1).Update(location);

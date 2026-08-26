@@ -230,14 +230,10 @@ public sealed class SemanticCoordinatePersistenceTests(RecipientDeliveryMigratio
             TenantContext = new TestTenantContext(tenantId)
         };
         Location loaded = await context.Locations.SingleAsync(x => x.Id == locationId);
-        loaded.AttachPii(new LocationPii
-        {
-            LocationId = locationId,
-            Address = sentinelAddress,
-            Postcode = sentinelPostcode,
-            Latitude = 50.123456789,
-            Longitude = null
-        });
+        loaded.SetProviderAddress(
+            $"{sentinelAddress}{new string('x', 500)}",
+            sentinelPostcode,
+            GeoCoordinate.Create(50.123456789, 4));
         DbUpdateException? exception = await Assert.That(async () => await context.SaveChangesAsync())
             .Throws<DbUpdateException>();
         string[] forbidden =

@@ -3,7 +3,7 @@
 
 # I-VSD Review - Address Geocoding And Spatial Discovery
 
-Last Updated: 2026-08-25
+Last Updated: 2026-08-26
 
 ## Scope
 
@@ -19,7 +19,7 @@ Out of scope:
 
 - a halal/haram, makrooh/wajib, or Sharia-compliance ruling;
 - certification that the implementation or product is ethical, private, secure, lawful, or accessible;
-- implementation evidence, because runtime work has not started;
+- independent production, stakeholder, and assistive-technology validation beyond the repository evidence;
 - map-provider selection and alternative geocoders, which are deferred.
 
 ## Claim Boundary
@@ -160,10 +160,10 @@ Provider questions before implementation:
 
 ## Validation Gaps
 
-- No runtime implementation or Red/Green evidence exists yet.
+- Repository implementation and focused Red/Green evidence now exist, but no production deployment evidence exists.
 - No stakeholder interviews with private-home residents, organizers, disabled users, tenant administrators, support staff, or self-hosters were reviewed.
 - No formal privacy impact assessment, threat model workshop, or data-retention schedule was provided.
-- Photon production topology, capacity, regional/planet dataset, support, DPA/privacy position, terms and attribution are not approved.
+- Photon remains disabled by default; each operator must approve and own its production topology, capacity, dataset, support, privacy position, terms and attribution before enablement.
 - No representative query volume, latency evidence, alert ownership, or incident history exists.
 - No independent accessibility audit or assistive-technology evidence exists.
 - ADR-013 has no acceptance decider/date and its current location-wide model needs the plan's disclosure/lifecycle correction.

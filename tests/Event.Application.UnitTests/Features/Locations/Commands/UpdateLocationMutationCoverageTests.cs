@@ -39,7 +39,7 @@ public sealed class UpdateLocationMutationCoverageTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.NotFound);
         await context.Locations.DidNotReceive().Update(Arg.Any<Location>(), Arg.Any<CancellationToken>());
     }
@@ -55,7 +55,7 @@ public sealed class UpdateLocationMutationCoverageTests
             Command(location, address: "Changed address"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.Address).IsEqualTo("Changed address");
         await Assert.That(location.Postcode).IsEqualTo("1000");
         await AssertPolicyRequest(context, CancellationToken.None);
@@ -73,7 +73,7 @@ public sealed class UpdateLocationMutationCoverageTests
             Command(location, postcode: "2000"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.Address).IsEqualTo("Existing address");
         await Assert.That(location.Postcode).IsEqualTo("2000");
         await AssertPolicyRequest(context, CancellationToken.None);
@@ -97,7 +97,7 @@ public sealed class UpdateLocationMutationCoverageTests
             Command(location, address: "Existing address", postcode: "1000"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.GetCoordinate()).IsNull();
         await Assert.That(location.AddressSource).IsEqualTo(LocationAddressSourceEnum.Manual);
         await Assert.That(location.AddressVisibility).IsEqualTo(LocationAddressVisibilityEnum.CreatorPrivate);
@@ -120,7 +120,7 @@ public sealed class UpdateLocationMutationCoverageTests
             Command(location, address: "Existing address", postcode: "1000"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.ConcurrencyStamp).IsEqualTo(originalStamp);
         await context.Governance.DidNotReceive().ResolveAsync(
             Arg.Any<AddressGovernancePolicyRequest>(),
@@ -143,7 +143,7 @@ public sealed class UpdateLocationMutationCoverageTests
             Command(location, address: "Changed address"),
             CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(location.Address).IsEqualTo("Existing address");
         await Assert.That(location.GetCoordinate()).IsNotNull();
         await Assert.That(location.ConcurrencyStamp).IsEqualTo(originalStamp);
@@ -189,7 +189,7 @@ public sealed class UpdateLocationMutationCoverageTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.FullName).IsEqualTo("Changed venue");
         await Assert.That(location.GetCoordinate()).IsNotNull();
         await Assert.That(location.AddressSource).IsEqualTo(LocationAddressSourceEnum.ProviderSelection);
@@ -232,7 +232,7 @@ public sealed class UpdateLocationMutationCoverageTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.Country).IsEqualTo("NL");
         await context.Locations.Received(1).Update(location, CancellationToken.None);
     }
@@ -254,7 +254,7 @@ public sealed class UpdateLocationMutationCoverageTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.City).IsEqualTo("Rotterdam");
         await context.Locations.Received(1).Update(location, CancellationToken.None);
     }
@@ -279,7 +279,7 @@ public sealed class UpdateLocationMutationCoverageTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(location.Timezone).IsEqualTo("Europe/Amsterdam");
         await context.Locations.Received(1).Update(location, CancellationToken.None);
     }

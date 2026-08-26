@@ -1,6 +1,7 @@
 // ABOUTME: Specifies GeoCoordinate ownership at Location PII mutation boundaries.
 // ABOUTME: Covers atomic absence, exact values, manual replacement, redaction, and erasure.
 
+using System.Reflection;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 
@@ -23,7 +24,9 @@ public sealed class LocationCoordinateInvariantTests
         await Assert.That(exact.GetCoordinate()).IsEqualTo(coordinate);
         await Assert.That(exact.Latitude).IsEqualTo(coordinate.Latitude);
         await Assert.That(exact.Longitude).IsEqualTo(coordinate.Longitude);
-        await Assert.That(typeof(LocationPii).GetMethod(nameof(LocationPii.Create))!
+        await Assert.That(typeof(LocationPii).GetMethod(
+                    nameof(LocationPii.Create),
+                    BindingFlags.Static | BindingFlags.NonPublic)!
                 .GetParameters()[2].ParameterType)
             .IsEqualTo(typeof(GeoCoordinate));
     }
@@ -37,8 +40,6 @@ public sealed class LocationCoordinateInvariantTests
         location.SetProviderAddress("Rue Provider 30", "1000", coordinate);
 
         await Assert.That(location.GetCoordinate()).IsEqualTo(coordinate);
-        await Assert.That(location.Latitude).IsEqualTo(coordinate.Latitude);
-        await Assert.That(location.Longitude).IsEqualTo(coordinate.Longitude);
     }
 
     [Test]
@@ -65,8 +66,6 @@ public sealed class LocationCoordinateInvariantTests
         await Assert.That(location.Address).IsEqualTo("Manual address");
         await Assert.That(location.Postcode).IsEqualTo("2000");
         await Assert.That(location.GetCoordinate()).IsNull();
-        await Assert.That(location.Latitude).IsNull();
-        await Assert.That(location.Longitude).IsNull();
     }
 
     [Test]
@@ -80,8 +79,6 @@ public sealed class LocationCoordinateInvariantTests
 
         await Assert.That(location.Pii).IsNull();
         await Assert.That(location.GetCoordinate()).IsNull();
-        await Assert.That(location.Latitude).IsNull();
-        await Assert.That(location.Longitude).IsNull();
         await Assert.That(() => location.SetProviderAddress(
                 "Resurrected address",
                 "9999",

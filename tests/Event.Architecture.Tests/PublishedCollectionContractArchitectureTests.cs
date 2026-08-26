@@ -72,7 +72,7 @@ public sealed class PublishedCollectionContractArchitectureTests
         await Assert.That(HasFailure(failures, "stale")).IsTrue();
         await Assert.That(HasFailure(failures, "not generated")).IsTrue();
         await Assert.That(GeneratedClientRecordNames.Value.Count)
-            .IsEqualTo(653);
+            .IsEqualTo(666);
         await Assert.That(IsGenerated(typeof(ActorDto))).IsTrue();
     }
 

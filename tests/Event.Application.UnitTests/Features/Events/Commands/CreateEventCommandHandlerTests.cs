@@ -1177,7 +1177,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.TenantId).IsEqualTo(tenantId);
         await Assert.That(capturedRequest.ActorId).IsEqualTo(actorId);
@@ -1221,7 +1221,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(capturedRequest!.OrganizationId).IsNull();
         await _actorResolver.Received(1).ResolveAsync(userId, null, groupId, Arg.Any<CancellationToken>());
     }
@@ -1250,7 +1250,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event creation failed.");
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<Guid>>>(),
@@ -1334,7 +1334,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.Title == "Mapped Event"
             && entity.Subtitle == "Mapped subtitle"
@@ -1386,7 +1386,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
             entity.Slug == "default-aggregate-values"
             && entity.VisibilityTypeId == 1
@@ -1416,7 +1416,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
         await Assert.That(actorId).IsNotEqualTo(Guid.Empty);
         await Assert.That(userId).IsNotEqualTo(Guid.Empty);
@@ -1439,7 +1439,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _storageObjectRepository.Received(1).Update(Arg.Is<StorageObject>(value =>
             ReferenceEquals(value, image) && value.ActorId == actorId));
     }
@@ -1616,7 +1616,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(measurement).IsGreaterThanOrEqualTo(1);
         await Assert.That(measuredTags.SelectMany(tags => tags)).IsEmpty();
     }
@@ -1723,7 +1723,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.Received(1).Update(Arg.Is<Explore.Domain.Event>(entity =>
             entity.SourceTemplateId == eventTemplateId
             && entity.SourceTemplateKey == "event-template"
@@ -1802,7 +1802,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
         _instantiationService.DidNotReceiveWithAnyArgs().InstantiateFromTemplate(default, default, default!, default!);
         await _eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
@@ -1956,7 +1956,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(createdDays.Select(day => day.LocalDate)).IsEquivalentTo([
             new DateOnly(2033, 3, 10),
             new DateOnly(2033, 3, 11),
@@ -2056,7 +2056,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event creation failed.");
         await Assert.That(result.FailureCode).IsEqualTo("room_schedule_conflict");
         await Assert.That(result.Errors).Count().IsEqualTo(1);
@@ -2115,7 +2115,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var existingLocationSession = capturedSessions.Single(session => session.Title == "Existing location");
         var roomDerivedSession = capturedSessions.Single(session => session.Title == "Room-derived location");
         await Assert.That(existingLocationSession.LocationId).IsEqualTo(existingLocationId);
@@ -2148,7 +2148,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(createdLocation).IsNotNull();
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
             session.LocationId == createdLocation!.Id && session.RoomId == null));
@@ -2206,7 +2206,7 @@ public class CreateEventCommandHandlerTests
             }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.IsSuccess).IsTrue();
         var selectedRoom = rooms.Single(room => room.Name == "Low Sort");
         var selectedLocation = locations.Single(location => location.Pii.Address == "Selected address");
         await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>

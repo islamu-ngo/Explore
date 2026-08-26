@@ -32,10 +32,10 @@ Impacts:
     Reference: docs/OPERATIONS.md
     Disposition: documented
     Detail: >-
-      Generated migrations for PostgreSQL, SQLite, SQL Server, MariaDB, and
-      MySQL add address governance, visibility, organization scope, provenance,
-      derived search keys, and supporting indexes. Apply only the configured
-      provider migration chain using the normal migration workflow.
+      PostgreSQL adds one reconciled incremental admission/address-governance
+      head over the shared semantic-value predecessor. Development-only SQLite,
+      SQL Server, MariaDB, and MySQL use current-model InitialApplication
+      rebaselines. Apply only the configured provider chain.
   Configuration:
     Reference: docs/CONFIGURATION.md
     Disposition: documented

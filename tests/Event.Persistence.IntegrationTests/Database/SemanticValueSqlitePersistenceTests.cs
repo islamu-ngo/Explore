@@ -54,20 +54,20 @@ public sealed class SemanticValueSqlitePersistenceTests
     [Test]
     public async Task Coordinates_RoundTripAbsentAndPresentPairsThroughLocationPiiApi()
     {
-        var absent = LocationPii.Create("No coordinate street", "1000", null);
+        Location absent = CreateLocation("No coordinate street", "1000", null);
         LocationPii reloadedAbsent;
         await using (ExploreDbContext absentContext = await CreateContextAsync())
         {
-            absentContext.Add(CreateLocation(absent));
+            absentContext.Add(absent);
             await absentContext.SaveChangesAsync();
             absentContext.ChangeTracker.Clear();
             reloadedAbsent = (await absentContext.Set<Location>().AsNoTracking().SingleAsync()).Pii!;
         }
 
         GeoCoordinate expected = GeoCoordinate.Create(50.8503, 4.3517);
-        var present = LocationPii.Create("Coordinate street", "1000", expected);
+        Location present = CreateLocation("Coordinate street", "1000", expected);
         await using ExploreDbContext presentContext = await CreateContextAsync();
-        presentContext.Add(CreateLocation(present));
+        presentContext.Add(present);
         await presentContext.SaveChangesAsync();
         presentContext.ChangeTracker.Clear();
         LocationPii reloadedPresent = (await presentContext.Set<Location>().AsNoTracking().SingleAsync()).Pii!;
@@ -216,22 +216,32 @@ public sealed class SemanticValueSqlitePersistenceTests
         TenantId = Guid.CreateVersion7(), Tenant = null!, ConcurrencyStamp = Guid.CreateVersion7()
     };
 
-    private static Location CreateLocation(LocationPii pii)
+    private static Location CreateLocation(
+        string address,
+        string postcode,
+        GeoCoordinate? coordinate)
     {
-        Guid locationId = Guid.CreateVersion7();
-        pii.LocationId = locationId;
-        return new Location
+        var location = new Location
         {
-            Id = locationId,
+            Id = Guid.CreateVersion7(),
             FullName = "Semantic location",
             Country = "BE",
             City = "Brussels",
-            Pii = pii,
             TenantId = Guid.CreateVersion7(),
             Tenant = null!,
             CreatedAt = CreatedAt,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        if (coordinate is null)
+        {
+            location.SetManualAddress(address, postcode);
+        }
+        else
+        {
+            location.SetProviderAddress(address, postcode, coordinate);
+        }
+
+        return location;
     }
 
     private static async Task SeedCarrierAsync(ExploreDbContext context, InvariantMutation mutation)
@@ -262,8 +272,10 @@ public sealed class SemanticValueSqlitePersistenceTests
             case InvariantMutation.LatitudeBelowRange:
             case InvariantMutation.LongitudeAboveRange:
             case InvariantMutation.LongitudeBelowRange:
-                LocationPii pii = LocationPii.Create("Invariant coordinate street", "1000", GeoCoordinate.Create(50.8503, 4.3517));
-                context.Add(CreateLocation(pii));
+                context.Add(CreateLocation(
+                    "Invariant coordinate street",
+                    "1000",
+                    GeoCoordinate.Create(50.8503, 4.3517)));
                 break;
             case InvariantMutation.ReversedAgendaLocalDates:
             case InvariantMutation.ReversedAgendaUtcRange:

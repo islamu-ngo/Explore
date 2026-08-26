@@ -32,8 +32,8 @@
         "source": "local",
         "event": {
           "id": "Guid_1",
-          "title": "Published Visibility Event a36c4ab75b3349ae81892779b7aaf9f5",
-          "publicCode": "a0f212576293",
+          "title": "Published Visibility Event 33f4df77372047bea43b52e5468e11fc",
+          "publicCode": "c1308f48fd8e",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -71,22 +71,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/ca86c0ef-74bf-470c-9aab-d675ed1a8aa9",
-            "title": "Published Visibility Event a36c4ab75b3349ae81892779b7aaf9f5",
+            "href": "/api/event/0fe9a6e6-4ca1-48ad-b354-3ea403484699",
+            "title": "Published Visibility Event 33f4df77372047bea43b52e5468e11fc",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/ca86c0ef-74bf-470c-9aab-d675ed1a8aa9",
+            "href": "/api/eventsession/by-event/0fe9a6e6-4ca1-48ad-b354-3ea403484699",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/0e2cd770-7aeb-44d0-9a87-dfdec541fa72",
+            "href": "/api/actor/71e9e088-cd6e-4dbc-84d0-a54e2ace7d77",
             "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/ca86c0ef-74bf-470c-9aab-d675ed1a8aa9/options",
+            "href": "/api/event-reports/events/0fe9a6e6-4ca1-48ad-b354-3ea403484699/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -96,12 +96,12 @@
             "method": "POST"
           },
           "edit": {
-            "href": "/api/event/ca86c0ef-74bf-470c-9aab-d675ed1a8aa9",
+            "href": "/api/event/0fe9a6e6-4ca1-48ad-b354-3ea403484699",
             "title": "Update event",
             "method": "PATCH"
           },
           "delete": {
-            "href": "/api/event/ca86c0ef-74bf-470c-9aab-d675ed1a8aa9",
+            "href": "/api/event/0fe9a6e6-4ca1-48ad-b354-3ea403484699",
             "title": "Delete event",
             "method": "DELETE"
           }
@@ -111,8 +111,8 @@
         "source": "local",
         "event": {
           "id": "Guid_6",
-          "title": "Actor Other Published fdb280ea4cbf437c987586c2a86373e2",
-          "publicCode": "7a2d6cc01c9b",
+          "title": "Actor Other Published af012d0a076c41be8f3e6087872f2550",
+          "publicCode": "65b8f9b1237e",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -150,22 +150,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/d5471dd5-9d8f-441d-bc67-bfaee513e46e",
-            "title": "Actor Other Published fdb280ea4cbf437c987586c2a86373e2",
+            "href": "/api/event/30156ca9-a7d1-4c8c-800d-0069444f451f",
+            "title": "Actor Other Published af012d0a076c41be8f3e6087872f2550",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/d5471dd5-9d8f-441d-bc67-bfaee513e46e",
+            "href": "/api/eventsession/by-event/30156ca9-a7d1-4c8c-800d-0069444f451f",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/0e2cd770-7aeb-44d0-9a87-dfdec541fa72",
+            "href": "/api/actor/71e9e088-cd6e-4dbc-84d0-a54e2ace7d77",
             "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/d5471dd5-9d8f-441d-bc67-bfaee513e46e/options",
+            "href": "/api/event-reports/events/30156ca9-a7d1-4c8c-800d-0069444f451f/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -175,12 +175,12 @@
             "method": "POST"
           },
           "edit": {
-            "href": "/api/event/d5471dd5-9d8f-441d-bc67-bfaee513e46e",
+            "href": "/api/event/30156ca9-a7d1-4c8c-800d-0069444f451f",
             "title": "Update event",
             "method": "PATCH"
           },
           "delete": {
-            "href": "/api/event/d5471dd5-9d8f-441d-bc67-bfaee513e46e",
+            "href": "/api/event/30156ca9-a7d1-4c8c-800d-0069444f451f",
             "title": "Delete event",
             "method": "DELETE"
           }
@@ -190,8 +190,8 @@
         "source": "local",
         "event": {
           "id": "Guid_8",
-          "title": "Actor Matching Published fdb280ea4cbf437c987586c2a86373e2",
-          "publicCode": "eb95dadad4ac",
+          "title": "Actor Matching Published af012d0a076c41be8f3e6087872f2550",
+          "publicCode": "49992ec29dbb",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -229,22 +229,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/efe1c7f0-e58c-473e-83e1-33ea08766090",
-            "title": "Actor Matching Published fdb280ea4cbf437c987586c2a86373e2",
+            "href": "/api/event/f0f2851c-34a0-49d8-b40a-239efa07e923",
+            "title": "Actor Matching Published af012d0a076c41be8f3e6087872f2550",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/efe1c7f0-e58c-473e-83e1-33ea08766090",
+            "href": "/api/eventsession/by-event/f0f2851c-34a0-49d8-b40a-239efa07e923",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/cdfdff5e-db5e-4626-b2ad-e8458c0df9a0",
+            "href": "/api/actor/c07cb9c0-1a20-4029-be1a-cda2103a897d",
             "title": "Actor Filter Owner",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/efe1c7f0-e58c-473e-83e1-33ea08766090/options",
+            "href": "/api/event-reports/events/f0f2851c-34a0-49d8-b40a-239efa07e923/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -254,12 +254,12 @@
             "method": "POST"
           },
           "edit": {
-            "href": "/api/event/efe1c7f0-e58c-473e-83e1-33ea08766090",
+            "href": "/api/event/f0f2851c-34a0-49d8-b40a-239efa07e923",
             "title": "Update event",
             "method": "PATCH"
           },
           "delete": {
-            "href": "/api/event/efe1c7f0-e58c-473e-83e1-33ea08766090",
+            "href": "/api/event/f0f2851c-34a0-49d8-b40a-239efa07e923",
             "title": "Delete event",
             "method": "DELETE"
           }

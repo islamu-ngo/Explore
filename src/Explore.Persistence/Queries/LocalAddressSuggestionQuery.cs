@@ -21,7 +21,7 @@ public sealed class LocalAddressSuggestionQuery(ExploreDbContext dbContext)
         string searchKey = ValidateAndCreateSearchKey(criteria);
         Guid? organizationId = criteria.OrganizationId;
 
-        return await dbContext.Locations
+        var rows = await dbContext.Locations
             .AsNoTracking()
             .IgnoreAutoIncludes()
             .Where(location => location.TenantId == criteria.TenantId)
@@ -53,19 +53,35 @@ public sealed class LocalAddressSuggestionQuery(ExploreDbContext dbContext)
                 location.Pii.AddressSubstringKey.Contains(searchKey))
             .OrderBy(location => location.DisplaySortKey)
             .ThenBy(location => location.Id)
-            .Select(location => new LocalAddressSuggestion(
+            .Select(location => new
+            {
                 location.Id,
                 location.ConcurrencyStamp,
                 location.FullName,
                 location.Pii!.Address,
                 location.Pii.Postcode,
-                location.AddressSource,
-                location.AddressVisibility,
+                location.AddressSourceId,
+                location.AddressVisibilityId,
                 location.City,
                 location.Country,
-                location.Timezone))
+                location.Timezone
+            })
             .Take(criteria.Limit)
             .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new LocalAddressSuggestion(
+                row.Id,
+                row.ConcurrencyStamp,
+                row.FullName,
+                row.Address,
+                row.Postcode,
+                (LocationAddressSourceEnum)row.AddressSourceId,
+                (LocationAddressVisibilityEnum)row.AddressVisibilityId,
+                row.City,
+                row.Country,
+                row.Timezone))
+            .ToArray();
     }
 
     private static string ValidateAndCreateSearchKey(LocalAddressSuggestionCriteria criteria)

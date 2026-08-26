@@ -44,7 +44,7 @@ public sealed class AddressGovernanceTelemetryTests
 
         await Assert.That(async () => await behavior.Handle(
             command,
-            _ => Task.FromResult(new BaseCommandResponse<Guid>()),
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
             CancellationToken.None)).Throws<Explore.Application.Exceptions.AuthorizationException>();
 
         CapturedLog warning = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
