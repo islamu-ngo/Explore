@@ -277,12 +277,10 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 supportContext.Mode?.ToString());
             AddSupportAccessBoundaryDeniedTraceEvent(check, denialReason);
             _logger.LogWarning(
-                "Support-access authorization boundary denied resource={ResourceKind}/{ResourceId} action={Action} reason={Reason} sessionId={SupportAccessSessionId}",
+                "Support-access authorization boundary denied resource={ResourceKind} action={Action} reason={Reason}",
                 check.ResourceKind,
-                check.ResourceId,
                 check.Action,
-                denialReason,
-                supportContext.SessionId?.ToString("D") ?? "none");
+                denialReason);
         }
 
         return new SupportAccessBoundaryResult(effectiveChecks, originalIndexes, results);

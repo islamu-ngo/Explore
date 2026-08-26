@@ -165,11 +165,16 @@ For the full per-field classification, see `dev/zarchive/ai-context-disclosure-p
 | `UserPii` | 4 (excl. nav) | 0 | 1 | 0 | 3 (Phase-4 gated) |
 | `OrganizationPii` | 7 (excl. nav) | 1 | 4 | 1 (Phase-4 gated) | 1 (Phase-4 gated) |
 | `ActorPii` | 5 (excl. nav) | 4 | 1 | 0 | 0 |
-| `LocationPii` | 5 (excl. nav) | 0 | 1 | 0 | 4 (Phase-4 gated) |
+| `LocationPii` | 7 (excl. nav) | 0 | 2 | 0 | 5 |
 
 Navigation properties (`User`, `Organization`, `Actor`, `Location`) are intentionally not classified.
 
 `Postcode` is contextual rather than globally safe: an organization postcode remains coarse `Internal` context, while a venue postcode in raw `LocationPii` is `Restricted` and Phase-4 gated. EventLocation consumers must first apply the purpose-specific location disclosure policy; passing that projection through the AI gateway never upgrades its field ceiling.
+
+`AddressSubstringKey` is reversible normalized exact-address search material, so it is
+`Restricted`, denied from every model-context tier, and hard-deleted with its owning
+location. `AddressSubstringKeyVersion` is `Internal` persistence metadata and is likewise
+denied because it has no model-context purpose.
 
 ## 14. Drift control
 

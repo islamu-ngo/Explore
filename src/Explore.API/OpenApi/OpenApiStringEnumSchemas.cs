@@ -9,6 +9,7 @@ using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.EventOrganizerClaim;
+using Explore.Application.DTOs.Geocoding;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.OrganizationTenantEvidence;
@@ -31,8 +32,16 @@ namespace Explore.API.OpenApi;
 /// </summary>
 internal static class OpenApiStringEnumSchemaCatalog
 {
+    private static IReadOnlyCollection<Type> EagerNestedEnumTypes { get; } =
+    [
+        typeof(AddressProviderOutcome),
+        typeof(LocationAddressSourceEnum),
+        typeof(LocationAddressVisibilityEnum)
+    ];
+
     public static IReadOnlyCollection<Type> EnumTypes { get; } =
     [
+        typeof(AddressProviderOutcome),
         typeof(CustomPropertyProjectionScopeType),
         typeof(CustomPropertyProjectionState),
         typeof(CustomPropertyFilterOperator),
@@ -58,6 +67,8 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(HomeDiscoverySectionStatus),
         typeof(IntegrationSyncRecoveryDecision),
         typeof(KeycloakBootstrapMode),
+        typeof(LocationAddressSourceEnum),
+        typeof(LocationAddressVisibilityEnum),
         typeof(ManagedProviderOrganizerKindDto),
         typeof(OrganizationTenantEvidenceReviewDecisionDto),
         typeof(PosthogCookielessMode),
@@ -83,6 +94,9 @@ internal static class OpenApiStringEnumSchemaCatalog
 
     public static bool IsStringEnum(Type type)
         => type.IsEnum && EnumTypes.Contains(type);
+
+    public static bool RequiresEagerNestedComponent(Type type) =>
+        EagerNestedEnumTypes.Contains(type);
 
     public static bool TryGetEnumType(string schemaName, out Type enumType)
     {

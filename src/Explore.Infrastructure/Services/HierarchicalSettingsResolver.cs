@@ -4,8 +4,18 @@
 namespace Explore.Infrastructure.Services;
 
 using System.Text.Json;
-using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Persistence;
+using IGroupSettingRepository = Explore.Application.Contracts.Persistence.IGroupSettingRepository;
+using IGroupTenantRepository = Explore.Application.Contracts.Persistence.IGroupTenantRepository;
+using IOrganizationSettingRepository = Explore.Application.Contracts.Persistence.IOrganizationSettingRepository;
+using ISettingMutationLock = Explore.Application.Contracts.Persistence.ISettingMutationLock;
+using ISystemSettingRepository = Explore.Application.Contracts.Persistence.ISystemSettingRepository;
+using ITenantSettingRepository = Explore.Application.Contracts.Persistence.ITenantSettingRepository;
+using IUserPreferenceRepository = Explore.Application.Contracts.Persistence.IUserPreferenceRepository;
+using IHierarchicalSettingsResolver = Explore.Application.Contracts.Infrastructure.IHierarchicalSettingsResolver;
+using ISettingGroup = Explore.Application.Contracts.Infrastructure.ISettingGroup;
+using ITenantContext = Explore.Application.Contracts.Infrastructure.ITenantContext;
+using ResolvedSetting = Explore.Application.Contracts.Infrastructure.ResolvedSetting;
+using SettingSource = Explore.Application.Contracts.Infrastructure.SettingSource;
 using Explore.Application.Exceptions;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -23,7 +33,6 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly IOrganizationSettingRepository _organizationSettingRepository;
-    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupSettingRepository _groupSettingRepository;
     private readonly IGroupTenantRepository _groupTenantRepository;
     private readonly IUserPreferenceRepository _userPreferenceRepository;
@@ -43,7 +52,6 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         ISystemSettingRepository systemSettingRepository,
         ITenantSettingRepository tenantSettingRepository,
         IOrganizationSettingRepository organizationSettingRepository,
-        IOrganizationTenantRepository organizationTenantRepository,
         IGroupSettingRepository groupSettingRepository,
         IGroupTenantRepository groupTenantRepository,
         IUserPreferenceRepository userPreferenceRepository,
@@ -55,7 +63,6 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         _systemSettingRepository = systemSettingRepository;
         _tenantSettingRepository = tenantSettingRepository;
         _organizationSettingRepository = organizationSettingRepository;
-        _organizationTenantRepository = organizationTenantRepository;
         _groupSettingRepository = groupSettingRepository;
         _groupTenantRepository = groupTenantRepository;
         _userPreferenceRepository = userPreferenceRepository;
@@ -100,11 +107,15 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
             tenantDict = tenantSettings.ToDictionary(s => s.SettingKey, s => s);
         }
 
-        // Load organization settings if context has org
+        // Organization settings belong to a tenant-specific participation, not the global organization.
         Dictionary<string, OrganizationSetting>? orgDict = null;
-        if (context.OrganizationId.HasValue)
+        if (context.TenantId is { } organizationTenantId && organizationTenantId != Guid.Empty &&
+            context.OrganizationId is { } organizationId && organizationId != Guid.Empty)
         {
-            var orgSettings = await GetOrganizationSettingsAsync(context.OrganizationId.Value, ct);
+            var orgSettings = await GetOrganizationSettingsAsync(
+                organizationTenantId,
+                organizationId,
+                ct);
             orgDict = orgSettings.ToDictionary(s => s.SettingKey, s => s);
         }
 
@@ -218,7 +229,14 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                 throw new NotSupportedException($"Scope {scope} is not supported.");
         }
 
-        InvalidateCache(scope, scopeId);
+        if (scope == SettingScope.Organization)
+        {
+            InvalidateOrganizationCache(RequireAmbientTenantId(), scopeId);
+        }
+        else
+        {
+            InvalidateCache(scope, scopeId);
+        }
     }
 
     public async Task RemoveOverrideAsync(
@@ -242,7 +260,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                 break;
 
             case SettingScope.Organization:
-                await _organizationSettingRepository.RemoveOverride(scopeId, key);
+                await _organizationSettingRepository.RemoveOverride(
+                    RequireAmbientTenantId(),
+                    scopeId,
+                    key,
+                    ct);
                 break;
 
             case SettingScope.Group:
@@ -254,7 +276,14 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                     $"RemoveOverride for scope {scope} is not supported.");
         }
 
-        InvalidateCache(scope, scopeId);
+        if (scope == SettingScope.Organization)
+        {
+            InvalidateOrganizationCache(RequireAmbientTenantId(), scopeId);
+        }
+        else
+        {
+            InvalidateCache(scope, scopeId);
+        }
     }
 
     public async Task LockAsync(
@@ -385,9 +414,9 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
             case SettingScope.Tenant when scopeId.HasValue:
                 _cache.Remove($"{TenantCachePrefix}{scopeId.Value}");
                 break;
-            case SettingScope.Organization when scopeId.HasValue:
-                _cache.Remove($"{OrgCachePrefix}{scopeId.Value}");
-                break;
+            case SettingScope.Organization:
+                throw new InvalidOperationException(
+                    "Organization cache invalidation requires both tenant and organization scope.");
             case SettingScope.Group when scopeId.HasValue:
                 _cache.Remove($"{GroupCachePrefix}{scopeId.Value}");
                 break;
@@ -395,6 +424,21 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                 _cache.Remove($"{UserCachePrefix}{scopeId.Value}");
                 break;
         }
+    }
+
+    public void InvalidateOrganizationCache(Guid tenantId, Guid organizationId)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant scope is required.", nameof(tenantId));
+        }
+
+        if (organizationId == Guid.Empty)
+        {
+            throw new ArgumentException("Organization scope is required.", nameof(organizationId));
+        }
+
+        _cache.Remove(OrganizationCacheKey(tenantId, organizationId));
     }
 
     public void InvalidateUserCache(Guid tenantId, Guid userId)
@@ -584,33 +628,13 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         Guid actorId,
         CancellationToken cancellationToken)
     {
-        var existing = await _organizationSettingRepository.GetByOrganizationAndKey(organizationId, key);
-        if (existing is not null)
-        {
-            existing.Value = value;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = actorId;
-            await _organizationSettingRepository.Update(existing);
-        }
-        else
-        {
-            var participation = await _organizationTenantRepository.GetByOrganizationAndTenant(
-                organizationId,
-                _tenantContext.TenantId,
-                cancellationToken)
-                ?? throw new InvalidOperationException("Organization is not available in the current tenant.");
-            await _organizationSettingRepository.Create(new OrganizationSetting
-            {
-                OrganizationTenantId = participation.Id,
-                OrganizationTenant = participation,
-                TenantId = participation.TenantId,
-                Tenant = null!,
-                SettingKey = key,
-                Value = value,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = actorId
-            });
-        }
+        await _organizationSettingRepository.SetValueAsync(
+            RequireAmbientTenantId(),
+            organizationId,
+            key,
+            value,
+            actorId,
+            cancellationToken);
     }
 
     private async Task UpsertGroupSettingAsync(
@@ -649,14 +673,31 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
     }
 
-    private async Task<List<OrganizationSetting>> GetOrganizationSettingsAsync(Guid organizationId, CancellationToken ct)
+    private async Task<List<OrganizationSetting>> GetOrganizationSettingsAsync(
+        Guid tenantId,
+        Guid organizationId,
+        CancellationToken ct)
     {
-        var cacheKey = $"{OrgCachePrefix}{organizationId}";
+        string cacheKey = OrganizationCacheKey(tenantId, organizationId);
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
-            return await _organizationSettingRepository.GetAllForOrganization(organizationId);
+            return await _organizationSettingRepository.GetAllForOrganization(
+                tenantId,
+                organizationId,
+                ct);
         }) ?? [];
+    }
+
+    private static string OrganizationCacheKey(Guid tenantId, Guid organizationId) =>
+        $"{OrgCachePrefix}{tenantId}:{organizationId}";
+
+    private Guid RequireAmbientTenantId()
+    {
+        Guid tenantId = _tenantContext.TenantId;
+        return tenantId != Guid.Empty
+            ? tenantId
+            : throw new InvalidOperationException("Tenant context is required for organization settings.");
     }
 
     private async Task<List<GroupSetting>> GetGroupSettingsAsync(Guid groupId, CancellationToken ct)

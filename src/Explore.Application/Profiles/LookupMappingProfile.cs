@@ -28,14 +28,10 @@ public class LookupMappingProfile : Profile
 {
     public LookupMappingProfile()
     {
-        CreateMap<Location, LocationDto>().ReverseMap();
-        CreateMap<Location, LocationListDto>().ReverseMap();
-        CreateMap<CreateLocationDto, Location>()
-            .ForMember(destination => destination.Pii, options => options.Ignore())
-            .ForMember(destination => destination.Address, options => options.Ignore())
-            .ForMember(destination => destination.Postcode, options => options.Ignore())
-            .ForMember(destination => destination.Latitude, options => options.Ignore())
-            .ForMember(destination => destination.Longitude, options => options.Ignore());
+        CreateMap<Location, LocationDto>()
+            .ForMember(destination => destination.Latitude, options => options.MapFrom(source => ValidLatitude(source)))
+            .ForMember(destination => destination.Longitude, options => options.MapFrom(source => ValidLongitude(source)));
+        CreateMap<Location, LocationListDto>();
 
         CreateMap<LocationRoom, LocationRoomDto>()
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
@@ -125,4 +121,8 @@ public class LookupMappingProfile : Profile
         CreateMap<Domain.FileType, FileTypeDto>().ReverseMap();
         CreateMap<Domain.FileType, FileTypeListDto>().ReverseMap();
     }
+
+    private static double? ValidLatitude(Location location) => location.GetCoordinate()?.Latitude;
+
+    private static double? ValidLongitude(Location location) => location.GetCoordinate()?.Longitude;
 }

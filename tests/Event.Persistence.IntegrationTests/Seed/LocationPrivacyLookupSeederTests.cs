@@ -23,6 +23,8 @@ public sealed class LocationPrivacyLookupSeederTests
         await AssertLookupModelAsync<LocationKind>(context, "location_kinds");
         await AssertLookupModelAsync<LocationPrivacyState>(context, "location_privacy_states");
         await AssertLookupModelAsync<LocationDisclosureAudience>(context, "location_disclosure_audiences");
+        await AssertLookupModelAsync<LocationAddressSource>(context, "location_address_sources");
+        await AssertLookupModelAsync<LocationAddressVisibility>(context, "location_address_visibilities");
     }
 
     [Test]
@@ -47,6 +49,7 @@ public sealed class LocationPrivacyLookupSeederTests
 
         await using var context = new ExploreDbContext(options);
         await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, default);
+        await LookupTableSeeder.SeedLocationAddressGovernanceLookupsAsync(context, default);
 
         await AssertExactRowsAsync(context);
 
@@ -56,10 +59,16 @@ public sealed class LocationPrivacyLookupSeederTests
             row.Id == (int)LocationPrivacyStateEnum.Active));
         context.LocationDisclosureAudiences.Remove(await context.LocationDisclosureAudiences.SingleAsync(row =>
             row.Id == (int)LocationDisclosureAudienceEnum.ConfirmedParticipant));
+        context.LocationAddressSources.Remove(await context.LocationAddressSources.SingleAsync(row =>
+            row.Id == (int)LocationAddressSourceEnum.Manual));
+        context.LocationAddressVisibilities.Remove(await context.LocationAddressVisibilities.SingleAsync(row =>
+            row.Id == (int)LocationAddressVisibilityEnum.OrganizationScoped));
         await context.SaveChangesAsync();
 
         await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, default);
+        await LookupTableSeeder.SeedLocationAddressGovernanceLookupsAsync(context, default);
         await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, default);
+        await LookupTableSeeder.SeedLocationAddressGovernanceLookupsAsync(context, default);
 
         await AssertExactRowsAsync(context);
     }
@@ -104,6 +113,14 @@ public sealed class LocationPrivacyLookupSeederTests
             .OrderBy(row => row.Id)
             .Select(row => new { row.Id, row.MasterCode })
             .ToArrayAsync();
+        var sources = await context.LocationAddressSources
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.Id, row.MasterCode })
+            .ToArrayAsync();
+        var visibilities = await context.LocationAddressVisibilities
+            .OrderBy(row => row.Id)
+            .Select(row => new { row.Id, row.MasterCode })
+            .ToArrayAsync();
 
         await Assert.That(kinds.Select(row => (row.Id, row.MasterCode)).SequenceEqual(
         [
@@ -124,6 +141,19 @@ public sealed class LocationPrivacyLookupSeederTests
             (1, "NEVER"),
             (2, "ANY_CURRENT_REGISTRANT"),
             (3, "CONFIRMED_PARTICIPANT")
+        ])).IsTrue();
+        await Assert.That(sources.Select(row => (row.Id, row.MasterCode)).SequenceEqual(
+        [
+            (1, "UNKNOWN_LEGACY"),
+            (2, "MANUAL"),
+            (3, "PROVIDER_SELECTION")
+        ])).IsTrue();
+        await Assert.That(visibilities.Select(row => (row.Id, row.MasterCode)).SequenceEqual(
+        [
+            (1, "QUARANTINED"),
+            (2, "CREATOR_PRIVATE"),
+            (3, "ORGANIZATION_SCOPED"),
+            (4, "TENANT_APPROVED")
         ])).IsTrue();
     }
 }

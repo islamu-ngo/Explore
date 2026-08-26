@@ -284,12 +284,7 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
         location.ClassifyAsPrivateHome(ownerUserId);
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = $"{name} address",
-            Postcode = "1000",
-        });
+        location.SetManualAddress($"{name} address", "1000");
         return location;
     }
 

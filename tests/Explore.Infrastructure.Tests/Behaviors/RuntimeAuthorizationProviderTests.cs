@@ -2,6 +2,7 @@
 // ABOUTME: Verifies JSON-serialized system settings are honored after provider-mode cache invalidation.
 
 using Explore.Infrastructure.Tests.Authorization;
+using Explore.Infrastructure.Tests.Infrastructure;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Cerbos.Api.V1.Effect;
@@ -713,6 +714,41 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
+    public async Task AuthorizeAsyncSupportBoundaryWarningExcludesResourceAndSessionIdentifiers()
+    {
+        const string sentinelLocationId = "019d2f35-47d8-7b2d-96d3-570cc42f8c11";
+        var sentinelSupportSessionId = Guid.Parse("019d2f35-866c-790c-8dcd-eed429c4f322");
+        var logger = new TestListLogger<RuntimeAuthorizationProvider>();
+        var fixture = CreateRuntimeProviderFixture(runtimeLogger: logger);
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(
+                SupportAccessModeEnum.ReadOnly,
+                TestTenantId,
+                sessionId: sentinelSupportSessionId));
+
+        var decision = await fixture.RuntimeProvider.AuthorizeAsync(TestAuthorizationRequest.Create(
+            ResourceKinds.Location,
+            sentinelLocationId,
+            AuthorizationActions.Locations.ApproveTenantAddress,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") }));
+
+        await Assert.That(decision.IsAllowed).IsFalse();
+        var warning = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
+        await Assert.That(warning.State.Select(property => property.Key).ToHashSet(StringComparer.Ordinal).SetEquals(
+            ["ResourceKind", "Action", "Reason", "{OriginalFormat}"])).IsTrue();
+        await Assert.That(LogEntryExcludes(
+            warning,
+            sentinelLocationId,
+            sentinelSupportSessionId.ToString("D"),
+            "ResourceId",
+            "SupportAccessSessionId")).IsTrue();
+        await Assert.That(warning.Arguments.Select(argument => argument?.ToString() ?? string.Empty)).IsEquivalentTo(
+            [ResourceKinds.Location, AuthorizationActions.Locations.ApproveTenantAddress, "support_access_read_only"]);
+    }
+
+    [Test]
     public async Task IsAllowedBatchAsync_WithReadOnlySupportAccess_DeniesWriteEvenWhenInstanceAdmin()
     {
         var fixture = CreateRuntimeProviderFixture();
@@ -938,11 +974,12 @@ public class RuntimeAuthorizationProviderTests
     private static SupportAccessContext CreateSupportContext(
         SupportAccessModeEnum mode,
         Guid? targetTenantId,
-        Guid? actorUserId = null)
+        Guid? actorUserId = null,
+        Guid? sessionId = null)
     {
         return new SupportAccessContext(
             true,
-            Guid.NewGuid(),
+            sessionId ?? Guid.NewGuid(),
             actorUserId ?? Guid.NewGuid(),
             targetTenantId,
             null,
@@ -974,7 +1011,8 @@ public class RuntimeAuthorizationProviderTests
 
     private static RuntimeProviderFixture CreateRuntimeProviderFixture(
         string? deploymentProvider = null,
-        BusinessMetrics? metrics = null)
+        BusinessMetrics? metrics = null,
+        ILogger<RuntimeAuthorizationProvider>? runtimeLogger = null)
     {
         var adminContext = Substitute.For<IAdminContext>();
         adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -1030,7 +1068,7 @@ public class RuntimeAuthorizationProviderTests
             Options.Create(new CerbosSettings { GrpcEndpoint = "http://localhost:3593", PlaintextMode = true }),
             Substitute.For<ILogger<CerbosAuthorizationService>>());
 
-        var runtimeLogger = Substitute.For<ILogger<RuntimeAuthorizationProvider>>();
+        var effectiveRuntimeLogger = runtimeLogger ?? Substitute.For<ILogger<RuntimeAuthorizationProvider>>();
 
         var runtimeProvider = new RuntimeAuthorizationProvider(
             cerbosProvider,
@@ -1038,7 +1076,7 @@ public class RuntimeAuthorizationProviderTests
             cerbosConfigResolver,
             systemSettingRepository,
             new MemoryCache(new MemoryCacheOptions()),
-            runtimeLogger,
+            effectiveRuntimeLogger,
             Options.Create(new AuthorizationProviderDeploymentOptions
             {
                 Provider = deploymentProvider
@@ -1056,7 +1094,7 @@ public class RuntimeAuthorizationProviderTests
             byoCerbosClient,
             machinePrincipalAccessor,
             supportAccessSessionService,
-            runtimeLogger);
+            effectiveRuntimeLogger);
     }
 
     private static SystemSetting CreateAuthorizationProviderSetting(string provider)
@@ -1090,6 +1128,15 @@ public class RuntimeAuthorizationProviderTests
     private static RpcException CreateUnavailableRpcException()
     {
         return new RpcException(new Status(StatusCode.Unavailable, "tenant-secret unavailable"));
+    }
+
+    private static bool LogEntryExcludes(TestLogEntry entry, params string[] forbiddenValues)
+    {
+        var observable = string.Join('|',
+            entry.Message,
+            string.Join('|', entry.State.Select(property => property.Key)),
+            string.Join('|', entry.Arguments.Select(argument => argument?.ToString())));
+        return forbiddenValues.All(value => !observable.Contains(value, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ProviderModeFailureLogStateIsRedacted(object state, string exceptionMessage)

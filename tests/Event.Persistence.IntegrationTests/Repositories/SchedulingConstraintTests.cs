@@ -514,10 +514,10 @@ public class SchedulingConstraintTests
             FullName = "Constraint Test Venue",
             Country = "BE",
             City = "Brussels",
-            Pii = new LocationPii { Address = "123 Test St", Postcode = "1000" },
             TenantId = tenant.Id,
             Tenant = null!
         };
+        location.SetManualAddress("123 Test St", "1000");
         context.Locations.Add(location);
         await context.SaveChangesAsync();
 
@@ -587,10 +587,10 @@ public class SchedulingConstraintTests
             FullName = "Constraint Test Venue",
             Country = "BE",
             City = "Brussels",
-            Pii = new LocationPii { Address = "123 Test St", Postcode = "1000" },
             TenantId = tenant.Id,
             Tenant = tenant
         };
+        location.SetManualAddress("123 Test St", "1000");
         context.Locations.Add(location);
         await context.SaveChangesAsync();
 

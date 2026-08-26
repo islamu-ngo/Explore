@@ -2,6 +2,7 @@
 // ABOUTME: Proves missing tokens fail, valid tokens proxy, and safe reads remain unblocked.
 
 using System.Net;
+using System.Text;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Builder;
@@ -96,6 +97,45 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
         await Assert.That((await response.Content.ReadAsStringAsync())).Contains("subscribed");
+    }
+
+    [Test]
+    public async Task AddressSuggestions_PostWithValidAntiforgery_ForwardsBodyAfterSanitizingAuthority()
+    {
+        const string SearchSentinel = "synthetic-address-query";
+        _upstream.ResetCapture();
+        var antiforgery = await IssueAntiforgeryCookieAsync();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/api/geocoding/address-suggestions");
+        request.Headers.Remove("Cookie");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        request.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                "browser-controlled-token");
+        request.Headers.Add("X-API-Key", "browser-controlled-key");
+        request.Headers.Add("X-Tenant-Id", Guid.CreateVersion7().ToString("D"));
+        request.Headers.Add("X-Tenant-Slug", "browser-controlled-tenant");
+        request.Content = JsonContent.Create(new
+        {
+            searchText = SearchSentinel,
+            limit = 5,
+            organizationId = (Guid?)null
+        });
+
+        using var response = await _client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_upstream.LastPathAndQuery)
+            .IsEqualTo("/api/geocoding/address-suggestions");
+        await Assert.That(_upstream.LastBody).Contains(SearchSentinel);
+        await Assert.That(_upstream.LastAuthorization)
+            .IsNotEqualTo("Bearer browser-controlled-token");
+        await Assert.That(_upstream.LastApiKey).IsNull();
+        await Assert.That(string.IsNullOrEmpty(_upstream.LastTenantId)).IsTrue();
+        await Assert.That(string.IsNullOrEmpty(_upstream.LastTenantSlug)).IsTrue();
     }
 
     [Test]
@@ -302,6 +342,16 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         public string? LastSetupSecret { get; private set; }
 
+        public string? LastBody { get; private set; }
+
+        public string? LastAuthorization { get; private set; }
+
+        public string? LastApiKey { get; private set; }
+
+        public string? LastTenantId { get; private set; }
+
+        public string? LastTenantSlug { get; private set; }
+
         public async Task StartAsync()
         {
             var builder = WebApplication.CreateBuilder();
@@ -311,10 +361,20 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
             _app.MapGet("/api/notification/web-push/config", () => Results.Json(new { publicKey = "test-public-key" }));
             _app.MapPost("/api/notification/web-push/subscriptions", () => Results.Json(new { status = "subscribed" }, statusCode: StatusCodes.Status201Created));
             _app.MapDelete("/api/notification/web-push/subscriptions/{subscriptionId:guid}", () => Results.Json(new { status = "unsubscribed" }));
-            _app.Map("/{**path}", (HttpContext context) =>
+            _app.Map("/{**path}", async (HttpContext context) =>
             {
                 LastPathAndQuery = $"{context.Request.Path}{context.Request.QueryString}";
                 LastSetupSecret = context.Request.Headers["X-Setup-Secret"].FirstOrDefault();
+                LastAuthorization = context.Request.Headers.Authorization.FirstOrDefault();
+                LastApiKey = context.Request.Headers["X-API-Key"].FirstOrDefault();
+                LastTenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+                LastTenantSlug = context.Request.Headers["X-Tenant-Slug"].FirstOrDefault();
+                using var reader = new StreamReader(
+                    context.Request.Body,
+                    Encoding.UTF8,
+                    detectEncodingFromByteOrderMarks: false,
+                    leaveOpen: true);
+                LastBody = await reader.ReadToEndAsync(context.RequestAborted);
                 return Results.Ok();
             });
 
@@ -331,6 +391,11 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         {
             LastPathAndQuery = null;
             LastSetupSecret = null;
+            LastBody = null;
+            LastAuthorization = null;
+            LastApiKey = null;
+            LastTenantId = null;
+            LastTenantSlug = null;
         }
 
         public async ValueTask DisposeAsync()

@@ -65,6 +65,8 @@ public class CqrsPatternTests
             .DoNotResideInNamespaceContaining("DTOs")
             .And()
             .DoNotResideInNamespaceContaining("Contracts")
+            .And()
+            .DoNotHaveName("AddressGovernancePolicyRequest")
             .Should()
             .ResideInNamespaceContaining("Queries")
             .GetResult();

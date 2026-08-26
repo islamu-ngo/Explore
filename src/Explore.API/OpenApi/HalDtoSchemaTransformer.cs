@@ -48,6 +48,7 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
 
         // Type the HAL collection embedded items as HAL resource references instead of object arrays.
         PopulateHalCollectionEmbeddedSchemas(document);
+        PopulateHalDetailEmbeddedSchemas(document);
 
         // Fix inline array item schemas that should be $ref references to component schemas.
         // GetOrCreateSchemaAsync inlines nested DTO types (e.g., EventDto.Tags = List<TagListDto>)
@@ -99,7 +100,10 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         foreach (var (embeddedSchemaName, itemResourceSchemaName) in HalOpenApiSchemaCatalog.CollectionEmbeddedItemResourceMappings)
         {
             if (!schemas.TryGetValue(embeddedSchemaName, out var embeddedSchemaInterface))
-                continue;
+            {
+                embeddedSchemaInterface = new OpenApiSchema();
+                schemas[embeddedSchemaName] = embeddedSchemaInterface;
+            }
 
             if (embeddedSchemaInterface is not OpenApiSchema embeddedSchema)
                 continue;
@@ -107,6 +111,28 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
             HalOpenApiSchemaMutator.EnsureEmbeddedItemsArrayType(
                 embeddedSchema,
                 new OpenApiSchemaReference(itemResourceSchemaName, document));
+        }
+    }
+
+    private static void PopulateHalDetailEmbeddedSchemas(OpenApiDocument document)
+    {
+        var schemas = document.Components?.Schemas;
+        if (schemas == null)
+            return;
+
+        foreach (var (detailSchemaName, embeddedSchemaName) in
+            HalOpenApiSchemaCatalog.DetailResourceEmbeddedMappings)
+        {
+            if (!schemas.TryGetValue(detailSchemaName, out var detailSchemaInterface)
+                || detailSchemaInterface is not OpenApiSchema detailSchema
+                || !schemas.ContainsKey(embeddedSchemaName))
+            {
+                continue;
+            }
+
+            HalOpenApiSchemaMutator.SetEmbeddedReference(
+                detailSchema,
+                new OpenApiSchemaReference(embeddedSchemaName, document));
         }
     }
 
@@ -230,10 +256,21 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
             foreach (var prop in dtoType.GetProperties())
             {
                 var propertyType = UnwrapNullableType(prop.PropertyType);
-                if (!OpenApiStringEnumSchemaCatalog.IsStringEnum(propertyType)
-                    || !schemas.ContainsKey(propertyType.Name))
+                if (!OpenApiStringEnumSchemaCatalog.IsStringEnum(propertyType))
                 {
                     continue;
+                }
+
+                if (!schemas.ContainsKey(propertyType.Name))
+                {
+                    if (!OpenApiStringEnumSchemaCatalog.RequiresEagerNestedComponent(propertyType))
+                    {
+                        continue;
+                    }
+
+                    var enumSchema = new OpenApiSchema();
+                    OpenApiStringEnumSchemaMutator.Apply(enumSchema, propertyType);
+                    schemas[propertyType.Name] = enumSchema;
                 }
 
                 var jsonName = GetJsonPropertyName(prop);

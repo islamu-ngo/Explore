@@ -137,14 +137,10 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         location.ClassifyAsPrivateHome(tenant.UserId);
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = AddressCanary,
-            Postcode = PostcodeCanary,
-            Latitude = 50.84673,
-            Longitude = 4.35247
-        });
+        location.SetProviderAddress(
+            AddressCanary,
+            PostcodeCanary,
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.84673, 4.35247));
         var room = new LocationRoom
         {
             Id = Guid.CreateVersion7(),

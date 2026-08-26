@@ -1,3 +1,6 @@
+// ABOUTME: Tests validation of untrusted manual Location creation payloads.
+// ABOUTME: Verifies coordinate authority is absent from DTOs and retained in the domain value object.
+
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.Location.Validators;
 using TUnit.Assertions;
@@ -24,9 +27,7 @@ public class CreateLocationDtoValidatorTests
             Address = "123 Test Street",
             Postcode = "12345",
             Country = "Belgium",
-            City = "Brussels",
-            Latitude = 50.8476,
-            Longitude = 4.3572
+            City = "Brussels"
         };
 
         // Act
@@ -146,26 +147,10 @@ public class CreateLocationDtoValidatorTests
     [Arguments(91)]
     [Arguments(-100)]
     [Arguments(100)]
-    public async Task Validate_WithInvalidLatitude_ReturnsInvalid(double latitude)
+    public async Task GeoCoordinate_WithInvalidLatitude_IsRejectedByDomain(double latitude)
     {
-        // Arrange
-        var dto = new CreateLocationDto
-        {
-            FullName = "Test Location",
-            Address = "123 Test Street",
-            Postcode = "12345",
-            Country = "Belgium",
-            City = "Brussels",
-            Latitude = latitude,
-            Longitude = 4.3572
-        };
-
-        // Act
-        var result = await _validator.ValidateAsync(dto);
-
-        // Assert
-        await Assert.That(result.IsValid).IsFalse();
-        await Assert.That(result.Errors.Any(e => e.PropertyName == "Latitude")).IsTrue();
+        await Assert.That(() => Explore.Domain.ValueObjects.GeoCoordinate.Create(latitude, 4.3572))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -173,26 +158,10 @@ public class CreateLocationDtoValidatorTests
     [Arguments(181)]
     [Arguments(-200)]
     [Arguments(200)]
-    public async Task Validate_WithInvalidLongitude_ReturnsInvalid(double longitude)
+    public async Task GeoCoordinate_WithInvalidLongitude_IsRejectedByDomain(double longitude)
     {
-        // Arrange
-        var dto = new CreateLocationDto
-        {
-            FullName = "Test Location",
-            Address = "123 Test Street",
-            Postcode = "12345",
-            Country = "Belgium",
-            City = "Brussels",
-            Latitude = 50.8476,
-            Longitude = longitude
-        };
-
-        // Act
-        var result = await _validator.ValidateAsync(dto);
-
-        // Assert
-        await Assert.That(result.IsValid).IsFalse();
-        await Assert.That(result.Errors.Any(e => e.PropertyName == "Longitude")).IsTrue();
+        await Assert.That(() => Explore.Domain.ValueObjects.GeoCoordinate.Create(50.8476, longitude))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -200,25 +169,11 @@ public class CreateLocationDtoValidatorTests
     [Arguments(90)]
     [Arguments(0)]
     [Arguments(45.5)]
-    public async Task Validate_WithValidLatitude_ReturnsValid(double latitude)
+    public async Task GeoCoordinate_WithValidLatitude_PreservesExactValue(double latitude)
     {
-        // Arrange
-        var dto = new CreateLocationDto
-        {
-            FullName = "Test Location",
-            Address = "123 Test Street",
-            Postcode = "12345",
-            Country = "Belgium",
-            City = "Brussels",
-            Latitude = latitude,
-            Longitude = 4.3572
-        };
+        var coordinate = Explore.Domain.ValueObjects.GeoCoordinate.Create(latitude, 4.3572);
 
-        // Act
-        var result = await _validator.ValidateAsync(dto);
-
-        // Assert
-        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(coordinate.Latitude).IsEqualTo(latitude);
     }
 
     [Test]
@@ -226,47 +181,23 @@ public class CreateLocationDtoValidatorTests
     [Arguments(180)]
     [Arguments(0)]
     [Arguments(100.5)]
-    public async Task Validate_WithValidLongitude_ReturnsValid(double longitude)
+    public async Task GeoCoordinate_WithValidLongitude_PreservesExactValue(double longitude)
     {
-        // Arrange
-        var dto = new CreateLocationDto
-        {
-            FullName = "Test Location",
-            Address = "123 Test Street",
-            Postcode = "12345",
-            Country = "Belgium",
-            City = "Brussels",
-            Latitude = 50.8476,
-            Longitude = longitude
-        };
+        var coordinate = Explore.Domain.ValueObjects.GeoCoordinate.Create(50.8476, longitude);
 
-        // Act
-        var result = await _validator.ValidateAsync(dto);
-
-        // Assert
-        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(coordinate.Longitude).IsEqualTo(longitude);
     }
 
     [Test]
-    public async Task Validate_WithNullCoordinates_ReturnsValid()
+    public async Task CreateDto_DoesNotExposeNullableOrNonNullableCoordinates()
     {
-        // Arrange
-        var dto = new CreateLocationDto
-        {
-            FullName = "Test Location",
-            Address = "123 Test Street",
-            Postcode = "12345",
-            Country = "Belgium",
-            City = "Brussels",
-            Latitude = null,
-            Longitude = null
-        };
+        string[] coordinateMembers = typeof(CreateLocationDto)
+            .GetProperties()
+            .Where(property => property.Name is "Latitude" or "Longitude")
+            .Select(property => property.Name)
+            .ToArray();
 
-        // Act
-        var result = await _validator.ValidateAsync(dto);
-
-        // Assert
-        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(coordinateMembers).IsEmpty();
     }
 
     [Test]

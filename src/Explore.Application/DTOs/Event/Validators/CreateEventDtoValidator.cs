@@ -1,12 +1,8 @@
 // ABOUTME: FluentValidation rules for the canonical CreateEventDto graph contract.
 // ABOUTME: Validates create-page visible fields and temp-key references before transactional persistence.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
-using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using FluentValidation;
@@ -155,8 +151,6 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             location.RuleFor(l => l.Postcode).NotEmpty().MaximumLength(500);
             location.RuleFor(l => l.Country).NotEmpty().MaximumLength(500);
             location.RuleFor(l => l.City).NotEmpty().MaximumLength(500);
-            location.RuleFor(l => l.Latitude).InclusiveBetween(-90, 90).When(l => l.Latitude.HasValue);
-            location.RuleFor(l => l.Longitude).InclusiveBetween(-180, 180).When(l => l.Longitude.HasValue);
             location.RuleFor(l => l.Timezone).MaximumLength(500).When(l => !string.IsNullOrWhiteSpace(l.Timezone));
         });
 

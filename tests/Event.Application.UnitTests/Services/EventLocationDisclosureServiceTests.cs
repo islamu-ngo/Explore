@@ -256,13 +256,10 @@ public sealed class EventLocationDisclosureServiceTests
             City = "Brussels"
         };
         location.ClassifyAs(LocationKindEnum.CommunityVenue);
-        location.AttachPii(new LocationPii
-        {
-            Address = address,
-            Postcode = postcode,
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        location.SetProviderAddress(
+            address,
+            postcode,
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         EventLocation placement = EventLocation.CreatePhysical(
             tenantId,
             eventId,

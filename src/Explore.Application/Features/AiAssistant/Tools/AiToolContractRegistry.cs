@@ -265,8 +265,6 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
                 "postalCode",
                 "country",
                 "city",
-                "latitude",
-                "longitude",
                 "locationTimezone"))
         {
             location = [];
@@ -288,8 +286,6 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         changed |= MoveAliasedProperty(payload, location, "postcode", "postcode", "postalCode", "zipCode");
         changed |= MoveAliasedProperty(payload, location, "country", "country");
         changed |= MoveAliasedProperty(payload, location, "city", "city");
-        changed |= MoveAliasedProperty(payload, location, "latitude", "latitude");
-        changed |= MoveAliasedProperty(payload, location, "longitude", "longitude");
         changed |= MoveAliasedProperty(payload, location, "timezone", "locationTimezone");
         return changed;
     }

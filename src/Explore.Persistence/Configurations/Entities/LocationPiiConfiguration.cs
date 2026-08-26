@@ -4,6 +4,8 @@
 namespace Explore.Persistence.Configurations.Entities;
 
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
+using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -29,5 +31,20 @@ public class LocationPiiConfiguration : IEntityTypeConfiguration<LocationPii>
         builder.Property(e => e.Postcode)
             .HasMaxLength(500)
             .IsRequired();
+
+        builder.Property(e => e.AddressSubstringKey)
+            .HasMaxLength(LocationAddressSubstringKeyV1.MaximumLength)
+            .HasDefaultValue(string.Empty)
+            .IsRequired()
+            .UsePortableOrdinalAscii();
+
+        builder.Property(e => e.AddressSubstringKeyVersion)
+            .HasDefaultValue((short)0)
+            .IsRequired();
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_location_pii_address_substring_key_version",
+            "(address_substring_key_version = 0 AND address_substring_key = '') OR " +
+            "(address_substring_key_version = 1 AND address_substring_key <> '' AND length(address_substring_key) % 7 = 0)"));
     }
 }

@@ -10,14 +10,18 @@ using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Features.Federation.Atproto.Models;
 using MediatR;
-using GeneratedEventApiClient = Explore.Blazor.Client.Clients.IEventApiClient;
 
 namespace Event.Architecture.Tests;
 
 public sealed class CoordinateWriteAuthorityArchitectureTests
 {
+    private const string GeneratedClientNamespace = "Explore.Blazor.Client.Clients";
+    private const string GeneratedCodeMarker = "[System.CodeDom.Compiler.GeneratedCode(";
+    private const string GeneratedClientInterfaceDeclaration = "public partial interface IEventApiClient";
+    private const string GeneratedClientPath = "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs";
+
     private static readonly Assembly ApplicationAssembly = typeof(CreateLocationDto).Assembly;
-    private static readonly Assembly GeneratedClientAssembly = typeof(GeneratedEventApiClient).Assembly;
+    private static readonly Lazy<GeneratedClientModel> GeneratedClient = new(CreateGeneratedClientModel);
 
     private static readonly ImmutableArray<string> ExpectedGeneratedRequestRoots =
     [
@@ -105,12 +109,19 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         string[] coordinateContractTypes = DiscoverApplicationCoordinateContractTypes()
             .Select(GetTypeName)
             .ToArray();
-        Type[] writeRoots = DiscoverAllUntrustedWriteContractRoots();
-        string[] writeRootTypes = writeRoots
+        Type[] applicationWriteRoots = DiscoverUntrustedApplicationWriteContractRoots();
+        string[] writeRootTypes = applicationWriteRoots
             .Select(GetTypeName)
             .ToArray();
-        string[] writeGraphTypes = DiscoverReachableContractTypes(writeRoots)
+        string[] writeGraphTypes = DiscoverReachableContractTypes(applicationWriteRoots)
             .Select(GetTypeName)
+            .ToArray();
+        GeneratedClientContract[] generatedWriteRoots = DiscoverGeneratedClientRequestRoots();
+        string[] generatedWriteRootTypes = generatedWriteRoots
+            .Select(GetGeneratedTypeName)
+            .ToArray();
+        string[] generatedWriteGraphTypes = DiscoverReachableGeneratedContractTypes(generatedWriteRoots)
+            .Select(GetGeneratedTypeName)
             .ToArray();
         string[] authorizedTypeNames = AuthorizedCoordinateReadTypes
             .Select(GetTypeName)
@@ -129,16 +140,19 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         await Assert.That(authorizedTypeNames.Except(coordinateContractTypes, StringComparer.Ordinal)).IsEmpty();
         await Assert.That(writeRootTypes.Intersect(authorizedTypeNames, StringComparer.Ordinal)).IsEmpty();
         await Assert.That(writeGraphTypes.Intersect(authorizedTypeNames, StringComparer.Ordinal)).IsEmpty();
+        await Assert.That(generatedWriteRootTypes.Intersect(authorizedTypeNames, StringComparer.Ordinal)).IsEmpty();
+        await Assert.That(generatedWriteGraphTypes.Intersect(authorizedTypeNames, StringComparer.Ordinal)).IsEmpty();
     }
 
     [Test]
     public async Task GeneratedClientRequestDiscoveryUsesApiMethodInputsAndTraversesNestedSchemas()
     {
-        string[] generatedRequestRoots = DiscoverGeneratedClientRequestRoots()
-            .Select(GetTypeName)
+        GeneratedClientContract[] generatedRoots = DiscoverGeneratedClientRequestRoots();
+        string[] generatedRequestRoots = generatedRoots
+            .Select(GetGeneratedTypeName)
             .ToArray();
-        string[] generatedRequestGraph = DiscoverReachableContractTypes(DiscoverGeneratedClientRequestRoots())
-            .Select(GetTypeName)
+        string[] generatedRequestGraph = DiscoverReachableGeneratedContractTypes(generatedRoots)
+            .Select(GetGeneratedTypeName)
             .ToArray();
 
         await Assert.That(ExpectedGeneratedRequestRoots.Except(generatedRequestRoots, StringComparer.Ordinal)).IsEmpty();
@@ -148,8 +162,12 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
     [Test]
     public async Task UntrustedAndGeneratedWriteContractsMustNotExposeRawCoordinates()
     {
-        Type[] writeRoots = DiscoverAllUntrustedWriteContractRoots();
-        string[] violations = DiscoverRawCoordinateWriteMembers(writeRoots);
+        string[] violations = DiscoverRawCoordinateWriteMembers(
+            DiscoverUntrustedApplicationWriteContractRoots())
+            .Concat(DiscoverGeneratedRawCoordinateWriteMembers(DiscoverGeneratedClientRequestRoots()))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
         ReportCoordinateWriteDebt(violations);
         await Assert.That(violations).IsEmpty()
@@ -187,29 +205,258 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         ]);
     }
 
-    private static Type[] DiscoverAllUntrustedWriteContractRoots() =>
-    [
-        .. DiscoverUntrustedApplicationWriteContractRoots(),
-        .. DiscoverGeneratedClientRequestRoots()
-    ];
-
     private static Type[] DiscoverUntrustedApplicationWriteContractRoots() => ApplicationAssembly
         .GetTypes()
         .Where(type => IsUntrustedApplicationWriteContractRoot(type, requireApplicationAssembly: true))
         .OrderBy(GetTypeName, StringComparer.Ordinal)
         .ToArray();
 
-    private static Type[] DiscoverGeneratedClientRequestRoots() => typeof(GeneratedEventApiClient)
-        .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-        .SelectMany(method => method.GetParameters())
-        .Select(parameter => parameter.ParameterType)
-        .SelectMany(GetNestedContractTypes)
-        .Where(type => type.Assembly == GeneratedClientAssembly)
-        .Where(type => type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false })
-        .Where(IsGenerated)
-        .Distinct()
-        .OrderBy(GetTypeName, StringComparer.Ordinal)
-        .ToArray();
+    private static GeneratedClientContract[] DiscoverGeneratedClientRequestRoots()
+    {
+        GeneratedClientModel model = GeneratedClient.Value;
+
+        return model.InterfaceSection
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => line.EndsWith(");", StringComparison.Ordinal))
+            .SelectMany(ExtractMethodParameterTypeIdentifiers)
+            .Where(model.Contracts.ContainsKey)
+            .Distinct(StringComparer.Ordinal)
+            .Select(name => model.Contracts[name])
+            .OrderBy(contract => contract.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static GeneratedClientModel CreateGeneratedClientModel()
+    {
+        string source = File.ReadAllText(Path.Combine(ResolveRepositoryRoot(), GeneratedClientPath));
+        GeneratedClientContract[] contracts = ParseGeneratedClientContracts(source);
+
+        return new GeneratedClientModel(
+            contracts.ToDictionary(contract => contract.Name, StringComparer.Ordinal),
+            ExtractGeneratedTypeSection(source, GeneratedClientInterfaceDeclaration));
+    }
+
+    private static GeneratedClientContract[] ParseGeneratedClientContracts(string source)
+    {
+        var contracts = new List<GeneratedClientContract>();
+        int markerIndex = 0;
+
+        while ((markerIndex = source.IndexOf(GeneratedCodeMarker, markerIndex, StringComparison.Ordinal)) >= 0)
+        {
+            int declarationStart = source.IndexOf('\n', markerIndex) + 1;
+            if (declarationStart == 0)
+                break;
+
+            int declarationEnd = source.IndexOf('\n', declarationStart);
+            if (declarationEnd < 0)
+                declarationEnd = source.Length;
+
+            string declaration = source[declarationStart..declarationEnd].Trim();
+            int nextMarker = source.IndexOf(GeneratedCodeMarker, declarationEnd, StringComparison.Ordinal);
+            int sectionEnd = nextMarker < 0 ? source.Length : nextMarker;
+            markerIndex = sectionEnd;
+
+            const string classDeclaration = "public partial class ";
+            if (!declaration.StartsWith(classDeclaration, StringComparison.Ordinal))
+                continue;
+
+            string name = declaration[classDeclaration.Length..]
+                .Split([' ', ':'], StringSplitOptions.RemoveEmptyEntries)[0];
+            GeneratedClientMember[] members = ParseGeneratedClientMembers(
+                source[declarationEnd..sectionEnd]);
+            contracts.Add(new GeneratedClientContract(name, members));
+        }
+
+        return contracts
+            .OrderBy(contract => contract.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static GeneratedClientMember[] ParseGeneratedClientMembers(string section)
+    {
+        var members = new List<GeneratedClientMember>();
+        string? jsonName = null;
+
+        foreach (string sourceLine in section.Split('\n'))
+        {
+            string line = sourceLine.Trim();
+            if (line.StartsWith("[System.Text.Json.Serialization.JsonPropertyName(\"", StringComparison.Ordinal))
+            {
+                int nameStart = line.IndexOf('"') + 1;
+                int nameEnd = line.IndexOf('"', nameStart);
+                jsonName = nameEnd < 0 ? null : line[nameStart..nameEnd];
+                continue;
+            }
+
+            if (!line.StartsWith("public ", StringComparison.Ordinal))
+                continue;
+
+            int bodyStart = line.IndexOf('{');
+            if (bodyStart < 0 || !line.Contains(" get;", StringComparison.Ordinal))
+                continue;
+
+            string declaration = line["public ".Length..bodyStart].Trim();
+            int memberNameStart = declaration.LastIndexOf(' ');
+            if (memberNameStart < 0)
+                continue;
+
+            members.Add(new GeneratedClientMember(
+                declaration[..memberNameStart],
+                declaration[(memberNameStart + 1)..],
+                jsonName,
+                line.Contains(" set;", StringComparison.Ordinal)
+                    || line.Contains(" init;", StringComparison.Ordinal)));
+            jsonName = null;
+        }
+
+        return members.ToArray();
+    }
+
+    private static string ExtractGeneratedTypeSection(string source, string declaration)
+    {
+        int declarationStart = source.IndexOf(declaration, StringComparison.Ordinal);
+        if (declarationStart < 0)
+            throw new InvalidOperationException($"Generated client declaration was not found: {declaration}.");
+
+        int sectionEnd = source.IndexOf(GeneratedCodeMarker, declarationStart, StringComparison.Ordinal);
+        if (sectionEnd < 0)
+            sectionEnd = source.Length;
+
+        return source[declarationStart..sectionEnd];
+    }
+
+    private static string[] ExtractMethodParameterTypeIdentifiers(string methodDeclaration)
+    {
+        int parametersStart = methodDeclaration.IndexOf('(');
+        int parametersEnd = methodDeclaration.LastIndexOf(')');
+        if (parametersStart < 0 || parametersEnd <= parametersStart)
+            return [];
+
+        return SplitTopLevel(methodDeclaration[(parametersStart + 1)..parametersEnd])
+            .Select(RemoveParameterNameAndDefault)
+            .SelectMany(ExtractTypeIdentifiers)
+            .ToArray();
+    }
+
+    private static string RemoveParameterNameAndDefault(string parameter)
+    {
+        int genericDepth = 0;
+        int parenthesesDepth = 0;
+        int defaultStart = -1;
+
+        for (int index = 0; index < parameter.Length; index++)
+        {
+            switch (parameter[index])
+            {
+                case '<': genericDepth++; break;
+                case '>': genericDepth--; break;
+                case '(': parenthesesDepth++; break;
+                case ')': parenthesesDepth--; break;
+                case '=' when genericDepth == 0 && parenthesesDepth == 0:
+                    defaultStart = index;
+                    index = parameter.Length;
+                    break;
+            }
+        }
+
+        string declaration = (defaultStart < 0 ? parameter : parameter[..defaultStart]).Trim();
+        int parameterNameStart = declaration.LastIndexOf(' ');
+        return parameterNameStart < 0 ? declaration : declaration[..parameterNameStart];
+    }
+
+    private static string[] SplitTopLevel(string value)
+    {
+        var values = new List<string>();
+        int genericDepth = 0;
+        int parenthesesDepth = 0;
+        int itemStart = 0;
+
+        for (int index = 0; index < value.Length; index++)
+        {
+            switch (value[index])
+            {
+                case '<': genericDepth++; break;
+                case '>': genericDepth--; break;
+                case '(': parenthesesDepth++; break;
+                case ')': parenthesesDepth--; break;
+                case ',' when genericDepth == 0 && parenthesesDepth == 0:
+                    values.Add(value[itemStart..index].Trim());
+                    itemStart = index + 1;
+                    break;
+            }
+        }
+
+        if (itemStart < value.Length)
+            values.Add(value[itemStart..].Trim());
+
+        return values.ToArray();
+    }
+
+    private static string[] ExtractTypeIdentifiers(string typeExpression)
+    {
+        var identifiers = new List<string>();
+        int identifierStart = -1;
+
+        for (int index = 0; index <= typeExpression.Length; index++)
+        {
+            bool isIdentifierCharacter = index < typeExpression.Length
+                && (char.IsLetterOrDigit(typeExpression[index]) || typeExpression[index] == '_');
+            if (isIdentifierCharacter && identifierStart < 0)
+            {
+                identifierStart = index;
+            }
+            else if (!isIdentifierCharacter && identifierStart >= 0)
+            {
+                identifiers.Add(typeExpression[identifierStart..index]);
+                identifierStart = -1;
+            }
+        }
+
+        return identifiers.ToArray();
+    }
+
+    private static GeneratedClientContract[] DiscoverReachableGeneratedContractTypes(
+        IEnumerable<GeneratedClientContract> roots)
+    {
+        Dictionary<string, GeneratedClientContract> contracts = GeneratedClient.Value.Contracts;
+        var pending = new Queue<GeneratedClientContract>(roots.OrderBy(contract => contract.Name, StringComparer.Ordinal));
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+
+        while (pending.TryDequeue(out GeneratedClientContract? contract))
+        {
+            if (!visited.Add(contract.Name))
+                continue;
+
+            foreach (string referencedName in contract.Members
+                         .SelectMany(member => ExtractTypeIdentifiers(member.TypeExpression))
+                         .Where(contracts.ContainsKey)
+                         .Distinct(StringComparer.Ordinal)
+                         .Order(StringComparer.Ordinal))
+            {
+                pending.Enqueue(contracts[referencedName]);
+            }
+        }
+
+        return visited
+            .Select(name => contracts[name])
+            .OrderBy(contract => contract.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string[] DiscoverGeneratedRawCoordinateWriteMembers(
+        IEnumerable<GeneratedClientContract> roots) =>
+        DiscoverReachableGeneratedContractTypes(roots)
+            .SelectMany(contract => contract.Members
+                .Where(member => member.IsWritable)
+                .Where(member => IsRawCoordinateName(member.Name)
+                    || IsRawCoordinateName(member.JsonName))
+                .Select(member => member.JsonName is { } jsonName
+                    && !string.Equals(member.Name, jsonName, StringComparison.OrdinalIgnoreCase)
+                        ? $"{GetGeneratedTypeName(contract)}.{member.Name} [json:{jsonName}]"
+                        : $"{GetGeneratedTypeName(contract)}.{member.Name}"))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
     private static Type[] DiscoverApplicationCoordinateContractTypes() => ApplicationAssembly
         .GetTypes()
@@ -366,17 +613,43 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         }
     }
 
-    private static Type UnwrapContractType(Type type) =>
-        Nullable.GetUnderlyingType(type) ?? (type.IsArray ? type.GetElementType()! : type);
+    private static Type UnwrapContractType(Type type)
+    {
+        Type? nullableType = Nullable.GetUnderlyingType(type);
+        if (nullableType is not null)
+            return UnwrapContractType(nullableType);
+
+        if (!type.IsArray)
+            return type;
+
+        Type? elementType = type.GetElementType();
+        if (elementType is null)
+            return type;
+
+        return UnwrapContractType(elementType);
+    }
 
     private static bool IsReachableContractType(Type type) =>
-        type.Assembly == ApplicationAssembly || type.Assembly == GeneratedClientAssembly;
+        type.Assembly == ApplicationAssembly;
 
     private static bool IsRawCoordinateName(string? name) =>
         string.Equals(name, "latitude", StringComparison.OrdinalIgnoreCase)
         || string.Equals(name, "longitude", StringComparison.OrdinalIgnoreCase);
 
     private static string GetTypeName(Type type) => type.FullName ?? type.Name;
+
+    private static string GetGeneratedTypeName(GeneratedClientContract contract) =>
+        $"{GeneratedClientNamespace}.{contract.Name}";
+
+    private static string ResolveRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
+            directory = directory.Parent;
+
+        return directory?.FullName
+            ?? throw new DirectoryNotFoundException("Could not locate repository root containing Explore.slnx.");
+    }
 
     private static void ReportCoordinateWriteDebt(string[] violations)
     {
@@ -387,6 +660,18 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         foreach (string violation in violations)
             Console.WriteLine($"  - {violation}");
     }
+
+    private sealed record GeneratedClientModel(
+        Dictionary<string, GeneratedClientContract> Contracts,
+        string InterfaceSection);
+
+    private sealed record GeneratedClientContract(string Name, GeneratedClientMember[] Members);
+
+    private sealed record GeneratedClientMember(
+        string TypeExpression,
+        string Name,
+        string? JsonName,
+        bool IsWritable);
 
     private sealed class PartialCoordinateWritePayload
     {

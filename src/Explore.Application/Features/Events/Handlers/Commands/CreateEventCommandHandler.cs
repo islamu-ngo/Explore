@@ -1,11 +1,6 @@
 // ABOUTME: Handler for the canonical single-submit CreateEventDto graph command.
 // ABOUTME: Validates, resolves publisher ownership, persists event graph atomically, and creates initial EventOwner role assignment.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -15,6 +10,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Geocoding;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Application.Services;
@@ -71,6 +67,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IEventCategoriesRepository _eventCategoriesRepository;
     private readonly IEventTagsRepository _eventTagsRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IAddressGovernancePolicyResolver _addressGovernancePolicyResolver;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
@@ -123,6 +120,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IEventCategoriesRepository eventCategoriesRepository,
         IEventTagsRepository eventTagsRepository,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
+        IAddressGovernancePolicyResolver addressGovernancePolicyResolver,
         IUserContext userContext,
         ITenantContext tenantContext,
         HybridCache cache,
@@ -174,6 +172,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _eventCategoriesRepository = eventCategoriesRepository;
         _eventTagsRepository = eventTagsRepository;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
+        _addressGovernancePolicyResolver = addressGovernancePolicyResolver;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _cache = cache;
@@ -235,6 +234,41 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 actorResult.ErrorMessage!);
         }
 
+        List<AddressGovernancePolicyDecision> addressDecisions = [];
+        Guid? verifiedOrganizationId = !actorResult.IsCommunitySubmission
+            && dto.OrganizationId.HasValue
+            && dto.GroupId is null
+                ? dto.OrganizationId
+                : null;
+        try
+        {
+            foreach (var _ in dto.Locations)
+            {
+                AddressGovernancePolicyDecision decision = await _addressGovernancePolicyResolver.ResolveAsync(
+                    new AddressGovernancePolicyRequest(
+                        _tenantContext.TenantId,
+                        actorResult.ActorId,
+                        currentUserId,
+                        verifiedOrganizationId),
+                    cancellationToken);
+                if (!decision.IsValidManualDecision(verifiedOrganizationId))
+                {
+                    return AddressGovernanceFailure();
+                }
+
+                addressDecisions.Add(decision);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return AddressGovernanceFailure();
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
         var timezoneId = ResolveTimezoneId(dto);
         DateTimeOffset now = _timeProvider.GetUtcNow();
         var createdAt = now;
@@ -260,6 +294,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             eventEntity.Publish(occurredAt);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
@@ -269,7 +304,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 await CreateEventIslamicAspectAsync(dto, eventEntity, ct);
                 await AssignInitialEventOwnerAsync(eventEntity, currentUserId, createdAt.UtcDateTime, ct);
 
-                var locationMap = await CreateLocationsAsync(dto, ct);
+                var locationMap = await CreateLocationsAsync(
+                    dto,
+                    addressDecisions,
+                    actorResult.ActorId,
+                    occurredAt,
+                    ct);
                 var dayMaps = await CreateEventDaysAsync(dto, eventEntity, timezoneId, ct);
                 var roomMap = await CreateRoomsAsync(dto, locationMap, ct);
                 await CreateSessionsAsync(dto, eventEntity, locationMap, dayMaps, roomMap, timezoneId, currentUserId, createdAt, ct);
@@ -299,7 +339,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 return eventEntity.Id;
             }, cancellationToken);
 
-            _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
+            _metrics.RecordEventCreated();
             try
             {
                 await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
@@ -434,6 +474,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
     private static string GeneratePublicCode() => Guid.CreateVersion7().ToString("N")[..12];
 
+    private static BaseCommandResponse<Guid> AddressGovernanceFailure() =>
+        BaseCommandResponse.Failure<Guid>(
+            "event_location_address_governance_failed",
+            "Event creation failed.");
+
     private async Task AssignFeaturedImageActorAsync(CreateEventDto dto, Guid actorId)
     {
         if (!dto.FeaturedImageId.HasValue) return;
@@ -548,20 +593,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return (byKey, byDate);
     }
 
-    private async Task<Dictionary<string, Location>> CreateLocationsAsync(CreateEventDto dto, CancellationToken ct)
+    private async Task<Dictionary<string, Location>> CreateLocationsAsync(
+        CreateEventDto dto,
+        IReadOnlyList<AddressGovernancePolicyDecision> decisions,
+        Guid actorId,
+        DateTime changedAtUtc,
+        CancellationToken ct)
     {
         var byKey = new Dictionary<string, Location>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var locationDto in dto.Locations)
+        for (int index = 0; index < dto.Locations.Count; index++)
         {
-            if (locationDto.Latitude.HasValue != locationDto.Longitude.HasValue)
-            {
-                throw new InvalidOperationException("Location coordinates must both be provided or both omitted.");
-            }
-
-            GeoCoordinate? coordinate = locationDto.Latitude.HasValue
-                ? GeoCoordinate.Create(locationDto.Latitude.Value, locationDto.Longitude!.Value)
-                : null;
+            CreateEventLocationDto locationDto = dto.Locations[index];
+            AddressGovernancePolicyDecision decision = decisions[index];
             var location = new Location
             {
                 FullName = locationDto.FullName,
@@ -569,11 +613,18 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 City = locationDto.City,
                 Timezone = locationDto.Timezone,
                 TenantId = _tenantContext.TenantId,
-                Tenant = null!,
-                Pii = LocationPii.Create(locationDto.Address, locationDto.Postcode, coordinate)
+                Tenant = null!
             };
+            location.SetManualAddress(locationDto.Address, locationDto.Postcode);
+            location.ApplyAddressGovernanceWithAudit(
+                actorId,
+                LocationAddressSourceEnum.Manual,
+                decision.InitialVisibility,
+                decision.AddressOrganizationId,
+                changedAtUtc);
 
-            location = await _locationRepository.Create(location);
+            ct.ThrowIfCancellationRequested();
+            location = await _locationRepository.Create(location, ct);
             byKey[locationDto.TempKey.Trim()] = location;
         }
 

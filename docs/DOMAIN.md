@@ -83,6 +83,24 @@ Exact proximity discovery is **not implemented**. [ADR-013](adr/ADR-013-postgis-
 
 The proposed distance unit is an eligible future public `EventSession` occurrence: scheduled, published, non-deleted, tenant-matching, under a public published event, and attached to a location with an active governed point. Online-only, past, draft, private, moderated, unscheduled, deleted, or unapproved occurrences do not participate. PostgreSQL would select the minimum qualifying occurrence distance per event; no current entity, migration, or runtime query provides that capability.
 
+### Location Address Source, Visibility, And Promotion
+
+A `Location` keeps address origin and reuse scope as independent lookup-backed axes. Source is
+`UnknownLegacy`, `Manual`, or `ProviderSelection`; visibility is `Quarantined`, `CreatorPrivate`,
+`OrganizationScoped`, or `TenantApproved`. New or retained rows whose provenance is not established
+remain `UnknownLegacy` and `Quarantined`. Approval never invents or rewrites provenance.
+
+`PromoteAddressToTenantApproved` is the only tenant-wide visibility transition. It accepts an active,
+non-Private-Home address from the quarantined, creator-private, or organization-scoped states and
+changes only visibility plus normal update audit/concurrency fields. It preserves `CreatedBy`, the
+owning organization reference, tenant, address/postcode, coordinate pair, location metadata, kind,
+owner, and source. An already tenant-approved address is an exact no-op. Missing PII, non-active PII,
+Private Homes, and erased rows fail closed.
+
+Address visibility controls local application reuse only. It does not alter EventLocation disclosure,
+and application-owned address data is never submitted, exported, merged, or backfilled into a
+geocoding-provider dataset.
+
 ### 2) Optional Event Aspects (Layer 2 typed schema)
 
 Base event data stays in `Event`. Optional modules add 1:1 aspect records sharing the same primary key:

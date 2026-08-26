@@ -1,5 +1,5 @@
 // ABOUTME: Small test logger for asserting formatted structured log output.
-// ABOUTME: Captures log level, rendered message, and exception payloads without external providers.
+// ABOUTME: Captures structured state, argument values, rendered text, level, and exceptions without external providers.
 
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +22,15 @@ internal sealed class TestListLogger<T> : ILogger<T>
         Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        Entries.Add(new TestLogEntry(logLevel, eventId, formatter(state, exception), exception));
+        var structuredState = state is IEnumerable<KeyValuePair<string, object?>> properties
+            ? properties.ToArray()
+            : [];
+        Entries.Add(new TestLogEntry(
+            logLevel,
+            eventId,
+            formatter(state, exception),
+            exception,
+            structuredState));
     }
 
     private sealed class NoopScope : IDisposable
@@ -35,4 +43,15 @@ internal sealed class TestListLogger<T> : ILogger<T>
     }
 }
 
-internal sealed record TestLogEntry(LogLevel Level, EventId EventId, string Message, Exception? Exception);
+internal sealed record TestLogEntry(
+    LogLevel Level,
+    EventId EventId,
+    string Message,
+    Exception? Exception,
+    IReadOnlyList<KeyValuePair<string, object?>> State)
+{
+    public IReadOnlyList<object?> Arguments =>
+        State.Where(property => property.Key != "{OriginalFormat}")
+            .Select(property => property.Value)
+            .ToArray();
+}

@@ -1,7 +1,6 @@
 // ABOUTME: Canonical lookup metadata for enum-backed lookup rows exposed through API DTOs.
 // ABOUTME: Mirrors LookupTableSeeder stable IDs/codes so handlers can map without loading navigations.
 
-using Explore.Domain;
 using Explore.Domain.Enums;
 using ExternalApiKeyOwnerTypeEnum = Explore.Domain.Enums.ExternalApiKeyOwnerType;
 
@@ -32,6 +31,29 @@ public static class NormalizedLookupMetadata
             (int)Explore.Domain.SettingValueType.Decimal => new(id, "DECIMAL", "Decimal"),
             (int)Explore.Domain.SettingValueType.Json => new(id, "JSON", "JSON"),
             (int)Explore.Domain.SettingValueType.DateTime => new(id, "DATE_TIME", "Date/Time"),
+            _ => Unknown(id)
+        };
+    }
+
+    public static LookupReference LocationAddressSource(int id)
+    {
+        return id switch
+        {
+            (int)LocationAddressSourceEnum.UnknownLegacy => new(id, "UNKNOWN_LEGACY", "Unknown legacy"),
+            (int)LocationAddressSourceEnum.Manual => new(id, "MANUAL", "Manual"),
+            (int)LocationAddressSourceEnum.ProviderSelection => new(id, "PROVIDER_SELECTION", "Provider selection"),
+            _ => Unknown(id)
+        };
+    }
+
+    public static LookupReference LocationAddressVisibility(int id)
+    {
+        return id switch
+        {
+            (int)LocationAddressVisibilityEnum.Quarantined => new(id, "QUARANTINED", "Quarantined"),
+            (int)LocationAddressVisibilityEnum.CreatorPrivate => new(id, "CREATOR_PRIVATE", "Creator private"),
+            (int)LocationAddressVisibilityEnum.OrganizationScoped => new(id, "ORGANIZATION_SCOPED", "Organization scoped"),
+            (int)LocationAddressVisibilityEnum.TenantApproved => new(id, "TENANT_APPROVED", "Tenant approved"),
             _ => Unknown(id)
         };
     }

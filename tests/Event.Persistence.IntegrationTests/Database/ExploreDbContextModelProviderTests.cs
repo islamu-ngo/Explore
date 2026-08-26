@@ -33,6 +33,54 @@ public sealed class ExploreDbContextModelProviderTests
     }
 
     [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task LocationDerivedKeysHaveExactPortableOrdinalModelContract(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+        IProperty displayKey = model.FindEntityType(typeof(Explore.Domain.Location))!
+            .FindProperty(nameof(Explore.Domain.Location.DisplaySortKey))!;
+        IProperty displayVersion = model.FindEntityType(typeof(Explore.Domain.Location))!
+            .FindProperty(nameof(Explore.Domain.Location.DisplaySortKeyVersion))!;
+        IProperty addressKey = model.FindEntityType(typeof(Explore.Domain.LocationPii))!
+            .FindProperty(nameof(Explore.Domain.LocationPii.AddressSubstringKey))!;
+        IProperty addressVersion = model.FindEntityType(typeof(Explore.Domain.LocationPii))!
+            .FindProperty(nameof(Explore.Domain.LocationPii.AddressSubstringKeyVersion))!;
+
+        await Assert.That(displayKey.GetMaxLength()).IsEqualTo(14_000);
+        await Assert.That(addressKey.GetMaxLength()).IsEqualTo(14_000);
+        await Assert.That(displayKey.GetDefaultValue()).IsEqualTo(string.Empty);
+        await Assert.That(addressKey.GetDefaultValue()).IsEqualTo(string.Empty);
+        await Assert.That(displayVersion.GetDefaultValue()).IsEqualTo((short)0);
+        await Assert.That(addressVersion.GetDefaultValue()).IsEqualTo((short)0);
+
+        string expectedCollation = provider switch
+        {
+            "PostgreSql" => "C",
+            "Sqlite" => "BINARY",
+            "SqlServer" => "Latin1_General_100_BIN2",
+            "MariaDb" or "MySql" => "ascii_bin",
+            _ => throw new ArgumentOutOfRangeException(nameof(provider))
+        };
+        await Assert.That(displayKey.GetCollation()).IsEqualTo(expectedCollation);
+        await Assert.That(addressKey.GetCollation()).IsEqualTo(expectedCollation);
+        await Assert.That(displayKey.GetCharSet()).IsEqualTo(provider is "MariaDb" or "MySql" ? "ascii" : null);
+        await Assert.That(addressKey.GetCharSet()).IsEqualTo(provider is "MariaDb" or "MySql" ? "ascii" : null);
+
+        string checks = string.Join(' ', model.GetEntityTypes()
+            .Where(type => type.ClrType == typeof(Explore.Domain.Location) || type.ClrType == typeof(Explore.Domain.LocationPii))
+            .SelectMany(type => type.GetCheckConstraints())
+            .Select(check => check.Sql));
+        await Assert.That(checks).Contains("display_sort_key_version");
+        await Assert.That(checks).Contains("address_substring_key_version");
+        await Assert.That(checks).Contains("address_visibility_id");
+    }
+
+    [Test]
     public async Task PostgreSqlConstraintApplierSkipsOtherProviders()
     {
         await using var context = CreateContext("Sqlite");
@@ -209,7 +257,8 @@ public sealed class ExploreDbContextModelProviderTests
         var properties = model.GetEntityTypes().SelectMany(entityType => entityType.GetProperties()).ToArray();
         if (provider is "MariaDb" or "MySql")
         {
-            await Assert.That(properties.Where(property => !IsMySqlAsciiIdentityProperty(property))
+            await Assert.That(properties.Where(property => !IsMySqlAsciiIdentityProperty(property)
+                    && !IsLocationDerivedKey(property))
                 .All(property => property.GetCollation() == null)).IsTrue();
             await Assert.That(model.FindEntityType(typeof(Explore.Domain.AtprotoIdentity))!
                 .FindProperty(nameof(Explore.Domain.AtprotoIdentity.Did))!
@@ -217,7 +266,8 @@ public sealed class ExploreDbContextModelProviderTests
         }
         else
         {
-            await Assert.That(properties.All(property => property.GetCollation() == null)).IsTrue();
+            await Assert.That(properties.Where(property => !IsLocationDerivedKey(property))
+                .All(property => property.GetCollation() == null)).IsTrue();
         }
         await Assert.That(properties.Any(property =>
         {
@@ -375,22 +425,38 @@ public sealed class ExploreDbContextModelProviderTests
     }
 
     [Test]
-    [Arguments("src/Explore.Persistence/Migrations/20260815062551_AddEventPromotionCodes.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations/20260815062627_AddEventPromotionCodes.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations/20260815062801_AddEventPromotionCodes.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations/20260815062813_AddEventPromotionCodes.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations/20260815063136_AddEventPromotionCodes.cs")]
-    public async Task GeneratedPromotionMigrationBackfillsHistoricalSnapshotColumns(string migrationPath)
+    public async Task PostgreSqlPromotionMigrationBackfillsHistoricalSnapshotColumns()
+    {
+        const string migrationPath = "src/Explore.Persistence/Migrations/20260815062551_AddEventPromotionCodes.cs";
+        string source = await File.ReadAllTextAsync(Path.Combine(GetRepositoryRoot(), migrationPath));
+
+        await AssertPromotionSnapshotColumnsAsync(source);
+        await Assert.That(source).Contains("migrationBuilder.Sql");
+    }
+
+    [Test]
+    [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations/20260826054219_InitialApplication.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations/20260826065615_InitialApplication.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations/20260826065711_InitialApplication.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations/20260826065808_InitialApplication.cs")]
+    public async Task RebaselinedInitialContainsCurrentPromotionSnapshotsWithoutHistoricalBackfill(
+        string migrationPath)
     {
         string source = await File.ReadAllTextAsync(Path.Combine(GetRepositoryRoot(), migrationPath));
 
+        await AssertPromotionSnapshotColumnsAsync(source);
+        await Assert.That(source).DoesNotContain("migrationBuilder.Sql");
+        await Assert.That(source).DoesNotContain("migrationBuilder.UpdateData");
+    }
+
+    private static async Task AssertPromotionSnapshotColumnsAsync(string source)
+    {
         await Assert.That(source).Contains("pre_discount_organizer_directed_total_minor_snapshot");
         await Assert.That(source).Contains("post_discount_organizer_directed_total_minor_snapshot");
         await Assert.That(source).Contains("organizer_directed_total_minor_snapshot");
         await Assert.That(source).Contains("pre_discount_line_subtotal_minor_snapshot");
         await Assert.That(source).Contains("post_discount_line_subtotal_minor_snapshot");
         await Assert.That(source).Contains("line_subtotal_snapshot");
-        await Assert.That(source).Contains("migrationBuilder.Sql");
     }
 
     [Test]
@@ -415,6 +481,12 @@ public sealed class ExploreDbContextModelProviderTests
             await Assert.That(lookup.GetSeedData().Count).IsEqualTo(0);
         }
     }
+
+    private static bool IsLocationDerivedKey(IReadOnlyProperty property) =>
+        property.DeclaringType.ClrType == typeof(Explore.Domain.Location)
+            && property.Name == nameof(Explore.Domain.Location.DisplaySortKey)
+        || property.DeclaringType.ClrType == typeof(Explore.Domain.LocationPii)
+            && property.Name == nameof(Explore.Domain.LocationPii.AddressSubstringKey);
 
     private static bool IsMySqlAsciiIdentityProperty(IReadOnlyProperty property) =>
         (property.DeclaringType.ClrType == typeof(Explore.Domain.AtprotoIdentity) &&

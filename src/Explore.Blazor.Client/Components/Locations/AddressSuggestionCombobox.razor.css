@@ -1,0 +1,140 @@
+/* ABOUTME: Styles the address suggestion combobox with logical-direction properties. */
+/* ABOUTME: Keeps focus, active option, status, and semantic badges WCAG-visible. */
+
+.address-suggestion {
+    --address-suggestion-control-block-size: 2.75rem;
+    --address-suggestion-list-max-block-size: min(18rem, 40vh);
+
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.address-suggestion__label {
+    color: var(--isl-color-text);
+    font-weight: 600;
+}
+
+.address-suggestion__input {
+    inline-size: 100%;
+    min-block-size: var(--address-suggestion-control-block-size);
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-input);
+    background: var(--isl-color-surface);
+    color: var(--isl-color-text);
+}
+
+.address-suggestion__input:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.address-suggestion__listbox {
+    max-block-size: var(--address-suggestion-list-max-block-size);
+    margin-block: var(--isl-space-1) 0;
+    padding: var(--isl-space-1);
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--isl-color-text-secondary);
+    border-radius: var(--isl-radius-input);
+    background: var(--isl-color-surface);
+    box-shadow: var(--isl-shadow-sm);
+}
+
+.address-suggestion__option {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-block-size: var(--isl-target-min);
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border-radius: var(--isl-radius-sm);
+    cursor: pointer;
+}
+
+.address-suggestion__option[aria-selected="true"] {
+    background: var(--isl-state-active);
+}
+
+.address-suggestion__option:hover {
+    background: var(--isl-state-hover);
+}
+
+.address-suggestion__name {
+    font-weight: 600;
+}
+
+.address-suggestion__address,
+.address-suggestion__attribution,
+.address-suggestion__provider-state,
+.address-suggestion__status {
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-body2-size);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+.address-suggestion__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-1);
+    margin-block-start: var(--isl-space-1);
+}
+
+.address-suggestion__badge {
+    padding-block: calc(var(--isl-space-1) / 2);
+    padding-inline: var(--isl-space-2);
+    border-radius: var(--isl-radius-full);
+    background: var(--mud-palette-action-default);
+    color: var(--isl-color-text);
+    font-size: var(--isl-typography-overline-size);
+}
+
+.address-suggestion__error {
+    margin: 0;
+    color: var(--isl-color-error);
+}
+
+.address-suggestion__approval {
+    justify-self: start;
+    min-block-size: var(--address-suggestion-control-block-size);
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border: 1px solid var(--isl-color-primary);
+    border-radius: var(--isl-radius-button);
+    background: transparent;
+    color: var(--isl-color-primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.address-suggestion__approval:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.address-suggestion__approval:disabled {
+    cursor: not-allowed;
+    opacity: var(--isl-state-disabled-opacity);
+}
+
+@media (max-height: 40rem) {
+    .address-suggestion {
+        --address-suggestion-list-max-block-size: 30vh;
+    }
+}
+
+@media (forced-colors: active) {
+    .address-suggestion__input:focus-visible,
+    .address-suggestion__approval:focus-visible {
+        outline: 3px solid Highlight;
+    }
+
+    .address-suggestion__option[aria-selected="true"] {
+        outline: var(--isl-focus-ring-width) solid Highlight;
+        outline-offset: calc(-1 * var(--isl-focus-ring-width));
+    }
+
+    .address-suggestion__badge {
+        border: 1px solid CanvasText;
+    }
+}

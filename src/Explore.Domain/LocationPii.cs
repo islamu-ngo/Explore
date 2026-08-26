@@ -1,5 +1,5 @@
 // ABOUTME: Stores precise location-identifying fields in a dedicated extension table.
-// ABOUTME: Uses a 1:1 shared primary-key relationship with Location for hard-deleteable PII.
+// ABOUTME: Restricts address and coordinate mutation to atomic Location aggregate transitions.
 
 using Explore.Domain.ValueObjects;
 
@@ -7,61 +7,91 @@ namespace Explore.Domain;
 
 public class LocationPii
 {
-    private const string RedactedDisplay = "LocationPii[redacted]";
-
-    public Guid LocationId { get; set; }
-    public Location? Location { get; set; }
-
-    public required string Address { get; set; }
-    public required string Postcode { get; set; }
-
-    // Nullable scalar columns remain the Phase 10 persistence shape. Domain writes pair them
-    // through GeoCoordinate so no mutation boundary can expose a half-written coordinate.
-    public double? Latitude { get; set; }
-    public double? Longitude { get; set; }
-
-    public GeoCoordinate? GetCoordinate() => HasValidCoordinatePair()
-        ? GeoCoordinate.Create(Latitude!.Value, Longitude!.Value)
-        : null;
-
-    public static LocationPii Create(
-        string address,
-        string postcode,
-        GeoCoordinate? coordinate)
+    private LocationPii()
     {
-        ArgumentNullException.ThrowIfNull(address);
-        ArgumentNullException.ThrowIfNull(postcode);
+    }
 
-        var pii = new LocationPii
+    public Guid LocationId { get; private set; }
+    public Location? Location { get; private set; }
+
+    public string Address { get; private set; } = string.Empty;
+    public string Postcode { get; private set; } = string.Empty;
+    public string AddressSubstringKey { get; private set; } = string.Empty;
+    public short AddressSubstringKeyVersion { get; private set; }
+    public double? Latitude { get; private set; }
+    public double? Longitude { get; private set; }
+
+    public GeoCoordinate? GetCoordinate()
+    {
+        if (Latitude is not { } latitude || Longitude is not { } longitude)
         {
-            Address = address,
-            Postcode = postcode
-        };
+            return null;
+        }
+
+        return GeoCoordinate.TryCreate(latitude, longitude, out GeoCoordinate? coordinate)
+            ? coordinate
+            : null;
+    }
+
+    internal static LocationPii Create(string address, string postcode, GeoCoordinate? coordinate)
+    {
+        var pii = new LocationPii();
         pii.SetAddress(address, postcode, coordinate);
         return pii;
     }
 
-    internal void SetAddress(
-        string address,
-        string postcode,
-        GeoCoordinate? coordinate)
+    internal void SetAddress(string address, string postcode, GeoCoordinate? coordinate)
     {
-        ArgumentNullException.ThrowIfNull(address);
-        ArgumentNullException.ThrowIfNull(postcode);
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            throw new ArgumentException("Address is required.", nameof(address));
+        }
+        if (string.IsNullOrWhiteSpace(postcode))
+        {
+            throw new ArgumentException("Postcode is required.", nameof(postcode));
+        }
+
+        string addressSubstringKey = LocationAddressSubstringKeyV1.Create(address);
 
         Address = address;
         Postcode = postcode;
+        AddressSubstringKey = addressSubstringKey;
+        AddressSubstringKeyVersion = LocationAddressSubstringKeyV1.Version;
         Latitude = coordinate?.Latitude;
         Longitude = coordinate?.Longitude;
     }
 
-    public override string ToString() => RedactedDisplay;
+    internal bool EnsureCurrentAddressSubstringKey()
+    {
+        string currentKey = LocationAddressSubstringKeyV1.Create(Address);
+        if (HasCurrentAddressSubstringKey(currentKey))
+        {
+            return false;
+        }
 
-    private bool HasValidCoordinatePair() =>
-        Latitude is { } latitude
-        && Longitude is { } longitude
-        && double.IsFinite(latitude)
-        && double.IsFinite(longitude)
-        && latitude is >= -90 and <= 90
-        && longitude is >= -180 and <= 180;
+        SetCurrentAddressSubstringKey(currentKey);
+        return true;
+    }
+
+    internal bool HasCurrentAddressSubstringKey(string currentKey) =>
+        AddressSubstringKeyVersion == LocationAddressSubstringKeyV1.Version
+        && string.Equals(AddressSubstringKey, currentKey, StringComparison.Ordinal);
+
+    internal void SetCurrentAddressSubstringKey(string currentKey)
+    {
+        AddressSubstringKey = currentKey;
+        AddressSubstringKeyVersion = LocationAddressSubstringKeyV1.Version;
+    }
+
+    internal void AssociateWith(Location location)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+        Location = location;
+        if (location.Id != Guid.Empty)
+        {
+            LocationId = location.Id;
+        }
+    }
+
+    public override string ToString() => "LocationPii[redacted]";
 }

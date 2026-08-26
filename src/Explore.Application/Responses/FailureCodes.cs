@@ -34,6 +34,7 @@ public static class FailureCodes
     public const string StorageUploadContentTypeMismatch = "storage_upload_content_type_mismatch";
     public const string StorageUploadContentSignatureMismatch = "storage_upload_content_signature_mismatch";
     public const string StorageUploadWriteFailed = "storage_upload_write_failed";
+    public const string AddressSelectionInvalid = "address_selection_invalid";
 
     /// <summary>
     /// Multi-Tenant → Single-Tenant mode switch blocked because more than one active tenant exists.

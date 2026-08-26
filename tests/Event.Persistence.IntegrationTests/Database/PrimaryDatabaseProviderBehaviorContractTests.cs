@@ -1,16 +1,22 @@
 // ABOUTME: Shared behavioral contract executed against every supported real primary database provider.
 // ABOUTME: Covers runtime persistence semantics and Data Protection key survival across provider recreation.
 
+using System.Data.Common;
+using System.Reflection;
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Projections;
+using Explore.Persistence.Queries;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using TUnit.Assertions.Enums;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Database;
@@ -79,6 +85,93 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
 
             await Assert.That(restored).IsEqualTo(payload);
         }
+    }
+
+    [Test]
+    public async Task MigratedProviderExecutesUnicodeAddressSuggestionContract()
+    {
+        var fixture = PrimaryDatabaseProviderBehaviorFixture.Create();
+        await fixture.PrepareAsync();
+        Guid tenantId = Guid.Parse("00000000-0000-0000-0000-000000009001");
+        Guid actorId = Guid.Parse("00000000-0000-0000-0000-000000009002");
+        Guid userId = Guid.Parse("00000000-0000-0000-0000-000000009003");
+        Guid prefixId = Guid.Parse("00000000-0000-0000-0000-000000009101");
+        Guid longerPrefixId = Guid.Parse("00000000-0000-0000-0000-000000009102");
+        Guid bmpId = Guid.Parse("00000000-0000-0000-0000-000000009103");
+        Guid tieFirstId = Guid.Parse("00000000-0000-0000-0000-000000009104");
+        Guid tieSecondId = Guid.Parse("00000000-0000-0000-0000-000000009105");
+        Guid boundaryCanaryId = Guid.Parse("00000000-0000-0000-0000-000000009106");
+        Guid boundaryExactId = Guid.Parse("00000000-0000-0000-0000-000000009107");
+        Guid legacyId = Guid.Parse("00000000-0000-0000-0000-000000009108");
+        Guid maximumId = Guid.Parse("00000000-0000-0000-0000-000000009109");
+
+        var tenant = NewTenant("b2-unicode-provider-contract");
+        tenant.Id = tenantId;
+        Location[] locations =
+        [
+            AddressLocation(prefixId, tenantId, actorId, "A", "Café 😀 %_\\ North"),
+            AddressLocation(longerPrefixId, tenantId, actorId, "AA", "Cafe\u0301 😀 %_\\ North"),
+            AddressLocation(bmpId, tenantId, actorId, "\uE000", "CAFÉ 😀 %_\\ NORTH"),
+            AddressLocation(tieFirstId, tenantId, actorId, "Tie", "Café tie corpus"),
+            AddressLocation(tieSecondId, tenantId, actorId, "tie", "CAFE\u0301 tie corpus"),
+            AddressLocation(boundaryCanaryId, tenantId, actorId, "Boundary A", "AB"),
+            AddressLocation(boundaryExactId, tenantId, actorId, "Boundary B", char.ConvertFromUtf32(0x100004) + " exact"),
+            AddressLocation(legacyId, tenantId, actorId, "Legacy", "Legacy café address", tenantApproved: false),
+            AddressLocation(maximumId, tenantId, actorId, new string('\uE000', 500), new string('\uE000', 500))
+        ];
+        Location legacy = locations.Single(location => location.Id == legacyId);
+        SetDerivedKey(legacy, nameof(Location.DisplaySortKey), string.Empty);
+        SetDerivedKey(legacy, nameof(Location.DisplaySortKeyVersion), (short)0);
+        SetDerivedKey(legacy.Pii!, nameof(LocationPii.AddressSubstringKey), string.Empty);
+        SetDerivedKey(legacy.Pii!, nameof(LocationPii.AddressSubstringKeyVersion), (short)0);
+
+        await using (var seed = fixture.CreateSystemContext())
+        {
+            seed.Add(tenant);
+            seed.AddRange(locations);
+            await seed.SaveChangesAsync();
+        }
+        Location maximum = locations.Single(location => location.Id == maximumId);
+        await Assert.That(maximum.DisplaySortKey.Length).IsEqualTo(3_500);
+        await Assert.That(maximum.Pii!.AddressSubstringKey.Length).IsEqualTo(3_500);
+
+        var capture = new SelectCaptureInterceptor();
+        await using var context = fixture.CreateTenantContext(tenantId, capture);
+        var query = new LocalAddressSuggestionQuery(context);
+        async Task<Guid[]> Search(string text) => (await query.SearchAsync(
+            new LocalAddressSuggestionCriteria(tenantId, actorId, userId, null, text, 20),
+            CancellationToken.None)).Select(result => result.LocationId).ToArray();
+
+        Guid[] composed = await Search("café 😀");
+        await Assert.That(composed).IsEquivalentTo([prefixId, longerPrefixId, bmpId], CollectionOrdering.Matching);
+        await Assert.That(await Search("CAFE\u0301 😀")).IsEquivalentTo(composed, CollectionOrdering.Matching);
+        await Assert.That(await Search("%_")).IsEquivalentTo(composed, CollectionOrdering.Matching);
+        await Assert.That(await Search("😀 %")).IsEquivalentTo(composed, CollectionOrdering.Matching);
+        await Assert.That(await Search(char.ConvertFromUtf32(0x100004)))
+            .IsEquivalentTo([boundaryExactId], CollectionOrdering.Matching);
+        await Assert.That(await Search("café tie"))
+            .IsEquivalentTo([tieFirstId, tieSecondId], CollectionOrdering.Matching);
+        await Assert.That(await Search("legacy café")).IsEmpty();
+
+        legacy = await context.Locations.SingleAsync(location => location.Id == legacyId);
+        legacy.PromoteAddressToTenantApproved(actorId, DateTime.UnixEpoch.AddDays(10));
+        await context.SaveChangesAsync();
+        await Assert.That(await Search("legacy café"))
+            .IsEquivalentTo([legacyId], CollectionOrdering.Matching);
+
+        string[] suggestionCommands = capture.Commands.Where(command =>
+                command.Contains("address_substring_key", StringComparison.OrdinalIgnoreCase) &&
+                command.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        foreach (string sql in suggestionCommands)
+        {
+            int from = sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+            await Assert.That(from).IsGreaterThan(0);
+            string projection = sql[..from].ToLowerInvariant();
+            await Assert.That(projection).DoesNotContain("address_substring_key");
+            await Assert.That(projection).DoesNotContain("display_sort_key");
+        }
+        await Assert.That(suggestionCommands).Count().IsEqualTo(8);
     }
 
     private static async Task VerifyProjectionLockContentionAsync(
@@ -322,6 +415,38 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
         Tenant = tenant,
     };
 
+    private static Location AddressLocation(
+        Guid id,
+        Guid tenantId,
+        Guid actorId,
+        string displayName,
+        string address,
+        bool tenantApproved = true)
+    {
+        var location = new Location
+        {
+            Id = id,
+            TenantId = tenantId,
+            FullName = displayName,
+            Country = "BE",
+            City = "Brussels",
+            CreatedAt = DateTime.UnixEpoch,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        location.SetManualAddress(address, "1000");
+        location.ApplyAddressGovernance(
+            actorId,
+            LocationAddressSourceEnum.Manual,
+            tenantApproved
+                ? LocationAddressVisibilityEnum.TenantApproved
+                : LocationAddressVisibilityEnum.CreatorPrivate,
+            null);
+        return location;
+    }
+
+    private static void SetDerivedKey(object target, string propertyName, object value) =>
+        target.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)!.SetValue(target, value);
+
     private static LocationRoom NewRoom(Tenant tenant, Location location, string name, int sortOrder) => new()
     {
         Id = Guid.CreateVersion7(),
@@ -366,4 +491,19 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
         Guid RoomA2Id,
         Guid RoomA3Id,
         Guid RoomBId);
+
+    private sealed class SelectCaptureInterceptor : DbCommandInterceptor
+    {
+        public List<string> Commands { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
+    }
 }

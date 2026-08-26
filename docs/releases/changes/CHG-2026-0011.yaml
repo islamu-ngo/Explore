@@ -54,4 +54,4 @@ Impacts:
     Detail: >-
       Apply the semantic constraints, then regenerate and rebuild browser
       clients before coordinated deployment. No secret or infrastructure
-      configuration rollout is required.
+      configuration rollout step is required.

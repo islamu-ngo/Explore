@@ -216,7 +216,10 @@ public sealed class EventLocationDisclosureEvaluatorTests
     public async Task EvaluatePiiFromAnotherLocationFailsClosed()
     {
         var location = CreateLocation();
-        location.Pii!.LocationId = Guid.CreateVersion7();
+        SetPrivateProperty(
+            location.Pii ?? throw new InvalidOperationException("The fixture requires PII."),
+            nameof(LocationPii.LocationId),
+            Guid.CreateVersion7());
 
         var result = _evaluator.Evaluate(CreateFacts(
             location: location,
@@ -247,9 +250,11 @@ public sealed class EventLocationDisclosureEvaluatorTests
             nameof(Location.PiiErasureReason),
             LocationPrivacyErasureReasonEnum.AccountDeletion);
         var blankAddress = CreateLocation();
-        blankAddress.Pii!.Address = " ";
+        MaterializeLegacyPii(blankAddress, " ", "1000", 50.85, 4.35);
         var blankPostcode = CreateLocation();
-        blankPostcode.Pii!.Postcode = " ";
+        MaterializeLegacyPii(blankPostcode, "1 Main Street", " ", 50.85, 4.35);
+        await Assert.That(typeof(LocationPii).GetProperty(nameof(LocationPii.Address))?.SetMethod?.IsPublic == true)
+            .IsFalse();
 
         foreach (var location in new[]
         {
@@ -780,32 +785,45 @@ public sealed class EventLocationDisclosureEvaluatorTests
     [Category("EventLocationPrivacy")]
     public async Task Evaluate_CoordinatesRequireAValidCompletePairAndDerivativesFollowSourceAuthority()
     {
-        var location = CreateLocation();
-        location.Pii!.Longitude = null;
-        var result = _evaluator.Evaluate(CreateFacts(
-            location: location,
+        Location partialPair = CreateLocation();
+        MaterializeLegacyPii(partialPair, "1 Main Street", "1000", 50.85, null);
+        Location invalidRange = CreateLocation();
+        MaterializeLegacyPii(invalidRange, "1 Main Street", "1000", 50.85, 181);
+        Location nonFinite = CreateLocation();
+        MaterializeLegacyPii(nonFinite, "1 Main Street", "1000", double.NaN, double.PositiveInfinity);
+
+        foreach (Location location in new[] { partialPair, invalidRange, nonFinite })
+        {
+            var result = _evaluator.Evaluate(CreateFacts(
+                location: location,
+                room: null,
+                roomId: null,
+                fields: EventLocationDisclosureFields.Coordinates,
+                derivatives: new(null, "map", "geohash")));
+
+            await Assert.That(location.GetCoordinate()).IsNull();
+            await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+        }
+
+        Location valid = CreateLocation();
+        var validResult = _evaluator.Evaluate(CreateFacts(
+            location: valid,
             room: null,
             roomId: null,
             fields: EventLocationDisclosureFields.Coordinates,
             derivatives: new(null, "map", "geohash")));
-
-        await Assert.That(result.Values).IsNull();
-
-        location.Pii.Longitude = 181;
-        result = _evaluator.Evaluate(CreateFacts(
-            location: location,
-            room: null,
-            roomId: null,
-            fields: EventLocationDisclosureFields.Coordinates,
-            derivatives: new(null, "map", "geohash")));
-        await Assert.That(result.Values).IsNull();
+        await Assert.That(validResult.Values?.Latitude).IsEqualTo(50.85);
+        await Assert.That(validResult.Values?.Longitude).IsEqualTo(4.35);
     }
 
     [Test]
     [Category("EventLocationPrivacy")]
-    public async Task Evaluate_WhitespacePiiSource_IsHidden()
+    public async Task Evaluate_WhitespaceLegacyPiiSource_IsHidden()
     {
-        var location = CreateLocation(fullName: " ", city: "\t", country: "", address: " ", postcode: " ");
+        var location = CreateLocation(fullName: " ", city: "\t", country: "");
+        MaterializeLegacyPii(location, " ", " ", 50.85, 4.35);
+
         var result = _evaluator.Evaluate(CreateFacts(location: location, room: null, roomId: null));
 
         await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
@@ -1231,13 +1249,10 @@ public sealed class EventLocationDisclosureEvaluatorTests
         location.ClassifyAs(LocationKindEnum.CommunityVenue);
         if (attachPii)
         {
-            location.AttachPii(new LocationPii
-            {
-                Address = address,
-                Postcode = postcode,
-                Latitude = 50.85,
-                Longitude = 4.35
-            });
+            location.SetProviderAddress(
+                address,
+                postcode,
+                Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         }
 
         return location;
@@ -1306,7 +1321,22 @@ public sealed class EventLocationDisclosureEvaluatorTests
                 Now.AddDays(1)))));
     }
 
-    private static void SetPrivateProperty<T>(T target, string propertyName, object value)
+    private static void MaterializeLegacyPii(
+        Location location,
+        string address,
+        string postcode,
+        double? latitude,
+        double? longitude)
+    {
+        LocationPii pii = location.Pii
+            ?? throw new InvalidOperationException("The fixture requires an attached PII row.");
+        SetPrivateProperty(pii, nameof(LocationPii.Address), address);
+        SetPrivateProperty(pii, nameof(LocationPii.Postcode), postcode);
+        SetPrivateProperty(pii, nameof(LocationPii.Latitude), latitude);
+        SetPrivateProperty(pii, nameof(LocationPii.Longitude), longitude);
+    }
+
+    private static void SetPrivateProperty<T>(T target, string propertyName, object? value)
         where T : class
         => typeof(T).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)!
             .SetValue(target, value);

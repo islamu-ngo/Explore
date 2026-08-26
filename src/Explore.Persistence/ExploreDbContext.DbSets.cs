@@ -326,6 +326,8 @@ public partial class ExploreDbContext
     public DbSet<LocationKind> LocationKinds { get; set; }
     public DbSet<LocationPrivacyState> LocationPrivacyStates { get; set; }
     public DbSet<LocationDisclosureAudience> LocationDisclosureAudiences { get; set; }
+    public DbSet<LocationAddressSource> LocationAddressSources { get; set; }
+    public DbSet<LocationAddressVisibility> LocationAddressVisibilities { get; set; }
     public DbSet<EventLocation> EventLocations { get; set; }
     public DbSet<EventLocationDisclosureAudit> EventLocationDisclosureAudits { get; set; }
     public DbSet<EventLocationExactReadAudit> EventLocationExactReadAudits { get; set; }

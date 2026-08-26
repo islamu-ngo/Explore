@@ -585,11 +585,9 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
         _meter.Dispose();
     }
 
-    public void RecordEventCreated(string? tenantId = null, string? eventType = null)
+    public void RecordEventCreated()
     {
-        _eventsCreated.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("event_type", eventType ?? "unknown"));
+        _eventsCreated.Add(1);
     }
 
     public void RecordEventPublished(string? tenantId = null)

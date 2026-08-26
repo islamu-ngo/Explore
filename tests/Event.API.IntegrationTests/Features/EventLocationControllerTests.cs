@@ -471,14 +471,10 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         location.ClassifyAs(LocationKindEnum.CommercialVenue);
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = "405 Privacy Avenue",
-            Postcode = "ELP405",
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        location.SetProviderAddress(
+            "405 Privacy Avenue",
+            "ELP405",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
 
         EventLocation placement = EventLocation.CreatePhysical(
             tenant.TenantId,

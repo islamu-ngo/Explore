@@ -366,14 +366,10 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
             FullName = fullName,
             Country = "Belgium",
             City = "Brussels",
-            Pii = new LocationPii
-            {
-                Address = "1 Test Street",
-                Postcode = "1000"
-            },
             TenantId = tenantId,
             Tenant = null!
         };
+        location.SetManualAddress("1 Test Street", "1000");
 
         context.Locations.Add(location);
         await context.SaveChangesAsync();

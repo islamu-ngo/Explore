@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for AdminService covering organization management, approval operations,
 // ABOUTME: representative lookup tables, and CRUD operations for categories, tags, and locations.
 
+using System.Reflection;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 
@@ -579,8 +580,64 @@ public class AdminServiceTests
         var result = await _service.GetLocationsAsync();
 
         // Assert
-        await Assert.That(result.Count).IsEqualTo(2);
-        await Assert.That(result.First().FullName).IsEqualTo(locations.First().FullName);
+        ICollection<LocationListDto> resultItems = result.GetItems();
+        await Assert.That(resultItems.Count).IsEqualTo(2);
+        await Assert.That(resultItems.First().FullName)
+            .IsEqualTo(locations.First().FullName);
+    }
+
+    [Test]
+    public async Task GetLocationsAsync_PreservesAddressSuggestionHalCapability()
+    {
+        var searchLink = new HalLink
+        {
+            Href = "/api/geocoding/address-suggestions",
+            Method = "POST"
+        };
+        HalCollectionResourceOfLocationListDto halResponse =
+            CreateLocationCollectionResponse([]);
+        halResponse._links = new Dictionary<string, HalLink>
+        {
+            ["address-suggestions"] = searchLink
+        };
+        _apiClient.GetLocationsAsync(
+                Arg.Any<int?>(),
+                Arg.Any<int?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(halResponse);
+
+        HalCollectionResourceOfLocationListDto result =
+            await _service.GetLocationsAsync();
+        IDictionary<string, HalLink>? links = result._links;
+
+        await Assert.That(links).IsNotNull();
+        await Assert.That(links!["address-suggestions"])
+            .IsSameReferenceAs(searchLink);
+    }
+
+    [Test]
+    public async Task LocationOperationsRequireAdvertisedHalCapabilities()
+    {
+        string[] operationNames =
+        [
+            nameof(IAdminService.GetLocationByIdAsync),
+            nameof(IAdminService.CreateLocationAsync),
+            nameof(IAdminService.UpdateLocationAsync),
+            nameof(IAdminService.DeleteLocationAsync)
+        ];
+
+        foreach (string operationName in operationNames)
+        {
+            MethodInfo operation = typeof(IAdminService).GetMethod(operationName)
+                ?? throw new InvalidOperationException(
+                    $"Missing location operation {operationName}.");
+            await Assert.That(
+                    operation.GetParameters()
+                        .Any(parameter => parameter.ParameterType == typeof(HalLink)))
+                .IsTrue();
+        }
     }
 
     [Test]
@@ -592,7 +649,9 @@ public class AdminServiceTests
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
-        var result = await _service.CreateLocationAsync(dto);
+        var result = await _service.CreateLocationAsync(
+            dto,
+            LocationLink("POST", "/api/location"));
 
         // Assert
         await Assert.That(result).IsTrue();
@@ -608,7 +667,11 @@ public class AdminServiceTests
         };
 
         // Act
-        var result = await _service.UpdateLocationAsync(Guid.Empty, Guid.NewGuid(), dto);
+        var result = await _service.UpdateLocationAsync(
+            Guid.Empty,
+            Guid.NewGuid(),
+            dto,
+            LocationLink("PATCH", $"/api/location/{Guid.Empty:D}"));
 
         // Assert
         await Assert.That(result).IsFalse();
@@ -625,7 +688,9 @@ public class AdminServiceTests
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
-        var result = await _service.DeleteLocationAsync(locationId);
+        var result = await _service.DeleteLocationAsync(
+            locationId,
+            LocationLink("DELETE", $"/api/location/{locationId:D}"));
 
         // Assert
         await Assert.That(result).IsFalse();
@@ -729,6 +794,12 @@ public class AdminServiceTests
             new Dictionary<string, IEnumerable<string>>(),
             new InvalidOperationException(message));
     }
+
+    private static HalLink LocationLink(string method, string href) => new()
+    {
+        Method = method,
+        Href = href
+    };
 
     #endregion
 }

@@ -48,6 +48,8 @@ internal static class HalOpenApiSchemaCatalog
         // Location DTOs
         typeof(Explore.Application.DTOs.Location.LocationDto),
         typeof(Explore.Application.DTOs.Location.LocationListDto),
+        typeof(Explore.Application.DTOs.Geocoding.AddressSuggestionDto),
+        typeof(Explore.Application.DTOs.Geocoding.AddressSuggestionsResponseDto),
         typeof(Explore.Application.DTOs.Location.EventLocationManagementDto),
         typeof(Explore.Application.DTOs.Location.EventLocationManagementFieldsDto),
         typeof(Explore.Application.DTOs.Location.EventLocationDisclosurePolicyDto),
@@ -303,6 +305,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfTagListDto"] = typeof(Explore.Application.DTOs.Tag.TagListDto),
         ["HalResourceOfLocationDto"] = typeof(Explore.Application.DTOs.Location.LocationDto),
         ["HalResourceOfLocationListDto"] = typeof(Explore.Application.DTOs.Location.LocationListDto),
+        ["HalResourceOfAddressSuggestionDto"] = typeof(Explore.Application.DTOs.Geocoding.AddressSuggestionDto),
+        ["HalResourceOfAddressSuggestionsResponseDto"] = typeof(Explore.Application.DTOs.Geocoding.AddressSuggestionsResponseDto),
         ["HalResourceOfEventLocationManagementDto"] = typeof(Explore.Application.DTOs.Location.EventLocationManagementDto),
         ["HalResourceOfOrganizationDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationDto),
         ["HalResourceOfOrganizationListDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
@@ -426,6 +430,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfOrganizationMemberDto"] = "HalResourceOfOrganizationMemberDto",
         ["HalCollectionEmbeddedOfEventDiscoveryItemDto"] = "HalResourceOfEventDiscoveryItemDto",
         ["HalCollectionEmbeddedOfLocationListDto"] = "HalResourceOfLocationListDto",
+        ["HalCollectionEmbeddedOfAddressSuggestionDto"] = "HalResourceOfAddressSuggestionDto",
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",
         ["HalCollectionEmbeddedOfOrganizationTenantEvidenceDto"] = "HalResourceOfOrganizationTenantEvidenceDto",
@@ -453,6 +458,21 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfEventSessionSpeakerListDto"] = "HalResourceOfEventSessionSpeakerListDto",
         ["HalCollectionEmbeddedOfEventSessionLanguageListDto"] = "HalResourceOfEventSessionLanguageListDto",
     };
+
+    public static IReadOnlyDictionary<string, string> DetailResourceEmbeddedMappings { get; } =
+        new Dictionary<string, string>
+        {
+            ["HalResourceOfAddressSuggestionsResponseDto"] =
+                "HalCollectionEmbeddedOfAddressSuggestionDto"
+        };
+
+    public static IReadOnlyDictionary<Type, Type> DetailResourceEmbeddedTypeMappings
+        { get; } = new Dictionary<Type, Type>
+        {
+            [typeof(Explore.Application.DTOs.Geocoding.AddressSuggestionsResponseDto)] =
+                typeof(Explore.Application.Hateoas.HalCollectionEmbedded<
+                    Explore.Application.DTOs.Geocoding.AddressSuggestionDto>)
+        };
 
     public static bool IsCatalogedDetailResourceSchema(string schemaName)
         => DetailResourceMappings.ContainsKey(schemaName);

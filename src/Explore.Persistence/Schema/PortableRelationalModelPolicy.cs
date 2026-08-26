@@ -12,8 +12,10 @@ namespace Explore.Persistence.Schema;
 internal static partial class PortableRelationalModelPolicy
 {
     private const string PostgreSqlProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
+    private const string SqliteProvider = "Microsoft.EntityFrameworkCore.Sqlite";
     private const string SqlServerProvider = "Microsoft.EntityFrameworkCore.SqlServer";
     private const string MySqlProvider = "Microting.EntityFrameworkCore.MySql";
+    private const string InMemoryProvider = "Microsoft.EntityFrameworkCore.InMemory";
     private const int MySqlLookupIndexPrefixLength = 512;
 
     private static readonly HashSet<string> PostgreSqlColumnTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -37,7 +39,7 @@ internal static partial class PortableRelationalModelPolicy
 
     public static void Apply(ModelBuilder modelBuilder, string? providerName)
     {
-        if (providerName is null)
+        if (providerName is null || providerName == InMemoryProvider)
         {
             return;
         }
@@ -92,8 +94,12 @@ internal static partial class PortableRelationalModelPolicy
             }
 
             var configuredCollation = property.GetCollation();
-            if (providerName == MySqlProvider &&
-                string.Equals(configuredCollation, "C", StringComparison.Ordinal))
+            if (property.FindAnnotation(PortableOrdinalAsciiPropertyExtensions.AnnotationName)?.Value is true)
+            {
+                ConfigurePortableOrdinalAscii(property, providerName);
+            }
+            else if (providerName == MySqlProvider &&
+                     string.Equals(configuredCollation, "C", StringComparison.Ordinal))
             {
                 property.SetCharSet("ascii");
                 property.SetCollation("ascii_bin");
@@ -155,6 +161,28 @@ internal static partial class PortableRelationalModelPolicy
             {
                 property.SetDefaultValueSql(NormalizeTimestampDefault(defaultSql, providerName));
             }
+        }
+    }
+
+    private static void ConfigurePortableOrdinalAscii(IMutableProperty property, string providerName)
+    {
+        switch (providerName)
+        {
+            case PostgreSqlProvider:
+                property.SetCollation("C");
+                break;
+            case SqliteProvider:
+                property.SetCollation("BINARY");
+                break;
+            case SqlServerProvider:
+                property.SetCollation("Latin1_General_100_BIN2");
+                break;
+            case MySqlProvider:
+                property.SetCharSet("ascii");
+                property.SetCollation("ascii_bin");
+                break;
+            default:
+                throw new InvalidOperationException("Portable ordinal ASCII keys require a supported relational provider.");
         }
     }
 
@@ -221,7 +249,9 @@ internal static partial class PortableRelationalModelPolicy
 
             if (providerName == MySqlProvider)
             {
-                sql = IsNotDistinctFrom().Replace(sql, "${left} <=> ${right}");
+                sql = NonnegativeCursor().Replace(
+                    IsNotDistinctFrom().Replace(sql, "${left} <=> ${right}"),
+                    "`cursor` >= 0");
             }
 
             if (UnsupportedCheckSqlTokens.Any(token => sql.Contains(token, StringComparison.OrdinalIgnoreCase)))
@@ -232,7 +262,9 @@ internal static partial class PortableRelationalModelPolicy
 
             if (providerName == SqlServerProvider)
             {
-                sql = sql.Replace("length(", "len(", StringComparison.OrdinalIgnoreCase);
+                sql = NonnegativeCursor().Replace(
+                    sql.Replace("length(", "len(", StringComparison.OrdinalIgnoreCase),
+                    "[cursor] >= 0");
                 sql = NormalizeSqlServerBooleanPredicates(entityType, sql);
 
                 var equivalence = PredicateEquivalence().Match(sql);
@@ -528,6 +560,9 @@ internal static partial class PortableRelationalModelPolicy
 
     [GeneratedRegex(@"^statement_timestamp\(\)\s*\+\s*INTERVAL\s*'(\d+) days'$", RegexOptions.IgnoreCase)]
     private static partial Regex PostgreSqlDayInterval();
+
+    [GeneratedRegex(@"\bcursor\s*>=\s*0\b", RegexOptions.IgnoreCase)]
+    private static partial Regex NonnegativeCursor();
 
     [GeneratedRegex(@"\bfalse\b", RegexOptions.IgnoreCase)]
     private static partial Regex FalseLiteral();

@@ -1,0 +1,125 @@
+@* ABOUTME: Renders accessible private address autocomplete while preserving manual entry. *@
+@* ABOUTME: Uses generated HAL results without inferring provider, policy, or authorization. *@
+
+@namespace Explore.Blazor.Client.Components.Locations
+
+<div class="address-suggestion">
+    <label id="@($"{Id}-label")" for="@($"{Id}-input")" class="address-suggestion__label">
+        @Label
+    </label>
+    <div class="address-suggestion__control">
+        <input id="@($"{Id}-input")"
+               @ref="_input"
+               data-testid="address-suggestion-input"
+               data-has-suggestions="@AriaBoolean(_suggestions.Count > 0)"
+               class="address-suggestion__input"
+               type="text"
+               dir="auto"
+               value="@_searchText"
+               autocomplete="off"
+               role="combobox"
+               aria-labelledby="@($"{Id}-label")"
+               aria-autocomplete="list"
+               aria-expanded="@AriaBoolean(_isOpen)"
+               aria-controls="@(_isOpen ? $"{Id}-listbox" : null)"
+               aria-activedescendant="@ActiveDescendant"
+               aria-busy="@AriaBoolean(_isLoading)"
+               disabled="@(Disabled || _isApproving)"
+               @oninput="SearchAsync"
+               @onkeydown="HandleKeyDownAsync"
+               @onkeydown:stopPropagation
+               @onblur="Close" />
+        @if (_isLoading)
+        {
+            <span class="address-suggestion__status" role="status">Searching saved addresses</span>
+        }
+    </div>
+
+    @if (_isOpen && _suggestions.Count > 0)
+    {
+        <ul id="@($"{Id}-listbox")"
+            class="address-suggestion__listbox"
+            role="listbox"
+            aria-labelledby="@($"{Id}-label")">
+            @for (var index = 0; index < _suggestions.Count; index++)
+            {
+                int optionIndex = index;
+                HalResourceOfAddressSuggestionDto suggestion = _suggestions[index];
+                <li id="@OptionId(optionIndex)"
+                    class="address-suggestion__option"
+                    role="option"
+                    aria-selected="@AriaBoolean(optionIndex == _activeIndex)"
+                    @onmousedown:preventDefault
+                    @onclick="() => SelectAsync(optionIndex)">
+                    <span class="address-suggestion__name">
+                        <bdi dir="auto">@suggestion.DisplayName</bdi>
+                    </span>
+                    <span class="address-suggestion__address">
+                        <bdi dir="auto">@suggestion.Address</bdi>
+                        <bdi dir="auto">@suggestion.Postcode</bdi>
+                    </span>
+                    <span class="address-suggestion__badges">
+                        <span class="address-suggestion__badge">@SourceLabel(suggestion.Source)</span>
+                        <span class="address-suggestion__badge">@VisibilityLabel(suggestion.Visibility)</span>
+                    </span>
+                    @if (!string.IsNullOrWhiteSpace(suggestion.Attribution))
+                    {
+                        <span class="address-suggestion__attribution"
+                              data-provider-attribution="@suggestion.Attribution">
+                            <bdi dir="auto">@suggestion.Attribution</bdi>
+                        </span>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    else if (_hasSearched
+        && _suggestions.Count == 0
+        && !_isLoading
+        && _errorMessage is null)
+    {
+        <p class="address-suggestion__status">No saved addresses found.</p>
+    }
+
+    @if (!_isOpen
+        && !string.IsNullOrWhiteSpace(_selectedSuggestion?.Attribution))
+    {
+        <p class="address-suggestion__attribution"
+           data-selected-provider-attribution="@_selectedSuggestion.Attribution">
+            Address source:
+            <bdi dir="auto">@_selectedSuggestion.Attribution</bdi>
+        </p>
+    }
+
+    @if (_hasSearched
+        && !_isLoading
+        && ProviderOutcomeMessage(_providerOutcome) is { } providerOutcomeMessage)
+    {
+        <p class="@ProviderOutcomeClass(_providerOutcome)"
+           data-provider-outcome="@ProviderOutcomeValue(_providerOutcome)">
+            @providerOutcomeMessage
+        </p>
+    }
+
+    @if (_errorMessage is not null)
+    {
+        <p class="address-suggestion__error">@_errorMessage</p>
+    }
+
+    @if (ApprovalLink is { } approvalLink)
+    {
+        <button type="button"
+                class="address-suggestion__approval"
+                data-testid="address-suggestion-approve"
+                aria-busy="@AriaBoolean(_isApproving)"
+                disabled="@_isApproving"
+                @onclick="() => ApproveAsync(approvalLink)">
+            @(_isApproving ? "Approving address" : "Approve for tenant reuse")
+        </button>
+    }
+
+    @if (_approvalMessage is not null)
+    {
+        <p class="address-suggestion__status">@_approvalMessage</p>
+    }
+</div>

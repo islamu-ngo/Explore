@@ -6,8 +6,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using ExploreDbContext = Explore.Persistence.ExploreDbContext;
+using IHierarchicalSettingsResolver = Explore.Application.Contracts.Infrastructure.IHierarchicalSettingsResolver;
+using ISettingGroup = Explore.Application.Contracts.Infrastructure.ISettingGroup;
+using ResolvedSetting = Explore.Application.Contracts.Infrastructure.ResolvedSetting;
+using SettingSource = Explore.Application.Contracts.Infrastructure.SettingSource;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Responses;
@@ -17,7 +21,6 @@ using Explore.Domain.Ai;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using Explore.Infrastructure.Ai;
-using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -378,6 +381,10 @@ public sealed class AiAssistantDbBackedApiFixture : RealRuntimeApiFixture
             => Task.CompletedTask;
 
         public void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null)
+        {
+        }
+
+        public void InvalidateOrganizationCache(Guid tenantId, Guid organizationId)
         {
         }
 

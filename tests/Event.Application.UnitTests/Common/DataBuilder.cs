@@ -126,16 +126,24 @@ public static class DataBuilder
     #region Location & Storage Entities
 
     public static Faker<Location> Location => new Faker<Location>()
-        .RuleFor(l => l.Pii, f => new LocationPii { Address = "", Postcode = "" })
-        .RuleFor(l => l.Id, f => Guid.NewGuid())
-        .RuleFor(l => l.FullName, f => f.Company.CompanyName())
-        .RuleFor(l => l.Address, f => f.Address.StreetAddress())
-        .RuleFor(l => l.Postcode, f => f.Address.ZipCode())
-        .RuleFor(l => l.Country, f => f.Address.Country())
-        .RuleFor(l => l.City, f => f.Address.City())
-        .RuleFor(l => l.Latitude, f => f.Address.Latitude())
-        .RuleFor(l => l.Longitude, f => f.Address.Longitude())
-        .RuleFor(l => l.Timezone, f => f.Date.TimeZoneString());
+        .CustomInstantiator(faker =>
+        {
+            var location = new Location
+            {
+                Id = Guid.CreateVersion7(),
+                FullName = faker.Company.CompanyName(),
+                Country = faker.Address.Country(),
+                City = faker.Address.City(),
+                Timezone = faker.Date.TimeZoneString()
+            };
+            location.SetProviderAddress(
+                faker.Address.StreetAddress(),
+                faker.Address.ZipCode(),
+                Explore.Domain.ValueObjects.GeoCoordinate.Create(
+                    faker.Address.Latitude(),
+                    faker.Address.Longitude()));
+            return location;
+        });
 
     public static Faker<StorageObject> StorageObject => new Faker<StorageObject>()
         .RuleFor(s => s.Id, f => Guid.NewGuid())

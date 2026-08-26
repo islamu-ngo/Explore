@@ -393,6 +393,58 @@ Webhook operations:
 
 See [WEBHOOKS.md](WEBHOOKS.md) and [INTEGRATIONS.md](INTEGRATIONS.md) for provider switching, signatures, and callback rules.
 
+## Location Address Governance Migration Topology
+
+PostgreSQL retains its incremental application history. Its address-governance migration adds the
+source and visibility lookups and conservatively classifies retained pre-governance rows as
+`UnknownLegacy` / `Quarantined` with empty version-0 derived keys and no organization scope. Those rows
+remain excluded from local suggestions until an authorized operator reviews and promotes an exact row.
+Promotion never infers provider/manual provenance, creator, organization, address, or coordinates.
+
+SQLite, SQL Server, MariaDB, and MySQL are development-only rebaselines with no historical upgrade
+compatibility. Their single initial migration represents the complete current model; it does not
+backfill or reinterpret older rows because no retained or deployed database is authorized for those
+chains.
+
+| Provider | Migration head | History contract |
+|---|---|---|
+| PostgreSQL | `20260826043431_AddLocationAddressGovernance` | Retained incremental upgrade history |
+| SQLite | `20260826054219_InitialApplication` | Development rebaseline; database recreation required |
+| SQL Server | `20260826065615_InitialApplication` | Development rebaseline; database recreation required |
+| MariaDB | `20260826065711_InitialApplication` | Development rebaseline; database recreation required |
+| MySQL | `20260826065808_InitialApplication` | Development rebaseline; database recreation required |
+
+A deployment applies only its selected provider assembly through `Event.MigrationService`; never apply
+multiple provider chains to one database or hand-edit a migration, designer, or snapshot.
+
+### Mandatory development reset
+
+Every existing SQLite, SQL Server, MariaDB, or MySQL development database must be discarded and
+recreated from its new `InitialApplication` migration. Do not point a rebaselined assembly at an old
+database or synthesize migration-history rows. Run `Event.MigrationService` twice against the recreated
+database and require both runs to exit zero; the second run is the idempotency check.
+
+For PostgreSQL, preserve the database and incremental history. Do not delete a shared PostgreSQL volume
+unless losing every database in that server and rotating generated credentials is intended. If an
+unapplied development migration is wrong, fix the model or generation source and use EF CLI to remove
+and regenerate only the affected provider artifact. Never patch generated output.
+
+### Retained PostgreSQL data
+
+Back up PostgreSQL and rehearse its upgrade against production-shaped retained data. After migration,
+record bounded counts of quarantined rows without emitting tenant, location, actor, organization,
+address, postcode, coordinate, or derived-key values. Review exact address data only through a
+restricted private management path; do not export it to logs, telemetry, CSV, provider requests, or
+shared caches.
+
+An operator may promote a row only after truthful scope and provenance review. `UnknownLegacy` remains
+unknown after approval. If reliable evidence requires a different source or owner, use the governed
+authoritative write/replacement workflow rather than ad-hoc SQL. Never add heuristic backfills,
+automatic approval jobs, compatibility readers, inferred creator/organization assignments, or an
+address-text rule that widens visibility. Run `Event.MigrationService` a second time before starting API
+replicas, then verify quarantined rows remain absent and an explicitly approved row is reusable only
+inside its tenant.
+
 ## API Startup Behavior
 
 In deployed environments, `Event.MigrationService` owns the primary application
@@ -542,6 +594,42 @@ Operational rules:
 - Storage reconciliation is dry-run-first. `StorageReconciliation:DryRun=true` reports drift without metadata or provider mutations. Destructive cleanup requires `DryRun=false` plus a specific mutation flag such as `DeleteQuarantinedObjects=true`; health and logs expose bounded settings/counts only.
 - Heavy event moderation image deletion is a post-commit provider operation. Redaction commits first, affected image metadata stays unavailable with `delete_requested`, and provider failures return a pending retry result instead of full moderation success. Retry by repeating the heavy-redaction command after fixing provider readiness, or let reconciliation handle eligible delete-requested rows when destructive reconciliation is intentionally enabled. Logs and metrics for this path must not include object keys, filenames, filesystem paths, S3 endpoints, bucket names, credentials, raw provider response bodies, or raw exception text.
 - AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required provider endpoint/key/model values, local/private endpoints without explicit opt-in, Azure OpenAI non-HTTPS endpoints, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
+
+### Photon Geocoding Readiness And Change Control
+
+`GEOCODING_PROVIDER=None` is healthy and must issue zero HTTP requests. With
+Photon enabled, readiness performs one bounded, query-free `GET /status`
+request. It never executes `/api`, retries a health probe, parses provider
+records, or emits the configured endpoint. Unavailable, rate-limited, invalid,
+or timed-out Photon readiness is `Degraded`; process liveness remains healthy so
+local governed suggestions continue to operate.
+
+The check is registered as `geocoding` on the standard readiness surface with
+the bounded tags `ready`, `geocoding`, `provider`, and `infrastructure`. Its
+data contains only `provider=photon` plus one state category:
+`disabled`, `configured`, `invalid_configuration`, `limited`, `timeout`, or
+`unreachable`. Caller cancellation propagates; the configured timeout degrades
+without retry. Response bodies are never read.
+
+Activation requires the operator deployment manifest listed in
+[SELF_HOSTING.md](SELF_HOSTING.md). Keep release/image and dataset checksums,
+capacity evidence, attribution obligations, refresh/rollback instructions, and
+restore evidence in that operator-controlled artifact. Do not duplicate those
+records as application options, secrets, health data, or telemetry dimensions.
+Use
+[`docs/examples/photon-deployment-manifest.example.yaml`](examples/photon-deployment-manifest.example.yaml)
+as the machine-readable starting shape and attach the populated manifest to the
+activation change record.
+
+For a provider incident:
+
+1. Set `GEOCODING_PROVIDER=None` and restart the API to stop outbound calls.
+2. Confirm local address suggestions and manual create/PATCH remain available.
+3. Preserve only bounded provider outcome, retry count, and latency-bucket
+   telemetry; do not capture query, URI, address, coordinates, records, tokens,
+   tenant, organization, actor, or upstream response bodies.
+4. Repair or roll back the operator deployment, validate `/status`, benchmark,
+   and update the activation/change record before re-enabling Photon.
 
 ## Deployment Protection and Evidence
 
@@ -848,7 +936,7 @@ Operator sequence:
 3. Use HAL `poll` for reconciliation, `manual-import` for bounded storage/source metadata, and item `retry`/`resolve` only when the queue resource emits them. Retry requires retained effect identity and current processing generation; receipt conflicts and event/binding mismatches fail closed.
 4. For browser embeds, verify the connection approved origin. The BFF emits a per-route CSP `frame-src` for the descriptor origin and rejects arbitrary iframe input; iframe navigation is display-only, so use status polling for completion.
 
-Five Phase 9 initial application migration IDs exist for the supported providers: PostgreSQL `20260810001244_InitialPostgreSqlApplication`, SQLite `20260810001310_InitialSqliteApplication`, SQL Server `20260810001317_InitialSqlServerApplication`, MariaDB `20260810001325_InitialMariaDbApplication`, and MySQL `20260810001333_InitialMySqlApplication`. They are generated artifacts; do not patch them by hand.
+PostgreSQL retains its Phase 9 initial migration `20260810001244_InitialPostgreSqlApplication` and subsequent incremental history. The development-only provider chains are rebaselined at SQLite `20260826054219_InitialApplication`, SQL Server `20260826065615_InitialApplication`, MariaDB `20260826065711_InitialApplication`, and MySQL `20260826065808_InitialApplication`; existing development databases for those providers must be recreated. These are generated artifacts and must never be patched by hand.
 
 ### Promotion Code Operations
 

@@ -20,7 +20,7 @@ resourcePolicy:
         - islamuevent_instance_admin
 
     # Tenant admins can manage locations within their tenant
-    - actions: ["view", "create", "update", "delete"]
+    - actions: ["view", "create", "update", "delete", "manage_custom_addresses", "approve_tenant_address"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin

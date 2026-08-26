@@ -1,4 +1,7 @@
+/* ABOUTME: Styles the edit-location dialog's manual address fallback. */
+/* ABOUTME: Keeps unfocused field boundaries above WCAG non-text contrast requirements. */
+
 /* ===== Block: edit-location-dialog ===== */
-::deep .edit-location-dialog {
-    color: inherit;
+.edit-location-dialog__manual-fields {
+    --mud-palette-lines-inputs: var(--mud-palette-text-secondary);
 }

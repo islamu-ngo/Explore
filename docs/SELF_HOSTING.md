@@ -712,6 +712,81 @@ After onboarding, instance administrators can use the admin auth-provider settin
 
 ## Optional Services
 
+### Address Geocoding (Photon)
+
+**Default behavior:** `GEOCODING_PROVIDER=None`. The application performs local
+governed address lookup only and makes no outbound geocoding request.
+
+Production Photon is opt-in. The operator must own the deployment or have a
+separate production contract for it. ISLAMU does not provision a Photon
+container, download OpenStreetMap planet data, or fall back to the public
+`photon.komoot.io` demonstration endpoint.
+
+Photon 1.0 requires Java 21 or a separately reviewed immutable image and uses
+OpenSearch. Upstream estimates a 2026 planet index at roughly 95 GB, growing
+about ten percent per year, with SSD/NVMe storage and at least 64 GB RAM
+recommended for smooth planet-scale operation. Atomic dataset replacement
+requires room for both current and staged indexes, so capacity planning must
+reserve approximately twice the active dataset plus backup and filesystem
+headroom. A country or regional index can be substantially smaller, but its
+actual import duration, disk, memory, latency, and concurrency remain
+operator-benchmarked facts rather than application defaults.
+
+Before setting `GEOCODING_PROVIDER=Photon`, record a deployment manifest outside
+application configuration containing:
+
+- the approved Photon release and immutable image or binary digest;
+- the dataset extract, import process, dataset timestamp, and checksums;
+- OpenStreetMap/ODbL attribution and data-offer responsibilities;
+- measured capacity and the configured request/result/response-size bounds;
+- refresh cadence, maintenance window, and rollback procedure;
+- backup and restore evidence for configuration and dataset artifacts;
+- the operator owner, approval date, and activation/change record.
+
+Start from
+[`docs/examples/photon-deployment-manifest.example.yaml`](examples/photon-deployment-manifest.example.yaml),
+store the populated manifest in the operator's controlled evidence system, and
+reference it from the activation change. The checked-in file is a schema
+example only; do not put production endpoints, tenant data, queries, addresses,
+tokens, or credentials in it.
+
+Only executable settings belong in `.env`: endpoint, language, country
+allowlist, result/response ceilings, and the active dataset fingerprint. There
+is no Photon API key. The endpoint must be HTTPS and `/status` must be reachable
+within the bounded readiness timeout before activation.
+
+For a regional deployment:
+
+1. Pin a Photon release artifact and SHA-256 digest. Select a version-compatible
+   immutable country dump, or produce a filtered import from an operator-owned
+   Nominatim/JSON source using the same country and language filters on every
+   refresh.
+2. Record the source extract, acquisition timestamp, source and manifest
+   checksums, imported languages/countries, and ODbL attribution/data-offer
+   location in the deployment manifest.
+3. Import into a new directory. Never import over the active `photon_data`
+   directory; Photon documents that this corrupts the database.
+4. Benchmark representative non-production queries within the application's
+   five-second total budget and configured result/response ceilings. Verify
+   query-free `/status`, TLS, capacity, and telemetry redaction.
+5. Switch the HTTPS endpoint or atomically swap the staged directory, restart
+   Photon, verify readiness and application local/provider behavior, then retain
+   the previous index until the rollback window closes.
+
+`local-full` may opt into an independently pinned local Photon process by
+setting the same `GEOCODING_*` contract before starting AppHost. AppHost
+forwards those values to split and standalone application hosts but does not
+download Java, binaries, images, or datasets. `local-default`, `local-core`,
+and `local-lite` remain lightweight and provider-disabled unless an operator
+explicitly supplies the full contract. Local endpoints still require HTTPS;
+terminate TLS at an operator-controlled local reverse proxy.
+
+Refreshing the dataset is a controlled deployment: stage and checksum the new
+dataset, benchmark it, verify `/status`, switch traffic, retain the previous
+dataset for rollback, and record restore evidence. Never auto-download
+`planet-latest`, `latest` aliases, or mutable unverified images during
+application startup.
+
 ### Storage (MinIO / S3)
 
 **Default behavior:** Local filesystem storage at `/app/storage-data/local` (mounted as Docker volume `local_storage_data`). No MinIO or S3 required.

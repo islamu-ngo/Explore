@@ -35,6 +35,7 @@ using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.DTOs.Footer;
+using Explore.Application.DTOs.Geocoding;
 using Explore.Application.Features.Promotions;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
@@ -150,6 +151,7 @@ public static class HateoasAssemblerRegistration
 
         // Location
         services.AddHalResource<LocationDto, LocationListDto, LocationDetailLinkPolicy, LocationCollectionLinkPolicy>();
+        services.AddHalResource<AddressSuggestionDto, AddressSuggestionDetailLinkPolicy, AddressSuggestionCollectionLinkPolicy>();
 
         services.AddHalResource<EventLocationManagementDto, EventLocationManagementLinkPolicy, EventLocationManagementCollectionLinkPolicy>();
 

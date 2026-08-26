@@ -6,9 +6,18 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API;
-using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
+using AiProviderDefaults = Explore.Application.Contracts.Infrastructure.Ai.AiProviderDefaults;
+using AiChatPayload = Explore.Application.Contracts.Infrastructure.Ai.AiChatPayload;
+using AiChatProviderResult = Explore.Application.Contracts.Infrastructure.Ai.AiChatProviderResult;
+using AiModelDescriptor = Explore.Application.Contracts.Infrastructure.Ai.AiModelDescriptor;
+using IAiChatProvider = Explore.Application.Contracts.Infrastructure.Ai.IAiChatProvider;
+using IAiModelCatalog = Explore.Application.Contracts.Infrastructure.Ai.IAiModelCatalog;
+using IHierarchicalSettingsResolver = Explore.Application.Contracts.Infrastructure.IHierarchicalSettingsResolver;
+using ISettingGroup = Explore.Application.Contracts.Infrastructure.ISettingGroup;
+using ITenantContext = Explore.Application.Contracts.Infrastructure.ITenantContext;
+using ResolvedSetting = Explore.Application.Contracts.Infrastructure.ResolvedSetting;
+using SettingSource = Explore.Application.Contracts.Infrastructure.SettingSource;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Models;
 using Explore.Application.Responses;
@@ -22,7 +31,6 @@ using Explore.Infrastructure.Ai;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -334,7 +342,7 @@ public sealed class AiAssistantApiFlowTests
             AuthorizationProviderOverride = new StubAuthorizationProvider();
             base.ConfigureWebHost(builder);
 
-            builder.ConfigureTestServices(services =>
+            Microsoft.AspNetCore.TestHost.WebHostBuilderExtensions.ConfigureTestServices(builder, services =>
             {
                 services.RemoveAll<IHierarchicalSettingsResolver>();
                 services.RemoveAll<ITenantContext>();
@@ -771,6 +779,10 @@ public sealed class AiAssistantApiFlowTests
             => Task.CompletedTask;
 
         public void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null)
+        {
+        }
+
+        public void InvalidateOrganizationCache(Guid tenantId, Guid organizationId)
         {
         }
 

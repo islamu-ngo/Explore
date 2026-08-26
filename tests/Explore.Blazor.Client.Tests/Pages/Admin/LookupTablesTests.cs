@@ -2,8 +2,7 @@
 // ABOUTME: Verifies parallel lookup loading and consolidated lookup tab rendering.
 
 using System.Reflection;
-using Explore.Blazor.Client.Services;
-using Microsoft.AspNetCore.Components;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -14,6 +13,7 @@ public class LookupTablesTests : IDisposable
     private readonly IAdminService _adminService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbar _snackbar;
+    private readonly IAccessibilityFocusService _focusService;
 
     public LookupTablesTests()
     {
@@ -21,10 +21,12 @@ public class LookupTablesTests : IDisposable
         _adminService = Substitute.For<IAdminService>();
         _dialogService = Substitute.For<IDialogService>();
         _snackbar = Substitute.For<ISnackbar>();
+        _focusService = Substitute.For<IAccessibilityFocusService>();
 
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_dialogService);
         _ctx.Services.AddSingleton(_snackbar);
+        _ctx.Services.AddSingleton(_focusService);
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
 
@@ -148,6 +150,8 @@ public class LookupTablesTests : IDisposable
         await Assert.That(capturedOptions.FullWidth).IsTrue();
         await Assert.That(capturedOptions.CloseOnEscapeKey).IsTrue();
         await Assert.That(capturedOptions.CloseButton).IsNull();
+        await _focusService.Received(1).SaveFocusAsync();
+        await _focusService.Received(1).RestoreFocusAsync();
         _snackbar.Received(1).Add("Category 'Community' created.", Severity.Success);
     }
 
@@ -177,6 +181,8 @@ public class LookupTablesTests : IDisposable
 
         // Assert
         await Assert.That(reloadCalled).IsFalse();
+        await _focusService.Received(1).SaveFocusAsync();
+        await _focusService.Received(1).RestoreFocusAsync();
         _snackbar.Received(1).Add("Failed to update tag.", Severity.Error);
     }
 
@@ -262,6 +268,8 @@ public class LookupTablesTests : IDisposable
 
     private void SetupDefaultLookups()
     {
+        _adminService.GetLocationsAsync()
+            .Returns(new HalCollectionResourceOfLocationListDto());
         _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
         _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
@@ -288,6 +296,11 @@ public class LookupTablesTests : IDisposable
 
         SetNonPublicProperty(componentType, component, "DialogService", _dialogService);
         SetNonPublicProperty(componentType, component, "Snackbar", _snackbar);
+        SetNonPublicProperty(
+            componentType,
+            component,
+            "AccessibilityFocusService",
+            _focusService);
 
         return component;
     }

@@ -60,10 +60,15 @@ public interface IHierarchicalSettingsResolver
     Task UnlockAsync(string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default);
 
     /// <summary>
-    /// Invalidates cached settings. Scope-aware: invalidating a tenant also invalidates child orgs/groups.
-    /// Pass null for both parameters to invalidate everything.
+    /// Invalidates cached instance, tenant, or group settings.
+    /// Pass null for both parameters to invalidate the system cache.
     /// </summary>
     void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null);
+
+    /// <summary>
+    /// Invalidates one tenant-specific organization setting cache entry.
+    /// </summary>
+    void InvalidateOrganizationCache(Guid tenantId, Guid organizationId);
 
     /// <summary>
     /// Invalidates a specific user preference cache entry.

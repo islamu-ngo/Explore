@@ -1,0 +1,43 @@
+# ABOUTME: Operator-owned activation evidence for an optional production Photon deployment.
+# ABOUTME: Keeps release, dataset, licensing, capacity, rollback, and restore proof outside app options.
+
+schema_version: 1
+approval:
+  operator_owner: replace-with-accountable-owner
+  approved_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+  activation_change_id: replace-with-change-record
+
+photon:
+  release: replace-with-approved-release
+  artifact_kind: image-or-binary
+  artifact_digest_sha256: replace-with-64-lowercase-hex-characters
+
+dataset:
+  source_extract: replace-with-bounded-extract-name
+  imported_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+  source_checksum_sha256: replace-with-64-lowercase-hex-characters
+  manifest_checksum_sha256: replace-with-64-lowercase-hex-characters
+  attribution_copy: replace-with-approved-openstreetmap-attribution
+  odbl_data_offer_url: replace-with-operator-data-offer-url
+
+capacity:
+  benchmark_id: replace-with-capacity-evidence
+  measured_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+  peak_requests_per_second: 0
+  p95_latency_milliseconds: 0
+  maximum_concurrent_requests: 0
+
+application_bounds:
+  total_request_budget_milliseconds: 5000
+  maximum_retries: 2
+  retry_delays_milliseconds: [200, 500]
+  maximum_results: 10
+  maximum_response_bytes: 65536
+
+lifecycle:
+  refresh_cadence: replace-with-reviewed-cadence
+  maintenance_window: replace-with-reviewed-window
+  rollback_runbook: replace-with-operator-runbook-reference
+  backup_evidence_id: replace-with-backup-evidence
+  restore_evidence_id: replace-with-successful-restore-evidence
+  previous_dataset_retention_until_utc: "YYYY-MM-DDTHH:MM:SSZ"

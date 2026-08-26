@@ -298,6 +298,49 @@ public sealed class ConfigurationExtensionsTests
         await Assert.That(configuration["WebPush:VapidSubject"]).IsEqualTo("mailto:admin@example.com");
     }
 
+    [Test]
+    public async Task AddInfisicalCompatibility_MapsDocumentedGeocodingEnvironmentContract()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["GEOCODING_PROVIDER"] = "Photon",
+            ["GEOCODING_ENDPOINT"] = "https://photon.operator.example/",
+            ["GEOCODING_LANGUAGE"] = "nl",
+            ["GEOCODING_COUNTRY_CODES"] = "be,nl",
+            ["GEOCODING_DATASET_VERSION"] = "benelux-2026-08-26",
+            ["GEOCODING_MAXIMUM_RESULTS"] = "12",
+            ["GEOCODING_MAXIMUM_RESPONSE_BYTES"] = "131072",
+            ["GEOCODING_TOTAL_TIMEOUT_MILLISECONDS"] = "4500",
+            ["GEOCODING_MAXIMUM_RETRY_COUNT"] = "2",
+            ["GEOCODING_RETRY_DELAYS_MILLISECONDS"] = "150,400",
+            ["GEOCODING_READINESS_TIMEOUT_MILLISECONDS"] = "1250",
+            ["GEOCODING_SELECTION_LIFETIME_SECONDS"] = "240"
+        });
+
+        await Assert.That(configuration["Geocoding:Provider"]).IsEqualTo("Photon");
+        await Assert.That(configuration["Geocoding:Endpoint"])
+            .IsEqualTo("https://photon.operator.example/");
+        await Assert.That(configuration["Geocoding:Language"]).IsEqualTo("nl");
+        await Assert.That(configuration["Geocoding:CountryCodes:0"]).IsEqualTo("be");
+        await Assert.That(configuration["Geocoding:CountryCodes:1"]).IsEqualTo("nl");
+        await Assert.That(configuration["Geocoding:DatasetVersion"])
+            .IsEqualTo("benelux-2026-08-26");
+        await Assert.That(configuration["Geocoding:MaximumResults"]).IsEqualTo("12");
+        await Assert.That(configuration["Geocoding:MaximumResponseBytes"])
+            .IsEqualTo("131072");
+        await Assert.That(configuration["Geocoding:TotalTimeoutMilliseconds"])
+            .IsEqualTo("4500");
+        await Assert.That(configuration["Geocoding:MaximumRetryCount"]).IsEqualTo("2");
+        await Assert.That(configuration["Geocoding:RetryDelaysMilliseconds:0"])
+            .IsEqualTo("150");
+        await Assert.That(configuration["Geocoding:RetryDelaysMilliseconds:1"])
+            .IsEqualTo("400");
+        await Assert.That(configuration["Geocoding:ReadinessTimeoutMilliseconds"])
+            .IsEqualTo("1250");
+        await Assert.That(configuration["Geocoding:SelectionLifetimeSeconds"])
+            .IsEqualTo("240");
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
     {
         var builder = new ConfigurationBuilder()

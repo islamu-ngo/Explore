@@ -214,7 +214,8 @@ public class NamingConventionTests
             "BatchUpdateMode",  // Enum, not a DTO
             "UiThemeInputRules",  // Utility class, not a DTO
             "CustomPropertyFilterCriterion",  // Filter specification input, not a data transfer object
-            "CustomPropertyFilterOperator"  // Enum, not a DTO
+            "CustomPropertyFilterOperator",  // Enum, not a DTO
+            "AddressProviderOutcome"  // Enum, not a DTO
         };
 
         var result = Types.InAssembly(ApplicationAssembly)

@@ -444,6 +444,73 @@ public static class ParityCorpus
             Lanes: ParityLane.Both,
             Rationale: "Public visibility is scoped inside its own tenant; it never crosses the tenant boundary."),
 
+        // ---- governed manual addresses -------------------------------------------------------------
+        new(
+            Id: "tenant-admin-manages-custom-addresses",
+            Category: "normal-allow",
+            Subject: ParitySubject.TenantAdmin,
+            ResourceKind: ResourceKinds.Location,
+            Action: AuthorizationActions.Locations.ManageCustomAddresses,
+            Facts: new TenantScopedAuthorizationFacts(TenantId),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Only tenant administration may enable the AdminOnly manual-address path."),
+
+        new(
+            Id: "standard-user-cannot-manage-custom-addresses",
+            Category: "normal-deny",
+            Subject: ParitySubject.StandardUser,
+            ResourceKind: ResourceKinds.Location,
+            Action: AuthorizationActions.Locations.ManageCustomAddresses,
+            Facts: new TenantScopedAuthorizationFacts(TenantId),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Authentication alone never grants tenant-wide custom-address management."),
+
+        new(
+            Id: "organization-admin-creates-organization-address",
+            Category: "normal-allow",
+            Subject: ParitySubject.OrganizationAdmin,
+            ResourceKind: ResourceKinds.Organization,
+            Action: AuthorizationActions.Locations.CreateCustomAddress,
+            Facts: new OrganizationAuthorizationFacts(TenantId, OrganizationId),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "An owning organization administrator may create an organization-scoped address when settings grant it."),
+
+        new(
+            Id: "standard-user-cannot-create-organization-address",
+            Category: "normal-deny",
+            Subject: ParitySubject.StandardUser,
+            ResourceKind: ResourceKinds.Organization,
+            Action: AuthorizationActions.Locations.CreateCustomAddress,
+            Facts: new OrganizationAuthorizationFacts(TenantId, OrganizationId),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "A bare authenticated user cannot claim organization-scoped address authority."),
+
+        new(
+            Id: "tenant-admin-approves-tenant-address",
+            Category: "normal-allow",
+            Subject: ParitySubject.TenantAdmin,
+            ResourceKind: ResourceKinds.Location,
+            Action: AuthorizationActions.Locations.ApproveTenantAddress,
+            Facts: new TenantScopedAuthorizationFacts(TenantId),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenant-wide address reuse requires explicit tenant moderation authority."),
+
+        new(
+            Id: "standard-user-cannot-approve-tenant-address",
+            Category: "normal-deny",
+            Subject: ParitySubject.StandardUser,
+            ResourceKind: ResourceKinds.Location,
+            Action: AuthorizationActions.Locations.ApproveTenantAddress,
+            Facts: new TenantScopedAuthorizationFacts(TenantId),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Authentication alone cannot promote an address to tenant-wide reuse."),
+
         // ---- provider failure ----------------------------------------------------------------------
         // Provider unavailability is a runtime routing concern, not a policy question: there is no PDP
         // answer to compare against because the PDP is precisely what is unreachable.

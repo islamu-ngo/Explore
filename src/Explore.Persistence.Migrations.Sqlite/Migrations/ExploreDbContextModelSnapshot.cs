@@ -13619,6 +13619,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AddressOrganizationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("address_organization_id");
+
+                    b.Property<int>("AddressSourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1)
+                        .HasColumnName("address_source_id");
+
+                    b.Property<int>("AddressVisibilityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1)
+                        .HasColumnName("address_visibility_id");
+
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -13643,6 +13659,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_by");
+
+                    b.Property<string>("DisplaySortKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(14000)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("display_sort_key")
+                        .UseCollation("BINARY")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<short>("DisplaySortKeyVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("display_sort_key_version");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -13697,6 +13729,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_locations_tenant_id_id");
 
+                    b.HasIndex("AddressSourceId")
+                        .HasDatabaseName("ix_ie_locations_address_source_id");
+
+                    b.HasIndex("AddressVisibilityId")
+                        .HasDatabaseName("ix_ie_locations_address_visibility_id");
+
                     b.HasIndex("LocationKindId")
                         .HasDatabaseName("ix_ie_locations_location_kind_id");
 
@@ -13706,18 +13744,103 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("OwnerUserId")
                         .HasDatabaseName("ix_ie_locations_owner_user_id");
 
+                    b.HasIndex("TenantId", "AddressOrganizationId")
+                        .HasDatabaseName("ix_ie_locations_tenant_id_address_organization_id");
+
                     b.HasIndex("TenantId", "City")
                         .HasDatabaseName("ix_locations_tenant_city");
 
                     b.HasIndex("TenantId", "Country")
                         .HasDatabaseName("ix_locations_tenant_country");
 
+                    b.HasIndex("TenantId", "AddressVisibilityId", "AddressOrganizationId")
+                        .HasDatabaseName("ix_locations_tenant_address_visibility_organization");
+
+                    b.HasIndex("TenantId", "AddressVisibilityId", "CreatedBy")
+                        .HasDatabaseName("ix_locations_tenant_address_visibility_created_by");
+
                     b.ToTable("ie_locations", null, t =>
                         {
+                            t.HasCheckConstraint("ck_locations_address_visibility_scope", "(address_visibility_id = 1 AND address_organization_id IS NULL) OR (address_visibility_id = 2 AND created_by IS NOT NULL AND address_organization_id IS NULL) OR (address_visibility_id = 3 AND created_by IS NOT NULL AND address_organization_id IS NOT NULL) OR address_visibility_id = 4");
+
+                            t.HasCheckConstraint("ck_locations_display_sort_key_version", "(display_sort_key_version = 0 AND display_sort_key = '') OR (display_sort_key_version = 1 AND display_sort_key <> '' AND length(display_sort_key) % 7 = 0)");
+
+                            t.HasCheckConstraint("ck_locations_erased_address_quarantined", "location_privacy_state_id <> 3 OR (address_visibility_id = 1 AND address_organization_id IS NULL)");
+
                             t.HasCheckConstraint("ck_locations_erasure_state", "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR (location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
 
                             t.HasCheckConstraint("ck_locations_owner_private_home", "owner_user_id IS NULL OR location_kind_id = 5");
+
+                            t.HasCheckConstraint("ck_locations_private_home_address_visibility", "location_kind_id <> 5 OR address_visibility_id <> 4");
+
+                            t.HasCheckConstraint("ck_locations_tenant_approved_display_sort_key", "address_visibility_id <> 4 OR display_sort_key_version = 1");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LocationAddressSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_location_address_sources");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_location_address_sources_master_code");
+
+                    b.ToTable("ie_location_address_sources", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.LocationAddressVisibility", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_location_address_visibilities");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_location_address_visibilities_master_code");
+
+                    b.ToTable("ie_location_address_visibilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationDisclosureAudience", b =>
@@ -13798,6 +13921,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("address");
 
+                    b.Property<string>("AddressSubstringKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(14000)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("address_substring_key")
+                        .UseCollation("BINARY")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<short>("AddressSubstringKeyVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("address_substring_key_version");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("REAL")
                         .HasColumnName("latitude");
@@ -13818,6 +13957,8 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.ToTable("ie_location_pii", null, t =>
                         {
                             t.HasCheckConstraint("CK_LocationPii_CoordinateShape", "(latitude IS NULL AND longitude IS NULL)\nOR (latitude IS NOT NULL AND longitude IS NOT NULL\n    AND latitude BETWEEN -90 AND 90\n    AND longitude BETWEEN -180 AND 180)");
+
+                            t.HasCheckConstraint("ck_location_pii_address_substring_key_version", "(address_substring_key_version = 0 AND address_substring_key = '') OR (address_substring_key_version = 1 AND address_substring_key <> '' AND length(address_substring_key) % 7 = 0)");
                         });
                 });
 
@@ -36116,6 +36257,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
+                    b.HasOne("Explore.Domain.LocationAddressSource", "AddressSourceLookup")
+                        .WithMany()
+                        .HasForeignKey("AddressSourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_locations_location_address_sources_address_source_id");
+
+                    b.HasOne("Explore.Domain.LocationAddressVisibility", "AddressVisibilityLookup")
+                        .WithMany()
+                        .HasForeignKey("AddressVisibilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_locations_location_address_visibilities_address_visibility_id");
+
                     b.HasOne("Explore.Domain.LocationKind", "LocationKind")
                         .WithMany()
                         .HasForeignKey("LocationKindId")
@@ -36142,6 +36297,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ie_locations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.OrganizationTenant", "AddressOrganizationTenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AddressOrganizationId")
+                        .HasPrincipalKey("TenantId", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_locations_organization_tenants_tenant_id_address_organization_id");
+
+                    b.Navigation("AddressOrganizationTenant");
+
+                    b.Navigation("AddressSourceLookup");
+
+                    b.Navigation("AddressVisibilityLookup");
 
                     b.Navigation("LocationKind");
 

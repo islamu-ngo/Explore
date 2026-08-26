@@ -6,8 +6,6 @@ namespace Event.Architecture.Tests;
 public sealed class EventLocationSchemaContractionTests
 {
     private const string ContractionSql = "location_id IS NULL OR event_location_id IS NOT NULL";
-    private const string MigrationName = "ContractEventLocationPhysicalReferences";
-
     /// <summary>Carrier configuration file and the constraint name it must declare.</summary>
     private static readonly (string ConfigurationFile, string ConstraintName)[] Carriers =
     [
@@ -50,19 +48,48 @@ public sealed class EventLocationSchemaContractionTests
     {
         string migrationsRoot = Path.Combine(ContextSystemHelpers.RepoPath(project), "Migrations");
 
-        string[] migrations = Directory.GetFiles(migrationsRoot, $"*_{MigrationName}.cs");
+        string[] migrations = Directory.GetFiles(migrationsRoot, "*.cs")
+            .Where(path =>
+                !path.EndsWith(".Designer.cs", StringComparison.Ordinal)
+                && !path.EndsWith("ModelSnapshot.cs", StringComparison.Ordinal))
+            .ToArray();
+        var matchingMigrations = new List<(string Path, string Source)>();
+        foreach (string migration in migrations)
+        {
+            string candidate = await File.ReadAllTextAsync(migration);
+            if (Carriers.All(carrier => candidate.Contains(
+                    carrier.ConstraintName,
+                    StringComparison.Ordinal)))
+            {
+                matchingMigrations.Add((migration, candidate));
+            }
+        }
 
-        await Assert.That(migrations).HasCount(1);
+        await Assert.That(matchingMigrations).HasCount(1);
 
-        string source = await File.ReadAllTextAsync(migrations[0]);
+        (string migrationPath, string source) = matchingMigrations[0];
         foreach ((_, string constraintName) in Carriers)
         {
             await Assert.That(source).Contains(constraintName);
         }
 
-        // A contraction with no reverse is not reversible in development; the Down must drop all four.
-        await Assert.That(CountOccurrences(source, "AddCheckConstraint")).IsEqualTo(4);
-        await Assert.That(CountOccurrences(source, "DropCheckConstraint")).IsEqualTo(4);
+        string designerPath = migrationPath[..^".cs".Length] + ".Designer.cs";
+        await Assert.That(File.Exists(designerPath)).IsTrue();
+
+        if (migrationPath.Contains("InitialApplication", StringComparison.Ordinal))
+        {
+            foreach ((_, string constraintName) in Carriers)
+            {
+                await Assert.That(source)
+                    .Contains($"table.CheckConstraint(\"{constraintName}\"");
+            }
+        }
+        else
+        {
+            // An incremental contraction with no reverse is not reversible in development.
+            await Assert.That(CountOccurrences(source, "AddCheckConstraint")).IsEqualTo(4);
+            await Assert.That(CountOccurrences(source, "DropCheckConstraint")).IsEqualTo(4);
+        }
     }
 
     [Test]
@@ -71,10 +98,27 @@ public sealed class EventLocationSchemaContractionTests
         foreach ((string project, string folder) in MigrationProjects)
         {
             string migrationsRoot = Path.Combine(ContextSystemHelpers.RepoPath(project), folder);
-            string[] designers = Directory.GetFiles(migrationsRoot, $"*_{MigrationName}.Designer.cs");
+            string[] migrationSources = Directory.GetFiles(migrationsRoot, "*.cs")
+                .Where(path =>
+                    !path.EndsWith(".Designer.cs", StringComparison.Ordinal)
+                    && !path.EndsWith("ModelSnapshot.cs", StringComparison.Ordinal))
+                .ToArray();
+            var matchingSources = new List<string>();
+            foreach (string migrationSource in migrationSources)
+            {
+                string source = await File.ReadAllTextAsync(migrationSource);
+                if (Carriers.All(carrier => source.Contains(
+                        carrier.ConstraintName,
+                        StringComparison.Ordinal)))
+                {
+                    matchingSources.Add(migrationSource);
+                }
+            }
 
             // The designer snapshot is what proves the migration was produced by dotnet ef, not by hand.
-            await Assert.That(designers).HasCount(1);
+            await Assert.That(matchingSources).HasCount(1);
+            string designerPath = matchingSources[0][..^".cs".Length] + ".Designer.cs";
+            await Assert.That(File.Exists(designerPath)).IsTrue();
         }
     }
 

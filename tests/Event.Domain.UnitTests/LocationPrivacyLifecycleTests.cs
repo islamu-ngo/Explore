@@ -16,18 +16,17 @@ public sealed class LocationPrivacyLifecycleTests
         await Assert.That(location.Pii).IsNull();
         await Assert.That(location.Address).IsNull();
         await Assert.That(location.Postcode).IsNull();
-        await Assert.That(location.Latitude).IsNull();
-        await Assert.That(location.Longitude).IsNull();
+        await Assert.That(location.GetCoordinate()).IsNull();
         await Assert.That(location.LocationPrivacyStateId)
             .IsEqualTo((int)LocationPrivacyStateEnum.NotProvided);
     }
 
     [Test]
-    public async Task AttachingPiiTransitionsNotProvidedLocationToActive()
+    public async Task ManualAddressTransitionChangesNotProvidedLocationToActive()
     {
         var location = CreateLocation();
 
-        location.AttachPii(CreatePii("1 Main Street"));
+        location.SetManualAddress("1 Main Street", "1000");
 
         await Assert.That(location.Pii).IsNotNull();
         await Assert.That(location.Address).IsEqualTo("1 Main Street");
@@ -40,9 +39,10 @@ public sealed class LocationPrivacyLifecycleTests
     {
         var location = CreateLocation();
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
-        location.AttachPii(CreatePii("1 Main Street"));
+        location.SetManualAddress("1 Main Street", "1000");
 
-        await Assert.That(() => location.Pii = null).Throws<InvalidOperationException>();
+        await Assert.That(typeof(Location).GetProperty(nameof(Location.Pii))?.SetMethod?.IsPublic == true)
+            .IsFalse();
         await Assert.That(() => location.ClassifyAs(LocationKindEnum.CommercialVenue))
             .Throws<InvalidOperationException>();
     }
@@ -85,15 +85,15 @@ public sealed class LocationPrivacyLifecycleTests
     }
 
     [Test]
-    public async Task DirectPiiAssignmentRejectsAnotherLocationIdentity()
+    public async Task PublicPiiAttachmentBypassIsUnavailableAndAggregateAssociatesItsChild()
     {
         var location = CreateLocation();
-        var mismatchedPii = CreatePii("1 Main Street");
-        mismatchedPii.LocationId = Guid.CreateVersion7();
 
-        await Assert.That(() => location.Pii = mismatchedPii)
-            .Throws<InvalidOperationException>();
-        await Assert.That(location.Pii).IsNull();
+        await Assert.That(typeof(Location).GetMethod("AttachPii", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            .IsNull();
+        location.SetManualAddress("1 Main Street", "1000");
+        await Assert.That(location.Pii?.LocationId).IsEqualTo(location.Id);
+        await Assert.That(location.Pii?.Location).IsSameReferenceAs(location);
     }
 
     [Test]
@@ -114,7 +114,7 @@ public sealed class LocationPrivacyLifecycleTests
         var erasedAt = new DateTime(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
         var location = CreateLocation();
         location.ClassifyAsPrivateHome(ownerId);
-        location.AttachPii(CreatePii("9 Household Lane"));
+        location.SetManualAddress("9 Household Lane", "1000");
         var roomOne = CreateRoom(location, "Amir's office");
         var roomTwo = CreateRoom(location, "Family bedroom");
         location.Rooms.Add(roomOne);
@@ -138,7 +138,7 @@ public sealed class LocationPrivacyLifecycleTests
         await Assert.That(roomOne.IsDeleted).IsTrue();
         await Assert.That(roomTwo.IsDeleted).IsTrue();
 
-        await Assert.That(() => location.AttachPii(CreatePii("10 Replacement Lane")))
+        await Assert.That(() => location.SetManualAddress("10 Replacement Lane", "1000"))
             .Throws<InvalidOperationException>();
         await Assert.That(() => location.ClassifyAs(LocationKindEnum.CommercialVenue))
             .Throws<InvalidOperationException>();
@@ -149,7 +149,7 @@ public sealed class LocationPrivacyLifecycleTests
     {
         var location = CreateLocation();
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
-        location.AttachPii(CreatePii("9 Household Lane"));
+        location.SetManualAddress("9 Household Lane", "1000");
         var room = CreateRoom(location, "Family bedroom");
         room.Slug = "family-bedroom";
         location.Rooms.Add(room);
@@ -186,14 +186,14 @@ public sealed class LocationPrivacyLifecycleTests
         var ownerId = Guid.CreateVersion7();
         var erased = CreateLocation();
         erased.ClassifyAsPrivateHome(ownerId);
-        erased.AttachPii(CreatePii("Old address"));
+        erased.SetManualAddress("Old address", "1000");
         var erasedRoom = CreateRoom(erased, "Study");
         erased.Rooms.Add(erasedRoom);
         erased.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
 
         var replacement = CreateLocation();
         replacement.ClassifyAsPrivateHome(ownerId);
-        replacement.AttachPii(CreatePii("New address"));
+        replacement.SetManualAddress("New address", "1000");
         var replacementRoom = CreateRoom(replacement, "Study");
         replacement.Rooms.Add(replacementRoom);
 
@@ -204,20 +204,31 @@ public sealed class LocationPrivacyLifecycleTests
             .IsEqualTo((int)LocationPrivacyStateEnum.Active);
     }
 
-    private static Location CreateLocation() => new()
+    private static Location CreateLocation()
     {
-        Id = Guid.CreateVersion7(),
-        FullName = "Venue",
-        Country = "BE",
-        City = "Brussels",
-        Tenant = null!
-    };
-
-    private static LocationPii CreatePii(string address) => new()
-    {
-        Address = address,
-        Postcode = "1000"
-    };
+        var tenant = new Tenant
+        {
+            FullName = "Privacy test tenant",
+            Slug = $"privacy-test-{Guid.CreateVersion7():N}",
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = new TenantStatus
+            {
+                Id = (int)TenantStatusEnum.Active,
+                MasterCode = "ACTIVE",
+                FullName = "Active",
+                IsActiveState = true
+            }
+        };
+        return new Location
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            FullName = "Venue",
+            Country = "BE",
+            City = "Brussels",
+            Tenant = tenant
+        };
+    }
 
     private static LocationRoom CreateRoom(Location location, string name) => new()
     {
@@ -226,6 +237,6 @@ public sealed class LocationPrivacyLifecycleTests
         Location = location,
         Name = name,
         Description = $"Description for {name}",
-        Tenant = null!
+        Tenant = location.Tenant ?? throw new InvalidOperationException("The Location fixture requires a tenant.")
     };
 }

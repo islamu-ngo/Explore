@@ -298,21 +298,17 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
     private static Location CreateLocation(Guid locationId, Tenant tenant, string fullName)
     {
-        return new Location
+        var location = new Location
         {
             Id = locationId,
             FullName = fullName,
             City = "Brussels",
             Country = "Belgium",
             TenantId = tenant.Id,
-            Tenant = tenant,
-            Pii = new LocationPii
-            {
-                LocationId = locationId,
-                Address = "Rue Test 1",
-                Postcode = "1000"
-            }
+            Tenant = tenant
         };
+        location.SetManualAddress("Rue Test 1", "1000");
+        return location;
     }
 
     private static LocationRoom CreateRoom(Guid roomId, Location location, string name)

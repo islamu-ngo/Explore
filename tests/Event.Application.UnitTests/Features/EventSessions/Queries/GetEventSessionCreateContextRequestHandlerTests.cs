@@ -142,7 +142,7 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
 
     private static Location CreateLocation(Guid locationId, Tenant tenant, string fullName, string city, string country)
     {
-        return new Location
+        var location = new Location
         {
             Id = locationId,
             FullName = fullName,
@@ -150,14 +150,10 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
             Country = country,
             Timezone = "Europe/Brussels",
             TenantId = tenant.Id,
-            Tenant = tenant,
-            Pii = new LocationPii
-            {
-                LocationId = locationId,
-                Address = "Rue Test 1",
-                Postcode = "1000"
-            }
+            Tenant = tenant
         };
+        location.SetManualAddress("Rue Test 1", "1000");
+        return location;
     }
 
     private static LocationRoom CreateRoom(Guid roomId, Location location, string name, int capacity, int sortOrder)

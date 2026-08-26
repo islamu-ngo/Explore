@@ -193,7 +193,7 @@ public sealed class AiContextDisclosureRegistry
                 Rationale: "Public CDN URL.",
                 Phase4Gated: false),
 
-            // ───────────── LocationPii (5 persisted public properties; 1 nav skipped) ─────────────
+            // ───────────── LocationPii (7 persisted public properties; 1 nav skipped) ─────────────
             new(
                 EntityName: nameof(LocationPii),
                 FieldName: nameof(LocationPii.LocationId),
@@ -208,6 +208,20 @@ public sealed class AiContextDisclosureRegistry
                 LocalModelRule: AiContextDisclosureRuleEnum.Redact,
                 Rationale: "Physical address. Local model redacts to City + Postcode; external tiers deny.",
                 Phase4Gated: true),
+            new(
+                EntityName: nameof(LocationPii),
+                FieldName: nameof(LocationPii.AddressSubstringKey),
+                Sensitivity: AiContextSensitivityEnum.Restricted,
+                LocalModelRule: AiContextDisclosureRuleEnum.Deny,
+                Rationale: "Reversible normalized exact-address search material is persistence-only and must never enter model context.",
+                Phase4Gated: false),
+            new(
+                EntityName: nameof(LocationPii),
+                FieldName: nameof(LocationPii.AddressSubstringKeyVersion),
+                Sensitivity: AiContextSensitivityEnum.Internal,
+                LocalModelRule: AiContextDisclosureRuleEnum.Deny,
+                Rationale: "Persistence key-version metadata has no model-context purpose.",
+                Phase4Gated: false),
             new(
                 EntityName: nameof(LocationPii),
                 FieldName: nameof(LocationPii.Postcode),

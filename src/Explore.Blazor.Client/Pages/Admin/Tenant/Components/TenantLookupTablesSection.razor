@@ -1,4 +1,5 @@
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Pages.Admin.Components
 @using Explore.Blazor.Client.Pages.Admin.Dialogs
 @using Explore.Blazor.Client.Services
@@ -105,10 +106,17 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Class="flex-grow-1" />
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="OpenCreateLocationDialogAsync">
-                        Create
-                    </MudButton>
+                    @if (CreateLocationLink is { } createLink)
+                    {
+                        <MudButton Elevation="0"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   data-testid="location-create"
+                                   OnClick="() => OpenCreateLocationDialogAsync(createLink)">
+                            Create
+                        </MudButton>
+                    }
                 </MudStack>
 
                 <MudTable Items="FilteredLocations" Dense="true" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm">
@@ -125,8 +133,23 @@
                         <MudTd DataLabel="City">@(context.City ?? "-")</MudTd>
                         <MudTd DataLabel="Country">@(context.Country ?? "-")</MudTd>
                         <MudTd DataLabel="Actions">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditLocationDialogAsync(context))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteLocationAsync(context))" />
+                            @if (TryGetLink(context, "self") is { } selfLink
+                                && TryGetLink(context, "edit") is { } editLink)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               data-testid="@($"location-edit-{context.Id:D}")"
+                                               OnClick="@(() => OpenEditLocationDialogAsync(context, selfLink, editLink))" />
+                            }
+                            @if (TryGetLink(context, "delete") is { } deleteLink)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               data-testid="@($"location-delete-{context.Id:D}")"
+                                               OnClick="@(() => DeleteLocationAsync(context, deleteLink))" />
+                            }
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -279,6 +302,7 @@
     [Inject] private IAdminService AdminService { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = null!;
 
     private bool _isLoading = true;
     private string? _errorMessage;
@@ -289,7 +313,10 @@
 
     private ICollection<CategoryListDto> _categories = new List<CategoryListDto>();
     private ICollection<TagListDto> _tags = new List<TagListDto>();
-    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
+    private ICollection<HalResourceOfLocationListDto> _locations =
+        new List<HalResourceOfLocationListDto>();
+    private IReadOnlyDictionary<string, HalLink> _locationLinks =
+        new Dictionary<string, HalLink>();
 
     private ICollection<EventTypeListDto> _eventTypes = new List<EventTypeListDto>();
     private ICollection<EventFormatListDto> _eventFormats = new List<EventFormatListDto>();
@@ -319,7 +346,7 @@
             (t.FullName?.Contains(_tagSearch, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (t.MasterCode?.Contains(_tagSearch, StringComparison.OrdinalIgnoreCase) ?? false));
 
-    private IEnumerable<LocationListDto> FilteredLocations => string.IsNullOrWhiteSpace(_locationSearch)
+    private IEnumerable<HalResourceOfLocationListDto> FilteredLocations => string.IsNullOrWhiteSpace(_locationSearch)
         ? _locations
         : _locations.Where(l =>
             (l.FullName?.Contains(_locationSearch, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -371,7 +398,12 @@
 
     private async Task LoadLocationsAsync()
     {
-        _locations = await AdminService.GetLocationsAsync() ?? new List<LocationListDto>();
+        HalCollectionResourceOfLocationListDto resource =
+            await AdminService.GetLocationsAsync();
+        _locations = resource._embedded?.Items?.ToArray() ?? [];
+        _locationLinks = resource._links is { } links
+            ? new Dictionary<string, HalLink>(links)
+            : new Dictionary<string, HalLink>();
     }
 
     private async Task LoadReferenceLookupTablesAsync()
@@ -487,20 +519,37 @@
             AdminService.DeleteTagAsync,
             LoadTagsAsync);
 
-    private async Task OpenCreateLocationDialogAsync()
-        => await RunLookupCreateAsync<CreateLocationDto>(
-            options => CreateLocationDialog.ShowAsync(DialogService, "Create Location", options: options),
-            AdminService.CreateLocationAsync,
+    private async Task OpenCreateLocationDialogAsync(HalLink createLink)
+    {
+        var parameters = new DialogParameters<CreateLocationDialog>();
+        if (AddressSuggestionsLink is { } searchLink)
+        {
+            parameters.Add(component => component.SearchLink, searchLink);
+        }
+
+        await RunLookupCreateAsync<CreateLocationDto>(
+            options => CreateLocationDialog.ShowAsync(
+                DialogService,
+                "Create Location",
+                parameters,
+                options),
+            dto => AdminService.CreateLocationAsync(dto, createLink),
             dto => dto.FullName,
             "Location",
             LoadLocationsAsync);
+    }
 
-    private async Task OpenEditLocationDialogAsync(LocationListDto location)
+    private async Task OpenEditLocationDialogAsync(
+        HalResourceOfLocationListDto location,
+        HalLink selfLink,
+        HalLink editLink)
     {
         if (!location.Id.HasValue)
             return;
 
-        var locationDetails = await AdminService.GetLocationByIdAsync(location.Id.Value);
+        var locationDetails = await AdminService.GetLocationByIdAsync(
+            location.Id.Value,
+            selfLink);
         if (locationDetails == null)
         {
             Snackbar.Add("Failed to load location details.", Severity.Error);
@@ -511,24 +560,50 @@
         {
             { x => x.ExistingLocation, locationDetails }
         };
+        if (AddressSuggestionsLink is { } searchLink)
+        {
+            parameters.Add(component => component.SearchLink, searchLink);
+        }
 
         await RunLookupEditAsync<UpdateLocationDto>(
             options => EditLocationDialog.ShowAsync(DialogService, "Edit Location", parameters, options),
             dto => AdminService.UpdateLocationAsync(
                 locationDetails.Id ?? Guid.Empty,
                 locationDetails.ConcurrencyStamp ?? Guid.Empty,
-                dto),
+                dto,
+                editLink),
             dto => dto.FullName?.Value,
             "Location",
             LoadLocationsAsync);
     }
 
-    private async Task DeleteLocationAsync(LocationListDto location)
+    private HalLink? AddressSuggestionsLink =>
+        _locationLinks.TryGetValue(
+            "address-suggestions",
+            out HalLink? searchLink)
+            ? searchLink
+            : null;
+
+    private HalLink? CreateLocationLink =>
+        _locationLinks.TryGetValue("create", out HalLink? createLink)
+            ? createLink
+            : null;
+
+    private static HalLink? TryGetLink(
+        HalResourceOfLocationListDto location,
+        string relation) =>
+        location._links?.TryGetValue(relation, out HalLink? link) == true
+            ? link
+            : null;
+
+    private async Task DeleteLocationAsync(
+        HalResourceOfLocationListDto location,
+        HalLink deleteLink)
         => await RunLookupDeleteAsync(
             location.Id,
             location.FullName,
             "location",
-            AdminService.DeleteLocationAsync,
+            id => AdminService.DeleteLocationAsync(id, deleteLink),
             LoadLocationsAsync);
 
     private async Task RunLookupCreateAsync<TCreateDto>(
@@ -538,8 +613,17 @@
         string entityName,
         Func<Task> reloadAsync)
     {
-        var dialog = await showDialogAsync(DialogOptionsFactory.Small());
-        var result = await dialog.Result;
+        DialogResult? result;
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await showDialogAsync(DialogOptionsFactory.Small());
+            result = await dialog.Result;
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
 
         if (result is not { Canceled: false, Data: TCreateDto createDto })
             return;
@@ -562,8 +646,17 @@
         string entityName,
         Func<Task> reloadAsync)
     {
-        var dialog = await showDialogAsync(DialogOptionsFactory.Small());
-        var result = await dialog.Result;
+        DialogResult? result;
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await showDialogAsync(DialogOptionsFactory.Small());
+            result = await dialog.Result;
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
 
         if (result is not { Canceled: false, Data: TUpdateDto updateDto })
             return;

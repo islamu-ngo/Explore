@@ -47,14 +47,10 @@ public sealed class LocationDiscoveryRepositoryPrivacyTests(PostgreSqlContainerF
             Country = "BE",
             City = "Brussels"
         };
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = "Exact private address",
-            Postcode = "1000",
-            Latitude = 50.8466,
-            Longitude = 4.3528
-        });
+        location.SetProviderAddress(
+            "Exact private address",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.8466, 4.3528));
         var foreignLocation = new Location
         {
             Id = Guid.CreateVersion7(),
@@ -64,14 +60,10 @@ public sealed class LocationDiscoveryRepositoryPrivacyTests(PostgreSqlContainerF
             Country = "BE",
             City = "Antwerp"
         };
-        foreignLocation.AttachPii(new LocationPii
-        {
-            LocationId = foreignLocation.Id,
-            Address = "Foreign exact private address",
-            Postcode = "2000",
-            Latitude = 51.2194,
-            Longitude = 4.4025
-        });
+        foreignLocation.SetProviderAddress(
+            "Foreign exact private address",
+            "2000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(51.2194, 4.4025));
 
         await using (var seedContext = fixture.CreateDbContext())
         {

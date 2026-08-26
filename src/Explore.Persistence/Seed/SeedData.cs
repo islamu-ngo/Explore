@@ -470,17 +470,14 @@ public static class SeedData
     };
 
     // ===== Location =====
-    public static Location OnlineLocation => new()
-    {
-        Id = SeedIds.OnlineLocationId,
-        FullName = "Online / Virtual",
-        Country = "Internet",
-        City = "Virtual",
-        Pii = LocationPii.Create("Virtual", "00000", coordinate: null),
-        Timezone = "UTC",
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
-    };
+    public static Location OnlineLocation => CreateSeedLocation(
+        SeedIds.OnlineLocationId,
+        "Online / Virtual",
+        "Internet",
+        "Virtual",
+        "Virtual",
+        "00000",
+        "UTC");
 
     // ===== Categories =====
     public static Category IslamicStudiesCategory => new()
@@ -630,35 +627,62 @@ public static class SeedData
     // ===== Additional development locations and rooms =====
     public static IReadOnlyList<Location> IslamicEventLocations =>
     [
-        new()
-        {
-            Id = SeedIds.BrusselsIslamicCenterLocationId,
-            FullName = "Brussels Islamic Learning Center",
-            Country = "Belgium",
-            City = "Brussels",
-            Pii = LocationPii.Create(
-                "Rue de l'Instruction 12",
-                "1070",
-                GeoCoordinate.Create(50.8369, 4.3264)),
-            Timezone = BrusselsTimezone,
-            TenantId = SeedIds.DefaultTenantId,
-            Tenant = null!
-        },
-        new()
-        {
-            Id = SeedIds.AntwerpMasjidLocationId,
-            FullName = "Antwerp Masjid Community Hall",
-            Country = "Belgium",
-            City = "Antwerp",
-            Pii = LocationPii.Create(
-                "Gemeentestraat 44",
-                "2060",
-                GeoCoordinate.Create(51.2213, 4.4210)),
-            Timezone = BrusselsTimezone,
-            TenantId = SeedIds.DefaultTenantId,
-            Tenant = null!
-        }
+        CreateSeedLocation(
+            SeedIds.BrusselsIslamicCenterLocationId,
+            "Brussels Islamic Learning Center",
+            "Belgium",
+            "Brussels",
+            "Rue de l'Instruction 12",
+            "1070",
+            BrusselsTimezone,
+            50.8369,
+            4.3264),
+        CreateSeedLocation(
+            SeedIds.AntwerpMasjidLocationId,
+            "Antwerp Masjid Community Hall",
+            "Belgium",
+            "Antwerp",
+            "Gemeentestraat 44",
+            "2060",
+            BrusselsTimezone,
+            51.2213,
+            4.4210)
     ];
+
+    private static Location CreateSeedLocation(
+        Guid id,
+        string fullName,
+        string country,
+        string city,
+        string address,
+        string postcode,
+        string timezone,
+        double? latitude = null,
+        double? longitude = null)
+    {
+        var location = new Location
+        {
+            Id = id,
+            FullName = fullName,
+            Country = country,
+            City = city,
+            Timezone = timezone,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        };
+        if (latitude is { } exactLatitude && longitude is { } exactLongitude)
+        {
+            location.SetProviderAddress(
+                address,
+                postcode,
+                Explore.Domain.ValueObjects.GeoCoordinate.Create(exactLatitude, exactLongitude));
+        }
+        else
+        {
+            location.SetManualAddress(address, postcode);
+        }
+        return location;
+    }
 
     public static IReadOnlyList<LocationRoom> IslamicEventRooms =>
     [

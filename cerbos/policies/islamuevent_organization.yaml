@@ -20,7 +20,7 @@ resourcePolicy:
         - islamuevent_instance_admin
 
     # Tenant admins can manage all organizations within their tenant
-    - actions: ["view", "create", "update", "delete", "manage_members", "view-evidence", "review-evidence"]
+    - actions: ["view", "create", "update", "delete", "manage_members", "view-evidence", "review-evidence", "create_custom_address"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
@@ -41,7 +41,7 @@ resourcePolicy:
             request.principal.attr.is_machine != true)
 
     # Org admins can manage their own organization
-    - actions: ["view", "update", "manage_members", "view-evidence", "submit-evidence"]
+    - actions: ["view", "update", "manage_members", "view-evidence", "submit-evidence", "create_custom_address"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin

@@ -15,6 +15,7 @@ using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Contracts.Infrastructure.Geocoding;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Services;
@@ -29,6 +30,7 @@ using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Configuration;
+using Explore.Infrastructure.Geocoding;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Integrations.Listmonk;
 using Explore.Infrastructure.Localization;
@@ -58,6 +60,7 @@ using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
 using Explore.Infrastructure.Webhooks;
 using Explore.Infrastructure.WebPush;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -77,6 +80,59 @@ public static class InfrastructureServicesRegistration
         IConfiguration configuration,
         IHostEnvironment? environment = null)
     {
+        services.AddOptions<PhotonGeocodingOptions>()
+            .Bind(configuration.GetSection(PhotonGeocodingOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<
+            IValidateOptions<PhotonGeocodingOptions>,
+            PhotonOptionsValidator>();
+        services.AddHttpClient(GeocodingReadinessProbe.HttpClientName, client =>
+            {
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                ConnectTimeout = TimeSpan.FromSeconds(2)
+            });
+        services.AddSingleton<GeocodingReadinessProbe>();
+        services.AddDataProtection();
+
+        string geocodingProvider =
+            configuration[$"{PhotonGeocodingOptions.SectionName}:Provider"]
+            ?? PhotonGeocodingOptions.DisabledProvider;
+        if (string.Equals(
+            geocodingProvider,
+            PhotonGeocodingOptions.PhotonProvider,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<PhotonGeocodingAdapter>(client =>
+            {
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                ConnectTimeout = TimeSpan.FromSeconds(2)
+            });
+            services.AddScoped<IAddressSuggestionProviderGateway>(provider =>
+                provider.GetRequiredService<PhotonGeocodingAdapter>());
+            services.AddSingleton<
+                IAddressSelectionProtector,
+                DataProtectionAddressSelectionProtector>();
+        }
+        else
+        {
+            services.AddSingleton<
+                IAddressSuggestionProviderGateway,
+                DisabledAddressSuggestionProviderGateway>();
+            services.AddSingleton<
+                IAddressSelectionProtector,
+                DisabledAddressSelectionProtector>();
+        }
+
         services.AddOptions<AtprotoInfrastructureOptions>()
             .Bind(configuration.GetSection(AtprotoInfrastructureOptions.SectionName));
         services.AddOptions<AtprotoJetstreamOptions>()

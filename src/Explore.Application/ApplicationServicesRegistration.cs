@@ -47,6 +47,7 @@ using Explore.Application.Features.EventTemplates.Authorization;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Footer.Handlers.Commands;
+using Explore.Application.Features.Geocoding;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
 using Explore.Application.Features.Management;
@@ -282,6 +283,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
         services.AddScoped<ILocationPrivacyGovernanceService, LocationPrivacyGovernanceService>();
         services.AddScoped<ILocationPrivacyGovernanceMutationService, LocationPrivacyGovernanceMutationService>();
+        services.AddScoped<IAddressGovernancePolicyResolver, AddressGovernancePolicyResolver>();
         services.AddScoped<EventLocationAttachmentService>();
         services.AddSingleton<IEventLocationRegistrationAccessService, EventLocationRegistrationAccessService>();
         services.AddSingleton<IFormSchemaArtifactGenerator, FormSchemaArtifactGenerator>();

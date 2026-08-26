@@ -9,6 +9,7 @@ using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
@@ -36,16 +37,16 @@ internal sealed class PrimaryDatabaseProviderBehaviorFixture
             PrimaryDatabaseConfiguration.BindRuntime(configuration));
     }
 
-    public ExploreDbContext CreateSystemContext()
+    public ExploreDbContext CreateSystemContext(params IInterceptor[] interceptors)
     {
-        var context = CreateContext();
+        var context = CreateContext(interceptors);
         context.EnableTenantFilterBypass("Shared primary database provider behavior contract.");
         return context;
     }
 
-    public ExploreDbContext CreateTenantContext(Guid? tenantId)
+    public ExploreDbContext CreateTenantContext(Guid? tenantId, params IInterceptor[] interceptors)
     {
-        var context = CreateContext();
+        var context = CreateContext(interceptors);
         context.TenantContext = tenantId.HasValue ? new TestTenantContext(tenantId.Value) : null;
         return context;
     }
@@ -81,10 +82,14 @@ internal sealed class PrimaryDatabaseProviderBehaviorFixture
         return new DataProtectionKeyContext(builder.Options);
     }
 
-    private ExploreDbContext CreateContext()
+    private ExploreDbContext CreateContext(params IInterceptor[] interceptors)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, _databaseOptions);
+        if (interceptors.Length > 0)
+        {
+            builder.AddInterceptors(interceptors);
+        }
         return new ExploreDbContext(builder.Options);
     }
 

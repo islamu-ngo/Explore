@@ -3,12 +3,14 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Extensions;
 using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Location;
+using Explore.Application.Features.Geocoding.Requests.Commands;
 using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Features.Locations.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -16,6 +18,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -48,6 +51,11 @@ public class LocationController : ControllerBase
         "privateHomeOwnership",
         "Private home ownership validation failed",
         "The private home ownership change could not be applied.");
+
+    private static readonly ApiValidationProblemDescriptor AddressApprovalValidationProblem = new(
+        "addressApproval",
+        "Address approval validation failed",
+        "The address could not be approved for tenant reuse.");
 
     private readonly IMediator _mediator;
     private readonly ILogger<LocationController> _logger;
@@ -134,7 +142,7 @@ public class LocationController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateLocation)]
     [EndpointSummary("Create Location")]
-    [EndpointDescription("Create a new location with address and optional coordinates.")]
+    [EndpointDescription("Create a new location from manually supplied name, address, city, country, postcode, and timezone fields. Coordinates are not accepted.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -284,6 +292,53 @@ public class LocationController : ControllerBase
             cancellationToken);
 
         return ToPrivateHomeResult(response);
+    }
+
+    /// <summary>
+    /// Approve one eligible exact address for tenant-wide reuse.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [HttpPost("{id:guid}/address-approval", Name = RouteNames.ApproveTenantAddress)]
+    [EndpointSummary("Approve location address")]
+    [EndpointDescription("Promotes an eligible scoped address to tenant-approved visibility after named authorization.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ApproveTenantAddress(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                AddressApprovalValidationProblem,
+                "If-Match header is required and must contain the current location concurrency stamp.");
+        }
+
+        BaseCommandResponse<Guid> response = await _mediator.Send(
+            new PromoteLocationAddressCommand
+            {
+                LocationId = id,
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp
+            },
+            cancellationToken);
+
+        return response.IsSuccess
+            ? Ok(response)
+            : response.FailureCode == FailureCodes.NotFound
+                ? this.ToNotFoundProblem(LocationNotFoundProblem)
+                : this.ToValidationProblem(
+                    AddressApprovalValidationProblem,
+                    response.Message
+                        ?? "The address could not be approved for tenant reuse.");
     }
 
     private ActionResult<BaseCommandResponse<Guid>> ToPrivateHomeResult(BaseCommandResponse<Guid> response)

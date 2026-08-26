@@ -22,6 +22,7 @@ using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
+using Explore.Infrastructure.Geocoding;
 using Explore.Infrastructure.HealthChecks;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
@@ -413,6 +414,10 @@ public static class ApiHostServiceCollectionExtensions
                 "ai-provider",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready", "ai", "provider", "infrastructure"])
+            .AddCheck<GeocodingReadinessHealthCheck>(
+                "geocoding",
+                failureStatus: HealthStatus.Degraded,
+                tags: ["ready", "geocoding", "provider", "infrastructure"])
             .AddCheck<PrivacyErasureReadinessHealthCheck>(
                 "privacy-erasure",
                 failureStatus: HealthStatus.Unhealthy,

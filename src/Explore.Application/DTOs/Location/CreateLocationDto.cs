@@ -1,4 +1,5 @@
-using System;
+// ABOUTME: Untrusted payload for creating a Location with a manual address.
+// ABOUTME: Tenant identity and provider coordinates are intentionally absent from this boundary.
 
 namespace Explore.Application.DTOs.Location;
 
@@ -9,7 +10,7 @@ public sealed record CreateLocationDto
     public required string Postcode { get; init; }
     public required string Country { get; init; }
     public required string City { get; init; }
-    public double? Latitude { get; init; }
-    public double? Longitude { get; init; }
     public string? Timezone { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public string? AddressSelectionToken { get; init; }
 }

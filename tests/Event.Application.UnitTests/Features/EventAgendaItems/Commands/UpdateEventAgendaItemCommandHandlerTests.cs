@@ -319,20 +319,17 @@ public class UpdateEventAgendaItemCommandHandlerTests
 
     private static Location CreateLocation(Guid tenantId)
     {
-        return new Location
+        var location = new Location
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             FullName = "Main Venue",
             Country = "Belgium",
             City = "Brussels",
-            Pii = new LocationPii
-            {
-                Address = "Main Street 1",
-                Postcode = "1000"
-            },
             Tenant = null!
         };
+        location.SetManualAddress("Main Street 1", "1000");
+        return location;
     }
 
     private static LocationRoom CreateRoom(Guid tenantId, Guid locationId)

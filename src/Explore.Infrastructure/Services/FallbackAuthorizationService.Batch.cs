@@ -116,25 +116,25 @@ public partial class FallbackAuthorizationService
     {
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
-            LogDecision("deny", "unsupported_event_action", resourceKind, resourceId, action);
+            LogDecision("deny", "unsupported_event_action", resourceKind, action);
             return false;
         }
 
         if (profile.IsInstanceAdmin && IsInstanceAdminFallbackAllowed(resourceKind, action))
         {
-            LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
+            LogDecision("allow", "is_instance_admin", resourceKind, action);
             return true;
         }
 
         if (profile.IsInstanceAdmin && IsInstanceAdminFallbackDenied(resourceKind, action))
         {
-            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, resourceId, action);
+            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, action);
             return false;
         }
 
         if (SafeMode && !profile.IsInstanceAdmin)
         {
-            LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
+            LogDecision("deny", "safe_mode_active", resourceKind, action);
             return false;
         }
 
@@ -207,7 +207,7 @@ public partial class FallbackAuthorizationService
             _ => false
         };
 
-        LogDecision(decision ? "allow" : "deny", "fallback_batch_policy", resourceKind, resourceId, action);
+        LogDecision(decision ? "allow" : "deny", "fallback_batch_policy", resourceKind, action);
         return decision;
     }
 

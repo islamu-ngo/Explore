@@ -167,7 +167,8 @@ public class EventSessionLifecycleConstraintTests
     private static async Task<RoomScheduleScope> SetupRoomScopeAsync(ExploreDbContext context)
     {
         var (tenant, @event) = await SetupEventAsync(context);
-        var location = new Location { FullName = "Lifecycle Test Venue", Country = "BE", City = "Brussels", Pii = new LocationPii { Address = "123 Test St", Postcode = "1000" }, TenantId = tenant.Id, Tenant = null! };
+        var location = new Location { FullName = "Lifecycle Test Venue", Country = "BE", City = "Brussels", TenantId = tenant.Id, Tenant = null! };
+        location.SetManualAddress("123 Test St", "1000");
         context.Locations.Add(location);
         await context.SaveChangesAsync();
         var room = new LocationRoom { LocationId = location.Id, Location = null!, Name = "Main Hall", Capacity = 200, SortOrder = 1, TenantId = tenant.Id, Tenant = null! };

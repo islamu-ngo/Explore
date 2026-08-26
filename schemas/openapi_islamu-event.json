@@ -42990,6 +42990,136 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/geocoding/address-suggestions": {
+      "post": {
+        "tags": [
+          "Geocoding"
+        ],
+        "summary": "Get private address suggestions",
+        "description": "Returns bounded tenant-visible local address suggestions. Provider selection and credentials are server-owned.",
+        "operationId": "GetAddressSuggestions",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressSuggestionsRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressSuggestionsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfAddressSuggestionsResponseDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfAddressSuggestionsResponseDto"
+                }
+              },
+              "application/hal+json": { },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json": { },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json": { },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json": { },
+              "application/json": { }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json": { },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "AddressSuggestions"
+      }
+    },
     "/api/group": {
       "get": {
         "tags": [
@@ -55261,7 +55391,7 @@
           "Location"
         ],
         "summary": "Create Location",
-        "description": "Create a new location with address and optional coordinates.",
+        "description": "Create a new location from manually supplied name, address, city, country, postcode, and timezone fields. Coordinates are not accepted.",
         "operationId": "CreateLocation",
         "parameters": [
           {
@@ -55998,6 +56128,171 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/location/{id}/address-approval": {
+      "post": {
+        "tags": [
+          "Location"
+        ],
+        "summary": "Approve location address",
+        "description": "Promotes an eligible scoped address to tenant-approved visibility after named authorization.",
+        "operationId": "ApproveTenantAddress",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/locationroom/by-location/{locationId}": {
@@ -91485,6 +91780,154 @@
           }
         }
       },
+      "AddressProviderOutcome": {
+        "enum": [
+          "None",
+          "Ready",
+          "Timeout",
+          "Unavailable",
+          "Limited"
+        ],
+        "type": "string"
+      },
+      "AddressSuggestionDto": {
+        "required": [
+          "locationId",
+          "concurrencyStamp",
+          "displayName",
+          "address",
+          "postcode",
+          "source",
+          "visibility"
+        ],
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationAddressSourceEnum"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/LocationAddressVisibilityEnum"
+          },
+          "attribution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selectionToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selectionExpiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AddressSuggestionsRequestDto": {
+        "required": [
+          "searchText"
+        ],
+        "type": "object",
+        "properties": {
+          "searchText": {
+            "type": "string"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "expectedConcurrencyStamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "AddressSuggestionsResponseDto": {
+        "required": [
+          "suggestions",
+          "providerOutcome"
+        ],
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressSuggestionDto"
+            }
+          },
+          "providerOutcome": {
+            "$ref": "#/components/schemas/AddressProviderOutcome"
+          }
+        }
+      },
       "AdminAuthorityDto": {
         "type": "object",
         "properties": {
@@ -97219,24 +97662,6 @@
           "city": {
             "type": "string"
           },
-          "latitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "longitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
           "timezone": {
             "type": [
               "null",
@@ -98532,25 +98957,20 @@
           "city": {
             "type": "string"
           },
-          "latitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "longitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
           "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "addressSelectionToken": {
             "type": [
               "null",
               "string"
@@ -108742,6 +109162,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfAddressSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfAddressSuggestionDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfAdmissionScannerCapabilityDto": {
         "type": "object",
         "properties": {
@@ -108925,6 +109356,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfEventPublicActionDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfEventReportOptionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfEventReportOptionsDto"
             }
           }
         }
@@ -113180,6 +113622,128 @@
               "object"
             ],
             "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfAddressSuggestionDto": {
+        "required": [
+          "locationId",
+          "concurrencyStamp",
+          "displayName",
+          "address",
+          "postcode",
+          "source",
+          "visibility"
+        ],
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationAddressSourceEnum"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/LocationAddressVisibilityEnum"
+          },
+          "attribution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selectionToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selectionExpiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfAddressSuggestionsResponseDto": {
+        "required": [
+          "suggestions",
+          "providerOutcome"
+        ],
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressSuggestionDto"
+            }
+          },
+          "providerOutcome": {
+            "$ref": "#/components/schemas/AddressProviderOutcome"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfAddressSuggestionDto"
           }
         }
       },
@@ -133085,6 +133649,23 @@
           }
         }
       },
+      "LocationAddressSourceEnum": {
+        "enum": [
+          "UnknownLegacy",
+          "Manual",
+          "ProviderSelection"
+        ],
+        "type": "string"
+      },
+      "LocationAddressVisibilityEnum": {
+        "enum": [
+          "Quarantined",
+          "CreatorPrivate",
+          "OrganizationScoped",
+          "TenantApproved"
+        ],
+        "type": "string"
+      },
       "LocationDto": {
         "required": [
           "fullName",
@@ -138151,23 +138732,6 @@
           },
           "value": {
             "$ref": "#/components/schemas/DeclineBehavior"
-          }
-        }
-      },
-      "OptionalUpdateOfdouble": {
-        "type": "object",
-        "properties": {
-          "hasValue": {
-            "type": "boolean"
-          },
-          "value": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
           }
         }
       },
@@ -153956,26 +154520,6 @@
               }
             ]
           },
-          "latitude": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateLocationLatitudeDto"
-              }
-            ]
-          },
-          "longitude": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateLocationLongitudeDto"
-              }
-            ]
-          },
           "timezone": {
             "oneOf": [
               {
@@ -153984,6 +154528,19 @@
               {
                 "$ref": "#/components/schemas/UpdateLocationTimezoneDto"
               }
+            ]
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "addressSelectionToken": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }
@@ -153996,22 +154553,6 @@
         "properties": {
           "value": {
             "type": "string"
-          }
-        }
-      },
-      "UpdateLocationLatitudeDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfdouble"
-          }
-        }
-      },
-      "UpdateLocationLongitudeDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfdouble"
           }
         }
       },
@@ -157414,6 +157955,9 @@
     },
     {
       "name": "Footer"
+    },
+    {
+      "name": "Geocoding"
     },
     {
       "name": "Group"

@@ -47,7 +47,8 @@ public class LocationsTests : IDisposable
     public async Task Locations_ShowsLoadingState_WhileFetchIsPending()
     {
         // Arrange
-        var pending = new TaskCompletionSource<ICollection<LocationListDto>>();
+        var pending =
+            new TaskCompletionSource<HalCollectionResourceOfLocationListDto>();
         _adminService.GetLocationsAsync().Returns(pending.Task);
 
         // Act
@@ -57,14 +58,14 @@ public class LocationsTests : IDisposable
         await Assert.That(cut.Markup).Contains("Loading lookup tables");
 
         // Cleanup
-        pending.TrySetResult(new List<LocationListDto>());
+        pending.TrySetResult(LocationCollection());
     }
 
     [Test]
     public async Task Locations_ShowsEmptyState_WhenNoLocationsReturned()
     {
         // Arrange
-        _adminService.GetLocationsAsync().Returns(new List<LocationListDto>());
+        _adminService.GetLocationsAsync().Returns(LocationCollection());
 
         // Act
         var cut = RenderLocations();
@@ -80,8 +81,7 @@ public class LocationsTests : IDisposable
     public async Task Locations_ShowsLocationRows_WhenDataExists()
     {
         // Arrange
-        _adminService.GetLocationsAsync().Returns(
-        [
+        _adminService.GetLocationsAsync().Returns(LocationCollection(
             new LocationListDto
             {
                 Id = Guid.NewGuid(),
@@ -90,7 +90,7 @@ public class LocationsTests : IDisposable
                 Country = "Belgium",
                 Address = "1 Unity St"
             }
-        ]);
+        ));
 
         // Act
         var cut = RenderLocations();
@@ -101,6 +101,78 @@ public class LocationsTests : IDisposable
         await Assert.That(cut.Markup).Contains("Main Mosque Hall");
         await Assert.That(cut.Markup).Contains("Brussels");
         await Assert.That(cut.Markup).Contains("Belgium");
+    }
+
+    [Test]
+    public async Task Locations_HidesWriteControlsWithoutHalCapabilities()
+    {
+        _adminService.GetLocationsAsync().Returns(LocationCollection(
+            new LocationListDto
+            {
+                Id = Guid.CreateVersion7(),
+                FullName = "Read-only Hall",
+                Address = "1 Safe Street",
+                City = "Brussels",
+                Country = "Belgium"
+            }));
+
+        IRenderedComponent<DynamicComponent> cut = RenderLocations();
+        SelectTab(cut, "Locations");
+        cut.WaitForState(
+            () => cut.Markup.Contains(
+                "Read-only Hall",
+                StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+
+        bool hasCreate = cut.FindAll("button")
+            .Any(button => button.TextContent.Trim() == "Create");
+        await Assert.That(hasCreate).IsFalse();
+        await Assert.That(cut.FindAll(".mud-icon-button")).IsEmpty();
+    }
+
+    [Test]
+    public async Task Locations_ShowsOnlyAdvertisedWriteControls()
+    {
+        Guid locationId = Guid.CreateVersion7();
+        HalCollectionResourceOfLocationListDto resource = LocationCollection(
+            new LocationListDto
+            {
+                Id = locationId,
+                FullName = "Managed Hall",
+                Address = "2 Safe Street",
+                City = "Brussels",
+                Country = "Belgium"
+            });
+        resource._links = new Dictionary<string, HalLink>
+        {
+            ["create"] = LocationLink("POST", "/api/location")
+        };
+        HalResourceOfLocationListDto item =
+            resource._embedded!.Items!.Single();
+        item._links = new Dictionary<string, HalLink>
+        {
+            ["self"] = LocationLink("GET", $"/api/location/{locationId:D}"),
+            ["edit"] = LocationLink("PATCH", $"/api/location/{locationId:D}"),
+            ["delete"] = LocationLink("DELETE", $"/api/location/{locationId:D}")
+        };
+        _adminService.GetLocationsAsync().Returns(resource);
+
+        IRenderedComponent<DynamicComponent> cut = RenderLocations();
+        SelectTab(cut, "Locations");
+        cut.WaitForState(
+            () => cut.Markup.Contains(
+                "Managed Hall",
+                StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.FindAll("[data-testid='location-create']"))
+            .HasSingleItem();
+        await Assert.That(
+                cut.FindAll($"[data-testid='location-edit-{locationId:D}']"))
+            .HasSingleItem();
+        await Assert.That(
+                cut.FindAll($"[data-testid='location-delete-{locationId:D}']"))
+            .HasSingleItem();
     }
 
     [Test]
@@ -121,7 +193,7 @@ public class LocationsTests : IDisposable
     {
         _adminService.GetCategoriesAsync().Returns(new List<CategoryListDto>());
         _adminService.GetTagsAsync().Returns(new List<TagListDto>());
-        _adminService.GetLocationsAsync().Returns(new List<LocationListDto>());
+        _adminService.GetLocationsAsync().Returns(LocationCollection());
         _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
         _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
@@ -137,4 +209,25 @@ public class LocationsTests : IDisposable
         _adminService.GetFileTypesAsync().Returns(new List<FileTypeListDto>());
         _adminService.GetDidCustodyTypesAsync().Returns(new List<DidCustodyTypeListDto>());
     }
+
+    private static HalCollectionResourceOfLocationListDto LocationCollection(
+        params LocationListDto[] items) => new()
+        {
+            _embedded = new HalCollectionEmbeddedOfLocationListDto
+            {
+                Items = items.Select(item =>
+                {
+                    string json = System.Text.Json.JsonSerializer.Serialize(item);
+                    return System.Text.Json.JsonSerializer
+                        .Deserialize<HalResourceOfLocationListDto>(json)
+                        ?? new HalResourceOfLocationListDto();
+                }).ToArray()
+            }
+        };
+
+    private static HalLink LocationLink(string method, string href) => new()
+    {
+        Method = method,
+        Href = href
+    };
 }
