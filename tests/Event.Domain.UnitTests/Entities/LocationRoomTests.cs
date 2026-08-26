@@ -98,14 +98,15 @@ public class LocationRoomTests
 
     private static Location CreateLocation()
     {
-        return new Location
+        var location = new Location
         {
             FullName = "Conference Center",
             Country = "Belgium",
             City = "Brussels",
-            Pii = new LocationPii { Address = "1 Place du Grand Sablon", Postcode = "1000" },
             Tenant = CreateTenant()
         };
+        location.SetManualAddress("1 Place du Grand Sablon", "1000");
+        return location;
     }
 
     private static Tenant CreateTenant()

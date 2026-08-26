@@ -337,6 +337,13 @@ public static class RouteNames
     public const string DeleteLocation = "DeleteLocation";
     public const string ClassifyLocationAsPrivateHome = "ClassifyLocationAsPrivateHome";
     public const string AcceptPrivateHomeOwnership = "AcceptPrivateHomeOwnership";
+    public const string ApproveTenantAddress = "ApproveTenantAddress";
+
+    #endregion
+
+    #region Geocoding Routes
+
+    public const string GetAddressSuggestions = "GetAddressSuggestions";
 
     #endregion
 

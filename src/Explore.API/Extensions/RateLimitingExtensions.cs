@@ -47,6 +47,7 @@ public static class RateLimitingExtensions
     public const string AiAssistantPolicy = "AiAssistant";
     public const string ControlPlanePolicy = "ControlPlane";
     public const string EventOpenGraphImagePolicy = "EventOpenGraphImage";
+    public const string AddressSuggestionsPolicy = "AddressSuggestions";
 
     private const string ControlPlanePathPrefix = "/api/admin/control-plane";
 
@@ -107,6 +108,10 @@ public static class RateLimitingExtensions
         var controlPlaneWindowSeconds = section.GetValue("ControlPlane:WindowSeconds", 60);
         var controlPlaneConcurrencyLimit = section.GetValue("ControlPlane:ConcurrencyLimit", 4);
         var controlPlaneQueueLimit = section.GetValue("ControlPlane:QueueLimit", 0);
+        var addressSuggestionsPermitLimit =
+            section.GetValue("AddressSuggestions:PermitLimit", 30);
+        var addressSuggestionsWindowSeconds =
+            section.GetValue("AddressSuggestions:WindowSeconds", 60);
 
         if (environment.EnvironmentName == "Testing")
         {
@@ -148,6 +153,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(ControlPlanePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(EventOpenGraphImagePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AddressSuggestionsPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
@@ -430,6 +437,27 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = aiAssistantPermitLimit,
                         Window = TimeSpan.FromSeconds(aiAssistantWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
+
+            options.AddPolicy(AddressSuggestionsPolicy, httpContext =>
+            {
+                var userId = GetAuthenticatedPartitionKey(httpContext);
+                Guid tenantId = httpContext.RequestServices
+                    .GetRequiredService<ITenantContext>()
+                    .TenantId;
+                var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
+                var partitionKey =
+                    $"address-suggestions:{userId}:{tenantId:N}:{ip}";
+
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = addressSuggestionsPermitLimit,
+                        Window = TimeSpan.FromSeconds(addressSuggestionsWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true

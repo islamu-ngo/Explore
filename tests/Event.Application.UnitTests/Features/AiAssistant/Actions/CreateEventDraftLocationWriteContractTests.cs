@@ -6,6 +6,7 @@ using System.Text.Json;
 using Explore.Application.Features.AiAssistant.Actions;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
+
 using TUnit.Assertions;
 using TUnit.Core;
 

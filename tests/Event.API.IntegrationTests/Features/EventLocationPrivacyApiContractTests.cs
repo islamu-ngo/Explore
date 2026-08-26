@@ -756,18 +756,15 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             FullName = $"Private Venue {marker}",
             Country = $"Private Country {marker}",
             City = $"Private City {marker}",
-            Pii = new LocationPii
-            {
-                Address = $"Secret Address {marker}",
-                Postcode = $"Secret Postcode {marker}",
-                Latitude = 50.8466,
-                Longitude = 4.3528
-            },
             TenantId = tenant.TenantId,
             Tenant = null!,
             Timezone = "UTC",
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        location.SetProviderAddress(
+            $"Secret Address {marker}",
+            $"Secret Postcode {marker}",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.8466, 4.3528));
         var room = new LocationRoom
         {
             Id = Guid.CreateVersion7(),
@@ -786,18 +783,15 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             FullName = $"Other Private Venue {otherMarker}",
             Country = $"Other Private Country {otherMarker}",
             City = $"Other Private City {otherMarker}",
-            Pii = new LocationPii
-            {
-                Address = $"Other Secret Address {otherMarker}",
-                Postcode = $"Other Secret Postcode {otherMarker}",
-                Latitude = 51.2194,
-                Longitude = 4.4025
-            },
             TenantId = otherTenant.TenantId,
             Tenant = null!,
             Timezone = "UTC",
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        otherLocation.SetProviderAddress(
+            $"Other Secret Address {otherMarker}",
+            $"Other Secret Postcode {otherMarker}",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(51.2194, 4.4025));
         var otherRoom = new LocationRoom
         {
             Id = Guid.CreateVersion7(),
@@ -816,16 +810,14 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             FullName = $"Unrelated Private Home {marker}",
             Country = location.Country,
             City = location.City,
-            Pii = new LocationPii
-            {
-                Address = $"Unrelated Secret Address {marker}",
-                Postcode = $"Unrelated Secret Postcode {marker}"
-            },
             TenantId = tenant.TenantId,
             Tenant = null!,
             Timezone = "UTC",
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        unrelatedLocation.SetManualAddress(
+            $"Unrelated Secret Address {marker}",
+            $"Unrelated Secret Postcode {marker}");
         var unrelatedRoom = new LocationRoom
         {
             Id = Guid.CreateVersion7(),
@@ -1077,8 +1069,10 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
                 location.Postcode,
                 location.City,
                 location.Country,
-                location.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                location.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                location.Pii?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The Location fixture requires latitude."),
+                location.Pii?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The Location fixture requires longitude."),
                 room.Name,
                 room.Description!
             ],
@@ -1086,8 +1080,10 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
                 location.FullName,
                 location.Address,
                 location.Postcode,
-                location.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                location.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                location.Pii?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The Location fixture requires latitude."),
+                location.Pii?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The Location fixture requires longitude."),
                 room.Name,
                 room.Description!
             ],
@@ -1095,8 +1091,10 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
                 otherLocation.FullName,
                 otherLocation.Address,
                 otherLocation.Postcode,
-                otherLocation.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                otherLocation.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                otherLocation.Pii?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The other Location fixture requires latitude."),
+                otherLocation.Pii?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ?? throw new InvalidOperationException("The other Location fixture requires longitude."),
                 otherRoom.Name,
                 otherRoom.Description!
             ]);

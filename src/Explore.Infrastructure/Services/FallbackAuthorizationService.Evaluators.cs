@@ -22,7 +22,7 @@ public partial class FallbackAuthorizationService
             && resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
             && lockedObj is true)
         {
-            LogDecision("deny", "locked_by_instance", "islamuevent_tenant_setting", resourceId, action);
+            LogDecision("deny", "locked_by_instance", "islamuevent_tenant_setting", action);
             return false;
         }
 
@@ -38,7 +38,6 @@ public partial class FallbackAuthorizationService
             isTenantAdmin ? "allow" : "deny",
             $"is_tenant_admin={isTenantAdmin}",
             "islamuevent_tenant_setting",
-            resourceId,
             action);
         return isTenantAdmin;
     }
@@ -64,7 +63,6 @@ public partial class FallbackAuthorizationService
                 allowed ? "allow" : "deny",
                 $"organization_pre_create user_present={userId.HasValue}",
                 "islamuevent_organization",
-                resourceId,
                 action);
             return allowed;
         }
@@ -75,7 +73,7 @@ public partial class FallbackAuthorizationService
         {
             if (!AttributeResolver.TryGetGuid(resourceId, out var orgIdFromResource))
             {
-                LogDecision("deny", "missing_organization_id", "islamuevent_organization", resourceId, action);
+                LogDecision("deny", "missing_organization_id", "islamuevent_organization", action);
                 return false;
             }
 
@@ -89,7 +87,7 @@ public partial class FallbackAuthorizationService
             }
             else if (!AttributeResolver.TryGetGuid(resourceId, out orgId))
             {
-                LogDecision("deny", "invalid_organization_id", "islamuevent_organization", resourceId, action);
+                LogDecision("deny", "invalid_organization_id", "islamuevent_organization", action);
                 return false;
             }
         }
@@ -102,7 +100,6 @@ public partial class FallbackAuthorizationService
                 isTenantAdmin ? "allow" : "deny",
                 $"organization_evidence_reviewer_tenant_admin={isTenantAdmin}",
                 "islamuevent_organization",
-                resourceId,
                 action);
             return isTenantAdmin;
         }
@@ -114,14 +111,13 @@ public partial class FallbackAuthorizationService
                 canSubmitEvidence ? "allow" : "deny",
                 $"organization_evidence_submitter_org_admin={canSubmitEvidence}",
                 "islamuevent_organization",
-                resourceId,
                 action);
             return canSubmitEvidence;
         }
 
         if (isTenantAdmin)
         {
-            LogDecision("allow", "is_tenant_admin=true", "islamuevent_organization", resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", "islamuevent_organization", action);
             return true;
         }
 
@@ -132,7 +128,6 @@ public partial class FallbackAuthorizationService
                 isOrgAdmin ? "allow" : "deny",
                 $"organization_evidence_submitter_org_admin={isOrgAdmin}",
                 "islamuevent_organization",
-                resourceId,
                 action);
             return isOrgAdmin;
         }
@@ -140,7 +135,6 @@ public partial class FallbackAuthorizationService
             isOrgAdmin ? "allow" : "deny",
             $"organization_admin={isOrgAdmin}",
             "islamuevent_organization",
-            resourceId,
             action);
         return isOrgAdmin;
     }
@@ -164,13 +158,13 @@ public partial class FallbackAuthorizationService
         {
             if (!TryResolveGuidAttribute(resourceAttributes, "tenantId", out tenantId))
             {
-                LogDecision("deny", "invalid_tenant_context", resourceKind, resourceId, action);
+                LogDecision("deny", "invalid_tenant_context", resourceKind, action);
                 return false;
             }
 
             if (tenantId != _tenantContext.TenantId)
             {
-                LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+                LogDecision("deny", "tenant_mismatch", resourceKind, action);
                 return false;
             }
         }
@@ -180,7 +174,7 @@ public partial class FallbackAuthorizationService
         }
 
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", resourceKind, resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", resourceKind, action);
         return isTenantAdmin;
     }
 
@@ -203,7 +197,7 @@ public partial class FallbackAuthorizationService
 
         if (ownerKind == WebhookConsumerKind.Instance)
         {
-            LogDecision("deny", "instance_owner_requires_instance_admin", resourceKind, resourceId, action);
+            LogDecision("deny", "instance_owner_requires_instance_admin", resourceKind, action);
             return false;
         }
 
@@ -219,7 +213,7 @@ public partial class FallbackAuthorizationService
 
         if (!IsDelegatedWebhookAction(action))
         {
-            LogDecision("deny", "delegated_webhook_action_not_allowed", resourceKind, resourceId, action);
+            LogDecision("deny", "delegated_webhook_action_not_allowed", resourceKind, action);
             return false;
         }
 
@@ -241,7 +235,6 @@ public partial class FallbackAuthorizationService
             allowed ? "allow" : "deny",
             allowed ? $"webhook_{ownerKind.ToString().ToLowerInvariant()}_owner" : "unrelated_webhook_owner",
             resourceKind,
-            resourceId,
             action);
         return allowed;
     }
@@ -287,24 +280,24 @@ public partial class FallbackAuthorizationService
     {
         if (action is not (AuthorizationActions.CustomPropertyProjections.View or AuthorizationActions.CustomPropertyProjections.Update))
         {
-            LogDecision("deny", "invalid_projection_action", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            LogDecision("deny", "invalid_projection_action", ResourceKinds.CustomPropertyProjection, action);
             return false;
         }
 
         if (!TryResolveGuidAttribute(resourceAttributes, "tenantId", out var tenantId))
         {
-            LogDecision("deny", "missing_tenant_context", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            LogDecision("deny", "missing_tenant_context", ResourceKinds.CustomPropertyProjection, action);
             return false;
         }
 
         if (tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "tenant_mismatch", ResourceKinds.CustomPropertyProjection, resourceId, action);
+            LogDecision("deny", "tenant_mismatch", ResourceKinds.CustomPropertyProjection, action);
             return false;
         }
 
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.CustomPropertyProjection, resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.CustomPropertyProjection, action);
         return isTenantAdmin;
     }
 
@@ -316,19 +309,19 @@ public partial class FallbackAuthorizationService
     {
         if (action is not (AuthorizationActions.View or AuthorizationActions.Update))
         {
-            LogDecision("deny", "tenant_action_requires_instance_admin", ResourceKinds.Tenant, resourceId, action);
+            LogDecision("deny", "tenant_action_requires_instance_admin", ResourceKinds.Tenant, action);
             return false;
         }
 
         var tenantId = ResolveTenantId(resourceAttributes);
         if (tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "tenant_mismatch", ResourceKinds.Tenant, resourceId, action);
+            LogDecision("deny", "tenant_mismatch", ResourceKinds.Tenant, action);
             return false;
         }
 
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.Tenant, resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", ResourceKinds.Tenant, action);
         return isTenantAdmin;
     }
 
@@ -343,18 +336,18 @@ public partial class FallbackAuthorizationService
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
             && IsTenantAdminOrgScopedAction(action))
         {
-            LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", resourceKind, action);
             return true;
         }
 
         var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
         if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
         {
-            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "organization_admin=true", resourceKind, action);
             return true;
         }
 
-        LogDecision("deny", "no_admin_authority", resourceKind, resourceId, action);
+        LogDecision("deny", "no_admin_authority", resourceKind, action);
         return false;
     }
 
@@ -425,13 +418,13 @@ public partial class FallbackAuthorizationService
 
         if (!TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out var eventId))
         {
-            LogDecision("deny", "missing_event_context", resourceKind, resourceId, action);
+            LogDecision("deny", "missing_event_context", resourceKind, action);
             return false;
         }
 
         if (tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+            LogDecision("deny", "tenant_mismatch", resourceKind, action);
             return false;
         }
 
@@ -478,7 +471,7 @@ public partial class FallbackAuthorizationService
 
         if (resourceKind == ResourceKinds.EventOrganizerClaim && !IsOrganizerClaimAction(action))
         {
-            LogDecision("deny", "unknown_organizer_claim_action", resourceKind, resourceId, action);
+            LogDecision("deny", "unknown_organizer_claim_action", resourceKind, action);
             return false;
         }
 
@@ -503,39 +496,39 @@ public partial class FallbackAuthorizationService
             && (resourceKind is not (ResourceKinds.Event or ResourceKinds.EventOrganizerClaim)
                 || IsTenantAdminEventAction(action)))
         {
-            LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", resourceKind, action);
             return true;
         }
 
         if (resourceKind == ResourceKinds.Event && IsEventModerationAction(action))
         {
-            LogDecision("deny", "moderation_requires_platform_or_tenant_admin", resourceKind, resourceId, action);
+            LogDecision("deny", "moderation_requires_platform_or_tenant_admin", resourceKind, action);
             return false;
         }
 
         if (action == AuthorizationActions.Events.ReviewOrganizerClaim)
         {
-            LogDecision("deny", "claim_review_requires_tenant_curator", resourceKind, resourceId, action);
+            LogDecision("deny", "claim_review_requires_tenant_curator", resourceKind, action);
             return false;
         }
 
         var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
         if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
         {
-            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "organization_admin=true", resourceKind, action);
             return true;
         }
 
         if (await IsActorUserOwnerAsync(resourceAttributes, cancellationToken))
         {
-            LogDecision("allow", "actor_user_owner=true", resourceKind, resourceId, action);
+            LogDecision("allow", "actor_user_owner=true", resourceKind, action);
             return true;
         }
 
         if (await EvaluateEventRolePermissionAsync(resourceKind, resourceId, action, tenantId, eventId, cancellationToken))
             return true;
 
-        LogDecision("deny", "no_event_authority", resourceKind, resourceId, action);
+        LogDecision("deny", "no_event_authority", resourceKind, action);
         return false;
     }
 
@@ -701,18 +694,18 @@ public partial class FallbackAuthorizationService
         var tenantId = ResolveTenantId(resourceAttributes);
         if (tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+            LogDecision("deny", "tenant_mismatch", resourceKind, action);
             return false;
         }
 
         var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!userId.HasValue)
         {
-            LogDecision("deny", "missing_user_id", resourceKind, resourceId, action);
+            LogDecision("deny", "missing_user_id", resourceKind, action);
             return false;
         }
 
-        LogDecision("allow", "authenticated_pre_create_handler_policy", resourceKind, resourceId, action);
+        LogDecision("allow", "authenticated_pre_create_handler_policy", resourceKind, action);
         return true;
     }
 
@@ -768,7 +761,7 @@ public partial class FallbackAuthorizationService
         var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (!userId.HasValue)
         {
-            LogDecision("deny", "missing_user_id", resourceKind, resourceId, action);
+            LogDecision("deny", "missing_user_id", resourceKind, action);
             return false;
         }
 
@@ -780,7 +773,7 @@ public partial class FallbackAuthorizationService
 
         if (snapshot is null)
         {
-            LogDecision("deny", "event_role_snapshot_missing", resourceKind, resourceId, action);
+            LogDecision("deny", "event_role_snapshot_missing", resourceKind, action);
             return false;
         }
 
@@ -792,7 +785,6 @@ public partial class FallbackAuthorizationService
             allowed ? "allow" : "deny",
             allowed ? "event_role_permission=true" : "event_role_permission_missing",
             resourceKind,
-            resourceId,
             action);
 
         return allowed;
@@ -832,14 +824,14 @@ public partial class FallbackAuthorizationService
             storageFacts.OwningOrganizationId is not { } organizationId ||
             !string.Equals(resourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal))
         {
-            LogDecision("deny", "storage_upload_intent_facts_missing", "islamuevent_storage_object", resourceId, AuthorizationActions.StorageObjects.Create);
+            LogDecision("deny", "storage_upload_intent_facts_missing", "islamuevent_storage_object", AuthorizationActions.StorageObjects.Create);
             return false;
         }
 
         var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
         if (currentUserId != storageFacts.SubjectUserId || storageFacts.TenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "storage_upload_subject_or_tenant_mismatch", "islamuevent_storage_object", resourceId, AuthorizationActions.StorageObjects.Create);
+            LogDecision("deny", "storage_upload_subject_or_tenant_mismatch", "islamuevent_storage_object", AuthorizationActions.StorageObjects.Create);
             return false;
         }
 
@@ -848,7 +840,6 @@ public partial class FallbackAuthorizationService
             allowed ? "allow" : "deny",
             allowed ? "storage_upload_owner_admin" : "storage_upload_owner_admin_missing",
             "islamuevent_storage_object",
-            resourceId,
             AuthorizationActions.StorageObjects.Create);
         return allowed;
     }
@@ -862,13 +853,13 @@ public partial class FallbackAuthorizationService
         var lifecycleState = GetAttribute(resourceAttributes, "lifecycleState");
         if (!string.Equals(lifecycleState, StorageObjectLifecycleStates.Active, StringComparison.Ordinal))
         {
-            LogDecision("deny", "storage_object_not_active", "islamuevent_storage_object", resourceId, action);
+            LogDecision("deny", "storage_object_not_active", "islamuevent_storage_object", action);
             return false;
         }
 
         if (visibility is StorageObjectVisibilities.PublicImage or StorageObjectVisibilities.AuthenticatedTenant)
         {
-            LogDecision("allow", $"storage_visibility={visibility}", "islamuevent_storage_object", resourceId, action);
+            LogDecision("allow", $"storage_visibility={visibility}", "islamuevent_storage_object", action);
             return true;
         }
 
@@ -882,7 +873,6 @@ public partial class FallbackAuthorizationService
             isOwner ? "allow" : "deny",
             isOwner ? "storage_private_owner" : "storage_private_owner_mismatch",
             "islamuevent_storage_object",
-            resourceId,
             action);
         return isOwner;
     }
@@ -902,13 +892,13 @@ public partial class FallbackAuthorizationService
             && AttributeResolver.TryGetGuid(resourceId, out var targetUserId)
             && targetUserId == _adminContext.UserId.Value)
         {
-            LogDecision("allow", "self_service", "islamuevent_user", resourceId, action);
+            LogDecision("allow", "self_service", "islamuevent_user", action);
             return true;
         }
 
         var tenantId = ResolveTenantId(resourceAttributes);
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", "islamuevent_user", resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", "islamuevent_user", action);
         return isTenantAdmin;
     }
 

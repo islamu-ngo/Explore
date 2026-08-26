@@ -95,11 +95,23 @@ internal static class HalOpenApiSchemaMutator
         EnsureObject(schema);
 
         var properties = schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-        if (properties.TryGetValue("items", out var itemsProperty) && itemsProperty is OpenApiSchema itemsSchema)
+        if (!properties.TryGetValue("items", out var itemsProperty)
+            || itemsProperty is not OpenApiSchema itemsSchema)
         {
-            itemsSchema.Type = JsonSchemaType.Array;
-            itemsSchema.Items = itemSchema;
+            itemsSchema = new OpenApiSchema();
+            properties["items"] = itemsSchema;
         }
+
+        itemsSchema.Type = JsonSchemaType.Array;
+        itemsSchema.Items = itemSchema;
+    }
+
+    public static void SetEmbeddedReference(
+        OpenApiSchema schema,
+        IOpenApiSchema embeddedSchema)
+    {
+        EnsureObject(schema);
+        schema.Properties!["_embedded"] = embeddedSchema;
     }
 
     private static OpenApiSchema CreateInlineHalLinkValueSchema()

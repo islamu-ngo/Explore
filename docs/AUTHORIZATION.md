@@ -94,6 +94,25 @@ Paid-event commerce is an exact event authority, not administrative fallback aut
 
 `HateoasAuthorizationEvaluator` performs that enrichment through one bounded persisted-Event lookup per batch, applies the ambient tenant filter, removes caller-supplied authority attributes, rebuilds trusted actor/organizer context, and denies before Cerbos or fallback evaluation for missing, cross-tenant, missing-ID, or over-bound inputs. The resulting HAL relation set—not local claims or role checks—is the client action boundary.
 
+### 3.5. Address Governance And Tenant Approval
+
+Address settings and actor authorization answer different questions. The hierarchical creation mode
+and organization grant determine whether a class of manual-address creation is enabled; they never
+grant the current caller authority. Named provider decisions then authorize the trusted current actor.
+Neither settings nor browser-visible claims may substitute for the other boundary.
+
+Tenant-wide address reuse requires `approve_tenant_address` on the exact `islamuevent_location`.
+The promotion handler derives tenant and subject from `ITenantContext` and `ICurrentUserService`,
+supplies `TenantScopedAuthorizationFacts`, and accepts no tenant, actor, source, visibility,
+organization, provenance, or authority field from the command body. Instance and in-scope tenant
+administrators have this action. Organization-level `create_custom_address` authority does not imply
+approval, and regular authenticated users remain denied. Provider denial or failure is fail-closed.
+
+The handler also rechecks persisted tenant, active PII, erasure, and Private Home state before mutation.
+An authorized same-target retry is a successful no-op. Future HTTP and UI exposure must use the normal
+authenticated write boundary and a HAL affordance backed by this same named action; clients must not
+infer it from roles.
+
 ## 4. Authorization Providers
 
 ### 4.1. Cerbos

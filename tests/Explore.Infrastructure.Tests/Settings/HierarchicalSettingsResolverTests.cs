@@ -23,7 +23,6 @@ public class HierarchicalSettingsResolverTests : IDisposable
     private readonly ISystemSettingRepository _systemRepo;
     private readonly ITenantSettingRepository _tenantRepo;
     private readonly IOrganizationSettingRepository _orgRepo;
-    private readonly IOrganizationTenantRepository _organizationTenantRepo;
     private readonly IGroupSettingRepository _groupRepo;
     private readonly IGroupTenantRepository _groupTenantRepo;
     private readonly IUserPreferenceRepository _userPrefRepo;
@@ -37,7 +36,6 @@ public class HierarchicalSettingsResolverTests : IDisposable
         _systemRepo = Substitute.For<ISystemSettingRepository>();
         _tenantRepo = Substitute.For<ITenantSettingRepository>();
         _orgRepo = Substitute.For<IOrganizationSettingRepository>();
-        _organizationTenantRepo = Substitute.For<IOrganizationTenantRepository>();
         _groupRepo = Substitute.For<IGroupSettingRepository>();
         _groupTenantRepo = Substitute.For<IGroupTenantRepository>();
         _userPrefRepo = Substitute.For<IUserPreferenceRepository>();
@@ -48,7 +46,6 @@ public class HierarchicalSettingsResolverTests : IDisposable
             _systemRepo,
             _tenantRepo,
             _orgRepo,
-            _organizationTenantRepo,
             _groupRepo,
             _groupTenantRepo,
             _userPrefRepo,
@@ -534,7 +531,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
                 "deployment.mode", "\"SingleTenant\"",
                 SettingScope.Tenant, Guid.NewGuid(), Guid.NewGuid()));
 
-        await Assert.That(ex.Message).Contains("cannot be set at scope");
+        await Assert.That(ex!.Message).Contains("cannot be set at scope");
     }
 
     [Test]
@@ -547,7 +544,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingScope.Instance, Guid.Empty, Guid.NewGuid());
 
         await _systemRepo.Received(1).UpsertAsync(
-            Arg.Is<SystemSetting>(s => s.SettingKey == "email.smtp_port" && s.Value == "465"),
+            Arg.Is<SystemSetting>(s => s!.SettingKey == "email.smtp_port" && s.Value == "465"),
             Arg.Any<CancellationToken>());
     }
 
@@ -582,7 +579,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
                 tenantId,
                 Guid.NewGuid()));
 
-        await Assert.That(exception.Message).Contains("locked at Instance scope");
+        await Assert.That(exception!.Message).Contains("locked at Instance scope");
         await _tenantRepo.DidNotReceive().RemoveOverrideAsync(
             tenantId,
             "email.smtp_port",
@@ -767,7 +764,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
             Value = "\"Tenant Enforced\"",
             IsLocked = true
         });
-        SetupOrgSettings(orgId, CreateOrganizationSetting(
+        SetupOrgSettings(tenantId, orgId, CreateOrganizationSetting(
             orgId,
             tenantId,
             "branding.display_name",
@@ -895,13 +892,118 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingKey = settingKey,
             Value = "\"Tenant Brand\""
         });
-        SetupOrgSettings(orgId, CreateOrganizationSetting(orgId, tenantId, settingKey, "\"Org Brand\""));
+        SetupOrgSettings(
+            tenantId,
+            orgId,
+            CreateOrganizationSetting(orgId, tenantId, settingKey, "\"Org Brand\""));
 
         var context = new SettingContext(TenantId: tenantId, OrganizationId: orgId);
         var result = await _resolver.ResolveWithMetadataAsync(settingKey, context);
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Source).IsEqualTo(SettingSource.OrganizationOverride);
         await Assert.That(result.Value).IsEqualTo("\"Org Brand\"");
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task ResolveAsync_SameGlobalOrganizationAcrossTenants_HasNoWarmCacheBleed(
+        bool resolveTenantAFirst)
+    {
+        string settingKey = GovernanceSettingKeys.AddressGovernance.OrganizationCreationGrant;
+        Guid tenantA = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Guid tenantB = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        Guid organizationId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        SetupSystemSettings();
+        SetupTenantSettings(tenantA);
+        SetupTenantSettings(tenantB);
+        SetupOrgSettings(
+            tenantA,
+            organizationId,
+            CreateOrganizationSetting(organizationId, tenantA, settingKey, "true"));
+        SetupOrgSettings(
+            tenantB,
+            organizationId,
+            CreateOrganizationSetting(organizationId, tenantB, settingKey, "false"));
+
+        var contextA = new SettingContext(TenantId: tenantA, OrganizationId: organizationId);
+        var contextB = new SettingContext(TenantId: tenantB, OrganizationId: organizationId);
+        if (resolveTenantAFirst)
+        {
+            await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextA)).IsTrue();
+            await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextB)).IsFalse();
+        }
+        else
+        {
+            await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextB)).IsFalse();
+            await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextA)).IsTrue();
+        }
+
+        await _orgRepo.Received(1).GetAllForOrganization(
+            tenantA,
+            organizationId,
+            Arg.Any<CancellationToken>());
+        await _orgRepo.Received(1).GetAllForOrganization(
+            tenantB,
+            organizationId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task InvalidateOrganizationCache_RemovesOnlyExactTenantOrganizationPair()
+    {
+        string settingKey = GovernanceSettingKeys.AddressGovernance.OrganizationCreationGrant;
+        Guid tenantA = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Guid tenantB = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        Guid organizationId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        List<OrganizationSetting> tenantASettings =
+            [CreateOrganizationSetting(organizationId, tenantA, settingKey, "true")];
+        List<OrganizationSetting> tenantBSettings =
+            [CreateOrganizationSetting(organizationId, tenantB, settingKey, "false")];
+        SetupSystemSettings();
+        SetupTenantSettings(tenantA);
+        SetupTenantSettings(tenantB);
+        _orgRepo.GetAllForOrganization(tenantA, organizationId, Arg.Any<CancellationToken>())
+            .Returns(_ => tenantASettings);
+        _orgRepo.GetAllForOrganization(tenantB, organizationId, Arg.Any<CancellationToken>())
+            .Returns(_ => tenantBSettings);
+        var contextA = new SettingContext(TenantId: tenantA, OrganizationId: organizationId);
+        var contextB = new SettingContext(TenantId: tenantB, OrganizationId: organizationId);
+
+        await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextA)).IsTrue();
+        await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextB)).IsFalse();
+        tenantASettings = [CreateOrganizationSetting(organizationId, tenantA, settingKey, "false")];
+        tenantBSettings = [CreateOrganizationSetting(organizationId, tenantB, settingKey, "true")];
+
+        _resolver.InvalidateOrganizationCache(tenantA, organizationId);
+
+        await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextA)).IsFalse();
+        await Assert.That(await _resolver.ResolveAsync<bool>(settingKey, contextB)).IsFalse();
+        await _orgRepo.Received(2).GetAllForOrganization(
+            tenantA,
+            organizationId,
+            Arg.Any<CancellationToken>());
+        await _orgRepo.Received(1).GetAllForOrganization(
+            tenantB,
+            organizationId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ResolveAsync_OrganizationWithoutTenant_DoesNotReadOrganizationSettings()
+    {
+        Guid organizationId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        SetupSystemSettings();
+
+        bool? result = await _resolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.AddressGovernance.OrganizationCreationGrant,
+            new SettingContext(OrganizationId: organizationId));
+
+        await Assert.That(result).IsFalse();
+        await _orgRepo.DidNotReceiveWithAnyArgs().GetAllForOrganization(
+            default,
+            default,
+            default);
     }
 
     // --- Group scope ---
@@ -934,17 +1036,20 @@ public class HierarchicalSettingsResolverTests : IDisposable
     {
         var orgId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
         _tenantContext.TenantId.Returns(tenantId);
-        _organizationTenantRepo.GetByOrganizationAndTenant(orgId, tenantId, Arg.Any<CancellationToken>())
-            .Returns(CreateOrganizationParticipation(orgId, tenantId));
-        _orgRepo.GetByOrganizationAndKey(orgId, "custom.org_name").Returns((OrganizationSetting?)null);
 
         await _resolver.SetValueAsync(
             "custom.org_name", "\"Org Brand\"",
-            SettingScope.Organization, orgId, Guid.NewGuid());
+            SettingScope.Organization, orgId, actorId);
 
-        await _orgRepo.Received(1).Create(Arg.Is<OrganizationSetting>(s =>
-            s.SettingKey == "custom.org_name" && s.OrganizationTenant.OrganizationId == orgId));
+        await _orgRepo.Received(1).SetValueAsync(
+            tenantId,
+            orgId,
+            "custom.org_name",
+            "\"Org Brand\"",
+            actorId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -962,7 +1067,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingScope.Group, groupId, Guid.NewGuid());
 
         await _groupRepo.Received(1).Create(Arg.Is<GroupSetting>(s =>
-            s.SettingKey == "custom.group_name" && s.GroupTenant.GroupId == groupId));
+            s!.SettingKey == "custom.group_name" && s.GroupTenant!.GroupId == groupId));
     }
 
     // --- Helpers ---
@@ -977,9 +1082,13 @@ public class HierarchicalSettingsResolverTests : IDisposable
         _tenantRepo.GetAllForTenant(tenantId).Returns(settings.ToList());
     }
 
-    private void SetupOrgSettings(Guid orgId, params OrganizationSetting[] settings)
+    private void SetupOrgSettings(
+        Guid tenantId,
+        Guid orgId,
+        params OrganizationSetting[] settings)
     {
-        _orgRepo.GetAllForOrganization(orgId).Returns(settings.ToList());
+        _orgRepo.GetAllForOrganization(tenantId, orgId, Arg.Any<CancellationToken>())
+            .Returns(settings.ToList());
     }
 
     private void SetupGroupSettings(Guid groupId, params GroupSetting[] settings)

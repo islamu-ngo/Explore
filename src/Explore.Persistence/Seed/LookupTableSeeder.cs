@@ -59,6 +59,7 @@ public static class LookupTableSeeder
         await SeedWebhookLookupsAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
         await SeedLocationPrivacyLookupsAsync(context, cancellationToken);
+        await SeedLocationAddressGovernanceLookupsAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
         await SeedTenantPlanStatusesAsync(context, cancellationToken);
@@ -1427,6 +1428,34 @@ public static class LookupTableSeeder
                 new() { Id = (int)LocationDisclosureAudienceEnum.Never, MasterCode = "NEVER", FullName = "Never", Description = "Physical location details are never disclosed" },
                 new() { Id = (int)LocationDisclosureAudienceEnum.AnyCurrentRegistrant, MasterCode = "ANY_CURRENT_REGISTRANT", FullName = "Any current registrant", Description = "Eligible current registrations may receive disclosed details" },
                 new() { Id = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant, MasterCode = "CONFIRMED_PARTICIPANT", FullName = "Confirmed participant", Description = "Only confirmed eligible participants may receive disclosed details" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    internal static async Task SeedLocationAddressGovernanceLookupsAsync(
+        ExploreDbContext context,
+        CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new LocationAddressSource[]
+            {
+                new() { Id = (int)LocationAddressSourceEnum.UnknownLegacy, MasterCode = "UNKNOWN_LEGACY", FullName = "Unknown legacy", Description = "Address provenance predates explicit governance or is unknown" },
+                new() { Id = (int)LocationAddressSourceEnum.Manual, MasterCode = "MANUAL", FullName = "Manual", Description = "Address was entered locally without a provider selection" },
+                new() { Id = (int)LocationAddressSourceEnum.ProviderSelection, MasterCode = "PROVIDER_SELECTION", FullName = "Provider selection", Description = "Address originated from a protected provider selection" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new LocationAddressVisibility[]
+            {
+                new() { Id = (int)LocationAddressVisibilityEnum.Quarantined, MasterCode = "QUARANTINED", FullName = "Quarantined", Description = "Address is unavailable for local suggestion reuse" },
+                new() { Id = (int)LocationAddressVisibilityEnum.CreatorPrivate, MasterCode = "CREATOR_PRIVATE", FullName = "Creator private", Description = "Address reuse is limited to its creator" },
+                new() { Id = (int)LocationAddressVisibilityEnum.OrganizationScoped, MasterCode = "ORGANIZATION_SCOPED", FullName = "Organization scoped", Description = "Address reuse is limited to one tenant organization participation" },
+                new() { Id = (int)LocationAddressVisibilityEnum.TenantApproved, MasterCode = "TENANT_APPROVED", FullName = "Tenant approved", Description = "Address is approved for reuse across its tenant" }
             },
             row => row.Id,
             ct);

@@ -12,6 +12,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Features.Events.Handlers.Commands;
+using Explore.Application.Features.Geocoding;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
@@ -21,6 +22,7 @@ using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
+
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -64,11 +66,23 @@ public sealed class CreateEventLocationWriteContractTests
             {
                 persisted = location;
                 location.Id = Guid.CreateVersion7();
-                location.Pii!.LocationId = location.Id;
-            }))
+            }), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Location>()
                 ?? throw new InvalidOperationException("The location repository received a null entity."));
         using var metricsFixture = new MetricsFixture();
+        List<IReadOnlyDictionary<string, object?>> metricTags = [];
+        using var metricListener = new MeterListener();
+        metricListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == metricsFixture.MeterName
+                && instrument.Name == "explore.events.created")
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        metricListener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+            metricTags.Add(tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value)));
+        metricListener.Start();
         var handler = CreateHandler(locations, tenantId, userId, metricsFixture.Metrics);
         var nestedLocation = new CreateEventLocationDto
         {
@@ -126,16 +140,149 @@ public sealed class CreateEventLocationWriteContractTests
                     violations.Add("model-supplied coordinates reached nested Location persistence");
                 }
             }
+            if (persisted.AddressSource != LocationAddressSourceEnum.Manual
+                || persisted.AddressVisibility != LocationAddressVisibilityEnum.CreatorPrivate
+                || persisted.AddressOrganizationId is not null
+                || persisted.CreatedBy != userId)
+            {
+                violations.Add("nested Location persistence did not apply only the trusted typed manual decision");
+            }
         }
 
         await Assert.That(violations).IsEmpty();
+        IReadOnlyDictionary<string, object?> emittedTags = metricTags.Single();
+        string metricObservable = string.Join('|', emittedTags.Select(tag => $"{tag.Key}={tag.Value}"));
+        await Assert.That(metricObservable).DoesNotContain(tenantId.ToString("D"));
+        await Assert.That(metricObservable).DoesNotContain(userId.ToString("D"));
+        await Assert.That(metricObservable).DoesNotContain(nestedLocation.Address);
+        await Assert.That(metricObservable).DoesNotContain(nestedLocation.Postcode);
+    }
+
+    [Test]
+    public async Task NestedLocationCreatesUseTheExactTransactionTokenForEveryLocation()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        var locations = Substitute.For<ILocationRepository>();
+        using var transactionCancellation = new CancellationTokenSource();
+        locations.Create(Arg.Any<Location>(), transactionCancellation.Token).Returns(call =>
+        {
+            Location location = call.Arg<Location>()
+                ?? throw new InvalidOperationException("The location repository received a null entity.");
+            location.Id = Guid.CreateVersion7();
+            return location;
+        });
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Guid>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<Guid>>>()
+                    ?? throw new InvalidOperationException("The unit of work received a null operation.");
+                return operation(transactionCancellation.Token);
+            });
+        using var metricsFixture = new MetricsFixture();
+        var handler = CreateHandler(
+            locations,
+            tenantId,
+            userId,
+            metricsFixture.Metrics,
+            suppliedUnitOfWork: unitOfWork);
+
+        var response = await handler.Handle(new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Transaction token contract",
+                ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+                    AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+                },
+                Locations =
+                [
+                    NewNestedLocation("first", "First address"),
+                    NewNestedLocation("second", "Second address")
+                ]
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(response.IsSuccess).IsTrue();
+        var createCalls = locations.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(ILocationRepository.Create))
+            .ToArray();
+        await Assert.That(createCalls.Length).IsEqualTo(2);
+        await Assert.That(createCalls.All(call =>
+            call.GetArguments().Length == 2
+            && call.GetArguments()[1] is CancellationToken token
+            && token == transactionCancellation.Token)).IsTrue();
+    }
+
+    [Test]
+    public async Task MultipleNestedLocationsAreAllPreflightedBeforeAnyEventGraphWrite()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        var locations = Substitute.For<ILocationRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var governance = Substitute.For<IAddressGovernancePolicyResolver>();
+        int decisionIndex = 0;
+        governance.ResolveAsync(Arg.Any<AddressGovernancePolicyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++decisionIndex == 1
+                ? AddressGovernancePolicyDecision.Allowed(
+                    AddressCreationMode.OpenWithModeration,
+                    LocationAddressVisibilityEnum.CreatorPrivate)
+                : AddressGovernancePolicyDecision.Denied(AddressCreationMode.Disabled));
+        using var metricsFixture = new MetricsFixture();
+        var handler = CreateHandler(
+            locations,
+            tenantId,
+            userId,
+            metricsFixture.Metrics,
+            governance,
+            unitOfWork);
+
+        var response = await handler.Handle(new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Atomic nested governance",
+                ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+                    AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+                },
+                Locations =
+                [
+                    NewNestedLocation("first", "First address"),
+                    NewNestedLocation("second", "Second address")
+                ]
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(response.IsSuccess).IsFalse();
+        await Assert.That(response.Message).IsEqualTo("Event creation failed.");
+        await governance!.Received(2).ResolveAsync(
+            Arg.Is<AddressGovernancePolicyRequest>(request =>
+                request != null
+                && request.TenantId == tenantId
+                && request.UserId == userId
+                && request.OrganizationId == null),
+            Arg.Any<CancellationToken>());
+        await locations.DidNotReceive().Create(Arg.Any<Location>(), Arg.Any<CancellationToken>());
+        await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<Guid>>>(),
+            Arg.Any<CancellationToken>());
     }
 
     private static CreateEventCommandHandler CreateHandler(
         ILocationRepository locations,
         Guid tenantId,
         Guid userId,
-        BusinessMetrics metrics)
+        BusinessMetrics metrics,
+        IAddressGovernancePolicyResolver? governance = null,
+        IUnitOfWork? suppliedUnitOfWork = null)
     {
         var events = Substitute.For<IEventRepository>();
         events.Create(Arg.Any<Explore.Domain.Event>()).Returns(call =>
@@ -146,21 +293,34 @@ public sealed class CreateEventLocationWriteContractTests
             entity.ConcurrencyStamp = Guid.CreateVersion7();
             return entity;
         });
-        var unitOfWork = Substitute.For<IUnitOfWork>();
-        unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var operation = call.Arg<Func<CancellationToken, Task<Guid>>>()
-                    ?? throw new InvalidOperationException("The unit of work received a null operation.");
-                return operation(call.Arg<CancellationToken>());
-            });
+        var unitOfWork = suppliedUnitOfWork ?? Substitute.For<IUnitOfWork>();
+        if (suppliedUnitOfWork is null)
+        {
+            unitOfWork.ExecuteInTransactionAsync(
+                    Arg.Any<Func<CancellationToken, Task<Guid>>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var operation = call.Arg<Func<CancellationToken, Task<Guid>>>()
+                        ?? throw new InvalidOperationException("The unit of work received a null operation.");
+                    return operation(call.Arg<CancellationToken>());
+                });
+        }
         var userContext = Substitute.For<IUserContext>();
         userContext.GetRequiredUserId().Returns(userId);
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(tenantId);
         var actorResolver = Substitute.For<IEventActorResolver>();
         actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(Guid.CreateVersion7(), isCommunitySubmission: true));
+            .Returns(EventActorResult.Success(userId, isCommunitySubmission: true));
+        if (governance is null)
+        {
+            governance = Substitute.For<IAddressGovernancePolicyResolver>();
+            governance.ResolveAsync(Arg.Any<AddressGovernancePolicyRequest>(), Arg.Any<CancellationToken>())
+                .Returns(AddressGovernancePolicyDecision.Allowed(
+                    AddressCreationMode.OpenWithModeration,
+                    LocationAddressVisibilityEnum.CreatorPrivate));
+        }
         var eventLocationRepository = Substitute.For<IEventLocationRepository>();
         eventLocationRepository.AddAsync(Arg.Any<EventLocation>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<EventLocation>(0));
@@ -205,6 +365,7 @@ public sealed class CreateEventLocationWriteContractTests
             Substitute.For<IEventCategoriesRepository>(),
             Substitute.For<IEventTagsRepository>(),
             new EventScheduleProjectionCalculator(),
+            governance,
             userContext,
             tenantContext,
             Substitute.For<HybridCache>(),
@@ -218,19 +379,32 @@ public sealed class CreateEventLocationWriteContractTests
             TimeProvider.System);
     }
 
+    private static CreateEventLocationDto NewNestedLocation(string key, string address) => new()
+    {
+        TempKey = key,
+        FullName = $"{key} venue",
+        Address = address,
+        Postcode = "1000",
+        Country = "Belgium",
+        City = "Brussels"
+    };
+
     private sealed class MetricsFixture : IDisposable
     {
+        private static long s_meterSequence;
         private readonly Meter _meter;
 
         public MetricsFixture()
         {
             var meterFactory = Substitute.For<IMeterFactory>();
-            _meter = new Meter("location-write-contract");
+            MeterName = $"location-write-contract-{Interlocked.Increment(ref s_meterSequence)}";
+            _meter = new Meter(MeterName);
             meterFactory.Create(Arg.Any<MeterOptions>()).Returns(_meter);
             Metrics = new BusinessMetrics(meterFactory);
         }
 
         public BusinessMetrics Metrics { get; }
+        public string MeterName { get; }
 
         public void Dispose()
         {

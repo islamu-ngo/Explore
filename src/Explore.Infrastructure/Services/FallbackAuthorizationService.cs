@@ -145,7 +145,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     {
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
-            LogDecision("deny", "unsupported_event_action", resourceKind, resourceId, action);
+            LogDecision("deny", "unsupported_event_action", resourceKind, action);
             return false;
         }
 
@@ -153,7 +153,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         {
             bool machineDecision = await EvaluateMachineCallerAccessAsync(
                 resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
+            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, action);
             return machineDecision;
         }
 
@@ -162,19 +162,19 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             && resourceKind == ResourceKinds.Event
             && action == AuthorizationActions.Events.ManageTickets)
         {
-            LogDecision("deny", "event_management_requires_event_authority", resourceKind, resourceId, action);
+            LogDecision("deny", "event_management_requires_event_authority", resourceKind, action);
             return false;
         }
 
         if (isInstanceAdmin && IsInstanceAdminFallbackAllowed(resourceKind, action))
         {
-            LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
+            LogDecision("allow", "is_instance_admin", resourceKind, action);
             return true;
         }
 
         if (isInstanceAdmin && IsInstanceAdminFallbackDenied(resourceKind, action))
         {
-            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, resourceId, action);
+            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, action);
             return false;
         }
 
@@ -182,7 +182,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         // Activated when a BYO-Cerbos tenant's PDP is unreachable with failure_mode=closed.
         if (SafeMode && !isInstanceAdmin)
         {
-            LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
+            LogDecision("deny", "safe_mode_active", resourceKind, action);
             return false;
         }
 
@@ -259,7 +259,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             _ => await EvaluateDefaultAccessAsync(resourceKind, action, resourceAttributes, cancellationToken)
         };
 
-        LogDecision(decision ? "allow" : "deny", "fallback_policy", resourceKind, resourceId, action);
+        LogDecision(decision ? "allow" : "deny", "fallback_policy", resourceKind, action);
         return decision;
     }
 
@@ -270,7 +270,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         CancellationToken cancellationToken)
     {
         // For unknown resource kinds, deny by default (secure by default)
-        LogDecision("deny", "unknown_resource_kind", resourceKind, resourceKind, action);
+        LogDecision("deny", "unknown_resource_kind", resourceKind, action);
         return Task.FromResult(false);
     }
 
@@ -395,6 +395,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ModerateLight
             or AuthorizationActions.Events.ModerateHeavy
             or AuthorizationActions.Events.Unmoderate,
+        ResourceKinds.Location => action is AuthorizationActions.Locations.ManageCustomAddresses
+            or AuthorizationActions.Locations.ApproveTenantAddress,
+        ResourceKinds.Organization => action is AuthorizationActions.Locations.CreateCustomAddress,
         ResourceKinds.SupportAccessSession => action is AuthorizationActions.SupportAccessSessions.View
             or AuthorizationActions.SupportAccessSessions.List
             or AuthorizationActions.SupportAccessSessions.Start
@@ -583,7 +586,6 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         string decision,
         string reason,
         string resourceKind,
-        string resourceId,
         string action)
     {
         var correlationId = Activity.Current?.Id ?? string.Empty;
@@ -592,14 +594,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         if (decision == "allow")
         {
             _logger.LogDebug(
-                "Fallback authorization decision: {Decision} reason={Reason} resource={ResourceKind}/{ResourceId} action={Action} correlationId={CorrelationId}",
-                decision, reason, resourceKind, resourceId, action, correlationId);
+                "Fallback authorization decision: {Decision} reason={Reason} resource={ResourceKind} action={Action} correlationId={CorrelationId}",
+                decision, reason, resourceKind, action, correlationId);
         }
         else
         {
             _logger.LogWarning(
-                "Fallback authorization decision: {Decision} reason={Reason} resource={ResourceKind}/{ResourceId} action={Action} correlationId={CorrelationId}",
-                decision, reason, resourceKind, resourceId, action, correlationId);
+                "Fallback authorization decision: {Decision} reason={Reason} resource={ResourceKind} action={Action} correlationId={CorrelationId}",
+                decision, reason, resourceKind, action, correlationId);
         }
     }
 }

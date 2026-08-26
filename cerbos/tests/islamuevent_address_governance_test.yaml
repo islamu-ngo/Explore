@@ -1,0 +1,135 @@
+# ABOUTME: Verifies exact manual-address governance actions without widening normal location creation.
+# ABOUTME: Covers tenant management, organization creation grants, moderation approval, and regular-user denial.
+
+name: AddressGovernancePolicyTests
+description: "Validates provider policy for governed manual addresses"
+
+principals:
+  instance_admin:
+    id: "address-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  tenant_admin:
+    id: "address-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  organization_admin:
+    id: "address-organization-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships:
+        "organization-1": "admin"
+
+  regular_user:
+    id: "address-regular-user"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  address_location:
+    kind: "islamuevent_location"
+    id: "address-governance"
+    attr:
+      tenantId: "tenant-1"
+
+  address_organization:
+    kind: "islamuevent_organization"
+    id: "address-governance"
+    attr:
+      tenantId: "tenant-1"
+      organizationId: "organization-1"
+
+  normal_location_create:
+    kind: "islamuevent_location"
+    id: "normal-location-create"
+    attr:
+      tenantId: "tenant-1"
+
+tests:
+  - name: "Tenant and instance administrators manage and approve custom addresses"
+    input:
+      principals: ["instance_admin", "tenant_admin"]
+      resources: ["address_location"]
+      actions: ["manage_custom_addresses", "approve_tenant_address"]
+    expected:
+      - principal: "instance_admin"
+        resource: "address_location"
+        actions:
+          manage_custom_addresses: EFFECT_ALLOW
+          approve_tenant_address: EFFECT_ALLOW
+      - principal: "tenant_admin"
+        resource: "address_location"
+        actions:
+          manage_custom_addresses: EFFECT_ALLOW
+          approve_tenant_address: EFFECT_ALLOW
+
+  - name: "Organization administrators receive only organization-scoped creation"
+    input:
+      principals: ["organization_admin"]
+      resources: ["address_organization", "address_location"]
+      actions: ["create_custom_address", "manage_custom_addresses", "approve_tenant_address"]
+    expected:
+      - principal: "organization_admin"
+        resource: "address_organization"
+        actions:
+          create_custom_address: EFFECT_ALLOW
+          manage_custom_addresses: EFFECT_DENY
+          approve_tenant_address: EFFECT_DENY
+      - principal: "organization_admin"
+        resource: "address_location"
+        actions:
+          create_custom_address: EFFECT_DENY
+          manage_custom_addresses: EFFECT_DENY
+          approve_tenant_address: EFFECT_DENY
+
+  - name: "Regular users receive no custom-address authority"
+    input:
+      principals: ["regular_user"]
+      resources: ["address_location", "address_organization"]
+      actions: ["manage_custom_addresses", "create_custom_address", "approve_tenant_address"]
+    expected:
+      - principal: "regular_user"
+        resource: "address_location"
+        actions:
+          manage_custom_addresses: EFFECT_DENY
+          create_custom_address: EFFECT_DENY
+          approve_tenant_address: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "address_organization"
+        actions:
+          manage_custom_addresses: EFFECT_DENY
+          create_custom_address: EFFECT_DENY
+          approve_tenant_address: EFFECT_DENY
+
+  - name: "Existing location create semantics remain tenant-admin only"
+    input:
+      principals: ["tenant_admin", "organization_admin", "regular_user"]
+      resources: ["normal_location_create"]
+      actions: ["create"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "normal_location_create"
+        actions:
+          create: EFFECT_ALLOW
+      - principal: "organization_admin"
+        resource: "normal_location_create"
+        actions:
+          create: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "normal_location_create"
+        actions:
+          create: EFFECT_DENY

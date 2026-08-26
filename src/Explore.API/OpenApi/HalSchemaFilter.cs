@@ -52,6 +52,15 @@ public class HalSchemaFilter : ISchemaFilter
                         openApiSchema,
                         resolvedSchema,
                         linkValueSchema: linkSchema);
+                    if (HalOpenApiSchemaCatalog.DetailResourceEmbeddedTypeMappings
+                        .TryGetValue(innerType, out Type? embeddedType))
+                    {
+                        HalOpenApiSchemaMutator.SetEmbeddedReference(
+                            openApiSchema,
+                            context.SchemaGenerator.GenerateSchema(
+                                embeddedType,
+                                context.SchemaRepository));
+                    }
                 }
             }
         }

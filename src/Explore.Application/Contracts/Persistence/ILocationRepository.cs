@@ -7,6 +7,9 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface ILocationRepository : IGenericRepository<Location, Guid>
 {
+    Task<Location> Create(Location location, CancellationToken cancellationToken);
+    Task<Location?> GetById(Guid id, CancellationToken cancellationToken);
+    Task Update(Location location, CancellationToken cancellationToken);
     Task<List<Location>> GetLocationsByTenant(Guid tenantId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Guid>> GetExistingTenantLocationIdsAsync(
         Guid tenantId,

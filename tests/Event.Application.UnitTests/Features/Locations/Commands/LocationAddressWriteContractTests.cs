@@ -4,15 +4,19 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using AutoMapper;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Infrastructure.Geocoding;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Location;
+using Explore.Application.Features.Geocoding;
 using Explore.Application.Features.Locations.Handlers.Commands;
 using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Profiles;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
+
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -22,6 +26,7 @@ public sealed class LocationAddressWriteContractTests
 {
     private const string ManualTransitionName = "SetManualAddress";
     private const string ProviderTransitionName = "SetProviderAddress";
+    private const string GeoCoordinateTypeName = "Explore.Domain.ValueObjects.GeoCoordinate";
 
     [Test]
     public async Task DirectLocationWriteContractsDoNotExposeRawCoordinateOrTenantMembers()
@@ -30,14 +35,30 @@ public sealed class LocationAddressWriteContractTests
         [
             .. NamedPublicProperties(typeof(CreateLocationDto), "TenantId", "Latitude", "Longitude"),
             .. NamedPublicProperties(typeof(UpdateLocationDto), "TenantId", "Latitude", "Longitude"),
-            .. NamedPublicProperties(typeof(UpdateLocationLatitudeDto), "Latitude", "Longitude"),
-            .. NamedPublicProperties(typeof(UpdateLocationLongitudeDto), "Latitude", "Longitude"),
             .. typeof(Location).GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(property => property.Name is "Latitude" or "Longitude" && property.SetMethod?.IsPublic == true)
-                .Select(property => $"{nameof(Location)}.{property.Name} setter")
+                .Select(property => $"{nameof(Location)}.{property.Name} setter"),
+            .. PublicSetterViolations(typeof(Location), nameof(Location.Pii)),
+            .. PublicMethodViolations(typeof(Location), "AttachPii"),
+            .. PublicSetterViolations(
+                typeof(LocationPii),
+                nameof(LocationPii.Address),
+                nameof(LocationPii.Postcode),
+                nameof(LocationPii.Latitude),
+                nameof(LocationPii.Longitude),
+                nameof(LocationPii.LocationId),
+                nameof(LocationPii.Location))
         ];
 
-        await Assert.That(forbiddenMembers).IsEmpty();
+        ConstructorInfo[] handlerConstructors = typeof(CreateLocationCommandHandler)
+            .GetConstructors(BindingFlags.Instance | BindingFlags.Public);
+        string[] mapperConstructorParameters = handlerConstructors
+            .SelectMany(constructor => constructor.GetParameters())
+            .Where(parameter => parameter.ParameterType.FullName == "AutoMapper.IMapper")
+            .Select(parameter => $"{nameof(CreateLocationCommandHandler)} constructor parameter {parameter.Name}")
+            .ToArray();
+
+        await Assert.That(forbiddenMembers.Concat(mapperConstructorParameters)).IsEmpty();
     }
 
     [Test]
@@ -52,10 +73,10 @@ public sealed class LocationAddressWriteContractTests
             {
                 persisted = location;
                 location.Id = Guid.CreateVersion7();
-            }))
+            }), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Location>()
                 ?? throw new InvalidOperationException("The location repository received a null entity."));
-        var handler = new CreateLocationCommandHandler(locations, tenantContext, CreateRealMapper());
+        var handler = CreateLocationHandler(locations, tenantContext);
         Exception? constructionFailure = null;
 
         try
@@ -94,12 +115,10 @@ public sealed class LocationAddressWriteContractTests
         Guid contextTenantId = Guid.CreateVersion7();
         var locations = Substitute.For<ILocationRepository>();
         var tenantContext = Substitute.For<ITenantContext>();
-        var mapper = Substitute.For<IMapper>();
         tenantContext.TenantId.Returns(contextTenantId);
-        mapper.Map<Location>(Arg.Any<CreateLocationDto>()).Returns(NewLocation(contextTenantId));
-        locations.Create(Arg.Any<Location>()).Returns(call => call.Arg<Location>()
+        locations.Create(Arg.Any<Location>(), Arg.Any<CancellationToken>()).Returns(call => call.Arg<Location>()
             ?? throw new InvalidOperationException("The location repository received a null entity."));
-        var handler = new CreateLocationCommandHandler(locations, tenantContext, mapper);
+        var handler = CreateLocationHandler(locations, tenantContext);
 
         var response = await handler.Handle(new CreateLocationCommand
         {
@@ -121,17 +140,35 @@ public sealed class LocationAddressWriteContractTests
     }
 
     [Test]
-    public async Task PublicAddressTransitionContractExposesManualAndProviderAtomicOperations()
+    public async Task PublicAddressTransitionContractRequiresExactlyOneGeoCoordinateProviderOverload()
     {
         var violations = new List<string>();
+        Type? coordinateType = FindGeoCoordinateType();
+        MethodInfo[] providerTransitions = FindPublicProviderTransitions();
         if (FindManualTransition() is null)
         {
             violations.Add($"Location is missing public {ManualTransitionName}(string address, string postcode)");
         }
-        if (FindProviderTransition() is null)
+        if (coordinateType is null)
         {
-            violations.Add($"Location is missing public {ProviderTransitionName}(string address, string postcode, double? latitude, double? longitude)");
+            violations.Add($"Domain is missing {GeoCoordinateTypeName}");
         }
+        else if (FindCoordinateFactory(coordinateType) is null)
+        {
+            violations.Add($"{GeoCoordinateTypeName} is missing public static Create(double latitude, double longitude)");
+        }
+
+        MethodInfo[] expectedProviderTransitions = providerTransitions
+            .Where(method => IsExpectedProviderTransition(method, coordinateType))
+            .ToArray();
+        if (expectedProviderTransitions.Length != 1)
+        {
+            violations.Add($"Location must expose exactly one public {ProviderTransitionName}(string, string, {GeoCoordinateTypeName}); found {expectedProviderTransitions.Length}");
+        }
+
+        violations.AddRange(providerTransitions
+            .Where(method => !IsExpectedProviderTransition(method, coordinateType))
+            .Select(method => $"Location exposes unauthorized public provider transition {FormatMethodSignature(method)}"));
 
         await Assert.That(violations).IsEmpty();
     }
@@ -141,11 +178,15 @@ public sealed class LocationAddressWriteContractTests
     {
         MethodInfo? transition = FindManualTransition();
         await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ManualTransitionName}");
+        if (transition is null)
+        {
+            return;
+        }
         Guid ownerId = Guid.CreateVersion7();
         Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
         location.ClassifyAsPrivateHome(ownerId);
 
-        InvokeTransition(transition!, location, "Rue Manual 21", "2000");
+        InvokeTransition(transition, location, "Rue Manual 21", "2000");
 
         await Assert.That(location.Pii?.Address).IsEqualTo("Rue Manual 21");
         await Assert.That(location.Pii?.Postcode).IsEqualTo("2000");
@@ -157,13 +198,26 @@ public sealed class LocationAddressWriteContractTests
     }
 
     [Test]
-    public async Task ProviderAddressTransitionWithNormalFinitePairPersistsThePairExactly()
+    public async Task ProviderAddressTransitionWithNormalFiniteCoordinatePersistsAllFieldsExactly()
     {
-        MethodInfo? transition = FindProviderTransition();
-        await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ProviderTransitionName}");
+        Type? coordinateType = FindGeoCoordinateType();
+        await Assert.That(coordinateType).IsNotNull().Because($"Domain must expose {GeoCoordinateTypeName}");
+        if (coordinateType is null)
+        {
+            return;
+        }
+        MethodInfo? factory = FindCoordinateFactory(coordinateType);
+        await Assert.That(factory).IsNotNull().Because($"{GeoCoordinateTypeName} must expose public static Create(double, double)");
+        MethodInfo? transition = FindProviderTransition(coordinateType);
+        await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ProviderTransitionName}(string, string, {GeoCoordinateTypeName})");
+        if (factory is null || transition is null)
+        {
+            return;
+        }
         Location location = NewLocation(Guid.CreateVersion7());
+        object coordinate = InvokeCoordinateFactory(factory, 50.8503, 4.3517);
 
-        InvokeTransition(transition!, location, "Rue Provider 30", "1000", 50.8503, 4.3517);
+        InvokeTransition(transition, location, "Rue Provider 30", "1000", coordinate);
 
         await Assert.That(location.Pii?.Address).IsEqualTo("Rue Provider 30");
         await Assert.That(location.Pii?.Postcode).IsEqualTo("1000");
@@ -172,34 +226,55 @@ public sealed class LocationAddressWriteContractTests
     }
 
     [Test]
-    public async Task ProviderAddressTransitionWithPartialOrNonFinitePairRejectsWithoutMutation()
+    public async Task GeoCoordinateFactoryRejectsNonFiniteAndGeographicallyOutOfRangeValues()
     {
-        MethodInfo? transition = FindProviderTransition();
-        await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ProviderTransitionName}");
-        (double? Latitude, double? Longitude, string Case)[] invalidPairs =
+        Type? coordinateType = FindGeoCoordinateType();
+        await Assert.That(coordinateType).IsNotNull().Because($"Domain must expose {GeoCoordinateTypeName}");
+        if (coordinateType is null)
+        {
+            return;
+        }
+        MethodInfo? factory = FindCoordinateFactory(coordinateType);
+        await Assert.That(factory).IsNotNull().Because($"{GeoCoordinateTypeName} must expose public static Create(double, double)");
+        if (factory is null)
+        {
+            return;
+        }
+        (double Latitude, double Longitude, string Case)[] invalidCoordinates =
         [
-            (50.8503, null, "partial pair missing longitude"),
-            (null, 4.3517, "partial pair missing latitude"),
-            (double.NaN, 4.3517, "NaN"),
+            (double.NaN, 4.3517, "NaN latitude"),
             (50.8503, double.NaN, "NaN longitude"),
-            (double.PositiveInfinity, 4.3517, "positive infinity"),
+            (double.PositiveInfinity, 4.3517, "positive infinity latitude"),
             (50.8503, double.PositiveInfinity, "positive infinity longitude"),
-            (double.NegativeInfinity, 4.3517, "negative infinity"),
-            (50.8503, double.NegativeInfinity, "negative infinity longitude")
+            (double.NegativeInfinity, 4.3517, "negative infinity latitude"),
+            (50.8503, double.NegativeInfinity, "negative infinity longitude"),
+            (90.0001, 4.3517, "latitude above 90"),
+            (-90.0001, 4.3517, "latitude below -90"),
+            (50.8503, 180.0001, "longitude above 180"),
+            (50.8503, -180.0001, "longitude below -180")
         ];
         var violations = new List<string>();
 
-        foreach (var pair in invalidPairs)
+        foreach (var coordinate in invalidCoordinates)
         {
-            Location location = NewLocation(Guid.CreateVersion7(), 1.25, 2.5);
-            bool rejected = InvokeExpectedRejection(transition!, location, "Mutated address", "9999", pair.Latitude, pair.Longitude);
+            bool rejected = InvokeCoordinateFactoryExpectedRejection(factory, coordinate.Latitude, coordinate.Longitude);
             if (!rejected)
             {
-                violations.Add($"{pair.Case} was accepted");
+                violations.Add($"{coordinate.Case} was accepted by the coordinate factory");
             }
-            if (location.Pii is not { Address: "Rue Existing 10", Postcode: "1000", Latitude: 1.25, Longitude: 2.5 })
+        }
+
+        const string sensitiveCoordinateCanary = "190.123456789";
+        try
+        {
+            InvokeCoordinateFactory(factory, 50.8503, 190.123456789);
+            violations.Add("the sensitive coordinate canary was accepted");
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            if (exception.ToString().Contains(sensitiveCoordinateCanary, StringComparison.Ordinal))
             {
-                violations.Add($"{pair.Case} mutated the aggregate before rejection");
+                violations.Add("the coordinate exception disclosed its exact sensitive value");
             }
         }
 
@@ -207,22 +282,47 @@ public sealed class LocationAddressWriteContractTests
     }
 
     [Test]
-    public async Task LegacySequentialCoordinateSettersWhenPresentExposePartialIntermediateStateDebt()
+    public async Task PublicPiiBypassesAreImpossibleAndManualTransitionRemainsAtomic()
     {
-        PropertyInfo? latitude = typeof(Location).GetProperty("Latitude");
-        PropertyInfo? longitude = typeof(Location).GetProperty("Longitude");
-        if (latitude?.SetMethod?.IsPublic != true || longitude?.SetMethod?.IsPublic != true)
+        PropertyInfo? piiProperty = typeof(Location).GetProperty(nameof(Location.Pii));
+        MethodInfo? attachPii = typeof(Location).GetMethod("AttachPii", BindingFlags.Instance | BindingFlags.Public);
+        PropertyInfo[] mutablePiiFields = typeof(LocationPii)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => property.Name is nameof(LocationPii.Address)
+                or nameof(LocationPii.Postcode)
+                or nameof(LocationPii.Latitude)
+                or nameof(LocationPii.Longitude))
+            .Where(property => property.SetMethod?.IsPublic == true)
+            .ToArray();
+        Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
+
+        location.SetManualAddress("Rue Atomic 40", "4000");
+        Location legacyInvalid = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
+        LocationPii legacyPii = legacyInvalid.Pii
+            ?? throw new InvalidOperationException("The fixture requires PII.");
+        typeof(LocationPii).GetProperty(nameof(LocationPii.Longitude))?.SetValue(legacyPii, 181d);
+        LocationDto mappedLegacy = CreateRealMapper().Map<LocationDto>(legacyInvalid);
+
+        var violations = new List<string>();
+        if (piiProperty?.SetMethod?.IsPublic == true)
         {
-            return;
+            violations.Add("Location.Pii exposes a public setter");
+        }
+        if (attachPii is not null)
+        {
+            violations.Add("Location.AttachPii remains public");
+        }
+        violations.AddRange(mutablePiiFields.Select(property => $"LocationPii.{property.Name} exposes a public setter"));
+        if (location.Pii is not { Address: "Rue Atomic 40", Postcode: "4000", Latitude: null, Longitude: null })
+        {
+            violations.Add("the authorized manual transition did not replace both address fields and clear coordinates atomically");
+        }
+        if (mappedLegacy.Latitude is not null || mappedLegacy.Longitude is not null)
+        {
+            violations.Add("validated mapping emitted an invalid legacy coordinate pair");
         }
 
-        Location location = NewLocation(Guid.CreateVersion7());
-        latitude.SetValue(location, 50.8503);
-        bool exposedPartialIntermediateState = location.Pii?.Latitude == 50.8503 && location.Pii?.Longitude is null;
-
-        await Assert.That(exposedPartialIntermediateState)
-            .IsFalse()
-            .Because("legacy sequential coordinate setters create a partial intermediate state and remain contract debt");
+        await Assert.That(violations).IsEmpty();
     }
 
     [Test]
@@ -232,8 +332,8 @@ public sealed class LocationAddressWriteContractTests
         Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
         location.ClassifyAsPrivateHome(ownerId);
         var locations = Substitute.For<ILocationRepository>();
-        locations.GetById(location.Id).Returns(location);
-        var handler = new UpdateLocationCommandHandler(locations);
+        locations.GetById(location.Id, Arg.Any<CancellationToken>()).Returns(location);
+        var handler = CreateUpdateLocationHandler(locations, location.TenantId);
 
         var response = await handler.Handle(new UpdateLocationCommand
         {
@@ -284,12 +384,14 @@ public sealed class LocationAddressWriteContractTests
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
         location.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
         MethodInfo? manual = FindManualTransition();
-        MethodInfo? provider = FindProviderTransition();
+        Type? coordinateType = FindGeoCoordinateType();
+        MethodInfo? coordinateFactory = coordinateType is null ? null : FindCoordinateFactory(coordinateType);
+        MethodInfo? provider = FindProviderTransition(coordinateType);
         var violations = new List<string>();
 
-        if (manual is null || provider is null)
+        if (manual is null || provider is null || coordinateFactory is null)
         {
-            violations.Add("public manual/provider address transitions are missing, so anti-resurrection cannot be exercised");
+            violations.Add("public manual/provider value-object address transitions are missing, so anti-resurrection cannot be exercised");
         }
         else
         {
@@ -297,7 +399,8 @@ public sealed class LocationAddressWriteContractTests
             {
                 violations.Add("manual address transition resurrected erased PII");
             }
-            if (!InvokeExpectedRejection(provider, location, "Resurrected address", "9999", 50.8503, 4.3517))
+            object coordinate = InvokeCoordinateFactory(coordinateFactory, 50.8503, 4.3517);
+            if (!InvokeExpectedRejection(provider, location, "Resurrected address", "9999", coordinate))
             {
                 violations.Add("provider address transition resurrected erased PII");
             }
@@ -315,6 +418,17 @@ public sealed class LocationAddressWriteContractTests
             .Where(property => names.Contains(property.Name, StringComparer.Ordinal))
             .Select(property => $"{type.Name}.{property.Name}");
 
+    private static IEnumerable<string> PublicSetterViolations(Type type, params string[] names) =>
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => names.Contains(property.Name, StringComparer.Ordinal))
+            .Where(property => property.SetMethod?.IsPublic == true)
+            .Select(property => $"{type.Name}.{property.Name} setter");
+
+    private static IEnumerable<string> PublicMethodViolations(Type type, string name) =>
+        type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)
+            .Where(method => method.Name == name)
+            .Select(method => $"{type.Name}.{FormatMethodSignature(method)}");
+
     private static MethodInfo? FindManualTransition() => typeof(Location).GetMethod(
         ManualTransitionName,
         BindingFlags.Instance | BindingFlags.Public,
@@ -322,12 +436,65 @@ public sealed class LocationAddressWriteContractTests
         [typeof(string), typeof(string)],
         modifiers: null);
 
-    private static MethodInfo? FindProviderTransition() => typeof(Location).GetMethod(
-        ProviderTransitionName,
-        BindingFlags.Instance | BindingFlags.Public,
+    private static Type? FindGeoCoordinateType() => typeof(Location).Assembly.GetType(
+        GeoCoordinateTypeName,
+        throwOnError: false,
+        ignoreCase: false);
+
+    private static MethodInfo? FindCoordinateFactory(Type coordinateType) => coordinateType.GetMethod(
+        "Create",
+        BindingFlags.Static | BindingFlags.Public,
         binder: null,
-        [typeof(string), typeof(string), typeof(double?), typeof(double?)],
-        modifiers: null);
+        [typeof(double), typeof(double)],
+        modifiers: null) is { } factory && factory.ReturnType == coordinateType
+            ? factory
+            : null;
+
+    private static MethodInfo? FindProviderTransition(Type? coordinateType) => coordinateType is null
+        ? null
+        : typeof(Location).GetMethod(
+            ProviderTransitionName,
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            [typeof(string), typeof(string), coordinateType],
+            modifiers: null);
+
+    private static MethodInfo[] FindPublicProviderTransitions() => typeof(Location)
+        .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)
+        .Where(method => method.Name == ProviderTransitionName)
+        .ToArray();
+
+    private static bool IsExpectedProviderTransition(MethodInfo method, Type? coordinateType)
+    {
+        if (coordinateType is null)
+        {
+            return false;
+        }
+
+        ParameterInfo[] parameters = method.GetParameters();
+        return !method.IsStatic
+            && parameters.Length == 3
+            && parameters[0].ParameterType == typeof(string)
+            && parameters[1].ParameterType == typeof(string)
+            && parameters[2].ParameterType == coordinateType;
+    }
+
+    private static string FormatMethodSignature(MethodInfo method) =>
+        $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.ParameterType.FullName ?? parameter.ParameterType.Name))})";
+
+    private static object InvokeCoordinateFactory(MethodInfo factory, double latitude, double longitude)
+    {
+        try
+        {
+            return factory.Invoke(null, [latitude, longitude])
+                ?? throw new InvalidOperationException("GeoCoordinate.Create returned null.");
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+            throw;
+        }
+    }
 
     private static void InvokeTransition(MethodInfo transition, Location location, params object?[] arguments)
     {
@@ -359,6 +526,68 @@ public sealed class LocationAddressWriteContractTests
         }
     }
 
+    private static bool InvokeCoordinateFactoryExpectedRejection(MethodInfo factory, double latitude, double longitude)
+    {
+        try
+        {
+            factory.Invoke(null, [latitude, longitude]);
+            return false;
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is ArgumentException)
+        {
+            return true;
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+            throw;
+        }
+    }
+
+    private static CreateLocationCommandHandler CreateLocationHandler(
+        ILocationRepository locations,
+        ITenantContext tenantContext)
+    {
+        var userContext = Substitute.For<IUserContext>();
+        Guid userId = Guid.CreateVersion7();
+        userContext.GetRequiredUserId().Returns(userId);
+        var governance = Substitute.For<IAddressGovernancePolicyResolver>();
+        governance.ResolveAsync(Arg.Any<AddressGovernancePolicyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressGovernancePolicyDecision.Allowed(
+                AddressCreationMode.OpenWithModeration,
+                LocationAddressVisibilityEnum.CreatorPrivate));
+        return new CreateLocationCommandHandler(
+            locations,
+            Substitute.For<IAddressSelectionProtector>(),
+            tenantContext,
+            userContext,
+            governance,
+            TimeProvider.System);
+    }
+
+    private static UpdateLocationCommandHandler CreateUpdateLocationHandler(
+        ILocationRepository locations,
+        Guid tenantId)
+    {
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+        var userContext = Substitute.For<IUserContext>();
+        Guid userId = Guid.CreateVersion7();
+        userContext.GetRequiredUserId().Returns(userId);
+        var governance = Substitute.For<IAddressGovernancePolicyResolver>();
+        governance.ResolveAsync(Arg.Any<AddressGovernancePolicyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressGovernancePolicyDecision.Allowed(
+                AddressCreationMode.OpenWithModeration,
+                LocationAddressVisibilityEnum.CreatorPrivate));
+        return new UpdateLocationCommandHandler(
+            locations,
+            Substitute.For<IAddressSelectionProtector>(),
+            tenantContext,
+            userContext,
+            governance,
+            TimeProvider.System);
+    }
+
     private static CreateLocationDto ManualCreateDto() => new()
     {
         FullName = "Manual venue",
@@ -374,19 +603,23 @@ public sealed class LocationAddressWriteContractTests
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
-            Tenant = null!,
+            Tenant = NewTenant(tenantId),
             FullName = "Manual venue",
             Country = "Belgium",
             City = "Brussels",
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        location.AttachPii(new LocationPii
+        if (latitude is { } exactLatitude && longitude is { } exactLongitude)
         {
-            Address = "Rue Existing 10",
-            Postcode = "1000",
-            Latitude = latitude,
-            Longitude = longitude
-        });
+            location.SetProviderAddress(
+                "Rue Existing 10",
+                "1000",
+                Explore.Domain.ValueObjects.GeoCoordinate.Create(exactLatitude, exactLongitude));
+        }
+        else
+        {
+            location.SetManualAddress("Rue Existing 10", "1000");
+        }
         return location;
     }
 
@@ -401,4 +634,19 @@ public sealed class LocationAddressWriteContractTests
 #endif
         return configuration.CreateMapper();
     }
+
+    private static Tenant NewTenant(Guid tenantId) => new()
+    {
+        Id = tenantId,
+        FullName = "Test tenant",
+        Slug = $"test-tenant-{tenantId:N}",
+        TenantStatusId = (int)TenantStatusEnum.Active,
+        TenantStatus = new TenantStatus
+        {
+            Id = (int)TenantStatusEnum.Active,
+            MasterCode = "ACTIVE",
+            FullName = "Active",
+            IsActiveState = true
+        }
+    };
 }

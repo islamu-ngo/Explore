@@ -56,6 +56,32 @@ public sealed class ApiHostCompositionTests
         using var _ = JsonDocument.Parse(content);
     }
 
+    [Test]
+    public async Task ProgramFactory_PublishesHealthyDisabledGeocodingReadiness()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/health");
+        byte[] content = await response.Content.ReadAsByteArrayAsync();
+        using JsonDocument document = JsonDocument.Parse(content);
+        JsonElement geocoding = document.RootElement
+            .GetProperty("checks")
+            .EnumerateArray()
+            .Single(check =>
+                check.GetProperty("name").GetString() == "geocoding");
+        JsonElement data = geocoding.GetProperty("data");
+
+        await Assert.That(geocoding.GetProperty("status").GetString())
+            .IsEqualTo("Healthy");
+        await Assert.That(data.GetProperty("state").GetString())
+            .IsEqualTo("disabled");
+        await Assert.That(data.TryGetProperty("endpoint", out _)).IsFalse();
+        await Assert.That(data.TryGetProperty("query", out _)).IsFalse();
+        await Assert.That(data.TryGetProperty("address", out _)).IsFalse();
+        await Assert.That(data.TryGetProperty("token", out _)).IsFalse();
+    }
+
     private static bool HasPublicStaticMethod(Type type, string methodName) =>
         type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static) is not null;
 }

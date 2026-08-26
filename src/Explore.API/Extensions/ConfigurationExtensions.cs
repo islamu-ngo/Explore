@@ -199,6 +199,29 @@ public static class ConfigurationExtensions
             dict[key] = value;
         }
 
+        static void TrySetCollection(
+            IDictionary<string, string?> dict,
+            IConfiguration root,
+            string key,
+            string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)
+                || root.GetSection(key).GetChildren().Any())
+            {
+                return;
+            }
+
+            string[] values = value.Split(
+                    ',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .ToArray();
+            for (var index = 0; index < values.Length; index++)
+            {
+                dict[$"{key}:{index}"] = values[index];
+            }
+        }
+
         // Keycloak
         TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
         TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
@@ -295,6 +318,32 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "ManagedControlPlane:RegistrationToken", managedRegistrationToken);
         TrySet(mappedConfig, config, "ManagedControlPlane:MaximumTenantCount", managedMaximumTenantCount);
         TrySet(mappedConfig, config, "ManagedControlPlane:TenantAdministratorSignInUrl", managedTenantAdministratorSignInUrl);
+
+        // Optional server-side address geocoding.
+        TrySet(mappedConfig, config, "Geocoding:Provider",
+            ReadFirst(config, "GEOCODING_PROVIDER", "Geocoding:Provider"));
+        TrySet(mappedConfig, config, "Geocoding:Endpoint",
+            ReadFirst(config, "GEOCODING_ENDPOINT", "Geocoding:Endpoint"));
+        TrySet(mappedConfig, config, "Geocoding:Language",
+            ReadFirst(config, "GEOCODING_LANGUAGE", "Geocoding:Language"));
+        TrySetCollection(mappedConfig, config, "Geocoding:CountryCodes",
+            ReadFirst(config, "GEOCODING_COUNTRY_CODES"));
+        TrySet(mappedConfig, config, "Geocoding:DatasetVersion",
+            ReadFirst(config, "GEOCODING_DATASET_VERSION", "Geocoding:DatasetVersion"));
+        TrySet(mappedConfig, config, "Geocoding:MaximumResults",
+            ReadFirst(config, "GEOCODING_MAXIMUM_RESULTS", "Geocoding:MaximumResults"));
+        TrySet(mappedConfig, config, "Geocoding:MaximumResponseBytes",
+            ReadFirst(config, "GEOCODING_MAXIMUM_RESPONSE_BYTES", "Geocoding:MaximumResponseBytes"));
+        TrySet(mappedConfig, config, "Geocoding:TotalTimeoutMilliseconds",
+            ReadFirst(config, "GEOCODING_TOTAL_TIMEOUT_MILLISECONDS", "Geocoding:TotalTimeoutMilliseconds"));
+        TrySet(mappedConfig, config, "Geocoding:MaximumRetryCount",
+            ReadFirst(config, "GEOCODING_MAXIMUM_RETRY_COUNT", "Geocoding:MaximumRetryCount"));
+        TrySetCollection(mappedConfig, config, "Geocoding:RetryDelaysMilliseconds",
+            ReadFirst(config, "GEOCODING_RETRY_DELAYS_MILLISECONDS"));
+        TrySet(mappedConfig, config, "Geocoding:ReadinessTimeoutMilliseconds",
+            ReadFirst(config, "GEOCODING_READINESS_TIMEOUT_MILLISECONDS", "Geocoding:ReadinessTimeoutMilliseconds"));
+        TrySet(mappedConfig, config, "Geocoding:SelectionLifetimeSeconds",
+            ReadFirst(config, "GEOCODING_SELECTION_LIFETIME_SECONDS", "Geocoding:SelectionLifetimeSeconds"));
 
         // MCP
         TrySet(mappedConfig, config, "Mcp:Enabled", mcpEnabled);

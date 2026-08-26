@@ -27,13 +27,11 @@ using Explore.Domain.Enums;
 using Explore.Domain.Settings;
 using Explore.Persistence;
 using Explore.Persistence.Extensions;
-using Explore.Persistence.QueryFilters;
-using Microsoft.AspNetCore.Hosting;
+using IWebHostBuilder = Microsoft.AspNetCore.Hosting.IWebHostBuilder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
@@ -597,9 +595,9 @@ public sealed class McpProtocolContractTests
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        return await dbContext.Events
-            .AsNoTracking()
-            .IgnoreTenantFilter(TenantFilterBypassReasons.EventAuthorizationTargetResolution)
+        return await Explore.Persistence.QueryFilters.QueryFilterExtensions.IgnoreTenantFilter(
+                dbContext.Events.AsNoTracking(),
+                Explore.Persistence.QueryFilters.TenantFilterBypassReasons.EventAuthorizationTargetResolution)
             .Where(@event => @event.Id == eventId)
             .Select(@event => new EventState(@event.Title, @event.ConcurrencyStamp, @event.EventStatusId))
             .SingleAsync();
@@ -643,7 +641,7 @@ public sealed class McpProtocolContractTests
     {
         var descriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(document)));
         var message = descriptor.RootElement.GetProperty("Message").GetString();
-        await Assert.That(descriptor.RootElement.GetProperty("Success").GetBoolean()).IsTrue().Because(message);
+        await Assert.That(descriptor.RootElement.GetProperty("Success").GetBoolean()).IsTrue().Because(message ?? string.Empty);
         await Assert.That(descriptor.RootElement.GetProperty("Message").GetString()).Contains("Confirm");
         await Assert.That(descriptor.RootElement.GetProperty("Id").GetGuid()).IsNotEqualTo(Guid.Empty);
     }
@@ -1129,6 +1127,10 @@ public sealed class McpProtocolContractTests
             => Task.CompletedTask;
 
         public void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null)
+        {
+        }
+
+        public void InvalidateOrganizationCache(Guid tenantId, Guid organizationId)
         {
         }
 

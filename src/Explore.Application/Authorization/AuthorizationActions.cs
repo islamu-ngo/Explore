@@ -300,6 +300,9 @@ public static class AuthorizationActions
         public const string Create = AuthorizationActions.Create;
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
+        public const string ManageCustomAddresses = "manage_custom_addresses";
+        public const string CreateCustomAddress = "create_custom_address";
+        public const string ApproveTenantAddress = "approve_tenant_address";
     }
 
     /// <summary>Valid actions for the <c>islamuevent_location_room</c> resource kind.</summary>

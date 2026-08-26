@@ -102,13 +102,13 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Authorization denied");
             logger.LogWarning(
-                "Authorization decision: {Decision} request={RequestType} resource={Resource}/{ResourceId} action={Action} reason={Reason} provider={Provider} correlationId={CorrelationId}",
-                "deny", requestType, resourceKind, resourceId, action, decision.ReasonCode, decision.Provider.ProviderId, correlationId);
+                "Authorization decision: {Decision} request={RequestType} resource={Resource} action={Action} reason={Reason} provider={Provider} correlationId={CorrelationId}",
+                "deny", requestType, resourceKind, action, decision.ReasonCode, decision.Provider.ProviderId, correlationId);
             throw new AuthorizationException(resourceKind, action);
         }
 
         logger.LogDebug(
-            "Authorization decision: {Decision} request={RequestType} resource={Resource}/{ResourceId} action={Action} provider={Provider} correlationId={CorrelationId}",
-            "allow", requestType, resourceKind, resourceId, action, decision.Provider.ProviderId, correlationId);
+            "Authorization decision: {Decision} request={RequestType} resource={Resource} action={Action} provider={Provider} correlationId={CorrelationId}",
+            "allow", requestType, resourceKind, action, decision.Provider.ProviderId, correlationId);
     }
 }

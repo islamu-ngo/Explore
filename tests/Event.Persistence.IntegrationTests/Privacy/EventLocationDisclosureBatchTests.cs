@@ -413,14 +413,10 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         location.ClassifyAs(LocationKindEnum.CommercialVenue);
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = "Test address",
-            Postcode = "1000",
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        location.SetProviderAddress(
+            "Test address",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         return location;
     }
 

@@ -317,6 +317,23 @@ public class BlazorTestContext : BunitContext
         JSInterop.SetupVoid("mudElementRef.focusFirst", _ => true).SetVoidResult();
         JSInterop.SetupVoid("mudElementRef.focusLast", _ => true).SetVoidResult();
 
+        // Address autocomplete conditionally prevents native browser behavior only
+        // for the navigation keys handled by its WAI-ARIA combobox state machine.
+        var addressSuggestionModule =
+            JSInterop.SetupModule("/js/address-suggestion-combobox.js");
+        addressSuggestionModule
+            .SetupVoid("bindComboboxNavigation", _ => true)
+            .SetVoidResult();
+        addressSuggestionModule
+            .SetupVoid("unbindComboboxNavigation", _ => true)
+            .SetVoidResult();
+        addressSuggestionModule
+            .SetupVoid("scrollActiveOptionIntoView", _ => true)
+            .SetVoidResult();
+        addressSuggestionModule
+            .SetupVoid("ensureContainingDialogModal", _ => true)
+            .SetVoidResult();
+
         // Browser storage APIs used by ProtectedBrowserStorage or component dependencies.
         // Returns empty string by default — individual tests can override with specific setups.
         JSInterop.Setup<string>("sessionStorage.getItem", _ => true).SetResult("");

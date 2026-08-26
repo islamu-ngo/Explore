@@ -302,6 +302,10 @@ public static class LinkRelations
 
     public const string RemediateLocation = "remediate-location";
 
+    public const string AddressSuggestions = "address-suggestions";
+
+    public const string ApproveTenantAddress = "approve-tenant-address";
+
     /// <summary>
     /// Cancel action for events or registrations.
     /// </summary>

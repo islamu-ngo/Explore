@@ -247,6 +247,7 @@ if (hostingTopology == HostingTopology.Split)
     }
 
     exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
+    exploreAPI = ConfigureGeocoding(exploreAPI, builder.Configuration);
 
     if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
     {
@@ -459,6 +460,7 @@ else
     }
 
     eventStandalone = ConfigureLocalMailpitSmtp(eventStandalone, mailpit, builder.Configuration);
+    eventStandalone = ConfigureGeocoding(eventStandalone, builder.Configuration);
 
     if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
     {
@@ -1123,6 +1125,59 @@ static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
         .WithEnvironment("SMTP_FROM_ADDRESS", configuration["MAIL_SMTP_FROM_ADDRESS"] ?? "noreply@localhost")
         .WithEnvironment("SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev");
 }
+
+static IResourceBuilder<ProjectResource> ConfigureGeocoding(
+    IResourceBuilder<ProjectResource> project,
+    IConfiguration configuration) =>
+    project
+        .WithEnvironment("GEOCODING_PROVIDER", ConfiguredValue(
+            configuration,
+            "GEOCODING_PROVIDER",
+            "None"))
+        .WithEnvironment("GEOCODING_ENDPOINT", ConfiguredValue(
+            configuration,
+            "GEOCODING_ENDPOINT",
+            string.Empty))
+        .WithEnvironment("GEOCODING_LANGUAGE", ConfiguredValue(
+            configuration,
+            "GEOCODING_LANGUAGE",
+            "en"))
+        .WithEnvironment("GEOCODING_COUNTRY_CODES", ConfiguredValue(
+            configuration,
+            "GEOCODING_COUNTRY_CODES",
+            string.Empty))
+        .WithEnvironment("GEOCODING_DATASET_VERSION", ConfiguredValue(
+            configuration,
+            "GEOCODING_DATASET_VERSION",
+            string.Empty))
+        .WithEnvironment("GEOCODING_MAXIMUM_RESULTS", ConfiguredValue(
+            configuration,
+            "GEOCODING_MAXIMUM_RESULTS",
+            "10"))
+        .WithEnvironment("GEOCODING_MAXIMUM_RESPONSE_BYTES", ConfiguredValue(
+            configuration,
+            "GEOCODING_MAXIMUM_RESPONSE_BYTES",
+            "65536"))
+        .WithEnvironment("GEOCODING_TOTAL_TIMEOUT_MILLISECONDS", ConfiguredValue(
+            configuration,
+            "GEOCODING_TOTAL_TIMEOUT_MILLISECONDS",
+            "5000"))
+        .WithEnvironment("GEOCODING_MAXIMUM_RETRY_COUNT", ConfiguredValue(
+            configuration,
+            "GEOCODING_MAXIMUM_RETRY_COUNT",
+            "2"))
+        .WithEnvironment("GEOCODING_RETRY_DELAYS_MILLISECONDS", ConfiguredValue(
+            configuration,
+            "GEOCODING_RETRY_DELAYS_MILLISECONDS",
+            "200,500"))
+        .WithEnvironment("GEOCODING_READINESS_TIMEOUT_MILLISECONDS", ConfiguredValue(
+            configuration,
+            "GEOCODING_READINESS_TIMEOUT_MILLISECONDS",
+            "2000"))
+        .WithEnvironment("GEOCODING_SELECTION_LIFETIME_SECONDS", ConfiguredValue(
+            configuration,
+            "GEOCODING_SELECTION_LIFETIME_SECONDS",
+            "300"));
 
 static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     IResourceBuilder<ProjectResource> api,

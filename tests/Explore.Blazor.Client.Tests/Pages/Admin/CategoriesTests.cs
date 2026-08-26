@@ -114,7 +114,8 @@ public class CategoriesTests : IDisposable
     {
         _adminService.GetCategoriesAsync().Returns(new List<CategoryListDto>());
         _adminService.GetTagsAsync().Returns(new List<TagListDto>());
-        _adminService.GetLocationsAsync().Returns(new List<LocationListDto>());
+        _adminService.GetLocationsAsync()
+            .Returns(new HalCollectionResourceOfLocationListDto());
         _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
         _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());

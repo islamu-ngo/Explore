@@ -745,8 +745,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
 
         Location homeA = CreatePrivateHome(tenantA.Id, owner.Id, "HOME-A-NAME-CANARY");
         Location homeB = CreatePrivateHome(tenantB.Id, owner.Id, "HOME-B-NAME-CANARY");
-        homeA.Pii!.Address = "HOME-A-ADDRESS-CANARY";
-        homeB.Pii!.Address = "HOME-B-ADDRESS-CANARY";
+        homeA.SetManualAddress("HOME-A-ADDRESS-CANARY", "1000");
+        homeB.SetManualAddress("HOME-B-ADDRESS-CANARY", "1000");
         context.Locations.AddRange(homeA, homeB);
         await context.SaveChangesAsync();
 
@@ -1012,12 +1012,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
     {
         var location = CreateLocation(tenantId, name);
         location.ClassifyAsPrivateHome(ownerUserId);
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Address = $"{name} address",
-            Postcode = "1000",
-        });
+        location.SetManualAddress($"{name} address", "1000");
         return location;
     }
 

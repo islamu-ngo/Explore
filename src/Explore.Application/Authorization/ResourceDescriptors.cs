@@ -18,6 +18,7 @@ using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
+using Explore.Application.DTOs.Geocoding;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.Location;
@@ -325,6 +326,18 @@ public static class ResourceDescriptors
     public static readonly ResourceDescriptor<LocationDto> Location = new(
         ResourceKinds.Location,
         dto => dto.Id.ToString(),
+        dto => new TenantScopedAuthorizationFacts(dto.TenantId),
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<LocationListDto> LocationList = new(
+        ResourceKinds.Location,
+        dto => dto.Id.ToString(),
+        dto => new TenantScopedAuthorizationFacts(dto.TenantId),
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<AddressSuggestionDto> AddressSuggestion = new(
+        ResourceKinds.Location,
+        dto => dto.LocationId.ToString(),
         dto => new TenantScopedAuthorizationFacts(dto.TenantId),
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

@@ -3,7 +3,8 @@
 
 using Explore.Domain;
 using Explore.Domain.Enums;
-using Explore.Persistence.Seed;
+using Explore.Domain.ValueObjects;
+using Explore.Persistence.Schema;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -18,6 +19,14 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.DisplaySortKey)
+            .HasMaxLength(LocationDisplaySortKeyV1.MaximumLength)
+            .HasDefaultValue(string.Empty)
+            .IsRequired()
+            .UsePortableOrdinalAscii();
+        builder.Property(e => e.DisplaySortKeyVersion)
+            .HasDefaultValue((short)0)
+            .IsRequired();
         builder.Property(e => e.Country).HasMaxLength(500).IsRequired();
         builder.Property(e => e.City).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Timezone).HasMaxLength(500);
@@ -28,6 +37,14 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(e => e.LocationPrivacyStateId)
             .HasDefaultValue((int)LocationPrivacyStateEnum.NotProvided)
             .IsRequired();
+        builder.Property(e => e.AddressSourceId)
+            .HasDefaultValue((int)LocationAddressSourceEnum.UnknownLegacy)
+            .IsRequired();
+        builder.Property(e => e.AddressVisibilityId)
+            .HasDefaultValue((int)LocationAddressVisibilityEnum.Quarantined)
+            .IsRequired();
+        builder.Ignore(e => e.AddressSource);
+        builder.Ignore(e => e.AddressVisibility);
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -49,6 +66,19 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
             .WithMany()
             .HasForeignKey(e => e.LocationPrivacyStateId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.AddressSourceLookup)
+            .WithMany()
+            .HasForeignKey(e => e.AddressSourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.AddressVisibilityLookup)
+            .WithMany()
+            .HasForeignKey(e => e.AddressVisibilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.AddressOrganizationTenant)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.AddressOrganizationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.OrganizationId })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.OwnerUser)
             .WithMany()
             .HasForeignKey(e => e.OwnerUserId)
@@ -63,6 +93,25 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
                 "ck_locations_erasure_state",
                 "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR " +
                 "(location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
+            table.HasCheckConstraint(
+                "ck_locations_address_visibility_scope",
+                "(address_visibility_id = 1 AND address_organization_id IS NULL) OR " +
+                "(address_visibility_id = 2 AND created_by IS NOT NULL AND address_organization_id IS NULL) OR " +
+                "(address_visibility_id = 3 AND created_by IS NOT NULL AND address_organization_id IS NOT NULL) OR " +
+                "address_visibility_id = 4");
+            table.HasCheckConstraint(
+                "ck_locations_private_home_address_visibility",
+                "location_kind_id <> 5 OR address_visibility_id <> 4");
+            table.HasCheckConstraint(
+                "ck_locations_erased_address_quarantined",
+                "location_privacy_state_id <> 3 OR (address_visibility_id = 1 AND address_organization_id IS NULL)");
+            table.HasCheckConstraint(
+                "ck_locations_display_sort_key_version",
+                "(display_sort_key_version = 0 AND display_sort_key = '') OR " +
+                "(display_sort_key_version = 1 AND display_sort_key <> '' AND length(display_sort_key) % 7 = 0)");
+            table.HasCheckConstraint(
+                "ck_locations_tenant_approved_display_sort_key",
+                "address_visibility_id <> 4 OR display_sort_key_version = 1");
         });
 
         // ===== Performance Indexes =====
@@ -74,6 +123,12 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         // Location lookup by country
         builder.HasIndex(e => new { e.TenantId, e.Country })
             .HasDatabaseName("ix_locations_tenant_country");
+
+        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.CreatedBy })
+            .HasDatabaseName("ix_locations_tenant_address_visibility_created_by");
+
+        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.AddressOrganizationId })
+            .HasDatabaseName("ix_locations_tenant_address_visibility_organization");
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

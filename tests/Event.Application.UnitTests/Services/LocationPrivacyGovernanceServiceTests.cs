@@ -437,13 +437,10 @@ public sealed class LocationPrivacyGovernanceServiceTests
             City = "Brussels"
         };
         location.ClassifyAs(LocationKindEnum.CommunityVenue);
-        location.AttachPii(new LocationPii
-        {
-            Address = "1 Main Street",
-            Postcode = "1000",
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        location.SetProviderAddress(
+            "1 Main Street",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         return location;
     }
 

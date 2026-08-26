@@ -128,15 +128,10 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        physicalLocation.AttachPii(new LocationPii
-        {
-            LocationId = physicalLocation.Id,
-            Location = physicalLocation,
-            Address = "Projection street 1",
-            Postcode = "1000",
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        physicalLocation.SetProviderAddress(
+            "Projection street 1",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         var room = new LocationRoom
         {
             Id = Guid.CreateVersion7(),

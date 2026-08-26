@@ -1511,6 +1511,46 @@ Current localization/TMS settings are governance settings. Do not document TMS A
 
 See [LOCALIZATION.md](LOCALIZATION.md) for full architecture.
 
+## Address Geocoding
+
+Address geocoding is startup configuration because it controls an outbound
+network boundary. It is not a tenant setting and cannot be enabled by a browser
+or request payload.
+
+| Environment key | Default | Purpose |
+|---|---|---|
+| `GEOCODING_PROVIDER` | `None` | `None` disables outbound geocoding; `Photon` enables the optional adapter |
+| `GEOCODING_ENDPOINT` | empty | Explicit operator-owned or separately contracted HTTPS Photon base URL |
+| `GEOCODING_LANGUAGE` | `en` | Bounded result language tag |
+| `GEOCODING_COUNTRY_CODES` | empty | Comma-separated ISO two-letter country allowlist |
+| `GEOCODING_MAXIMUM_RESULTS` | `10` | Provider result ceiling; maximum `20` |
+| `GEOCODING_MAXIMUM_RESPONSE_BYTES` | `65536` | Provider response byte ceiling; maximum `1048576` |
+| `GEOCODING_DATASET_VERSION` | empty | Operator-pinned dataset/configuration fingerprint retained with private provenance |
+| `GEOCODING_TOTAL_TIMEOUT_MILLISECONDS` | `5000` | Total request and retry budget; maximum `5000` |
+| `GEOCODING_MAXIMUM_RETRY_COUNT` | `2` | Transient retry ceiling; maximum `2` |
+| `GEOCODING_RETRY_DELAYS_MILLISECONDS` | `200,500` | Comma-separated delays whose count matches the retry ceiling and whose sum fits the total budget |
+| `GEOCODING_READINESS_TIMEOUT_MILLISECONDS` | `2000` | Single `/status` readiness request budget; maximum `2000` |
+| `GEOCODING_SELECTION_LIFETIME_SECONDS` | `300` | Protected provider-selection lifetime; allowed range `30`–`900` |
+
+`None` is healthy and performs zero provider calls. `Photon` requires an
+explicit endpoint, language, country allowlist, and dataset fingerprint.
+`https://photon.komoot.io` is a public demonstration service and is rejected in
+production; it is never an implicit fallback.
+
+Photon has no API-key setting. Do not put provider records, queries, addresses,
+coordinates, selection tokens, endpoint URLs, tenant identifiers, or user
+identifiers in logs, metrics, traces, health data, or validation messages.
+Operational release hashes, dataset-manifest hashes, capacity evidence, and
+restore evidence belong to the operator deployment manifest described in
+[SELF_HOSTING.md](SELF_HOSTING.md), not application options or secrets.
+
+The API compatibility projection maps every documented `GEOCODING_*` key to
+the canonical `Geocoding:*` options section. Comma-separated country codes and
+retry delays become indexed configuration values. Explicit structured
+`Geocoding:*` values take precedence. Aspire forwards the same contract to both
+split API and standalone topologies; Compose forwards it through the
+`geocoding-env` anchor.
+
 ## Custom Property Quotas (Governance)
 
 Hard-limit quota definitions for Layer 3 custom properties (Rule 16). Each has a tenant-overridable default and a platform maximum.

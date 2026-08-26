@@ -204,6 +204,8 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         new("file_types"),
         new("group_positions"),
         new("languages"),
+        new("location_address_sources"),
+        new("location_address_visibilities"),
         new("location_disclosure_audiences"),
         new("location_kinds"),
         new("location_privacy_states"),

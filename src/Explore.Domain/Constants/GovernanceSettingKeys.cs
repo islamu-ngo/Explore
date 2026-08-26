@@ -251,6 +251,14 @@ public static class GovernanceSettingKeys
         public const string DefaultRevealOffset = Base + ".default_reveal_offset";
     }
 
+    public static class AddressGovernance
+    {
+        private const string Base = "address_governance";
+
+        public const string CreationMode = Base + ".creation_mode";
+        public const string OrganizationCreationGrant = Base + ".organization_creation_grant";
+    }
+
     public static class Reporting
     {
         public const string TenantExternalSyncEnabled = "reporting.tenant_external_sync_enabled";

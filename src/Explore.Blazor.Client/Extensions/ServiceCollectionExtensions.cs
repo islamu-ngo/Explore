@@ -119,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<ILocationService, LocationService>();
+        services.AddScoped<IAddressSuggestionService, AddressSuggestionService>();
         services.AddScoped<IAudienceAgeService, AudienceAgeService>();
         services.AddScoped<IAudienceGenderService, AudienceGenderService>();
         services.AddScoped<IEventFormatService, EventFormatService>();

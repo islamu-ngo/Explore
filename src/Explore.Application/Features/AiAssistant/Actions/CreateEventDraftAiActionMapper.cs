@@ -225,8 +225,6 @@ public sealed class CreateEventDraftAiActionMapper
                 Postcode = NormalizeRequired(location.Postcode),
                 Country = NormalizeRequired(location.Country),
                 City = NormalizeRequired(location.City),
-                Latitude = location.Latitude,
-                Longitude = location.Longitude,
                 Timezone = Normalize(location.Timezone)
             }
         ];

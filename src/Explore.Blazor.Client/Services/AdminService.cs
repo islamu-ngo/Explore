@@ -64,11 +64,15 @@ public interface IAdminService
     Task<bool> DeleteTagAsync(Guid id);
 
     // Location CRUD
-    Task<ICollection<LocationListDto>> GetLocationsAsync();
-    Task<LocationDto?> GetLocationByIdAsync(Guid id);
-    Task<bool> CreateLocationAsync(CreateLocationDto location);
-    Task<bool> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto location);
-    Task<bool> DeleteLocationAsync(Guid id);
+    Task<HalCollectionResourceOfLocationListDto> GetLocationsAsync();
+    Task<LocationDto?> GetLocationByIdAsync(Guid id, HalLink link);
+    Task<bool> CreateLocationAsync(CreateLocationDto location, HalLink link);
+    Task<bool> UpdateLocationAsync(
+        Guid id,
+        Guid expectedConcurrencyStamp,
+        UpdateLocationDto location,
+        HalLink link);
+    Task<bool> DeleteLocationAsync(Guid id, HalLink link);
 
     // Tenant management
     Task<ICollection<TenantListDto>> GetTenantsAsync();
@@ -676,27 +680,30 @@ public class AdminService : IAdminService
     }
 
     // Location CRUD
-    public async Task<ICollection<LocationListDto>> GetLocationsAsync()
+    public async Task<HalCollectionResourceOfLocationListDto> GetLocationsAsync()
     {
         try
         {
-            var response = await _apiClient.GetLocationsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
-            return response?.GetItems() ?? new List<LocationListDto>();
+            return await _apiClient.GetLocationsAsync(
+                ApiConstants.FirstPage,
+                ApiConstants.DefaultPageSize);
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[AdminService.GetLocationsAsync] API error fetching locations. StatusCode: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
+            return new HalCollectionResourceOfLocationListDto();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AdminService.GetLocationsAsync] Unexpected error fetching locations");
-            return new List<LocationListDto>();
+            return new HalCollectionResourceOfLocationListDto();
         }
     }
 
-    public async Task<LocationDto?> GetLocationByIdAsync(Guid id)
+    public async Task<LocationDto?> GetLocationByIdAsync(Guid id, HalLink link)
     {
+        RequireLink(link, "GET", $"/api/location/{id:D}", "location detail");
+
         try
         {
             var response = await _apiClient.GetLocationByIdAsync(id);
@@ -719,8 +726,12 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> CreateLocationAsync(CreateLocationDto location)
+    public async Task<bool> CreateLocationAsync(
+        CreateLocationDto location,
+        HalLink link)
     {
+        RequireLink(link, "POST", "/api/location", "location create");
+
         try
         {
             await _apiClient.CreateLocationAsync(location);
@@ -738,8 +749,14 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> UpdateLocationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateLocationDto location)
+    public async Task<bool> UpdateLocationAsync(
+        Guid id,
+        Guid expectedConcurrencyStamp,
+        UpdateLocationDto location,
+        HalLink link)
     {
+        RequireLink(link, "PATCH", $"/api/location/{id:D}", "location update");
+
         try
         {
             if (id == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
@@ -763,8 +780,10 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> DeleteLocationAsync(Guid id)
+    public async Task<bool> DeleteLocationAsync(Guid id, HalLink link)
     {
+        RequireLink(link, "DELETE", $"/api/location/{id:D}", "location delete");
+
         try
         {
             await _apiClient.DeleteLocationAsync(id);
@@ -835,6 +854,25 @@ public class AdminService : IAdminService
         {
             _logger.LogError(ex, "[AdminService.DeleteTenantAsync] Unexpected error deleting tenant. TenantId: {TenantId}", id);
             return false;
+        }
+    }
+
+    private static void RequireLink(
+        HalLink link,
+        string method,
+        string expectedPath,
+        string capability)
+    {
+        string? linkPath = string.IsNullOrWhiteSpace(link.Href)
+            ? null
+            : Uri.TryCreate(link.Href, UriKind.Absolute, out Uri? absolute)
+                ? absolute.AbsolutePath
+                : link.Href.Split(['?', '#'], 2)[0];
+        if (!string.Equals(link.Method, method, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(linkPath, expectedPath, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The advertised {capability} capability is invalid.");
         }
     }
 }

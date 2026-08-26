@@ -2,6 +2,7 @@
 // ABOUTME: Tests the Instance > Tenant > Organization hierarchy and lock semantics.
 
 using Explore.Infrastructure.Tests.Authorization;
+using Explore.Infrastructure.Tests.Infrastructure;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -27,7 +28,7 @@ public class FallbackAuthorizationServiceTests
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
-    private readonly ILogger<FallbackAuthorizationService> _logger;
+    private readonly TestListLogger<FallbackAuthorizationService> _logger;
     private readonly FallbackAuthorizationService _service;
 
     private static readonly Guid TestTenantId = Guid.NewGuid();
@@ -113,7 +114,7 @@ public class FallbackAuthorizationServiceTests
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
-        _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
+        _logger = new TestListLogger<FallbackAuthorizationService>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
         _machinePrincipalAccessor.IsMachineCaller.Returns(false);
@@ -138,6 +139,46 @@ public class FallbackAuthorizationServiceTests
             _settingsResolver,
             _tenantContext,
             _logger);
+    }
+
+    [Test]
+    public async Task AuthorizeAsyncPromotionStyleAllowAndDenyLogsExcludeResourceIdentifiers()
+    {
+        const string sentinelLocationId = "019d2f35-47d8-7b2d-96d3-570cc42f8c11";
+        var request = TestAuthorizationRequest.Create(
+            ResourceKinds.Location,
+            sentinelLocationId,
+            AuthorizationActions.Locations.ApproveTenantAddress,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var allowed = await _service.AuthorizeAsync(request);
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        var denied = await _service.AuthorizeAsync(request);
+
+        await Assert.That(allowed.IsAllowed).IsTrue();
+        await Assert.That(denied.IsAllowed).IsFalse();
+        await Assert.That(_logger.Entries.Any(entry => entry.Level == LogLevel.Debug)).IsTrue();
+        await Assert.That(_logger.Entries.Any(entry => entry.Level == LogLevel.Warning)).IsTrue();
+        await Assert.That(_logger.Entries.All(entry =>
+            entry.State.Select(property => property.Key).ToHashSet(StringComparer.Ordinal).SetEquals(
+                ["Decision", "Reason", "ResourceKind", "Action", "CorrelationId", "{OriginalFormat}"]))).IsTrue();
+        await Assert.That(_logger.Entries.All(entry =>
+            EntryExcludes(entry, sentinelLocationId, "ResourceId", "SupportAccessSessionId"))).IsTrue();
+        await Assert.That(_logger.Entries.All(entry =>
+            entry.Arguments.Contains(ResourceKinds.Location)
+            && entry.Arguments.Contains(AuthorizationActions.Locations.ApproveTenantAddress))).IsTrue();
+    }
+
+    private static bool EntryExcludes(TestLogEntry entry, params string[] forbiddenValues)
+    {
+        var observable = string.Join('|',
+            entry.Message,
+            string.Join('|', entry.State.Select(property => property.Key)),
+            string.Join('|', entry.Arguments.Select(argument => argument?.ToString())));
+        return forbiddenValues.All(value => !observable.Contains(value, StringComparison.OrdinalIgnoreCase));
     }
 
     private static Dictionary<string, object> OrganizationMemberAttributes() => new()

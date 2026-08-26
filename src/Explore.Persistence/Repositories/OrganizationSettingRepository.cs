@@ -1,5 +1,5 @@
-// ABOUTME: Repository implementation for OrganizationSetting entity providing data access
-// for organization-specific setting overrides.
+// ABOUTME: Persists organization settings by tenant participation and global organization identity.
+// ABOUTME: Applies both identifiers explicitly so ambient filters are defense in depth, not authority.
 
 namespace Explore.Persistence.Repositories;
 
@@ -7,40 +7,116 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
-public class OrganizationSettingRepository : GenericRepository<OrganizationSetting, Guid>, IOrganizationSettingRepository
+public class OrganizationSettingRepository(ExploreDbContext dbContext)
+    : IOrganizationSettingRepository
 {
-    private readonly ExploreDbContext _dbContext;
-
-    public OrganizationSettingRepository(ExploreDbContext dbContext) : base(dbContext)
+    public Task<OrganizationSetting?> GetByOrganizationAndKey(
+        Guid tenantId,
+        Guid organizationId,
+        string key,
+        CancellationToken cancellationToken = default)
     {
-        _dbContext = dbContext;
-    }
-
-    public async Task<OrganizationSetting?> GetByOrganizationAndKey(Guid organizationId, string key)
-    {
-        return await _dbContext.OrganizationSettingOverrides
+        ValidateScope(tenantId, organizationId);
+        return dbContext.OrganizationSettingOverrides
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.OrganizationTenant.OrganizationId == organizationId && s.SettingKey == key);
+            .FirstOrDefaultAsync(setting =>
+                setting.TenantId == tenantId &&
+                setting.OrganizationTenant.OrganizationId == organizationId &&
+                setting.SettingKey == key,
+                cancellationToken);
     }
 
-    public async Task<List<OrganizationSetting>> GetAllForOrganization(Guid organizationId)
+    public Task<List<OrganizationSetting>> GetAllForOrganization(
+        Guid tenantId,
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
     {
-        return await _dbContext.OrganizationSettingOverrides
+        ValidateScope(tenantId, organizationId);
+        return dbContext.OrganizationSettingOverrides
             .AsNoTracking()
-            .Where(s => s.OrganizationTenant.OrganizationId == organizationId)
-            .ToListAsync();
+            .Where(setting =>
+                setting.TenantId == tenantId &&
+                setting.OrganizationTenant.OrganizationId == organizationId)
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> RemoveOverride(Guid organizationId, string key)
+    public async Task SetValueAsync(
+        Guid tenantId,
+        Guid organizationId,
+        string key,
+        string value,
+        Guid actorId,
+        CancellationToken cancellationToken = default)
     {
-        var setting = await _dbContext.OrganizationSettingOverrides
-            .FirstOrDefaultAsync(s => s.OrganizationTenant.OrganizationId == organizationId && s.SettingKey == key);
+        ValidateScope(tenantId, organizationId);
+        OrganizationSetting? setting = await dbContext.OrganizationSettingOverrides
+            .FirstOrDefaultAsync(candidate =>
+                candidate.TenantId == tenantId &&
+                candidate.OrganizationTenant.OrganizationId == organizationId &&
+                candidate.SettingKey == key,
+                cancellationToken);
+        if (setting is not null)
+        {
+            setting.Value = value;
+            setting.UpdatedAt = DateTime.UtcNow;
+            setting.UpdatedBy = actorId;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
 
-        if (setting == null)
+        OrganizationTenant participation = await dbContext.OrganizationTenants
+            .FirstOrDefaultAsync(candidate =>
+                candidate.TenantId == tenantId &&
+                candidate.OrganizationId == organizationId,
+                cancellationToken)
+            ?? throw new InvalidOperationException("Organization is not available in the specified tenant.");
+        dbContext.OrganizationSettingOverrides.Add(new OrganizationSetting
+        {
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = key,
+            Value = value,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = actorId
+        });
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> RemoveOverride(
+        Guid tenantId,
+        Guid organizationId,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateScope(tenantId, organizationId);
+        OrganizationSetting? setting = await dbContext.OrganizationSettingOverrides
+            .FirstOrDefaultAsync(candidate =>
+                candidate.TenantId == tenantId &&
+                candidate.OrganizationTenant.OrganizationId == organizationId &&
+                candidate.SettingKey == key,
+                cancellationToken);
+        if (setting is null)
+        {
             return false;
+        }
 
-        _dbContext.OrganizationSettingOverrides.Remove(setting);
-        await _dbContext.SaveChangesAsync();
+        dbContext.OrganizationSettingOverrides.Remove(setting);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private static void ValidateScope(Guid tenantId, Guid organizationId)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant scope is required.", nameof(tenantId));
+        }
+
+        if (organizationId == Guid.Empty)
+        {
+            throw new ArgumentException("Organization scope is required.", nameof(organizationId));
+        }
     }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Wrapper DTO for PATCH-based Location updates using nullable per-property groups.
-// ABOUTME: Body IDs and tenant IDs are absent because route/context authority owns identity and tenancy.
+// ABOUTME: Body tenancy and raw coordinates are absent because trusted boundaries own that authority.
 
 using Explore.Application.Models.Common;
 
@@ -12,9 +12,9 @@ public sealed record UpdateLocationDto
     public UpdateLocationPostcodeDto? Postcode { get; init; }
     public UpdateLocationCountryDto? Country { get; init; }
     public UpdateLocationCityDto? City { get; init; }
-    public UpdateLocationLatitudeDto? Latitude { get; init; }
-    public UpdateLocationLongitudeDto? Longitude { get; init; }
     public UpdateLocationTimezoneDto? Timezone { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public string? AddressSelectionToken { get; init; }
 }
 
 public sealed record UpdateLocationFullNameDto
@@ -40,16 +40,6 @@ public sealed record UpdateLocationCountryDto
 public sealed record UpdateLocationCityDto
 {
     public required string Value { get; init; }
-}
-
-public sealed record UpdateLocationLatitudeDto
-{
-    public OptionalUpdate<double?> Value { get; init; } = OptionalUpdate<double?>.Unspecified();
-}
-
-public sealed record UpdateLocationLongitudeDto
-{
-    public OptionalUpdate<double?> Value { get; init; } = OptionalUpdate<double?>.Unspecified();
 }
 
 public sealed record UpdateLocationTimezoneDto

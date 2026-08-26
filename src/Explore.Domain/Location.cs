@@ -20,8 +20,11 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     public required string FullName
     {
         get => _fullName ?? string.Empty;
-        set => _fullName = GuardErasedValue(_fullName, value, nameof(FullName));
+        set => SetFullName(GuardErasedValue(_fullName, value, nameof(FullName)));
     }
+
+    public string DisplaySortKey { get; private set; } = string.Empty;
+    public short DisplaySortKeyVersion { get; private set; }
 
     public required string Country
     {
@@ -38,7 +41,7 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     public LocationPii? Pii
     {
         get => _pii;
-        set
+        private set
         {
             if (value is not null && LocationPrivacyStateId == (int)LocationPrivacyStateEnum.Erased)
             {
@@ -78,38 +81,14 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     }
 
     [NotMapped]
-    public string? Address
-    {
-        get => Pii?.Address;
-        set => SetManualAddress(
-            value ?? throw new ArgumentNullException(nameof(value)),
-            RequireMutablePii().Postcode);
-    }
+    public string? Address => Pii?.Address;
 
     [NotMapped]
-    public string? Postcode
-    {
-        get => Pii?.Postcode;
-        set => SetManualAddress(
-            RequireMutablePii().Address,
-            value ?? throw new ArgumentNullException(nameof(value)));
-    }
+    public string? Postcode => Pii?.Postcode;
 
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
-    public required Tenant Tenant { get; set; }
-
-    [NotMapped]
-    public double? Latitude
-    {
-        get => Pii?.Latitude;
-    }
-
-    [NotMapped]
-    public double? Longitude
-    {
-        get => Pii?.Longitude;
-    }
+    public Tenant? Tenant { get; set; }
 
     public GeoCoordinate? GetCoordinate() => Pii?.GetCoordinate();
 
@@ -122,6 +101,23 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
     [ForeignKey(nameof(LocationPrivacyState))]
     public int LocationPrivacyStateId { get; private set; } = (int)LocationPrivacyStateEnum.NotProvided;
     public LocationPrivacyState? LocationPrivacyState { get; private set; }
+
+    public int AddressSourceId { get; private set; } = (int)LocationAddressSourceEnum.UnknownLegacy;
+
+    [NotMapped]
+    public LocationAddressSourceEnum AddressSource => (LocationAddressSourceEnum)AddressSourceId;
+
+    public LocationAddressSource? AddressSourceLookup { get; private set; }
+
+    public int AddressVisibilityId { get; private set; } = (int)LocationAddressVisibilityEnum.Quarantined;
+
+    [NotMapped]
+    public LocationAddressVisibilityEnum AddressVisibility => (LocationAddressVisibilityEnum)AddressVisibilityId;
+
+    public LocationAddressVisibility? AddressVisibilityLookup { get; private set; }
+
+    public Guid? AddressOrganizationId { get; private set; }
+    public OrganizationTenant? AddressOrganizationTenant { get; private set; }
 
     [ForeignKey(nameof(OwnerUser))]
     public Guid? OwnerUserId { get; private set; }
@@ -138,42 +134,188 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
 
     public Guid ConcurrencyStamp { get; set; }
 
-    public void AttachPii(LocationPii pii)
+    private void AttachPii(LocationPii pii)
     {
         ArgumentNullException.ThrowIfNull(pii);
-        if (Id != Guid.Empty)
-        {
-            pii.LocationId = Id;
-        }
-
+        pii.AssociateWith(this);
         Pii = pii;
     }
 
-    public void SetManualAddress(string address, string postcode) =>
-        SetAddress(address, postcode, coordinate: null);
+    public bool SetManualAddress(string address, string postcode) =>
+        SetAddress(address, postcode, coordinate: null, LocationAddressSourceEnum.Manual);
 
-    public void SetProviderAddress(
+    public bool SetProviderAddress(string address, string postcode, GeoCoordinate coordinate)
+    {
+        ArgumentNullException.ThrowIfNull(coordinate);
+        return SetAddress(address, postcode, coordinate, LocationAddressSourceEnum.ProviderSelection);
+    }
+
+    private bool SetAddress(
         string address,
         string postcode,
-        GeoCoordinate? coordinate) =>
-        SetAddress(address, postcode, coordinate);
-
-    private void SetAddress(
-        string address,
-        string postcode,
-        GeoCoordinate? coordinate)
+        GeoCoordinate? coordinate,
+        LocationAddressSourceEnum source)
     {
         EnsureNotErased();
         ArgumentNullException.ThrowIfNull(address);
         ArgumentNullException.ThrowIfNull(postcode);
 
-        if (Pii is null)
+        if (_pii is not null
+            && string.Equals(_pii.Address, address, StringComparison.Ordinal)
+            && string.Equals(_pii.Postcode, postcode, StringComparison.Ordinal)
+            && _pii.GetCoordinate() == coordinate)
         {
-            AttachPii(LocationPii.Create(address, postcode, coordinate));
-            return;
+            return _pii.EnsureCurrentAddressSubstringKey();
         }
 
-        Pii.SetAddress(address, postcode, coordinate);
+        bool replacesExistingBundle = _pii is not null;
+        if (_pii is null)
+        {
+            AttachPii(LocationPii.Create(address, postcode, coordinate));
+        }
+        else
+        {
+            _pii.SetAddress(address, postcode, coordinate);
+        }
+
+        AddressSourceId = (int)source;
+        AddressSourceLookup = null;
+        AddressVisibilityId = (int)LocationAddressVisibilityEnum.Quarantined;
+        AddressVisibilityLookup = null;
+        AddressOrganizationId = null;
+        AddressOrganizationTenant = null;
+        if (replacesExistingBundle)
+        {
+            ConcurrencyStamp = Guid.CreateVersion7();
+        }
+        return true;
+    }
+
+    public void ApplyAddressGovernance(
+        Guid actorId,
+        LocationAddressSourceEnum source,
+        LocationAddressVisibilityEnum visibility,
+        Guid? addressOrganizationId) =>
+        ApplyAddressGovernanceCore(actorId, source, visibility, addressOrganizationId, changedAtUtc: null);
+
+    public void ApplyAddressGovernanceWithAudit(
+        Guid actorId,
+        LocationAddressSourceEnum source,
+        LocationAddressVisibilityEnum visibility,
+        Guid? addressOrganizationId,
+        DateTime changedAtUtc) =>
+        ApplyAddressGovernanceCore(actorId, source, visibility, addressOrganizationId, changedAtUtc);
+
+    private void ApplyAddressGovernanceCore(
+        Guid actorId,
+        LocationAddressSourceEnum source,
+        LocationAddressVisibilityEnum visibility,
+        Guid? addressOrganizationId,
+        DateTime? changedAtUtc)
+    {
+        if (actorId == Guid.Empty)
+        {
+            throw new ArgumentException("Actor id is required.", nameof(actorId));
+        }
+        if (!Enum.IsDefined(source))
+        {
+            throw new ArgumentOutOfRangeException(nameof(source));
+        }
+        if (!Enum.IsDefined(visibility))
+        {
+            throw new ArgumentOutOfRangeException(nameof(visibility));
+        }
+        if (addressOrganizationId == Guid.Empty)
+        {
+            throw new ArgumentException("Organization id cannot be empty.", nameof(addressOrganizationId));
+        }
+        if (changedAtUtc is { } changedAt
+            && (changedAt == default || changedAt.Kind != DateTimeKind.Utc))
+        {
+            throw new ArgumentException("Governance time must be a non-default UTC value.", nameof(changedAtUtc));
+        }
+
+        EnsureNotErased();
+        if (visibility == LocationAddressVisibilityEnum.TenantApproved
+            && LocationKindId == (int)LocationKindEnum.PrivateHome)
+        {
+            throw new InvalidOperationException("Private Home addresses cannot be tenant-approved.");
+        }
+        if (visibility is LocationAddressVisibilityEnum.Quarantined
+                or LocationAddressVisibilityEnum.CreatorPrivate
+            && addressOrganizationId.HasValue)
+        {
+            throw new ArgumentException(
+                "Quarantined and creator-private addresses cannot have an organization scope.",
+                nameof(addressOrganizationId));
+        }
+        if (visibility == LocationAddressVisibilityEnum.OrganizationScoped
+            && !addressOrganizationId.HasValue)
+        {
+            throw new ArgumentException(
+                "Organization-scoped addresses require an organization id.",
+                nameof(addressOrganizationId));
+        }
+        if (visibility == LocationAddressVisibilityEnum.TenantApproved)
+        {
+            EnsureCurrentDerivedKeys();
+        }
+
+        AddressSourceId = (int)source;
+        AddressSourceLookup = null;
+        AddressVisibilityId = (int)visibility;
+        AddressVisibilityLookup = null;
+        AddressOrganizationId = addressOrganizationId;
+        AddressOrganizationTenant = null;
+        CreatedBy ??= actorId;
+        if (changedAtUtc is { } auditedAt)
+        {
+            UpdatedAt = auditedAt;
+            UpdatedBy = actorId;
+            ConcurrencyStamp = Guid.CreateVersion7();
+        }
+    }
+
+    public bool PromoteAddressToTenantApproved(Guid actorId, DateTime changedAtUtc)
+    {
+        if (actorId == Guid.Empty)
+        {
+            throw new ArgumentException("Actor id is required.", nameof(actorId));
+        }
+        if (changedAtUtc == default || changedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Promotion time must be a non-default UTC value.", nameof(changedAtUtc));
+        }
+
+        EnsureNotErased();
+        if (LocationKindId == (int)LocationKindEnum.PrivateHome)
+        {
+            throw new InvalidOperationException("Private Home addresses cannot be tenant-approved.");
+        }
+        if (LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Active || Pii is null)
+        {
+            throw new InvalidOperationException("Only an active address can be tenant-approved.");
+        }
+        if (AddressVisibilityId != (int)LocationAddressVisibilityEnum.Quarantined
+            && AddressVisibilityId != (int)LocationAddressVisibilityEnum.CreatorPrivate
+            && AddressVisibilityId != (int)LocationAddressVisibilityEnum.OrganizationScoped
+            && AddressVisibilityId != (int)LocationAddressVisibilityEnum.TenantApproved)
+        {
+            throw new InvalidOperationException("The current address visibility cannot be tenant-approved.");
+        }
+
+        bool keysChanged = EnsureCurrentDerivedKeys();
+        if (AddressVisibilityId == (int)LocationAddressVisibilityEnum.TenantApproved && !keysChanged)
+        {
+            return false;
+        }
+
+        AddressVisibilityId = (int)LocationAddressVisibilityEnum.TenantApproved;
+        AddressVisibilityLookup = null;
+        UpdatedAt = changedAtUtc;
+        UpdatedBy = actorId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return true;
     }
 
     public void ClassifyAsPrivateHome(Guid currentUserId)
@@ -184,6 +326,10 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
         }
 
         EnsureNotErased();
+        if (AddressVisibilityId == (int)LocationAddressVisibilityEnum.TenantApproved)
+        {
+            throw new InvalidOperationException("Tenant-approved addresses cannot be classified as Private Home.");
+        }
         if (LocationKindId == (int)LocationKindEnum.PrivateHome)
         {
             if (OwnerUserId == currentUserId)
@@ -281,10 +427,14 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
         _pii = null;
         OwnerUserId = null;
         OwnerUser = null;
+        AddressVisibilityId = (int)LocationAddressVisibilityEnum.Quarantined;
+        AddressVisibilityLookup = null;
+        AddressOrganizationId = null;
+        AddressOrganizationTenant = null;
         LocationPrivacyStateId = (int)LocationPrivacyStateEnum.Erased;
         PiiErasedAtUtc = erasedAtUtc.ToUniversalTime();
         PiiErasureReason = reason;
-        _fullName = ErasedPrivateVenueLabel;
+        SetFullName(ErasedPrivateVenueLabel);
         _city = string.Empty;
 
         foreach (var room in Rooms)
@@ -297,10 +447,52 @@ public class Location : ITenantEntity, IAuditableEntity, IConcurrencyAware
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
-    private LocationPii RequireMutablePii()
+    private void SetFullName(string value)
     {
-        EnsureNotErased();
-        return Pii ?? throw new InvalidOperationException("Location PII has not been provided.");
+        string displaySortKey = LocationDisplaySortKeyV1.Create(value);
+        _fullName = value;
+        DisplaySortKey = displaySortKey;
+        DisplaySortKeyVersion = LocationDisplaySortKeyV1.Version;
+    }
+
+    internal bool HasCurrentDerivedKeys()
+    {
+        if (LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Active || Pii is null)
+        {
+            return false;
+        }
+
+        string currentDisplaySortKey = LocationDisplaySortKeyV1.Create(FullName);
+        string currentAddressSubstringKey = LocationAddressSubstringKeyV1.Create(Pii.Address);
+        return DisplaySortKeyVersion == LocationDisplaySortKeyV1.Version
+            && string.Equals(DisplaySortKey, currentDisplaySortKey, StringComparison.Ordinal)
+            && Pii.HasCurrentAddressSubstringKey(currentAddressSubstringKey);
+    }
+
+    private bool EnsureCurrentDerivedKeys()
+    {
+        if (LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Active || Pii is null)
+        {
+            throw new InvalidOperationException("Current derived keys require active address PII.");
+        }
+
+        string currentDisplaySortKey = LocationDisplaySortKeyV1.Create(FullName);
+        string currentAddressSubstringKey = LocationAddressSubstringKeyV1.Create(Pii.Address);
+        bool displayChanged = DisplaySortKeyVersion != LocationDisplaySortKeyV1.Version
+            || !string.Equals(DisplaySortKey, currentDisplaySortKey, StringComparison.Ordinal);
+        bool addressChanged = !Pii.HasCurrentAddressSubstringKey(currentAddressSubstringKey);
+
+        if (displayChanged)
+        {
+            DisplaySortKey = currentDisplaySortKey;
+            DisplaySortKeyVersion = LocationDisplaySortKeyV1.Version;
+        }
+        if (addressChanged)
+        {
+            Pii.SetCurrentAddressSubstringKey(currentAddressSubstringKey);
+        }
+
+        return displayChanged || addressChanged;
     }
 
     private void EnsureNotErased()

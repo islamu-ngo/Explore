@@ -141,14 +141,10 @@ public sealed class DiscoveryPostgisSeparationArchitectureTests
             City = "Brussels"
         };
         privateHome.ClassifyAsPrivateHome(Guid.NewGuid());
-        privateHome.AttachPii(new LocationPii
-        {
-            LocationId = locationId,
-            Address = "Private address",
-            Postcode = "1000",
-            Latitude = 50.8466,
-            Longitude = 4.3528
-        });
+        privateHome.SetProviderAddress(
+            "Private address",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.8466, 4.3528));
 
         var propertyNames = privateHome.GetType()
             .GetProperties()

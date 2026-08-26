@@ -1,7 +1,8 @@
 // ABOUTME: FluentValidation rules for grouped Location PATCH payloads.
-// ABOUTME: Validates per-property groups and explicit clear semantics for nullable fields.
+// ABOUTME: Validates optional groups through explicit nullable control flow without suppression.
 
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace Explore.Application.DTOs.Location.Validators;
 
@@ -9,45 +10,72 @@ public class UpdateLocationDtoValidator : AbstractValidator<UpdateLocationDto>
 {
     public UpdateLocationDtoValidator()
     {
-        RuleFor(dto => dto.FullName!)
-            .SetValidator(new UpdateLocationFullNameDtoValidator())
-            .When(dto => dto.FullName is not null);
+        var fullNameValidator = new UpdateLocationFullNameDtoValidator();
+        var addressValidator = new UpdateLocationAddressDtoValidator();
+        var postcodeValidator = new UpdateLocationPostcodeDtoValidator();
+        var countryValidator = new UpdateLocationCountryDtoValidator();
+        var cityValidator = new UpdateLocationCityDtoValidator();
+        var timezoneValidator = new UpdateLocationTimezoneDtoValidator();
 
-        RuleFor(dto => dto.Address!)
-            .SetValidator(new UpdateLocationAddressDtoValidator())
-            .When(dto => dto.Address is not null);
-
-        RuleFor(dto => dto.Postcode!)
-            .SetValidator(new UpdateLocationPostcodeDtoValidator())
-            .When(dto => dto.Postcode is not null);
-
-        RuleFor(dto => dto.Country!)
-            .SetValidator(new UpdateLocationCountryDtoValidator())
-            .When(dto => dto.Country is not null);
-
-        RuleFor(dto => dto.City!)
-            .SetValidator(new UpdateLocationCityDtoValidator())
-            .When(dto => dto.City is not null);
-
-        RuleFor(dto => dto.Latitude!)
-            .SetValidator(new UpdateLocationLatitudeDtoValidator())
-            .When(dto => dto.Latitude is not null);
-
-        RuleFor(dto => dto.Longitude!)
-            .SetValidator(new UpdateLocationLongitudeDtoValidator())
-            .When(dto => dto.Longitude is not null);
-
-        RuleFor(dto => dto.Timezone!)
-            .SetValidator(new UpdateLocationTimezoneDtoValidator())
-            .When(dto => dto.Timezone is not null);
-
-        RuleFor(dto => dto)
-            .Must(HasAtomicCoordinateUpdate)
-            .WithMessage("Latitude and longitude must be updated together as a complete pair or both cleared.");
+        RuleFor(dto => dto).Custom((dto, context) =>
+        {
+            if (dto.FullName is { } fullName)
+            {
+                AddFailures(context, nameof(dto.FullName), fullNameValidator.Validate(fullName));
+            }
+            if (dto.Address is { } address)
+            {
+                AddFailures(context, nameof(dto.Address), addressValidator.Validate(address));
+            }
+            if (dto.Postcode is { } postcode)
+            {
+                AddFailures(context, nameof(dto.Postcode), postcodeValidator.Validate(postcode));
+            }
+            if (dto.Country is { } country)
+            {
+                AddFailures(context, nameof(dto.Country), countryValidator.Validate(country));
+            }
+            if (dto.City is { } city)
+            {
+                AddFailures(context, nameof(dto.City), cityValidator.Validate(city));
+            }
+            if (dto.Timezone is { } timezone)
+            {
+                AddFailures(context, nameof(dto.Timezone), timezoneValidator.Validate(timezone));
+            }
+        });
 
         RuleFor(dto => dto)
             .Must(HasAnyGroup)
             .WithMessage("At least one location update group must be provided.");
+
+        RuleFor(dto => dto.AddressSelectionToken)
+            .NotEmpty()
+            .MaximumLength(8192)
+            .When(dto => dto.AddressSelectionToken is not null);
+
+        RuleFor(dto => dto.OrganizationId)
+            .NotEqual(Guid.Empty)
+            .When(dto => dto.OrganizationId.HasValue);
+
+        RuleFor(dto => dto)
+            .Must(HasUnambiguousAddressInput)
+            .WithMessage(
+                "AddressSelectionToken cannot be combined with manual location update groups.");
+    }
+
+    private static void AddFailures(
+        ValidationContext<UpdateLocationDto> context,
+        string groupName,
+        ValidationResult result)
+    {
+        foreach (ValidationFailure failure in result.Errors)
+        {
+            string propertyName = string.IsNullOrEmpty(failure.PropertyName)
+                ? groupName
+                : $"{groupName}.{failure.PropertyName}";
+            context.AddFailure(propertyName, failure.ErrorMessage);
+        }
     }
 
     private static bool HasAnyGroup(UpdateLocationDto dto) =>
@@ -56,24 +84,19 @@ public class UpdateLocationDtoValidator : AbstractValidator<UpdateLocationDto>
         dto.Postcode is not null ||
         dto.Country is not null ||
         dto.City is not null ||
-        dto.Latitude is not null ||
-        dto.Longitude is not null ||
-        dto.Timezone is not null;
+        dto.Timezone is not null ||
+        dto.AddressSelectionToken is not null;
 
-    private static bool HasAtomicCoordinateUpdate(UpdateLocationDto dto)
-    {
-        if (dto.Latitude is null && dto.Longitude is null)
-        {
-            return true;
-        }
-
-        return dto.Latitude is not null
-            && dto.Longitude is not null
-            && dto.Latitude.Value.HasValue
-            && dto.Longitude.Value.HasValue
-            && dto.Latitude.Value.Value.HasValue == dto.Longitude.Value.Value.HasValue;
-    }
+    private static bool HasUnambiguousAddressInput(UpdateLocationDto dto) =>
+        dto.AddressSelectionToken is null
+        || (dto.FullName is null
+            && dto.Address is null
+            && dto.Postcode is null
+            && dto.Country is null
+            && dto.City is null
+            && dto.Timezone is null);
 }
+
 public class UpdateLocationFullNameDtoValidator : AbstractValidator<UpdateLocationFullNameDto>
 {
     public UpdateLocationFullNameDtoValidator()
@@ -121,36 +144,6 @@ public class UpdateLocationCityDtoValidator : AbstractValidator<UpdateLocationCi
         RuleFor(dto => dto.Value)
             .NotEmpty().WithMessage("City is required.")
             .MaximumLength(500).WithMessage("City must not exceed 500 characters.");
-    }
-}
-
-public class UpdateLocationLatitudeDtoValidator : AbstractValidator<UpdateLocationLatitudeDto>
-{
-    public UpdateLocationLatitudeDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Value.HasValue)
-            .WithMessage("Latitude group must include Value.");
-
-        RuleFor(dto => dto.Value.Value)
-            .InclusiveBetween(-90, 90)
-            .When(dto => dto.Value.HasValue && dto.Value.Value.HasValue)
-            .WithMessage("Latitude must be between -90 and 90.");
-    }
-}
-
-public class UpdateLocationLongitudeDtoValidator : AbstractValidator<UpdateLocationLongitudeDto>
-{
-    public UpdateLocationLongitudeDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Value.HasValue)
-            .WithMessage("Longitude group must include Value.");
-
-        RuleFor(dto => dto.Value.Value)
-            .InclusiveBetween(-180, 180)
-            .When(dto => dto.Value.HasValue && dto.Value.Value.HasValue)
-            .WithMessage("Longitude must be between -180 and 180.");
     }
 }
 

@@ -173,20 +173,17 @@ public class EfCoreUnitOfWorkTests
                 TenantStatus = null!
             });
 
-            seedContext.Set<Location>().Add(new Location
+            var location = new Location
             {
                 Id = locationId,
                 FullName = "Concurrency Test Location",
                 Country = "BE",
                 City = "Brussels",
-                Pii = new LocationPii
-                {
-                    Address = "123 Test Street",
-                    Postcode = "1000"
-                },
                 TenantId = tenantId,
                 Tenant = null!
-            });
+            };
+            location.SetManualAddress("123 Test Street", "1000");
+            seedContext.Set<Location>().Add(location);
 
             seedContext.Set<LocationRoom>().Add(new LocationRoom
             {

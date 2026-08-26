@@ -95,6 +95,25 @@ Notable cases:
 
 Public Event visibility composes global and tenant-local state without granting cross-scope authority. Local User Events require an active tenant user. Local Organization and Group Events require approved, visible, unsuspended participation, but public reads do not recheck organizer eligibility. Inbound federated Events do not create participation; they require current visible tenant presentation plus a non-tombstoned record and exact active DID identity owned by the global Actor. Tenant context therefore selects presentation and participation, not global moderation authority.
 
+## Governed Local Address Reuse Isolation
+
+Local address reuse is tenant-contained. Persistence applies the ambient tenant plus one eligible
+visibility predicate before exact PII projection: tenant-approved, current creator, or a current
+approved and unsuspended organization participation. A broad city/country enumeration or an
+in-memory authorization filter is not an acceptable substitute.
+
+Promotion receives no caller-controlled tenant or organization. The handler loads through the
+fail-closed tenant-filtered repository, verifies the persisted `Location.TenantId` against
+`ITenantContext`, and authorizes the trusted actor for `approve_tenant_address`. Missing, foreign,
+erased, Private Home, and missing-active-PII targets return the same generic unsuccessful outcome
+without mutation. Promotion cannot move a row between tenants, replace its creator, or reassign its
+organization; an organization reference remains provenance even after tenant-wide approval.
+
+The current local suggestion query is uncached and observes committed promotion immediately. Any
+future cache must include tenant, actor, and organization scope and use exact post-commit tenant-local
+invalidation. Shared cache keys, cross-tenant warmup, exact-address exports, and address or identifier
+logging are forbidden.
+
 ## Support Access Tenant Scoping
 
 Support access is tenant-context support, not user impersonation:

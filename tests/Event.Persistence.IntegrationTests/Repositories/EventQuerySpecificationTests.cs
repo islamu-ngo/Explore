@@ -232,13 +232,9 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             Country = "BE",
             City = "Brussels",
             TenantId = tenantId,
-            Tenant = null!,
-            Pii = new LocationPii
-            {
-                Address = "Public Street 1",
-                Postcode = "1000"
-            }
+            Tenant = null!
         };
+        location.SetManualAddress("Public Street 1", "1000");
         context.Locations.Add(location);
 
         var hiddenOnlyEvent = CreateEvent(

@@ -74,15 +74,12 @@ public sealed class GetEventCalendarExportRequestHandlerTests
             FullName = "PRIVATE-HOME-CALENDAR-CANARY",
             City = "Brussels",
             Country = "Belgium",
-            Pii = new LocationPii
-            {
-                Address = "17 Confidential Crescent",
-                Postcode = "SECRET-1040",
-                Latitude = 50.84673,
-                Longitude = 4.35247
-            },
             Tenant = null!
         };
+        session.Location.SetProviderAddress(
+            "17 Confidential Crescent",
+            "SECRET-1040",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.84673, 4.35247));
         session.Room = new LocationRoom
         {
             Id = Guid.NewGuid(),

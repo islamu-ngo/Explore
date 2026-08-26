@@ -10,7 +10,6 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
-using TUnit.Core;
 
 namespace ApplicationUnitTests.Features.Locations.Commands;
 
@@ -239,12 +238,11 @@ public sealed class PrivateHomeOwnershipCommandHandlerTests
             FullName = "Community Centre",
             Country = "BE",
             City = "Brussels",
-            ConcurrencyStamp = Guid.CreateVersion7(),
-            Tenant = null!
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
 
-        // Address and postcode live in the separate PII aggregate; the venue is only usable with it attached.
-        location.AttachPii(new LocationPii { Address = "Rue Neuve 1", Postcode = "1000" });
+        // Address and postcode are created only through the aggregate's atomic manual transition.
+        location.SetManualAddress("Rue Neuve 1", "1000");
         return location;
     }
 

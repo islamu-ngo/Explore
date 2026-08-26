@@ -18,6 +18,7 @@ using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
+using Explore.Persistence.Queries;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Security;
 using Explore.Persistence.Services;
@@ -325,6 +326,7 @@ public static class PersistenceServicesRegistration
 
         // Location Repository
         services.AddScoped<ILocationRepository, LocationRepository>();
+        services.AddScoped<ILocalAddressSuggestionQuery, LocalAddressSuggestionQuery>();
         services.AddScoped<ILocationRoomRepository, LocationRoomRepository>();
         services.AddScoped<IEventLocationRepository, EventLocationRepository>();
         services.AddScoped<IEventLocationDisclosureAuditRepository, EventLocationDisclosureAuditRepository>();

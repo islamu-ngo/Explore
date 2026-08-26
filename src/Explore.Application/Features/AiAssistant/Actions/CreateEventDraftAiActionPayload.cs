@@ -67,10 +67,6 @@ public sealed class CreateEventDraftLocationPayload
 
     public string? City { get; init; }
 
-    public double? Latitude { get; init; }
-
-    public double? Longitude { get; init; }
-
     public string? Timezone { get; init; }
 }
 

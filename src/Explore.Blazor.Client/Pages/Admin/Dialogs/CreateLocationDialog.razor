@@ -1,40 +1,64 @@
+@* ABOUTME: Collects manual address fields for a new tenant-authorized location. *@
+@* ABOUTME: Raw coordinates are excluded because the browser is not a coordinate-write authority. *@
+
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Locations
 @using Explore.Blazor.Client.Validators
 @using FluentValidation
 @using MudBlazor
 
-<MudDialog>
+<MudDialog Style="max-block-size: calc(100dvh - (2 * var(--isl-space-4)))">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-3 mb-n1" />
+            <MudIcon Icon="@Icons.Material.Filled.Add"
+                     Class="mb-n1"
+                     Style="margin-inline-end: var(--isl-space-3)" />
             Create New Location
         </MudText>
     </TitleContent>
     <DialogContent>
-        <EditForm EditContext="_editContext">
-            <FluentValidationValidator />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
-            <MudNumericField @bind-Value="locationDto.Latitude" Label="Latitude" For="@(() => locationDto.Latitude)" />
-            <MudNumericField @bind-Value="locationDto.Longitude" Label="Longitude" For="@(() => locationDto.Longitude)" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
-        </EditForm>
+        @if (SearchLink is { } searchLink)
+        {
+            <AddressSuggestionCombobox Id="create-location-address-suggestion"
+                                       Label="Find a saved address"
+                                       OrganizationId="OrganizationId"
+                                       SearchLink="searchLink"
+                                       SuggestionSelected="ApplySuggestionAsync" />
+            <MudText Class="my-3" Typo="Typo.body2">
+                Or enter the address manually.
+            </MudText>
+        }
+        <div class="create-location-dialog__manual-fields">
+            <EditForm EditContext="_editContext">
+                <FluentValidationValidator />
+                <MudTextField data-testid="create-location-full-name" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
+                <MudTextField data-testid="create-location-address" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
+                <MudTextField data-testid="create-location-city" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
+                <MudTextField data-testid="create-location-postcode" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
+                <MudTextField data-testid="create-location-country" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
+                <MudTextField data-testid="create-location-timezone" Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
+            </EditForm>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+        <MudButton data-testid="create-location-submit" Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter]
-    private IDialogReference? DialogReference { get; set; }
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public HalLink? SearchLink { get; set; }
+
+    [Parameter]
+    public Guid? OrganizationId { get; set; }
 
     private EditContext _editContext = default!;
     private CreateLocationDto locationDto = new();
+    private HalResourceOfAddressSuggestionDto? _selectedSuggestion;
 
     protected override void OnInitialized()
     {
@@ -45,9 +69,52 @@
     {
         if (_editContext.Validate())
         {
-            DialogReference?.Dismiss(DialogResult.Ok(locationDto));
+            locationDto.OrganizationId = OrganizationId;
+            locationDto.AddressSelectionToken = SelectionMatchesForm()
+                ? _selectedSuggestion?.SelectionToken
+                : null;
+            MudDialog.Close(DialogResult.Ok(locationDto));
         }
     }
 
-    void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+    private Task ApplySuggestionAsync(HalResourceOfAddressSuggestionDto suggestion)
+    {
+        locationDto.FullName = suggestion.DisplayName;
+        locationDto.Address = suggestion.Address;
+        locationDto.Postcode = suggestion.Postcode;
+        locationDto.City = suggestion.City ?? string.Empty;
+        locationDto.Country = suggestion.Country ?? string.Empty;
+        locationDto.Timezone = suggestion.Timezone;
+        _selectedSuggestion = suggestion;
+        return Task.CompletedTask;
+    }
+
+    private bool SelectionMatchesForm() =>
+        _selectedSuggestion is { SelectionToken: not null } selection
+        && string.Equals(
+            locationDto.FullName.Trim(),
+            selection.DisplayName.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            locationDto.Address.Trim(),
+            selection.Address.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            locationDto.Postcode.Trim(),
+            selection.Postcode.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            locationDto.City.Trim(),
+            selection.City?.Trim() ?? string.Empty,
+            StringComparison.Ordinal)
+        && string.Equals(
+            locationDto.Country.Trim(),
+            selection.Country?.Trim() ?? string.Empty,
+            StringComparison.Ordinal)
+        && string.Equals(
+            locationDto.Timezone?.Trim() ?? string.Empty,
+            selection.Timezone?.Trim() ?? string.Empty,
+            StringComparison.Ordinal);
+
+    void Cancel() => MudDialog.Cancel();
 }

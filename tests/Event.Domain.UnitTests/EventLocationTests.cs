@@ -104,7 +104,7 @@ public sealed class EventLocationTests
     {
         var tenantId = Guid.CreateVersion7();
         var location = CreatePhysicalLocation(tenantId);
-        location.AttachPii(new LocationPii { Address = "1 Main Street", Postcode = "1000" });
+        location.SetManualAddress("1 Main Street", "1000");
         var placement = EventLocation.CreatePhysical(
             tenantId,
             Guid.CreateVersion7(),
@@ -116,12 +116,11 @@ public sealed class EventLocationTests
     }
 
     [Test]
-    public async Task EmptyOrWhitespacePhysicalAddressPartsBlockPublication()
+    public async Task EmptyOrWhitespaceLegacyPhysicalAddressPartsBlockPublication()
     {
         var tenantId = Guid.CreateVersion7();
         var location = CreatePhysicalLocation(tenantId);
-        var pii = new LocationPii { Address = string.Empty, Postcode = "1000" };
-        location.AttachPii(pii);
+        location.SetManualAddress("1 Main Street", "1000");
         var placement = EventLocation.CreatePhysical(
             tenantId,
             Guid.CreateVersion7(),
@@ -129,13 +128,13 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             DateTime.UtcNow);
 
+        MaterializeLegacyPii(location, string.Empty, "1000");
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
-        pii.Address = "   ";
+        MaterializeLegacyPii(location, "   ", "1000");
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
-        pii.Address = "1 Main Street";
-        pii.Postcode = string.Empty;
+        MaterializeLegacyPii(location, "1 Main Street", string.Empty);
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
-        pii.Postcode = "   ";
+        MaterializeLegacyPii(location, "1 Main Street", "   ");
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
     }
 
@@ -154,9 +153,9 @@ public sealed class EventLocationTests
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(null)).IsFalse();
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
 
-        location.AttachPii(new LocationPii { Address = "1 Main Street", Postcode = "1000" });
+        location.SetManualAddress("1 Main Street", "1000");
         var anotherLocation = CreatePhysicalLocation(tenantId);
-        anotherLocation.AttachPii(new LocationPii { Address = "2 Main Street", Postcode = "1000" });
+        anotherLocation.SetManualAddress("2 Main Street", "1000");
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(anotherLocation)).IsFalse();
 
         location.TenantId = Guid.CreateVersion7();
@@ -169,7 +168,7 @@ public sealed class EventLocationTests
         var tenantId = Guid.CreateVersion7();
         var location = CreatePhysicalLocation(tenantId);
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
-        location.AttachPii(new LocationPii { Address = "9 Household Lane", Postcode = "1000" });
+        location.SetManualAddress("9 Household Lane", "1000");
         var placement = EventLocation.CreatePhysical(
             tenantId,
             Guid.CreateVersion7(),
@@ -373,6 +372,14 @@ public sealed class EventLocationTests
         Tenant = null!,
         RoomId = roomId
     };
+
+    private static void MaterializeLegacyPii(Location location, string address, string postcode)
+    {
+        LocationPii pii = location.Pii
+            ?? throw new InvalidOperationException("The fixture requires an attached PII row.");
+        typeof(LocationPii).GetProperty(nameof(LocationPii.Address))?.SetValue(pii, address);
+        typeof(LocationPii).GetProperty(nameof(LocationPii.Postcode))?.SetValue(pii, postcode);
+    }
 
     private static Location CreatePhysicalLocation(Guid tenantId) => new()
     {

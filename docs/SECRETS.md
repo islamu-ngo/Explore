@@ -17,6 +17,15 @@ The `Explore.Secrets` library provides a provider-agnostic secret management lay
 
 When `Provider = None`, secrets come exclusively from environment variables and `appsettings.json`. No external provider is contacted.
 
+Optional Photon address geocoding does not use an API key, password, token, or
+client credential. Its endpoint and bounded runtime settings are ordinary
+startup configuration, not secrets. Do not create a Photon secret binding or
+place address queries, normalized provider records, coordinates, selection
+tokens, tenant/user identifiers, or dataset contents in any secret provider.
+If a future contracted geocoder requires credentials, add a separate reviewed
+secret definition and resolver in that provider's approved implementation
+phase; never reuse the Photon configuration surface.
+
 ## Configuration
 
 ### SecretProvider Section

@@ -3,6 +3,7 @@
 
 using Explore.API.Configuration;
 using Explore.API.Extensions;
+using Explore.API.Filters;
 using Explore.API.Mcp;
 using Explore.API.Middleware;
 using Explore.ServiceDefaults.HealthChecks;
@@ -93,6 +94,7 @@ public static class ApiHostApplicationExtensions
         pipeline.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
         pipeline.UseMiddleware<McpRuntimeGateMiddleware>();
         pipeline.UseRequestLocalization();
+        pipeline.UseMiddleware<PrivateNoStoreMiddleware>();
         pipeline.UseRateLimiter();
         pipeline.UseAuthorization();
         pipeline.UseMiddleware<IdempotencyMiddleware>();

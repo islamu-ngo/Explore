@@ -135,8 +135,8 @@ public sealed class OpenApiParityTests
         CompareKeycloakSecurityScheme(nativeDocument, swashbuckleDocument, differences);
 
         string expected = $"{authority}/protocol/openid-connect/auth";
-        await Assert.That(KeycloakAuthorizationUrl(nativeDocument)).IsEqualTo(expected);
-        await Assert.That(KeycloakAuthorizationUrl(swashbuckleDocument)).IsEqualTo(expected);
+        await Assert.That(GetKeycloakAuthorizationUrl(nativeDocument)).IsEqualTo(expected);
+        await Assert.That(GetKeycloakAuthorizationUrl(swashbuckleDocument)).IsEqualTo(expected);
         await Assert.That(differences).IsEmpty();
     }
 
@@ -328,7 +328,7 @@ public sealed class OpenApiParityTests
     private static bool HasKeycloakSecurityScheme(JsonDocument document)
         => TryGetKeycloakSecurityScheme(document, out _);
 
-    private static string? KeycloakAuthorizationUrl(JsonDocument document) =>
+    private static string? GetKeycloakAuthorizationUrl(JsonDocument document) =>
         TryGetKeycloakSecurityScheme(document, out JsonElement scheme)
             ? GetStringProperty(scheme.GetProperty("flows").GetProperty("implicit"), "authorizationUrl")
             : null;

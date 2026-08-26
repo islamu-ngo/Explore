@@ -145,12 +145,7 @@ public sealed class LocationPrivacyOutboxMessageFactoryTests
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
         home.ClassifyAsPrivateHome(Guid.CreateVersion7());
-        home.AttachPii(new LocationPii
-        {
-            LocationId = home.Id,
-            Address = "ADDRESS-CANARY",
-            Postcode = "1000",
-        });
+        home.SetManualAddress("ADDRESS-CANARY", "1000");
         home.Rooms =
         [
             new LocationRoom

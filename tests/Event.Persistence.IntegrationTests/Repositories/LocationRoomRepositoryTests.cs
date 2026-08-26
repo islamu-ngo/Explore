@@ -107,9 +107,9 @@ public class LocationRoomRepositoryTests
             Country = "UK",
             City = "Manchester",
             TenantId = tenant.Id,
-            Tenant = tenant,
-            Pii = new LocationPii { Address = "456 Other St", Postcode = "M1 2AB" }
+            Tenant = tenant
         };
+        location2.SetManualAddress("456 Other St", "M1 2AB");
         context.Locations.Add(location2);
         await context.SaveChangesAsync();
 
@@ -146,9 +146,9 @@ public class LocationRoomRepositoryTests
             Country = "FR",
             City = "Paris",
             TenantId = tenant.Id,
-            Tenant = tenant,
-            Pii = new LocationPii { Address = "123 Test Blvd", Postcode = "75001" }
+            Tenant = tenant
         };
+        location.SetManualAddress("123 Test Blvd", "75001");
         context.Locations.Add(location);
         await context.SaveChangesAsync();
 

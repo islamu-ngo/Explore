@@ -1,4 +1,8 @@
+@* ABOUTME: Edits manual location address fields while preserving the separate private-home consent workflow. *@
+@* ABOUTME: Address edits send no coordinates because the server clears stale coordinate state atomically. *@
+
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Locations
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Pages.Events.Components
 @using Explore.Blazor.Client.Validators
@@ -6,14 +10,29 @@
 @using MudBlazor
 @inject IDialogService DialogService
 
-<MudDialog>
+<MudDialog Style="max-block-size: calc(100dvh - (2 * var(--isl-space-4)))">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3 mb-n1" />
+            <MudIcon Icon="@Icons.Material.Filled.Edit"
+                     Class="mb-n1"
+                     Style="margin-inline-end: var(--isl-space-3)" />
             Edit Location
         </MudText>
     </TitleContent>
     <DialogContent>
+        @if (SearchLink is { } searchLink)
+        {
+            <AddressSuggestionCombobox Id="edit-location-address-suggestion"
+                                       Label="Find a saved address"
+                                       OrganizationId="OrganizationId"
+                                       LocationId="ExistingLocation.Id"
+                                       ExpectedConcurrencyStamp="ExistingLocation.ConcurrencyStamp"
+                                       SearchLink="searchLink"
+                                       SuggestionSelected="ApplySuggestionAsync" />
+            <MudText Class="my-3" Typo="Typo.body2">
+                Or update the address manually.
+            </MudText>
+        }
         @* Ownership is a consent decision, not a form field: it is never saved as part of the address edit. *@
         <div class="edit-location__ownership mb-3">
             <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Primary"
@@ -26,31 +45,38 @@
             </MudButton>
         </div>
 
-        <EditForm EditContext="_editContext">
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.FullName" Label="Name" Required="true" RequiredError="Name is required." />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Address" Label="Address" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.City" Label="City" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Postcode" Label="Postcode" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Country" Label="Country" />
-            <MudNumericField @bind-Value="_form.Latitude" Label="Latitude" />
-            <MudNumericField @bind-Value="_form.Longitude" Label="Longitude" />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_form.Timezone" Label="Timezone" />
-        </EditForm>
+        <div class="edit-location-dialog__manual-fields">
+            <EditForm EditContext="_editContext">
+                <MudTextField data-testid="edit-location-full-name" Variant="Variant.Outlined" T="string" @bind-Value="_form.FullName" Label="Name" Required="true" RequiredError="Name is required." />
+                <MudTextField data-testid="edit-location-address" Variant="Variant.Outlined" T="string" @bind-Value="_form.Address" Label="Address" />
+                <MudTextField data-testid="edit-location-city" Variant="Variant.Outlined" T="string" @bind-Value="_form.City" Label="City" />
+                <MudTextField data-testid="edit-location-postcode" Variant="Variant.Outlined" T="string" @bind-Value="_form.Postcode" Label="Postcode" />
+                <MudTextField data-testid="edit-location-country" Variant="Variant.Outlined" T="string" @bind-Value="_form.Country" Label="Country" />
+                <MudTextField data-testid="edit-location-timezone" Variant="Variant.Outlined" T="string" @bind-Value="_form.Timezone" Label="Timezone" />
+            </EditForm>
+        </div>
     </DialogContent>
     <DialogActions>
-        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Update</MudButton>
+        <MudButton Elevation="0" Color="Color.Default" Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton data-testid="edit-location-submit" Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter]
-    private IDialogReference? DialogReference { get; set; }
+    private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter] public LocationDto ExistingLocation { get; set; }
 
+    [Parameter]
+    public HalLink? SearchLink { get; set; }
+
+    [Parameter]
+    public Guid? OrganizationId { get; set; }
+
     private EditContext _editContext = default!;
     private LocationEditForm _form = new();
+    private HalResourceOfAddressSuggestionDto? _selectedSuggestion;
 
     protected override void OnInitialized()
     {
@@ -61,8 +87,6 @@
             City = ExistingLocation.City ?? string.Empty,
             Postcode = ExistingLocation.Postcode ?? string.Empty,
             Country = ExistingLocation.Country ?? string.Empty,
-            Latitude = ExistingLocation.Latitude,
-            Longitude = ExistingLocation.Longitude,
             Timezone = ExistingLocation.Timezone
         };
 
@@ -78,21 +102,23 @@
                 return;
             }
 
-            DialogReference?.Dismiss(DialogResult.Ok(new UpdateLocationDto
+            if (SelectionMatchesForm())
+            {
+                MudDialog.Close(DialogResult.Ok(new UpdateLocationDto
+                {
+                    AddressSelectionToken = _selectedSuggestion!.SelectionToken,
+                    OrganizationId = OrganizationId
+                }));
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(new UpdateLocationDto
             {
                 FullName = new UpdateLocationFullNameDto { Value = _form.FullName.Trim() },
                 Address = new UpdateLocationAddressDto { Value = _form.Address.Trim() },
                 City = new UpdateLocationCityDto { Value = _form.City.Trim() },
                 Postcode = new UpdateLocationPostcodeDto { Value = _form.Postcode.Trim() },
                 Country = new UpdateLocationCountryDto { Value = _form.Country.Trim() },
-                Latitude = new UpdateLocationLatitudeDto
-                {
-                    Value = new OptionalUpdateOfdouble { HasValue = true, Value = _form.Latitude }
-                },
-                Longitude = new UpdateLocationLongitudeDto
-                {
-                    Value = new OptionalUpdateOfdouble { HasValue = true, Value = _form.Longitude }
-                },
                 Timezone = new UpdateLocationTimezoneDto
                 {
                     Value = new OptionalUpdateOfstring
@@ -100,12 +126,52 @@
                         HasValue = true,
                         Value = string.IsNullOrWhiteSpace(_form.Timezone) ? null : _form.Timezone.Trim()
                     }
-                }
+                },
+                OrganizationId = OrganizationId
             }));
         }
     }
 
-    void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+    private Task ApplySuggestionAsync(HalResourceOfAddressSuggestionDto suggestion)
+    {
+        _form.FullName = suggestion.DisplayName;
+        _form.Address = suggestion.Address;
+        _form.Postcode = suggestion.Postcode;
+        _form.City = suggestion.City ?? string.Empty;
+        _form.Country = suggestion.Country ?? string.Empty;
+        _form.Timezone = suggestion.Timezone;
+        _selectedSuggestion = suggestion;
+        return Task.CompletedTask;
+    }
+
+    private bool SelectionMatchesForm() =>
+        _selectedSuggestion is { SelectionToken: not null } selection
+        && string.Equals(
+            _form.FullName.Trim(),
+            selection.DisplayName.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            _form.Address.Trim(),
+            selection.Address.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            _form.Postcode.Trim(),
+            selection.Postcode.Trim(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            _form.City.Trim(),
+            selection.City?.Trim() ?? string.Empty,
+            StringComparison.Ordinal)
+        && string.Equals(
+            _form.Country.Trim(),
+            selection.Country?.Trim() ?? string.Empty,
+            StringComparison.Ordinal)
+        && string.Equals(
+            _form.Timezone?.Trim() ?? string.Empty,
+            selection.Timezone?.Trim() ?? string.Empty,
+            StringComparison.Ordinal);
+
+    void Cancel() => MudDialog.Cancel();
 
     /// <summary>Private Home lookup id; kept local because the client never persists lookup tables.</summary>
     private const int PrivateHomeLocationKindId = 5;
@@ -134,8 +200,6 @@
         public string City { get; set; } = string.Empty;
         public string Postcode { get; set; } = string.Empty;
         public string Country { get; set; } = string.Empty;
-        public double? Latitude { get; set; }
-        public double? Longitude { get; set; }
         public string? Timezone { get; set; }
     }
 }

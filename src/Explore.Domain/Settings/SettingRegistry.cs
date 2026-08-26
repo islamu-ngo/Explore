@@ -43,6 +43,7 @@ public static class SettingRegistry
         all.AddRange(McpSettingDefinitions.All);
         all.AddRange(AtprotoFederationSettingDefinitions.All);
         all.AddRange(LocationPrivacySettingDefinitions.All);
+        all.AddRange(AddressGovernanceSettingDefinitions.All);
         all.AddRange(AiAssistantSettingDefinitions.All);
         all.AddRange(AiAssistantPreferenceSettingDefinitions.All);
         all.AddRange(UiShellSettingDefinitions.All);

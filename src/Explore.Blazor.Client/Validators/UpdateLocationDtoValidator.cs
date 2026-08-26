@@ -21,8 +21,6 @@ public class UpdateLocationDtoValidator : AbstractValidator<UpdateLocationDto>
                 x.Postcode is not null ||
                 x.Country is not null ||
                 x.City is not null ||
-                x.Latitude is not null ||
-                x.Longitude is not null ||
                 x.Timezone is not null)
             .WithMessage("At least one location update group must be provided.");
     }

@@ -68,11 +68,43 @@ public sealed class LocationCollectionLinkPolicy : ICollectionLinkPolicy<Locatio
             new { id = dto.Id },
             "GET",
             dto.FullName);
+
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateLocation,
+            new { id = dto.Id },
+            "PATCH",
+            "Update location",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Update,
+                ResourceDescriptors.LocationList,
+                dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.Delete,
+            RouteNames.DeleteLocation,
+            new { id = dto.Id },
+            "DELETE",
+            "Delete location",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Delete,
+                ResourceDescriptors.LocationList,
+                dto);
     }
 
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield return new LinkDefinition(
+            LinkRelations.AddressSuggestions,
+            RouteNames.GetAddressSuggestions,
+            null,
+            "POST",
+            "Search address suggestions",
+            RequiresAuth: true);
+
         // Create link - requires authentication
         yield return new LinkDefinition(
             "create",

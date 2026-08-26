@@ -154,8 +154,6 @@ public static class CreateEventDraftAiToolDefinition
                 "postcode": { "type": "string", "maxLength": 500 },
                 "country": { "type": "string", "maxLength": 500 },
                 "city": { "type": "string", "maxLength": 500 },
-                "latitude": { "type": "number" },
-                "longitude": { "type": "number" },
                 "timezone": { "type": "string", "maxLength": 500 }
               }
             },

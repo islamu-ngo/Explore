@@ -491,15 +491,10 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        location.AttachPii(new LocationPii
-        {
-            LocationId = location.Id,
-            Location = location,
-            Address = "Canary street 1",
-            Postcode = "1000",
-            Latitude = 50.85,
-            Longitude = 4.35
-        });
+        location.SetProviderAddress(
+            "Canary street 1",
+            "1000",
+            Explore.Domain.ValueObjects.GeoCoordinate.Create(50.85, 4.35));
         var room = new LocationRoom
         {
             Id = Guid.CreateVersion7(),

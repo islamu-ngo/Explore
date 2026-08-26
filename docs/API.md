@@ -152,7 +152,16 @@ A private home is somebody's household, so ownership is claimed by the incoming 
 - `POST /api/location/{id}/private-home` classifies a location as a private home and records the authenticated actor as its consenting owner.
 - `POST /api/location/{id}/private-home/ownership` transfers ownership to the authenticated actor. The domain requires the consenting user and the new owner to be the same person.
 - Both require the current concurrency stamp in `If-Match` and a body containing `consentAcknowledged: true` plus a `consentVersion`. A missing or false acknowledgement is a refusal, not a default, and is rejected before the location is loaded.
+- `CreateLocationDto`, `UpdateLocationDto`, and nested event creation's `CreateEventLocationDto` accept manual address fields but no raw `latitude` or `longitude`. Manual address transitions clear any previously derived coordinates; clients must remove coordinate controls and assignments rather than send aliases. Authorized reads are unchanged: `LocationDto` and purpose-specific attendee/management/disclosure field contracts retain their policy-controlled coordinate values.
 - The generic geographic browse routes `GET /api/location/by-city/{city}` and `GET /api/location/by-country/{country}` are removed. They enumerated exact venue addresses, including private homes, without any disclosure evaluation.
+
+### Private Address Acquisition
+
+- `POST /api/geocoding/address-suggestions` accepts only `searchText`, `limit`, and an optional organization target. Tenant, actor, provider, credentials, coordinates, source, and visibility are server-owned.
+- The operation is authenticated, bounded by the dedicated `AddressSuggestions` rate-limit policy, and always returns `Cache-Control: private, no-store`, including validation, authorization, and throttling errors. Request bodies and search text are not logged.
+- Provider `None` still returns eligible local rows. The Application handler derives tenant and user context, and Persistence enforces active tenant/user membership plus creator, organization, or tenant-approved visibility in one query.
+- Results are a HAL collection containing source, visibility, concurrency, and links. Clients invoke tenant approval only when `_links["approve-tenant-address"]` is present; the named `POST /api/location/{id}/address-approval` operation requires the current concurrency stamp in `If-Match`.
+- Browser calls use the existing `/api/*` BFF proxy. Unsafe requests require antiforgery; browser-supplied bearer, API-key, and tenant headers are removed before forwarding.
 
 ### Template Sync Endpoints
 
@@ -1338,12 +1347,15 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 Public HAL detail wrappers must be registered in `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`. If a new `HalResourceOf*Dto` wrapper is omitted, OpenAPI can emit an empty wrapper schema and generated clients lose the DTO fields even though runtime HAL responses are correct.
 
-For lifecycle contract changes, the current safe regeneration path is:
+For contract changes, regenerate from server DTOs in this order:
 
 ```bash
-dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
-dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
+dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal -maxcpucount:1
+dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress
+dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
 ```
+
+The API build is the provenance for `schemas/openapi_islamu-event.json`; the named integration test generates `docs/API_CONTRACT_INVENTORY.md`; the NSwag target consumes that schema and generates `Clients/EventApiClient.g.cs`. These artifacts are never hand-edited.
 
 The generated contract now includes `ImportEvent`, `CreateDraftEventSession`, `ScheduleEventSession`, `PublishEventSession`, `CancelEventSession`, `CompleteEventSession`, and `ArchiveEventSession` operations. NSwag emits nullable client properties for draft-capable session schedule fields, so callers must handle `DateTimeOffset?` and `TimeSpan?` for session schedule/local projections.
 

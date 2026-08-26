@@ -9,9 +9,19 @@ namespace Explore.API.Filters;
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class PrivateNoStoreAttribute : ActionFilterAttribute
 {
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        Apply(context.HttpContext);
+    }
+
     public override void OnResultExecuting(ResultExecutingContext context)
     {
-        context.HttpContext.Response.Headers[HeaderNames.CacheControl] = "private, no-store";
-        context.HttpContext.Response.Headers["Referrer-Policy"] = "no-referrer";
+        Apply(context.HttpContext);
+    }
+
+    private static void Apply(HttpContext context)
+    {
+        context.Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
     }
 }
