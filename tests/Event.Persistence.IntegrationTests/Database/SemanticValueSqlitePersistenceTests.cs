@@ -139,8 +139,14 @@ public sealed class SemanticValueSqlitePersistenceTests
 
     [Test]
     [Arguments("CK_EventTicketType_MoneyNonnegative", InvariantMutation.NegativeTicketAmount)]
+    [Arguments("CK_EventTicketType_MoneyNonnegative", InvariantMutation.NegativeMinimumTicketAmount)]
+    [Arguments("CK_EventTicketType_MoneyNonnegative", InvariantMutation.NegativeSuggestedTicketAmount)]
     [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.PartialCoordinate)]
+    [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.PartialCoordinateMissingLatitude)]
     [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.OutOfRangeCoordinate)]
+    [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.LatitudeBelowRange)]
+    [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.LongitudeAboveRange)]
+    [Arguments("CK_LocationPii_CoordinateShape", InvariantMutation.LongitudeBelowRange)]
     [Arguments("CK_EventAgendaItem_LocalDateRange", InvariantMutation.ReversedAgendaLocalDates)]
     [Arguments("CK_EventSession_LocalDateRange", InvariantMutation.ReversedSessionLocalDates)]
     [Arguments("CK_EventAgendaItem_EndAfterStart", InvariantMutation.ReversedAgendaUtcRange)]
@@ -233,14 +239,29 @@ public sealed class SemanticValueSqlitePersistenceTests
         switch (mutation)
         {
             case InvariantMutation.NegativeTicketAmount:
+            case InvariantMutation.NegativeMinimumTicketAmount:
+            case InvariantMutation.NegativeSuggestedTicketAmount:
+            {
                 Guid tenantId = Guid.CreateVersion7();
                 EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, Guid.CreateVersion7(), "EUR", 1);
-                EventTicketType ticket = CreateTicket(catalog, "Invariant ticket", TicketPricingModeEnum.Fixed, Money.Create(100, "EUR"), null, null);
+                bool fixedPrice = mutation == InvariantMutation.NegativeTicketAmount;
+                EventTicketType ticket = CreateTicket(
+                    catalog,
+                    "Invariant ticket",
+                    fixedPrice ? TicketPricingModeEnum.Fixed : TicketPricingModeEnum.SlidingScale,
+                    fixedPrice ? Money.Create(100, "EUR") : null,
+                    fixedPrice ? null : Money.Create(50, "EUR"),
+                    fixedPrice ? null : Money.Create(75, "EUR"));
                 catalog.AddTicketType(ticket, null);
                 context.Add(catalog);
                 break;
+            }
             case InvariantMutation.PartialCoordinate:
+            case InvariantMutation.PartialCoordinateMissingLatitude:
             case InvariantMutation.OutOfRangeCoordinate:
+            case InvariantMutation.LatitudeBelowRange:
+            case InvariantMutation.LongitudeAboveRange:
+            case InvariantMutation.LongitudeBelowRange:
                 LocationPii pii = LocationPii.Create("Invariant coordinate street", "1000", GeoCoordinate.Create(50.8503, 4.3517));
                 context.Add(CreateLocation(pii));
                 break;
@@ -273,8 +294,14 @@ public sealed class SemanticValueSqlitePersistenceTests
     private static string MutationSql(InvariantMutation mutation) => mutation switch
     {
         InvariantMutation.NegativeTicketAmount => "UPDATE ie_event_ticket_types SET fixed_price_minor = -1",
+        InvariantMutation.NegativeMinimumTicketAmount => "UPDATE ie_event_ticket_types SET minimum_price_minor = -1",
+        InvariantMutation.NegativeSuggestedTicketAmount => "UPDATE ie_event_ticket_types SET suggested_price_minor = -1",
         InvariantMutation.PartialCoordinate => "UPDATE ie_location_pii SET longitude = NULL",
+        InvariantMutation.PartialCoordinateMissingLatitude => "UPDATE ie_location_pii SET latitude = NULL",
         InvariantMutation.OutOfRangeCoordinate => "UPDATE ie_location_pii SET latitude = 91",
+        InvariantMutation.LatitudeBelowRange => "UPDATE ie_location_pii SET latitude = -91",
+        InvariantMutation.LongitudeAboveRange => "UPDATE ie_location_pii SET longitude = 181",
+        InvariantMutation.LongitudeBelowRange => "UPDATE ie_location_pii SET longitude = -181",
         InvariantMutation.ReversedAgendaLocalDates => "UPDATE ie_event_agenda_items SET local_start_date = '2026-08-26', local_end_date = '2026-08-25'",
         InvariantMutation.ReversedSessionLocalDates => "UPDATE ie_event_sessions SET local_start_date = '2026-08-26', local_end_date = '2026-08-25'",
         InvariantMutation.ReversedAgendaUtcRange => "UPDATE ie_event_agenda_items SET start_time = '2026-08-25 10:00:00+00:00', end_time = '2026-08-25 09:00:00+00:00'",
@@ -286,8 +313,14 @@ public sealed class SemanticValueSqlitePersistenceTests
     public enum InvariantMutation
     {
         NegativeTicketAmount,
+        NegativeMinimumTicketAmount,
+        NegativeSuggestedTicketAmount,
         PartialCoordinate,
+        PartialCoordinateMissingLatitude,
         OutOfRangeCoordinate,
+        LatitudeBelowRange,
+        LongitudeAboveRange,
+        LongitudeBelowRange,
         ReversedAgendaLocalDates,
         ReversedSessionLocalDates,
         ReversedAgendaUtcRange,

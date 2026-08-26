@@ -2930,7 +2930,7 @@ Table "location_pii" {
   "latitude" doubleprecision
   "longitude" doubleprecision
 
-  Note: 'Optional shared-PK exact-address record. Database guards reject attachment to an Erased Location.'
+  Note: 'Optional shared-PK exact-address record. CK_LocationPii_CoordinateShape requires latitude/longitude to be jointly null or jointly present within latitude -90..90 and longitude -180..180. Database guards reject attachment to an Erased Location.'
 }
 
 Table "event_locations" {
@@ -4157,7 +4157,7 @@ Table "event_agenda_items" {
     (tenant_id, event_id, sort_order) [name: 'ix_event_agenda_items_tenant_event_sort']
   }
 
-  Note: 'Non-session schedule entries (breaks, prayers). Checks: CK_EventAgendaItem_EndAfterStart, CK_EventAgendaItem_RoomRequiresLocation, CK_EventAgendaItem_LocalStartMinuteRange, CK_EventAgendaItem_LocalEndMinuteRange, CK_EventAgendaItem_LocalStartMinuteMatchesTime, CK_EventAgendaItem_LocalEndMinuteMatchesTime. UTC times are source of truth; local fields are server-owned projections.'
+  Note: 'Non-session schedule entries (breaks, prayers). Checks: CK_EventAgendaItem_EndAfterStart, CK_EventAgendaItem_LocalDateRange, CK_EventAgendaItem_RoomRequiresLocation, CK_EventAgendaItem_LocalStartMinuteRange, CK_EventAgendaItem_LocalEndMinuteRange, CK_EventAgendaItem_LocalStartMinuteMatchesTime, CK_EventAgendaItem_LocalEndMinuteMatchesTime. UTC times are source of truth; local fields are server-owned projections.'
 }
 
 Table "event_sessions" {
@@ -4216,7 +4216,7 @@ Table "event_sessions" {
     (featured_image_id) [name: 'ix_event_sessions_featured_image_id']
   }
 
-  Note: 'Draft-capable program item. Checks: CK_EventSession_EndAfterStart (conditional when scheduled), CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Nullable start/end/local projection fields represent unscheduled draft/internal sessions. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active scheduled sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and ignores rows where start_time or end_time is null. UTC times are source of truth when present; local fields are server-owned projections.'
+  Note: 'Draft-capable program item. Checks: CK_EventSession_EndAfterStart (conditional when scheduled), CK_EventSession_LocalDateRange (conditional when both local dates are present), CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Nullable start/end/local projection fields represent unscheduled draft/internal sessions. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active scheduled sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and ignores rows where start_time or end_time is null. UTC times are source of truth when present; local fields are server-owned projections.'
 }
 
 Table "event_session_groups" {
@@ -4485,7 +4485,7 @@ Table "event_ticket_types" {
     (tenant_id, catalog_id) [name: 'ix_event_ticket_types_tenant_id_catalog_id']
   }
 
-  Note: 'Ticket type within one catalog version. Monetary values are nullable bigint minor units selected by pricing mode.'
+  Note: 'Ticket type within one catalog version. Monetary values are nullable bigint minor units selected by pricing mode. CK_EventTicketType_MoneyNonnegative rejects negative fixed, minimum, or suggested minor-unit values when present.'
 }
 
 Table "ticket_type_entitlements" {

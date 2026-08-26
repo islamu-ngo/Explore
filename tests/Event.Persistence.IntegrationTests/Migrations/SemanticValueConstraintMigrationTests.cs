@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -32,6 +33,28 @@ public sealed class SemanticValueConstraintMigrationTests(
         "event_ticket_types.CK_EventTicketType_MoneyNonnegative",
         "location_pii.CK_LocationPii_CoordinateShape"
     ];
+
+    private static readonly IReadOnlyDictionary<string, string> ExpectedConstraintSqlByIdentity =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["event_agenda_items.CK_EventAgendaItem_LocalDateRange"] =
+                "local_end_date >= local_start_date",
+            ["event_sessions.CK_EventSession_LocalDateRange"] =
+                "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date",
+            ["event_ticket_types.CK_EventTicketType_MoneyNonnegative"] =
+                """
+                (fixed_price_minor IS NULL OR fixed_price_minor >= 0)
+                AND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)
+                AND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)
+                """,
+            ["location_pii.CK_LocationPii_CoordinateShape"] =
+                """
+                (latitude IS NULL AND longitude IS NULL)
+                OR (latitude IS NOT NULL AND longitude IS NOT NULL
+                    AND latitude BETWEEN -90 AND 90
+                    AND longitude BETWEEN -180 AND 180)
+                """
+        };
 
     private static readonly IReadOnlyDictionary<string, string[]> RelevantStorageColumns =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -54,6 +77,45 @@ public sealed class SemanticValueConstraintMigrationTests(
     [Arguments(PrimaryDatabaseProvider.SqlServer)]
     [Arguments(PrimaryDatabaseProvider.MariaDb)]
     [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task NonSemanticMigrations_DoNotOwnSemanticValueConstraints(
+        PrimaryDatabaseProvider provider)
+    {
+        await using ExploreDbContext context = CreateCatalogContext(provider);
+        IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
+        string providerName = context.Database.ProviderName
+            ?? throw new InvalidOperationException("The migration catalog has no provider name.");
+        string[] violations = assembly.Migrations
+            .Where(entry => !entry.Key.EndsWith(MigrationSuffix, StringComparison.Ordinal))
+            .Select(entry => new
+            {
+                entry.Key,
+                Migration = assembly.CreateMigration(entry.Value, providerName)
+            })
+            .SelectMany(entry => entry.Migration.UpOperations
+                .Concat(entry.Migration.DownOperations)
+                .Select(operation => new { entry.Key, Operation = operation }))
+            .Select(entry => entry.Operation switch
+            {
+                AddCheckConstraintOperation add =>
+                    (entry.Key, Identity: ConstraintIdentity(add.Table, add.Name)),
+                DropCheckConstraintOperation drop =>
+                    (entry.Key, Identity: ConstraintIdentity(drop.Table, drop.Name)),
+                _ => (entry.Key, Identity: string.Empty)
+            })
+            .Where(entry => ExpectedConstraintSqlByIdentity.ContainsKey(entry.Identity))
+            .Select(entry => $"{entry.Key}:{entry.Identity}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(violations).IsEmpty();
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
     public async Task GeneratedProviderCatalog_ContainsOnlySemanticChecksAndMatchesTheModel(
         PrimaryDatabaseProvider provider)
     {
@@ -68,18 +130,38 @@ public sealed class SemanticValueConstraintMigrationTests(
             .OfType<AddCheckConstraintOperation>()
             .ToArray();
         await Assert.That(addChecks.All(operation => !string.IsNullOrWhiteSpace(operation.Sql))).IsTrue();
+        string? expectedSchema = provider is PrimaryDatabaseProvider.PostgreSql
+            or PrimaryDatabaseProvider.SqlServer
+                ? "islamu_event"
+                : null;
+        await Assert.That(addChecks.All(operation =>
+                string.Equals(operation.Schema, expectedSchema, StringComparison.Ordinal)))
+            .IsTrue();
 
         string[] upIdentities = addChecks
             .Select(operation => ConstraintIdentity(operation.Table, operation.Name))
             .Order(StringComparer.Ordinal)
             .ToArray();
         await Assert.That(upIdentities.SequenceEqual(ExpectedConstraintIdentities)).IsTrue();
+        foreach (AddCheckConstraintOperation addCheck in addChecks)
+        {
+            string identity = ConstraintIdentity(addCheck.Table, addCheck.Name);
+            bool found = ExpectedConstraintSqlByIdentity.TryGetValue(identity, out string? expectedSql);
+            await Assert.That(found).IsTrue();
+            await Assert.That(NormalizeSql(addCheck.Sql))
+                .IsEqualTo(NormalizeSql(expectedSql!));
+        }
 
         await Assert.That(migration.DownOperations.Count).IsEqualTo(ExpectedConstraintIdentities.Length);
         await Assert.That(migration.DownOperations.All(operation => operation is DropCheckConstraintOperation))
             .IsTrue();
-        string[] downIdentities = migration.DownOperations
+        DropCheckConstraintOperation[] dropChecks = migration.DownOperations
             .OfType<DropCheckConstraintOperation>()
+            .ToArray();
+        await Assert.That(dropChecks.All(operation =>
+                string.Equals(operation.Schema, expectedSchema, StringComparison.Ordinal)))
+            .IsTrue();
+        string[] downIdentities = dropChecks
             .Select(operation => ConstraintIdentity(operation.Table, operation.Name))
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -112,6 +194,8 @@ public sealed class SemanticValueConstraintMigrationTests(
             await migrator.MigrateAsync(catalog.PreviousMigrationId);
             await LookupTableSeeder.SeedAsync(context);
             Guid tenantId = await SeedValidScalarRowsAsync();
+            await Assert.That(await ReadScalarCardinalityAsync(tenantId))
+                .IsEqualTo("2:2:1:2");
             string baselineFingerprint = await ReadScalarFingerprintAsync(tenantId);
             await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
 
@@ -137,6 +221,108 @@ public sealed class SemanticValueConstraintMigrationTests(
             await Assert.That((await context.Database.GetAppliedMigrationsAsync())
                     .Count(migration => migration == catalog.MigrationId))
                 .IsEqualTo(1);
+        }
+        finally
+        {
+            await fixture.ResetAsync();
+        }
+    }
+
+    [Test]
+    [Arguments(LegacyViolation.NegativeTicketAmount, "CK_EventTicketType_MoneyNonnegative")]
+    [Arguments(LegacyViolation.PartialCoordinate, "CK_LocationPii_CoordinateShape")]
+    [Arguments(LegacyViolation.ReversedAgendaDates, "CK_EventAgendaItem_LocalDateRange")]
+    [Arguments(LegacyViolation.ReversedSessionDates, "CK_EventSession_LocalDateRange")]
+    public async Task PostgreSqlUpgrade_WithMalformedLegacyRow_FailsWithoutMutationAndIsRetryable(
+        LegacyViolation violation,
+        string expectedConstraint)
+    {
+        await using ExploreDbContext context = CreatePostgreSqlContext();
+        SemanticMigrationCatalog catalog = await FindSemanticMigrationAsync(context);
+        IMigrator migrator = context.GetService<IMigrator>();
+
+        await fixture.ResetAsync();
+        try
+        {
+            await migrator.MigrateAsync(catalog.PreviousMigrationId);
+            await LookupTableSeeder.SeedAsync(context);
+            Guid tenantId = await SeedValidScalarRowsAsync();
+            await ExecuteAsync(LegacyMutationSql(violation), ("tenant_id", tenantId));
+            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(1);
+
+            PostgresException? exception = await Assert.That(
+                    async () => await migrator.MigrateAsync(catalog.MigrationId))
+                .Throws<PostgresException>();
+            await Assert.That(exception!.SqlState).IsEqualTo(PostgresErrorCodes.CheckViolation);
+            await Assert.That(exception.ConstraintName).IsEqualTo(expectedConstraint);
+            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(1);
+            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
+            await Assert.That((await context.Database.GetAppliedMigrationsAsync())
+                    .Contains(catalog.MigrationId, StringComparer.Ordinal))
+                .IsFalse();
+
+            await ExecuteAsync(LegacyRepairSql(violation), ("tenant_id", tenantId));
+            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(0);
+            await migrator.MigrateAsync(catalog.MigrationId);
+            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
+            await Assert.That((await context.Database.GetAppliedMigrationsAsync())
+                    .Contains(catalog.MigrationId, StringComparer.Ordinal))
+                .IsTrue();
+        }
+        finally
+        {
+            await fixture.ResetAsync();
+        }
+    }
+
+    [Test]
+    public async Task PostgreSqlMalformedCoordinateUpgrade_EmitsZeroPiiDiagnostics()
+    {
+        const string sentinelAddress = "MIGRATION-PII-ADDRESS-Q7V4";
+        const string sentinelPostcode = "MIGRATION-PII-POSTCODE-X9K2";
+        const double sentinelLatitude = 50.123456789;
+        var diagnostics = new CompleteDiagnostics();
+        await using ExploreDbContext context = CreatePostgreSqlContext(diagnostics.Capture);
+        SemanticMigrationCatalog catalog = await FindSemanticMigrationAsync(context);
+        IMigrator migrator = context.GetService<IMigrator>();
+
+        await fixture.ResetAsync();
+        try
+        {
+            await migrator.MigrateAsync(catalog.PreviousMigrationId);
+            await LookupTableSeeder.SeedAsync(context);
+            Guid tenantId = await SeedValidScalarRowsAsync();
+            Guid locationId = await ReadPairedLocationIdAsync(tenantId);
+            await ExecuteAsync(
+                """
+                UPDATE islamu_event.location_pii
+                SET address = @address,
+                    postcode = @postcode,
+                    latitude = @latitude,
+                    longitude = NULL
+                WHERE location_id = @location_id
+                """,
+                ("address", sentinelAddress),
+                ("postcode", sentinelPostcode),
+                ("latitude", sentinelLatitude),
+                ("location_id", locationId));
+
+            PostgresException? exception = await Assert.That(
+                    async () => await migrator.MigrateAsync(catalog.MigrationId))
+                .Throws<PostgresException>();
+            string[] forbidden =
+            [
+                sentinelAddress,
+                sentinelPostcode,
+                sentinelLatitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                tenantId.ToString(),
+                locationId.ToString()
+            ];
+            foreach (string sentinel in forbidden)
+            {
+                await Assert.That(diagnostics.Text).DoesNotContain(sentinel);
+                await Assert.That(exception!.ToString()).DoesNotContain(sentinel);
+            }
         }
         finally
         {
@@ -391,6 +577,48 @@ public sealed class SemanticValueConstraintMigrationTests(
         return tenantId;
     }
 
+    private async Task<string> ReadScalarCardinalityAsync(Guid tenantId)
+    {
+        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT concat(
+                (SELECT count(*) FROM islamu_event.event_ticket_types
+                 WHERE tenant_id = @tenant_id), ':',
+                (SELECT count(*) FROM islamu_event.location_pii AS pii
+                 INNER JOIN islamu_event.locations AS location ON location.id = pii.location_id
+                 WHERE location.tenant_id = @tenant_id), ':',
+                (SELECT count(*) FROM islamu_event.event_agenda_items
+                 WHERE tenant_id = @tenant_id), ':',
+                (SELECT count(*) FROM islamu_event.event_sessions
+                 WHERE tenant_id = @tenant_id))
+            """,
+            connection);
+        command.Parameters.AddWithValue("tenant_id", tenantId);
+        return (string)(await command.ExecuteScalarAsync()
+            ?? throw new InvalidOperationException("The scalar-row cardinality query returned no value."));
+    }
+
+    private async Task<Guid> ReadPairedLocationIdAsync(Guid tenantId)
+    {
+        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT pii.location_id
+            FROM islamu_event.location_pii AS pii
+            INNER JOIN islamu_event.locations AS location ON location.id = pii.location_id
+            WHERE location.tenant_id = @tenant_id
+              AND pii.latitude IS NOT NULL
+              AND pii.longitude IS NOT NULL
+            """,
+            connection);
+        command.Parameters.AddWithValue("tenant_id", tenantId);
+        return (Guid)(await command.ExecuteScalarAsync()
+            ?? throw new InvalidOperationException("The paired-location query returned no value."));
+    }
+
     private async Task<string> ReadScalarFingerprintAsync(Guid tenantId)
     {
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
@@ -472,6 +700,114 @@ public sealed class SemanticValueConstraintMigrationTests(
             ?? throw new InvalidOperationException("The constraint-count query returned no value."));
     }
 
+    private async Task<int> CountLegacyViolationsAsync(
+        Guid tenantId,
+        LegacyViolation violation)
+    {
+        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(LegacyViolationCountSql(violation), connection);
+        command.Parameters.AddWithValue("tenant_id", tenantId);
+        return (int)(await command.ExecuteScalarAsync()
+            ?? throw new InvalidOperationException("The legacy-violation count query returned no value."));
+    }
+
+    private static string LegacyMutationSql(LegacyViolation violation) => violation switch
+    {
+        LegacyViolation.NegativeTicketAmount =>
+            """
+            UPDATE islamu_event.event_ticket_types
+            SET fixed_price_minor = -1
+            WHERE tenant_id = @tenant_id AND fixed_price_minor IS NOT NULL
+            """,
+        LegacyViolation.PartialCoordinate =>
+            """
+            UPDATE islamu_event.location_pii AS pii
+            SET longitude = NULL
+            FROM islamu_event.locations AS location
+            WHERE location.id = pii.location_id
+              AND location.tenant_id = @tenant_id
+              AND pii.latitude IS NOT NULL
+            """,
+        LegacyViolation.ReversedAgendaDates =>
+            """
+            UPDATE islamu_event.event_agenda_items
+            SET local_end_date = local_start_date - 1
+            WHERE tenant_id = @tenant_id
+            """,
+        LegacyViolation.ReversedSessionDates =>
+            """
+            UPDATE islamu_event.event_sessions
+            SET local_end_date = local_start_date - 1
+            WHERE tenant_id = @tenant_id AND local_start_date IS NOT NULL
+            """,
+        _ => throw new ArgumentOutOfRangeException(nameof(violation), violation, null)
+    };
+
+    private static string LegacyRepairSql(LegacyViolation violation) => violation switch
+    {
+        LegacyViolation.NegativeTicketAmount =>
+            """
+            UPDATE islamu_event.event_ticket_types
+            SET fixed_price_minor = 2500
+            WHERE tenant_id = @tenant_id AND fixed_price_minor < 0
+            """,
+        LegacyViolation.PartialCoordinate =>
+            """
+            UPDATE islamu_event.location_pii AS pii
+            SET longitude = 13.7373
+            FROM islamu_event.locations AS location
+            WHERE location.id = pii.location_id
+              AND location.tenant_id = @tenant_id
+              AND pii.latitude IS NOT NULL
+              AND pii.longitude IS NULL
+            """,
+        LegacyViolation.ReversedAgendaDates =>
+            """
+            UPDATE islamu_event.event_agenda_items
+            SET local_end_date = local_start_date
+            WHERE tenant_id = @tenant_id AND local_end_date < local_start_date
+            """,
+        LegacyViolation.ReversedSessionDates =>
+            """
+            UPDATE islamu_event.event_sessions
+            SET local_end_date = local_start_date
+            WHERE tenant_id = @tenant_id AND local_end_date < local_start_date
+            """,
+        _ => throw new ArgumentOutOfRangeException(nameof(violation), violation, null)
+    };
+
+    private static string LegacyViolationCountSql(LegacyViolation violation) => violation switch
+    {
+        LegacyViolation.NegativeTicketAmount =>
+            """
+            SELECT count(*)::integer
+            FROM islamu_event.event_ticket_types
+            WHERE tenant_id = @tenant_id AND fixed_price_minor < 0
+            """,
+        LegacyViolation.PartialCoordinate =>
+            """
+            SELECT count(*)::integer
+            FROM islamu_event.location_pii AS pii
+            INNER JOIN islamu_event.locations AS location ON location.id = pii.location_id
+            WHERE location.tenant_id = @tenant_id
+              AND ((pii.latitude IS NULL) <> (pii.longitude IS NULL))
+            """,
+        LegacyViolation.ReversedAgendaDates =>
+            """
+            SELECT count(*)::integer
+            FROM islamu_event.event_agenda_items
+            WHERE tenant_id = @tenant_id AND local_end_date < local_start_date
+            """,
+        LegacyViolation.ReversedSessionDates =>
+            """
+            SELECT count(*)::integer
+            FROM islamu_event.event_sessions
+            WHERE tenant_id = @tenant_id AND local_end_date < local_start_date
+            """,
+        _ => throw new ArgumentOutOfRangeException(nameof(violation), violation, null)
+    };
+
     private async Task ExecuteAsync(string sql, params (string Name, object Value)[] parameters)
     {
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
@@ -485,7 +821,7 @@ public sealed class SemanticValueConstraintMigrationTests(
         await command.ExecuteNonQueryAsync();
     }
 
-    private ExploreDbContext CreatePostgreSqlContext()
+    private ExploreDbContext CreatePostgreSqlContext(Action<string>? captureDiagnostics = null)
     {
         var connection = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
@@ -502,6 +838,12 @@ public sealed class SemanticValueConstraintMigrationTests(
                 Password = connection.Password,
                 TlsMode = PrimaryDatabaseTlsMode.Disabled
             });
+        if (captureDiagnostics is not null)
+        {
+            builder.EnableSensitiveDataLogging(false)
+                .LogTo(captureDiagnostics, LogLevel.Information);
+        }
+
         return new ExploreDbContext(builder.Options);
     }
 
@@ -573,4 +915,37 @@ public sealed class SemanticValueConstraintMigrationTests(
         string MigrationId,
         string PreviousMigrationId,
         Migration Migration);
+
+    private sealed class CompleteDiagnostics
+    {
+        private readonly object _gate = new();
+        private readonly List<string> _entries = [];
+
+        public string Text
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return string.Join('\n', _entries);
+                }
+            }
+        }
+
+        public void Capture(string message)
+        {
+            lock (_gate)
+            {
+                _entries.Add(message);
+            }
+        }
+    }
+
+    public enum LegacyViolation
+    {
+        NegativeTicketAmount,
+        PartialCoordinate,
+        ReversedAgendaDates,
+        ReversedSessionDates
+    }
 }

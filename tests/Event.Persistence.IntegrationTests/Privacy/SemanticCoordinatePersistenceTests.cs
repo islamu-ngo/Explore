@@ -222,7 +222,7 @@ public sealed class SemanticCoordinatePersistenceTests(RecipientDeliveryMigratio
             await seed.SaveChangesAsync();
         }
 
-        var diagnostics = new BoundedDiagnostics();
+        var diagnostics = new CompleteDiagnostics();
         DbContextOptionsBuilder<ExploreDbContext> options = CreateContextOptions(PrimaryDatabaseRole.Runtime);
         options.EnableSensitiveDataLogging(false).LogTo(diagnostics.Capture, LogLevel.Information);
         await using var context = new ExploreDbContext(options.Options)
@@ -287,6 +287,8 @@ public sealed class SemanticCoordinatePersistenceTests(RecipientDeliveryMigratio
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(options, CreateDatabaseOptions(role));
+        options.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return options;
     }
 
@@ -358,17 +360,27 @@ public sealed class SemanticCoordinatePersistenceTests(RecipientDeliveryMigratio
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
     private sealed record InvalidCoordinate(double? Latitude, double? Longitude, string Case);
 
-    private sealed class BoundedDiagnostics
+    private sealed class CompleteDiagnostics
     {
-        private const int MaximumEntries = 64;
-        private const int MaximumEntryLength = 2048;
+        private readonly object _gate = new();
         private readonly List<string> _entries = [];
-        public string Text => string.Join('\n', _entries);
+        public string Text
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return string.Join('\n', _entries);
+                }
+            }
+        }
 
         public void Capture(string message)
         {
-            if (_entries.Count < MaximumEntries)
-                _entries.Add(message[..Math.Min(message.Length, MaximumEntryLength)]);
+            lock (_gate)
+            {
+                _entries.Add(message);
+            }
         }
     }
 }

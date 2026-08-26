@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations
+namespace Explore.Persistence.Migrations.SqlServer.Migrations
 {
     /// <inheritdoc />
     public partial class PersistSemanticValueConstraints : Migration
@@ -10,32 +10,6 @@ namespace Explore.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "lookup_digest",
-                schema: "islamu_event",
-                table: "admission_recovery_capabilities",
-                type: "bytea",
-                fixedLength: true,
-                maxLength: 32,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character(44)",
-                oldFixedLength: true,
-                oldMaxLength: 44);
-
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "locator_digest",
-                schema: "islamu_event",
-                table: "admission_recovery_capabilities",
-                type: "bytea",
-                fixedLength: true,
-                maxLength: 32,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character(44)",
-                oldFixedLength: true,
-                oldMaxLength: 44);
-
             migrationBuilder.AddCheckConstraint(
                 name: "CK_LocationPii_CoordinateShape",
                 schema: "islamu_event",
@@ -83,32 +57,6 @@ namespace Explore.Persistence.Migrations
                 name: "CK_EventAgendaItem_LocalDateRange",
                 schema: "islamu_event",
                 table: "event_agenda_items");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "lookup_digest",
-                schema: "islamu_event",
-                table: "admission_recovery_capabilities",
-                type: "character(44)",
-                fixedLength: true,
-                maxLength: 44,
-                nullable: false,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldFixedLength: true,
-                oldMaxLength: 32);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "locator_digest",
-                schema: "islamu_event",
-                table: "admission_recovery_capabilities",
-                type: "character(44)",
-                fixedLength: true,
-                maxLength: 44,
-                nullable: false,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldFixedLength: true,
-                oldMaxLength: 32);
         }
     }
 }

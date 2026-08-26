@@ -84,7 +84,7 @@ public static class ExploreDatabaseMigrator
         logger.LogInformation("Database migrations and seeding completed successfully.");
     }
 
-    public static Task MigrateAsync(
+    public static async Task MigrateAsync(
         ExploreDbContext db,
         IConfiguration configuration,
         CancellationToken cancellationToken = default)
@@ -92,7 +92,10 @@ public static class ExploreDatabaseMigrator
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        return db.Database.MigrateAsync(cancellationToken);
+        await SemanticValueConstraintMigrationPreflight.ValidateAsync(
+            db,
+            cancellationToken);
+        await db.Database.MigrateAsync(cancellationToken);
     }
 
     private static async Task MigratePrivacyErasureAuthorityAsync(

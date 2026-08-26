@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
   "stryker-config": {
     "solution": "Explore.slnx",
-    "test-runner": "dotnet",
+    "test-runner": "mtp",
     "thresholds": {
       "high": 85,
       "low": 70,
