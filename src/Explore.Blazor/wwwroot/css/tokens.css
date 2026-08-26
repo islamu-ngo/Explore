@@ -61,6 +61,9 @@
     --isl-color-success-strong: color-mix(in srgb, var(--isl-color-success) 55%, var(--isl-color-text));
     --isl-color-warning-strong: color-mix(in srgb, var(--isl-color-warning) 55%, var(--isl-color-text));
     --isl-color-info: var(--mud-palette-info);
+    --isl-color-credential-background: #fff;
+    --isl-color-print-text: #000;
+    --isl-color-print-background: #fff;
 
     /* ── Spacing Semantics ── */
     --isl-space-inline: var(--isl-space-2);    /* 8px — inline gaps */

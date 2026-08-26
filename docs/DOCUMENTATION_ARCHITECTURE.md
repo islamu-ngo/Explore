@@ -48,7 +48,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Security | `SECURITY_OVERVIEW.md`, `SECURITY-MODEL.md`, `SECRETS.md`, `AUTHORIZATION_PATTERNS.md`, `DEPLOYMENT_TIERS.md` |
 | API | `API.md`, `API_CHANGELOG.md`, OpenAPI/client-generation guidance in `GOVERNANCE.md` |
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
-| Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
+| Product/Admin | `ADMIN_HIERARCHY.md`, `ADMISSION_AND_REGISTRATION.md`, feature/admin workflow docs |
 | Contributor Experience | `DEVELOPER_GUIDE.md`, `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `RECORD_CONTRACTS.md`, `CONTRIBUTOR_RECIPES.md`, `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
 | Agent Context | `AGENTS.md`, `.agents/contract/`, `.agents/skills/`, `dev/_journal/` |
 

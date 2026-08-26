@@ -8,10 +8,12 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
@@ -24,7 +26,9 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
+using NSubstitute;
 using TUnit.Core;
 using DomainEvent = Explore.Domain.Event;
 
@@ -285,6 +289,420 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task ExactRefundAndCancellationFactsPersistCredentialRevocationWhilePartialFactsPreserve()
+    {
+        SeededAssignment refundSeed = await SeedAssignmentAsync("refund-revocation");
+        await IssueSeedAsync(refundSeed);
+
+        await using (ExploreDbContext context = TenantContext(refundSeed.TenantId))
+        {
+            var revocation = new AdmissionRevocationService(
+                new AdmissionRevocationRepository(context),
+                new EfCoreUnitOfWork(context),
+                new FixedAdmissionTimeProvider(UtcNow.AddMinutes(2)));
+            AdmissionRevocationResult partial = await revocation.ReconcileAsync(
+                new AdmissionRevocationRequest(
+                    refundSeed.TenantId,
+                    refundSeed.OrderId,
+                    AdmissionRevocationService.RefundReconciledReason,
+                    [new AdmissionRefundAllocationFact(refundSeed.LineId, true, 0, 1)]),
+                CancellationToken.None);
+
+            await Assert.That(partial.RevokedTicketIds).IsEmpty();
+            await Assert.That(partial.PreservedTicketIds.Count).IsEqualTo(1);
+        }
+
+        await using (ExploreDbContext context = TenantContext(refundSeed.TenantId))
+        {
+            var revocation = new AdmissionRevocationService(
+                new AdmissionRevocationRepository(context),
+                new EfCoreUnitOfWork(context),
+                new FixedAdmissionTimeProvider(UtcNow.AddMinutes(3)));
+            AdmissionRevocationResult full = await revocation.ReconcileAsync(
+                new AdmissionRevocationRequest(
+                    refundSeed.TenantId,
+                    refundSeed.OrderId,
+                    AdmissionRevocationService.RefundReconciledReason,
+                    [new AdmissionRefundAllocationFact(refundSeed.LineId, true, 1, 1)]),
+                CancellationToken.None);
+
+            await Assert.That(full.RevokedTicketIds.Count).IsEqualTo(1);
+            AdmissionTicket revoked = await context.AdmissionTickets
+                .Include(ticket => ticket.Credentials)
+                .SingleAsync(ticket => ticket.RegistrationOrderId == refundSeed.OrderId);
+            await Assert.That((AdmissionTicketStatusEnum)revoked.AdmissionTicketStatusId)
+                .IsEqualTo(AdmissionTicketStatusEnum.Revoked);
+            await Assert.That(revoked.Credentials.Single().RevokedAt).IsNotNull();
+        }
+
+        SeededAssignment cancellationSeed = await SeedAssignmentAsync("cancellation-revocation");
+        await IssueSeedAsync(cancellationSeed);
+        await using (ExploreDbContext context = TenantContext(cancellationSeed.TenantId))
+        {
+            var repository = new AdmissionRevocationRepository(context);
+            var revocation = new AdmissionRevocationService(
+                repository,
+                new EfCoreUnitOfWork(context),
+                new FixedAdmissionTimeProvider(UtcNow.AddMinutes(2)));
+            var eventCancellation = new AdmissionEventCancellationService(
+                repository,
+                revocation,
+                new FixedAdmissionTimeProvider(UtcNow.AddMinutes(2)));
+            int cancelled = await eventCancellation.ReconcileAsync(
+                Guid.CreateVersion7(),
+                cancellationSeed.TenantId,
+                cancellationSeed.EventId,
+                CancellationToken.None);
+
+            await Assert.That(cancelled).IsEqualTo(1);
+            AdmissionTicket ticket = await context.AdmissionTickets
+                .Include(value => value.Credentials)
+                .SingleAsync(value => value.RegistrationOrderId == cancellationSeed.OrderId);
+            await Assert.That((AdmissionTicketStatusEnum)ticket.AdmissionTicketStatusId)
+                .IsEqualTo(AdmissionTicketStatusEnum.Cancelled);
+            await Assert.That(ticket.Credentials.Single().RevokedAt).IsNotNull();
+        }
+    }
+
+    [Test]
+    public async Task ReconciledPaidFinalizationIssuesOnceFromExactPersistedPaymentEvidence()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("paid-finalization");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        RegistrationFinalizationEffect effect = await context.RegistrationFinalizationEffects
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        var dispatcher = new RecordingAdmissionDispatcher(context);
+        var service = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(context),
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            dispatcher,
+            new EfCoreUnitOfWork(context),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(1)));
+        var request = new AdmissionIssuanceRequest(
+            seed.TenantId,
+            seed.OrderId,
+            effect.Id,
+            AdmissionIssuanceAuthority.ReconciledPaidFinalization);
+
+        AdmissionIssuanceResult issued = await service.IssueConfirmedAsync(
+            request, CancellationToken.None);
+        AdmissionIssuanceResult replay = await service.IssueConfirmedAsync(
+            request, CancellationToken.None);
+        int ticketCount = await context.AdmissionTickets.CountAsync(
+            ticket => ticket.RegistrationOrderId == seed.OrderId);
+
+        await Assert.That(issued.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(replay.Outcome).IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
+        await Assert.That(ticketCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task LostCommitAcknowledgementReloadsCommittedPaidIssuanceOutsideTransaction()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("paid-commit-acknowledgement");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        RegistrationFinalizationEffect effect = await context.RegistrationFinalizationEffects
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        IAdmissionDeliveryDispatcher dispatcher = Substitute.For<IAdmissionDeliveryDispatcher>();
+        dispatcher.DispatchAsync(
+                Arg.Any<AdmissionDeliveryDispatchRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new AdmissionDeliveryDispatchResult(AdmissionDeliveryOutcome.Delivered));
+        var service = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(context),
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            dispatcher,
+            new CommitAcknowledgementLostUnitOfWork(new EfCoreUnitOfWork(context)),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(1)));
+
+        AdmissionIssuanceResult result = await service.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
+        await Assert.That(result.DeliveryOutcome).IsEqualTo(AdmissionDeliveryOutcome.Delivered);
+        await dispatcher.Received(1).DispatchAsync(
+            Arg.Any<AdmissionDeliveryDispatchRequest>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(await context.AdmissionTickets.CountAsync(
+            ticket => ticket.RegistrationOrderId == seed.OrderId)).IsEqualTo(1);
+        await Assert.That(await context.AdmissionTickets
+            .Where(ticket => ticket.RegistrationOrderId == seed.OrderId)
+            .SelectMany(ticket => ticket.Credentials)
+            .CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task FullRefundBeforeDelayedPaidFinalizationCannotCreateAdmission()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("pre-issuance-refund");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        PaymentAttempt payment = await context.PaymentAttempts
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        PaidOrderAcceptanceSnapshot acceptance =
+            await context.PaidOrderAcceptanceSnapshots
+                .Include(value => value.Lines)
+                .SingleAsync(value => value.Id == payment.PaidOrderAcceptanceSnapshotId);
+        RefundAttempt refund = RefundAttempt.Create(
+            Guid.CreateVersion7(),
+            seed.TenantId,
+            payment.Id,
+            acceptance,
+            payment.RecipientSnapshot.ExternalAccountId,
+            payment.ProviderPaymentId!,
+            $"refund:{Guid.CreateVersion7():N}",
+            acceptance.OrganizerAmountMinor,
+            UtcNow.AddMinutes(1));
+        refund.MarkSucceeded(
+            $"re_{refund.Id:N}",
+            UtcNow.AddMinutes(2),
+            "req_refund",
+            0);
+        context.RefundAttempts.Add(refund);
+        await context.SaveChangesAsync();
+        RegistrationFinalizationEffect effect = await context.RegistrationFinalizationEffects
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        AdmissionIssuanceService service = PaidIssuanceService(context);
+
+        AdmissionIssuanceResult result = await service.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionIssuanceOutcome.NoAssignments);
+        await Assert.That(await context.AdmissionTickets.CountAsync(
+            ticket => ticket.RegistrationOrderId == seed.OrderId)).IsEqualTo(0);
+        await Assert.That(await context.AdmissionTicketCredentials.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task EventCancelledBeforeDelayedPaidFinalizationCannotCreateAdmission()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("pre-issuance-event-cancel");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        DomainEvent eventEntity = await context.Events
+            .SingleAsync(value => value.Id == seed.EventId);
+        eventEntity.Cancel(UtcNow.AddMinutes(1));
+        await context.SaveChangesAsync();
+        RegistrationFinalizationEffect effect = await context.RegistrationFinalizationEffects
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        AdmissionIssuanceService service = PaidIssuanceService(context);
+
+        AdmissionIssuanceResult result = await service.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionIssuanceOutcome.NotConfirmed);
+        await Assert.That(await context.AdmissionTickets.CountAsync(
+            ticket => ticket.RegistrationOrderId == seed.OrderId)).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task EventCancellationRacingLoadedPaidIssuanceConvergesToRevokedCredential()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("paid-event-cancel-race");
+        await using ExploreDbContext issuanceContext = TenantContext(seed.TenantId);
+        var gatedDigest = new GatedAdmissionDigestService(
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })));
+        RegistrationFinalizationEffect effect =
+            await issuanceContext.RegistrationFinalizationEffects
+                .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        var issuance = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(issuanceContext),
+            gatedDigest,
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            new RecordingAdmissionDispatcher(issuanceContext),
+            new EfCoreUnitOfWork(issuanceContext),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(1)));
+        Task<AdmissionIssuanceResult> issuanceTask = issuance.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await gatedDigest.FirstGenerationEntered.WaitAsync(timeout.Token);
+
+        PostgresException? lockFailure = await ObserveEventCancellationFenceAsync();
+        gatedDigest.ReleaseFirstGeneration();
+        AdmissionIssuanceResult issued = await issuanceTask.WaitAsync(timeout.Token);
+
+        await using (ExploreDbContext cancellationContext = TenantContext(seed.TenantId))
+        {
+            DomainEvent eventEntity = await cancellationContext.Events
+                .SingleAsync(value => value.Id == seed.EventId, timeout.Token);
+            eventEntity.Cancel(UtcNow.AddMinutes(2));
+            await cancellationContext.SaveChangesAsync(timeout.Token);
+        }
+
+        await using ExploreDbContext revocationContext = TenantContext(seed.TenantId);
+        var repository = new AdmissionRevocationRepository(revocationContext);
+        var revocation = new AdmissionRevocationService(
+            repository,
+            new EfCoreUnitOfWork(revocationContext),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(3)));
+        var eventCancellation = new AdmissionEventCancellationService(
+            repository,
+            revocation,
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(3)));
+        int reconciled = await eventCancellation.ReconcileAsync(
+            Guid.CreateVersion7(),
+            seed.TenantId,
+            seed.EventId,
+            timeout.Token);
+
+        await Assert.That(lockFailure).IsNotNull();
+        await Assert.That(lockFailure!.SqlState)
+            .IsEqualTo(PostgresErrorCodes.LockNotAvailable);
+        await Assert.That(issued.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(reconciled).IsEqualTo(1);
+        AdmissionTicket ticket = await revocationContext.AdmissionTickets
+            .Include(value => value.Credentials)
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId, timeout.Token);
+        await Assert.That((AdmissionTicketStatusEnum)ticket.AdmissionTicketStatusId)
+            .IsEqualTo(AdmissionTicketStatusEnum.Cancelled);
+        await Assert.That(ticket.Credentials.Single().RevokedAt).IsNotNull();
+
+        async Task<PostgresException?> ObserveEventCancellationFenceAsync()
+        {
+            await using ExploreDbContext probe = TenantContext(seed.TenantId);
+            return await probe.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await probe.Database.BeginTransactionAsync(timeout.Token);
+                try
+                {
+                    await probe.Events
+                        .FromSqlInterpolated(
+                            $"SELECT * FROM events WHERE tenant_id = {seed.TenantId} AND id = {seed.EventId} FOR UPDATE NOWAIT")
+                        .SingleAsync(timeout.Token);
+                    return null;
+                }
+                catch (PostgresException exception)
+                {
+                    return exception;
+                }
+            });
+        }
+    }
+
+    [Test]
+    public async Task FullRefundRacingLoadedPaidIssuanceConvergesToRevokedCredential()
+    {
+        SeededAssignment seed = await SeedPaidAssignmentAsync("paid-refund-race");
+        await using ExploreDbContext issuanceContext = TenantContext(seed.TenantId);
+        var gatedDigest = new GatedAdmissionDigestService(
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })));
+        RegistrationFinalizationEffect effect =
+            await issuanceContext.RegistrationFinalizationEffects
+                .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
+        var issuance = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(issuanceContext),
+            gatedDigest,
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            new RecordingAdmissionDispatcher(issuanceContext),
+            new EfCoreUnitOfWork(issuanceContext),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(1)));
+        Task<AdmissionIssuanceResult> issuanceTask = issuance.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await gatedDigest.FirstGenerationEntered.WaitAsync(timeout.Token);
+
+        var refundInsert = new RefundInsertCommandSignal();
+        Task<Guid> refundSaveTask = SaveFullRefundAsync();
+        await refundInsert.CommandStarted.WaitAsync(timeout.Token);
+        await Assert.That(refundSaveTask.IsCompleted).IsFalse();
+
+        gatedDigest.ReleaseFirstGeneration();
+        AdmissionIssuanceResult issued = await issuanceTask.WaitAsync(timeout.Token);
+        Guid refundAttemptId = await refundSaveTask.WaitAsync(timeout.Token);
+
+        await using ExploreDbContext revocationContext = TenantContext(seed.TenantId);
+        var revocationRepository = new AdmissionRevocationRepository(revocationContext);
+        var revocation = new AdmissionRevocationService(
+            revocationRepository,
+            new EfCoreUnitOfWork(revocationContext),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(4)));
+        var refundRevocation = new AdmissionRefundRevocationService(
+            new RefundAttemptRepository(revocationContext),
+            revocation);
+        AdmissionRevocationResult? revoked =
+            await refundRevocation.ReconcileSucceededAsync(
+                seed.TenantId,
+                refundAttemptId,
+                timeout.Token);
+
+        await Assert.That(issued.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(revoked?.Outcome).IsEqualTo(AdmissionRevocationOutcome.Applied);
+        await using ExploreDbContext verification = TenantContext(seed.TenantId);
+        AdmissionTicket ticket = await verification.AdmissionTickets
+            .Include(value => value.Credentials)
+            .SingleAsync(value => value.RegistrationOrderId == seed.OrderId, timeout.Token);
+        await Assert.That((AdmissionTicketStatusEnum)ticket.AdmissionTicketStatusId)
+            .IsEqualTo(AdmissionTicketStatusEnum.Revoked);
+        await Assert.That(ticket.Credentials.Single().RevokedAt).IsNotNull();
+
+        async Task<Guid> SaveFullRefundAsync()
+        {
+            await using ExploreDbContext refundContext =
+                TenantContext(seed.TenantId, refundInsert);
+            PaymentAttempt payment = await refundContext.PaymentAttempts
+                .SingleAsync(value => value.RegistrationOrderId == seed.OrderId, timeout.Token);
+            PaidOrderAcceptanceSnapshot acceptance =
+                await refundContext.PaidOrderAcceptanceSnapshots
+                    .Include(value => value.Lines)
+                    .SingleAsync(
+                        value => value.Id == payment.PaidOrderAcceptanceSnapshotId,
+                        timeout.Token);
+            RefundAttempt refund = RefundAttempt.Create(
+                Guid.CreateVersion7(),
+                seed.TenantId,
+                payment.Id,
+                acceptance,
+                payment.RecipientSnapshot.ExternalAccountId,
+                payment.ProviderPaymentId!,
+                $"refund:{Guid.CreateVersion7():N}",
+                acceptance.OrganizerAmountMinor,
+                UtcNow.AddMinutes(2));
+            refund.MarkSucceeded(
+                $"re_{refund.Id:N}",
+                UtcNow.AddMinutes(3),
+                "req_refund_race",
+                0);
+            refundContext.RefundAttempts.Add(refund);
+            await refundContext.SaveChangesAsync(timeout.Token);
+            return refund.Id;
+        }
+    }
+
+    [Test]
     public async Task ConcurrentPublicServiceCallsFenceBeforeCredentialGenerationAndConverge()
     {
         await fixture.ResetAsync();
@@ -356,41 +774,34 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     public async Task ConcurrentRecoveryConsumeHasExactlyOneWinner()
     {
         await fixture.ResetAsync();
-        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+        (Guid tenantId, AdmissionRecoveryCapability state) =
             await SeedRecoveryCapabilityAsync("recovery-consume");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        Task<AdmissionRecoveryMutationResult>[] attempts =
+        Task<bool>[] attempts =
         [
             ConsumeAsync(),
             ConsumeAsync()
         ];
         start.SetResult();
-        AdmissionRecoveryMutationResult[] results = await Task.WhenAll(attempts);
+        bool[] results = await Task.WhenAll(attempts);
 
-        await Assert.That(results.Count(result =>
-            result.Outcome == AdmissionRecoveryMutationOutcome.Consumed)).IsEqualTo(1);
-        await Assert.That(results.Count(result =>
-            result.Outcome == AdmissionRecoveryMutationOutcome.Rejected)).IsEqualTo(1);
+        await Assert.That(results.Count(result => result)).IsEqualTo(1);
+        await Assert.That(results.Count(result => !result)).IsEqualTo(1);
 
-        async Task<AdmissionRecoveryMutationResult> ConsumeAsync()
+        async Task<bool> ConsumeAsync()
         {
             await start.Task.WaitAsync(timeout.Token);
             await using ExploreDbContext context = TenantContext(tenantId);
             var repository = new AdmissionRecoveryRepository(context);
-            return await repository.ConsumeAsync(
-                new AdmissionRecoveryCapabilityMutation(
-                    state.TenantId,
-                    state.RecoveryRequestId,
-                    state.AdmissionTicketId,
-                    state.Purpose,
-                    state.LookupDigest,
-                    state.ExpiresAtUtc,
-                    state.KeyVersion,
-                    state.CapabilityId,
-                    state.ConcurrencyStamp,
-                    new DateTimeOffset(UtcNow)),
+            return await repository.TryConsumeAsync(
+                state.TenantId,
+                state.Id,
+                state.LookupKeyVersion,
+                state.LookupDigest,
+                state.ConcurrencyStamp,
+                UtcNow,
                 timeout.Token);
         }
     }
@@ -399,24 +810,24 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     public async Task TicketWideRecoveryUniquenessRejectsSecondRequestLineage()
     {
         await fixture.ResetAsync();
-        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+        (Guid tenantId, AdmissionRecoveryCapability state) =
             await SeedRecoveryCapabilityAsync("recovery-lineage");
         await using ExploreDbContext context = TenantContext(tenantId);
         var repository = new AdmissionRecoveryRepository(context);
 
         Exception collision = await Assert.ThrowsAsync<Exception>(async () =>
-            await repository.StoreAsync(
-                new AdmissionRecoveryCapabilityRecord(
+            await repository.AddAsync(
+                AdmissionRecoveryCapability.Create(
+                    Guid.CreateVersion7(),
                     tenantId,
                     Guid.CreateVersion7(),
                     state.AdmissionTicketId,
-                    AdmissionRecoveryPurpose.TicketRecovery,
+                    AdmissionRecoveryPurpose.TicketRecovery.ToString(),
+                    1,
+                    1,
                     Digest(0x51),
-                    1,
-                    new DateTimeOffset(UtcNow.AddMinutes(15)),
-                    Guid.CreateVersion7(),
-                    1,
-                    new DateTimeOffset(UtcNow),
+                    UtcNow.AddMinutes(15),
+                    UtcNow,
                     Digest(0x52)),
                 CancellationToken.None));
 
@@ -429,25 +840,23 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     public async Task ConcurrentRecoveryRotationHasExactlyOneReplacementGeneration()
     {
         await fixture.ResetAsync();
-        (Guid tenantId, AdmissionRecoveryCapabilityState state) =
+        (Guid tenantId, AdmissionRecoveryCapability state) =
             await SeedRecoveryCapabilityAsync("recovery-rotate");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        AdmissionRecoveryRotationRequest first = Rotation(0x21);
-        AdmissionRecoveryRotationRequest second = Rotation(0x31);
+        AdmissionRecoveryCapability first = Rotation(0x21);
+        AdmissionRecoveryCapability second = Rotation(0x31);
 
-        Task<AdmissionRecoveryMutationResult>[] attempts =
+        Task<bool>[] attempts =
         [
             RotateAsync(first),
             RotateAsync(second)
         ];
         start.SetResult();
-        AdmissionRecoveryMutationResult[] results = await Task.WhenAll(attempts);
+        bool[] results = await Task.WhenAll(attempts);
 
-        await Assert.That(results.Count(result =>
-            result.Outcome == AdmissionRecoveryMutationOutcome.Rotated)).IsEqualTo(1);
-        await Assert.That(results.Count(result =>
-            result.Outcome == AdmissionRecoveryMutationOutcome.Rejected)).IsEqualTo(1);
+        await Assert.That(results.Count(result => result)).IsEqualTo(1);
+        await Assert.That(results.Count(result => !result)).IsEqualTo(1);
         await using ExploreDbContext verification = TenantContext(tenantId);
         AdmissionRecoveryCapability[] rows = await verification.AdmissionRecoveryCapabilities
             .AsNoTracking()
@@ -459,30 +868,30 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await Assert.That(rows.Single(value =>
             value.ConsumedAt is null && value.RotatedAt is null).CapabilityVersion).IsEqualTo(2);
 
-        AdmissionRecoveryRotationRequest Rotation(byte fill) => new(
+        AdmissionRecoveryCapability Rotation(byte fill) =>
+            AdmissionRecoveryCapability.Create(
+            Guid.CreateVersion7(),
             state.TenantId,
             state.RecoveryRequestId,
             state.AdmissionTicketId,
             state.Purpose,
-            state.LookupDigest,
-            Digest(fill),
-            1,
-            new DateTimeOffset(UtcNow.AddMinutes(15)),
-            state.KeyVersion,
-            state.CapabilityId,
-            Guid.CreateVersion7(),
             state.CapabilityVersion + 1,
-            state.ConcurrencyStamp,
-            new DateTimeOffset(UtcNow),
+            1,
+            Digest(fill),
+            UtcNow.AddMinutes(15),
+            UtcNow,
             Digest((byte)(fill + 1)));
 
-        async Task<AdmissionRecoveryMutationResult> RotateAsync(
-            AdmissionRecoveryRotationRequest request)
+        async Task<bool> RotateAsync(AdmissionRecoveryCapability replacement)
         {
             await start.Task.WaitAsync(timeout.Token);
             await using ExploreDbContext context = TenantContext(tenantId);
             var repository = new AdmissionRecoveryRepository(context);
-            return await repository.RotateAsync(request, timeout.Token);
+            return await repository.TryRotateAsync(
+                state,
+                replacement,
+                UtcNow,
+                timeout.Token);
         }
     }
 
@@ -549,6 +958,218 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             .IsEqualTo(AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested);
         await Assert.That(restored).IsEqualTo(
             new AdmissionRecoveryDeliveryEnvelope(recipient, requestId, capability));
+    }
+
+    [Test]
+    public async Task RecoveryRequestStagingIsPresenceAgnosticAndPlaintextFree()
+    {
+        await fixture.ResetAsync();
+        SeededAssignment seed = await SeedAssignmentAsync("recovery-request-staging");
+        const string presentIdentity = "PRESENT1@EXAMPLE.TEST";
+        const string absentIdentity = "ABSENT01@EXAMPLE.TEST";
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        var protector = new AdmissionRecoveryRequestEnvelopeProtector(
+            new EphemeralDataProtectionProvider());
+        var stager = new AdmissionRecoveryRequestStager(
+            context,
+            protector,
+            new FixedAdmissionTimeProvider(UtcNow));
+
+        await stager.StageAsync(
+            seed.TenantId,
+            new AdmissionRecoveryRequestEnvelope(
+                presentIdentity,
+                AdmissionRecoveryPurpose.TicketRecovery),
+            CancellationToken.None);
+        await stager.StageAsync(
+            seed.TenantId,
+            new AdmissionRecoveryRequestEnvelope(
+                absentIdentity,
+                AdmissionRecoveryPurpose.TicketRecovery),
+            CancellationToken.None);
+        context.ChangeTracker.Clear();
+        AdmissionRecoveryRequestIntent[] intents =
+            await context.AdmissionRecoveryRequestIntents
+                .OrderBy(value => value.Id)
+                .ToArrayAsync();
+        OutboxMessage[] outbox = await context.OutboxMessages
+            .Where(message =>
+                message.EventType ==
+                AdmissionRecoveryDeliveryEvents.RecoveryRequestProcessingRequested)
+            .OrderBy(message => message.Id)
+            .ToArrayAsync();
+
+        await Assert.That(intents.Length).IsEqualTo(2);
+        await Assert.That(outbox.Length).IsEqualTo(2);
+        await Assert.That(intents.All(intent =>
+            !intent.ProtectedIdentity.Contains(presentIdentity, StringComparison.Ordinal) &&
+            !intent.ProtectedIdentity.Contains(absentIdentity, StringComparison.Ordinal))).IsTrue();
+        await Assert.That(outbox.All(message =>
+            !message.Payload!.Contains(presentIdentity, StringComparison.Ordinal) &&
+            !message.Payload.Contains(absentIdentity, StringComparison.Ordinal))).IsTrue();
+        await Assert.That(intents.Select(intent => intent.ProtectedIdentity.Length).Distinct().Count())
+            .IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task RecoveryRequestOutboxHandlerClearsProtectedAbsentIdentityAfterProcessing()
+    {
+        await fixture.ResetAsync();
+        SeededAssignment seed = await SeedAssignmentAsync("recovery-request-handler");
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        var protector = new AdmissionRecoveryRequestEnvelopeProtector(
+            new EphemeralDataProtectionProvider());
+        var requestStager = new AdmissionRecoveryRequestStager(
+            context,
+            protector,
+            new FixedAdmissionTimeProvider(UtcNow));
+        await requestStager.StageAsync(
+            seed.TenantId,
+            new AdmissionRecoveryRequestEnvelope(
+                "ABSENT@EXAMPLE.TEST",
+                AdmissionRecoveryPurpose.TicketRecovery),
+            CancellationToken.None);
+        OutboxMessage outbox = await context.OutboxMessages.SingleAsync(message =>
+            message.EventType ==
+            AdmissionRecoveryDeliveryEvents.RecoveryRequestProcessingRequested);
+        IAdmissionRecoveryCapabilityService capabilityService =
+            Substitute.For<IAdmissionRecoveryCapabilityService>();
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        var service = new AdmissionRecoveryService(
+            new AdmissionRecoveryRepository(context),
+            new AdmissionRecoveryIdentityResolver(context),
+            capabilityService,
+            unitOfWork,
+            new FixedAdmissionTimeProvider(UtcNow),
+            Substitute.For<IAdmissionRecoveryDeliveryStager>(),
+            Substitute.For<IAdmissionRecoveryAuditService>(),
+            Substitute.For<IAdmissionRecoveryRateLimiter>(),
+            requestStager,
+            NullLogger<AdmissionRecoveryService>.Instance);
+        var handler = new AdmissionRecoveryRequestOutboxHandler(
+            context,
+            protector,
+            service,
+            unitOfWork,
+            new FixedAdmissionTimeProvider(UtcNow.AddSeconds(1)));
+
+        await handler.HandleAsync(outbox, CancellationToken.None);
+        context.ChangeTracker.Clear();
+        AdmissionRecoveryRequestIntent completed =
+            await context.AdmissionRecoveryRequestIntents.SingleAsync();
+
+        await Assert.That(completed.ProcessedAt).IsEqualTo(UtcNow.AddSeconds(1));
+        await Assert.That(completed.ProtectedIdentity).IsEmpty();
+        await capabilityService.DidNotReceiveWithAnyArgs()
+            .IssueAsync(default!, default);
+    }
+
+    [Test]
+    public async Task RecoveryRequestProcessingRollsBackEffectsUntilIntentCanComplete()
+    {
+        await fixture.ResetAsync();
+        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
+        SeededAssignment seed = await SeedAssignmentAsync("recovery-request-atomic");
+        TicketGraph graph = surface.IssueTicketGraph(
+            seed,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            1,
+            Digest(0x81));
+        await PersistTicketAsync(seed.TenantId, graph, CancellationToken.None);
+        const string recipient = "RECOVERY-ATOMIC@EXAMPLE.TEST";
+        const string capability = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        context.RegistrationOrderPii.Add(RegistrationOrderPii.CreateFromVerifiedContact(
+            seed.OrderId,
+            seed.TenantId,
+            "Recovery Atomic",
+            recipient,
+            null,
+            null,
+            recipient,
+            (int)RegistrationRetentionPolicyEnum.StandardOperational,
+            UtcNow));
+        await context.SaveChangesAsync();
+        var requestProtector = new AdmissionRecoveryRequestEnvelopeProtector(
+            new EphemeralDataProtectionProvider());
+        var requestStager = new AdmissionRecoveryRequestStager(
+            context,
+            requestProtector,
+            new FixedAdmissionTimeProvider(UtcNow));
+        await requestStager.StageAsync(
+            seed.TenantId,
+            new AdmissionRecoveryRequestEnvelope(
+                recipient,
+                AdmissionRecoveryPurpose.TicketRecovery),
+            CancellationToken.None);
+        OutboxMessage outbox = await context.OutboxMessages.SingleAsync(message =>
+            message.EventType ==
+            AdmissionRecoveryDeliveryEvents.RecoveryRequestProcessingRequested);
+        IAdmissionRecoveryCapabilityService capabilityService =
+            Substitute.For<IAdmissionRecoveryCapabilityService>();
+        capabilityService.IssueAsync(
+                Arg.Any<AdmissionRecoveryCapabilityIssueRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new AdmissionRecoveryCapabilityMaterial(
+                capability,
+                Digest(0x82),
+                1,
+                AdmissionRecoveryPurpose.TicketRecovery,
+                UtcNow.AddMinutes(15),
+                Digest(0x83)));
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        var deliveryStager = new AdmissionRecoveryProtectedDeliveryService(
+            context,
+            new AdmissionRecoveryDeliveryEnvelopeProtector(
+                new EphemeralDataProtectionProvider()),
+            new FixedAdmissionTimeProvider(UtcNow));
+        var service = new AdmissionRecoveryService(
+            new AdmissionRecoveryRepository(context),
+            new AdmissionRecoveryIdentityResolver(context),
+            capabilityService,
+            unitOfWork,
+            new FixedAdmissionTimeProvider(UtcNow),
+            deliveryStager,
+            Substitute.For<IAdmissionRecoveryAuditService>(),
+            Substitute.For<IAdmissionRecoveryRateLimiter>(),
+            requestStager,
+            NullLogger<AdmissionRecoveryService>.Instance);
+        var failingHandler = new AdmissionRecoveryRequestOutboxHandler(
+            context,
+            requestProtector,
+            service,
+            unitOfWork,
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(-1)));
+
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            failingHandler.HandleAsync(outbox, CancellationToken.None));
+
+        context.ChangeTracker.Clear();
+        await Assert.That(await context.AdmissionRecoveryCapabilities.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AdmissionRecoveryDeliveryIntents.CountAsync()).IsEqualTo(0);
+        AdmissionRecoveryRequestIntent pending =
+            await context.AdmissionRecoveryRequestIntents.SingleAsync();
+        await Assert.That(pending.ProcessedAt).IsNull();
+        await Assert.That(pending.ProtectedIdentity).IsNotEmpty();
+
+        var completingHandler = new AdmissionRecoveryRequestOutboxHandler(
+            context,
+            requestProtector,
+            service,
+            unitOfWork,
+            new FixedAdmissionTimeProvider(UtcNow.AddSeconds(1)));
+        await completingHandler.HandleAsync(outbox, CancellationToken.None);
+        await completingHandler.HandleAsync(outbox, CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        await Assert.That(await context.AdmissionRecoveryCapabilities.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.AdmissionRecoveryDeliveryIntents.CountAsync()).IsEqualTo(1);
+        AdmissionRecoveryRequestIntent completed =
+            await context.AdmissionRecoveryRequestIntents.SingleAsync();
+        await Assert.That(completed.ProcessedAt).IsEqualTo(UtcNow.AddSeconds(1));
+        await Assert.That(completed.ProtectedIdentity).IsEmpty();
     }
 
     [Test]
@@ -619,7 +1240,15 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         Guid accountUserId = seed.Order.AccountUserId
             ?? throw new InvalidOperationException("Seeded account order has no account authority.");
         await using ExploreDbContext context = TenantContext(seed.TenantId);
+        context.RegistrationParticipantPii.Add(RegistrationParticipantPii.Create(
+            seed.ParticipantId,
+            seed.TenantId,
+            "Account ticket holder",
+            "holder@example.test",
+            null));
+        await context.SaveChangesAsync();
         var repository = new AdmissionTicketAccountRepository(context);
+        var presentationResolver = new AdmissionTicketPresentationResolver(context);
 
         IReadOnlyList<AdmissionTicket> authorized = await repository.ListCurrentAsync(
             seed.TenantId,
@@ -632,6 +1261,10 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         IReadOnlyList<AdmissionTicket> wrongTenant = await repository.ListCurrentAsync(
             Guid.CreateVersion7(),
             accountUserId,
+            CancellationToken.None);
+        var presentation = await presentationResolver.ResolveAsync(
+            seed.TenantId,
+            [graph.TicketId],
             CancellationToken.None);
         await context.AdmissionTickets
             .Where(ticket => ticket.Id == graph.TicketId)
@@ -647,6 +1280,13 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await Assert.That(wrongAccount).IsEmpty();
         await Assert.That(wrongTenant).IsEmpty();
         await Assert.That(afterRevocation).IsEmpty();
+        await Assert.That(presentation[graph.TicketId].HolderDisplayName)
+            .IsEqualTo("Account ticket holder");
+        await Assert.That(presentation[graph.TicketId].TicketTypeName)
+            .IsEqualTo("Admission");
+        await Assert.That(presentation[graph.TicketId].Entitlements.Count).IsEqualTo(1);
+        await Assert.That(presentation[graph.TicketId].Entitlements[0].EventTitle)
+            .StartsWith("Admission account-authority");
     }
 
     [Test]
@@ -730,7 +1370,7 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     private static string Digest(byte fill) =>
         Convert.ToBase64String(Enumerable.Repeat(fill, 32).ToArray());
 
-    private async Task<(Guid TenantId, AdmissionRecoveryCapabilityState State)>
+    private async Task<(Guid TenantId, AdmissionRecoveryCapability State)>
         SeedRecoveryCapabilityAsync(string suffix)
     {
         AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
@@ -747,30 +1387,28 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         var repository = new AdmissionRecoveryRepository(context);
         Guid requestId = Guid.CreateVersion7();
         string lookupDigest = Digest(0x12);
-        await repository.StoreAsync(
-            new AdmissionRecoveryCapabilityRecord(
-                seed.TenantId,
-                requestId,
-                graph.TicketId,
-                AdmissionRecoveryPurpose.TicketRecovery,
-                lookupDigest,
-                1,
-                new DateTimeOffset(UtcNow.AddMinutes(15)),
+        AdmissionRecoveryCapability capability = AdmissionRecoveryCapability.Create(
                 Guid.CreateVersion7(),
+                seed.TenantId,
+                requestId,
+                graph.TicketId,
+                AdmissionRecoveryPurpose.TicketRecovery.ToString(),
                 1,
-                new DateTimeOffset(UtcNow),
-                Digest(0x13)),
-            CancellationToken.None);
-        AdmissionRecoveryCapabilityState state = await repository.GetByDigestAsync(
-            new AdmissionRecoveryCapabilityLookup(
+                1,
+                lookupDigest,
+                UtcNow.AddMinutes(15),
+                UtcNow,
+                Digest(0x13));
+        await repository.AddAsync(capability, CancellationToken.None);
+        AdmissionRecoveryCapability? state = await repository.FindByProofDigestAsync(
                 seed.TenantId,
                 requestId,
                 graph.TicketId,
                 AdmissionRecoveryPurpose.TicketRecovery,
+                1,
                 lookupDigest,
-                1),
             CancellationToken.None);
-        return (seed.TenantId, state);
+        return (seed.TenantId, state!);
     }
 
     private async Task PersistTicketAsync(Guid tenantId, TicketGraph graph, CancellationToken cancellationToken)
@@ -796,10 +1434,52 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         return new ExploreDbContext(options) { TenantContext = new TestTenantContext(tenantId) };
     }
 
+    private async Task IssueSeedAsync(SeededAssignment seed)
+    {
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        RegistrationFinalizationEffect effect = RegistrationFinalizationEffect.Create(seed.Order, UtcNow);
+        context.RegistrationFinalizationEffects.Add(effect);
+        await context.SaveChangesAsync();
+        var service = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(context),
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            new RecordingAdmissionDispatcher(context),
+            new EfCoreUnitOfWork(context),
+            new FixedAdmissionTimeProvider(UtcNow));
+        AdmissionIssuanceResult result = await service.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ConfirmedFreeOrder),
+            CancellationToken.None);
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+    }
+
+    private AdmissionIssuanceService PaidIssuanceService(ExploreDbContext context) =>
+        new(
+            new AdmissionIssuanceRepository(context),
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
+            new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
+            new RecordingAdmissionDispatcher(context),
+            new EfCoreUnitOfWork(context),
+            new FixedAdmissionTimeProvider(UtcNow.AddMinutes(3)));
+
     private async Task<SeededAssignment> SeedAssignmentAsync(string suffix) =>
         (await SeedAssignmentsAsync(suffix, assignmentCount: 1)).Single();
 
-    private async Task<SeededAssignment[]> SeedAssignmentsAsync(string suffix, int assignmentCount)
+    private async Task<SeededAssignment> SeedPaidAssignmentAsync(string suffix) =>
+        (await SeedAssignmentsAsync(suffix, assignmentCount: 1, paid: true)).Single();
+
+    private async Task<SeededAssignment[]> SeedAssignmentsAsync(
+        string suffix,
+        int assignmentCount,
+        bool paid = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(assignmentCount);
 
@@ -857,11 +1537,20 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         };
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenant.Id, eventEntity.Id, "EUR", 1);
         EventTicketType ticketType = EventTicketType.Create(
-            Guid.CreateVersion7(), tenant.Id, catalog.Id, "Admission", "EUR", TicketPricingModeEnum.Free,
-            null, null, null, ParticipantDataCollectionModeEnum.None, null, null, null,
+            Guid.CreateVersion7(), tenant.Id, catalog.Id, "Admission", "EUR",
+            paid ? TicketPricingModeEnum.Fixed : TicketPricingModeEnum.Free,
+            paid ? Money.Create(500, "EUR") : null,
+            null, null, ParticipantDataCollectionModeEnum.None, null, null, null,
             false, false, null, null, null, null);
         catalog.AddTicketType(ticketType, null);
         catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, tenant.Id, eventEntity.Id, 1));
+        if (paid)
+        {
+            catalog.UpdateCommercialDisclosures(
+                "Merchant disclosure",
+                "Refund policy",
+                "support@example.test");
+        }
         catalog.Publish();
         RegistrationOrder order = RegistrationOrder.Create(
             tenant.Id, eventEntity.Id, user.Id, actor.Id, BookingPartyTypeEnum.Individual, catalog.Id,
@@ -883,16 +1572,135 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             order.AddParticipant(participants[index]);
             order.AddAssignment(line, assignments[index], participants[index]);
         }
-        order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("EUR", 0, 0, 0, 0));
+        long organizerMinor = paid ? checked(assignmentCount * 500L) : 0;
+        order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
+            "EUR", organizerMinor, 0, organizerMinor, 0));
         order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, UtcNow);
         order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, UtcNow);
+        if (paid)
+        {
+            order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, UtcNow);
+            order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, UtcNow);
+        }
         order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, UtcNow);
         context.AddRange(eventEntity, catalog, order);
+        if (paid)
+        {
+            PaidOrderAcceptanceSnapshot acceptance = CreatePaidAcceptance(
+                tenant.Id, eventEntity.Id, order.Id, line.Id, assignmentCount, organizerMinor);
+            OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
+                tenant.Id,
+                actor.Id,
+                actor.Id,
+                "stripe",
+                "platform-test",
+                "acct_admission_test",
+                "BE",
+                "EUR",
+                Guid.CreateVersion7(),
+                null,
+                UtcNow);
+            PaymentAttempt payment = PaymentAttempt.Create(
+                Guid.CreateVersion7(),
+                tenant.Id,
+                order.Id,
+                recipient,
+                "OrganizerDirect",
+                "2026-08-20.acacia",
+                "phase20-paid-admission",
+                Money.Create(organizerMinor, "EUR"),
+                Money.Create(0, "EUR"),
+                Money.Create(0, "EUR"),
+                $"payment:{tenant.Id:N}:{order.Id:N}",
+                UtcNow,
+                UtcNow.AddMinutes(30));
+            payment.AttachAcceptance(acceptance);
+            if (!payment.MarkSucceededFromCheckout(
+                    $"cs_{order.Id:N}",
+                    $"pi_{order.Id:N}",
+                    UtcNow.AddSeconds(1),
+                    "req_phase20"))
+            {
+                throw new InvalidOperationException("Paid admission test payment did not reach succeeded.");
+            }
+            context.AddRange(
+                payment,
+                PaymentSucceededObservation.Create(
+                    payment,
+                    null,
+                    $"cs_{order.Id:N}",
+                    $"pi_{order.Id:N}",
+                    "req_phase20",
+                    UtcNow.AddSeconds(1)),
+                RegistrationFinalizationEffect.Create(order, UtcNow.AddSeconds(2)));
+        }
         await context.SaveChangesAsync();
         return assignments.Select((assignment, index) => new SeededAssignment(
             tenant.Id, eventEntity.Id, order.Id, line.Id, assignment.Id, participants[index].Id,
             order, line, assignment, participants[index], catalog, ticketType)).ToArray();
     }
+
+    private static PaidOrderAcceptanceSnapshot CreatePaidAcceptance(
+        Guid tenantId,
+        Guid eventId,
+        Guid orderId,
+        Guid orderLineId,
+        int quantity,
+        long organizerMinor) =>
+        PaidOrderAcceptanceSnapshot.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            tenantId,
+            orderId,
+            eventId,
+            "phase20-paid-admission",
+            "disclosure-1",
+            "Example Organizer",
+            PaidCheckoutOperatorDisclosure.Create(
+                Guid.CreateVersion7(),
+                "Example Operator",
+                false,
+                "https://events.example.test",
+                "BE",
+                "https://events.example.test",
+                "https://events.example.test/legal",
+                "https://events.example.test/terms",
+                "https://events.example.test/privacy",
+                "complaints@example.test",
+                "Trust and Safety",
+                "Payments Operations",
+                "Dispute Operations",
+                "Payment Reconciliation",
+                "approved"),
+            PaidOrderDeliverySnapshot.Create(
+                new DateTimeOffset(2026, 9, 10, 17, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 9, 10, 20, 0, 0, TimeSpan.Zero),
+                "Europe/Brussels"),
+            "EUR",
+            organizerMinor,
+            0,
+            0,
+            organizerMinor,
+            Guid.CreateVersion7(),
+            7,
+            "Refunds follow accepted policy v7.",
+            "en-GB",
+            "support@example.test",
+            PaidCheckoutProviderDisclosure.Create(
+                "stripe",
+                "OrganizerDirect",
+                "direct-charge",
+                "EXAMPLE EVENT",
+                "test",
+                "instance-operator"),
+            [PaidOrderAcceptanceLineFact.Create(
+                orderLineId,
+                "Admission",
+                quantity,
+                500,
+                0,
+                organizerMinor)],
+            UtcNow);
 
     private sealed class GatedAdmissionDigestService(IAdmissionCredentialDigestService inner)
         : IAdmissionCredentialDigestService
@@ -945,6 +1753,67 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             }
             return ValueTask.FromResult(result);
         }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(
+                    "registration_finalization_effects",
+                    StringComparison.OrdinalIgnoreCase) &&
+                command.CommandText.Contains("FOR UPDATE", StringComparison.OrdinalIgnoreCase))
+            {
+                commandStarted.TrySetResult();
+            }
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class RefundInsertCommandSignal : DbCommandInterceptor
+    {
+        private readonly TaskCompletionSource commandStarted =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task CommandStarted => commandStarted.Task;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(
+                    "refund_attempts",
+                    StringComparison.OrdinalIgnoreCase) &&
+                command.CommandText.Contains("INSERT", StringComparison.OrdinalIgnoreCase))
+            {
+                commandStarted.TrySetResult();
+            }
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class CommitAcknowledgementLostUnitOfWork(IUnitOfWork inner) : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) =>
+            inner.ExecuteInTransactionAsync(operation, ct);
+
+        public async Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            await inner.ExecuteInTransactionAsync(operation, ct);
+            throw new TimeoutException("Simulated lost commit acknowledgement.");
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) =>
+            inner.ExecuteSerializableAsync(operation, ct);
     }
 
     private sealed class RecordingAdmissionDispatcher(ExploreDbContext context) : IAdmissionDeliveryDispatcher

@@ -69,6 +69,18 @@ public sealed class RefundAttemptRepository(ExploreDbContext dbContext) : IRefun
             .ThenBy(attempt => attempt.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<PaidOrderAcceptanceSnapshot?> GetAcceptanceAsync(
+        Guid tenantId,
+        Guid paidOrderAcceptanceSnapshotId,
+        CancellationToken cancellationToken) =>
+        dbContext.PaidOrderAcceptanceSnapshots
+            .AsNoTracking()
+            .Include(snapshot => snapshot.Lines)
+            .SingleOrDefaultAsync(
+                snapshot => snapshot.TenantId == tenantId &&
+                            snapshot.Id == paidOrderAcceptanceSnapshotId,
+                cancellationToken);
+
     public async Task<RefundReconciliationHealth> GetReconciliationHealthAsync(
         DateTime observedAt,
         CancellationToken cancellationToken)

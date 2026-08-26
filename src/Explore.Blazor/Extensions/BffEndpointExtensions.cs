@@ -19,6 +19,7 @@ public static class BffEndpointExtensions
         app.MapSupportAccessEndpoints();
         app.MapRegistrationProviderEmbedEndpoints();
         app.MapRegistrationPaymentEndpoints();
+        app.MapAdmissionRecoveryEndpoints();
         app.MapAtprotoOAuthEndpoints();
 
         return app;

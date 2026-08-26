@@ -152,9 +152,21 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<AdmissionTicketCredential>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionTarget>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionCheckInPolicy>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionCheckInEvent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionCheckInState>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionScannerCapability>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<AdmissionRecoveryCapability>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
-        modelBuilder.Entity<Explore.Application.Contracts.Admissions.AdmissionRecoveryDeliveryIntent>()
+        modelBuilder.Entity<AdmissionRecoveryRequestIntent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionRecoveryDeliveryIntent>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);

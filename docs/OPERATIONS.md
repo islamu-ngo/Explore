@@ -28,6 +28,144 @@ Reconciliation claims at most 50 rows in stable `next_attempt_at/created_at/id` 
 | Prepare, attest, tag, or re-verify a governed release | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | You are running `prepare`, `verify-candidate`, `verify-tag`, `verify-main`, `verify-baseline`, opening or deleting a maintenance line, or checking an existing release from its tag alone. |
 | Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
+## Admission Check-In Operations (Phase 21)
+
+This runbook covers online, server-authoritative admission check-in. It is not a ticket roster,
+credential recovery, or offline admission procedure. See [Admission And Registration](ADMISSION_AND_REGISTRATION.md#6-phase-21-online-check-in-model)
+and [ADR-023](adr/ADR-023-admission-credential-check-in-transfer-recovery.md) for the architecture.
+
+### Normal Authority And Data Flow
+
+| Step | Authority and data boundary | Expected evidence |
+|---|---|---|
+| 1. Discover work | An authenticated staff member obtains the event-specific `check-in-admissions` HAL relation. | The relation is present only for the authorized event scope. |
+| 2. Issue scanner authority | Authorized issuance creates one capability for one exact target and action scope. | The issuing response is the sole plaintext disclosure; later reads are masked. |
+| 3. Admit online | Staff or dedicated scanner authority submits the opaque admission value for server validation. | One append-only check-in fact and an updated target-state projection, or a generic rejection. |
+| 4. Correct | Authorized staff submits an undo against the exact active fact with a closed reason code. | One linked compensating undo fact; the original check-in remains retained. |
+| 5. Observe | Summary and health views expose target/status aggregates and bounded operational state. | No roster, credential, attendee, actor, device, or raw scan data is required for the view. |
+
+Staff and scanner operation are separate. Staff uses normal authenticated event authority; scanner
+operation uses only the dedicated scanner authority scoped to one exact target. Do not share a
+scanner capability between doors or add a target selector to scanner input.
+
+### Implemented Operational Controls
+
+| Relation | Route | Authority | Durable effect |
+|---|---|---|---|
+| `admission-check-in-health` | `GET /api/events/{eventId}/admission/check-ins/health?targetId={targetId}` | `event_check_in:view` | Returns bounded target state and database dependency availability. |
+| `stop-admission-check-in` | `POST /api/events/{eventId}/admission/check-ins/operations/stop` | `event_check_in:manage` | Sets the target to `Stopped`; Domain admission decisions and new scanner issuance fail closed. |
+| `restore-admission-check-in` | `POST /api/events/{eventId}/admission/check-ins/operations/restore` | `event_check_in:manage` | Restores the target to `Active` after authority and dependency checks. |
+| `reconcile-admission-check-in` | `POST /api/events/{eventId}/admission/check-ins/operations/reconcile` | `event_check_in:manage` | Records the post-incident reconciliation decision without rewriting check-in facts. |
+
+Mutation bodies carry one exact `TargetId` and a closed reason code: `DeviceLoss`,
+`ConnectivityOutage`, `OperatorCorrection`, or `PostIncidentReconciliation`. Each mutation updates
+state and appends its PII-free `AuditLog` fact in one EF execution-strategy transaction. Repeated
+stop or restore calls are safe and remain independently auditable. Dependency failure never enables
+offline validation; health reports unavailable and admission remains fail closed.
+
+### Control And Failure Posture
+
+| Condition | Required posture | Do not do |
+|---|---|---|
+| One scanner device must stop | Revoke that exact scanner capability and issue a replacement only after containment. Staff and other capability paths remain available when their HAL relations are present. | Do not stop the target unless all admission channels for that target must fail closed. |
+| All target admission must stop | Use the target stop control. It blocks staff check-in, scanner check-in, and new scanner-capability issuance for that target until restore. | Do not describe target stop as device-only containment or staff continuity. |
+| Scanner capability is revoked or expired | Reject immediately and issue a replacement only after the incident is contained. | Do not extend or reuse the old bearer. |
+| Check-in input is invalid or wrong-scoped | Return the generic public rejection; inspect only bounded internal fixed reason categories. | Do not disclose whether a credential, event, target, or capability exists. |
+| Limiter is saturated | Return RFC 7807 `429` with the available retry metadata and stop submitting until permitted. | Do not bypass the limiter, increase a queue without review, or locally admit attendees. |
+| Connectivity is unavailable | Show the bounded outage state and retain no offline validation or submission queue. | Do not switch to offline validation, cache credentials, or use a local admission ledger. |
+
+Stop, restore, and reconcile are server-authorized operational actions. Operators and clients must
+use those controls only when their HAL relations are present; stop/restore/reconcile attempts without
+the relation are not an alternate control plane.
+
+### Incident Checklists
+
+#### Lost Scanner Device Or Capability Revocation
+
+1. Revoke the exact scanner capability. Use target stop only when containment requires every
+   admission channel for that target to fail closed.
+2. Preserve the bounded audit and telemetry window; do not copy bearer material into incident notes.
+3. Confirm the revoked capability receives the generic rejection. If the target was not stopped,
+   confirm authenticated staff and unrelated scanner capabilities remain available where authorized.
+4. Issue a new one-target capability only after the replacement operator/device process is complete.
+5. Use the HAL-gated restore control only after validating the new scope and observing normal health.
+
+#### Suspected Credential Or Bearer Compromise
+
+1. Stop new issuance for the affected scope when containment requires it.
+2. Revoke the affected scanner capability or admission credential through its authorized lifecycle
+   action; never delete check-in facts to invalidate authority.
+3. Retain the export-safe audit window and bounded fixed reason category for investigation.
+4. Reissue only through the normal one-time issuance path. Confirm that later reads stay masked.
+5. Reconcile outstanding target state and restore issuance only when the relevant HAL controls are
+   present and the generic rejection rate has returned to the expected range.
+
+#### Mistaken Check-In
+
+1. Find the authorized target-state record through the check-in summary; do not use a roster export
+   or raw credential as the correction key.
+2. Use the HAL-gated undo action and select `OperatorCorrection`, `DuplicateScan`, `WrongTarget`,
+   or `ExceptionalReconciliation`; never enter incident prose.
+3. Confirm a compensating undo fact was appended and the target-state summary changed.
+4. Do not delete, edit, or recreate the original check-in fact.
+
+#### Queue Saturation Or Rate-Limit Rejections
+
+1. Stop repeated submissions and honor `Retry-After` when present.
+2. Inspect only aggregate limiter saturation, queue/backlog, latency, and infrastructure health signals.
+3. Reduce intake or stop the affected scanner scope through its HAL control when saturation persists.
+4. Restore the scope only after backlog drains and the alert clears; reconcile only server-recorded
+   items. No offline queue is retained for replay after an outage.
+
+#### Connectivity Outage, Restore, And Reconciliation
+
+1. Declare admission validation unavailable; do not admit from cached QR, manual notes, or local state.
+2. Preserve the outage time window and bounded health/telemetry evidence without credentials or PII.
+3. Restore the underlying service path and verify the authorized summary/health surface is available.
+4. Use the HAL-gated reconcile action for server-recorded ambiguity only. Do not create retrospective
+   check-ins from local scanner memory or a paper list.
+5. Restore scanner issuance or scope only after reconciliation is complete and normal online validation
+   is confirmed.
+
+Emergency exception admission is **not implemented**. A future exception design must be separately
+authenticated, reasoned, append-only, and reconciled later; an outage, rate limit, or missing scanner
+capability does not authorize an exception today.
+
+### Fixed-Cardinality Telemetry And Alerts
+
+Admission telemetry uses fixed values only. Metric labels must never contain tenant, event, target,
+ticket, credential, capability, actor, user, device, raw scan, route instance, or free-form reason.
+
+| Metric | Type | Allowed dimensions | Alert / operator action |
+|---|---|---|---|
+| `explore.admission.check_in.duration` | Histogram | `action` (`check_in`/`undo`), `authority_kind` (`staff`/`scanner`), `target_type` (`event`/`day`/`session`), `outcome` (closed vocabulary) | Alert when p95 exceeds 250 ms or p99 exceeds 500 ms at the declared 50-concurrent-request load; reduce intake, inspect aggregate dependency health, then restore only after recovery. |
+| `explore.admission.check_in.operations` | Counter | Same closed dimensions as duration | Alert on a sustained rejection anomaly against the declared aggregate baseline; investigate bounded outcome and fixed reason-category aggregates, never individual credentials. |
+| `explore.admission.check_in.limiter_rejections` | Counter | `policy`, `authority_kind`, `target_type` | Alert when limiter rejection remains sustained; stop or reduce the affected scope and honor retry metadata. |
+| `explore.admission.check_in.backlog` | Gauge | `kind` (`transaction`/`audit`), `target_type` (`event`/`day`/`session`/`unknown`) | Alert when transaction or audit work remains above the configured bounded threshold; stop intake if required and reconcile server-recorded work after drain. |
+| `explore.admission.check_in.infrastructure` | Gauge or counter | `dependency_kind`, `status` (`healthy`/`degraded`/`unhealthy`) | Alert immediately for an infrastructure outage; keep admission online-only and follow the outage checklist. |
+
+`outcome`, `policy`, `kind`, `target_type`, `dependency_kind`, and every reason category are closed,
+source-defined vocabularies. Dashboard filters and alerts must not add identifier labels through
+recording rules or log-to-metric extraction.
+
+### Export-Safe Audit, Retention, And Rollback
+
+| Evidence | Safe retained content | Excluded content |
+|---|---|---|
+| Export-safe admission fact projection | Timestamp, action, target type, authority kind, stable outcome, bounded fixed reason category | QR/bearer/capability plaintext or digest, ticket/attendee/actor/device identifiers, raw scan input, free-form text. |
+| Operational summary | Aggregate target/status counts, backlog, saturation, latency, and health state | Roster rows, credential lookup results, per-user/device data. |
+| Incident export | Incident window, affected target type, bounded action/outcome/reason categories, stop/restore/reconcile decision | Credentials, PII, exact identifiers, raw logs, screenshots of scanner input, or unbounded exception text. |
+
+Retain admission facts and the bounded incident evidence under the applicable retention policy; do
+not remove facts to make a correction or rollback appear clean. Operational rollback is forward-only:
+revoke the affected capability for device-only containment or stop the target for all-channel
+containment, restore the online path, reconcile
+server-recorded ambiguity, then restore through the applicable HAL gate. Evidence must show the
+stop, restore, reconciliation decision, and resulting aggregate state. It must not contain secrets
+or personal data. Internal admission facts retain the minimum actor or scanner identity required
+for authoritative lineage and compensation, under restricted access and retention controls; those
+identifiers are never emitted by the export-safe projection.
+
 ## Localization Static Bundle Operations
 
 No-TMS and provider-fallback localization bundles are stored under the API

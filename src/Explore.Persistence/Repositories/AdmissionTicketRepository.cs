@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -35,9 +36,20 @@ public sealed class AdmissionTicketRepository(ExploreDbContext dbContext) :
     public async Task<AdmissionTicket?> GetByIdForUpdateAsync(
         Guid tenantId,
         Guid admissionTicketId,
-        CancellationToken cancellationToken) => await dbContext.AdmissionTickets
-        .Include(ticket => ticket.Credentials)
-        .SingleOrDefaultAsync(ticket => ticket.TenantId == tenantId && ticket.Id == admissionTicketId, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
+            dbContext,
+            tenantId,
+            "id",
+            admissionTicketId,
+            cancellationToken);
+        return await dbContext.AdmissionTickets
+            .Include(ticket => ticket.Credentials)
+            .SingleOrDefaultAsync(
+                ticket => ticket.TenantId == tenantId && ticket.Id == admissionTicketId,
+                cancellationToken);
+    }
 
     public async Task<AdmissionTicket> AddAsync(AdmissionTicket ticket, CancellationToken cancellationToken)
     {

@@ -29,6 +29,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
     PrivacyErasureCacheInvalidationDispatcher privacyErasureCacheInvalidationDispatcher,
     IAdmissionCredentialDeliveryOutboxHandler admissionCredentialDeliveryHandler,
+    IAdmissionRecoveryRequestOutboxHandler admissionRecoveryRequestHandler,
     IAdmissionRecoveryDeliveryOutboxHandler admissionRecoveryDeliveryHandler,
     IOutboxRepository outboxRepository,
     IRefundCampaignRepository refundCampaignRepository,
@@ -36,6 +37,9 @@ public sealed class CompositeOutboxMessageDispatcher(
     RefundDispatchService refundDispatchService,
     RefundReconciliationService refundReconciliationService,
     RegistrationPaymentCancellationService paymentCancellationService,
+    IAdmissionRevocationService admissionRevocationService,
+    IAdmissionRefundRevocationService admissionRefundRevocationService,
+    IAdmissionEventCancellationService admissionEventCancellationService,
     BusinessMetrics businessMetrics,
     TimeProvider timeProvider,
     IMediator mediator,
@@ -75,14 +79,46 @@ public sealed class CompositeOutboxMessageDispatcher(
                 await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
                 return;
 
-            case RegistrationOrderOutboxMessageFactory.ConfirmedEventType:
-            case RegistrationOrderOutboxMessageFactory.CancelledEventType:
             case RegistrationOrderOutboxMessageFactory.RejectedEventType:
+            case RegistrationOrderOutboxMessageFactory.ConfirmedEventType:
                 logger.LogInformation("Recorded registration-order lifecycle outbox message {MessageId} after commit.", message.Id);
+                return;
+
+            case RegistrationOrderOutboxMessageFactory.CancelledEventType:
+                RegistrationOrderLifecycleOutboxPayload cancelled =
+                    RegistrationOrderOutboxMessageFactory.ReadLifecycle(message);
+                AdmissionRevocationResult cancellationResult =
+                    await admissionRevocationService.ReconcileAsync(
+                        new AdmissionRevocationRequest(
+                            cancelled.TenantId,
+                            cancelled.RegistrationOrderId,
+                            AdmissionRevocationService.OrderCancellationReason,
+                            []),
+                        ct);
+                if (cancellationResult.Outcome is
+                    AdmissionRevocationOutcome.InvalidRequest or
+                    AdmissionRevocationOutcome.InvalidAllocation)
+                {
+                    throw new InvalidOperationException("Durable order cancellation admission facts are invalid.");
+                }
+                return;
+
+            case AdmissionRevocationOutboxMessageFactory.EventCancellationRequested:
+                AdmissionEventCancellationPayload eventCancellation =
+                    AdmissionRevocationOutboxMessageFactory.ReadEventCancellation(message);
+                await admissionEventCancellationService.ReconcileAsync(
+                    message.Id,
+                    eventCancellation.TenantId,
+                    eventCancellation.EventId,
+                    ct);
                 return;
 
             case AdmissionDeliveryEvents.CredentialDeliveryRequested:
                 await admissionCredentialDeliveryHandler.HandleAsync(message, ct);
+                return;
+
+            case AdmissionRecoveryDeliveryEvents.RecoveryRequestProcessingRequested:
+                await admissionRecoveryRequestHandler.HandleAsync(message, ct);
                 return;
 
             case AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested:
@@ -143,6 +179,7 @@ public sealed class CompositeOutboxMessageDispatcher(
             throw new InvalidOperationException("Refund dispatch remains safely retryable before provider handoff.");
         }
         businessMetrics.RecordRefundOperation("dispatch", attempt.Status.ToString(), "completed");
+        await ReconcileAdmissionRefundAsync(attempt, cancellationToken);
         await ScheduleReconciliationAsync(attempt, cancellationToken);
         if (attempt.Status == RefundAttemptStatusEnum.RequiresAction && attempt.SourceCampaignId.HasValue)
         {
@@ -166,6 +203,7 @@ public sealed class CompositeOutboxMessageDispatcher(
         }
 
         businessMetrics.RecordRefundOperation("reconcile", attempt.Status.ToString(), "completed");
+        await ReconcileAdmissionRefundAsync(attempt, cancellationToken);
         await ScheduleReconciliationAsync(attempt, cancellationToken);
         await RefreshCampaignAsync(attempt, cancellationToken);
     }
@@ -189,6 +227,29 @@ public sealed class CompositeOutboxMessageDispatcher(
                 attempt.TenantId, attempt.SourceCampaignId.Value, timeProvider.GetUtcNow().UtcDateTime, cancellationToken)
             : Task.CompletedTask;
 
+    private async Task ReconcileAdmissionRefundAsync(
+        RefundAttempt attempt,
+        CancellationToken cancellationToken)
+    {
+        if (!attempt.BuyerRefundSucceededAt.HasValue)
+        {
+            return;
+        }
+
+        AdmissionRevocationResult? result =
+            await admissionRefundRevocationService.ReconcileSucceededAsync(
+                attempt.TenantId,
+                attempt.Id,
+                cancellationToken);
+        if (result?.Outcome is
+            AdmissionRevocationOutcome.InvalidRequest or
+            AdmissionRevocationOutcome.InvalidAllocation or
+            AdmissionRevocationOutcome.NotFound)
+        {
+            throw new InvalidOperationException("Refund admission reconciliation did not converge.");
+        }
+    }
+
     public async Task ReconcileDeadLetterAsync(
         OutboxMessage message,
         CancellationToken ct = default)
@@ -211,6 +272,20 @@ public sealed class CompositeOutboxMessageDispatcher(
                 await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
                 return;
 
+            case AdmissionDeliveryEvents.CredentialDeliveryRequested:
+                await admissionCredentialDeliveryHandler.HandleAsync(message, ct);
+                return;
+
+            case AdmissionRecoveryDeliveryEvents.RecoveryRequestProcessingRequested:
+                await admissionRecoveryRequestHandler.HandleAsync(message, ct);
+                return;
+
+            case AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested:
+                await admissionRecoveryDeliveryHandler.HandleAsync(message, ct);
+                return;
+
+            case RegistrationOrderOutboxMessageFactory.CancelledEventType:
+            case AdmissionRevocationOutboxMessageFactory.EventCancellationRequested:
             case RefundOutboxMessageFactory.CampaignProcessRequested:
             case RefundOutboxMessageFactory.DispatchRequested:
             case RefundOutboxMessageFactory.ReconciliationRequested:

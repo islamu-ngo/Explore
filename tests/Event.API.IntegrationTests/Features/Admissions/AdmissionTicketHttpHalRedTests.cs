@@ -47,6 +47,19 @@ public sealed partial class AdmissionTicketApiRedContractTests
             scenario.EventId,
             scenario.ActiveStatusCode,
             scenario.AccountDisplayReference);
+        await Assert.That(JsonGuid(ownBody, "registrationOrderId"))
+            .IsEqualTo(scenario.AccountOrderId);
+        await Assert.That(JsonString(ownBody, "holderDisplayName"))
+            .IsEqualTo(scenario.AccountHolderDisplayName);
+        await Assert.That(JsonString(ownBody, "ticketTypeName"))
+            .IsEqualTo(scenario.AccountTicketTypeName);
+        await Assert.That(ownBody).Contains(scenario.AccountEventTitle);
+        await Assert.That(ownBody).Contains(scenario.AccountSessionTitle);
+        await Assert.That(Relations(ownBody)).Contains("registration-order");
+        await Assert.That(LinkHref(ownBody, "registration-order"))
+            .IsEqualTo(
+                $"/api/events/{scenario.EventId:D}/registration-orders/{scenario.AccountOrderId:D}");
+        await Assert.That(LinkMethod(ownBody, "registration-order")).IsEqualTo(HttpMethods.Get);
         await Assert.That(crossTenant.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
         await Assert.That(absent.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
         await Assert.That(await ProblemFingerprint(crossTenant))
@@ -67,8 +80,8 @@ public sealed partial class AdmissionTicketApiRedContractTests
 
         using HttpResponseMessage detail = await SendAccountGet(client, accountPath);
         string body = await detail.Content.ReadAsStringAsync();
-        using HttpResponseMessage qr = await SendAccountGet(client, accountPath + "/qr");
-        using HttpResponseMessage print = await SendAccountGet(client, accountPath + "/print");
+        using HttpResponseMessage qr = await SendAccountPost(client, accountPath + "/qr");
+        using HttpResponseMessage print = await SendAccountPost(client, accountPath + "/print");
 
         await Assert.That(detail.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await AssertTicketMetadata(
@@ -97,9 +110,9 @@ public sealed partial class AdmissionTicketApiRedContractTests
 
         using HttpResponseMessage activeDetail = await SendAccountGet(client, accountPath);
         string activeBody = await activeDetail.Content.ReadAsStringAsync();
-        using HttpResponseMessage activeQr = await SendAccountGet(client, accountPath + "/qr");
+        using HttpResponseMessage activeQr = await SendAccountPost(client, accountPath + "/qr");
         string activeQrBody = await activeQr.Content.ReadAsStringAsync();
-        using HttpResponseMessage activePrint = await SendAccountGet(client, accountPath + "/print");
+        using HttpResponseMessage activePrint = await SendAccountPost(client, accountPath + "/print");
         string activePrintBody = await activePrint.Content.ReadAsStringAsync();
 
         await AssertHalLink(activeBody, QrRelation, accountPath + "/qr");
@@ -125,8 +138,8 @@ public sealed partial class AdmissionTicketApiRedContractTests
         scenario.RevokeAccountTicket();
         using HttpResponseMessage revokedDetail = await SendAccountGet(client, accountPath);
         string revokedBody = await revokedDetail.Content.ReadAsStringAsync();
-        using HttpResponseMessage revokedQr = await SendAccountGet(client, accountPath + "/qr");
-        using HttpResponseMessage revokedPrint = await SendAccountGet(client, accountPath + "/print");
+        using HttpResponseMessage revokedQr = await SendAccountPost(client, accountPath + "/qr");
+        using HttpResponseMessage revokedPrint = await SendAccountPost(client, accountPath + "/print");
 
         await Assert.That(Relations(revokedBody)).DoesNotContain(QrRelation);
         await Assert.That(Relations(revokedBody)).DoesNotContain(PrintRelation);
@@ -144,8 +157,9 @@ public sealed partial class AdmissionTicketApiRedContractTests
         var scenario = new AdmissionApiScenario();
         await using var factory = new AdmissionApiFactory(scenario);
         using HttpClient client = factory.CreateClient();
-        using HttpResponseMessage response = await SendAccountGet(
-            client, AccountSurfacePath(scenario.AccountTicketId, surface));
+        using HttpResponseMessage response = surface == "account-detail"
+            ? await SendAccountGet(client, AccountSurfacePath(scenario.AccountTicketId, surface))
+            : await SendAccountPost(client, AccountSurfacePath(scenario.AccountTicketId, surface));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await AssertPrivateNoReferrer(response);
@@ -168,6 +182,6 @@ public sealed partial class AdmissionTicketApiRedContractTests
     {
         await Assert.That(Relations(body)).Contains(relation);
         await Assert.That(LinkHref(body, relation)).IsEqualTo(expectedHref);
-        await Assert.That(LinkMethod(body, relation)).IsEqualTo(HttpMethods.Get);
+        await Assert.That(LinkMethod(body, relation)).IsEqualTo(HttpMethods.Post);
     }
 }

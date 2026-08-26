@@ -53,6 +53,11 @@ public static class RegistrationOrderOutboxMessageFactory
         RegistrationOrderStatusEnum.Rejected => RejectedEventType,
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Only terminal lifecycle transitions create general outbox messages.")
     };
+
+    public static RegistrationOrderLifecycleOutboxPayload ReadLifecycle(OutboxMessage message) =>
+        JsonSerializer.Deserialize<RegistrationOrderLifecycleOutboxPayload>(message.Payload
+            ?? throw new InvalidOperationException("Registration-order lifecycle payload is required."))
+        ?? throw new InvalidOperationException("Registration-order lifecycle payload is invalid.");
 }
 
 public sealed record RegistrationOrderLifecycleOutboxPayload(

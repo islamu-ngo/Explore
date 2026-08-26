@@ -1,0 +1,137 @@
+@* ABOUTME: Lists the signed-in account's admission tickets using typed HAL resources. *@
+@* ABOUTME: Renders navigation affordances only when the API supplies their link relations. *@
+@page "/tickets"
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@layout MainLayout
+@inject IAdmissionTicketService TicketService
+@inject IAccessibilityAnnouncerService Announcer
+@implements IDisposable
+
+<PageTitle>My admission tickets</PageTitle>
+<HeadContent>
+    <meta name="referrer" content="no-referrer" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="tickets-page">
+    <header class="tickets-page__header">
+        <div>
+            <MudText Typo="Typo.overline">ADMISSION</MudText>
+            <MudText Typo="Typo.h3" HtmlTag="h1">My tickets</MudText>
+            <MudText Typo="Typo.body1">
+                Access admission credentials issued to registrations owned by this account.
+            </MudText>
+        </div>
+        <AppButton Href="/tickets/recovery" Variant="Variant.Outlined">
+            Recover a ticket
+        </AppButton>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="tickets-page__state" role="status">
+            <MudProgressCircular Indeterminate="true" aria-hidden="true" />
+            <span>Loading admission tickets…</span>
+        </div>
+    }
+    else if (_tickets.Count == 0)
+    {
+        <section class="tickets-page__state" aria-labelledby="tickets-empty-heading">
+            <MudText Id="tickets-empty-heading" Typo="Typo.h5" HtmlTag="h2">
+                No admission tickets yet
+            </MudText>
+            <MudText Typo="Typo.body2">
+                Confirmed eligible registrations will appear here after issuance.
+            </MudText>
+        </section>
+    }
+    else
+    {
+        <section class="tickets-page__grid"
+                 aria-label="@($"{_tickets.Count} admission tickets")">
+            @foreach (HalResourceOfAdmissionTicketDto ticket in _tickets)
+            {
+                <article class="tickets-page__card" data-testid="admission-ticket-summary">
+                    <header>
+                        <MudText Typo="Typo.h5" HtmlTag="h2">@ticket.DisplayReference</MudText>
+                        <MudChip T="string" Variant="Variant.Outlined">@ticket.StatusCode</MudChip>
+                    </header>
+                    <dl>
+                        <div>
+                            <dt>Holder</dt>
+                            <dd>@(ticket.HolderDisplayName ?? "Holder details unavailable")</dd>
+                        </div>
+                        <div>
+                            <dt>Ticket type</dt>
+                            <dd>@ticket.TicketTypeName</dd>
+                        </div>
+                        <div>
+                            <dt>Included admission</dt>
+                            <dd>@EntitlementSummary(ticket)</dd>
+                        </div>
+                        <div>
+                            <dt>Issued</dt>
+                            <dd>@ticket.IssuedAtUtc.ToLocalTime().ToString("g")</dd>
+                        </div>
+                    </dl>
+                    <div class="tickets-page__actions">
+                        @if (HasLink(ticket, "self"))
+                        {
+                            <AppButton Href="@($"/tickets/{ticket.TicketId:D}")"
+                                       data-testid="open-admission-ticket">
+                                View ticket
+                            </AppButton>
+                        }
+                        @if (HasLink(ticket, "registration-order"))
+                        {
+                            <AppButton Href="@($"/registration/events/{ticket.EventId:D}/orders/{ticket.RegistrationOrderId:D}")"
+                                       Variant="Variant.Outlined"
+                                       data-testid="open-registration-order">
+                                Registration order
+                            </AppButton>
+                        }
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</MudContainer>
+
+@code {
+    private readonly CancellationTokenSource _lifetime = new();
+    private IReadOnlyList<HalResourceOfAdmissionTicketDto> _tickets = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tickets = await TicketService.GetCurrentAsync(_lifetime.Token);
+        _loading = false;
+        await Announcer.AnnouncePoliteAsync(
+            _tickets.Count == 0
+                ? "No admission tickets found."
+                : $"{_tickets.Count} admission tickets loaded.");
+    }
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
+
+    private static bool HasLink(HalResourceOfAdmissionTicketDto ticket, string relation) =>
+        ticket._links?.ContainsKey(relation) == true;
+
+    private static string EntitlementSummary(HalResourceOfAdmissionTicketDto ticket) =>
+        ticket.Entitlements is { Count: > 0 }
+            ? string.Join(", ", ticket.Entitlements
+                .Select(entitlement =>
+                    entitlement.SessionTitle
+                    ?? entitlement.DayLabel
+                    ?? entitlement.EventTitle)
+                .Distinct(StringComparer.Ordinal))
+            : "No included admission";
+}

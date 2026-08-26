@@ -83,6 +83,11 @@ public interface IRefundAttemptRepository
         Guid paymentAttemptId,
         CancellationToken cancellationToken);
 
+    Task<PaidOrderAcceptanceSnapshot?> GetAcceptanceAsync(
+        Guid tenantId,
+        Guid paidOrderAcceptanceSnapshotId,
+        CancellationToken cancellationToken);
+
     Task<RefundReconciliationHealth> GetReconciliationHealthAsync(
         DateTime observedAt,
         CancellationToken cancellationToken);

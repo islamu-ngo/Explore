@@ -97,6 +97,17 @@ public static class LinkRelations
     public const string ReviewPaidSalesResume = "review-paid-sales-resume";
     public const string RequestPaidCheckoutReview = "request-paid-checkout-review";
     public const string DecidePaidCheckoutReview = "decide-paid-checkout-review";
+    public const string CheckInAdmissions = "check-in-admissions";
+    public const string AdmissionCheckInSummary = "admission-check-in-summary";
+    public const string AdmissionCheckInAudit = "admission-check-in-audit";
+    public const string IssueScannerCapability = "issue-scanner-capability";
+    public const string RevokeScannerCapability = "revoke-scanner-capability";
+    public const string UndoAdmissionCheckIn = "undo-admission-check-in";
+    public const string AdmissionCheckInHealth = "admission-check-in-health";
+    public const string StopAdmissionCheckIn = "stop-admission-check-in";
+    public const string RestoreAdmissionCheckIn = "restore-admission-check-in";
+    public const string ReconcileAdmissionCheckIn = "reconcile-admission-check-in";
+    public const string AdmissionCheckInResults = "admission-check-in-results";
 
     public const string Instantiate = "instantiate";
 

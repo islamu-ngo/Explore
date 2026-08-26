@@ -110,6 +110,7 @@ public static class BlazorHostApplicationExtensions
         pipeline.UsePathTenantResolverMiddleware();
         pipeline.UseRouting();
         pipeline.UseAuthentication();
+        pipeline.UseAdmissionCheckInBffTransport();
         pipeline.UseAntiforgeryTokenMiddleware(app);
         pipeline.UseRequestLocalization();
         pipeline.UseAccessTokenCaptureMiddleware();

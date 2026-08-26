@@ -16,7 +16,9 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
     [
         "ix_event_ticket_catalog_versions_tenant_id_event_id",
         "ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu",
-        "ix_event_capacity_pools_tenant_id_event_id_name"
+        "ix_event_capacity_pools_tenant_id_event_id_name",
+        "ux_admission_targets_scope",
+        "ux_admission_check_in_policies_target"
     ];
 
     public Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>

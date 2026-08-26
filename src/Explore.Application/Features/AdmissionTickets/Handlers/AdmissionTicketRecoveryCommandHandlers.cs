@@ -8,14 +8,14 @@ using Explore.Application.Features.AdmissionTickets.Requests.Commands;
 using Explore.Application.Services.Registration;
 using MediatR;
 
-namespace Explore.Application.Features.AdmissionTickets.Handlers;
+namespace Explore.Application.Features.AdmissionTickets.Handlers.Commands;
 
 public sealed class RequestAdmissionTicketRecoveryCommandHandler(
     AdmissionRecoveryService recoveryService,
     ITenantContext tenantContext) :
-    IRequestHandler<RequestAdmissionTicketRecoveryCommand, AdmissionTicketRecoveryRequestResult>
+    IRequestHandler<RequestAdmissionTicketRecoveryCommand, AdmissionTicketRecoveryRequestResultDto>
 {
-    public async Task<AdmissionTicketRecoveryRequestResult> Handle(
+    public async Task<AdmissionTicketRecoveryRequestResultDto> Handle(
         RequestAdmissionTicketRecoveryCommand request,
         CancellationToken cancellationToken)
     {
@@ -25,20 +25,21 @@ public sealed class RequestAdmissionTicketRecoveryCommandHandler(
                 request.Email,
                 AdmissionRecoveryPurpose.TicketRecovery),
             cancellationToken);
-        return new AdmissionTicketRecoveryRequestResult(true, true);
+        return new AdmissionTicketRecoveryRequestResultDto(true, true);
     }
 }
 
-public sealed class ConsumeAdmissionTicketRecoveryCommandHandler(
-    AdmissionRecoveryService recoveryService,
+public sealed class RedeemAdmissionTicketRecoveryCommandHandler(
+    AdmissionRecoveryRedemptionService redemptionService,
+    IAdmissionTicketPresentationResolver presentationResolver,
     ITenantContext tenantContext) :
-    IRequestHandler<ConsumeAdmissionTicketRecoveryCommand, AdmissionTicketRecoveryConsumeResult>
+    IRequestHandler<RedeemAdmissionTicketRecoveryCommand, AdmissionTicketRecoveryConsumeResultDto>
 {
-    public async Task<AdmissionTicketRecoveryConsumeResult> Handle(
-        ConsumeAdmissionTicketRecoveryCommand request,
+    public async Task<AdmissionTicketRecoveryConsumeResultDto> Handle(
+        RedeemAdmissionTicketRecoveryCommand request,
         CancellationToken cancellationToken)
     {
-        AdmissionRecoveryConsumeResult result = await recoveryService.ConsumeByCapabilityAsync(
+        AdmissionRecoveryConsumeResult result = await redemptionService.RedeemAsync(
             tenantContext.TenantId,
             request.Capability,
             cancellationToken);
@@ -48,17 +49,14 @@ public sealed class ConsumeAdmissionTicketRecoveryCommandHandler(
             return null!;
         }
 
-        return new AdmissionTicketRecoveryConsumeResult(
+        AdmissionTicketPresentation presentation =
+            await AdmissionTicketDeliveryDtoMapper.ResolveAsync(
+                presentationResolver,
+                tenantContext.TenantId,
+                document.TicketId,
+                cancellationToken);
+        return new AdmissionTicketRecoveryConsumeResultDto(
             result.RecoveryRecordId,
-            new AdmissionTicketRecoveryDeliveryDto(
-                document.TicketId,
-                document.TicketId,
-                document.EventId,
-                document.StatusCode,
-                document.DisplayReference,
-                document.ManualCode,
-                document.ManualCodeClassificationCode,
-                document.QrRepresentation,
-                document.PrintModel));
+            AdmissionTicketDeliveryDtoMapper.Recovery(document, presentation));
     }
 }

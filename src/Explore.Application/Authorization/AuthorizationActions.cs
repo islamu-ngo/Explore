@@ -96,6 +96,8 @@ public static class AuthorizationActions
         public const string ViewOrganizerClaims = "view-organizer-claims";
         public const string ManageRegistrations = "manage-registrations";
         public const string ManageTickets = "manage-tickets";
+        public const string EventCheckInView = "event_check_in:view";
+        public const string EventCheckInManage = "event_check_in:manage";
         public const string ManagePaidEventCommerce = "manage-paid-event-commerce";
         public const string ManageAttendees = "manage-attendees";
     }

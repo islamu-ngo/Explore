@@ -132,7 +132,7 @@ internal sealed class RecoveryRepositoryFake(AdmissionTestScenario scenario) :
             return Task.FromResult(false);
         }
 
-        AdmissionRecoveryTransitionOutcome outcome = entity.Consume(occurredAtUtc);
+        AdmissionRecoveryTransitionOutcome outcome = entity.TryConsume(occurredAtUtc);
         if (outcome != AdmissionRecoveryTransitionOutcome.Consumed)
         {
             return Task.FromResult(false);
@@ -157,7 +157,7 @@ internal sealed class RecoveryRepositoryFake(AdmissionTestScenario scenario) :
             return Task.FromResult(false);
         }
 
-        if (stored.Rotate(rotatedAtUtc) != AdmissionRecoveryTransitionOutcome.Rotated)
+        if (stored.TryRotate(rotatedAtUtc) != AdmissionRecoveryTransitionOutcome.Rotated)
         {
             return Task.FromResult(false);
         }

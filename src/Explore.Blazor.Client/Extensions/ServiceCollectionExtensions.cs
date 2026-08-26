@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Admissions;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
@@ -22,6 +23,7 @@ using Explore.Blazor.Client.Contracts.Services.Webhooks;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
+using Explore.Blazor.Client.Services.Admissions;
 using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.ControlPlane;
 using Explore.Blazor.Client.Services.Docking;
@@ -53,6 +55,14 @@ public static class ServiceCollectionExtensions
     {
         // Domain services (NSwag IEventApiClient consumers)
         services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
+        services.AddScoped<AdmissionScannerCapabilityState>();
+        services.AddScoped<IAdmissionScannerCapabilityState>(provider =>
+            provider.GetRequiredService<AdmissionScannerCapabilityState>());
+        services.AddTransient<AdmissionScannerCapabilityMessageHandler>();
+        services.AddHttpClient(AdmissionScannerHttpClient.ClientName, (provider, client) =>
+            configureBffRefitClient?.Invoke(provider, client))
+            .AddHttpMessageHandler<AdmissionScannerCapabilityMessageHandler>();
+        services.AddScoped<AdmissionScannerHttpClient>();
         services.AddScoped<ExploreControlPlaneApiAdapter>();
         services.AddScoped<IControlPlaneOverviewService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneTenantService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
@@ -202,6 +212,11 @@ public static class ServiceCollectionExtensions
         // Accessibility services (ARIA announcements + focus management)
         services.AddScoped<IAccessibilityAnnouncerService, AccessibilityAnnouncerService>();
         services.AddScoped<IAccessibilityFocusService, AccessibilityFocusService>();
+        services.AddScoped<IAdmissionRecoveryBffClient, AdmissionRecoveryBffClient>();
+        services.AddScoped<IAdmissionTicketService, AdmissionTicketService>();
+        services.AddScoped<IAdmissionCheckInService, AdmissionCheckInService>();
+        services.AddScoped<IAdmissionRecoveryFragmentInterop, AdmissionRecoveryFragmentInterop>();
+        services.AddScoped<IAdmissionTicketPrintInterop, AdmissionTicketPrintInterop>();
         services.AddScoped<IBrowserActionInterop, BrowserActionInterop>();
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)

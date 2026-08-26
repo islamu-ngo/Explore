@@ -1,7 +1,7 @@
 ﻿{
   "pageNumber": 1,
   "pageSize": 5,
-  "totalCount": 1,
+  "totalCount": 2,
   "totalPages": 1,
   "hasPrevious": false,
   "hasNext": false,
@@ -22,8 +22,8 @@
         "source": "local",
         "event": {
           "id": "Guid_1",
-          "title": "Published Visibility Event 4409bd0dd46c44d68c525411d2175445",
-          "publicCode": "96be7f61c7f3",
+          "title": "Actor Other Published e81ae7f406c54d7aba716e73c5bccb37",
+          "publicCode": "aea3fad6e5c4",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -51,8 +51,8 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-09-01",
-          "lastSessionDate": "2026-09-01",
+          "firstSessionDate": "2026-09-02",
+          "lastSessionDate": "2026-09-02",
           "firstSessionStartUtc": "DateTimeOffset_1",
           "isPast": false,
           "totalViews": 0,
@@ -61,22 +61,91 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/764447e8-4ea3-49ec-a2db-c87617c27457",
-            "title": "Published Visibility Event 4409bd0dd46c44d68c525411d2175445",
+            "href": "/api/event/aab92a47-6576-40f6-8260-f8d5c7d090e2",
+            "title": "Actor Other Published e81ae7f406c54d7aba716e73c5bccb37",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/764447e8-4ea3-49ec-a2db-c87617c27457",
+            "href": "/api/eventsession/by-event/aab92a47-6576-40f6-8260-f8d5c7d090e2",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/b0fedd44-5b7e-4f10-b7d4-96fdc54fb2dc",
+            "href": "/api/actor/0fc275f4-6c78-4584-8247-498a56c84df6",
             "title": "Default Session Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/764447e8-4ea3-49ec-a2db-c87617c27457/options",
+            "href": "/api/event-reports/events/aab92a47-6576-40f6-8260-f8d5c7d090e2/options",
+            "title": "Event report options",
+            "method": "GET"
+          },
+          "report-event": {
+            "href": "/api/event-reports",
+            "title": "Report event",
+            "method": "POST"
+          }
+        }
+      },
+      {
+        "source": "local",
+        "event": {
+          "id": "Guid_6",
+          "title": "Actor Matching Published e81ae7f406c54d7aba716e73c5bccb37",
+          "publicCode": "37c3c534db6d",
+          "eventTypeId": 0,
+          "audienceGenderId": 0,
+          "audienceAgeId": 0,
+          "actorId": "Guid_7",
+          "actorDisplayName": "Actor Filter Owner",
+          "actorTypeId": 1,
+          "actorTypeFullName": "User",
+          "actorUserId": "Guid_8",
+          "provenanceTypeCode": "ORGANIZER_CREATED",
+          "featuredImageId": "Guid_Empty",
+          "participationConfiguration": {
+            "eventId": "Guid_6",
+            "concurrencyStamp": "Guid_9",
+            "participationHandlingModeId": 1,
+            "participationHandlingModeCode": "INFORMATION_ONLY",
+            "participationHandlingModeName": "Information only",
+            "advanceRegistrationObligationId": 1,
+            "advanceRegistrationObligationCode": "NOT_APPLICABLE",
+            "advanceRegistrationObligationName": "Not applicable"
+          },
+          "eventStatusId": 2,
+          "eventStatusFullName": "Published",
+          "visibilityTypeId": 1,
+          "visibilityTypeFullName": "Public",
+          "eventFormatId": 1,
+          "eventFormatFullName": "Local (In-Person)",
+          "sessionCount": 1,
+          "firstSessionDate": "2026-09-02",
+          "lastSessionDate": "2026-09-02",
+          "firstSessionStartUtc": "DateTimeOffset_3",
+          "isPast": false,
+          "totalViews": 0,
+          "createdAtUtc": "DateTimeOffset_2",
+          "tenantId": "Guid_5"
+        },
+        "_links": {
+          "self": {
+            "href": "/api/event/a2a6ee68-3118-4fd9-a4e9-8e509fff80ad",
+            "title": "Actor Matching Published e81ae7f406c54d7aba716e73c5bccb37",
+            "method": "GET"
+          },
+          "sessions": {
+            "href": "/api/eventsession/by-event/a2a6ee68-3118-4fd9-a4e9-8e509fff80ad",
+            "title": "1 sessions",
+            "method": "GET"
+          },
+          "actor": {
+            "href": "/api/actor/4c200b77-4d07-4e22-a1dc-3a608af14180",
+            "title": "Actor Filter Owner",
+            "method": "GET"
+          },
+          "event-report-options": {
+            "href": "/api/event-reports/events/a2a6ee68-3118-4fd9-a4e9-8e509fff80ad/options",
             "title": "Event report options",
             "method": "GET"
           },

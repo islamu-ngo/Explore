@@ -1,0 +1,498 @@
+@* ABOUTME: HAL-gated Studio scanner for target-aware online admission check-in. *@
+@* ABOUTME: Unifies camera, HID, and manual credentials through one bounded accessible pipeline. *@
+@page "/studio/events/{EventId:guid}/check-in"
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@using ISLAMU.Wire.Contracts.Admissions
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IDisposable
+@inject IAdmissionCheckInService CheckInService
+@inject IAdmissionScannerCapabilityState ScannerCapabilityState
+@inject IAdmissionQrScanner Scanner
+@inject IAccessibilityFocusService Focus
+@inject IServiceProvider ServiceProvider
+
+<PageTitle>Admission check-in</PageTitle>
+
+@if (!CanCheckIn)
+{
+    <section class="studio-admission-check-in__unavailable"
+             role="alert"
+             data-testid="studio-admission-check-in-unavailable">
+        <h1 class="isl-typo-h4">Admission check-in</h1>
+        <p>Admission check-in is not available for this event and target.</p>
+    </section>
+}
+else
+{
+    <section id="admission-check-in-input"
+             class="studio-admission-check-in"
+             aria-labelledby="admission-check-in-title"
+             data-testid="studio-admission-check-in">
+        <header class="studio-admission-check-in__header">
+            <div>
+                <h1 id="admission-check-in-title" class="isl-typo-h4">Admission check-in</h1>
+                <p>Validate each admission online for the selected target.</p>
+            </div>
+            <span class="studio-admission-check-in__queue"
+                  aria-label="Pending admissions"
+                  data-testid="admission-queue-depth"
+                  data-depth="@_pendingCredentials.Count">@_pendingCredentials.Count pending</span>
+        </header>
+
+        <div class="studio-admission-check-in__inputs">
+            <section class="studio-admission-check-in__input-card" aria-labelledby="camera-admission-title">
+                <h2 id="camera-admission-title">Camera</h2>
+                @if (_nativeQrAvailable)
+                {
+                    <video class="studio-admission-check-in__camera-preview"
+                           @ref="_cameraSource"
+                           autoplay
+                           muted
+                           playsinline
+                           aria-label="Admission QR camera preview"></video>
+                    <button type="button"
+                            class="mud-button-root mud-button mud-button-filled mud-button-filled-primary"
+                            @onclick="ScanCameraAsync"
+                            data-testid="start-camera-scan">
+                        Scan QR code
+                    </button>
+                }
+                @if (_cameraFallback)
+                {
+                    <p class="studio-admission-check-in__message"
+                       role="status"
+                       data-testid="camera-fallback">
+                        Camera scanning is unavailable. Use a keyboard scanner or manual entry.
+                    </p>
+                }
+            </section>
+
+            <section class="studio-admission-check-in__input-card" aria-labelledby="hid-admission-title">
+                <h2 id="hid-admission-title">USB or Bluetooth scanner</h2>
+                <label for="hid-admission-input">Scanner input</label>
+                <input id="hid-admission-input"
+                       type="text"
+                       value="@_hidValue"
+                       @oninput="ChangeHidValue"
+                       @onkeydown="HandleHidKeyDown"
+                       aria-describedby="hid-admission-help"
+                       autocomplete="off"
+                       spellcheck="false"
+                       data-testid="hid-admission-input" />
+                <p id="hid-admission-help">Scan a code and press Enter. Most HID scanners send Enter automatically.</p>
+            </section>
+
+            <section class="studio-admission-check-in__input-card" aria-labelledby="manual-admission-title">
+                <h2 id="manual-admission-title">Manual entry</h2>
+                <label for="manual-admission-input">Admission credential</label>
+                <input id="manual-admission-input"
+                       type="text"
+                       value="@_manualValue"
+                       @oninput="ChangeManualValue"
+                       @onkeydown="HandleManualKeyDown"
+                       aria-describedby="manual-admission-help"
+                       autocomplete="off"
+                       spellcheck="false"
+                       data-testid="manual-admission-input" />
+                <p id="manual-admission-help">Enter the admission credential and press Enter.</p>
+            </section>
+        </div>
+
+        @if (_queueSaturated)
+        {
+            <div class="studio-admission-check-in__message"
+                 role="alert"
+                 data-testid="admission-queue-saturated">
+                Admission check-in is busy. Try again.
+            </div>
+        }
+        @if (_onlineRequired)
+        {
+            <div class="studio-admission-check-in__message"
+                 role="alert"
+                 data-testid="admission-online-required">
+                Online check-in is unavailable. Nothing was queued for later.
+            </div>
+        }
+
+        <div class="studio-admission-check-in__live"
+             aria-live="polite"
+             aria-atomic="true"
+             data-testid="admission-live-region">@_liveMessage</div>
+
+        @if (_results.Count > 0)
+        {
+            <ol class="studio-admission-check-in__results" aria-label="Admission results">
+                @foreach (AdmissionResultItem result in _results)
+                {
+                    <li class="studio-admission-check-in__result"
+                        data-testid="admission-result"
+                        data-sequence="@result.Sequence"
+                        data-result-code="@result.Code">
+                        <strong>@result.Message</strong>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+}
+
+@code {
+    private const int QueueCapacity = 100;
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "targetId")] public Guid TargetId { get; set; }
+    [Parameter] public EventDto? Event { get; set; }
+    [Parameter] public long CapabilityGeneration { get; set; }
+    [Parameter] public string? ScannerCapability { get; set; }
+
+    private readonly Queue<PendingAdmission> _queue = new();
+    private readonly HashSet<string> _pendingCredentials = new(StringComparer.Ordinal);
+    private readonly List<AdmissionResultItem> _results = [];
+    private CancellationTokenSource? _lifetime;
+    private CancellationTokenSource? _capabilityDetection;
+    private EventDto? _resource;
+    private ElementReference _cameraSource;
+    private Guid _activeEventId;
+    private Guid _activeTargetId;
+    private long _activeCapabilityGeneration = long.MinValue;
+    private long _activeScannerStateGeneration = long.MinValue;
+    private long _generation;
+    private long _processingGeneration;
+    private int _nextSequence;
+    private bool _nativeQrAvailable = true;
+    private bool _cameraFallback;
+    private bool _queueSaturated;
+    private bool _onlineRequired;
+    private bool _disposed;
+    private string _hidValue = string.Empty;
+    private string _manualValue = string.Empty;
+    private string _liveMessage = string.Empty;
+
+    private bool CanCheckIn =>
+        EventId != Guid.Empty &&
+        TargetId != Guid.Empty &&
+        _resource?.HasHalLink("check-in-admissions") == true;
+
+    protected override void OnParametersSet()
+    {
+        bool routeIdentityChanged = _activeEventId != EventId || _activeTargetId != TargetId;
+        if (!string.IsNullOrWhiteSpace(ScannerCapability))
+        {
+            ScannerCapabilityState.Activate(ScannerCapability);
+            ScannerCapability = null;
+        }
+        else if (routeIdentityChanged && ScannerCapabilityState.IsActive)
+        {
+            ScannerCapabilityState.Clear();
+        }
+
+        bool changed = routeIdentityChanged
+            || _activeCapabilityGeneration != CapabilityGeneration
+            || _activeScannerStateGeneration != ScannerCapabilityState.Generation
+            || !ReferenceEquals(_resource, Event);
+        if (!changed)
+        {
+            return;
+        }
+
+        _activeEventId = EventId;
+        _activeTargetId = TargetId;
+        _activeCapabilityGeneration = CapabilityGeneration;
+        _activeScannerStateGeneration = ScannerCapabilityState.Generation;
+        ResetGeneration();
+        _resource = Event;
+        long generation = _generation;
+        CancellationToken cancellationToken = _lifetime!.Token;
+
+        if (_resource is null && EventId != Guid.Empty)
+        {
+            _ = LoadEventAsync(generation, cancellationToken);
+            return;
+        }
+
+        StartCapabilityDetection(generation, cancellationToken);
+    }
+
+    private async Task LoadEventAsync(long generation, CancellationToken cancellationToken)
+    {
+        IEventService? events = ServiceProvider.GetService<IEventService>();
+        if (events is null)
+        {
+            return;
+        }
+
+        EventDto? resource = await events.GetEventByIdAsync(EventId);
+        if (!IsCurrent(generation, cancellationToken))
+        {
+            return;
+        }
+
+        _resource = resource;
+        StartCapabilityDetection(generation, cancellationToken);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StartCapabilityDetection(long generation, CancellationToken cancellationToken)
+    {
+        if (!CanCheckIn)
+        {
+            _nativeQrAvailable = false;
+            _cameraFallback = false;
+            return;
+        }
+
+        _nativeQrAvailable = true;
+        _cameraFallback = false;
+        _capabilityDetection?.Cancel();
+        _capabilityDetection?.Dispose();
+        _capabilityDetection = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _ = DetectCapabilityAsync(generation, _capabilityDetection.Token);
+    }
+
+    private async Task DetectCapabilityAsync(long generation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            AdmissionQrScannerCapability capability = await Scanner.GetCapabilityAsync(cancellationToken);
+            if (!IsCurrent(generation, cancellationToken))
+            {
+                return;
+            }
+
+            _nativeQrAvailable = capability.NativeQrAvailable;
+            _cameraFallback = !capability.NativeQrAvailable;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task ScanCameraAsync()
+    {
+        long generation = _generation;
+        CancellationToken cancellationToken = _lifetime?.Token ?? CancellationToken.None;
+        AdmissionQrScanResult result = await Scanner.DetectAsync(_cameraSource, cancellationToken);
+        if (!IsCurrent(generation, cancellationToken))
+        {
+            return;
+        }
+
+        if (result is { Outcome: AdmissionQrScanOutcome.SingleValid, Credential: not null })
+        {
+            Enqueue(result.Credential);
+            return;
+        }
+
+        _cameraFallback = true;
+        await InvokeAsync(StateHasChanged);
+        await Focus.FocusAsync("#manual-admission-input", preventScroll: true);
+    }
+
+    private void ChangeHidValue(ChangeEventArgs args) => _hidValue = args.Value?.ToString() ?? string.Empty;
+
+    private void ChangeManualValue(ChangeEventArgs args) => _manualValue = args.Value?.ToString() ?? string.Empty;
+
+    private Task HandleHidKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            string value = _hidValue;
+            _hidValue = string.Empty;
+            SubmitRaw(value);
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task HandleManualKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            string value = _manualValue;
+            _manualValue = string.Empty;
+            SubmitRaw(value);
+        }
+        return Task.CompletedTask;
+    }
+
+    private void SubmitRaw(string value)
+    {
+        AdmissionCredentialBearer? credential = null;
+        if (AdmissionQrPayloadCodec.TryDecode(value.Trim(), out AdmissionQrPayload? payload))
+        {
+            credential = payload!.Bearer;
+        }
+        else
+        {
+            AdmissionCredentialBearer.TryCreate(value.Trim(), out credential);
+        }
+
+        if (credential is null)
+        {
+            AddResult(++_nextSequence, AdmissionCheckInUiCodes.Rejected);
+            return;
+        }
+
+        Enqueue(credential);
+    }
+
+    private void Enqueue(AdmissionCredentialBearer credential)
+    {
+        if (!CanCheckIn || _pendingCredentials.Contains(credential.Value))
+        {
+            return;
+        }
+
+        if (_pendingCredentials.Count >= QueueCapacity)
+        {
+            _queueSaturated = true;
+            return;
+        }
+
+        _onlineRequired = false;
+        _queueSaturated = false;
+        _capabilityDetection?.Cancel();
+        _pendingCredentials.Add(credential.Value);
+        _queue.Enqueue(new PendingAdmission(++_nextSequence, credential));
+        long generation = _generation;
+        if (_processingGeneration != generation)
+        {
+            _processingGeneration = generation;
+            _ = ProcessQueueAsync(generation, _lifetime!.Token);
+        }
+    }
+
+    private async Task ProcessQueueAsync(long generation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (_queue.Count > 0 && IsCurrent(generation, cancellationToken))
+            {
+                PendingAdmission pending = _queue.Dequeue();
+                try
+                {
+                    AdmissionCheckInUiResult result = await CheckInService.CheckInAsync(
+                        EventId,
+                        TargetId,
+                        pending.Credential,
+                        cancellationToken);
+                    if (!IsCurrent(generation, cancellationToken))
+                    {
+                        return;
+                    }
+
+                    if (result.Status != AdmissionCheckInUiStatus.Completed)
+                    {
+                        StopPendingWork(result.Status);
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+
+                    _pendingCredentials.Remove(pending.Credential.Value);
+                    AddResult(pending.Sequence, result.Code);
+                    await InvokeAsync(StateHasChanged);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (HttpRequestException)
+                {
+                    if (!IsCurrent(generation, cancellationToken))
+                    {
+                        return;
+                    }
+
+                    StopPendingWork(AdmissionCheckInUiStatus.OnlineRequired);
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            if (_processingGeneration == generation)
+            {
+                _processingGeneration = 0;
+            }
+        }
+    }
+
+    private void StopPendingWork(AdmissionCheckInUiStatus status)
+    {
+        ClearPending();
+        _onlineRequired = status == AdmissionCheckInUiStatus.OnlineRequired;
+        _queueSaturated = status == AdmissionCheckInUiStatus.Saturated;
+        _liveMessage = _onlineRequired
+            ? "Online admission check-in is required."
+            : "Admission check-in is busy. Try again.";
+    }
+
+    private void AddResult(int sequence, string code)
+    {
+        string publicCode = AdmissionCheckInUiCodes.Normalize(code);
+        string message = publicCode switch
+        {
+            AdmissionCheckInUiCodes.CheckedIn => "Admission accepted.",
+            AdmissionCheckInUiCodes.AlreadyCheckedIn => "Admission was already accepted.",
+            _ => "Admission could not be accepted."
+        };
+        _results.Add(new AdmissionResultItem(sequence, publicCode, message));
+        _liveMessage = message;
+    }
+
+    private void ResetGeneration()
+    {
+        _capabilityDetection?.Cancel();
+        _capabilityDetection?.Dispose();
+        _capabilityDetection = null;
+        _lifetime?.Cancel();
+        _lifetime?.Dispose();
+        _lifetime = new CancellationTokenSource();
+        ++_generation;
+        _processingGeneration = 0;
+        ClearPending();
+        _results.Clear();
+        _queueSaturated = false;
+        _onlineRequired = false;
+        _hidValue = string.Empty;
+        _manualValue = string.Empty;
+        _liveMessage = string.Empty;
+    }
+
+    private void ClearPending()
+    {
+        _queue.Clear();
+        _pendingCredentials.Clear();
+    }
+
+    private bool IsCurrent(long generation, CancellationToken cancellationToken) =>
+        !_disposed && !cancellationToken.IsCancellationRequested && generation == _generation;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        ++_generation;
+        _capabilityDetection?.Cancel();
+        _capabilityDetection?.Dispose();
+        _lifetime?.Cancel();
+        _lifetime?.Dispose();
+        ScannerCapabilityState.Clear();
+        ClearPending();
+        _results.Clear();
+        GC.SuppressFinalize(this);
+    }
+
+    private sealed record PendingAdmission(int Sequence, AdmissionCredentialBearer Credential);
+    private sealed record AdmissionResultItem(int Sequence, string Code, string Message);
+}

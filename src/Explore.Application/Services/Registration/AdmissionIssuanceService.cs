@@ -1,6 +1,7 @@
 // ABOUTME: Issues admission tickets under a finalization-effect database lock with retry-stable identities.
 // ABOUTME: Reconciles commit acknowledgement loss and dispatches recoverable protected delivery only after commit.
 
+using System.Data.Common;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -13,9 +14,8 @@ public sealed class AdmissionIssuanceService(
     IAdmissionDeliveryEnvelopeProtector deliveryEnvelopeProtector,
     IAdmissionDeliveryDispatcher deliveryDispatcher,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IAdmissionIssuanceService
 {
-    private const string Authority = "ConfirmedFreeOrder";
     private const string CredentialPurpose = "AdmissionTicket";
     private static readonly TimeSpan LocalIssuanceTimeout = TimeSpan.FromSeconds(30);
 
@@ -44,13 +44,16 @@ public sealed class AdmissionIssuanceService(
                 return prepared;
             }, localTimeout.Token);
         }
-        catch (OperationCanceledException)
+        catch (Exception exception) when (
+            exception is OperationCanceledException or TimeoutException or DbException)
         {
             AdmissionIssuanceContext? committed = await repository.ReloadCommittedAsync(
                 request, CancellationToken.None);
             if (!HasCompleteIssuance(committed))
             {
-                throw;
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo
+                    .Capture(exception)
+                    .Throw();
             }
 
             staged = FromCommittedReload(committed!, staged?.OneTimeCredentials ?? []);
@@ -79,7 +82,7 @@ public sealed class AdmissionIssuanceService(
         CancellationToken cancellationToken)
     {
         AdmissionIssuanceContext? context = await repository.LoadAsync(request, cancellationToken);
-        if (!IsConfirmedFreeAuthority(context, request))
+        if (!IsConfirmedAuthority(context, request))
         {
             return new PreparedIssuance(Empty(AdmissionIssuanceOutcome.NotConfirmed), [], context);
         }
@@ -268,19 +271,28 @@ public sealed class AdmissionIssuanceService(
     private static AdmissionIssuanceResult Empty(AdmissionIssuanceOutcome outcome) =>
         new(outcome, [], [], [], []);
 
-    private static bool IsConfirmedFreeAuthority(
+    private static bool IsConfirmedAuthority(
         AdmissionIssuanceContext? context,
-        AdmissionIssuanceRequest request) =>
-        context is not null &&
-        request.Authority == Authority &&
-        context.Authority == Authority &&
-        context.TenantId == request.TenantId &&
-        context.RegistrationOrderId == request.RegistrationOrderId &&
-        context.FinalizationEffectId == request.FinalizationEffectId &&
-        context.OrderConfirmed &&
-        !context.PaymentReconciled &&
-        context.Order.TotalDueMinorSnapshot == 0 &&
-        !string.IsNullOrWhiteSpace(context.DeliveryAddress);
+        AdmissionIssuanceRequest request)
+    {
+        if (context is null ||
+            context.TenantId != request.TenantId ||
+            context.RegistrationOrderId != request.RegistrationOrderId ||
+            context.FinalizationEffectId != request.FinalizationEffectId ||
+            !context.OrderConfirmed ||
+            string.IsNullOrWhiteSpace(context.DeliveryAddress))
+        {
+            return false;
+        }
+
+        return request.Authority == context.Authority &&
+            (request.Authority == AdmissionIssuanceAuthority.ConfirmedFreeOrder &&
+             !context.PaymentReconciled &&
+             context.Order.TotalDueMinorSnapshot == 0 ||
+             request.Authority == AdmissionIssuanceAuthority.ReconciledPaidFinalization &&
+             context.PaymentReconciled &&
+             context.Order.TotalDueMinorSnapshot > 0);
+    }
 
     private static Guid StableId(Guid tenantId, Guid effectId, Guid assignmentId, string purpose) =>
         AdmissionIssuanceIdentityFactory.Create(tenantId, effectId, assignmentId, purpose);

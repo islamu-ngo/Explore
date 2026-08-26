@@ -13,8 +13,8 @@ For Domain value semantics, entity-versus-record selection, and the scalar EF pe
    `Tenant`, `TenantUser`, `TenantUserRoleGrant`, `TenantSetting`, `TenantSettingsDocument`, `TenantNavigationLink`, `TenantInvitation`, `TenantLifecycleLog`
 2. Identity and actor model:
    `User`, `Actor`, `ActorSubscription`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
-3. Events and ticketing:
-   `Event`, `EventParticipationConfiguration`, `EventPublicAction`, `EventSession`, `EventRegistration`, `EventTicketCatalogVersion`, `EventTicketType`, `EventCapacityPool`, `TicketTypeEntitlement`, `CapacityOversellPolicy`, `PlatformFeePolicy`, `PlatformFeeFixedCharge`, `PlatformContributionOption`, `PlatformContributionSetting`, `PromotionDefinition`, `PromotionCode`, `PromotionReservation`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
+3. Events, registration, and admission ticketing:
+   `Event`, `EventParticipationConfiguration`, `EventPublicAction`, `EventSession`, `RegistrationOrder`, `RegistrationOrderLine`, `RegistrationParticipant`, `RegistrationTicketAssignment`, `EventRegistration`, `AdmissionTicket`, `AdmissionTicketCredential`, `AdmissionRecoveryCapability`, `EventTicketCatalogVersion`, `EventTicketType`, `EventCapacityPool`, `TicketTypeEntitlement`, `CapacityOversellPolicy`, `PlatformFeePolicy`, `PlatformFeeFixedCharge`, `PlatformContributionOption`, `PlatformContributionSetting`, `PromotionDefinition`, `PromotionCode`, `PromotionReservation`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun` (see [ADMISSION_AND_REGISTRATION.md](ADMISSION_AND_REGISTRATION.md) for architecture & zero-knowledge credentialing)
 4. Event reporting and moderation review:
    `EventReport`, `EventReportTarget`, `EventReportEvidence`, `EventReportCase`, `EventReportSignal`, `EventReportDecision`, `EventReportDecisionExecution`, `EventReportExternalLink`, `EventModerationRecord`, `ActorModerationRecord`, `AtprotoIdentityModerationRecord`
 5. Privacy erasure saga & compliance:
@@ -233,7 +233,7 @@ After allocation, the post-discount line sum is the organizer-directed total; bo
 
 `PaymentAttempt` is the independent payment aggregate for a positive registration order. It pins the organizer recipient actor and connected account, merchant country, provider/profile/API revision, currency, organizer amount, platform fee, contribution, total, composition revision, provider idempotency identity, provider object identifiers, expiry, and monotonic status. Its statuses are `Created`, `DispatchPending`, `RequiresAction`, `Processing`, `Succeeded`, `Failed`, `Cancelled`, and `Unknown`; terminal success and failure cannot regress. Checkout dispatch and reconciliation use separate durable effect rows, so provider I/O never occurs in the order transaction. A verified, money-matching `Succeeded` observation is only one input to the existing requirements, approval, hold, and capacity finalization transaction; it cannot bypass those authorities or double-confirm an order.
 
-Stripe hosted Checkout/direct charges and signed payment reconciliation are implemented for the `OrganizerDirect` profile. Refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support remain later-phase boundaries. `ProtectedDelayedPayout` remains approval-gated and absent from the default profile.
+Stripe hosted Checkout/direct charges and signed payment reconciliation are implemented for the `OrganizerDirect` profile. Admission credentials and online QR check-in are implemented as a provider-neutral domain boundary independent of payment-provider types. Refunds, disputes, transfers, payouts, and legal/tax/invoice support remain separate boundaries. `ProtectedDelayedPayout` remains approval-gated and absent from the default profile.
 
 ### 5) Event Reporting And Moderation Review
 

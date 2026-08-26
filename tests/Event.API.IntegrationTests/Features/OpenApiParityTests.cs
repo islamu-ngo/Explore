@@ -105,15 +105,39 @@ public sealed class OpenApiParityTests
     }
 
     [Test]
-    public async Task NativeAndSwashbuckleDocs_OmitKeycloakSecurityWhenAuthorizationUrlIsMissing()
+    public async Task NativeAndSwashbuckleDocs_OmitKeycloakSecurityWithoutAuthorityAndHaveNoDanglingReferences()
     {
         using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
         using var swashbuckleDocument = await GetOpenApiDocumentAsync(SwashbuckleOpenApiEndpoint);
 
-        await Assert.That(HasKeycloakSecurityScheme(nativeDocument)).IsFalse()
-            .Because("The native document should preserve the no-Keycloak startup behavior when Keycloak:AuthorizationUrl is absent.");
-        await Assert.That(HasKeycloakSecurityScheme(swashbuckleDocument)).IsFalse()
-            .Because("Swashbuckle intentionally omits the Keycloak scheme when Keycloak:AuthorizationUrl is absent.");
+        await Assert.That(HasKeycloakSecurityScheme(nativeDocument)).IsFalse();
+        await Assert.That(HasKeycloakSecurityScheme(swashbuckleDocument)).IsFalse();
+        await Assert.That(UndefinedSecuritySchemeReferences(nativeDocument)).IsEmpty()
+            .Because("native build-time generation must never reference an unavailable runtime authority");
+        await Assert.That(UndefinedSecuritySchemeReferences(swashbuckleDocument)).IsEmpty()
+            .Because("Swashbuckle build-time generation must never emit dangling security references");
+    }
+
+    [Test]
+    public async Task NativeAndSwashbuckleDocs_DeriveDeterministicKeycloakMetadataFromAuthority()
+    {
+        const string authority = "https://auth.example.com/realms/ISLAMU";
+        await using var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["Keycloak:Authority"] = authority }));
+        });
+
+        using var client = app.CreateClient();
+        using var nativeDocument = await GetOpenApiDocumentAsync(client, NativeOpenApiEndpoint);
+        using var swashbuckleDocument = await GetOpenApiDocumentAsync(client, SwashbuckleOpenApiEndpoint);
+        var differences = new List<string>();
+        CompareKeycloakSecurityScheme(nativeDocument, swashbuckleDocument, differences);
+
+        string expected = $"{authority}/protocol/openid-connect/auth";
+        await Assert.That(KeycloakAuthorizationUrl(nativeDocument)).IsEqualTo(expected);
+        await Assert.That(KeycloakAuthorizationUrl(swashbuckleDocument)).IsEqualTo(expected);
+        await Assert.That(differences).IsEmpty();
     }
 
     [Test]
@@ -303,6 +327,34 @@ public sealed class OpenApiParityTests
 
     private static bool HasKeycloakSecurityScheme(JsonDocument document)
         => TryGetKeycloakSecurityScheme(document, out _);
+
+    private static string? KeycloakAuthorizationUrl(JsonDocument document) =>
+        TryGetKeycloakSecurityScheme(document, out JsonElement scheme)
+            ? GetStringProperty(scheme.GetProperty("flows").GetProperty("implicit"), "authorizationUrl")
+            : null;
+
+    private static string[] UndefinedSecuritySchemeReferences(JsonDocument document)
+    {
+        var definitions = document.RootElement.GetProperty("components")
+            .GetProperty("securitySchemes")
+            .EnumerateObject()
+            .Select(entry => entry.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        var references = new HashSet<string>(StringComparer.Ordinal);
+        if (document.RootElement.TryGetProperty("security", out JsonElement documentSecurity))
+            references.UnionWith(GetSecurityRequirementSchemeNames(documentSecurity));
+        foreach (JsonProperty path in document.RootElement.GetProperty("paths").EnumerateObject())
+        foreach (JsonProperty operation in path.Value.EnumerateObject())
+        {
+            if (operation.Value.ValueKind == JsonValueKind.Object
+                && operation.Value.TryGetProperty("security", out JsonElement operationSecurity))
+            {
+                references.UnionWith(GetSecurityRequirementSchemeNames(operationSecurity));
+            }
+        }
+
+        return references.Where(reference => !definitions.Contains(reference)).ToArray();
+    }
 
     private static void CompareManagedControlPlaneSecurityScheme(
         JsonDocument nativeDocument,

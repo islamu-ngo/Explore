@@ -24,6 +24,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Prepare a governed release | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | [RELEASE_POLICY.md](RELEASE_POLICY.md), [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md), [ADR-025](adr/ADR-025-provider-neutral-release-governance.md) |
 | Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
 | Configure payments or add a payment provider | [PAYMENTS.md](PAYMENTS.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [ADR-022](adr/ADR-022-paid-event-commerce-and-stripe-connect.md) |
+| Understand registration, admission credentials, or recovery | [ADMISSION_AND_REGISTRATION.md](ADMISSION_AND_REGISTRATION.md) | [API.md](API.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [ADR-023](adr/ADR-023-admission-credential-check-in-transfer-recovery.md) |
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
 | Contribute code or docs | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md), [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
@@ -55,6 +56,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [ARCHITECTURE.md](ARCHITECTURE.md) - layer boundaries, BFF model, CQRS flow.
 - [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) - record/class selection, immutable results and collections, semantic values, persistence checks, and generated C# contracts.
 - [DOMAIN.md](DOMAIN.md) - domain entities and important relationships.
+- [ADMISSION_AND_REGISTRATION.md](ADMISSION_AND_REGISTRATION.md) - registration order lifecycle, entitlement materialization, and zero-knowledge admission credentials.
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.
 - [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md) - generated inventory of every OpenAPI operation.
 - [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md) - governed inventory of intentionally skipped API contract tests and removal criteria.

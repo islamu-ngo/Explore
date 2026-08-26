@@ -5,42 +5,38 @@
 
 Last Updated: 2026-08-25 Europe/Brussels
 
-## PHASE 20 TASK 20.3 COMPLETE / TASK 20.4 CURRENT (2026-08-25 Europe/Brussels)
+## PHASE 20 COMPLETE (2026-08-25 Europe/Brussels)
 
 ### Current Outcome
 
-Tasks 20.0–20.3 are complete and independently confirmed. The shared package-free
-admission contract owns one exact payload grammar: `islamu-admission:v1:` plus the canonical
-43-character unpadded Base64url 32-byte bearer. Infrastructure alone references
-`Net.Codecrete.QrCodeGenerator` 3.1.0 and renders deterministic quartile-ECC black-on-white
-SVG with a four-module quiet zone, bounded output, no plaintext credential metadata, and an
-exact golden geometry digest.
+Tasks 20.0–20.6 and both Phase 20 exit gates are complete. Public recovery first commits a
+Data Protection ciphertext request intent plus identifier-only outbox pointer; processing,
+capability rotation/creation, encrypted delivery staging, audit, ciphertext retirement, and
+intent completion share one EF execution-strategy transaction. Staging failures return a
+uniform temporary-unavailable result rather than a false accepted receipt.
 
-Blazor uses only secure-context native `BarcodeDetector` after explicit `qr_code` support
-detection. Unknown, numeric, missing, malformed, or null JavaScript results fail closed
-through an exact JSON converter and `Unknown = 0`; no credential enters URL, DOM storage,
-network, console, telemetry, referrer, or diagnostic output. HID and manual input remain
-first-class. The clean-room record names separate research, source-free implementation, and
-independent AFC/SSO contexts, limits the MIT decision to engineering policy rather than legal
-certification, and links its durable journal conclusion.
+Capabilities are single-use, expiring, tenant/purpose/ticket-bound, keyed with retained-version
+restore, and delivered only through an HTTPS same-origin URI fragment. Account authority is
+derived from `RegistrationOrder.AccountUserId`; email and display references never authorize.
+QR/print credential reissue is an explicit POST command and ordinary GETs never rotate authority.
+Request/delivery lifecycle entities live in Domain, repositories return entities, and all five
+generated provider migrations create the final three-table binary-digest model directly.
 
 ### Verification
 
-- Payload codec `10/10`, deterministic renderer/DI `3/3`, and scanner/production-DI/browser-safety `9/9`.
-- Clean Architecture `15/15`, naming `11/11`, targeted locked restore, dependency-license policy for 653 package/version pairs, and scoped diff hygiene are green.
-- Fresh serial Release builds of Event.Wire.Contracts, Application, Infrastructure, and Blazor Client pass with zero warnings and zero errors.
-- The original RED artifact remains hash-bound; independent review RED separately proves malformed/null interop and absent renderer-geometry binding before repair.
-- Independent security reviewer `st_01a03a03` returned `CONFIRMED` at `0.98`; independent clean-room/AFC reviewer `st_01a03a04` returned `CONFIRMED` at `0.99`.
+- Five-provider migration builds and no-pending checks; each recovery migration has three creates, binary 32-byte digests, zero alterations, and reversible drops.
+- Domain `4/4`, Application `9/9`, Infrastructure `11/11`, API/HAL `19/19`, secret schema `1/1`, persistence model `1/1`, real PostgreSQL recovery `8/8`, and account authority `1/1`.
+- Locked Blazor client restore/build and generated NSwag POST reissue methods pass; scoped diff hygiene is green.
+- Independent security `st_01a03a71`, persistence `st_01a03a72`, and Clean Architecture `st_01a03a74` reviewers each returned `CONFIRMED` at `0.99`.
+- Detailed evidence: `.omo/evidence/20260825-phase20/20.4-recovery-green.md`.
 
 ### Next
 
-Task 20.4 is current: implement account-authorized ticket listing plus uniform same-origin
-guest recovery, resend, single-use expiring keyed capabilities, trusted normalized
-rate-limit partitions, verified side-channel delivery, audit, key rotation, and restore
-behavior. Email and display IDs never grant access; resend rotates recovery authority rather
-than the admission credential unless explicit reissue is requested. Do not start Task 20.5
-API/UI self-service or Task 20.6 paid/refund integration until Task 20.4 is independently
-confirmed.
+Task 20.5 is current: complete the same-origin BFF recovery bridge, authenticated ticket service,
+`/tickets/**` Blazor self-service, fragment scrubbing, HAL-only QR/print action gating, sensitive
+manual-code alternative, accessible keyboard/mobile/RTL behavior, print styling, private cache
+and referrer controls, generated contracts, component/integration tests, and real visual QA.
+Do not start Task 20.6 paid/refund integration until Task 20.5 is independently verified.
 
 ## PHASE 19 COMPLETE / BROAD PERSISTENCE HARNESS FOLLOW-UP (2026-08-25 Europe/Brussels)
 
@@ -745,3 +741,28 @@ For Phase 18C onward, each behavioral phase begins with a focused RED selector t
 - **Verification:** focused Domain 4/4, Application 9/9, Stripe Infrastructure 9/9, SQLite persistence 5/5, and real PostgreSQL reservation race 1/1 pass. The migration host builds with zero errors. Phase-end Release build and full Persistence project remain deferred to the single Phase 19 closeout gate.
 - **Research/provenance:** Context7 confirmed current Stripe.net and EF public API behavior; official Stripe refund, idempotency, direct-charge, and dispute documentation supplied only sanitized interoperability facts. The audit record is `phase19-clean-room-evidence.md`; no dependency changed.
 - **Next action:** finish Task 19.1 accepted-snapshot/per-line authority and uncaptured-cancellation behavior, then author the failing cancellation/material-change campaign restart and bounded-fanout specifications before Task 19.3 production work.
+
+### Handoff — 2026-08-25 Europe/Brussels (Phase 20 Task 20.5 confirmed; Task 20.6 current)
+
+- **Status:** Tasks 20.0 through 20.5 are independently confirmed. Task 20.6 paid-confirmation/refund/cancellation integration and both Phase 20 exit checks remain.
+- **Ticket authority:** account list/detail and recovery delivery expose typed HAL with human holder, ticket type, and event/day/session entitlement presentation. QR and print are explicit credential-rotating POST writes; list/detail GETs never mutate admission authority.
+- **Browser boundary:** the anonymous same-origin BFF validates antiforgery, consumes capability material from a JSON body, forwards it only at the downstream boundary, and emits uniform invalid responses plus private no-store/no-referrer headers. The browser reads the HTTPS URI fragment once and scrubs history before exchange.
+- **Client authority:** Blazor uses exact HAL relation, POST method, and ticket-specific href checks rather than local claims or status. The low-level BFF adapter is isolated behind `IAdmissionRecoveryBffClient` and `IApiClientExecutor`; its contract lives in the admissions namespace to avoid shadowing generated `Explore.Blazor.Client.Clients` DTOs.
+- **Verification:** API `19/19`; BFF `5/5` and full `456/456`; ticket client selectors `14/14` plus route `1/1`; Blazor architecture `17/17`; real PostgreSQL account/presentation `1/1`; full Blazor Client `2,588` plus one governed skip; isolated API and Blazor Release builds and `git diff --check` pass. Security, accessibility/visual, and architecture reviewers confirmed. Evidence: `.omo/evidence/20260825-phase20/20.5-ticket-self-service-green.md`.
+- **Next action:** integrate admission only with reconciled paid confirmation and exact provider-neutral refund/cancellation facts, preserving requirements/approval/capacity gates and add-on-only non-revocation.
+
+### Handoff — 2026-08-25 Europe/Brussels (Phase 20 complete)
+
+- **Status:** Tasks 20.0 through 20.6 are independently confirmed. The final Release build
+  succeeded with zero errors, and the full Domain project passed 976/976 with no skips.
+- **Task 20.6 authority:** paid issuance requires exact reconciled payment snapshots; cumulative
+  successful ticket-line refunds and order/event cancellation revoke through provider-neutral
+  durable facts. Issuance/revocation share mapped row fences on PostgreSQL, SQL Server, MariaDB,
+  MySQL, and SQLite.
+- **Security and delivery:** credentials remain opaque keyed-digest bearers; recovery is
+  single-use and tenant-bound; outbox payloads stay identifier-only; SMTP handoff is explicitly
+  at-least-once with stable delivery identity.
+- **Final verification:** focused admission gates, real PostgreSQL and external-provider races,
+  API 19/19, dependency policy for 653 package/version pairs, and security-critical mutation
+  42/42 (`100.00%`) are green. Security, quality, and architecture reviewers confirmed/approved.
+- **Evidence:** `.omo/evidence/20260825-phase20/20.6-paid-refund-cancellation-green.md`.

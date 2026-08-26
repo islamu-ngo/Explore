@@ -77,6 +77,12 @@
                     Forms
                 </MudNavLink>
             }
+            @if (Resource.HasHalLink("check-in-admissions"))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/check-in")" Icon="@Icons.Material.Outlined.QrCodeScanner" Match="NavLinkMatch.All" data-event-section="check-in">
+                    Check-in
+                </MudNavLink>
+            }
             @if (Resource.HasHalLink("view-participants"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/attendees")" Icon="@Icons.Material.Outlined.Groups" Match="NavLinkMatch.All" data-event-section="attendees">

@@ -1,0 +1,59 @@
+# ABOUTME: Prometheus alert contract for bounded, aggregate admission check-in telemetry.
+# ABOUTME: Expressions and annotations intentionally omit all tenant, event, target, credential, actor, and device identifiers.
+
+groups:
+  - name: admission-check-in
+    rules:
+      - alert: AdmissionCheckInLatencyP95High
+        expr: >-
+          histogram_quantile(0.95, sum by (le) (rate(explore_admission_check_in_duration_milliseconds_bucket[15m]))) > 250
+        for: 15m
+        labels:
+          severity: warning
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in p95 latency exceeds 250 ms.
+      - alert: AdmissionCheckInLatencyP99High
+        expr: >-
+          histogram_quantile(0.99, sum by (le) (rate(explore_admission_check_in_duration_milliseconds_bucket[15m]))) > 500
+        for: 15m
+        labels:
+          severity: critical
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in p99 latency exceeds 500 ms.
+      - alert: AdmissionCheckInRejectionsSustained
+        expr: >-
+          sum(increase(explore_admission_check_in_operations_total{outcome="rejected"}[15m])) / clamp_min(sum(increase(explore_admission_check_in_operations_total[15m])), 1) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in rejection ratio exceeds 5 percent.
+      - alert: AdmissionCheckInLimiterSaturation
+        expr: >-
+          sum(increase(explore_admission_check_in_limiter_rejections_total[15m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in rate limiting remains saturated.
+      - alert: AdmissionCheckInBacklogHigh
+        expr: >-
+          max(explore_admission_check_in_backlog) > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in transaction backlog remains above 50 items.
+      - alert: AdmissionCheckInInfrastructureOutage
+        expr: >-
+          explore_admission_check_in_infrastructure{dependency_kind="admission_path",status="unhealthy"} == 1
+        labels:
+          severity: critical
+          component: admission-check-in
+        annotations:
+          summary: Admission check-in infrastructure is unhealthy.

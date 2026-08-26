@@ -333,6 +333,41 @@ public sealed class EventTicketCatalogVersionTests
     }
 
     [Test]
+    public async Task Entitlements_RejectDuplicateCanonicalTargetScopesOnAddAndReplacement()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType ticketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
+        catalog.AddTicketType(ticketType, null);
+        TicketTypeEntitlement first = TicketTypeEntitlement.CreateForEvent(
+            ticketType.Id, catalog.TenantId, catalog.EventId, 1);
+        TicketTypeEntitlement duplicate = TicketTypeEntitlement.CreateForEvent(
+            ticketType.Id, catalog.TenantId, catalog.EventId, 2);
+
+        catalog.AddEntitlement(ticketType, first);
+
+        await Assert.That(() => catalog.AddEntitlement(ticketType, duplicate)).Throws<ArgumentException>();
+        await Assert.That(() => catalog.UpdateTicketType(
+                ticketType,
+                ticketType.Name,
+                TicketPricingModeEnum.Free,
+                null,
+                null,
+                null,
+                ParticipantDataCollectionModeEnum.None,
+                null,
+                null,
+                null,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                [first, duplicate]))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
     public async Task EntitlementFactories_KeepDayAndSessionTargetsInTheCatalogEvent()
     {
         EventTicketCatalogVersion catalog = CreateCatalog();

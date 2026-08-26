@@ -17,3 +17,9 @@
     min-inline-size: 0;
     min-block-size: 0;
 }
+
+@media (max-width: 47.5rem) {
+    .dock-layout-host {
+        grid-template-columns: 0 minmax(0, 1fr) 0;
+    }
+}

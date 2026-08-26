@@ -2,6 +2,7 @@
 // ABOUTME: Tenant-scoped, org-scoped, and resource-specific access evaluation methods.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Helpers;
 using Explore.Domain;
@@ -456,6 +457,19 @@ public partial class FallbackAuthorizationService
             return await EvaluateManageTicketsAccessAsync(resourceKind, resourceId, resourceAttributes, tenantId, eventId, cancellationToken);
         }
 
+        // Admission authority is assignment-specific in Cerbos. Evaluate it before organization-admin,
+        // actor-owner, and other broad event grants so those authorities cannot acquire door access.
+        if (resourceKind == ResourceKinds.Event && IsAdmissionCheckInAction(action))
+        {
+            return await EvaluateAdmissionCheckInAccessAsync(
+                resourceKind,
+                resourceId,
+                action,
+                tenantId,
+                eventId,
+                cancellationToken);
+        }
+
         if (resourceKind == ResourceKinds.Event
             && action == AuthorizationActions.Events.ManagePaidEventCommerce)
         {
@@ -568,6 +582,42 @@ public partial class FallbackAuthorizationService
         if (_machinePrincipalAccessor.IsMachineCaller || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)) return false;
         if (await IsVerifiedOrganizerControllerAsync(resourceAttributes, cancellationToken)) return true;
         return await EvaluateEventRolePermissionAsync(resourceKind, resourceId, AuthorizationActions.Events.ManageTickets, tenantId, eventId, cancellationToken);
+    }
+
+    private async Task<bool> EvaluateAdmissionCheckInAccessAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        if (_machinePrincipalAccessor.IsMachineCaller
+            || await _adminContext.IsInstanceAdminAsync(cancellationToken)
+            || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            return false;
+        }
+
+        var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!userId.HasValue)
+            return false;
+
+        EventAuthoritySnapshot snapshot = await _eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+            tenantId,
+            userId.Value,
+            [eventId],
+            cancellationToken);
+        if (!snapshot.Events.TryGetValue(eventId, out EventAuthorityForUser? authority)
+            || !HasAdmissionCheckInRole(authority))
+        {
+            return false;
+        }
+
+        return action == AuthorizationActions.Events.EventCheckInView
+            ? authority.PermissionCodes.Contains(PermissionCodes.EventCheckInView)
+                || authority.PermissionCodes.Contains(PermissionCodes.EventCheckInManage)
+            : authority.PermissionCodes.Contains(PermissionCodes.EventCheckInManage);
     }
 
     private async Task<bool> EvaluateManagePaidEventCommerceAccessAsync(

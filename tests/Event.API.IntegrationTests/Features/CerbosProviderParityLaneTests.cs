@@ -135,12 +135,47 @@ public sealed class CerbosProviderParityLaneTests : IDisposable
                 is_machine = true,
             },
 
+            ParitySubject.EventOwnerWithoutAdmissionPermission => AdmissionPrincipal(
+                tenant,
+                ["event.owner"],
+                []),
+
+            ParitySubject.AdmissionViewer => AdmissionPrincipal(
+                tenant,
+                ["event.check_in_staff"],
+                ["event_check_in:view"]),
+
+            ParitySubject.AdmissionManager => AdmissionPrincipal(
+                tenant,
+                ["event.check_in_staff"],
+                ["event_check_in:manage"]),
+
             _ => throw new ArgumentOutOfRangeException(
                 nameof(subject),
                 subject,
                 "Anonymous callers never reach the PDP and must not be routed to the Cerbos lane."),
         };
     }
+
+    private static object AdmissionPrincipal(
+        string tenantId,
+        string[] roles,
+        string[] permissions) => new
+    {
+        isInstanceAdmin = false,
+        tenantMemberships = new Dictionary<string, string>(),
+        orgMemberships = new Dictionary<string, string>(),
+        userId = ParityCorpus.UserId.ToString("D"),
+        eventAssignments = new Dictionary<string, object>
+        {
+            [ParityCorpus.EventId.ToString("D")] = new
+            {
+                tenantId,
+                roles,
+                permissions
+            }
+        }
+    };
 
     /// <summary>
     /// Uses the production projection so this lane cannot drift from what the Cerbos adapter really sends.

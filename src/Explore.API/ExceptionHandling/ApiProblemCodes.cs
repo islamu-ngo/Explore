@@ -16,6 +16,7 @@ internal static class ApiProblemCodes
     public const string RateLimited = "rate_limited";
     public const string AnalyticsRelayRejected = "analytics_relay_rejected";
     public const string AuthorizationPolicyPackageUnavailable = "authorization_policy_package_unavailable";
+    public const string AdmissionCheckInUnavailable = "admission_check_in_unavailable";
     public const string SetupAlreadyCompleted = "setup_already_completed";
     public const string ProviderGateway = "provider_gateway";
     public const string UnexpectedError = "unexpected_error";

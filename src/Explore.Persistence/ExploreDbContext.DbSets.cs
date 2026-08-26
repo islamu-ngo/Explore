@@ -200,8 +200,14 @@ public partial class ExploreDbContext
     public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
     public DbSet<AdmissionTicket> AdmissionTickets { get; set; }
     public DbSet<AdmissionTicketCredential> AdmissionTicketCredentials { get; set; }
+    public DbSet<AdmissionTarget> AdmissionTargets { get; set; }
+    public DbSet<AdmissionCheckInPolicy> AdmissionCheckInPolicies { get; set; }
+    public DbSet<AdmissionCheckInEvent> AdmissionCheckInEvents { get; set; }
+    public DbSet<AdmissionCheckInState> AdmissionCheckInStates { get; set; }
+    public DbSet<AdmissionScannerCapability> AdmissionScannerCapabilities { get; set; }
     public DbSet<AdmissionRecoveryCapability> AdmissionRecoveryCapabilities { get; set; }
-    public DbSet<Explore.Application.Contracts.Admissions.AdmissionRecoveryDeliveryIntent> AdmissionRecoveryDeliveryIntents { get; set; }
+    public DbSet<AdmissionRecoveryRequestIntent> AdmissionRecoveryRequestIntents { get; set; }
+    public DbSet<AdmissionRecoveryDeliveryIntent> AdmissionRecoveryDeliveryIntents { get; set; }
     public DbSet<Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent> AdmissionDeliveryIntents { get; set; }
     public DbSet<RegistrationProviderSubmissionWriteEffect> RegistrationProviderSubmissionWriteEffects { get; set; }
     public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }

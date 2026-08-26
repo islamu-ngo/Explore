@@ -15,9 +15,16 @@ internal static class AdmissionContractRuntime
     private static readonly Assembly ApplicationAssembly = typeof(AdmissionIssuanceService).Assembly;
     private static readonly Assembly DomainAssembly = typeof(RegistrationOrder).Assembly;
 
-    internal static Type ApplicationType(string name) => ApplicationAssembly.GetExportedTypes()
-        .SingleOrDefault(type => type.Name == name)
-        ?? throw Missing($"executable public Application type {name}");
+    internal static Type ApplicationType(string name)
+    {
+        Type[] matches = ApplicationAssembly.GetExportedTypes()
+            .Where(type => type.Name == name)
+            .ToArray();
+        return matches.SingleOrDefault(type =>
+                   type.Namespace == "Explore.Application.Contracts.Admissions")
+               ?? matches.SingleOrDefault()
+               ?? throw Missing($"executable public Application type {name}");
+    }
 
     internal static Type DomainType(string name) => DomainAssembly.GetExportedTypes()
         .SingleOrDefault(type => type.Name == name)

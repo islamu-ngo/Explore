@@ -191,13 +191,29 @@ public static class MiddlewareExtensions
             }
 
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
-            headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            if (IsSensitiveAdmissionPath(context.Request.Path))
+            {
+                headers[HeaderNames.CacheControl] = "private, no-store";
+                headers[HeaderNames.Pragma] = "no-cache";
+                headers[HeaderNames.Expires] = "0";
+                headers["Referrer-Policy"] = "no-referrer";
+            }
+            else
+            {
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            }
+
             headers["Permissions-Policy"] = PermissionsPolicy;
             return Task.CompletedTask;
         });
 
         await next();
     }
+
+    private static bool IsSensitiveAdmissionPath(PathString path) =>
+        path.StartsWithSegments("/tickets", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/bff/admission-recovery", StringComparison.OrdinalIgnoreCase) ||
+        AdmissionCheckInBffTransportExtensions.IsAdmissionCheckInPath(path);
 
     // Stores the XSRF request token in a non-HttpOnly cookie so the SPA can echo it as a header.
     private static async Task DistributeAntiforgeryTokenAsync(

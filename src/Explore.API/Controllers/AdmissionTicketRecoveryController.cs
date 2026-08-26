@@ -29,17 +29,18 @@ public sealed class AdmissionTicketRecoveryController(IMediator mediator) : Cont
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.PublicTransactional)]
-    [EnableRateLimiting(RateLimitingExtensions.AdmissionTicketRecoveryPolicy)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
     [RequireIdempotencyKey]
     [HttpPost("recovery", Name = RouteNames.RequestAdmissionTicketRecovery)]
     [EndpointSummary("Request admission ticket recovery")]
-    [ProducesResponseType(typeof(AdmissionTicketRecoveryRequestResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(AdmissionTicketRecoveryRequestResultDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<AdmissionTicketRecoveryRequestResult>> Request(
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<AdmissionTicketRecoveryRequestResultDto>> Request(
         [FromBody] RequestAdmissionTicketRecoveryCommand? request,
         CancellationToken cancellationToken)
     {
-        AdmissionTicketRecoveryRequestResult result = await mediator.Send(
+        AdmissionTicketRecoveryRequestResultDto result = await mediator.Send(
             request ?? new RequestAdmissionTicketRecoveryCommand(string.Empty),
             cancellationToken);
         return Accepted(result);
@@ -58,8 +59,8 @@ public sealed class AdmissionTicketRecoveryController(IMediator mediator) : Cont
         [FromHeader(Name = RecoveryCapabilityHeader)] string? capability,
         CancellationToken cancellationToken)
     {
-        AdmissionTicketRecoveryConsumeResult? result = await mediator.Send(
-            new ConsumeAdmissionTicketRecoveryCommand(capability ?? string.Empty),
+        AdmissionTicketRecoveryConsumeResultDto? result = await mediator.Send(
+            new RedeemAdmissionTicketRecoveryCommand(capability ?? string.Empty),
             cancellationToken);
         return result is null
             ? this.ToNotFoundProblem(RecoveryNotFound)

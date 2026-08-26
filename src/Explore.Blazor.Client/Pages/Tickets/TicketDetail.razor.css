@@ -1,0 +1,90 @@
+/* ABOUTME: Scoped detail layout for account admission tickets and reissue actions. */
+/* ABOUTME: Preserves logical RTL spacing, mobile reflow, and quiet tokenized surfaces. */
+
+.ticket-detail {
+    display: grid;
+    gap: var(--isl-space-section);
+    padding-block: var(--isl-space-page);
+}
+
+.ticket-detail__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.ticket-detail__state,
+.ticket-detail__facts,
+.ticket-detail__entitlements {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.ticket-detail__state {
+    place-items: center;
+    min-block-size: 10rem;
+    text-align: center;
+}
+
+.ticket-detail__facts dl {
+    display: grid;
+    gap: var(--isl-space-3);
+    margin: 0;
+}
+
+.ticket-detail__facts dl > div {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.4fr) minmax(0, 1fr);
+    gap: var(--isl-space-3);
+    padding-block-end: var(--isl-space-2);
+    border-block-end: 1px solid var(--isl-color-divider);
+}
+
+.ticket-detail__facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.ticket-detail__entitlements ul {
+    display: grid;
+    gap: var(--isl-space-3);
+    margin: 0;
+    padding-inline-start: var(--isl-space-5);
+}
+
+.ticket-detail__entitlements li {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.ticket-detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}
+
+@media (max-width: 37.5rem) {
+    .ticket-detail__facts dl > div {
+        grid-template-columns: 1fr;
+        gap: var(--isl-space-1);
+    }
+
+    .ticket-detail__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+@media print {
+    .ticket-detail__header,
+    .ticket-detail__facts,
+    .ticket-detail__actions,
+    .ticket-detail > :not(.admission-ticket-bearer) {
+        display: none;
+    }
+}

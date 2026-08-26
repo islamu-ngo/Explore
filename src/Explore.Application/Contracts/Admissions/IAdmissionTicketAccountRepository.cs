@@ -12,7 +12,7 @@ public interface IAdmissionTicketAccountRepository
         Guid accountUserId,
         CancellationToken cancellationToken);
 
-    Task<AdmissionTicket?> GetCurrentAsync(
+    Task<AdmissionTicket?> GetOwnedAsync(
         Guid tenantId,
         Guid accountUserId,
         Guid admissionTicketId,

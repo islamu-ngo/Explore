@@ -10,6 +10,7 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.Application.Authentication;
 using Explore.Application.Constants;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Telemetry;
 using Microsoft.AspNetCore.Authorization;
@@ -38,6 +39,9 @@ public static class RateLimitingExtensions
     public const string PublicIngestionPolicy = "PublicIngestion";
     public const string PublicTransactionalPolicy = "public_transactional";
     public const string AdmissionTicketRecoveryPolicy = "admission_ticket_recovery";
+    public const string AdmissionCheckInPolicy = "admission_check_in";
+    public const string AdmissionScannerCapabilityPolicy = "admission_scanner_capability";
+    public const string AdmissionScannerCheckInPolicy = "admission_scanner_check_in";
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
@@ -76,6 +80,16 @@ public static class RateLimitingExtensions
         var admissionRecoveryWindowSeconds = section.GetValue(
             "AdmissionTicketRecovery:WindowSeconds",
             900);
+        var admissionCheckInPermitLimit = section.GetValue("AdmissionCheckIn:PermitLimit", 120);
+        var admissionCheckInWindowSeconds = section.GetValue("AdmissionCheckIn:WindowSeconds", 60);
+        var admissionScannerCapabilityPermitLimit = section.GetValue(
+            "AdmissionScannerCapability:PermitLimit", 20);
+        var admissionScannerCapabilityWindowSeconds = section.GetValue(
+            "AdmissionScannerCapability:WindowSeconds", 60);
+        var admissionScannerCheckInPermitLimit = section.GetValue(
+            "AdmissionScannerCheckIn:PermitLimit", 120);
+        var admissionScannerCheckInWindowSeconds = section.GetValue(
+            "AdmissionScannerCheckIn:WindowSeconds", 60);
 
         // Analytics relay limits
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
@@ -119,6 +133,12 @@ public static class RateLimitingExtensions
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AdmissionTicketRecoveryPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AdmissionCheckInPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AdmissionScannerCapabilityPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AdmissionScannerCheckInPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AnalyticsRelayPolicy, _ =>
@@ -146,6 +166,24 @@ public static class RateLimitingExtensions
             {
                 var hasRetryAfter = ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter);
                 var policyName = InferPolicyName(ctx.HttpContext, hasRetryAfter);
+                if (policyName is AdmissionCheckInPolicy
+                    or AdmissionScannerCapabilityPolicy
+                    or AdmissionScannerCheckInPolicy)
+                {
+                    (AdmissionCheckInLimiterPolicy limiterPolicy, AdmissionCheckInAuthorityKind authorityKind) =
+                        policyName switch
+                        {
+                            AdmissionCheckInPolicy =>
+                                (AdmissionCheckInLimiterPolicy.StaffCheckIn, AdmissionCheckInAuthorityKind.Staff),
+                            AdmissionScannerCapabilityPolicy =>
+                                (AdmissionCheckInLimiterPolicy.ScannerCapability, AdmissionCheckInAuthorityKind.Staff),
+                            _ =>
+                                (AdmissionCheckInLimiterPolicy.ScannerCheckIn, AdmissionCheckInAuthorityKind.Scanner)
+                        };
+                    ctx.HttpContext.RequestServices.GetRequiredService<IAdmissionCheckInTelemetry>()
+                        .RecordRateLimiterRejection(limiterPolicy, authorityKind, null);
+                }
+
                 var apiKeyPrincipal = ctx.HttpContext.User.TryGetApiKeyPrincipalContext();
                 if (apiKeyPrincipal is not null)
                 {
@@ -202,6 +240,7 @@ public static class RateLimitingExtensions
             options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateControlPlaneConcurrencyPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateSetupSecretGlobalPartition),
+                PartitionedRateLimiter.Create<HttpContext, string>(CreateAdmissionScannerGlobalPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateAdmissionRecoveryGlobalPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition));
             options.AddPolicy(GlobalPolicy, CreateGlobalPartition);
@@ -283,7 +322,41 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     }));
 
+            options.AddPolicy(AdmissionCheckInPolicy, httpContext =>
+                FixedWindow(
+                    $"{AdmissionCheckInPolicy}:{GetAuthenticatedPartitionKey(httpContext)}",
+                    admissionCheckInPermitLimit,
+                    admissionCheckInWindowSeconds));
+            options.AddPolicy(AdmissionScannerCapabilityPolicy, httpContext =>
+                FixedWindow(
+                    $"{AdmissionScannerCapabilityPolicy}:{GetAuthenticatedPartitionKey(httpContext)}",
+                    admissionScannerCapabilityPermitLimit,
+                    admissionScannerCapabilityWindowSeconds));
+            options.AddPolicy(AdmissionScannerCheckInPolicy, httpContext =>
+                FixedWindow(
+                    $"{AdmissionScannerCheckInPolicy}:{GetAuthenticatedPartitionKey(httpContext)}",
+                    ScannerPermitLimit(httpContext),
+                    ScannerWindowSeconds(httpContext)));
+
             options.AddPolicy(SetupSecretPolicy, _ => RateLimitPartition.GetNoLimiter(SetupSecretPolicy));
+
+            int ScannerPermitLimit(HttpContext context) => context.RequestServices
+                .GetRequiredService<IConfiguration>()
+                .GetValue("RateLimiting:AdmissionScannerCheckIn:PermitLimit", admissionScannerCheckInPermitLimit);
+
+            int ScannerWindowSeconds(HttpContext context) => context.RequestServices
+                .GetRequiredService<IConfiguration>()
+                .GetValue("RateLimiting:AdmissionScannerCheckIn:WindowSeconds", admissionScannerCheckInWindowSeconds);
+
+            static RateLimitPartition<string> FixedWindow(string key, int permitLimit, int windowSeconds) =>
+                RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromSeconds(windowSeconds),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                });
 
             RateLimitPartition<string> CreateSetupSecretPartition(HttpContext httpContext)
             {
@@ -312,10 +385,16 @@ public static class RateLimitingExtensions
                     ? CreateSetupSecretPartition(httpContext)
                     : RateLimitPartition.GetNoLimiter(SetupSecretPolicy);
 
+            RateLimitPartition<string> CreateAdmissionScannerGlobalPartition(HttpContext httpContext) =>
+                IsAdmissionScannerRequest(httpContext)
+                    ? FixedWindow(
+                        $"{AdmissionScannerCheckInPolicy}:{GetAuthenticatedPartitionKey(httpContext)}",
+                        ScannerPermitLimit(httpContext),
+                        ScannerWindowSeconds(httpContext))
+                    : RateLimitPartition.GetNoLimiter(AdmissionScannerCheckInPolicy);
+
             RateLimitPartition<string> CreateAdmissionRecoveryGlobalPartition(HttpContext httpContext) =>
-                httpContext.GetEndpoint()?.Metadata
-                    .GetMetadata<EnableRateLimitingAttribute>()?.PolicyName ==
-                        AdmissionTicketRecoveryPolicy
+                IsAdmissionRecoveryRequest(httpContext)
                     ? RateLimitPartition.GetFixedWindowLimiter(
                         RecoveryTenantPartitionKey(httpContext),
                         _ => new FixedWindowRateLimiterOptions
@@ -465,6 +544,9 @@ public static class RateLimitingExtensions
             PublicIngestionPolicy => publicIngestionPermitLimit,
             PublicTransactionalPolicy => publicTransactionalPermitLimit,
             AdmissionTicketRecoveryPolicy => admissionRecoveryPermitLimit,
+            AdmissionCheckInPolicy => admissionCheckInPermitLimit,
+            AdmissionScannerCapabilityPolicy => admissionScannerCapabilityPermitLimit,
+            AdmissionScannerCheckInPolicy => admissionScannerCheckInPermitLimit,
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
@@ -530,9 +612,12 @@ public static class RateLimitingExtensions
 
         string? endpointPolicy = context.GetEndpoint()?
             .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
-        if (endpointPolicy == AdmissionTicketRecoveryPolicy)
+        if (endpointPolicy is AdmissionTicketRecoveryPolicy
+            or AdmissionCheckInPolicy
+            or AdmissionScannerCapabilityPolicy
+            or AdmissionScannerCheckInPolicy)
         {
-            return AdmissionTicketRecoveryPolicy;
+            return endpointPolicy;
         }
 
         if (endpointPolicy == PublicTransactionalPolicy)
@@ -581,6 +666,18 @@ public static class RateLimitingExtensions
         }
     }
 
+    private static bool IsAdmissionScannerRequest(HttpContext context) =>
+        HttpMethods.IsPost(context.Request.Method) &&
+        context.Request.Path.StartsWithSegments(
+            "/api/admission/scanner/check-ins",
+            StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAdmissionRecoveryRequest(HttpContext context) =>
+        HttpMethods.IsPost(context.Request.Method) &&
+        context.Request.Path.StartsWithSegments(
+            "/api/tickets/recovery",
+            StringComparison.OrdinalIgnoreCase);
+
     private static bool IsEventOpenGraphImageRequest(HttpContext context)
     {
         const string pathPrefix = "/api/event/public/";
@@ -611,6 +708,14 @@ public static class RateLimitingExtensions
         if (managedInstancePartition is not null)
         {
             return managedInstancePartition;
+        }
+
+        string? rawScannerCapabilityId = context.User.FindFirstValue(
+            AdmissionScannerAuthenticationDefaults.CapabilityIdClaim);
+        if (Guid.TryParse(rawScannerCapabilityId, out Guid scannerCapabilityId) &&
+            scannerCapabilityId != Guid.Empty)
+        {
+            return $"admission-scanner:{scannerCapabilityId:N}";
         }
 
         var apiKeyId = context.User.GetApiKeyId();

@@ -1,6 +1,7 @@
 // ABOUTME: Maps authenticated-account admission ticket entities to transport DTOs.
 // ABOUTME: Resolves tenant and account authority from server contexts rather than request data.
 
+using System.Collections.Immutable;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -14,6 +15,7 @@ namespace Explore.Application.Features.AdmissionTickets.Handlers;
 
 public sealed class GetCurrentAdmissionTicketsQueryHandler(
     IAdmissionTicketAccountRepository repository,
+    IAdmissionTicketPresentationResolver presentationResolver,
     ITenantContext tenantContext,
     IUserContext userContext) :
     IRequestHandler<GetCurrentAdmissionTicketsQuery, IReadOnlyList<AdmissionTicketDto>>
@@ -27,10 +29,20 @@ public sealed class GetCurrentAdmissionTicketsQueryHandler(
             tenantContext.TenantId,
             accountUserId,
             cancellationToken);
-        return tickets.Select(Map).ToArray();
+        var presentation = await presentationResolver.ResolveAsync(
+            tenantContext.TenantId,
+            tickets.Select(ticket => ticket.Id).ToArray(),
+            cancellationToken);
+        return tickets.Select(ticket => Map(
+            ticket,
+            presentation.GetValueOrDefault(
+                ticket.Id,
+                AdmissionTicketPresentation.Empty))).ToArray();
     }
 
-    internal static AdmissionTicketDto Map(AdmissionTicket ticket) =>
+    internal static AdmissionTicketDto Map(
+        AdmissionTicket ticket,
+        AdmissionTicketPresentation presentation) =>
         new(
             ticket.Id,
             ticket.Id,
@@ -38,5 +50,50 @@ public sealed class GetCurrentAdmissionTicketsQueryHandler(
             ((AdmissionTicketStatusEnum)ticket.AdmissionTicketStatusId)
                 .ToString()
                 .ToUpperInvariant(),
-            ticket.DisplayReference);
+            ticket.DisplayReference,
+            ticket.RegistrationOrderId,
+            presentation.HolderDisplayName,
+            presentation.TicketTypeName,
+            ticket.CreatedAt,
+            presentation.Entitlements
+                .Select(entitlement => new AdmissionTicketEntitlementDto(
+                    entitlement.ScopeCode,
+                    entitlement.EventTitle,
+                    entitlement.DayLabel,
+                    entitlement.LocalDate,
+                    entitlement.SessionTitle,
+                    entitlement.IncludedQuantity))
+                .ToImmutableArray());
+}
+public sealed class GetCurrentAdmissionTicketQueryHandler(
+    IAdmissionTicketAccountRepository repository,
+    IAdmissionTicketPresentationResolver presentationResolver,
+    ITenantContext tenantContext,
+    IUserContext userContext) :
+    IRequestHandler<GetCurrentAdmissionTicketQuery, AdmissionTicketDto>
+{
+    public async Task<AdmissionTicketDto> Handle(
+        GetCurrentAdmissionTicketQuery request,
+        CancellationToken cancellationToken)
+    {
+        AdmissionTicket? ticket = await repository.GetOwnedAsync(
+            tenantContext.TenantId,
+            userContext.GetRequiredUserId(),
+            request.TicketId,
+            cancellationToken);
+        if (ticket is null)
+        {
+            return null!;
+        }
+
+        var presentation = await presentationResolver.ResolveAsync(
+            tenantContext.TenantId,
+            [ticket.Id],
+            cancellationToken);
+        return GetCurrentAdmissionTicketsQueryHandler.Map(
+            ticket,
+            presentation.GetValueOrDefault(
+                ticket.Id,
+                AdmissionTicketPresentation.Empty));
+    }
 }

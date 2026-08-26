@@ -296,7 +296,7 @@ Paid-event policy settings are separate from instance monetization:
 | `GET /api/tenants/{tenantId}/settings/paid-event-policy` | `GetTenantPaidEventPolicySettings` | `[Authorize]`, `private, no-store` | Returns the instance ceiling, tenant override, and effective policy. |
 | `PUT /api/tenants/{tenantId}/settings/paid-event-policy` | `UpdateTenantPaidEventPolicySettings` | `[Authorize]`, `private, no-store` | Revises a tenant-only narrowing of that ceiling. |
 
-The paid-management resources expose actions only through their exact HAL relations: `preflight`, `commercial-disclosures`, `payment-connection`, `start-onboarding`, and `publish`. A paid publish relation requires both fresh readiness and `manage-paid-event-commerce` for the event's persisted organizer actor. Policy responses expose policy values without policy or tenant identifiers. The connection response exposes only status, merchant country, charge-capability state, requirements state, supported currencies, and readiness timestamp. It omits provider, platform, account, tenant, actor, connection, lineage, and evidence identifiers. Checkout, capture, refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support are not API behavior.
+The paid-management resources expose actions only through their exact HAL relations: `preflight`, `commercial-disclosures`, `payment-connection`, `start-onboarding`, and `publish`. A paid publish relation requires both fresh readiness and `manage-paid-event-commerce` for the event's persisted organizer actor. Policy responses expose policy values without policy or tenant identifiers. The connection response exposes only status, merchant country, charge-capability state, requirements state, supported currencies, and readiness timestamp. It omits provider, platform, account, tenant, actor, connection, lineage, and evidence identifiers. Checkout, capture, refunds, disputes, transfers, payouts, and legal/tax/invoice support are separate API capabilities; admission and online QR check-in are documented in [Admission And Registration](ADMISSION_AND_REGISTRATION.md#6-phase-21-online-check-in-model).
 
 ### Event Promotion And Order Redemption Endpoints
 
@@ -350,6 +350,54 @@ Payment state is one of `Created`, `Processing`, `RequiresAction`, `Unknown`, `F
 Checkout creation runs asynchronously from the Quartz `payment-reconciliation-drain` job. It uses the canonical public HTTPS origin for success/cancel navigation, the persisted connected account and idempotency key, and the configured Checkout-host allowlist. Signed Connect callbacks only persist a normalized inbox envelope and make reconciliation due. Authoritative connected-account Checkout and PaymentIntent retrieval, exact amount/currency/application-fee matching, and fenced monotonic settlement determine payment truth; browser return navigation never does.
 
 Terminal `Failed` or `Cancelled` retry persists release of the old active slot before creating one replacement. Capability-aware replay recognizes only safe `Created + Pending` or `DispatchPending + Failed` replacement states and returns the same attempt/effect; `Unknown` and `Succeeded` remain forbidden, and expired guest capability remains `404`. A normalized `PublicBaseUrl` subpath is preserved in Checkout success/cancel URLs.
+
+### Admission Ticket Recovery & Gate Credential Endpoints
+
+Admission ticket self-service recovery, credential rotation, and account-owned ticket reads live under `/api/tickets`. See [ADMISSION_AND_REGISTRATION.md](ADMISSION_AND_REGISTRATION.md) for domain concepts and zero-knowledge security architecture.
+
+| Route | Route Name | Protection | Purpose |
+|---|---|---|---|
+| `POST /api/tickets/recovery` | `RequestAdmissionTicketRecovery` | `[AllowAnonymous]`, `PublicTransactional`, `Idempotency-Key`, `public_transactional` plus chained tenant recovery budget | Initiates self-service ticket recovery. Accepts `{ "email": "..." }` and returns indistinguishable `202 Accepted` to prevent email enumeration. |
+| `POST /api/tickets/recovery/consume` | `ConsumeAdmissionTicketRecovery` | `[AllowAnonymous]`, `Public`, `private, no-store`, `AdmissionTicketRecoveryPolicy`, `X-Admission-Ticket-Recovery-Capability` | Consumes a single-use recovery capability token passed via header; rotates the capability and delivers the rendered QR SVG and printable ticket DTO. |
+
+Key invariants:
+- **Zero-Knowledge Bearers**: Plaintext QR barcodes and tokens are never persisted in the database; only versioned keyed HMAC-SHA-256 lookup digests (`LookupDigest`) are stored.
+- **Wire Payload Format**: Standardized `islamu-admission:v1:<43-char-base64url-bearer>` (63 characters total).
+- **Indistinguishable Email Responses**: `POST /api/tickets/recovery` returns identical `202 Accepted` payloads regardless of whether the email address has active tickets.
+- **Two-layer request throttling**: recovery request traffic must pass both the per-IP `public_transactional` policy and the global tenant-scoped recovery budget. Capability consumption keeps the dedicated recovery limiter.
+- **No consume-response replay**: capability consumption is intentionally not idempotency-cached. The keyed, expiring capability is atomically single-use, and replaying a cached successful bearer response would violate that authority.
+- **Single-Use Capabilities**: Recovery capability tokens expire and rotate automatically upon consumption or re-request.
+
+### Online Admission Check-In Endpoints
+
+Phase 21 check-in is online and server-authoritative. Staff routes use ordinary authenticated event
+authority; scanner routes use only the opaque `X-Admission-Scanner-Capability` scheme bound to one
+tenant, event, target, action set, and expiry. Every response is private/no-store, mutation
+failures are bounded RFC 7807 responses, and UI controls come only from returned HAL relations.
+
+| Route | Route Name | Protection | Purpose |
+|---|---|---|---|
+| `GET /api/events/{eventId}/admission/scanner-capabilities` | `ListAdmissionScannerCapabilities` | Staff `event_check_in:view` | Lists masked capabilities for the event. |
+| `POST /api/events/{eventId}/admission/scanner-capabilities` | `IssueAdmissionScannerCapability` | Staff `event_check_in:manage`, `Idempotency-Key` | Issues one target-scoped capability and discloses plaintext once. |
+| `DELETE /api/events/{eventId}/admission/scanner-capabilities/{scannerCapabilityId}` | `RevokeAdmissionScannerCapability` | Staff `event_check_in:manage` | Revokes one device authority without stopping other target channels. |
+| `POST /api/events/{eventId}/admission/check-ins` | `CheckInAdmission` | Staff `event_check_in:manage`, `Idempotency-Key` | Checks in one opaque credential against one body `targetId`. |
+| `POST /api/events/{eventId}/admission/check-ins/batch` | `BatchCheckInAdmissions` | Staff `event_check_in:manage`, `Idempotency-Key` | Processes 1–100 credentials independently in input order. |
+| `GET /api/events/{eventId}/admission/check-ins/{checkInId}` | `GetAdmissionCheckIn` | Staff `event_check_in:view` | Returns bounded fact detail and current undo affordance. |
+| `POST /api/events/{eventId}/admission/check-ins/{checkInId}/undo` | `UndoAdmissionCheckIn` | Staff `event_check_in:manage`, `Idempotency-Key` | Appends a compensation linked to the exact active fact. |
+| `GET /api/events/{eventId}/admission/check-ins/summary?targetId={targetId}` | `GetAdmissionCheckInSummary` | Staff `event_check_in:view` | Returns exact-target aggregate counts without roster data. |
+| `GET /api/events/{eventId}/admission/check-ins/audit?cursor={cursor}` | `GetAdmissionCheckInAudit` | Staff `event_check_in:view` | Traverses an export-safe immutable keyset page. |
+| `GET /api/events/{eventId}/admission/check-ins/health?targetId={targetId}` | `GetAdmissionCheckInHealth` | Staff `event_check_in:view` | Returns `Active`, `Stopped`, or `Unavailable` plus dependency state. |
+| `POST /api/events/{eventId}/admission/check-ins/operations/stop` | `StopAdmissionCheckIn` | Staff `event_check_in:manage` | Stops every admission channel for the exact target. |
+| `POST /api/events/{eventId}/admission/check-ins/operations/restore` | `RestoreAdmissionCheckIn` | Staff `event_check_in:manage` | Restores the exact target after dependency recovery. |
+| `POST /api/events/{eventId}/admission/check-ins/operations/reconcile` | `ReconcileAdmissionCheckIn` | Staff `event_check_in:manage` | Appends a bounded post-incident decision without rewriting facts. |
+| `POST /api/admission/scanner/check-ins` | `ScannerCheckInAdmission` | `AdmissionScanner`, `Idempotency-Key` | Performs one check-in using the authenticated capability target. |
+| `POST /api/admission/scanner/check-ins/batch` | `ScannerBatchCheckInAdmissions` | `AdmissionScanner`, `Idempotency-Key` | Processes a bounded target-fixed scanner batch. |
+| `POST /api/admission/scanner/check-ins/{checkInId}/undo` | `ScannerUndoAdmissionCheckIn` | `AdmissionScanner`, `Idempotency-Key` | Compensates the exact active fact when the capability permits undo. |
+
+Undo request bodies carry `reasonCode`, restricted to `OperatorCorrection`, `DuplicateScan`,
+`WrongTarget`, or `ExceptionalReconciliation`; free-form reason text is not accepted or persisted.
+Invalid credential, capability, tenant, event, and target states remain indistinguishable. A
+dependency failure returns bounded `503`; scanner clients stop intake and retain no offline queue.
 
 ### Registration Form Authoring Endpoints
 

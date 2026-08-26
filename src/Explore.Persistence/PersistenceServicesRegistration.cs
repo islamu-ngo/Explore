@@ -231,17 +231,37 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationRetentionCleanupRepository, RegistrationRetentionCleanupRepository>();
         services.AddScoped<IRegistrationAnswerFileRepository, RegistrationAnswerFileRepository>();
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
+        services.AddScoped<IAdmissionTargetMaterializationRepository, AdmissionTargetMaterializationRepository>();
         services.AddScoped<IAdmissionIssuanceRepository, AdmissionIssuanceRepository>();
+        services.AddScoped<IAdmissionCheckInTransaction, AdmissionCheckInRepository>();
+        services.AddScoped<AdmissionCheckInReportingRepository>();
+        services.AddScoped<IAdmissionCheckInSummaryQuery>(provider =>
+            provider.GetRequiredService<AdmissionCheckInReportingRepository>());
+        services.AddScoped<IAdmissionCheckInReportingRepository>(provider =>
+            provider.GetRequiredService<AdmissionCheckInReportingRepository>());
+        services.AddScoped<AdmissionTargetOperationsRepository>();
+        services.AddScoped<IAdmissionTargetOperationsRepository>(provider =>
+            provider.GetRequiredService<AdmissionTargetOperationsRepository>());
+        services.AddScoped<IAdmissionCheckInHealthProbe, AdmissionCheckInDatabaseHealthProbe>();
+        services.AddScoped<AdmissionScannerCapabilityRepository>();
+        services.AddScoped<IAdmissionScannerCapabilityRepository>(provider =>
+            provider.GetRequiredService<AdmissionScannerCapabilityRepository>());
+        services.AddScoped<AdmissionRevocationRepository>();
+        services.AddScoped<IAdmissionRevocationRepository>(provider =>
+            provider.GetRequiredService<AdmissionRevocationRepository>());
+        services.AddScoped<IAdmissionEventCancellationRepository>(provider =>
+            provider.GetRequiredService<AdmissionRevocationRepository>());
         services.AddScoped<IAdmissionRecoveryRepository, AdmissionRecoveryRepository>();
         services.AddScoped<IAdmissionRecoveryIdentityResolver, AdmissionRecoveryIdentityResolver>();
         services.AddScoped<AdmissionTicketRepository>();
         services.AddScoped<IAdmissionTicketRecoveryRepository>(provider =>
             provider.GetRequiredService<AdmissionTicketRepository>());
         services.AddScoped<IAdmissionTicketAccountRepository, AdmissionTicketAccountRepository>();
+        services.AddScoped<IAdmissionTicketPresentationResolver, AdmissionTicketPresentationResolver>();
         services.AddScoped<AdmissionRecoveryProtectedDeliveryService>();
+        services.AddScoped<IAdmissionRecoveryRequestStager, AdmissionRecoveryRequestStager>();
+        services.AddScoped<IAdmissionRecoveryRequestOutboxHandler, AdmissionRecoveryRequestOutboxHandler>();
         services.AddScoped<IAdmissionRecoveryDeliveryStager>(provider =>
-            provider.GetRequiredService<AdmissionRecoveryProtectedDeliveryService>());
-        services.AddScoped<IAdmissionRecoveryDeliveryService>(provider =>
             provider.GetRequiredService<AdmissionRecoveryProtectedDeliveryService>());
         services.AddScoped<IAdmissionRecoveryDeliveryOutboxHandler, AdmissionRecoveryDeliveryOutboxHandler>();
         services.AddScoped<IAdmissionCredentialDeliveryOutboxHandler, AdmissionCredentialDeliveryOutboxHandler>();

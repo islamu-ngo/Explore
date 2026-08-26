@@ -1,46 +1,12 @@
 // ABOUTME: Persists tenant-scoped admission recovery entities with atomic lifecycle mutations.
-// ABOUTME: Resolves verified identity separately and never returns persistence-shaped DTOs.
+// ABOUTME: Uses conditional writes and concurrency stamps for single-use capability transitions.
 
 using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
-
-public sealed class AdmissionRecoveryIdentityResolver(ExploreDbContext dbContext) :
-    IAdmissionRecoveryIdentityResolver
-{
-    public async Task<AdmissionRecoveryIdentityResult> FindAsync(
-        AdmissionRecoveryRequest request,
-        CancellationToken cancellationToken)
-    {
-        string normalizedIdentity = request.NormalizedIdentity.Trim().ToUpperInvariant();
-        int activeStatus = (int)AdmissionTicketStatusEnum.Active;
-        int suspendedStatus = (int)AdmissionTicketStatusEnum.Suspended;
-        Guid[] ticketIds = await (
-                from pii in dbContext.RegistrationOrderPii.AsNoTracking()
-                join ticket in dbContext.AdmissionTickets.AsNoTracking()
-                    on new { pii.TenantId, pii.RegistrationOrderId }
-                    equals new { ticket.TenantId, ticket.RegistrationOrderId }
-                where pii.TenantId == request.TenantId &&
-                    pii.IsEmailVerified &&
-                    pii.NormalizedEmail == normalizedIdentity &&
-                    (ticket.AdmissionTicketStatusId == activeStatus ||
-                        ticket.AdmissionTicketStatusId == suspendedStatus)
-                orderby ticket.CreatedAt descending, ticket.Id
-                select ticket.Id)
-            .Distinct()
-            .Take(1)
-            .ToArrayAsync(cancellationToken);
-        return new AdmissionRecoveryIdentityResult(
-            request.TenantId,
-            Guid.CreateVersion7(),
-            ticketIds.Length > 0,
-            ticketIds);
-    }
-}
 
 public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
     IAdmissionRecoveryRepository
@@ -174,63 +140,62 @@ public sealed class AdmissionRecoveryRepository(ExploreDbContext dbContext) :
             throw new ArgumentException("Recovery replacement lineage is invalid.", nameof(replacement));
         }
 
-        IDbContextTransaction? ownedTransaction = dbContext.Database.CurrentTransaction is null
-            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
-            : null;
-        try
+        if (dbContext.Database.CurrentTransaction is not null)
         {
-            int changed = await dbContext.AdmissionRecoveryCapabilities
-                .Where(value =>
-                    value.TenantId == current.TenantId &&
-                    value.Id == current.Id &&
-                    value.LookupKeyVersion == current.LookupKeyVersion &&
-                    value.LookupDigest == current.LookupDigest &&
-                    value.ConcurrencyStamp == current.ConcurrencyStamp &&
-                    value.ConsumedAt == null &&
-                    value.RotatedAt == null)
-                .ExecuteUpdateAsync(
-                    setters => setters
-                        .SetProperty(value => value.RotatedAt, rotatedAtUtc)
-                        .SetProperty(
-                            value => value.ActiveUniquenessSlot,
-                            value => value.CapabilityVersion)
-                        .SetProperty(value => value.UpdatedAt, rotatedAtUtc)
-                        .SetProperty(value => value.ConcurrencyStamp, Guid.CreateVersion7()),
-                    cancellationToken);
-            if (changed != 1)
-            {
-                if (ownedTransaction is not null)
-                {
-                    await ownedTransaction.RollbackAsync(cancellationToken);
-                }
-
-                return false;
-            }
-
-            await dbContext.AdmissionRecoveryCapabilities.AddAsync(replacement, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            if (ownedTransaction is not null)
-            {
-                await ownedTransaction.CommitAsync(cancellationToken);
-            }
-
-            return true;
+            return await TryRotateCoreAsync(
+                current,
+                replacement,
+                rotatedAtUtc,
+                cancellationToken);
         }
-        catch
+
+        IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteInTransactionAsync(
+            operation: token => TryRotateCoreAsync(
+                current,
+                replacement,
+                rotatedAtUtc,
+                token),
+            verifySucceeded: token => dbContext.AdmissionRecoveryCapabilities
+                .AsNoTracking()
+                .AnyAsync(value =>
+                    value.TenantId == replacement.TenantId &&
+                    value.Id == replacement.Id,
+                    token),
+            cancellationToken);
+    }
+
+    private async Task<bool> TryRotateCoreAsync(
+        AdmissionRecoveryCapability current,
+        AdmissionRecoveryCapability replacement,
+        DateTime rotatedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        int changed = await dbContext.AdmissionRecoveryCapabilities
+            .Where(value =>
+                value.TenantId == current.TenantId &&
+                value.Id == current.Id &&
+                value.LookupKeyVersion == current.LookupKeyVersion &&
+                value.LookupDigest == current.LookupDigest &&
+                value.ConcurrencyStamp == current.ConcurrencyStamp &&
+                value.ConsumedAt == null &&
+                value.RotatedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(value => value.RotatedAt, rotatedAtUtc)
+                    .SetProperty(
+                        value => value.ActiveUniquenessSlot,
+                        value => value.CapabilityVersion)
+                    .SetProperty(value => value.UpdatedAt, rotatedAtUtc)
+                    .SetProperty(value => value.ConcurrencyStamp, Guid.CreateVersion7()),
+                cancellationToken);
+        if (changed != 1)
         {
-            if (ownedTransaction is not null)
-            {
-                await ownedTransaction.RollbackAsync(CancellationToken.None);
-            }
+            return false;
+        }
 
-            throw;
-        }
-        finally
-        {
-            if (ownedTransaction is not null)
-            {
-                await ownedTransaction.DisposeAsync();
-            }
-        }
+        await dbContext.AdmissionRecoveryCapabilities.AddAsync(replacement, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

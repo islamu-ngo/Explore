@@ -11,6 +11,26 @@ public static class RouteNames
 {
     public const string RequestAdmissionTicketRecovery = "RequestAdmissionTicketRecovery";
     public const string ConsumeAdmissionTicketRecovery = "ConsumeAdmissionTicketRecovery";
+    public const string GetCurrentAdmissionTickets = "GetCurrentAdmissionTickets";
+    public const string GetCurrentAdmissionTicket = "GetCurrentAdmissionTicket";
+    public const string ReissueCurrentAdmissionTicketQr = "ReissueCurrentAdmissionTicketQr";
+    public const string ReissueCurrentAdmissionTicketPrint = "ReissueCurrentAdmissionTicketPrint";
+    public const string ListAdmissionScannerCapabilities = "ListAdmissionScannerCapabilities";
+    public const string IssueAdmissionScannerCapability = "IssueAdmissionScannerCapability";
+    public const string RevokeAdmissionScannerCapability = "RevokeAdmissionScannerCapability";
+    public const string CheckInAdmission = "CheckInAdmission";
+    public const string GetAdmissionCheckIn = "GetAdmissionCheckIn";
+    public const string BatchCheckInAdmissions = "BatchCheckInAdmissions";
+    public const string UndoAdmissionCheckIn = "UndoAdmissionCheckIn";
+    public const string GetAdmissionCheckInSummary = "GetAdmissionCheckInSummary";
+    public const string GetAdmissionCheckInAudit = "GetAdmissionCheckInAudit";
+    public const string ScannerCheckInAdmission = "ScannerCheckInAdmission";
+    public const string ScannerBatchCheckInAdmissions = "ScannerBatchCheckInAdmissions";
+    public const string ScannerUndoAdmissionCheckIn = "ScannerUndoAdmissionCheckIn";
+    public const string GetAdmissionCheckInHealth = "GetAdmissionCheckInHealth";
+    public const string StopAdmissionCheckIn = "StopAdmissionCheckIn";
+    public const string RestoreAdmissionCheckIn = "RestoreAdmissionCheckIn";
+    public const string ReconcileAdmissionCheckIn = "ReconcileAdmissionCheckIn";
 
     #region Managed Event Routes
 

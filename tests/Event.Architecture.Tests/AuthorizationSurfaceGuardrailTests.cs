@@ -51,6 +51,10 @@ public sealed class AuthorizationSurfaceGuardrailTests
     [
         "Explore.Application.Features.Actors.Requests.Commands.CreateActorCommand",
         "Explore.Application.Features.Actors.Requests.Commands.DeleteActorCommand",
+        "Explore.Application.Features.AdmissionTickets.Requests.Commands.RedeemAdmissionTicketRecoveryCommand",
+        "Explore.Application.Features.AdmissionTickets.Requests.Commands.ReissueCurrentAdmissionTicketPrintCommand",
+        "Explore.Application.Features.AdmissionTickets.Requests.Commands.ReissueCurrentAdmissionTicketQrCommand",
+        "Explore.Application.Features.AdmissionTickets.Requests.Commands.RequestAdmissionTicketRecoveryCommand",
         "Explore.Application.Features.AiAssistant.Requests.Commands.GrantAiConsentCommand",
         "Explore.Application.Features.AiAssistant.Requests.Commands.RevokeAiConsentCommand",
         "Explore.Application.Features.AiAssistant.Requests.Commands.RunAiRetentionCleanupCommand",
@@ -233,6 +237,7 @@ public sealed class AuthorizationSurfaceGuardrailTests
     ];
     private static readonly InventoryEntry[] NamedAnonymousMutationExceptions =
     [
+        new("AdmissionTicketRecoveryController.Consume", "PublicOrSignatureGated", "One-time admission recovery is gated by a tenant-bound keyed capability and dedicated bounded rate policy; idempotency replay is deliberately forbidden."),
         new("AnalyticsRelayController.Relay", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
         new("EmailUnsubscribeController.Post", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
         new("IncomingWebhooksController.RecordStripeConnectCallback", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),

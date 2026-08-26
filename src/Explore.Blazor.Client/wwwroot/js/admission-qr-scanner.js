@@ -19,9 +19,29 @@ export async function getCapability() {
 }
 
 export async function detect(imageSource) {
+    let cameraStream = null;
     try {
         if (!imageSource || !await hasNativeQrSupport()) {
             return { status: "unsupported" };
+        }
+
+        if (imageSource.tagName === "VIDEO") {
+            if (!globalThis.navigator?.mediaDevices?.getUserMedia) {
+                return { status: "unsupported" };
+            }
+
+            cameraStream = await globalThis.navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: "environment" } }
+            });
+            imageSource.srcObject = cameraStream;
+            if (imageSource.readyState < 2) {
+                await new Promise((resolve, reject) => {
+                    imageSource.addEventListener("loadeddata", resolve, { once: true });
+                    imageSource.addEventListener("error", reject, { once: true });
+                });
+            }
+            await imageSource.play();
         }
 
         const detector = new globalThis.BarcodeDetector({ formats: ["qr_code"] });
@@ -36,5 +56,12 @@ export async function detect(imageSource) {
         return { status: "single", value: typeof results[0].rawValue === "string" ? results[0].rawValue : "" };
     } catch {
         return { status: "failure" };
+    } finally {
+        if (cameraStream) {
+            for (const track of cameraStream.getTracks()) {
+                track.stop();
+            }
+            imageSource.srcObject = null;
+        }
     }
 }

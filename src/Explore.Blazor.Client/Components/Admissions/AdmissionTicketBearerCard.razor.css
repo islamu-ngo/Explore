@@ -1,0 +1,123 @@
+/* ABOUTME: Scoped sensitive admission bearer layout for screen and paged media. */
+/* ABOUTME: Uses logical properties, atomic print blocks, and tokenized project surfaces. */
+
+.admission-ticket-bearer {
+    display: grid;
+    gap: var(--isl-space-4);
+    max-inline-size: 44rem;
+    margin-inline: auto;
+    padding: var(--isl-space-5);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+    break-inside: avoid;
+}
+
+.admission-ticket-bearer__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.admission-ticket-bearer__qr {
+    display: grid;
+    place-items: center;
+    padding: var(--isl-space-4);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-credential-background);
+}
+
+.admission-ticket-bearer__qr img {
+    display: block;
+    inline-size: min(100%, 20rem);
+    block-size: auto;
+    aspect-ratio: 1;
+}
+
+.admission-ticket-bearer__manual {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.admission-ticket-bearer__manual code {
+    overflow-wrap: anywhere;
+    padding: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-input);
+    background: var(--isl-color-background);
+    font-size: var(--isl-typography-body1-size);
+    text-align: start;
+    user-select: all;
+}
+
+.admission-ticket-bearer__facts {
+    display: grid;
+    gap: var(--isl-space-3);
+    margin: 0;
+}
+
+.admission-ticket-bearer__facts > div {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.4fr) minmax(0, 1fr);
+    gap: var(--isl-space-3);
+    padding-block-end: var(--isl-space-2);
+    border-block-end: 1px solid var(--isl-color-divider);
+}
+
+.admission-ticket-bearer__facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.admission-ticket-bearer__entitlements {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.admission-ticket-bearer__entitlements ul {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding-inline-start: var(--isl-space-5);
+}
+
+.admission-ticket-bearer__entitlements li {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.admission-ticket-bearer__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 37.5rem) {
+    .admission-ticket-bearer {
+        padding: var(--isl-space-3);
+    }
+
+    .admission-ticket-bearer__facts > div {
+        grid-template-columns: 1fr;
+        gap: var(--isl-space-1);
+    }
+}
+
+@media print {
+    .admission-ticket-bearer {
+        position: fixed;
+        inset: 0;
+        inline-size: 100%;
+        max-inline-size: none;
+        margin: 0;
+        border: 0;
+        color: var(--isl-color-print-text);
+        background: var(--isl-color-print-background);
+        box-shadow: none;
+    }
+
+    .admission-ticket-bearer__actions {
+        display: none;
+    }
+}

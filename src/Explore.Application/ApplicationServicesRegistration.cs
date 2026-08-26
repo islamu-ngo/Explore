@@ -183,9 +183,19 @@ public static class ApplicationServicesRegistration
             .ValidateOnStart();
         services.AddOptions<AdmissionCredentialOptions>()
             .Bind(configuration.GetSection(AdmissionCredentialOptions.SectionName))
-            .Validate(
-                options => options.ActiveKeyVersion >= 1,
-                "Admissions:CredentialLookup:ActiveKeyVersion must be greater than or equal to 1.")
+            .Validate(options =>
+            {
+                try
+                {
+                    _ = options.GetDigestKeyVersions();
+                    return options.RetainedKeyVersions.Append(options.ActiveKeyVersion).Distinct().Count() ==
+                        options.RetainedKeyVersions.Length + 1;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+            }, "Admissions:CredentialLookup key versions must be positive, unique, and bounded.")
             .ValidateOnStart();
         services.AddOptions<AdmissionRecoveryOptions>()
             .Bind(configuration.GetSection(AdmissionRecoveryOptions.SectionName))
@@ -199,8 +209,41 @@ public static class ApplicationServicesRegistration
                     options.RateLimitWindowSeconds is >= 60 and <= 86_400,
                 "Admissions:Recovery configuration is invalid.")
             .ValidateOnStart();
+        services.AddScoped<IAdmissionTargetMaterializer, AdmissionTargetMaterializer>();
         services.AddScoped<AdmissionIssuanceService>();
+        services.AddScoped<IAdmissionIssuanceService>(provider =>
+            provider.GetRequiredService<AdmissionIssuanceService>());
+        services.AddScoped<AdmissionRevocationService>();
+        services.AddScoped<IAdmissionRevocationService>(provider =>
+            provider.GetRequiredService<AdmissionRevocationService>());
+        services.AddScoped<IAdmissionRefundRevocationService, AdmissionRefundRevocationService>();
+        services.AddScoped<IAdmissionEventCancellationService, AdmissionEventCancellationService>();
         services.AddScoped<AdmissionRecoveryService>();
+        services.AddScoped<AdmissionRecoveryRedemptionService>();
+        services.AddScoped<AdmissionCheckInService>();
+        services.AddScoped<AdmissionCheckInReportingService>();
+        services.AddScoped<AdmissionCheckInOperationsService>();
+        services.AddSingleton<IAdmissionCheckInTelemetry, AdmissionCheckInMetrics>();
+        services.AddScoped<AdmissionScannerAuthenticationService>();
+        services.AddScoped<IAdmissionScannerAuthenticationService>(provider =>
+            provider.GetRequiredService<AdmissionScannerAuthenticationService>());
+        services.AddScoped<AdmissionScannerCapabilityService>();
+        services.AddOptions<AdmissionScannerCapabilityDigestOptions>()
+            .Bind(configuration.GetSection(AdmissionScannerCapabilityDigestOptions.SectionName))
+            .Validate(options =>
+            {
+                try
+                {
+                    options.Validate();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+            }, "Admissions:ScannerCapabilityDigest configuration is invalid.")
+            .ValidateOnStart();
+        services.AddScoped<AdmissionTicketAccountDeliveryService>();
         services.AddScoped<IAdmissionRecoveryTicketDocumentService, AdmissionRecoveryTicketDocumentService>();
         services.AddScoped<IAdmissionRecoveryAuditService, AdmissionRecoveryAuditService>();
         services.AddScoped<IOrganizerPaymentCommerceConfiguration>(provider =>

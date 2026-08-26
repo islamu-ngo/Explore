@@ -73,6 +73,7 @@ var embeddedPrivacyErasureAuthorityBusyTimeout = ConfiguredValue(
     "PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS",
     EmbeddedPrivacyErasureAuthorityOptions.DefaultBusyTimeoutSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
 var prometheusConfigPath = Path.Combine(appHostConfigRoot, "prometheus.yaml");
+var admissionCheckInAlertRulesPath = Path.Combine(appHostConfigRoot, "admission-check-in-alerts.yaml");
 var grafanaDashboardPath = Path.Combine(appHostConfigRoot, "grafana-dashboard");
 var pgAdminServersPath = Path.Combine(appHostConfigRoot, "pgadmin", "servers.json");
 var pgAdminPassFilePath = Path.Combine(appHostConfigRoot, "pgadmin", "pgpass");
@@ -137,6 +138,7 @@ if (runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal)
         mailpit,
         coopNginxConfigPath,
         prometheusConfigPath,
+        admissionCheckInAlertRulesPath,
         grafanaDashboardPath,
         pgAdminServersPath,
         pgAdminPassFilePath,
@@ -568,6 +570,7 @@ static LocalPlatformResources AddLocalPlatform(
     IResourceBuilder<ContainerResource> mailpit,
     string coopNginxConfigPath,
     string prometheusConfigPath,
+    string admissionCheckInAlertRulesPath,
     string grafanaDashboardPath,
     string pgAdminServersPath,
     string pgAdminPassFilePath,
@@ -937,6 +940,7 @@ static LocalPlatformResources AddLocalPlatform(
 
         prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
             .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
+            .WithBindMount(admissionCheckInAlertRulesPath, "/etc/prometheus/admission-check-in-alerts.yaml", isReadOnly: true)
             .WithArgs("--web.enable-otlp-receiver", "--config.file=/etc/prometheus/prometheus.yaml")
             .WithHttpEndpoint(targetPort: 9090, port: 9090, name: "http")
             .WithVolume("islamu-event-prometheus-data", "/prometheus");
@@ -1230,6 +1234,16 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     if (resources.Svix is not null)
     {
         api = api.WaitFor(resources.Svix);
+    }
+
+    if (resources.Prometheus is not null)
+    {
+        api = api
+            .WithEnvironment(
+                "OTEL_EXPORTER_OTLP_ENDPOINT",
+                $"{BuildHttpUri("prometheus", 9090)}/api/v1/otlp")
+            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+            .WaitFor(resources.Prometheus);
     }
 
     return api;

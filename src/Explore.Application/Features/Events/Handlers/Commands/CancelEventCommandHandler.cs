@@ -31,6 +31,7 @@ public sealed class CancelEventCommandHandler(
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
     IEventLifecycleScheduler eventLifecycleScheduler,
     IRefundCampaignRepository refundCampaignRepository,
+    IOutboxRepository outboxRepository,
     TimeProvider timeProvider) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_cancel_concurrency_conflict";
@@ -116,6 +117,11 @@ public sealed class CancelEventCommandHandler(
                 refundCampaign,
                 RefundOutboxMessageFactory.CreateCampaignProcess(refundCampaign, occurredAt),
                 token);
+            await outboxRepository.Create(
+                AdmissionRevocationOutboxMessageFactory.CreateEventCancellation(
+                    attemptEvent.TenantId,
+                    attemptEvent.Id,
+                    occurredAt));
             await atprotoPublicationPlanner.PlanEventAsync(
                 new AtprotoEventPublicationInput(
                     attemptEvent.TenantId,

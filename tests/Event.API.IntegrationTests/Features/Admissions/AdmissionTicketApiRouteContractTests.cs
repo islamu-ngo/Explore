@@ -72,13 +72,13 @@ public sealed partial class AdmissionTicketApiRedContractTests
         var scenario = new AdmissionApiScenario();
         var dispatcher = new AdmissionScenarioDispatcher(scenario, AdmissionApiRequestContracts.ForProbe());
         string validCapability = scenario.IssueValidCapability();
-        var wrongMember = new CanonicalProbeRequests.ConsumeAdmissionTicketRecoveryCommand(
+        var wrongMember = new CanonicalProbeRequests.RedeemAdmissionTicketRecoveryCommand(
             Capability: string.Empty, WrongMember: validCapability);
         var nestedTicket = new CanonicalProbeRequests.GetCurrentAdmissionTicketQuery(
             Guid.Empty, new ProbeNestedTicket(scenario.AccountTicketId));
 
         await Assert.That(() => dispatcher.Dispatch(
-            new DecoyProbeRequests.ConsumeAdmissionTicketRecoveryCommand(validCapability),
+            new DecoyProbeRequests.RedeemAdmissionTicketRecoveryCommand(validCapability),
             typeof(ProbeResponse))).Throws<InvalidOperationException>();
         await Assert.That(dispatcher.Dispatch(wrongMember, typeof(ProbeResponse))).IsNull();
         await Assert.That(dispatcher.Dispatch(nestedTicket, typeof(ProbeResponse))).IsNull();
@@ -129,7 +129,7 @@ public sealed partial class AdmissionTicketApiRedContractTests
             violations.Add("recovery consume is not anonymous");
         if (action.Method.GetCustomAttribute<EndpointClassificationAttribute>()?.Class != EndpointClass.Public)
             violations.Add("recovery consume is not Public-class");
-        if (action.Method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName != RecoveryRateLimitPolicy)
+        if (action.Method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName != RecoveryConsumeRateLimitPolicy)
             violations.Add("recovery consume lacks its dedicated rate policy");
         if (!action.Method.GetParameters().Any(parameter =>
                 parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == RecoveryCapabilityHeader))
@@ -146,8 +146,8 @@ public sealed partial class AdmissionTicketApiRedContractTests
             != EndpointClass.PublicTransactional)
             violations.Add("recovery request is not PublicTransactional-class");
         if (action.Method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName
-            != RecoveryRateLimitPolicy)
-            violations.Add("recovery request lacks its dedicated rate policy");
+            != RecoveryRequestRateLimitPolicy)
+            violations.Add("recovery request lacks the public transactional rate policy");
         if (action.Method.GetCustomAttribute<RequireIdempotencyKeyAttribute>() is null)
             violations.Add("recovery request lacks idempotency");
     }

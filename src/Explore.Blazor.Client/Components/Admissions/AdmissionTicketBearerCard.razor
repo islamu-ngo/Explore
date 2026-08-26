@@ -1,0 +1,102 @@
+@* ABOUTME: Renders an authorized admission QR and its accessible sensitive manual alternative. *@
+@* ABOUTME: Keeps print, mobile, RTL, and bearer warning behavior consistent across ticket pages. *@
+
+@using System.Text
+
+<section class="admission-ticket-bearer"
+         aria-labelledby="admission-ticket-bearer-heading"
+         data-testid="admission-ticket-bearer">
+    <header class="admission-ticket-bearer__header">
+        <div>
+            <MudText Id="admission-ticket-bearer-heading" Typo="Typo.h5" HtmlTag="h2">
+                Admission ticket
+            </MudText>
+            <MudText Typo="Typo.body2">@DisplayReference</MudText>
+        </div>
+        <MudChip T="string" Variant="Variant.Outlined">@StatusCode</MudChip>
+    </header>
+
+    <MudAlert Severity="Severity.Warning"
+              Variant="Variant.Outlined"
+              Dense="true"
+              data-testid="sensitive-bearer-warning">
+        This QR and manual code are sensitive bearer credentials. Do not share them.
+    </MudAlert>
+
+    <div class="admission-ticket-bearer__qr">
+        <img src="@QrDataUri"
+             alt="Admission ticket QR code for @DisplayReference"
+             width="320"
+             height="320" />
+    </div>
+
+    <div class="admission-ticket-bearer__manual"
+         aria-labelledby="admission-ticket-manual-heading">
+        <MudText Id="admission-ticket-manual-heading" Typo="Typo.subtitle2" HtmlTag="h3">
+            Sensitive manual admission code
+        </MudText>
+        <code dir="ltr" data-testid="sensitive-manual-code">@ManualCode</code>
+        <MudText Typo="Typo.caption">@ManualCodeClassificationCode</MudText>
+    </div>
+
+    <dl class="admission-ticket-bearer__facts">
+        <div>
+            <dt>Holder</dt>
+            <dd>@(HolderDisplayName ?? "Holder details unavailable")</dd>
+        </div>
+        <div>
+            <dt>Ticket type</dt>
+            <dd>@TicketTypeName</dd>
+        </div>
+    </dl>
+
+    <section class="admission-ticket-bearer__entitlements"
+             aria-labelledby="admission-ticket-entitlements-heading">
+        <MudText Id="admission-ticket-entitlements-heading" Typo="Typo.subtitle2" HtmlTag="h3">
+            Included admission
+        </MudText>
+        <ul>
+            @foreach (AdmissionTicketEntitlementDto entitlement in Entitlements)
+            {
+                <li>
+                    <strong>@EntitlementTitle(entitlement)</strong>
+                    <span>@entitlement.EventTitle · @entitlement.IncludedQuantity included</span>
+                </li>
+            }
+        </ul>
+    </section>
+
+    @if (ShowPrintAction)
+    {
+        <div class="admission-ticket-bearer__actions">
+            <AppButton Variant="Variant.Outlined"
+                       OnClick="OnPrint"
+                       data-testid="print-admission-ticket">
+                Print ticket
+            </AppButton>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string DisplayReference { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string StatusCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ManualCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ManualCodeClassificationCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string QrRepresentation { get; set; } = string.Empty;
+    [Parameter] public string? HolderDisplayName { get; set; }
+    [Parameter, EditorRequired] public string TicketTypeName { get; set; } = string.Empty;
+    [Parameter] public IEnumerable<AdmissionTicketEntitlementDto> Entitlements { get; set; } =
+        Array.Empty<AdmissionTicketEntitlementDto>();
+    [Parameter] public bool ShowPrintAction { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnPrint { get; set; }
+
+    private string QrDataUri =>
+        "data:image/svg+xml;base64," +
+        Convert.ToBase64String(Encoding.UTF8.GetBytes(QrRepresentation));
+
+    private static string EntitlementTitle(AdmissionTicketEntitlementDto entitlement) =>
+        entitlement.SessionTitle
+        ?? entitlement.DayLabel
+        ?? entitlement.EventTitle;
+}

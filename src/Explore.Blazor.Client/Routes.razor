@@ -11,6 +11,7 @@
 @using Explore.Blazor.Client.Pages.Auth
 @using Explore.Blazor.Client.Pages.Events
 @using Explore.Blazor.Client.Pages.Registration
+@using Explore.Blazor.Client.Pages.Tickets
 @using Explore.Blazor.Client.Pages.Studio
 @using Explore.Blazor.Client.Pages.Ai
 @using Explore.Blazor.Client.Pages.Errors
@@ -66,6 +67,7 @@
             // NOTE: literal/specific routes MUST come before parameterized routes at the same depth
             new RouteConfig { Path = "/", Component = typeof(HomeStart), Transition = RouteTransition.Fade, EnableCache = false },
             new RouteConfig { Path = "/events", Component = typeof(EventList), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/tickets/recovery", Component = typeof(TicketRecovery), Transition = RouteTransition.Fade, EnableCache = false },
         new RouteConfig { Path = "/registration/guest/events/:eventId/orders/:orderId", Component = typeof(GuestOrderRecovery), Transition = RouteTransition.Fade },
         new RouteConfig { Path = "/registration/events/:eventId/tickets", Component = typeof(TicketSelection), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/actors/:id", Component = typeof(ActorProfile), Transition = RouteTransition.Fade },
@@ -98,6 +100,8 @@
             },
 
             // User authenticated routes
+            new RouteConfig { Path = "/tickets", Component = typeof(Tickets), Transition = RouteTransition.Fade, EnableCache = false, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/tickets/:ticketId", Component = typeof(TicketDetail), Transition = RouteTransition.Fade, EnableCache = false, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/my/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
              new RouteConfig { Path = "/my/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
               new RouteConfig { Path = "/my/reports", Component = typeof(MyReportsPage), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
@@ -116,6 +120,7 @@
             new RouteConfig { Path = "/studio/events/:eventId/orders", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/integrations", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/forms", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId/check-in", Component = typeof(StudioAdmissionCheckIn), Transition = RouteTransition.Fade, EnableCache = false, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/attendees", Component = typeof(StudioEventAttendees), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/publication", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/orders", Component = typeof(StudioOrders), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },

@@ -1,25 +1,37 @@
-// ABOUTME: Loads the exact confirmed free-order authority graph and atomically stages ticket delivery intent rows.
+// ABOUTME: Loads exact confirmed free or reconciled-paid authority and atomically stages ticket delivery intents.
 // ABOUTME: Replay resolves persisted aggregate identities without regenerating credential material.
 
 using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
 public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IAdmissionIssuanceRepository
 {
-    public async Task<AdmissionIssuanceContext?> LoadAsync(
+    public Task<AdmissionIssuanceContext?> LoadAsync(
         AdmissionIssuanceRequest request,
+        CancellationToken cancellationToken) =>
+        LoadCoreAsync(request, acquireAuthorityFences: true, cancellationToken);
+
+    private async Task<AdmissionIssuanceContext?> LoadCoreAsync(
+        AdmissionIssuanceRequest request,
+        bool acquireAuthorityFences,
         CancellationToken cancellationToken)
     {
-        IQueryable<RegistrationFinalizationEffect> effects = dbContext.RegistrationFinalizationEffects;
-        if (dbContext.Database.IsNpgsql() && dbContext.Database.CurrentTransaction is not null)
+        if (acquireAuthorityFences)
         {
-            effects = dbContext.RegistrationFinalizationEffects.FromSqlInterpolated(
-                $"SELECT * FROM registration_finalization_effects WHERE tenant_id = {request.TenantId} AND id = {request.FinalizationEffectId} FOR UPDATE");
+            await RelationalEntityRowFence.AcquireAsync<RegistrationFinalizationEffect>(
+                dbContext,
+                request.TenantId,
+                "id",
+                request.FinalizationEffectId,
+                cancellationToken);
         }
+        IQueryable<RegistrationFinalizationEffect> effects =
+            dbContext.RegistrationFinalizationEffects;
         RegistrationFinalizationEffect? effect = await effects.SingleOrDefaultAsync(value =>
                 value.TenantId == request.TenantId &&
                 value.Id == request.FinalizationEffectId &&
@@ -30,7 +42,17 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
             return null;
         }
 
-        RegistrationOrder? order = await dbContext.RegistrationOrders
+        if (acquireAuthorityFences)
+        {
+            await RelationalEntityRowFence.AcquireAsync<RegistrationOrder>(
+                dbContext,
+                request.TenantId,
+                "id",
+                request.RegistrationOrderId,
+                cancellationToken);
+        }
+        IQueryable<RegistrationOrder> orders = dbContext.RegistrationOrders;
+        RegistrationOrder? order = await orders
             .Include(value => value.Pii)
             .Include(value => value.Lines)
                 .ThenInclude(value => value.Assignments)
@@ -41,6 +63,21 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
         {
             return null;
         }
+
+        if (acquireAuthorityFences)
+        {
+            await RelationalEntityRowFence.AcquireAsync<Event>(
+                dbContext,
+                request.TenantId,
+                "id",
+                order.EventId,
+                cancellationToken);
+        }
+        IQueryable<Event> events = dbContext.Events.AsNoTracking();
+        Event? admissionEvent = await events.SingleOrDefaultAsync(value =>
+                value.TenantId == request.TenantId &&
+                value.Id == order.EventId,
+            cancellationToken);
 
         EventTicketCatalogVersion catalog = await dbContext.EventTicketCatalogVersions
             .Include(value => value.TicketTypes)
@@ -55,6 +92,9 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
             .ToListAsync(cancellationToken);
         Dictionary<Guid, RegistrationParticipant> participants = order.Participants.ToDictionary(value => value.Id);
         Dictionary<Guid, EventTicketType> ticketTypes = catalog.TicketTypes.ToDictionary(value => value.Id);
+        HashSet<Guid> fullyRefundedLineIds = order.TotalDueMinorSnapshot > 0
+            ? await GetFullyRefundedLineIdsAsync(order, cancellationToken)
+            : [];
         AdmissionAssignmentFact[] assignments = order.Lines
             .SelectMany(line => line.Assignments.Select(assignment => new AdmissionAssignmentFact(
                 line,
@@ -63,10 +103,14 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
                 ticketTypes[line.TicketTypeId],
                 line.PostDiscountLineSubtotalMinorSnapshot / line.Quantity,
                 line.PostDiscountLineSubtotalMinorSnapshot,
-                true)))
+                !fullyRefundedLineIds.Contains(line.Id))))
             .ToArray();
         bool confirmed = order.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed &&
-            order.ConfirmedAt is not null;
+            order.ConfirmedAt is not null &&
+            admissionEvent is not null &&
+            admissionEvent.EventStatusId != (int)EventStatusEnum.Cancelled;
+        bool paymentReconciled = order.TotalDueMinorSnapshot > 0 &&
+            await HasExactReconciledPaymentAsync(order, cancellationToken);
         string? deliveryAddress = order.Pii?.Email;
         if (string.IsNullOrWhiteSpace(deliveryAddress) && order.AccountUserId.HasValue)
         {
@@ -80,8 +124,12 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
             order.EventId,
             order.Id,
             effect.Id,
-            order.TotalDueMinorSnapshot == 0 ? "ConfirmedFreeOrder" : "Paid",
-            false,
+            order.TotalDueMinorSnapshot == 0
+                ? AdmissionIssuanceAuthority.ConfirmedFreeOrder
+                : paymentReconciled
+                    ? AdmissionIssuanceAuthority.ReconciledPaidFinalization
+                    : "PaymentSucceeded",
+            paymentReconciled,
             confirmed,
             order,
             catalog,
@@ -91,12 +139,88 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
             existingDeliveryIntents);
     }
 
+    private async Task<HashSet<Guid>> GetFullyRefundedLineIdsAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, long> refundedByLine = await (
+                from allocation in dbContext.RefundLineAllocations.AsNoTracking()
+                join attempt in dbContext.RefundAttempts.AsNoTracking()
+                    on new { allocation.TenantId, Id = allocation.RefundAttemptId }
+                    equals new { attempt.TenantId, Id = attempt.Id }
+                where attempt.TenantId == order.TenantId &&
+                      attempt.RegistrationOrderId == order.Id &&
+                      attempt.BuyerRefundSucceededAt != null
+                group allocation by allocation.OrderLineId
+                into line
+                select new
+                {
+                    OrderLineId = line.Key,
+                    RefundedMinor = line.Sum(value => value.OrganizerAmountMinor)
+                })
+            .ToDictionaryAsync(
+                value => value.OrderLineId,
+                value => value.RefundedMinor,
+                cancellationToken);
+
+        return order.Lines
+            .Where(line =>
+                line.PostDiscountLineSubtotalMinorSnapshot > 0 &&
+                refundedByLine.TryGetValue(line.Id, out long refundedMinor) &&
+                refundedMinor == line.PostDiscountLineSubtotalMinorSnapshot)
+            .Select(line => line.Id)
+            .ToHashSet();
+    }
+
+    private async Task<bool> HasExactReconciledPaymentAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken)
+    {
+        PaymentSucceededObservation[] observations = await dbContext.PaymentSucceededObservations
+            .AsNoTracking()
+            .Where(value => value.TenantId == order.TenantId &&
+                            value.RegistrationOrderId == order.Id)
+            .OrderBy(value => value.Id)
+            .Take(2)
+            .ToArrayAsync(cancellationToken);
+        if (observations.Length != 1)
+        {
+            return false;
+        }
+
+        PaymentSucceededObservation observation = observations[0];
+        PaymentAttempt? attempt = await dbContext.PaymentAttempts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == order.TenantId &&
+                value.RegistrationOrderId == order.Id &&
+                value.Id == observation.PaymentAttemptId,
+                cancellationToken);
+        return attempt is not null &&
+            attempt.PaymentAttemptStatusId == (int)PaymentAttemptStatusEnum.Succeeded &&
+            string.Equals(attempt.CurrencyCode, order.CurrencyCode, StringComparison.Ordinal) &&
+            attempt.OrganizerAmountMinor == order.OrganizerDirectedTotalMinorSnapshot &&
+            attempt.PlatformFeeMinor == order.PlatformFeeTotalMinorSnapshot &&
+            attempt.PlatformContributionMinor == order.PlatformContributionTotalMinorSnapshot &&
+            attempt.TotalMinor == order.TotalDueMinorSnapshot &&
+            observation.TenantId == order.TenantId &&
+            observation.RegistrationOrderId == order.Id &&
+            string.Equals(
+                observation.ProviderCheckoutSessionId,
+                attempt.ProviderCheckoutSessionId,
+                StringComparison.Ordinal) &&
+            string.Equals(
+                observation.ProviderPaymentId,
+                attempt.ProviderPaymentId,
+                StringComparison.Ordinal);
+    }
+
     public Task<AdmissionIssuanceContext?> ReloadCommittedAsync(
         AdmissionIssuanceRequest request,
         CancellationToken cancellationToken)
     {
         dbContext.ChangeTracker.Clear();
-        return LoadAsync(request, cancellationToken);
+        return LoadCoreAsync(request, acquireAuthorityFences: false, cancellationToken);
     }
 
     public async Task<AdmissionIssuanceResult> IssueAndScheduleDeliveryAsync(

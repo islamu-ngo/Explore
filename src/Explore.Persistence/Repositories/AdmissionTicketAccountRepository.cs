@@ -27,7 +27,7 @@ public sealed class AdmissionTicketAccountRepository(ExploreDbContext dbContext)
                 select ticket)
             .ToArrayAsync(cancellationToken);
 
-    public async Task<AdmissionTicket?> GetCurrentAsync(
+    public async Task<AdmissionTicket?> GetOwnedAsync(
         Guid tenantId,
         Guid accountUserId,
         Guid admissionTicketId,
@@ -39,8 +39,7 @@ public sealed class AdmissionTicketAccountRepository(ExploreDbContext dbContext)
                     equals new { order.TenantId, RegistrationOrderId = order.Id }
                 where ticket.TenantId == tenantId &&
                     ticket.Id == admissionTicketId &&
-                    order.AccountUserId == accountUserId &&
-                    ticket.AdmissionTicketStatusId == (int)AdmissionTicketStatusEnum.Active
+                    order.AccountUserId == accountUserId
                 select ticket)
             .SingleOrDefaultAsync(cancellationToken);
 }

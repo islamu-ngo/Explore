@@ -1,8 +1,6 @@
 // ABOUTME: Defines provider-neutral admission recovery capability, persistence, and delivery contracts.
 // ABOUTME: Keeps public receipts uniform and redacts every capability or digest-bearing diagnostic shape.
 
-using Explore.Domain.Interfaces;
-
 namespace Explore.Application.Contracts.Admissions;
 
 public enum AdmissionRecoveryPurpose
@@ -25,14 +23,6 @@ public enum AdmissionRecoveryConsumeOutcome
     WrongTenant,
     Rotated,
     Invalid
-}
-
-public enum AdmissionRecoveryMutationOutcome
-{
-    Stored,
-    Consumed,
-    Rotated,
-    Rejected
 }
 
 public enum AdmissionRecoveryDeliveryOutcome
@@ -148,90 +138,6 @@ public sealed record AdmissionRecoveryLocatorDigest(string LocatorDigest, int Ke
         $"AdmissionRecoveryLocatorDigest(keyVersion={KeyVersion}, <redacted>)";
 }
 
-public sealed record AdmissionRecoveryCapabilityRecord(
-    Guid TenantId,
-    Guid RecoveryRequestId,
-    Guid AdmissionTicketId,
-    AdmissionRecoveryPurpose Purpose,
-    string LookupDigest,
-    int KeyVersion,
-    DateTimeOffset ExpiresAtUtc,
-    Guid CapabilityId = default,
-    int CapabilityVersion = 1,
-    DateTimeOffset CreatedAtUtc = default,
-    string LocatorDigest = "")
-{
-    public override string ToString() =>
-        $"AdmissionRecoveryCapabilityRecord(keyVersion={KeyVersion}, <redacted>)";
-}
-
-public sealed record AdmissionRecoveryCapabilityLookup(
-    Guid TenantId,
-    Guid RecoveryRequestId,
-    Guid AdmissionTicketId,
-    AdmissionRecoveryPurpose Purpose,
-    string LookupDigest,
-    int KeyVersion = 0)
-{
-    public override string ToString() => "AdmissionRecoveryCapabilityLookup(<redacted>)";
-}
-
-public sealed record AdmissionRecoveryCapabilityMutation(
-    Guid TenantId,
-    Guid RecoveryRequestId,
-    Guid AdmissionTicketId,
-    AdmissionRecoveryPurpose Purpose,
-    string LookupDigest,
-    DateTimeOffset ExpiresAtUtc,
-    int KeyVersion = 0,
-    Guid CapabilityId = default,
-    Guid ExpectedConcurrencyStamp = default,
-    DateTimeOffset OccurredAtUtc = default)
-{
-    public override string ToString() => "AdmissionRecoveryCapabilityMutation(<redacted>)";
-}
-
-public sealed record AdmissionRecoveryRotationRequest(
-    Guid TenantId,
-    Guid RecoveryRequestId,
-    Guid AdmissionTicketId,
-    AdmissionRecoveryPurpose Purpose,
-    string OldLookupDigest,
-    string ReplacementLookupDigest,
-    int ReplacementKeyVersion,
-    DateTimeOffset ReplacementExpiresAtUtc,
-    int OldKeyVersion = 0,
-    Guid OldCapabilityId = default,
-    Guid ReplacementCapabilityId = default,
-    int ReplacementCapabilityVersion = 0,
-    Guid ExpectedConcurrencyStamp = default,
-    DateTimeOffset RotatedAtUtc = default,
-    string ReplacementLocatorDigest = "")
-{
-    public override string ToString() => "AdmissionRecoveryRotationRequest(<redacted>)";
-}
-
-public sealed record AdmissionRecoveryCapabilityState(
-    bool Found,
-    Guid TenantId,
-    Guid RecoveryRequestId,
-    Guid AdmissionTicketId,
-    string LookupDigest,
-    AdmissionRecoveryPurpose Purpose,
-    DateTimeOffset ExpiresAtUtc,
-    bool Consumed,
-    bool Rotated,
-    int KeyVersion = 0,
-    Guid CapabilityId = default,
-    int CapabilityVersion = 0,
-    Guid ConcurrencyStamp = default)
-{
-    public override string ToString() =>
-        $"AdmissionRecoveryCapabilityState(found={Found}, consumed={Consumed}, rotated={Rotated}, <redacted>)";
-}
-
-public sealed record AdmissionRecoveryMutationResult(AdmissionRecoveryMutationOutcome Outcome);
-
 public sealed record AdmissionRecoveryDeliveryRequest(
     Guid TenantId,
     Guid RecoveryRequestId,
@@ -270,6 +176,13 @@ public sealed record AdmissionRecoveryRateLimitDecision(
     bool Allowed,
     int RetryAfterSeconds = 0);
 
+public sealed record AdmissionRecoveryRequestEnvelope(
+    string NormalizedIdentity,
+    AdmissionRecoveryPurpose Purpose)
+{
+    public override string ToString() => "AdmissionRecoveryRequestEnvelope(<redacted>)";
+}
+
 public sealed record AdmissionRecoveryDeliveryEnvelope(
     string RecipientAddress,
     Guid RecoveryRequestId,
@@ -284,88 +197,14 @@ public sealed record AdmissionRecoveryProtectedDeliveryMaterial(string Ciphertex
         $"AdmissionRecoveryProtectedDeliveryMaterial(protectionVersion={ProtectionVersion}, <redacted>)";
 }
 
-public sealed class AdmissionRecoveryDeliveryIntent : ITenantEntity, IConcurrencyAware
-{
-    private AdmissionRecoveryDeliveryIntent()
-    {
-    }
-
-    public AdmissionRecoveryDeliveryIntent(
-        Guid id,
-        Guid tenantId,
-        Guid recoveryRequestId,
-        Guid admissionTicketId,
-        string purpose,
-        int capabilityVersion,
-        string protectedMaterial,
-        int protectionVersion,
-        DateTime createdAt)
-    {
-        if (id == Guid.Empty || tenantId == Guid.Empty || recoveryRequestId == Guid.Empty ||
-            admissionTicketId == Guid.Empty || string.IsNullOrWhiteSpace(purpose) ||
-            capabilityVersion < 1 || string.IsNullOrWhiteSpace(protectedMaterial) ||
-            protectionVersion < 1 || createdAt.Kind != DateTimeKind.Utc)
-        {
-            throw new ArgumentException("Complete protected recovery delivery lineage is required.");
-        }
-
-        Id = id;
-        TenantId = tenantId;
-        RecoveryRequestId = recoveryRequestId;
-        AdmissionTicketId = admissionTicketId;
-        Purpose = purpose;
-        CapabilityVersion = capabilityVersion;
-        ProtectedMaterial = protectedMaterial;
-        ProtectionVersion = protectionVersion;
-        CreatedAt = createdAt;
-        ConcurrencyStamp = Guid.CreateVersion7();
-    }
-
-    public Guid Id { get; private set; }
-    public Guid TenantId { get; private set; }
-    public Guid RecoveryRequestId { get; private set; }
-    public Guid AdmissionTicketId { get; private set; }
-    public string Purpose { get; private set; } = string.Empty;
-    public int CapabilityVersion { get; private set; }
-    public string ProtectedMaterial { get; private set; } = string.Empty;
-    public int ProtectionVersion { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime? RoutedAt { get; private set; }
-    public DateTime? HandoffCompletedAt { get; private set; }
-    public string? HandoffReceiptId { get; private set; }
-    public Guid ConcurrencyStamp { get; set; }
-
-    public void MarkRouted(DateTime routedAtUtc)
-    {
-        if (routedAtUtc.Kind != DateTimeKind.Utc || routedAtUtc < CreatedAt)
-        {
-            throw new ArgumentOutOfRangeException(nameof(routedAtUtc));
-        }
-
-        RoutedAt ??= routedAtUtc;
-    }
-
-    public void CompleteHandoff(string receiptId, DateTime completedAtUtc)
-    {
-        if (string.IsNullOrWhiteSpace(receiptId) || completedAtUtc.Kind != DateTimeKind.Utc ||
-            completedAtUtc < CreatedAt || RoutedAt is null)
-        {
-            throw new InvalidOperationException("Recovery delivery requires a routed receipt-bearing handoff.");
-        }
-
-        HandoffCompletedAt ??= completedAtUtc;
-        HandoffReceiptId ??= receiptId.Trim();
-        ProtectedMaterial = string.Empty;
-    }
-
-    public override string ToString() =>
-        $"AdmissionRecoveryDeliveryIntent({Id}, request={RecoveryRequestId}, version={CapabilityVersion}, <redacted>)";
-}
-
 public static class AdmissionRecoveryDeliveryEvents
 {
+    public const string RecoveryRequestProcessingRequested =
+        "AdmissionRecoveryRequestProcessingRequested";
     public const string RecoveryDeliveryRequested = "AdmissionRecoveryDeliveryRequested";
 }
+
+public sealed record AdmissionRecoveryRequestPointer(Guid TenantId, Guid RequestIntentId);
 
 public sealed record AdmissionRecoveryDeliveryPointer(
     Guid TenantId,
@@ -408,18 +247,30 @@ public interface IAdmissionRecoveryCapabilityService
         CancellationToken cancellationToken);
 }
 
-public interface IAdmissionRecoveryDeliveryService
-{
-    Task<AdmissionRecoveryDeliveryResult> DeliverAsync(
-        AdmissionRecoveryDeliveryRequest request,
-        CancellationToken cancellationToken);
-}
-
 public interface IAdmissionRecoveryDeliveryStager
 {
     Task<AdmissionRecoveryDeliveryResult> StageAsync(
         AdmissionRecoveryDeliveryRequest request,
         CancellationToken cancellationToken);
+}
+
+public interface IAdmissionRecoveryRequestStager
+{
+    Task StageAsync(
+        Guid tenantId,
+        AdmissionRecoveryRequestEnvelope envelope,
+        CancellationToken cancellationToken);
+}
+
+public interface IAdmissionRecoveryRequestEnvelopeProtector
+{
+    AdmissionRecoveryProtectedDeliveryMaterial Protect(AdmissionRecoveryRequestEnvelope envelope);
+    AdmissionRecoveryRequestEnvelope Unprotect(string ciphertext, int protectionVersion);
+}
+
+public interface IAdmissionRecoveryRequestOutboxHandler
+{
+    Task HandleAsync(Explore.Domain.OutboxMessage message, CancellationToken cancellationToken);
 }
 
 public interface IAdmissionRecoveryDeliveryEnvelopeProtector

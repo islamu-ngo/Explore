@@ -1,0 +1,96 @@
+/* ABOUTME: Scoped layout and status styling for the Studio admission scanner. */
+/* ABOUTME: Uses logical dimensions and spacing so camera and input flows remain RTL-safe. */
+
+.studio-admission-check-in {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.studio-admission-check-in__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.studio-admission-check-in__header p,
+.studio-admission-check-in__input-card p {
+    margin-block: var(--isl-space-1) 0;
+}
+
+.studio-admission-check-in__inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--isl-space-4);
+}
+
+.studio-admission-check-in__input-card {
+    display: grid;
+    align-content: start;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.studio-admission-check-in__input-card h2 {
+    margin-block: 0;
+    font-size: var(--isl-typography-h6-size);
+    font-weight: var(--isl-typography-h6-weight);
+    line-height: var(--isl-typography-h6-line-height);
+}
+
+.studio-admission-check-in__input-card input {
+    inline-size: 100%;
+    min-block-size: var(--isl-target-min);
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    color: var(--isl-color-text);
+    background: var(--isl-color-surface);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-input);
+}
+
+.studio-admission-check-in__camera-preview {
+    inline-size: 100%;
+    min-block-size: 10rem;
+    object-fit: cover;
+    border-radius: var(--isl-radius-input);
+    background: var(--isl-color-background);
+}
+
+.studio-admission-check-in__queue,
+.studio-admission-check-in__message,
+.studio-admission-check-in__unavailable {
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-input);
+}
+
+.studio-admission-check-in__results {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin-block: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+.studio-admission-check-in__result {
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border-inline-start: 0.25rem solid currentcolor;
+}
+
+.studio-admission-check-in__live {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}

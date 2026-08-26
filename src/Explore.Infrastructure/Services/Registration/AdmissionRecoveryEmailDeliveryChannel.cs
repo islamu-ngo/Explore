@@ -4,12 +4,13 @@
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace Explore.Infrastructure.Services.Registration;
 
 public sealed class AdmissionRecoveryEmailDeliveryChannel(
     IEmailService emailService,
-    IPublicUrlBuilder publicUrlBuilder) :
+    IConfiguration configuration) :
     IAdmissionRecoveryDirectDeliveryChannel
 {
     public async Task<AdmissionRecoveryDirectDeliveryResult> DeliverAsync(
@@ -26,17 +27,22 @@ public sealed class AdmissionRecoveryEmailDeliveryChannel(
         }
 
         string idempotencyKey = request.DeliveryIntentId.ToString("N");
-        string baseUrl = publicUrlBuilder.GetBaseUrl().TrimEnd('/');
+        string baseUrl = (
+            configuration["PublicBaseUrl"] ??
+            configuration["App:PublicBaseUrl"] ??
+            configuration["Application:PublicBaseUrl"] ??
+            string.Empty).TrimEnd('/');
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? origin) ||
-            origin.Scheme is not ("http" or "https"))
+            origin.Scheme != Uri.UriSchemeHttps ||
+            !string.IsNullOrEmpty(origin.UserInfo))
         {
             return new AdmissionRecoveryDirectDeliveryResult(
                 AdmissionRecoveryDirectDeliveryOutcome.Ambiguous);
         }
 
         string recoveryUrl =
-            $"{baseUrl}/tickets/recovery?requestId={request.RecoveryRequestId:D}" +
-            $"&capability={Uri.EscapeDataString(request.Capability)}";
+            $"{origin.GetLeftPart(UriPartial.Authority)}/tickets/recovery" +
+            $"#capability={Uri.EscapeDataString(request.Capability)}";
         EmailResult result = await emailService.SendAsync(new EmailMessage
         {
             To = request.RecipientAddress,

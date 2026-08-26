@@ -12,14 +12,8 @@ public sealed class AdmissionRecoveryProtectedDeliveryService(
     ExploreDbContext dbContext,
     IAdmissionRecoveryDeliveryEnvelopeProtector envelopeProtector,
     TimeProvider timeProvider) :
-    IAdmissionRecoveryDeliveryStager,
-    IAdmissionRecoveryDeliveryService
+    IAdmissionRecoveryDeliveryStager
 {
-    public Task<AdmissionRecoveryDeliveryResult> DeliverAsync(
-        AdmissionRecoveryDeliveryRequest request,
-        CancellationToken cancellationToken) =>
-        StageAsync(request, cancellationToken);
-
     public async Task<AdmissionRecoveryDeliveryResult> StageAsync(
         AdmissionRecoveryDeliveryRequest request,
         CancellationToken cancellationToken)

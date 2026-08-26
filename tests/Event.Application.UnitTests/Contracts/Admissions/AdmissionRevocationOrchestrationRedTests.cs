@@ -16,6 +16,7 @@ public sealed class AdmissionRevocationOrchestrationRedTests
     [Arguments("mixed-full-ticket-and-addon")]
     [Arguments("multiple-ticket-lines-partial")]
     [Arguments("zero-relevant")]
+    [Arguments("zero-over-zero")]
     [Arguments("negative")]
     [Arguments("over-allocation")]
     [Arguments("cancellation")]

@@ -2,6 +2,7 @@
 // ABOUTME: Maps ticketing failures and invalidates the event detail cache after successful publication.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTicketing;
@@ -21,6 +22,7 @@ public sealed class PublishEventTicketCatalogCommandHandler(
     IEventTicketCatalogRepository catalogs,
     IEventDayRepository eventDays,
     IEventSessionRepository eventSessions,
+    IAdmissionTargetMaterializer admissionTargets,
     ITenantContext tenant,
     IUnitOfWork unitOfWork,
     PaidEventPublicationPreflightService paidPreflight,
@@ -79,6 +81,7 @@ public sealed class PublishEventTicketCatalogCommandHandler(
                 try
                 {
                     draft.ValidateForPublication();
+                    await admissionTargets.MaterializeAsync(trustedEventTarget, draft, token);
                     currentPublication?.Retire();
                 }
                 catch (InvalidOperationException exception)

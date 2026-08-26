@@ -218,6 +218,7 @@ public sealed class LocalProviderParityLaneTests
         var groupMembers = Substitute.For<IGroupMemberRepository>();
         var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         var tenantContext = Substitute.For<ITenantContext>();
+        var eventAuthority = Substitute.For<IEventAuthoritySnapshotService>();
 
         tenantContext.TenantId.Returns(ParityCorpus.TenantId);
         machinePrincipalAccessor.IsMachineCaller.Returns(false);
@@ -267,6 +268,24 @@ public sealed class LocalProviderParityLaneTests
                     [ExternalApiKeyScopes.EventsWrite]));
                 break;
 
+            case ParitySubject.EventOwnerWithoutAdmissionPermission:
+                ConfigureEventAuthority(eventAuthority, ["event.owner"], []);
+                break;
+
+            case ParitySubject.AdmissionViewer:
+                ConfigureEventAuthority(
+                    eventAuthority,
+                    ["event.check_in_staff"],
+                    [PermissionCodes.EventCheckInView]);
+                break;
+
+            case ParitySubject.AdmissionManager:
+                ConfigureEventAuthority(
+                    eventAuthority,
+                    ["event.check_in_staff"],
+                    [PermissionCodes.EventCheckInManage]);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(subject), subject, "Unmapped parity subject.");
         }
@@ -274,12 +293,37 @@ public sealed class LocalProviderParityLaneTests
         return new FallbackAuthorizationService(
             adminContext,
             machinePrincipalAccessor,
-            Substitute.For<IEventAuthoritySnapshotService>(),
+            eventAuthority,
             organizationMembers,
             groupMembers,
             settingsResolver,
             tenantContext,
             Substitute.For<ILogger<FallbackAuthorizationService>>());
+    }
+
+    private static void ConfigureEventAuthority(
+        IEventAuthoritySnapshotService service,
+        string[] roleCodes,
+        string[] permissionCodes)
+    {
+        var roleSet = roleCodes.ToHashSet(StringComparer.Ordinal);
+        var permissionSet = permissionCodes.ToHashSet(StringComparer.Ordinal);
+        service.GetForUserAndEventsAsync(
+                ParityCorpus.TenantId,
+                ParityCorpus.UserId,
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new EventAuthoritySnapshot(
+                ParityCorpus.TenantId,
+                ParityCorpus.UserId,
+                new Dictionary<Guid, EventAuthorityForUser>
+                {
+                    [ParityCorpus.EventId] = new(
+                        roleSet,
+                        permissionSet,
+                        roleSet.Contains("event.owner"),
+                        roleSet.Contains("event.manager"))
+                }));
     }
 
     private static string Outcome(bool allowed) => allowed ? "allow" : "deny";

@@ -80,7 +80,7 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     }
 
     [Test]
-    public async Task PaidSignalsAreDeniedUntilTheLaterPaidAdmissionIntegrationPhase()
+    public async Task PaidIssuanceRequiresReconciledFinalizationAuthorityAndReplaysOnce()
     {
         AdmissionAssignmentSeed assignment = Assignments()[0];
         AdmissionTestScenario paymentOnly = AdmissionTestScenario.Paid(UtcNow, [assignment], reconciled: false);
@@ -101,12 +101,21 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
             "IssueConfirmedAsync",
             AdmissionIssuancePorts.Request(reconciled),
             CancellationToken.None);
+        object replay = await AdmissionContractRuntime.InvokeAsync(
+            AdmissionIssuancePorts.Service(reconciled),
+            "IssueConfirmedAsync",
+            AdmissionIssuancePorts.Request(reconciled),
+            CancellationToken.None);
 
         await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(accepted, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.NotConfirmed);
-        await Assert.That(AdmissionContractRuntime.Ids(accepted, "IssuedTicketIds")).IsEmpty();
-        await Assert.That(reconciled.TicketsByAssignment).IsEmpty();
-        await Assert.That(reconciled.IssuanceWriteCalls).IsEqualTo(0);
+            .IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(replay, "Outcome"))
+            .IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
+        await Assert.That(AdmissionContractRuntime.Ids(accepted, "IssuedTicketIds").Length).IsEqualTo(1);
+        await Assert.That(AdmissionContractRuntime.Ids(replay, "ExistingTicketIds"))
+            .IsEquivalentTo(AdmissionContractRuntime.Ids(accepted, "IssuedTicketIds"));
+        await Assert.That(reconciled.TicketsByAssignment.Count).IsEqualTo(1);
+        await Assert.That(reconciled.IssuanceWriteCalls).IsEqualTo(1);
     }
 
     [Test]
@@ -131,10 +140,14 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     }
 
     [Test]
-    public async Task LostCommitAcknowledgementReconcilesCommittedRowsAndMaterialBeforeReporting()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task LostCommitAcknowledgementReconcilesCommittedRowsAndMaterialBeforeReporting(
+        bool reportAsTimeout)
     {
         AdmissionTestScenario scenario = AdmissionTestScenario.Free(UtcNow, [Assignments()[0]]);
         scenario.LoseNextCommitAcknowledgement = true;
+        scenario.LoseNextCommitAcknowledgementAsTimeout = reportAsTimeout;
 
         object result = await AdmissionContractRuntime.InvokeAsync(
             AdmissionIssuancePorts.Service(scenario),

@@ -170,6 +170,25 @@ public sealed class UserPiiInventoryArchitectureTests
     }
 
     [Test]
+    public async Task ExactLocationCoordinatesAreClassifiedAsOwnerLinkedHardDeletePii()
+    {
+        string[] coordinateCopies = ["LocationPii.Latitude", "LocationPii.Longitude"];
+        UserPiiInventoryEntry[] coordinates = UserPiiInventory.Entries
+            .Where(entry => coordinateCopies.Contains(entry.Copy, StringComparer.Ordinal))
+            .ToArray();
+
+        await Assert.That(coordinates.Select(entry => entry.Copy))
+            .IsEquivalentTo(coordinateCopies);
+        await Assert.That(coordinates.All(entry =>
+            entry.OwnershipKey == "Location.OwnerUserId -> LocationPii.LocationId"))
+            .IsTrue();
+        await Assert.That(coordinates.All(entry =>
+            entry.StorageBoundary == UserPiiStorageBoundary.PrimaryDatabase
+            && entry.Disposition == UserPiiDisposition.HardDelete))
+            .IsTrue();
+    }
+
+    [Test]
     public async Task PrivacyErasureSubjectIsRetainedPseudonymousAuthorityData()
     {
         UserPiiInventoryEntry entry = UserPiiInventory.Entries

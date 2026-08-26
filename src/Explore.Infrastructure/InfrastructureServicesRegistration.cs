@@ -188,11 +188,15 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
         services.AddScoped<IPromotionCodeDigestService, PromotionCodeDigestService>();
         services.AddScoped<IAdmissionCredentialDigestService, AdmissionCredentialDigestService>();
+        services.AddScoped<IAdmissionCheckInCredentialDigestService, AdmissionCheckInCredentialDigestService>();
+        services.AddScoped<IAdmissionCheckInAuthority, AdmissionCheckInAuthority>();
+        services.AddScoped<IAdmissionScannerCapabilityMaterialService, AdmissionScannerCapabilityMaterialService>();
         services.AddScoped<IAdmissionRecoveryCapabilityService, AdmissionRecoveryCapabilityService>();
         services.AddSingleton<IAdmissionRecoveryRateLimiter, AdmissionRecoveryRateLimiter>();
         services.AddSingleton<IAdmissionQrRenderer, AdmissionQrSvgRenderer>();
         services.AddScoped<IAdmissionDeliveryEnvelopeProtector, AdmissionDeliveryEnvelopeProtector>();
         services.AddScoped<IAdmissionRecoveryDeliveryEnvelopeProtector, AdmissionRecoveryDeliveryEnvelopeProtector>();
+        services.AddScoped<IAdmissionRecoveryRequestEnvelopeProtector, AdmissionRecoveryRequestEnvelopeProtector>();
         services.AddScoped<IAdmissionCredentialDirectDeliveryChannel, AdmissionEmailCredentialDeliveryChannel>();
         services.AddScoped<IAdmissionRecoveryDirectDeliveryChannel, AdmissionRecoveryEmailDeliveryChannel>();
         services.AddSingleton<IGooglePubSubOidcTokenValidator, GooglePubSubOidcTokenValidator>();

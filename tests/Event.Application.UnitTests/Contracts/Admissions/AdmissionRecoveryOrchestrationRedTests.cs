@@ -16,8 +16,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     {
         AdmissionTestScenario scenario = await PresentScenarioAsync();
         object service = AdmissionRecoveryPorts.Service(scenario);
-        object issued = await AdmissionContractRuntime.InvokeAsync(
-            service, "RequestAsync", AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"), CancellationToken.None);
+        object issued = await RequestAndProcessAsync(service, scenario);
         string capability = scenario.TakeDeliveredCapability();
         bool separateFromAdmissionCredential = !CryptographicOperations.FixedTimeEquals(
             SHA256.HashData(Encoding.UTF8.GetBytes(capability)), scenario.AdmissionCredentialDigest);
@@ -47,8 +46,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     {
         AdmissionTestScenario scenario = await PresentScenarioAsync();
         object service = AdmissionRecoveryPorts.Service(scenario);
-        _ = await AdmissionContractRuntime.InvokeAsync(
-            service, "RequestAsync", AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"), CancellationToken.None);
+        _ = await RequestAndProcessAsync(service, scenario);
         string capability = scenario.TakeDeliveredCapability();
         if (rejection == "expired") scenario.Clock.Advance(TimeSpan.FromHours(2));
         string purpose = rejection == "wrong-purpose" ? "TransferAcceptance" : "TicketRecovery";
@@ -73,8 +71,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     {
         AdmissionTestScenario scenario = await PresentScenarioAsync();
         object service = AdmissionRecoveryPorts.Service(scenario);
-        _ = await AdmissionContractRuntime.InvokeAsync(
-            service, "RequestAsync", AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"), CancellationToken.None);
+        _ = await RequestAndProcessAsync(service, scenario);
         string original = scenario.TakeDeliveredCapability();
         int commitsBeforeResend = scenario.TransactionCommits;
         _ = await AdmissionContractRuntime.InvokeAsync(
@@ -99,7 +96,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
         await Assert.That(scenario.RecoveryCurrentReadCalls).IsEqualTo(1);
         await Assert.That(scenario.RecoveryRotationCalls).IsEqualTo(1);
         await Assert.That(commitsAfterResend).IsEqualTo(commitsBeforeResend + 1);
-        await Assert.That(scenario.DeliveryCalledInsideTransaction).IsFalse();
+        await Assert.That(scenario.DeliveryCalledInsideTransaction).IsTrue();
         await Assert.That(scenario.RecoveryByDigest.Count).IsEqualTo(2);
         await Assert.That(scenario.RecoveryByDigest.Values.All(value =>
             value.AdmissionTicketId == scenario.CurrentAdmissionTicketId &&
@@ -113,17 +110,35 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     {
         AdmissionTestScenario present = await PresentScenarioAsync();
         AdmissionTestScenario absent = AdmissionTestScenario.Recovery(UtcNow, identityPresent: false);
+        object presentService = AdmissionRecoveryPorts.Service(present);
+        object absentService = AdmissionRecoveryPorts.Service(absent);
         object presentResult = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionRecoveryPorts.Service(present), "RequestAsync",
+            presentService, "RequestAsync",
             AdmissionRecoveryPorts.Request(present, "TicketRecovery"), CancellationToken.None);
         object absentResult = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionRecoveryPorts.Service(absent), "RequestAsync",
+            absentService, "RequestAsync",
             AdmissionRecoveryPorts.Request(absent, "TicketRecovery"), CancellationToken.None);
 
         await AssertUniformReceiptAsync(presentResult);
         await AssertUniformReceiptAsync(absentResult);
         await Assert.That(AdmissionContractRuntime.PublicScalarSnapshot(presentResult))
             .IsEquivalentTo(AdmissionContractRuntime.PublicScalarSnapshot(absentResult));
+        await Assert.That(present.RecoveryRequestStageCalls).IsEqualTo(1);
+        await Assert.That(absent.RecoveryRequestStageCalls).IsEqualTo(1);
+        await Assert.That(present.RecoveryDeliveryCalls).IsEqualTo(0);
+        await Assert.That(absent.RecoveryDeliveryCalls).IsEqualTo(0);
+        await Assert.That(present.RecoveryStoreCalls).IsEqualTo(0);
+        await Assert.That(absent.RecoveryStoreCalls).IsEqualTo(0);
+        await AdmissionContractRuntime.InvokeAsync(
+            presentService,
+            "ProcessRequestAsync",
+            AdmissionRecoveryPorts.Request(present, "TicketRecovery"),
+            CancellationToken.None);
+        await AdmissionContractRuntime.InvokeAsync(
+            absentService,
+            "ProcessRequestAsync",
+            AdmissionRecoveryPorts.Request(absent, "TicketRecovery"),
+            CancellationToken.None);
         await Assert.That(present.RecoveryDeliveryCalls).IsEqualTo(1);
         await Assert.That(present.RecoveryByDigest.Values.Single().AdmissionTicketId)
             .IsEqualTo(present.CurrentAdmissionTicketId);
@@ -134,21 +149,32 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     }
 
     [Test]
+    public async Task DurableStagingFailureNeverReturnsAcceptedReceipt()
+    {
+        AdmissionTestScenario scenario = AdmissionTestScenario.Recovery(UtcNow, identityPresent: false);
+        scenario.FailRecoveryRequestStaging = true;
+        object service = AdmissionRecoveryPorts.Service(scenario);
+
+        Exception exception = await Assert.ThrowsAsync<Exception>(async () =>
+            await AdmissionContractRuntime.InvokeAsync(
+                service,
+                "RequestAsync",
+                AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+                CancellationToken.None));
+
+        await Assert.That(exception.GetBaseException().GetType().Name)
+            .IsEqualTo("AdmissionRecoveryUnavailableException");
+        await Assert.That(scenario.RecoveryRequestStageCalls).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task RepeatedPublicRequestRotatesExistingTicketRecoveryAuthority()
     {
         AdmissionTestScenario scenario = await PresentScenarioAsync();
         object service = AdmissionRecoveryPorts.Service(scenario);
 
-        object first = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "RequestAsync",
-            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
-            CancellationToken.None);
-        object second = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "RequestAsync",
-            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
-            CancellationToken.None);
+        object first = await RequestAndProcessAsync(service, scenario);
+        object second = await RequestAndProcessAsync(service, scenario);
 
         await AssertUniformReceiptAsync(first);
         await AssertUniformReceiptAsync(second);
@@ -168,11 +194,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
     {
         AdmissionTestScenario scenario = await PresentScenarioAsync();
         object service = AdmissionRecoveryPorts.Service(scenario);
-        await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "RequestAsync",
-            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
-            CancellationToken.None);
+        await RequestAndProcessAsync(service, scenario);
         string firstCapability = scenario.TakeDeliveredCapability();
         object consumed = await AdmissionContractRuntime.InvokeAsync(
             service,
@@ -184,11 +206,7 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
                 scenario.TenantId),
             CancellationToken.None);
 
-        object requestedAgain = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "RequestAsync",
-            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
-            CancellationToken.None);
+        object requestedAgain = await RequestAndProcessAsync(service, scenario);
 
         await Assert.That(AdmissionContractRuntime.Outcome(consumed)).IsEqualTo("Consumed");
         await AssertUniformReceiptAsync(requestedAgain);
@@ -198,6 +216,23 @@ public sealed class AdmissionRecoveryOrchestrationRedTests
         await Assert.That(scenario.ActiveRecoveryCount).IsEqualTo(1);
         await Assert.That(scenario.RecoveryByDigest.Values.Select(value => value.RecoveryRequestId)
             .Distinct().Single()).IsEqualTo(scenario.RecoveryRequestId);
+    }
+
+    private static async Task<object> RequestAndProcessAsync(
+        object service,
+        AdmissionTestScenario scenario)
+    {
+        object result = await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "RequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+        await AdmissionContractRuntime.InvokeAsync(
+            service,
+            "ProcessRequestAsync",
+            AdmissionRecoveryPorts.Request(scenario, "TicketRecovery"),
+            CancellationToken.None);
+        return result;
     }
 
     private static async Task<AdmissionTestScenario> PresentScenarioAsync()

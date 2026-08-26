@@ -664,6 +664,617 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("actor_types", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<int>("AdmissionCheckInActionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_check_in_action_id");
+
+                    b.Property<int?>("AdmissionCheckInUndoReasonCodeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_check_in_undo_reason_code_id");
+
+                    b.Property<Guid>("AdmissionTargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_target_id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid?>("CompensatedCheckInEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("compensated_check_in_event_id");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<Guid?>("ScannerCapabilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scanner_capability_id");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_check_in_events");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_check_in_events_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
+                        .HasName("ak_admission_check_in_events_tenant_id_admission_ticket_id_adm");
+
+                    b.HasIndex("TenantId", "AdmissionTargetId")
+                        .HasDatabaseName("ix_admission_check_in_events_tenant_id_admission_target_id");
+
+                    b.HasIndex("TenantId", "ScannerCapabilityId")
+                        .HasDatabaseName("ix_admission_check_in_events_tenant_id_scanner_capability_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "CompensatedCheckInEventId")
+                        .HasDatabaseName("ix_admission_check_in_events_tenant_id_admission_ticket_id_adm");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_check_in_events_sequence");
+
+                    b.ToTable("admission_check_in_events", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_check_in_events_action", "admission_check_in_action_id IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_admission_check_in_events_authority", "(actor_id IS NOT NULL AND scanner_capability_id IS NULL) OR (actor_id IS NULL AND scanner_capability_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_admission_check_in_events_fact_shape", "(admission_check_in_action_id = 1 AND admission_check_in_undo_reason_code_id IS NULL AND compensated_check_in_event_id IS NULL) OR (admission_check_in_action_id = 2 AND admission_check_in_undo_reason_code_id IN (1, 2, 3, 4) AND compensated_check_in_event_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_admission_check_in_events_sequence", "sequence > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_target_id");
+
+                    b.Property<DateTime>("ClosesAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closes_at_utc");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<int>("MaximumEntries")
+                        .HasColumnType("integer")
+                        .HasColumnName("maximum_entries");
+
+                    b.Property<DateTime>("OpensAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opens_at_utc");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_check_in_policies");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_check_in_policies_tenant_id_id");
+
+                    b.HasIndex("TenantId", "AdmissionTargetId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_check_in_policies_target");
+
+                    b.ToTable("admission_check_in_policies", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_check_in_policies_maximum_entries", "maximum_entries > 0");
+
+                            t.HasCheckConstraint("ck_admission_check_in_policies_window", "closes_at_utc > opens_at_utc");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveCheckInEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_check_in_event_id");
+
+                    b.Property<Guid>("AdmissionTargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_target_id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<int>("EntryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("entry_count");
+
+                    b.Property<long>("LastSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_check_in_states");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_check_in_states_tenant_id_id");
+
+                    b.HasIndex("TenantId", "AdmissionTargetId")
+                        .HasDatabaseName("ix_admission_check_in_states_tenant_id_admission_target_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_check_in_states_ticket_target");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "ActiveCheckInEventId")
+                        .HasDatabaseName("ix_admission_check_in_states_tenant_id_admission_ticket_id_adm");
+
+                    b.ToTable("admission_check_in_states", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_check_in_states_counts", "entry_count >= 0 AND last_sequence >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryCapability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActiveUniquenessSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<int>("CapabilityVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("capability_version");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("LocatorDigest")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("locator_digest")
+                        .IsFixedLength();
+
+                    b.Property<byte[]>("LookupDigest")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("lookup_digest")
+                        .IsFixedLength();
+
+                    b.Property<int>("LookupKeyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("lookup_key_version");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("purpose");
+
+                    b.Property<Guid>("RecoveryRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recovery_request_id");
+
+                    b.Property<DateTime?>("RotatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rotated_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_recovery_capabilities");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_recovery_capabilities_tenant_id_id");
+
+                    b.HasIndex("ExpiresAt", "ConsumedAt", "RotatedAt")
+                        .HasDatabaseName("ix_admission_recovery_capabilities_expiry");
+
+                    b.HasIndex("TenantId", "LookupKeyVersion", "LocatorDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_recovery_capabilities_locator");
+
+                    b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_recovery_capabilities_digest");
+
+                    b.HasIndex("TenantId", "RecoveryRequestId", "Purpose")
+                        .HasDatabaseName("ix_admission_recovery_capabilities_request");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "Purpose", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_recovery_capabilities_active");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId", "Purpose", "CapabilityVersion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_recovery_capabilities_generation");
+
+                    b.ToTable("admission_recovery_capabilities", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_recovery_capabilities_lifecycle", "(consumed_at IS NULL OR rotated_at IS NULL) AND ((consumed_at IS NULL AND rotated_at IS NULL AND active_uniqueness_slot = 0) OR ((consumed_at IS NOT NULL OR rotated_at IS NOT NULL) AND active_uniqueness_slot = capability_version))");
+
+                            t.HasCheckConstraint("ck_admission_recovery_capabilities_versions", "capability_version > 0 AND lookup_key_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryDeliveryIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<int>("CapabilityVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("capability_version");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("HandoffCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("handoff_completed_at");
+
+                    b.Property<string>("HandoffReceiptId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("handoff_receipt_id");
+
+                    b.Property<string>("ProtectedMaterial")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("protected_material");
+
+                    b.Property<int>("ProtectionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("protection_version");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("purpose");
+
+                    b.Property<Guid>("RecoveryRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recovery_request_id");
+
+                    b.Property<DateTime?>("RoutedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("routed_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_recovery_delivery_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_recovery_delivery_intents_tenant_id_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId")
+                        .HasDatabaseName("ix_admission_recovery_delivery_intents_tenant_id_admission_tic");
+
+                    b.HasIndex("HandoffCompletedAt", "RoutedAt", "CreatedAt")
+                        .HasDatabaseName("ix_admission_recovery_delivery_intents_pending");
+
+                    b.HasIndex("TenantId", "RecoveryRequestId", "AdmissionTicketId", "Purpose", "CapabilityVersion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_recovery_delivery_intents_generation");
+
+                    b.ToTable("admission_recovery_delivery_intents", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_recovery_delivery_intents_handoff", "(handoff_completed_at IS NULL AND handoff_receipt_id IS NULL) OR (handoff_completed_at IS NOT NULL AND handoff_receipt_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_admission_recovery_delivery_intents_versions", "capability_version > 0 AND protection_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryRequestIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("ProtectedIdentity")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("protected_identity");
+
+                    b.Property<int>("ProtectionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("protection_version");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_recovery_request_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_recovery_request_intents_tenant_id_id");
+
+                    b.HasIndex("ProcessedAt", "CreatedAt")
+                        .HasDatabaseName("ix_admission_recovery_request_intents_pending");
+
+                    b.ToTable("admission_recovery_request_intents", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_recovery_request_intents_version", "protection_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionScannerCapability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Actions")
+                        .HasColumnType("integer")
+                        .HasColumnName("actions");
+
+                    b.Property<Guid>("AdmissionTargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_target_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("DeviceLabel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("device_label");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("IssueRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_request_id");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("IssuedByActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by_actor_id");
+
+                    b.Property<string>("LookupDigest")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("lookup_digest");
+
+                    b.Property<int>("LookupKeyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("lookup_key_version");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("revocation_reason");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedByActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_actor_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_scanner_capabilities");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_scanner_capabilities_tenant_id_id");
+
+                    b.HasIndex("IssuedByActorId")
+                        .HasDatabaseName("ix_admission_scanner_capabilities_issued_by_actor_id");
+
+                    b.HasIndex("RevokedByActorId")
+                        .HasDatabaseName("ix_admission_scanner_capabilities_revoked_by_actor_id");
+
+                    b.HasIndex("TenantId", "AdmissionTargetId")
+                        .HasDatabaseName("ix_admission_scanner_capabilities_target");
+
+                    b.HasIndex("TenantId", "IssueRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_scanner_capabilities_issue_request");
+
+                    b.HasIndex("TenantId", "EventId", "AdmissionTargetId")
+                        .HasDatabaseName("ix_admission_scanner_capabilities_tenant_id_event_id_admission");
+
+                    b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_scanner_capabilities_digest");
+
+                    b.ToTable("admission_scanner_capabilities", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_scanner_capabilities_expiry", "expires_at > issued_at");
+
+                            t.HasCheckConstraint("ck_admission_scanner_capabilities_key_version", "lookup_key_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AdmissionOperationalStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("admission_operational_status_id");
+
+                    b.Property<int>("AdmissionTargetTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_target_type_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<Guid?>("EventDayId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_day_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid>("ScopeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_targets");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_targets_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_admission_targets_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "EventDayId")
+                        .HasDatabaseName("ix_admission_targets_tenant_id_event_id_event_day_id");
+
+                    b.HasIndex("TenantId", "EventId", "EventSessionId")
+                        .HasDatabaseName("ix_admission_targets_tenant_id_event_id_event_session_id");
+
+                    b.HasIndex("TenantId", "EventId", "AdmissionTargetTypeId", "ScopeId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_targets_scope");
+
+                    b.ToTable("admission_targets", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_targets_operational_status", "admission_operational_status_id IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_admission_targets_scope_shape", "(admission_target_type_id = 1 AND event_day_id IS NULL AND event_session_id IS NULL AND scope_id = event_id) OR (admission_target_type_id = 2 AND event_day_id IS NOT NULL AND event_session_id IS NULL AND scope_id = event_day_id) OR (admission_target_type_id = 3 AND event_day_id IS NULL AND event_session_id IS NOT NULL AND scope_id = event_session_id)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4469,6 +5080,8 @@ namespace Explore.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
 
+                            t.HasCheckConstraint("CK_EventAgendaItem_LocalDateRange", "local_end_date >= local_start_date");
+
                             t.HasCheckConstraint("CK_EventAgendaItem_LocalEndMinuteMatchesTime", "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
 
                             t.HasCheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
@@ -8113,6 +8726,8 @@ namespace Explore.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
 
+                            t.HasCheckConstraint("CK_EventSession_LocalDateRange", "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date");
+
                             t.HasCheckConstraint("CK_EventSession_LocalEndMinuteMatchesTime", "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
 
                             t.HasCheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
@@ -10424,7 +11039,10 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "CatalogId")
                         .HasDatabaseName("ix_event_ticket_types_tenant_id_catalog_id");
 
-                    b.ToTable("event_ticket_types", "islamu_event");
+                    b.ToTable("event_ticket_types", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("CK_EventTicketType_MoneyNonnegative", "(fixed_price_minor IS NULL OR fixed_price_minor >= 0)\nAND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)\nAND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventType", b =>
@@ -13252,7 +13870,10 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("LocationId")
                         .HasName("pk_location_pii");
 
-                    b.ToTable("location_pii", "islamu_event");
+                    b.ToTable("location_pii", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("CK_LocationPii_CoordinateShape", "(latitude IS NULL AND longitude IS NULL)\nOR (latitude IS NOT NULL AND longitude IS NOT NULL\n    AND latitude BETWEEN -90 AND 90\n    AND longitude BETWEEN -180 AND 180)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationPrivacyState", b =>
@@ -28048,6 +28669,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("included_quantity");
 
+                    b.Property<Guid>("ScopeId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id")
+                        .HasComputedColumnSql("COALESCE(event_session_id, event_day_id, target_event_id)", true);
+
                     b.Property<Guid>("TargetEventId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_event_id");
@@ -28072,14 +28699,15 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("EntitlementSelectionRuleId")
                         .HasDatabaseName("ix_ticket_type_entitlements_entitlement_selection_rule_id");
 
-                    b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_ticket_type_entitlements_tenant_id_ticket_type_id");
-
                     b.HasIndex("TenantId", "TargetEventId", "EventDayId")
                         .HasDatabaseName("ix_ticket_type_entitlements_tenant_id_target_event_id_event_da");
 
                     b.HasIndex("TenantId", "TargetEventId", "EventSessionId")
                         .HasDatabaseName("ix_ticket_type_entitlements_tenant_id_target_event_id_event_se");
+
+                    b.HasIndex("TenantId", "TicketTypeId", "TargetEventId", "EntitlementScopeTypeId", "ScopeId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ticket_type_entitlements_canonical_scope");
 
                     b.ToTable("ticket_type_entitlements", "islamu_event");
                 });
@@ -32073,6 +32701,209 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("TargetActorType");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInEvent", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_events_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTarget", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTargetId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_events_admission_targets_tenant_id_admis");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_events_admission_tickets_tenant_id_admis");
+
+                    b.HasOne("Explore.Domain.AdmissionScannerCapability", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ScannerCapabilityId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_check_in_events_admission_scanner_capabilities_te");
+
+                    b.HasOne("Explore.Domain.AdmissionCheckInEvent", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "CompensatedCheckInEventId")
+                        .HasPrincipalKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_check_in_events_admission_check_in_events_tenant_");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInPolicy", b =>
+                {
+                    b.HasOne("Explore.Domain.AdmissionTarget", "Target")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTargetId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_policies_admission_targets_tenant_id_adm");
+
+                    b.Navigation("Target");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionCheckInState", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_states_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTarget", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTargetId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_states_admission_targets_tenant_id_admis");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_check_in_states_admission_tickets_tenant_id_admis");
+
+                    b.HasOne("Explore.Domain.AdmissionCheckInEvent", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "ActiveCheckInEventId")
+                        .HasPrincipalKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_check_in_states_admission_check_in_events_tenant_");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryCapability", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_recovery_capabilities_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_recovery_capabilities_admission_tickets_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryDeliveryIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_recovery_delivery_intents_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_recovery_delivery_intents_admission_tickets_tenan");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionRecoveryRequestIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_recovery_request_intents_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionScannerCapability", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedByActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_scanner_capabilities_actors_issued_by_actor_id");
+
+                    b.HasOne("Explore.Domain.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("RevokedByActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_scanner_capabilities_actors_revoked_by_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_scanner_capabilities_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_scanner_capabilities_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTarget", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "AdmissionTargetId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_scanner_capabilities_admission_targets_tenant_id_");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTarget", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_targets_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_targets_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.EventDay", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "EventDayId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_targets_event_days_tenant_id_event_id_event_day_id");
+
+                    b.HasOne("Explore.Domain.EventSession", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "EventSessionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_admission_targets_event_sessions_tenant_id_event_id_event_s");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
@@ -36707,125 +37538,6 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
                 {
-                    b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
-                                {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_custom_css_url_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_custom_css_url_override_mode");
-
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("PolicySlot", "DisplayName", b2 =>
-                                {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_display_name_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_display_name_override_mode");
-
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
-                                {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_favicon_url_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_favicon_url_override_mode");
-
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
-                                {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_logo_url_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_logo_url_override_mode");
-
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("CustomCssUrl")
-                                .IsRequired();
-
-                            b1.Navigation("DisplayName")
-                                .IsRequired();
-
-                            b1.Navigation("FaviconUrl")
-                                .IsRequired();
-
-                            b1.Navigation("LogoUrl")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -36945,6 +37657,125 @@ namespace Explore.Persistence.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_custom_css_url_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_custom_css_url_override_mode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("PolicySlot", "DisplayName", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_display_name_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_display_name_override_mode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_favicon_url_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_favicon_url_override_mode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_logo_url_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_logo_url_override_mode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("CustomCssUrl")
+                                .IsRequired();
+
+                            b1.Navigation("DisplayName")
+                                .IsRequired();
+
+                            b1.Navigation("FaviconUrl")
+                                .IsRequired();
+
+                            b1.Navigation("LogoUrl")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -37061,73 +37892,6 @@ namespace Explore.Persistence.Migrations
                                 .IsRequired();
 
                             b1.Navigation("EventCardClickOpensDetailPage")
-                                .IsRequired();
-                        });
-
-                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("EnableIslamicModule")
-                                .IsRequired();
-
-                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 
@@ -37730,6 +38494,73 @@ namespace Explore.Persistence.Migrations
                                 .IsRequired();
 
                             b1.Navigation("Version")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 

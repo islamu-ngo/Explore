@@ -263,12 +263,15 @@ public static class ApiHostServiceCollectionExtensions
             options.AddDocumentTransformer<KeycloakOpenApiSecurityTransformer>();
             options.AddDocumentTransformer<ManagedControlPlaneOpenApiSecurityTransformer>();
             options.AddDocumentTransformer<PrivacyErasureReceiptOpenApiSecurityTransformer>();
+            options.AddDocumentTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddDocumentTransformer<HalDtoSchemaTransformer>();
             options.AddDocumentTransformer<OpenApiStringEnumDocumentTransformer>();
             options.AddDocumentTransformer<OperationIdInvariantTransformer>();
             options.AddOperationTransformer<EndpointClassificationTransformer>();
+            options.AddOperationTransformer<KeycloakOpenApiSecurityTransformer>();
             options.AddOperationTransformer<ManagedControlPlaneOpenApiSecurityTransformer>();
             options.AddOperationTransformer<PrivacyErasureReceiptOpenApiSecurityTransformer>();
+            options.AddOperationTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddOperationTransformer<StorageUploadRequestBodyTransformer>();
             options.AddOperationTransformer<EventOpenGraphImageResponseTransformer>();
         });

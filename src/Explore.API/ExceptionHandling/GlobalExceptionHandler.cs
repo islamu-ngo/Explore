@@ -1,7 +1,9 @@
 // ABOUTME: Handles non-validation exceptions and produces safe RFC 7807 responses.
 // ABOUTME: Maps known application exceptions to stable HTTP status codes.
 
+using Explore.API.Middleware;
 using Explore.Application.Exceptions;
+using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +28,7 @@ internal sealed class GlobalExceptionHandler(
             [StatusCodes.Status422UnprocessableEntity] = ApiProblemTypes.UnprocessableEntity,
             [StatusCodes.Status429TooManyRequests] = ApiProblemTypes.TooManyRequests,
             [StatusCodes.Status500InternalServerError] = ApiProblemTypes.InternalServerError,
+            [StatusCodes.Status503ServiceUnavailable] = ApiProblemTypes.ServiceUnavailable,
         };
 
     public async ValueTask<bool> TryHandleAsync(
@@ -70,6 +73,16 @@ internal sealed class GlobalExceptionHandler(
                 "Too many recovery requests",
                 "The admission recovery request budget has been exhausted.",
                 ApiProblemCodes.RateLimited),
+            AdmissionRecoveryUnavailableException => (
+                StatusCodes.Status503ServiceUnavailable,
+                "Admission recovery unavailable",
+                "Admission recovery is temporarily unavailable.",
+                ApiProblemCodes.UnexpectedError),
+            AdmissionCheckInUnavailableException => (
+                StatusCodes.Status503ServiceUnavailable,
+                "Admission check-in unavailable",
+                "Admission check-in is temporarily unavailable. Stop queued scans and try again later.",
+                ApiProblemCodes.AdmissionCheckInUnavailable),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal server error",
@@ -77,16 +90,27 @@ internal sealed class GlobalExceptionHandler(
                 ApiProblemCodes.UnexpectedError)
         };
 
+        bool isAdmissionRequest = RequestLoggingMiddleware.TryGetAdmissionRouteIdentity(
+            httpContext,
+            out string admissionRouteIdentity);
+        string requestIdentity = isAdmissionRequest
+            ? admissionRouteIdentity
+            : httpContext.Request.Path;
         if (statusCode >= StatusCodes.Status500InternalServerError)
         {
-            logger.LogError(exception, "Unhandled exception for {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
+            logger.LogError(exception, "Unhandled exception for {Method} {Route}", httpContext.Request.Method, requestIdentity);
         }
         else
         {
-            logger.LogWarning(exception, "Handled application exception for {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
+            logger.LogWarning(exception, "Handled application exception for {Method} {Route}", httpContext.Request.Method, requestIdentity);
         }
 
         httpContext.Response.StatusCode = statusCode;
+        if (exception is AdmissionCheckInUnavailableException)
+        {
+            httpContext.Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+            httpContext.Response.Headers["Referrer-Policy"] = "no-referrer";
+        }
         if (exception is AdmissionRecoveryRateLimitExceededException recoveryRateLimit)
         {
             httpContext.Response.Headers.RetryAfter =
@@ -115,7 +139,7 @@ internal sealed class GlobalExceptionHandler(
             Title = title,
             Detail = detail,
             Type = typeUri,
-            Instance = httpContext.Request.Path
+            Instance = isAdmissionRequest ? admissionRouteIdentity : httpContext.Request.Path
         };
 
         if (exception is not ConcurrencyConflictException and not QuotaExceededException)

@@ -23,8 +23,8 @@ public sealed class AdmissionRecoveryPersistenceContractTests
         await using var context = new ExploreDbContext(options);
 
         IEntityType? entity = context.Model.FindEntityType(typeof(AdmissionRecoveryCapability));
-        IEntityType? delivery = context.Model.FindEntityType(typeof(
-            Explore.Application.Contracts.Admissions.AdmissionRecoveryDeliveryIntent));
+        IEntityType? delivery = context.Model.FindEntityType(typeof(AdmissionRecoveryDeliveryIntent));
+        IEntityType? requestIntent = context.Model.FindEntityType(typeof(AdmissionRecoveryRequestIntent));
         string[] propertyNames = entity?.GetProperties().Select(property => property.Name).ToArray() ?? [];
         string[] indexNames = entity?.GetIndexes()
             .Select(index => index.GetDatabaseName())
@@ -76,6 +76,14 @@ public sealed class AdmissionRecoveryPersistenceContractTests
             .Contains("ux_admission_recovery_delivery_intents_generation");
         await Assert.That(deliveryPropertyNames.Intersect(
             new[] { "Capability", "Email", "NormalizedIdentity", "Recipient", "AdmissionCredential" },
+            StringComparer.OrdinalIgnoreCase)).IsEmpty();
+        await Assert.That(requestIntent).IsNotNull();
+        await Assert.That(requestIntent!.GetTableName())
+            .IsEqualTo("ie_admission_recovery_request_intents");
+        await Assert.That(requestIntent.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(requestIntent.FindProperty("ConcurrencyStamp")!.IsConcurrencyToken).IsTrue();
+        await Assert.That(requestIntent.GetProperties().Select(property => property.Name).Intersect(
+            new[] { "Email", "NormalizedIdentity", "Recipient", "Capability", "Digest", "Credential" },
             StringComparer.OrdinalIgnoreCase)).IsEmpty();
     }
 }

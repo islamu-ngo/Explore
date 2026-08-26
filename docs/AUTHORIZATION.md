@@ -279,6 +279,21 @@ Recovery for the common cases: republish via `POST api/instance/settings/authz-p
 
 ## 5. Roles and Permissions
 
+### Admission Check-In Permissions
+
+Admission uses public provider-neutral actions rather than role-name inspection:
+
+| Permission | Authorized surface |
+|---|---|
+| `event_check_in:view` | Exact-target summary, export-safe audit, bounded check-in detail, and scanner health. |
+| `event_check_in:manage` | Staff check-in/batch/undo plus target stop, restore, and reconcile controls. |
+| `events:manage_tickets` | One-time scanner capability issue/list/revoke for a `PlatformManaged` event. |
+
+Controllers and Application services authorize the exact tenant/event resource. Event HAL emits the
+same permission on each relation, and Blazor renders controls only from those relations. The
+dedicated `AdmissionScanner` principal is not a staff role: it carries only one capability UUID,
+tenant, event, target, and closed action claims, and cannot satisfy staff permissions.
+
 ### 5.1. Administrative Hierarchy
 
 The platform defines a clear hierarchy of roles with distinct boundaries. See [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md) for a detailed breakdown.

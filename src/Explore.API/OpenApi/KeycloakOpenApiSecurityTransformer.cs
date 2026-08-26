@@ -1,23 +1,25 @@
 // ABOUTME: Native OpenAPI document transformer that mirrors Swashbuckle Keycloak OAuth2 metadata.
 // ABOUTME: Keeps /openapi/event-api.json security components aligned with the transitional Swagger baseline.
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Explore.API.OpenApi;
 
-internal sealed class KeycloakOpenApiSecurityTransformer(IConfiguration configuration) : IOpenApiDocumentTransformer
+internal sealed class KeycloakOpenApiSecurityTransformer(IConfiguration configuration) :
+    IOpenApiDocumentTransformer,
+    IOpenApiOperationTransformer
 {
-    private const string SecuritySchemeName = "Keycloak";
+    internal const string SecuritySchemeName = "Keycloak";
 
     public Task TransformAsync(
         OpenApiDocument document,
         OpenApiDocumentTransformerContext context,
         CancellationToken cancellationToken)
     {
-        var keycloakAuthorizationUrl = configuration["Keycloak:AuthorizationUrl"];
-        if (string.IsNullOrWhiteSpace(keycloakAuthorizationUrl)
-            || !Uri.TryCreate(keycloakAuthorizationUrl, UriKind.Absolute, out var authorizationUri))
+        if (!TryResolveAuthorizationUri(configuration, out Uri? authorizationUri))
         {
             return Task.CompletedTask;
         }
@@ -41,12 +43,83 @@ internal sealed class KeycloakOpenApiSecurityTransformer(IConfiguration configur
             }
         };
 
-        document.Security ??= [];
-        document.Security.Add(new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference(SecuritySchemeName, document)] = []
-        });
-
         return Task.CompletedTask;
     }
+
+    public Task TransformAsync(
+        OpenApiOperation operation,
+        OpenApiOperationTransformerContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!TryResolveAuthorizationUri(configuration, out _))
+            return Task.CompletedTask;
+
+        ApplyOperationSecurity(
+            operation,
+            context.Description.ActionDescriptor,
+            context.Document!);
+        return Task.CompletedTask;
+    }
+
+    internal static void ApplyOperationSecurity(
+        OpenApiOperation operation,
+        Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor actionDescriptor,
+        OpenApiDocument document)
+    {
+        var metadata = actionDescriptor.EndpointMetadata;
+        IAuthorizeData[] authorization = metadata.OfType<IAuthorizeData>().ToArray();
+        if (metadata.OfType<IAllowAnonymous>().Any()
+            || authorization.Length == 0
+            || authorization.Any(item => !string.IsNullOrWhiteSpace(item.AuthenticationSchemes)))
+        {
+            return;
+        }
+
+        operation.Security =
+        [
+            new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference(SecuritySchemeName, document)] = []
+            }
+        ];
+    }
+
+    internal static bool TryResolveAuthorizationUri(
+        IConfiguration configuration,
+        out Uri? authorizationUri)
+    {
+        string? configuredUrl = configuration["Keycloak:AuthorizationUrl"];
+        if (TryCreateHttpUri(configuredUrl, out authorizationUri))
+            return true;
+
+        string? authority = configuration["Keycloak:Authority"];
+        return TryCreateHttpUri(
+            string.IsNullOrWhiteSpace(authority)
+                ? null
+                : $"{authority.TrimEnd('/')}/protocol/openid-connect/auth",
+            out authorizationUri);
+    }
+
+    private static bool TryCreateHttpUri(string? value, out Uri? uri)
+    {
+        uri = null;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? candidate)
+            || (!string.Equals(candidate.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(candidate.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        uri = candidate;
+        return true;
+    }
+}
+
+internal sealed class KeycloakSwaggerOpenApiSecurityFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context) =>
+        KeycloakOpenApiSecurityTransformer.ApplyOperationSecurity(
+            operation,
+            context.ApiDescription.ActionDescriptor,
+            context.Document);
 }

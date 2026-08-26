@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Explore.API.Authentication;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.IO;
 using Microsoft.Net.Http.Headers;
@@ -36,8 +37,9 @@ internal static class IdempotencyRequestIdentityFactory
         var requestTarget = ResolveRequestTarget(context);
         var contentType = NormalizeContentType(context.Request.ContentType);
         var userId = ResolveUserId(context);
+        var scannerCapabilityId = ResolveScannerCapabilityId(context);
         var principalFingerprint = ComputeSha256Hex(
-            $"{(userId is null ? "anonymous" : $"authenticated:{userId}")}|capabilities:{CapabilityScope(context.Request)}");
+            $"{ResolvePrincipalScope(userId, scannerCapabilityId)}|capabilities:{CapabilityScope(context.Request)}");
         var bodyHash = await ComputeBodyHashAsync(context.Request, streamManager, cancellationToken);
 
         return new IdempotencyRequestIdentity(
@@ -227,6 +229,22 @@ internal static class IdempotencyRequestIdentityFactory
                ?? context.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
                ?? context.User.FindFirst("sid")?.Value;
     }
+
+    private static string? ResolveScannerCapabilityId(HttpContext context)
+    {
+        string? value = context.User.FindFirst(
+            AdmissionScannerAuthenticationDefaults.CapabilityIdClaim)?.Value;
+        return Guid.TryParse(value, out Guid capabilityId) && capabilityId != Guid.Empty
+            ? capabilityId.ToString("N")
+            : null;
+    }
+
+    private static string ResolvePrincipalScope(string? userId, string? scannerCapabilityId) =>
+        scannerCapabilityId is not null
+            ? $"admission-scanner:{scannerCapabilityId}"
+            : userId is null
+                ? "anonymous"
+                : $"authenticated:{userId}";
 
     private static string ComputeSha256Hex(string value)
         => ComputeSha256Hex(Encoding.UTF8.GetBytes(value));

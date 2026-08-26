@@ -64,6 +64,13 @@ public sealed class IdempotencyMiddleware
             return;
         }
 
+        if (context.GetEndpoint()?.Metadata
+                .GetMetadata<SuppressIdempotencyResponseStorageAttribute>() is not null)
+        {
+            await _next(context);
+            return;
+        }
+
         var requiresIdempotencyKey = context.GetEndpoint()?.Metadata
             .GetMetadata<RequireIdempotencyKeyAttribute>() is not null;
         var hasIdempotencyKey = context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var keyValues)

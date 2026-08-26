@@ -18,6 +18,8 @@ using Explore.Application.Services;
 using Explore.Application.Services.Registration;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
 using Explore.Persistence;
@@ -469,6 +471,151 @@ public sealed class CompositeOutboxMessageDispatcherTests
         })).Throws<InvalidOperationException>();
     }
 
+    [Test]
+    public async Task ReconcileDeadLetterAsync_WithRecoveryDelivery_RoutesIdempotentHandler()
+    {
+        var recoveryHandler = Substitute.For<IAdmissionRecoveryDeliveryOutboxHandler>();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            admissionRecoveryHandler: recoveryHandler);
+        var message = new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = nameof(AdmissionRecoveryCapability),
+            AggregateId = Guid.CreateVersion7(),
+            EventType = AdmissionRecoveryDeliveryEvents.RecoveryDeliveryRequested,
+            Payload = "{}"
+        };
+
+        await dispatcher.ReconcileDeadLetterAsync(message);
+
+        await recoveryHandler.Received(1).HandleAsync(
+            message,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CancelledRegistrationOrderOutboxInvokesTenantBoundAdmissionRevocation()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        IAdmissionRevocationService admissionRevocation =
+            Substitute.For<IAdmissionRevocationService>();
+        admissionRevocation.ReconcileAsync(
+                Arg.Any<AdmissionRevocationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new AdmissionRevocationResult(
+                AdmissionRevocationOutcome.Applied, [], []));
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            admissionRevocationService: admissionRevocation);
+        var message = new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = nameof(RegistrationOrder),
+            AggregateId = orderId,
+            EventType = RegistrationOrderOutboxMessageFactory.CancelledEventType,
+            Payload = JsonSerializer.Serialize(new RegistrationOrderLifecycleOutboxPayload(
+                orderId,
+                eventId,
+                tenantId,
+                (int)RegistrationOrderStatusEnum.Cancelled,
+                0,
+                false))
+        };
+
+        await dispatcher.DispatchAsync(message);
+
+        await admissionRevocation.Received(1).ReconcileAsync(
+            Arg.Is<AdmissionRevocationRequest>(request =>
+                request.TenantId == tenantId &&
+                request.RegistrationOrderId == orderId &&
+                request.Reason == AdmissionRevocationService.OrderCancellationReason &&
+                request.RefundAllocations.Count == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EventCancellationOutboxInvokesBoundedAdmissionDrain()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        IAdmissionEventCancellationService eventCancellation =
+            Substitute.For<IAdmissionEventCancellationService>();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            admissionEventCancellationService: eventCancellation);
+        OutboxMessage message =
+            AdmissionRevocationOutboxMessageFactory.CreateEventCancellation(
+                tenantId, eventId, DateTime.UtcNow);
+
+        await dispatcher.DispatchAsync(message);
+
+        await eventCancellation.Received(1).ReconcileAsync(
+            message.Id,
+            tenantId,
+            eventId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SuccessfulRefundDispatchInvokesAdmissionReconciliationBeforeOutboxCompletion()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid paymentAttemptId = Guid.CreateVersion7();
+        PaidOrderAcceptanceSnapshot acceptance = RefundAcceptance(tenantId);
+        RefundAttempt attempt = RefundAttempt.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            paymentAttemptId,
+            acceptance,
+            "acct_example",
+            "pi_example",
+            $"refund:{Guid.CreateVersion7():N}",
+            500,
+            DateTime.UtcNow.AddMinutes(-2));
+        IRefundAttemptRepository refunds = Substitute.For<IRefundAttemptRepository>();
+        refunds.GetByIdAsync(tenantId, attempt.Id, Arg.Any<CancellationToken>())
+            .Returns(attempt);
+        IRefundCreator creator = Substitute.For<IRefundCreator>();
+        creator.CreateAsync(Arg.Any<RefundCreateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(RefundProviderResult.Observed(
+                new RefundProviderObservation(
+                    "re_example",
+                    "pi_example",
+                    RefundProviderStatus.Succeeded,
+                    500,
+                    "EUR",
+                    0),
+                "req_example"));
+        IAdmissionRefundRevocationService admissionRefund =
+            Substitute.For<IAdmissionRefundRevocationService>();
+        admissionRefund.ReconcileSucceededAsync(
+                tenantId,
+                attempt.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(new AdmissionRevocationResult(
+                AdmissionRevocationOutcome.Applied, [], []));
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            refundRepository: refunds,
+            refundCreator: creator,
+            admissionRefundRevocationService: admissionRefund);
+
+        await dispatcher.DispatchAsync(
+            RefundOutboxMessageFactory.CreateDispatch(attempt, DateTime.UtcNow));
+
+        await admissionRefund.Received(1).ReconcileSucceededAsync(
+            tenantId,
+            attempt.Id,
+            Arg.Any<CancellationToken>());
+    }
+
     private static CompositeOutboxMessageDispatcher CreateDispatcher(
         IEventPublishedNotificationFanoutService fanoutService,
         IEventModerationNotificationFanoutService moderationFanoutService,
@@ -478,13 +625,19 @@ public sealed class CompositeOutboxMessageDispatcherTests
         INotificationFanoutRunRepository? runRepository = null,
         IOutboxRepository? outboxRepository = null,
         HybridCache? cache = null,
-        IAdmissionCredentialDeliveryOutboxHandler? admissionDeliveryHandler = null)
+        IAdmissionCredentialDeliveryOutboxHandler? admissionDeliveryHandler = null,
+        IAdmissionRecoveryDeliveryOutboxHandler? admissionRecoveryHandler = null,
+        IAdmissionRevocationService? admissionRevocationService = null,
+        IAdmissionRefundRevocationService? admissionRefundRevocationService = null,
+        IAdmissionEventCancellationService? admissionEventCancellationService = null,
+        IRefundAttemptRepository? refundRepository = null,
+        IRefundCreator? refundCreator = null)
     {
         HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
-        var refundRepository = Substitute.For<IRefundAttemptRepository>();
+        refundRepository ??= Substitute.For<IRefundAttemptRepository>();
         var refundCampaignRepository = Substitute.For<IRefundCampaignRepository>();
-        var refundCreator = Substitute.For<IRefundCreator>();
+        refundCreator ??= Substitute.For<IRefundCreator>();
         var refundRetriever = Substitute.For<IRefundRetriever>();
         correctionPlanner.PlanLocationPrivacyCorrectionAsync(
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
@@ -503,7 +656,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
                 EventLocationPrivacyMetricsFactory.Create()),
             new PrivacyErasureCacheInvalidationDispatcher(selectedCache),
             admissionDeliveryHandler ?? Substitute.For<IAdmissionCredentialDeliveryOutboxHandler>(),
-            Substitute.For<IAdmissionRecoveryDeliveryOutboxHandler>(),
+            Substitute.For<IAdmissionRecoveryRequestOutboxHandler>(),
+            admissionRecoveryHandler ?? Substitute.For<IAdmissionRecoveryDeliveryOutboxHandler>(),
             outboxRepository ?? Substitute.For<IOutboxRepository>(),
             refundCampaignRepository,
             new RefundCampaignProcessor(
@@ -515,11 +669,65 @@ public sealed class CompositeOutboxMessageDispatcherTests
             new RegistrationPaymentCancellationService(
                 Substitute.For<IRegistrationPaymentAttemptRepository>(), refundRepository,
                 refundCampaignRepository, Substitute.For<IPaymentCancellationProvider>(), TimeProvider.System),
+            admissionRevocationService ?? Substitute.For<IAdmissionRevocationService>(),
+            admissionRefundRevocationService ?? Substitute.For<IAdmissionRefundRevocationService>(),
+            admissionEventCancellationService ?? Substitute.For<IAdmissionEventCancellationService>(),
             CreateMetrics(),
             TimeProvider.System,
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }
+
+    private static PaidOrderAcceptanceSnapshot RefundAcceptance(Guid tenantId) =>
+        PaidOrderAcceptanceSnapshot.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            tenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "composition-1",
+            "disclosure-1",
+            "Example Organizer",
+            PaidCheckoutOperatorDisclosure.Create(
+                Guid.CreateVersion7(),
+                "Example Operator",
+                false,
+                "https://events.example.test",
+                "BE",
+                "https://events.example.test",
+                "https://events.example.test/legal",
+                "https://events.example.test/terms",
+                "https://events.example.test/privacy",
+                "complaints@example.test",
+                "Trust and Safety",
+                "Payments Operations",
+                "Dispute Operations",
+                "Payment Reconciliation",
+                "approved"),
+            PaidOrderDeliverySnapshot.Create(
+                new DateTimeOffset(2026, 9, 10, 17, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 9, 10, 20, 0, 0, TimeSpan.Zero),
+                "Europe/Brussels"),
+            "EUR",
+            500,
+            0,
+            0,
+            500,
+            Guid.CreateVersion7(),
+            7,
+            "Refunds follow accepted policy v7.",
+            "en-GB",
+            "support@example.test",
+            PaidCheckoutProviderDisclosure.Create(
+                "stripe",
+                "OrganizerDirect",
+                "direct-charge",
+                "EXAMPLE EVENT",
+                "test",
+                "instance-operator"),
+            [PaidOrderAcceptanceLineFact.Create(
+                Guid.CreateVersion7(), "Admission", 1, 500, 0, 500)],
+            DateTime.UtcNow.AddHours(-1));
 
     private static BusinessMetrics CreateMetrics()
     {

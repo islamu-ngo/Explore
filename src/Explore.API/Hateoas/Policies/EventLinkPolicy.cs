@@ -13,6 +13,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Registration;
@@ -273,6 +274,70 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(LinkRelations.ManageCapacityPools, RouteNames.GetEventTicketCatalogManagement, new { eventId = dto.Id }, HttpMethods.Get, "Manage capacity pools", RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.IssueScannerCapability,
+                    RouteNames.IssueAdmissionScannerCapability,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Issue admission scanner capability",
+                    RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.CheckInAdmissions,
+                    RouteNames.CheckInAdmission,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Check in admissions",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.AdmissionCheckInSummary,
+                    RouteNames.GetAdmissionCheckInSummary,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "Admission check-in summary",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.AdmissionCheckInAudit,
+                    RouteNames.GetAdmissionCheckInAudit,
+                    new { eventId = dto.Id, pageSize = 100 },
+                    HttpMethods.Get,
+                    "Admission check-in audit",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.AdmissionCheckInHealth,
+                    RouteNames.GetAdmissionCheckInHealth,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "Admission check-in health",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.StopAdmissionCheckIn,
+                    RouteNames.StopAdmissionCheckIn,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Stop admission check-in",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.RestoreAdmissionCheckIn,
+                    RouteNames.RestoreAdmissionCheckIn,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Restore admission check-in",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+            yield return new LinkDefinition(
+                    LinkRelations.ReconcileAdmissionCheckIn,
+                    RouteNames.ReconcileAdmissionCheckIn,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Reconcile admission check-in",
+                    RequiresAuth: true)
+                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
 
             if (dto.IsManagementView)
             {

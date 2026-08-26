@@ -35,21 +35,26 @@ Last Updated: 2026-08-25 Europe/Brussels
   - keep concrete provider policy outside Application.
 - Rewrote the architectural plan with strict plan/tasks/context separation.
 - Created the linked I-VSD assessment requirement and synchronized its provider-responsibility decisions into the workstream.
+- Completed Phase 1 in the isolated task worktree `/home/amir/ISLAMU/Github/Event-address-geocoding`:
+  - introduced atomic manual/provider address transitions and finite-pair `GeoCoordinate`;
+  - contracted Location, nested Event, AI/model, OpenAPI, generated-client, and browser raw coordinate writes;
+  - preserved authorized coordinate reads plus private-home consent, HAL, tenant, and concurrency behavior;
+  - regenerated OpenAPI and NSwag deterministically and added coordinate-write architecture ratchets;
+  - passed the Release solution build with 0 errors and all 4,063 Application tests.
 
 ### IN PROGRESS
 
-- Planning artifacts are being finalized and validated. Runtime implementation has not started.
+- Phase 2 Task 2.2 Green: conservative source/visibility persistence, tenant-bound organization scope, lookup seeding, and five generated provider migrations.
 
 ### NEXT
 
-1. User reviews the re-baselined plan and split decision.
-2. After approval, start Task 1.1 Red Phase: lock every coordinate-bearing write contract and aggregate invariant before production edits.
-3. Complete PR A before local-only API/UI or Photon work.
+1. Implement Task 2.2 source/visibility persistence and generate all five provider migrations.
+2. Implement effective policy/local query and safe promotion in Tasks 2.3-2.4.
+3. Complete Phase 2 verification, mutation, MAD, and zero-PII gates before local-only API/UI.
 4. Do not implement exact spatial discovery from this ledger.
 
 ### BLOCKERS
 
-- **Implementation approval:** The rewritten plan is ready for user correction/approval; no runtime work is authorized by this planning request.
 - **Photon activation:** Phase 4 requires approved endpoint ownership, regional/planet data footprint, capacity, update/swap, support, recovery, terms, attribution, and production endpoint evidence.
 - **Spatial activation:** ADR-013 remains `Proposed`. Exact discovery stays with Home Discovery Phase 6 and requires a named authorized decider/date plus the revised per-EventLocation disclosure and installed-disabled lifecycle design.
 - **Context7:** No Context7 MCP tool was available. Revalidate package/API details there if it becomes available; otherwise retain the official-doc substitution record.

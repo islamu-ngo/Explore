@@ -1,0 +1,641 @@
+// ABOUTME: RED bUnit specifications for the Phase 21 Studio admission check-in workflow.
+// ABOUTME: Defines HAL, scanner fallback, queue, accessibility, cancellation, and online-only contracts before UI exists.
+
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Admissions;
+using ISLAMU.Wire.Contracts.Admissions;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Explore.Blazor.Client.Tests.Pages.Studio;
+
+public sealed class StudioAdmissionCheckInRedTests : IDisposable
+{
+    private const string ComponentName = "Explore.Blazor.Client.Pages.Studio.StudioAdmissionCheckIn";
+    private const string ServiceName = "Explore.Blazor.Client.Contracts.Services.Admissions.IAdmissionCheckInService";
+    private const string CheckInRelation = "check-in-admissions";
+    private const string PayloadPrefix = "islamu-admission:v1:";
+    private const int QueueCapacity = 100;
+
+    private readonly BlazorTestContext _ctx = new();
+    private readonly IAdmissionQrScanner _scanner = Substitute.For<IAdmissionQrScanner>();
+    private readonly IAdmissionScannerCapabilityState _scannerCapabilityState = Substitute.For<IAdmissionScannerCapabilityState>();
+    private readonly IAccessibilityAnnouncerService _announcer = Substitute.For<IAccessibilityAnnouncerService>();
+    private readonly IAccessibilityFocusService _focus = Substitute.For<IAccessibilityFocusService>();
+    private readonly Phase21ServiceHandler _service = new();
+
+    public StudioAdmissionCheckInRedTests()
+    {
+        _scanner.GetCapabilityAsync(Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScannerCapability(NativeQrAvailable: true));
+        _ctx.Services.AddSingleton(_scanner);
+        _ctx.Services.AddSingleton(_scannerCapabilityState);
+        _ctx.Services.RemoveAll<IAccessibilityAnnouncerService>();
+        _ctx.Services.RemoveAll<IAccessibilityFocusService>();
+        _ctx.Services.AddSingleton(_announcer);
+        _ctx.Services.AddSingleton(_focus);
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task ComponentDeclaresEventCheckInRouteAndExplicitCapabilityGeneration()
+    {
+        Type component = RequireComponent();
+        string[] routes = component.GetCustomAttributes<RouteAttribute>()
+            .Select(attribute => attribute.Template)
+            .ToArray();
+
+        await Assert.That(routes).Contains("/studio/events/{EventId:guid}/check-in");
+        await Assert.That(component.GetProperty("EventId")?.PropertyType).IsEqualTo(typeof(Guid));
+        await Assert.That(component.GetProperty("TargetId")?.PropertyType).IsEqualTo(typeof(Guid));
+        await Assert.That(component.GetProperty("Event")?.PropertyType).IsEqualTo(typeof(EventDto));
+        await Assert.That(component.GetProperty("CapabilityGeneration")?.PropertyType).IsEqualTo(typeof(long));
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments("view-check-in-summary")]
+    [Arguments("check-in-admission")]
+    public async Task SurfaceRequiresExactCheckInAdmissionsHalRelation(string? advertisedRelation)
+    {
+        EventDto resource = Event(advertisedRelation);
+        var cut = Render(resource);
+
+        await Assert.That(cut.FindAll("[data-testid='studio-admission-check-in-unavailable']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='studio-admission-check-in']")).IsEmpty();
+        await Assert.That(_service.Calls).IsEmpty();
+    }
+
+    [Test]
+    public async Task ExactCheckInAdmissionsHalRelationEnablesTheSurfaceWithoutLocalRoleChecks()
+    {
+        var cut = Render(Event(CheckInRelation));
+
+        await Assert.That(cut.FindAll("[data-testid='studio-admission-check-in']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("h2").Count).IsEqualTo(3);
+        await Assert.That(cut.FindAll("h3")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='manual-admission-input']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='hid-admission-input']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    [Arguments(CameraFallbackScenario.Unsupported)]
+    [Arguments(CameraFallbackScenario.PermissionDenied)]
+    [Arguments(CameraFallbackScenario.DetectionFailure)]
+    public async Task UnsupportedDeniedOrFailedCameraFallsBackToHidAndManual(CameraFallbackScenario scenario)
+    {
+        bool nativeAvailable = scenario != CameraFallbackScenario.Unsupported;
+        AdmissionQrScanOutcome cameraOutcome = scenario == CameraFallbackScenario.Unsupported
+            ? AdmissionQrScanOutcome.Unsupported
+            : AdmissionQrScanOutcome.Failure;
+        _scanner.GetCapabilityAsync(Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScannerCapability(nativeAvailable));
+        _scanner.DetectAsync(Arg.Any<ElementReference>(), Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScanResult(cameraOutcome));
+
+        var cut = Render(Event(CheckInRelation));
+        if (nativeAvailable)
+        {
+            await cut.Find("[data-testid='start-camera-scan']").ClickAsync(new MouseEventArgs());
+        }
+
+        await Assert.That(cut.FindAll("[data-testid='manual-admission-input']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='hid-admission-input']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("label[for='manual-admission-input']").TextContent.Trim()).IsNotEmpty();
+        await Assert.That(cut.FindAll("[data-testid='camera-fallback'][role='status']").Count).IsEqualTo(1);
+        await Assert.That(_service.Calls).IsEmpty();
+    }
+
+    [Test]
+    public async Task CameraHidAndManualInputsUseTheSameTypedServiceMethod()
+    {
+        string cameraBearer = Bearer(1);
+        string hidBearer = Bearer(2);
+        string manualBearer = Bearer(3);
+        AdmissionCredentialBearer.TryCreate(cameraBearer, out AdmissionCredentialBearer? cameraCredential);
+        _scanner.DetectAsync(Arg.Any<ElementReference>(), Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScanResult(AdmissionQrScanOutcome.SingleValid, cameraCredential));
+        _service.EnqueueResult("CheckedIn");
+        _service.EnqueueResult("AlreadyCheckedIn");
+        _service.EnqueueResult("Rejected");
+        EventDto resource = Event(CheckInRelation);
+        Guid eventId = resource.Id!.Value;
+        Guid targetId = TargetId(resource);
+        var cut = Render(resource);
+
+        await cut.Find("[data-testid='start-camera-scan']").ClickAsync(new MouseEventArgs());
+        await Submit(cut, "hid-admission-input", PayloadPrefix + hidBearer);
+        await Submit(cut, "manual-admission-input", manualBearer);
+
+        MethodInfo serviceMethod = RequireService().GetMethods().Single(method => method.Name == "CheckInAsync");
+        await Assert.That(_service.Calls.Select(call => call.Method).Distinct().Single()).IsEqualTo(serviceMethod);
+        await Assert.That(_service.Calls.All(call => call.EventId == eventId)).IsTrue();
+        await Assert.That(_service.Calls.All(call => call.TargetId == targetId)).IsTrue();
+        await Assert.That(_service.CredentialValues).IsEquivalentTo([cameraBearer, hidBearer, manualBearer]);
+    }
+
+    [Test]
+    public async Task RapidDuplicateSubmissionsAreSuppressedBeforeTheServiceBoundary()
+    {
+        string bearer = Bearer(4);
+        _service.HoldResults();
+        var cut = Render(Event(CheckInRelation));
+
+        cut.Find("[data-testid='manual-admission-input']").Input(bearer);
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+
+        await Assert.That(_service.CredentialValues.Count(value => value == bearer)).IsEqualTo(1);
+        _service.ReleaseHeldResults("CheckedIn");
+    }
+
+    [Test]
+    public async Task QueueIsBoundedAndSaturationDoesNotCreateAnOfflineBacklog()
+    {
+        _service.HoldResults();
+        var cut = Render(Event(CheckInRelation));
+
+        for (int index = 0; index < QueueCapacity + 1; index++)
+        {
+            cut.Find("[data-testid='manual-admission-input']").Input(Bearer(index + 10));
+            cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        }
+
+        int depth = int.Parse(
+            cut.Find("[data-testid='admission-queue-depth']").GetAttribute("data-depth")!,
+            CultureInfo.InvariantCulture);
+        await Assert.That(depth).IsLessThanOrEqualTo(QueueCapacity);
+        await Assert.That(cut.FindAll("[data-testid='admission-queue-saturated'][role='alert']").Count).IsEqualTo(1);
+        _service.ReleaseHeldResults("CheckedIn");
+    }
+
+    [Test]
+    public async Task PerItemResultsRemainInSubmissionOrderAcrossMixedOutcomes()
+    {
+        _service.EnqueueResult("CheckedIn");
+        _service.EnqueueResult("AlreadyCheckedIn");
+        _service.EnqueueResult("Rejected");
+        var cut = Render(Event(CheckInRelation));
+
+        await Submit(cut, "manual-admission-input", Bearer(120));
+        await Submit(cut, "manual-admission-input", Bearer(121));
+        await Submit(cut, "manual-admission-input", Bearer(122));
+
+        string[] codes = cut.FindAll("[data-testid='admission-result']")
+            .OrderBy(item => int.Parse(item.GetAttribute("data-sequence")!, CultureInfo.InvariantCulture))
+            .Select(item => item.GetAttribute("data-result-code")!)
+            .ToArray();
+        await Assert.That(codes).IsEquivalentTo(["CheckedIn", "AlreadyCheckedIn", "Rejected"]);
+    }
+
+    [Test]
+    public async Task EveryOutcomeHasVisibleTextAndAccessibleAnnouncementWithoutColorOrSoundDependency()
+    {
+        _service.EnqueueResult("CheckedIn");
+        _service.EnqueueResult("AlreadyCheckedIn");
+        _service.EnqueueResult("Rejected");
+        var cut = Render(Event(CheckInRelation));
+
+        for (int index = 0; index < 3; index++)
+        {
+            await Submit(cut, "manual-admission-input", Bearer(130 + index));
+        }
+
+        var results = cut.FindAll("[data-testid='admission-result']");
+        await Assert.That(results.Count).IsEqualTo(3);
+        await Assert.That(results.All(result => !string.IsNullOrWhiteSpace(result.TextContent))).IsTrue();
+        await Assert.That(results.Select(result => result.GetAttribute("data-result-code")!).Distinct().ToArray())
+            .IsEquivalentTo(["CheckedIn", "AlreadyCheckedIn", "Rejected"]);
+        string rejectedFeedback = results.Single(result => result.GetAttribute("data-result-code") == "Rejected").TextContent;
+        await Assert.That(ExposesSecurityReason(rejectedFeedback)).IsFalse();
+        await Assert.That(cut.FindAll("[data-testid='admission-live-region'][aria-live]").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-testid='admission-queue-depth']").TagName).IsEqualTo("SPAN");
+        await Assert.That(cut.FindAll("audio, [data-feedback-only='color'], [data-feedback-only='sound']")).IsEmpty();
+        await _announcer.DidNotReceive().AnnouncePoliteAsync(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task ResultHandlingPreservesInputFocusAndCameraFallbackFocusesManualEntry()
+    {
+        _service.EnqueueResult("CheckedIn");
+        _scanner.DetectAsync(Arg.Any<ElementReference>(), Arg.Any<CancellationToken>())
+            .Returns(new AdmissionQrScanResult(AdmissionQrScanOutcome.Failure));
+        var cut = Render(Event(CheckInRelation));
+
+        await Submit(cut, "manual-admission-input", Bearer(140));
+        await _focus.DidNotReceive().FocusAsync("#admission-check-in-input", Arg.Any<bool>());
+
+        await cut.Find("[data-testid='start-camera-scan']").ClickAsync(new MouseEventArgs());
+
+        await _focus.Received().FocusAsync("#manual-admission-input", Arg.Any<bool>());
+    }
+
+    [Test]
+    public async Task ControlsUseNativeKeyboardSemanticsAndEnterSubmitsBothTextInputs()
+    {
+        _service.EnqueueResult("CheckedIn");
+        _service.EnqueueResult("CheckedIn");
+        var cut = Render(Event(CheckInRelation));
+
+        await Assert.That(cut.Find("[data-testid='start-camera-scan']").TagName).IsEqualTo("BUTTON");
+        var manual = cut.Find("[data-testid='manual-admission-input']");
+        var hid = cut.Find("[data-testid='hid-admission-input']");
+        await Assert.That(manual.TagName).IsEqualTo("INPUT");
+        await Assert.That(hid.TagName).IsEqualTo("INPUT");
+        await Assert.That(manual.GetAttribute("aria-describedby")).IsEqualTo("manual-admission-help");
+        await Assert.That(hid.GetAttribute("aria-describedby")).IsEqualTo("hid-admission-help");
+
+        await hid.InputAsync(new ChangeEventArgs { Value = Bearer(150) });
+        await hid.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        await manual.InputAsync(new ChangeEventArgs { Value = Bearer(151) });
+        await manual.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        await Assert.That(_service.Calls.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task StructureUsesLogicalRtlSafeContractsWithoutDirectionalOverrides()
+    {
+        var cut = Render(Event(CheckInRelation));
+        string rootClass = cut.Find("[data-testid='studio-admission-check-in']").ClassName ?? string.Empty;
+        string markup = cut.Markup.ToLowerInvariant();
+        string css = await File.ReadAllTextAsync(ScannerCssPath());
+
+        await Assert.That(rootClass).Contains("studio-admission-check-in");
+        await Assert.That(cut.FindAll("[dir='ltr']")).IsEmpty();
+        await Assert.That(markup).DoesNotContain("margin-left");
+        await Assert.That(markup).DoesNotContain("margin-right");
+        await Assert.That(markup).DoesNotContain("text-align: left");
+        await Assert.That(markup).DoesNotContain("text-align: right");
+        await Assert.That(css).DoesNotContain("--mud-palette");
+        await Assert.That(css).DoesNotContain("margin-left");
+        await Assert.That(css).DoesNotContain("margin-right");
+        await Assert.That(css).DoesNotContain("padding-left");
+        await Assert.That(css).DoesNotContain("padding-right");
+        await Assert.That(css).DoesNotContain("forced-color-adjust: none");
+        await Assert.That(css).Contains("minmax(min(100%, 16rem), 1fr)");
+        await Assert.That(css).Contains("min-block-size: var(--isl-target-min)");
+    }
+
+    [Test]
+    public async Task EventRouteOrCapabilityGenerationChangeCancelsAndRejectsStaleWork()
+    {
+        _service.HoldResults();
+        EventDto first = Event(CheckInRelation);
+        EventDto second = Event(CheckInRelation);
+        var cut = Render(first, capabilityGeneration: 1);
+        cut.Find("[data-testid='manual-admission-input']").Input(Bearer(160));
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        CancellationToken firstToken = _service.Calls.Single().CancellationToken;
+
+        RenderAgain(cut, second, capabilityGeneration: 2);
+
+        await Assert.That(firstToken.IsCancellationRequested).IsTrue();
+        await Assert.That(cut.FindAll("[data-testid='admission-result']")).IsEmpty();
+        _service.ReleaseHeldResults("CheckedIn");
+        await Task.Yield();
+        await Assert.That(cut.FindAll("[data-testid='admission-result']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task TransientCapabilityParameterActivatesInMemoryStateAndDisposalClearsIt()
+    {
+        const string capability = "transient-scanner-capability";
+        EventDto resource = Event(CheckInRelation);
+        Type serviceType = RequireService();
+        _ctx.Services.AddSingleton(serviceType, Phase21ServiceProxy.Create(serviceType, _service));
+        var parameters = ComponentParameters(resource, generation: 1);
+        parameters["ScannerCapability"] = capability;
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(component => component
+            .Add(dynamicComponent => dynamicComponent.Type, RequireComponent())
+            .Add(dynamicComponent => dynamicComponent.Parameters, parameters));
+
+        _scannerCapabilityState.Received(1).Activate(capability);
+        await Assert.That(cut.Markup).DoesNotContain(capability);
+
+        DisposeRenderedPhase21Component(cut);
+
+        _scannerCapabilityState.Received().Clear();
+    }
+
+    [Test]
+    public async Task DisposalCancelsCapabilityDetectionAndInFlightCheckIn()
+    {
+        var capability = new TaskCompletionSource<AdmissionQrScannerCapability>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken capabilityToken = default;
+        _scanner.GetCapabilityAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            capabilityToken = call.Arg<CancellationToken>();
+            return capability.Task;
+        });
+        _service.HoldResults();
+        var cut = Render(Event(CheckInRelation));
+        cut.Find("[data-testid='manual-admission-input']").Input(Bearer(170));
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        CancellationToken checkInToken = _service.Calls.Single().CancellationToken;
+
+        DisposeRenderedPhase21Component(cut);
+
+        await Assert.That(capabilityToken.IsCancellationRequested).IsTrue();
+        await Assert.That(checkInToken.IsCancellationRequested).IsTrue();
+        capability.TrySetCanceled(capabilityToken);
+        _service.ReleaseHeldResults("CheckedIn");
+    }
+
+    [Test]
+    [Arguments(AdmissionCheckInUiStatus.OnlineRequired, "admission-online-required")]
+    [Arguments(AdmissionCheckInUiStatus.Saturated, "admission-queue-saturated")]
+    public async Task FirstPressureResponseStopsAndClearsTheBoundedFifo(
+        AdmissionCheckInUiStatus status,
+        string expectedStatusTestId)
+    {
+        _service.HoldResults();
+        var cut = Render(Event(CheckInRelation));
+        cut.Find("[data-testid='manual-admission-input']").Input(Bearer(175));
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        cut.Find("[data-testid='manual-admission-input']").Input(Bearer(176));
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+        cut.Find("[data-testid='manual-admission-input']").Input(Bearer(177));
+        cut.Find("[data-testid='manual-admission-input']").KeyDown(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+
+        _service.ReleaseHeldResults(AdmissionCheckInUiCodes.Rejected, status);
+        await cut.InvokeAsync(() => { });
+
+        await Assert.That(_service.Calls.Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-testid='admission-queue-depth']").GetAttribute("data-depth")).IsEqualTo("0");
+        await Assert.That(cut.FindAll($"[data-testid='{expectedStatusTestId}'][role='alert']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-testid='admission-live-region']").TextContent).IsNotEmpty();
+        await Assert.That(cut.FindAll("[data-testid='admission-result']")).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain("Retry-After");
+    }
+
+    [Test]
+    public async Task ConnectivityFailurePersistsNoTokenAndQueuesNothingOffline()
+    {
+        _service.Throw(new HttpRequestException("offline"));
+        var cut = Render(Event(CheckInRelation));
+
+        await Submit(cut, "manual-admission-input", Bearer(180));
+
+        await Assert.That(cut.FindAll("[data-testid='admission-online-required'][role='alert']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-testid='admission-queue-depth']").GetAttribute("data-depth")).IsEqualTo("0");
+        await Assert.That(_ctx.JSInterop.Invocations.Select(invocation => invocation.Identifier)
+            .Any(identifier => identifier.Contains("localStorage", StringComparison.Ordinal)
+                || identifier.Contains("sessionStorage", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(cut.Markup).DoesNotContain("data-offline-queue");
+    }
+
+    [Test]
+    public async Task ClientServiceContractRequiresExplicitEventAndTargetThroughOneTypedMethod()
+    {
+        Type service = RequireService();
+        MethodInfo[] operations = service.GetMethods()
+            .Where(method => !method.IsSpecialName)
+            .ToArray();
+        MethodInfo operation = operations.Single();
+        ParameterInfo[] parameters = operation.GetParameters();
+
+        await Assert.That(operation.Name).IsEqualTo("CheckInAsync");
+        await Assert.That(parameters.Length).IsEqualTo(4);
+        await Assert.That((parameters[0].Name, parameters[0].ParameterType)).IsEqualTo(("eventId", typeof(Guid)));
+        await Assert.That((parameters[1].Name, parameters[1].ParameterType)).IsEqualTo(("targetId", typeof(Guid)));
+        await Assert.That((parameters[2].Name, parameters[2].ParameterType))
+            .IsEqualTo(("credential", typeof(AdmissionCredentialBearer)));
+        await Assert.That((parameters[3].Name, parameters[3].ParameterType))
+            .IsEqualTo(("cancellationToken", typeof(CancellationToken)));
+        await Assert.That(operation.ReturnType.IsGenericType
+            && operation.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)).IsTrue();
+    }
+
+    private IRenderedComponent<DynamicComponent> Render(EventDto resource, long capabilityGeneration = 1)
+    {
+        Type serviceType = RequireService();
+        object proxy = Phase21ServiceProxy.Create(serviceType, _service);
+        _ctx.Services.AddSingleton(serviceType, proxy);
+        return _ctx.RenderMudComponent<DynamicComponent>(parameters => parameters
+            .Add(component => component.Type, RequireComponent())
+            .Add(component => component.Parameters, ComponentParameters(resource, capabilityGeneration)));
+    }
+
+    private static void RenderAgain(
+        IRenderedComponent<DynamicComponent> cut,
+        EventDto resource,
+        long capabilityGeneration) => cut.Render(parameters => parameters
+        .Add(component => component.Type, RequireComponent())
+        .Add(component => component.Parameters, ComponentParameters(resource, capabilityGeneration)));
+
+    private static Dictionary<string, object> ComponentParameters(EventDto resource, long generation) => new()
+    {
+        ["EventId"] = resource.Id!.Value,
+        ["TargetId"] = TargetId(resource),
+        ["Event"] = resource,
+        ["CapabilityGeneration"] = generation
+    };
+
+    private static async Task Submit(IRenderedComponent<DynamicComponent> cut, string testId, string value)
+    {
+        var input = cut.Find($"[data-testid='{testId}']");
+        await input.InputAsync(new ChangeEventArgs { Value = value });
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
+    }
+
+    private static void DisposeRenderedPhase21Component(IRenderedComponent<DynamicComponent> cut)
+    {
+        MethodInfo findComponent = typeof(RenderedComponentExtensions).GetMethods()
+            .Single(method => method.Name == nameof(RenderedComponentExtensions.FindComponent)
+                && method.IsGenericMethod
+                && method.GetParameters().Length == 1);
+        object rendered = findComponent.MakeGenericMethod(RequireComponent()).Invoke(null, [cut])!;
+        object instance = rendered.GetType().GetProperty("Instance")!.GetValue(rendered)!;
+        ((IDisposable)instance).Dispose();
+    }
+
+    private static string ScannerCssPath()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+        {
+            directory = directory.Parent;
+        }
+
+        return Path.Combine(directory!.FullName, "src", "Explore.Blazor.Client", "Pages", "Studio", "StudioAdmissionCheckIn.razor.css");
+    }
+
+    private static Type RequireComponent() => typeof(EventDto).Assembly.GetType(ComponentName)
+        ?? throw new InvalidOperationException($"Missing Phase 21 UI behavior: {ComponentName} has not been implemented.");
+
+    private static Type RequireService() => typeof(EventDto).Assembly.GetType(ServiceName)
+        ?? throw new InvalidOperationException($"Missing Phase 21 UI behavior: {ServiceName} has not been implemented.");
+
+    private static EventDto Event(string? relation)
+    {
+        Guid eventId = Guid.CreateVersion7();
+        var resource = new EventDto { Id = eventId, Title = "Door operations" };
+        resource.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            relation is null
+                ? new Dictionary<string, object>()
+                : new Dictionary<string, object>
+                {
+                    [relation] = new
+                    {
+                        href = $"/api/events/{eventId:D}/admission-check-ins",
+                        method = "POST"
+                    }
+                });
+        return resource;
+    }
+
+    private static bool ExposesSecurityReason(string feedback) =>
+        feedback.Contains("scope", StringComparison.OrdinalIgnoreCase)
+        || feedback.Contains("revok", StringComparison.OrdinalIgnoreCase)
+        || feedback.Contains("tenant", StringComparison.OrdinalIgnoreCase);
+
+    private static Guid TargetId(EventDto resource)
+    {
+        byte[] bytes = resource.Id!.Value.ToByteArray();
+        bytes[^1] ^= 0x01;
+        return new Guid(bytes);
+    }
+
+    private static string Bearer(int seed)
+    {
+        var bytes = new byte[AdmissionCredentialBearer.ByteLength];
+        BitConverter.TryWriteBytes(bytes, seed);
+        return AdmissionCredentialBearer.FromBytes(bytes).Value;
+    }
+
+    public enum CameraFallbackScenario
+    {
+        Unsupported,
+        PermissionDenied,
+        DetectionFailure
+    }
+
+    private sealed record ServiceCall(
+        MethodInfo Method,
+        object?[] Arguments,
+        Guid? EventId,
+        Guid? TargetId,
+        CancellationToken CancellationToken);
+
+    private sealed class Phase21ServiceHandler
+    {
+        private readonly Queue<string> _resultCodes = new();
+        private readonly List<(Type ResultType, object Completion)> _held = [];
+        private Exception? _exception;
+        private bool _hold;
+
+        public List<ServiceCall> Calls { get; } = [];
+
+        public IReadOnlyList<string> CredentialValues => Calls
+            .SelectMany(call => call.Arguments)
+            .OfType<AdmissionCredentialBearer>()
+            .Select(credential => credential.Value)
+            .ToArray();
+
+        public void EnqueueResult(string code) => _resultCodes.Enqueue(code);
+
+        public void HoldResults() => _hold = true;
+
+        public void Throw(Exception exception) => _exception = exception;
+
+        public object? Invoke(MethodInfo method, object?[]? arguments)
+        {
+            object?[] supplied = arguments ?? [];
+            Guid? eventId = supplied.ElementAtOrDefault(0) is Guid suppliedEventId ? suppliedEventId : null;
+            Guid? targetId = supplied.ElementAtOrDefault(1) is Guid suppliedTargetId ? suppliedTargetId : null;
+            CancellationToken cancellationToken = supplied.OfType<CancellationToken>().LastOrDefault();
+            Calls.Add(new ServiceCall(method, supplied, eventId, targetId, cancellationToken));
+            if (_exception is not null)
+            {
+                return Faulted(method.ReturnType, _exception);
+            }
+
+            if (_hold)
+            {
+                Type resultType = method.ReturnType.GetGenericArguments().Single();
+                Type completionType = typeof(TaskCompletionSource<>).MakeGenericType(resultType);
+                object completion = Activator.CreateInstance(
+                    completionType,
+                    TaskCreationOptions.RunContinuationsAsynchronously)!;
+                _held.Add((resultType, completion));
+                return completionType.GetProperty("Task")!.GetValue(completion);
+            }
+
+            return Completed(method.ReturnType, _resultCodes.Count > 0 ? _resultCodes.Dequeue() : "CheckedIn");
+        }
+
+        public void ReleaseHeldResults(
+            string code,
+            AdmissionCheckInUiStatus status = AdmissionCheckInUiStatus.Completed)
+        {
+            _hold = false;
+            foreach ((Type resultType, object completion) in _held)
+            {
+                object result = Result(resultType, code, status);
+                completion.GetType().GetMethod("TrySetResult")!.Invoke(completion, [result]);
+            }
+            _held.Clear();
+        }
+
+        private static object Faulted(Type taskType, Exception exception)
+        {
+            Type resultType = taskType.GetGenericArguments().Single();
+            return typeof(Task).GetMethods()
+                .Single(method => method.Name == nameof(Task.FromException) && method.IsGenericMethod)
+                .MakeGenericMethod(resultType)
+                .Invoke(null, [exception])!;
+        }
+
+        private static object Completed(Type taskType, string code)
+        {
+            Type resultType = taskType.GetGenericArguments().Single();
+            object result = Result(resultType, code, AdmissionCheckInUiStatus.Completed);
+            return typeof(Task).GetMethods()
+                .Single(method => method.Name == nameof(Task.FromResult) && method.IsGenericMethod)
+                .MakeGenericMethod(resultType)
+                .Invoke(null, [result])!;
+        }
+
+        private static object Result(
+            Type resultType,
+            string code,
+            AdmissionCheckInUiStatus status)
+        {
+            object result = RuntimeHelpers.GetUninitializedObject(resultType);
+            Set(result, "Code", code);
+            Set(result, "ResultCode", code);
+            Set(result, "Message", code);
+            resultType.GetProperty("Status")?.SetValue(result, status);
+            return result;
+        }
+
+        private static void Set(object target, string propertyName, string value)
+        {
+            PropertyInfo? property = target.GetType().GetProperty(propertyName);
+            if (property?.CanWrite == true && property.PropertyType == typeof(string))
+            {
+                property.SetValue(target, value);
+            }
+        }
+    }
+
+    private class Phase21ServiceProxy : DispatchProxy
+    {
+        private Phase21ServiceHandler Handler { get; set; } = null!;
+
+        public static object Create(Type serviceType, Phase21ServiceHandler handler)
+        {
+            object proxy = DispatchProxy.Create(serviceType, typeof(Phase21ServiceProxy));
+            ((Phase21ServiceProxy)proxy).Handler = handler;
+            return proxy;
+        }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
+            Handler.Invoke(targetMethod!, args);
+    }
+}

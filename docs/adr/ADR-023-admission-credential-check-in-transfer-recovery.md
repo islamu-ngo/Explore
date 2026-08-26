@@ -54,6 +54,18 @@ Browser QR detection is not a portable correctness boundary. Camera detection ca
 
 Initial admission validation is online and server-authoritative. Offline-verifiable signed credentials remain deferred until an extension ADR defines signing-key custody, hardware or service boundaries, rotation, revocation distribution, clock skew, compromised-device recovery, and offline audit convergence.
 
+## Implementation Status
+
+Phase 20 implements the admission ticket and credential lifecycle, exact free/reconciled-paid
+issuance authority, refund and cancellation revocation, account reissue, generic single-use
+recovery, and the project-owned clean-room QR representation/decoder gate. Credential storage is
+keyed-digest-only, delivery is outbox-backed, and QR/manual payloads contain no PII or durable
+authorization claims.
+
+Append-only check-in facts, scoped scanner capability issuance, transfer acceptance, and offline
+signing remain intentionally deferred to their later phases. This ADR defines their invariants but
+does not imply that those runtime surfaces already ship.
+
 ## Rejected Alternatives
 
 1. Encoding a public attendee, order, or ticket ID as the QR credential.
@@ -73,7 +85,7 @@ Initial admission validation is online and server-authoritative. Offline-verifia
 - Append-only events preserve operational accountability while atomic current state prevents duplicate admission.
 - Scanner clients remain least-privilege and accessible across camera, HID, and manual workflows.
 - Online validation requires service availability; offline breadth remains an explicit future security decision.
-- QR encoder/decoder selection requires a separate clean-room dependency and outbound-license gate before Phase 20 implementation.
+- The Phase 20 project-owned QR representation and decoder gate passed clean-room and outbound-license review without introducing an incompatible runtime dependency.
 
 ## Related
 

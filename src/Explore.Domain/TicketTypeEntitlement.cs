@@ -30,6 +30,13 @@ public sealed class TicketTypeEntitlement : ITenantEntity
         EntitlementScopeTypeId = (int)scopeType;
         EventDayId = eventDayId;
         EventSessionId = eventSessionId;
+        ScopeId = scopeType switch
+        {
+            EntitlementScopeTypeEnum.Event => targetEventId,
+            EntitlementScopeTypeEnum.EventDay => eventDayId!.Value,
+            EntitlementScopeTypeEnum.EventSession => eventSessionId!.Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(scopeType))
+        };
         IncludedQuantity = includedQuantity;
         EntitlementSelectionRuleId = (int)selectionRule;
     }
@@ -49,6 +56,8 @@ public sealed class TicketTypeEntitlement : ITenantEntity
     public Guid? EventDayId { get; private set; }
 
     public Guid? EventSessionId { get; private set; }
+
+    public Guid ScopeId { get; private set; }
 
     public int IncludedQuantity { get; private set; }
 

@@ -1,0 +1,276 @@
+@* ABOUTME: Shows one account-authorized admission ticket and HAL-gated reissue actions. *@
+@* ABOUTME: Presents revoked state clearly and renders sensitive credentials only after explicit POST. *@
+@page "/tickets/{TicketId:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Admissions
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@attribute [Authorize]
+@rendermode InteractiveAuto
+@layout MainLayout
+@inject IAdmissionTicketService TicketService
+@inject IAdmissionTicketPrintInterop PrintInterop
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
+@implements IAsyncDisposable
+
+<PageTitle>Admission ticket</PageTitle>
+<HeadContent>
+    <meta name="referrer" content="no-referrer" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="ticket-detail">
+    @if (_loading)
+    {
+        <div class="ticket-detail__state" role="status">
+            <MudProgressCircular Indeterminate="true" aria-hidden="true" />
+            <span>Loading admission ticket…</span>
+        </div>
+    }
+    else if (_ticket is null)
+    {
+        <section class="ticket-detail__state" aria-labelledby="ticket-unavailable-heading">
+            <MudText Id="ticket-unavailable-heading" Typo="Typo.h4" HtmlTag="h1">
+                Ticket unavailable
+            </MudText>
+            <MudText Typo="Typo.body1">
+                This ticket does not exist or is not available to this account.
+            </MudText>
+            <AppButton Href="/tickets" Variant="Variant.Outlined">Back to tickets</AppButton>
+        </section>
+    }
+    else
+    {
+        <header class="ticket-detail__header">
+            <div>
+                <MudText Typo="Typo.overline">ADMISSION</MudText>
+                <MudText Typo="Typo.h3" HtmlTag="h1">@_ticket.DisplayReference</MudText>
+            </div>
+            <MudChip T="string" Variant="Variant.Outlined">@_ticket.StatusCode</MudChip>
+        </header>
+
+        @if (!HasLink("qr-code") && !HasLink("print"))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Variant="Variant.Outlined"
+                      data-testid="non-validating-ticket">
+                This ticket is not currently valid for admission. No QR or print credential can be issued.
+            </MudAlert>
+        }
+
+        <section class="ticket-detail__facts" aria-labelledby="ticket-details-heading">
+            <MudText Id="ticket-details-heading" Typo="Typo.h5" HtmlTag="h2">Ticket details</MudText>
+            <dl>
+                <div><dt>Holder</dt><dd>@(_ticket.HolderDisplayName ?? "Holder details unavailable")</dd></div>
+                <div><dt>Ticket type</dt><dd>@_ticket.TicketTypeName</dd></div>
+                <div><dt>Issued</dt><dd>@_ticket.IssuedAtUtc.ToLocalTime().ToString("g")</dd></div>
+            </dl>
+        </section>
+
+        <section class="ticket-detail__entitlements" aria-labelledby="ticket-entitlements-heading">
+            <MudText Id="ticket-entitlements-heading" Typo="Typo.h5" HtmlTag="h2">
+                Included admission
+            </MudText>
+            @if (_ticket.Entitlements is not { Count: > 0 })
+            {
+                <MudText Typo="Typo.body2">No admission entitlement is currently listed.</MudText>
+            }
+            else
+            {
+                <ul>
+                    @foreach (AdmissionTicketEntitlementDto entitlement in _ticket.Entitlements)
+                    {
+                        <li>
+                            <strong>@EntitlementTitle(entitlement)</strong>
+                            <span>@entitlement.EventTitle</span>
+                            @if (entitlement.LocalDate is not null)
+                            {
+                                <span>@entitlement.LocalDate</span>
+                            }
+                            <span>@entitlement.IncludedQuantity included</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <div class="ticket-detail__actions" aria-label="Ticket actions">
+            @if (HasExactPostLink("qr-code", $"/api/tickets/{_ticket.TicketId:D}/qr"))
+            {
+                <AppButton Disabled="_issuing"
+                           OnClick="ReissueQrAsync"
+                           data-testid="reissue-ticket-qr">
+                    Generate new QR ticket
+                </AppButton>
+            }
+            @if (HasExactPostLink("print", $"/api/tickets/{_ticket.TicketId:D}/print"))
+            {
+                <AppButton Disabled="_issuing"
+                           Variant="Variant.Outlined"
+                           OnClick="ReissuePrintAsync"
+                           data-testid="reissue-ticket-print">
+                    Prepare printable ticket
+                </AppButton>
+            }
+            @if (HasLink("registration-order"))
+            {
+                <AppButton Href="@($"/registration/events/{_ticket.EventId:D}/orders/{_ticket.RegistrationOrderId:D}")"
+                           Variant="Variant.Text">
+                    Registration order
+                </AppButton>
+            }
+        </div>
+
+        @if (_issuing)
+        {
+            <div class="ticket-detail__state" role="status">Issuing a new admission credential…</div>
+        }
+        else if (_delivery is not null)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Only the newest generated QR or manual code remains valid.
+            </MudAlert>
+            <AdmissionTicketBearerCard DisplayReference="@_delivery.DisplayReference"
+                                       StatusCode="@_delivery.StatusCode"
+                                       ManualCode="@_delivery.ManualCode"
+                                       ManualCodeClassificationCode="@_delivery.ManualCodeClassificationCode"
+                                       QrRepresentation="@_delivery.QrRepresentation"
+                                       HolderDisplayName="@_delivery.HolderDisplayName"
+                                       TicketTypeName="@_delivery.TicketTypeName"
+                                       Entitlements="@_delivery.Entitlements"
+                                       ShowPrintAction="_showPrintAction"
+                                       OnPrint="PrintAsync" />
+        }
+        else if (_issueFailed)
+        {
+            <MudAlert Severity="Severity.Error" role="alert">
+                A new ticket credential could not be issued. Reload the ticket and try again.
+            </MudAlert>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid TicketId { get; set; }
+
+    private readonly CancellationTokenSource _lifetime = new();
+    private HalResourceOfAdmissionTicketDto? _ticket;
+    private BearerDelivery? _delivery;
+    private bool _loading = true;
+    private bool _issuing;
+    private bool _issueFailed;
+    private bool _showPrintAction;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _ticket = await TicketService.GetAsync(TicketId, _lifetime.Token);
+        _loading = false;
+        await Announcer.AnnouncePoliteAsync(
+            _ticket is null ? "Admission ticket unavailable." : "Admission ticket loaded.");
+    }
+
+    private bool HasLink(string relation) => _ticket?._links?.ContainsKey(relation) == true;
+
+    private bool HasExactPostLink(string relation, string expectedPath) =>
+        _ticket?._links?.TryGetValue(relation, out HalLink? link) == true &&
+        string.Equals(link.Method, HttpMethod.Post.Method, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(link.Href, expectedPath, StringComparison.Ordinal);
+
+    private async Task ReissueQrAsync()
+    {
+        if (_ticket is null)
+        {
+            return;
+        }
+
+        await IssueAsync(async () =>
+        {
+            AdmissionTicketQrDeliveryDto? result =
+                await TicketService.ReissueQrAsync(_ticket, _lifetime.Token);
+            return result is null
+                ? null
+                : new BearerDelivery(
+                    result.DisplayReference,
+                    result.StatusCode,
+                    result.HolderDisplayName,
+                    result.TicketTypeName,
+                    [.. result.Entitlements],
+                    result.ManualCode,
+                    result.ManualCodeClassificationCode,
+                    result.QrRepresentation);
+        }, showPrintAction: false);
+    }
+
+    private async Task ReissuePrintAsync()
+    {
+        if (_ticket is null)
+        {
+            return;
+        }
+
+        await IssueAsync(async () =>
+        {
+            AdmissionTicketPrintDeliveryDto? result =
+                await TicketService.ReissuePrintAsync(_ticket, _lifetime.Token);
+            return result is null
+                ? null
+                : new BearerDelivery(
+                    result.DisplayReference,
+                    result.StatusCode,
+                    result.HolderDisplayName,
+                    result.TicketTypeName,
+                    [.. result.Entitlements],
+                    result.ManualCode,
+                    result.ManualCodeClassificationCode,
+                    result.QrRepresentation);
+        }, showPrintAction: true);
+    }
+
+    private async Task IssueAsync(Func<Task<BearerDelivery?>> operation, bool showPrintAction)
+    {
+        _issuing = true;
+        _issueFailed = false;
+        _delivery = await operation();
+        _showPrintAction = _delivery is not null && showPrintAction;
+        _issueFailed = _delivery is null;
+        _issuing = false;
+        await Announcer.AnnouncePoliteAsync(
+            _delivery is null
+                ? "Ticket credential issuance failed."
+                : "A new sensitive ticket credential was issued.");
+        await Focus.FocusByIdAsync(
+            _delivery is null
+                ? "ticket-details-heading"
+                : "admission-ticket-bearer-heading");
+    }
+
+    private async Task PrintAsync(MouseEventArgs _)
+    {
+        await PrintInterop.PrintAsync(_lifetime.Token);
+    }
+
+    private static string EntitlementTitle(AdmissionTicketEntitlementDto entitlement) =>
+        entitlement.SessionTitle
+        ?? entitlement.DayLabel
+        ?? entitlement.EventTitle;
+
+    public async ValueTask DisposeAsync()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        await PrintInterop.DisposeAsync();
+    }
+
+    private sealed record BearerDelivery(
+        string DisplayReference,
+        string StatusCode,
+        string? HolderDisplayName,
+        string TicketTypeName,
+        IReadOnlyCollection<AdmissionTicketEntitlementDto> Entitlements,
+        string ManualCode,
+        string ManualCodeClassificationCode,
+        string QrRepresentation);
+}

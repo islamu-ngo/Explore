@@ -30,11 +30,15 @@ internal sealed class AdmissionTestScenario
 {
     private readonly Queue<string> deliveredCapabilities = new();
 
-    private AdmissionTestScenario(ManualAdmissionTimeProvider clock, IReadOnlyList<AdmissionAssignmentSeed> assignments)
+    private AdmissionTestScenario(
+        ManualAdmissionTimeProvider clock,
+        IReadOnlyList<AdmissionAssignmentSeed> assignments,
+        bool paid = false)
     {
         Clock = clock;
         Assignments = assignments;
-        (Order, Catalog, AssignmentFacts) = BuildAuthority(clock.GetUtcNow().UtcDateTime, assignments);
+        (Order, Catalog, AssignmentFacts) = BuildAuthority(
+            clock.GetUtcNow().UtcDateTime, assignments, paid);
         TenantId = Order.TenantId;
         EventId = Order.EventId;
         OrderId = Order.Id;
@@ -53,7 +57,7 @@ internal sealed class AdmissionTestScenario
     internal static AdmissionTestScenario Paid(
         DateTime now,
         IReadOnlyList<AdmissionAssignmentSeed> assignments,
-        bool reconciled) => new(new ManualAdmissionTimeProvider(now), assignments)
+        bool reconciled) => new(new ManualAdmissionTimeProvider(now), assignments, paid: true)
         {
             Authority = reconciled ? "ReconciledPaidFinalization" : "PaymentSucceeded",
             PaymentReconciled = reconciled,
@@ -105,8 +109,11 @@ internal sealed class AdmissionTestScenario
     internal int RecoveryStoreCalls { get; set; }
     internal int RecoveryCurrentReadCalls { get; set; }
     internal int RecoveryRotationCalls { get; set; }
+    internal int RecoveryRequestStageCalls { get; set; }
+    internal bool FailRecoveryRequestStaging { get; set; }
     internal bool FailNextIssuanceDelivery { get; set; }
     internal bool LoseNextCommitAcknowledgement { get; set; }
+    internal bool LoseNextCommitAcknowledgementAsTimeout { get; set; }
     internal int StoredRecoveryPlaintextCount => RecoveryByDigest.Values.Sum(value => value.GetType()
         .GetProperties()
         .Count(property => property.Name.Contains("Capability", StringComparison.OrdinalIgnoreCase) &&
@@ -150,39 +157,84 @@ internal sealed class AdmissionTestScenario
 
     private static (RegistrationOrder Order, EventTicketCatalogVersion Catalog,
         IReadOnlyList<(RegistrationOrderLine, RegistrationTicketAssignment, RegistrationParticipant, EventTicketType)> Facts)
-        BuildAuthority(DateTime now, IReadOnlyList<AdmissionAssignmentSeed> seeds)
+        BuildAuthority(
+            DateTime now,
+            IReadOnlyList<AdmissionAssignmentSeed> seeds,
+            bool paid)
     {
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "EUR", 1);
-        EventTicketType ticketType = EventTicketType.Create(
-            Guid.CreateVersion7(), tenantId, catalog.Id, "Admission", "EUR", TicketPricingModeEnum.Free,
-            null, null, null, ParticipantDataCollectionModeEnum.None, null, null, null,
-            false, false, null, null, null, null);
-        catalog.AddTicketType(ticketType, null);
-        catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, tenantId, eventId, 1));
+        Guid[] lineIds = seeds
+            .Select(seed => seed.LineId)
+            .Distinct()
+            .DefaultIfEmpty(Guid.CreateVersion7())
+            .ToArray();
+        Dictionary<Guid, EventTicketType> ticketTypes = lineIds
+            .ToDictionary(
+                lineId => lineId,
+                lineId =>
+                {
+                    EventTicketType ticketType = EventTicketType.Create(
+                        Guid.CreateVersion7(), tenantId, catalog.Id, $"Admission {lineId}", "EUR",
+                        paid ? TicketPricingModeEnum.Fixed : TicketPricingModeEnum.Free,
+                        paid ? Money.Create(500, "EUR") : null,
+                        null, null, ParticipantDataCollectionModeEnum.None, null, null, null,
+                        false, false, null, null, null, null);
+                    catalog.AddTicketType(ticketType, null);
+                    catalog.AddEntitlement(
+                        ticketType,
+                        TicketTypeEntitlement.CreateForEvent(ticketType.Id, tenantId, eventId, 1));
+                    return ticketType;
+                });
+        if (paid)
+        {
+            catalog.UpdateCommercialDisclosures(
+                "Merchant disclosure",
+                "Refund policy",
+                "support@example.test");
+        }
         catalog.Publish();
         RegistrationOrder order = RegistrationOrder.Create(
             tenantId, eventId, Guid.CreateVersion7(), null, BookingPartyTypeEnum.Individual, catalog.Id,
             RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 1, 1, 1, null),
             null, null, "EUR", now, null);
-        RegistrationOrderLine line = RegistrationOrderLine.Create(
-            catalog, ticketType, order.Id, Math.Max(1, seeds.Count), null, null);
-        order.AddLine(line);
         var facts = new List<(RegistrationOrderLine, RegistrationTicketAssignment, RegistrationParticipant, EventTicketType)>();
-        for (int index = 0; index < seeds.Count; index++)
+        foreach (IGrouping<Guid, AdmissionAssignmentSeed> lineSeeds in seeds.GroupBy(seed => seed.LineId))
         {
-            RegistrationParticipant participant = RegistrationParticipant.Create(
-                tenantId, order.Id, null, ParticipantTypeEnum.Adult, null);
-            RegistrationTicketAssignment assignment = RegistrationTicketAssignment.CreateAssigned(
-                seeds[index].AssignmentId, line.Id, index + 1, participant, now);
-            order.AddParticipant(participant);
-            order.AddAssignment(line, assignment, participant);
-            facts.Add((line, assignment, participant, ticketType));
+            EventTicketType ticketType = ticketTypes[lineSeeds.Key];
+            RegistrationOrderLine line = RegistrationOrderLine.Create(
+                lineSeeds.Key,
+                catalog,
+                ticketType,
+                order.Id,
+                lineSeeds.Count(),
+                null,
+                null);
+            order.AddLine(line);
+            int ordinal = 0;
+            foreach (AdmissionAssignmentSeed seed in lineSeeds)
+            {
+                ordinal++;
+                RegistrationParticipant participant = RegistrationParticipant.Create(
+                    tenantId, order.Id, null, ParticipantTypeEnum.Adult, null);
+                RegistrationTicketAssignment assignment = RegistrationTicketAssignment.CreateAssigned(
+                    seed.AssignmentId, line.Id, ordinal, participant, now);
+                order.AddParticipant(participant);
+                order.AddAssignment(line, assignment, participant);
+                facts.Add((line, assignment, participant, ticketType));
+            }
         }
-        order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("EUR", 0, 0, 0, 0));
+        long organizerMinor = paid ? checked(seeds.Count * 500L) : 0;
+        order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
+            "EUR", organizerMinor, 0, organizerMinor, 0));
         order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, now);
         order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, now);
+        if (paid)
+        {
+            order.TransitionTo(RegistrationOrderStatusEnum.AwaitingPayment, now);
+            order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, now);
+        }
         order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, now);
         return (order, catalog, facts);
     }
@@ -224,6 +276,10 @@ internal sealed class AdmissionTrackingUnitOfWork(AdmissionTestScenario scenario
             if (scenario.LoseNextCommitAcknowledgement)
             {
                 scenario.LoseNextCommitAcknowledgement = false;
+                if (scenario.LoseNextCommitAcknowledgementAsTimeout)
+                {
+                    throw new TimeoutException("Commit acknowledgement timed out after durable commit.");
+                }
                 throw new OperationCanceledException("Commit acknowledgement was lost after durable commit.");
             }
             return result;

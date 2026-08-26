@@ -1,0 +1,181 @@
+@* ABOUTME: Requests guest ticket recovery and consumes one-time fragment capabilities. *@
+@* ABOUTME: Scrubs the address bar before BFF exchange and renders no bearer outside the ticket card. *@
+@page "/tickets/recovery"
+@using Explore.Blazor.Client.Components.Admissions
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@rendermode InteractiveAuto
+@layout MainLayout
+@inject IAdmissionTicketService TicketService
+@inject IAdmissionRecoveryFragmentInterop FragmentInterop
+@inject IAdmissionTicketPrintInterop PrintInterop
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
+@implements IAsyncDisposable
+
+<PageTitle>Recover admission ticket</PageTitle>
+<HeadContent>
+    <meta name="referrer" content="no-referrer" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="ticket-recovery">
+    <header class="ticket-recovery__header">
+        <MudText Typo="Typo.overline">ADMISSION</MudText>
+        <MudText Typo="Typo.h3" HtmlTag="h1">Recover a ticket</MudText>
+        <MudText Typo="Typo.body1">
+            Request a one-time link using the verified email attached to the registration.
+        </MudText>
+    </header>
+
+    @if (_consuming)
+    {
+        <div class="ticket-recovery__state" role="status">
+            <MudProgressCircular Indeterminate="true" aria-hidden="true" />
+            <span>Recovering the admission ticket…</span>
+        </div>
+    }
+    else if (_delivery is not null)
+    {
+        <AdmissionTicketBearerCard DisplayReference="@_delivery.DisplayReference"
+                                   StatusCode="@_delivery.StatusCode"
+                                   ManualCode="@_delivery.ManualCode"
+                                   ManualCodeClassificationCode="@_delivery.ManualCodeClassificationCode"
+                                   QrRepresentation="@_delivery.QrRepresentation"
+                                   HolderDisplayName="@_delivery.HolderDisplayName"
+                                   TicketTypeName="@_delivery.TicketTypeName"
+                                   Entitlements="@_delivery.Entitlements"
+                                   ShowPrintAction="true"
+                                   OnPrint="PrintAsync" />
+    }
+    else
+    {
+        @if (_consumeOutcome == AdmissionRecoveryUiOutcome.Invalid)
+        {
+            <MudAlert Id="ticket-recovery-outcome" Severity="Severity.Error" role="alert">
+                This recovery link is invalid, expired, rotated, or already used.
+            </MudAlert>
+        }
+        else if (_consumeOutcome == AdmissionRecoveryUiOutcome.RateLimited)
+        {
+            <MudAlert Id="ticket-recovery-outcome" Severity="Severity.Warning" role="status">
+                Too many recovery attempts were made. Wait before trying again.
+            </MudAlert>
+        }
+        else if (_consumeOutcome == AdmissionRecoveryUiOutcome.Unavailable)
+        {
+            <MudAlert Id="ticket-recovery-outcome" Severity="Severity.Error" role="alert">
+                Ticket recovery is temporarily unavailable.
+            </MudAlert>
+        }
+
+        <section class="ticket-recovery__request"
+                 aria-labelledby="ticket-recovery-request-heading">
+            <MudText Id="ticket-recovery-request-heading" Typo="Typo.h5" HtmlTag="h2">
+                Email a recovery link
+            </MudText>
+            <MudTextField T="string"
+                          @bind-Value="_email"
+                          Label="Verified registration email"
+                          InputType="InputType.Email"
+                          Autocomplete="email"
+                          Required="true"
+                          Disabled="_requesting"
+                          data-testid="ticket-recovery-email" />
+            <AppButton Disabled="@(_requesting || string.IsNullOrWhiteSpace(_email))"
+                       OnClick="RequestRecoveryAsync"
+                       data-testid="request-ticket-recovery">
+                @(_requesting ? "Requesting…" : "Send recovery link")
+            </AppButton>
+            @if (_requestAccepted)
+            {
+                <div id="ticket-recovery-request-outcome"
+                     role="status"
+                     data-testid="ticket-recovery-accepted">
+                    If that verified address can recover a ticket, a one-time link will be sent.
+                </div>
+            }
+            else if (_requestFailed)
+            {
+                <div id="ticket-recovery-request-outcome" role="alert">
+                    Recovery could not be requested right now. Try again later.
+                </div>
+            }
+        </section>
+    }
+</MudContainer>
+
+@code {
+    private readonly CancellationTokenSource _lifetime = new();
+    private AdmissionTicketRecoveryDeliveryDto? _delivery;
+    private AdmissionRecoveryUiOutcome? _consumeOutcome;
+    private string _email = string.Empty;
+    private bool _consuming;
+    private bool _requesting;
+    private bool _requestAccepted;
+    private bool _requestFailed;
+    private bool _fragmentChecked;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _fragmentChecked)
+        {
+            return;
+        }
+
+        _fragmentChecked = true;
+        string? capability = await FragmentInterop.TakeCapabilityAsync(_lifetime.Token);
+        if (string.IsNullOrWhiteSpace(capability))
+        {
+            return;
+        }
+
+        _consuming = true;
+        StateHasChanged();
+        AdmissionRecoveryUiResult result =
+            await TicketService.ConsumeRecoveryAsync(capability, _lifetime.Token);
+        capability = null;
+        _delivery = result.Delivery;
+        _consumeOutcome = result.Outcome;
+        _consuming = false;
+        await Announcer.AnnouncePoliteAsync(
+            result.Outcome == AdmissionRecoveryUiOutcome.Consumed
+                ? "Admission ticket recovered."
+                : "Admission ticket recovery failed.");
+        await Focus.FocusByIdAsync(
+            result.Outcome == AdmissionRecoveryUiOutcome.Consumed
+                ? "admission-ticket-bearer-heading"
+                : "ticket-recovery-outcome");
+        StateHasChanged();
+    }
+
+    private async Task RequestRecoveryAsync()
+    {
+        _requesting = true;
+        _requestAccepted = false;
+        _requestFailed = false;
+        bool accepted = await TicketService.RequestRecoveryAsync(_email, _lifetime.Token);
+        _email = string.Empty;
+        _requestAccepted = accepted;
+        _requestFailed = !accepted;
+        _requesting = false;
+        await Announcer.AnnouncePoliteAsync(
+            accepted
+                ? "Recovery request accepted."
+                : "Recovery request unavailable.");
+        await Focus.FocusByIdAsync("ticket-recovery-request-outcome");
+    }
+
+    private async Task PrintAsync(MouseEventArgs _)
+    {
+        await PrintInterop.PrintAsync(_lifetime.Token);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        await FragmentInterop.DisposeAsync();
+        await PrintInterop.DisposeAsync();
+    }
+}

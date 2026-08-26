@@ -4,6 +4,8 @@
 namespace Event.Api.IntegrationTests.Features;
 
 using System.Text;
+using System.Security.Claims;
+using Explore.API.Authentication;
 using Explore.API.Attributes;
 using Explore.API.Middleware;
 using Explore.API.OpenApi;
@@ -160,6 +162,69 @@ public class IdempotencyMiddlewareTests
         await Assert.That(duplicate.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
         await Assert.That(duplicate.Body).Contains("idempotency_request_in_progress");
         await Assert.That(completed.NextCallCount + duplicate.NextCallCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SuppressedOneTimeSecretResponseBypassesGenericStorageAndReplay()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Headers["Idempotency-Key"] = "one-time-secret";
+        context.Response.Body = new MemoryStream();
+        context.SetEndpoint(new Endpoint(
+            _ => Task.CompletedTask,
+            new EndpointMetadataCollection(new SuppressIdempotencyResponseStorageAttribute()),
+            "one-time-secret"));
+        var nextCallCount = 0;
+        var middleware = new IdempotencyMiddleware(
+            async current =>
+            {
+                nextCallCount++;
+                current.Response.StatusCode = StatusCodes.Status200OK;
+                await current.Response.WriteAsync("{\"plaintext\":\"must-not-be-stored\"}");
+            },
+            new RecyclableMemoryStreamManager(),
+            NullLogger<IdempotencyMiddleware>.Instance,
+            new EphemeralDataProtectionProvider());
+
+        await middleware.InvokeAsync(context);
+
+        await Assert.That(nextCallCount).IsEqualTo(1);
+        await Assert.That(context.Response.Headers.ContainsKey("X-Idempotency-Replay")).IsFalse();
+    }
+
+    [Test]
+    public async Task ScannerPrincipalFingerprintBindsTheAuthenticatedCapabilityIdentity()
+    {
+        Guid firstCapabilityId = Guid.CreateVersion7();
+        Guid secondCapabilityId = Guid.CreateVersion7();
+        var streams = new RecyclableMemoryStreamManager();
+        IdempotencyRequestIdentity first = await Identity(firstCapabilityId);
+        IdempotencyRequestIdentity second = await Identity(secondCapabilityId);
+
+        await Assert.That(first.UserId).IsNull();
+        await Assert.That(second.UserId).IsNull();
+        await Assert.That(first.PrincipalFingerprint).IsNotEqualTo(second.PrincipalFingerprint);
+        await Assert.That(first.PrincipalFingerprint).DoesNotContain(firstCapabilityId.ToString("N"));
+        await Assert.That(second.PrincipalFingerprint).DoesNotContain(secondCapabilityId.ToString("N"));
+
+        async Task<IdempotencyRequestIdentity> Identity(Guid capabilityId)
+        {
+            var context = new DefaultHttpContext();
+            context.Request.Method = HttpMethods.Post;
+            context.Request.ContentType = "application/json";
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("{\"credential\":\"redacted\"}"));
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(
+                    AdmissionScannerAuthenticationDefaults.CapabilityIdClaim,
+                    capabilityId.ToString("D"))
+            ], AdmissionScannerAuthenticationDefaults.Scheme));
+            return await IdempotencyRequestIdentityFactory.CreateAsync(
+                context,
+                streams,
+                CancellationToken.None);
+        }
     }
 
     [Test]

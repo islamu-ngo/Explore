@@ -9,6 +9,25 @@ namespace Explore.Blazor.Client.Tests.Routing;
 public class RoutesConfigurationTests
 {
     [Test]
+    public async Task TicketRoutesPreservePublicRecoveryAndAuthenticatedAccountGuards()
+    {
+        string routes = await File.ReadAllTextAsync(FindRoutesFilePath());
+        string recoveryLine = routes.Split('\n').Single(line =>
+            line.Contains("Path = \"/tickets/recovery\"", StringComparison.Ordinal));
+        string listLine = routes.Split('\n').Single(line =>
+            line.Contains("Path = \"/tickets\"", StringComparison.Ordinal));
+        string detailLine = routes.Split('\n').Single(line =>
+            line.Contains("Path = \"/tickets/:ticketId\"", StringComparison.Ordinal));
+
+        await Assert.That(routes).Contains("@using Explore.Blazor.Client.Pages.Tickets");
+        await Assert.That(recoveryLine).DoesNotContain("RequireAuthenticated()");
+        await Assert.That(listLine).Contains("Guards = RequireAuthenticated()");
+        await Assert.That(detailLine).Contains("Guards = RequireAuthenticated()");
+        await Assert.That(routes.IndexOf(recoveryLine, StringComparison.Ordinal))
+            .IsLessThan(routes.IndexOf(detailLine, StringComparison.Ordinal));
+    }
+
+    [Test]
     public async Task Routes_ShouldInclude_OnboardingAuthProvider_Path()
     {
         var routesFilePath = FindRoutesFilePath();
@@ -72,9 +91,13 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/promotions\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/integrations\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         const string formsRoute = "Path = \"/studio/events/:eventId/forms\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()";
+        const string checkInRoute = "Path = \"/studio/events/:eventId/check-in\", Component = typeof(StudioAdmissionCheckIn), Transition = RouteTransition.Fade, EnableCache = false, Guards = RequireAuthenticated()";
         const string genericRoute = "Path = \"/studio/events/:eventId\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()";
         await Assert.That(routesContent).Contains(formsRoute);
+        await Assert.That(routesContent).Contains(checkInRoute);
         await Assert.That(routesContent.IndexOf(formsRoute, StringComparison.Ordinal))
+            .IsLessThan(routesContent.IndexOf(genericRoute, StringComparison.Ordinal));
+        await Assert.That(routesContent.IndexOf(checkInRoute, StringComparison.Ordinal))
             .IsLessThan(routesContent.IndexOf(genericRoute, StringComparison.Ordinal));
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/publication\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
     }

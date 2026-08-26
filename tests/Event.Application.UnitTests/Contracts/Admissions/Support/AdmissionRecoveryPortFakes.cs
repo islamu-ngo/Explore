@@ -4,13 +4,16 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Explore.Application.Contracts.Admissions;
+using Explore.Application.Services.Registration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ApplicationUnitTests.Contracts.Admissions.Support;
 
 internal static class AdmissionRecoveryPorts
 {
     internal const string CapabilityPort = "IAdmissionRecoveryCapabilityService";
-    internal const string DeliveryPort = "IAdmissionRecoveryDeliveryService";
+    internal const string DeliveryStagerPort = "IAdmissionRecoveryDeliveryStager";
 
     internal static object Service(AdmissionTestScenario scenario)
     {
@@ -19,9 +22,14 @@ internal static class AdmissionRecoveryPorts
             "AdmissionRecoveryService",
             scenario.Clock,
             scenario.UnitOfWork,
-            (RecoveryRepositoryFake.PortName, RecoveryRepositoryFake.Create(scenario)),
+            (RecoveryRepositoryFake.PortName, new RecoveryRepositoryFake(scenario)),
+            (RecoveryIdentityResolverFake.PortName, new RecoveryIdentityResolverFake(scenario)),
             (CapabilityPort, RecoveryCapabilityFake.Create(scenario)),
-            (DeliveryPort, RecoveryDeliveryFake.Create(scenario)));
+            (DeliveryStagerPort, new RecoveryDeliveryStagerFake(scenario)),
+            (nameof(IAdmissionRecoveryAuditService), new RecoveryAuditFake()),
+            (nameof(IAdmissionRecoveryRateLimiter), new RecoveryRateLimiterFake()),
+            (nameof(IAdmissionRecoveryRequestStager), new RecoveryRequestStagerFake(scenario)),
+            ("ILogger`1", NullLogger<AdmissionRecoveryService>.Instance));
     }
 
     internal static object Request(AdmissionTestScenario scenario, string purpose) =>
@@ -47,6 +55,66 @@ internal static class AdmissionRecoveryPorts
         ("TenantId", scenario.TenantId),
         ("RecoveryRequestId", scenario.RecoveryRequestId),
         ("Purpose", "TicketRecovery"));
+}
+
+internal sealed class RecoveryDeliveryStagerFake(AdmissionTestScenario scenario) :
+    IAdmissionRecoveryDeliveryStager
+{
+    public Task<AdmissionRecoveryDeliveryResult> StageAsync(
+        AdmissionRecoveryDeliveryRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!scenario.UnitOfWork.InTransaction)
+        {
+            throw AdmissionContractRuntime.Missing("protected recovery staging transaction");
+        }
+
+        scenario.DeliverCapability(request.Capability);
+        return Task.FromResult(
+            new AdmissionRecoveryDeliveryResult(AdmissionRecoveryDeliveryOutcome.Accepted));
+    }
+}
+
+internal sealed class RecoveryAuditFake : IAdmissionRecoveryAuditService
+{
+    public Task AppendAsync(
+        AdmissionRecoveryAuditFact fact,
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+}
+
+internal sealed class RecoveryRateLimiterFake : IAdmissionRecoveryRateLimiter
+{
+    public AdmissionRecoveryRateLimitDecision TryAcquire(
+        Guid tenantId,
+        string normalizedIdentity,
+        DateTimeOffset occurredAtUtc) =>
+        new(true);
+}
+
+internal sealed class RecoveryRequestStagerFake(AdmissionTestScenario scenario) :
+    IAdmissionRecoveryRequestStager
+{
+    public Task StageAsync(
+        Guid tenantId,
+        AdmissionRecoveryRequestEnvelope envelope,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId != scenario.TenantId ||
+            envelope.Purpose != AdmissionRecoveryPurpose.TicketRecovery ||
+            envelope.NormalizedIdentity != scenario.NormalizedIdentity.ToUpperInvariant())
+        {
+            throw AdmissionContractRuntime.Missing("normalized encrypted recovery request staging");
+        }
+
+        scenario.RecoveryRequestStageCalls++;
+        if (scenario.FailRecoveryRequestStaging)
+        {
+            throw new InvalidOperationException("simulated durable staging failure");
+        }
+
+        return Task.CompletedTask;
+    }
 }
 
 internal class RecoveryCapabilityFake : DispatchProxy
@@ -87,6 +155,7 @@ internal class RecoveryCapabilityFake : DispatchProxy
             payloadType,
             ("Capability", capability),
             ("LookupDigest", digest),
+            ("LocatorDigest", digest),
             ("KeyVersion", 7),
             ("Purpose", AdmissionContractRuntime.Value<object>(request, "Purpose")),
             ("ExpiresAtUtc", scenario.Clock.GetUtcNow().AddHours(1)));
@@ -124,46 +193,5 @@ internal class RecoveryCapabilityFake : DispatchProxy
         if (payload.Name != expectedName)
             throw AdmissionContractRuntime.Missing($"exact {expectedName} return");
         return payload;
-    }
-}
-
-internal class RecoveryDeliveryFake : DispatchProxy
-{
-    private AdmissionTestScenario scenario = null!;
-
-    internal static object Create(AdmissionTestScenario scenario)
-    {
-        Type port = AdmissionContractRuntime.ApplicationType(AdmissionRecoveryPorts.DeliveryPort);
-        object proxy = Create(port, typeof(RecoveryDeliveryFake));
-        ((RecoveryDeliveryFake)proxy).scenario = scenario;
-        return proxy;
-    }
-
-    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-    {
-        MethodInfo method = targetMethod ?? throw AdmissionContractRuntime.Missing("recovery delivery method");
-        if (method.Name != "DeliverAsync")
-            throw AdmissionContractRuntime.Missing($"planned {AdmissionRecoveryPorts.DeliveryPort}.{method.Name}");
-        object request = AdmissionContractRuntime.ExactObject(
-            (args ?? []).Single(value => value is not CancellationToken)!, "AdmissionRecoveryDeliveryRequest");
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid requestId = AdmissionContractRuntime.Value<Guid>(request, "RecoveryRequestId");
-        Guid ticketId = AdmissionContractRuntime.Value<Guid>(request, "AdmissionTicketId");
-        string purpose = AdmissionContractRuntime.Value<object>(request, "Purpose").ToString()!;
-        string capability = AdmissionContractRuntime.Value<string>(request, "Capability");
-        string digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(capability)));
-        if (!scenario.IdentityPresent || tenantId != scenario.TenantId || requestId != scenario.RecoveryRequestId ||
-            ticketId != scenario.CurrentAdmissionTicketId || purpose != "TicketRecovery" ||
-            !scenario.RecoveryByDigest.TryGetValue(digest, out StoredRecoveryCapability? stored) ||
-            stored.TenantId != tenantId || stored.RecoveryRequestId != requestId ||
-            stored.AdmissionTicketId != ticketId || stored.Purpose != purpose || stored.Consumed || stored.Rotated)
-        {
-            throw AdmissionContractRuntime.Missing("stored current recovery record before delivery");
-        }
-        scenario.DeliverCapability(capability);
-        Type? payloadType = AdmissionContractRuntime.AsyncPayload(method.ReturnType);
-        object? result = payloadType is null ? null : AdmissionContractRuntime.Create(
-            payloadType, ("Outcome", "Accepted"));
-        return AdmissionContractRuntime.WrapAsync(method.ReturnType, result);
     }
 }

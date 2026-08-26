@@ -14,7 +14,8 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed partial class AdmissionTicketApiRedContractTests
 {
     private const string RecoveryCapabilityHeader = "X-Admission-Ticket-Recovery-Capability";
-    private const string RecoveryRateLimitPolicy = "admission_ticket_recovery";
+    private const string RecoveryRequestRateLimitPolicy = "public_transactional";
+    private const string RecoveryConsumeRateLimitPolicy = "admission_ticket_recovery";
     private const string QrRelation = "qr-code";
     private const string PrintRelation = "print";
 
@@ -23,9 +24,9 @@ public sealed partial class AdmissionTicketApiRedContractTests
     private static readonly ApiRouteContract AccountDetail = new(
         "api/tickets/{ticketId:guid}", HttpMethods.Get, "GetCurrentAdmissionTicket");
     private static readonly ApiRouteContract AccountQr = new(
-        "api/tickets/{ticketId:guid}/qr", HttpMethods.Get, "GetCurrentAdmissionTicketQr");
+        "api/tickets/{ticketId:guid}/qr", HttpMethods.Post, "ReissueCurrentAdmissionTicketQr");
     private static readonly ApiRouteContract AccountPrint = new(
-        "api/tickets/{ticketId:guid}/print", HttpMethods.Get, "GetCurrentAdmissionTicketPrint");
+        "api/tickets/{ticketId:guid}/print", HttpMethods.Post, "ReissueCurrentAdmissionTicketPrint");
     private static readonly ApiRouteContract RecoveryRequest = new(
         "api/tickets/recovery", HttpMethods.Post, "RequestAdmissionTicketRecovery");
     private static readonly ApiRouteContract RecoveryConsume = new(
@@ -107,8 +108,17 @@ public sealed partial class AdmissionTicketApiRedContractTests
     }
 
     private static async Task<HttpResponseMessage> SendAccountGet(HttpClient client, string path)
+        => await SendAccount(client, HttpMethod.Get, path);
+
+    private static async Task<HttpResponseMessage> SendAccountPost(HttpClient client, string path)
+        => await SendAccount(client, HttpMethod.Post, path);
+
+    private static async Task<HttpResponseMessage> SendAccount(
+        HttpClient client,
+        HttpMethod method,
+        string path)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        using var request = new HttpRequestMessage(method, path);
         request.Headers.Add(
             TestAuthHandler.AuthHeaderName,
             TestAuthHandler.CreateAuthHeaderValue(Guid.CreateVersion7()));
@@ -132,7 +142,8 @@ public sealed partial class AdmissionTicketApiRedContractTests
     private static string CanonicalElement(JsonElement element) => element.ValueKind switch
     {
         JsonValueKind.Object => "{" + string.Join(',', element.EnumerateObject()
-            .Where(property => property.Name is not ("traceId" or "timestamp" or "correlationId"))
+            .Where(property => property.Name is not (
+                "traceId" or "timestamp" or "correlationId" or "instance"))
             .OrderBy(property => property.Name, StringComparer.Ordinal)
             .Select(property => property.Name + ":" + CanonicalElement(property.Value))) + "}",
         JsonValueKind.Array => "[" + string.Join(',', element.EnumerateArray().Select(CanonicalElement)) + "]",

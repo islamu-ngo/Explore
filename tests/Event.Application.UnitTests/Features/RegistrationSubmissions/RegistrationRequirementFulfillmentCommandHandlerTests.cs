@@ -1,6 +1,7 @@
 // ABOUTME: Covers the shared native/provider requirement-fulfillment Application command boundary.
 // ABOUTME: Verifies optional skips and reconciled payment success share one fenced finalization drain.
 
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
@@ -140,21 +141,38 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
             Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 11);
         IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
         IRegistrationOrderLifecycleService lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
+        IAdmissionIssuanceService admission = Substitute.For<IAdmissionIssuanceService>();
         ITenantContextAccessor tenantAccessor = Substitute.For<ITenantContextAccessor>();
         finalization.ClaimDueAsync("worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
             .Returns([claim]);
         lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
             .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.AwaitingPayment));
         lifecycle.FinalizePaidAsync(orderId, tenantId, CancellationToken.None)
-            .Returns(Response(orderId, tenantId, RegistrationOrderStatusEnum.Confirmed));
+            .Returns(Response(
+                orderId,
+                tenantId,
+                RegistrationOrderStatusEnum.Confirmed,
+                totalDueMinor: 500));
+        admission.IssueConfirmedAsync(
+                Arg.Any<AdmissionIssuanceRequest>(),
+                CancellationToken.None)
+            .Returns(new AdmissionIssuanceResult(
+                AdmissionIssuanceOutcome.Issued, [Guid.CreateVersion7()], [], [], []));
         finalization.CompleteAsync(claim, UtcNow, CancellationToken.None).Returns(true);
         var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
-            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
+            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow), admission);
 
         int completed = await handler.Handle(new("worker"), CancellationToken.None);
 
         await Assert.That(completed).IsEqualTo(1);
         await lifecycle.Received(1).FinalizePaidAsync(orderId, tenantId, CancellationToken.None);
+        await admission.Received(1).IssueConfirmedAsync(
+            Arg.Is<AdmissionIssuanceRequest>(request =>
+                request.TenantId == tenantId &&
+                request.RegistrationOrderId == orderId &&
+                request.FinalizationEffectId == claim.EffectId &&
+                request.Authority == AdmissionIssuanceAuthority.ReconciledPaidFinalization),
+            CancellationToken.None);
         await finalization.Received(1).CompleteAsync(claim, UtcNow, CancellationToken.None);
     }
 
@@ -183,6 +201,104 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
         await Assert.That(completed).IsEqualTo(1);
         await lifecycle.Received(1).FinalizePaidAsync(orderId, tenantId, CancellationToken.None);
         await finalization.Received(1).CompleteAsync(claim, UtcNow, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DrainKeepsEffectRetryableWhenPaidAdmissionAuthorityIsNotConfirmed()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim claim = new(
+            Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 13);
+        IRegistrationFinalizationRepository finalization =
+            Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle =
+            Substitute.For<IRegistrationOrderLifecycleService>();
+        IAdmissionIssuanceService admission =
+            Substitute.For<IAdmissionIssuanceService>();
+        ITenantContextAccessor tenantAccessor =
+            Substitute.For<ITenantContextAccessor>();
+        finalization.ClaimDueAsync(
+                "worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([claim]);
+        lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(
+                orderId, tenantId, RegistrationOrderStatusEnum.Confirmed, totalDueMinor: 500));
+        admission.IssueConfirmedAsync(
+                Arg.Any<AdmissionIssuanceRequest>(),
+                CancellationToken.None)
+            .Returns(new AdmissionIssuanceResult(
+                AdmissionIssuanceOutcome.NotConfirmed, [], [], [], []));
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization,
+            lifecycle,
+            tenantAccessor,
+            new FixedTimeProvider(UtcNow),
+            admission);
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(0);
+        await finalization.DidNotReceive().CompleteAsync(
+            Arg.Any<RegistrationFinalizationClaim>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await finalization.Received(1).RetryAsync(
+            claim,
+            UtcNow.AddMinutes(1),
+            UtcNow,
+            CancellationToken.None);
+    }
+
+    [Test]
+    public async Task DrainKeepsEffectRetryableWhenCredentialDeliveryIsPending()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim claim = new(
+            Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 14);
+        IRegistrationFinalizationRepository finalization =
+            Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle =
+            Substitute.For<IRegistrationOrderLifecycleService>();
+        IAdmissionIssuanceService admission =
+            Substitute.For<IAdmissionIssuanceService>();
+        finalization.ClaimDueAsync(
+                "worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([claim]);
+        lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(Response(
+                orderId, tenantId, RegistrationOrderStatusEnum.Confirmed, totalDueMinor: 500));
+        admission.IssueConfirmedAsync(
+                Arg.Any<AdmissionIssuanceRequest>(),
+                CancellationToken.None)
+            .Returns(new AdmissionIssuanceResult(
+                AdmissionIssuanceOutcome.Issued,
+                [Guid.CreateVersion7()],
+                [],
+                [],
+                [Guid.CreateVersion7()],
+                deliveryOutcome: AdmissionDeliveryOutcome.RecoverablePending,
+                deliveryFailure: AdmissionDeliveryFailure.RouteUnavailable));
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization,
+            lifecycle,
+            Substitute.For<ITenantContextAccessor>(),
+            new FixedTimeProvider(UtcNow),
+            admission);
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(0);
+        await finalization.DidNotReceive().CompleteAsync(
+            Arg.Any<RegistrationFinalizationClaim>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await finalization.Received(1).RetryAsync(
+            claim,
+            UtcNow.AddMinutes(1),
+            UtcNow,
+            CancellationToken.None);
     }
 
     [Test]
@@ -234,14 +350,16 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
     private static RegistrationOrderLifecycleResponseDto Response(
         Guid orderId,
         Guid tenantId,
-        RegistrationOrderStatusEnum status) => RegistrationOrderLifecycleResponseDto.Success(
+        RegistrationOrderStatusEnum status,
+        long totalDueMinor = 0) => RegistrationOrderLifecycleResponseDto.Success(
             orderId,
             null,
             new RegistrationOrderDto
             {
                 Id = orderId,
                 TenantId = tenantId,
-                StatusId = (int)status
+                StatusId = (int)status,
+                TotalDueMinor = totalDueMinor
             });
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider

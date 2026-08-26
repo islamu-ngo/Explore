@@ -44,6 +44,7 @@ internal sealed record AdmissionRevocationRow(
             "multiple-ticket-lines-partial" => Row(
                 [new(FirstLine, true, 500, 1_000), new(SecondLine, true, 250, 500)], [], all),
             "zero-relevant" => Row([new(FirstLine, true, 0, 1_000)], [], all),
+            "zero-over-zero" => Row([new(FirstLine, true, 0, 0)], [], all),
             "negative" => Row([new(FirstLine, true, -1, 1_000)], [], all, invalid: true),
             "over-allocation" => Row([new(FirstLine, true, 1_001, 1_000)], [], all, invalid: true),
             "cancellation" => new([], true, false, all, []),
@@ -90,7 +91,7 @@ internal static class AdmissionRevocationPorts
     }
 }
 
-internal sealed class RevocationRepositoryFake : DispatchProxy
+internal class RevocationRepositoryFake : DispatchProxy
 {
     private AdmissionTestScenario scenario = null!;
 

@@ -97,7 +97,7 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
     IRegistrationOrderLifecycleService lifecycle,
     ITenantContextAccessor tenantContextAccessor,
     TimeProvider timeProvider,
-    AdmissionIssuanceService? admissionIssuance = null)
+    IAdmissionIssuanceService? admissionIssuance = null)
     : IRequestHandler<DrainRegistrationFinalizationEffectsCommand, int>
 {
     public async Task<int> Handle(
@@ -134,11 +134,16 @@ public sealed class DrainRegistrationFinalizationEffectsCommandHandler(
                             claim.TenantId,
                             claim.RegistrationOrderId,
                             claim.EffectId,
-                            "ConfirmedFreeOrder"),
+                            AdmissionIssuanceAuthority.ForOrderTotal(result.Order.TotalDueMinor)),
                         cancellationToken);
                     issuanceAllowsCompletion =
-                        issuance.Outcome is not (AdmissionIssuanceOutcome.InvalidRequest or AdmissionIssuanceOutcome.CancelledBeforeCommit) &&
-                        issuance.DeliveryOutcome != AdmissionDeliveryOutcome.Unrecoverable;
+                        issuance.Outcome is (
+                            AdmissionIssuanceOutcome.Issued or
+                            AdmissionIssuanceOutcome.AlreadyIssued or
+                            AdmissionIssuanceOutcome.NoAssignments) &&
+                        issuance.DeliveryOutcome is
+                            AdmissionDeliveryOutcome.NotRequired or
+                            AdmissionDeliveryOutcome.Delivered;
                 }
                 if (result.IsSuccess && result.Order is not null && IsSettled(result.Order.StatusId) && issuanceAllowsCompletion)
                 {

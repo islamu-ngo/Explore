@@ -32,19 +32,23 @@ internal static class ServiceCollectionExtensions
             options.OperationFilter<OpenApiVersionedContentTypesOperationFilter>();
             options.OperationFilter<ManagedControlPlaneOpenApiSecurityTransformer>();
             options.OperationFilter<PrivacyErasureReceiptOpenApiSecurityTransformer>();
+            options.OperationFilter<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddSecurityDefinition(
                 ManagedControlPlaneOpenApiSecurityTransformer.SecuritySchemeName,
                 ManagedControlPlaneOpenApiSecurityTransformer.CreateSecurityScheme());
             options.AddSecurityDefinition(
                 PrivacyErasureReceiptOpenApiSecurityTransformer.SecuritySchemeName,
                 PrivacyErasureReceiptOpenApiSecurityTransformer.CreateSecurityScheme());
+            options.AddSecurityDefinition(
+                AdmissionScannerOpenApiSecurityTransformer.SecuritySchemeName,
+                AdmissionScannerOpenApiSecurityTransformer.CreateSecurityScheme());
 
-            // Register the Keycloak OAuth2 security definition only when the authorization URL
-            // is configured. In test/dev environments where Keycloak is not wired up, we skip this
-            // block so that OpenAPI generation still succeeds (enabling contract-invariant tests
-            // and local swagger browsing to work without a live identity provider).
-            var keycloakAuthorizationUrl = configuration["Keycloak:AuthorizationUrl"];
-            if (!string.IsNullOrWhiteSpace(keycloakAuthorizationUrl))
+            // Resolve from an explicit endpoint or the configured authority. If neither is available,
+            // omit both the definition and its requirements so build-time generation cannot emit
+            // dangling Keycloak references.
+            if (KeycloakOpenApiSecurityTransformer.TryResolveAuthorizationUri(
+                    configuration,
+                    out Uri? keycloakAuthorizationUri))
             {
                 options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
                 {
@@ -53,7 +57,7 @@ internal static class ServiceCollectionExtensions
                     {
                         Implicit = new OpenApiOAuthFlow
                         {
-                            AuthorizationUrl = new Uri(keycloakAuthorizationUrl),
+                            AuthorizationUrl = keycloakAuthorizationUri,
                             Scopes = new Dictionary<string, string>
                             {
                                 { "openid", "openid" },
@@ -63,17 +67,7 @@ internal static class ServiceCollectionExtensions
                     }
                 });
 
-                // Swashbuckle 10.x requires a Func<OpenApiDocument, OpenApiSecurityRequirement>
-                options.AddSecurityRequirement(document =>
-                {
-                    // Get the security scheme reference from the document
-                    var securitySchemeRef = new OpenApiSecuritySchemeReference("Keycloak", document);
-
-                    return new OpenApiSecurityRequirement
-                    {
-                        { securitySchemeRef, new List<string>() }
-                    };
-                });
+                options.OperationFilter<KeycloakSwaggerOpenApiSecurityFilter>();
             }
         });
 

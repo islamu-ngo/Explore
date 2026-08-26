@@ -164,3 +164,27 @@
         min-height: 100vh;
     }
 }
+
+@media print {
+    .main-layout__header,
+    ::deep .app-workspace-rail,
+    ::deep .dock-side-host,
+    ::deep .dock-overlay-host,
+    ::deep footer {
+        display: none !important;
+    }
+
+    ::deep .dock-layout-host {
+        display: block;
+    }
+
+    .main-layout__content-wrapper {
+        inline-size: 100%;
+        padding: 0;
+        background: var(--isl-color-print-background);
+    }
+
+    ::deep .main-layout__main {
+        background: var(--isl-color-print-background);
+    }
+}

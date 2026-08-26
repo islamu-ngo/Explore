@@ -257,14 +257,47 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
 
     internal void AddEntitlement(TicketTypeEntitlement entitlement)
     {
+        if (_entitlements.Any(existing => HasSameCanonicalScope(existing, entitlement)))
+        {
+            throw new ArgumentException(
+                "A ticket type can grant only one entitlement for each canonical target scope.",
+                nameof(entitlement));
+        }
+
         _entitlements.Add(entitlement);
     }
 
     internal void ReplaceEntitlements(IEnumerable<TicketTypeEntitlement> entitlements)
     {
         TicketTypeEntitlement[] replacements = entitlements.ToArray();
-        _entitlements.Clear(); _entitlements.AddRange(replacements);
+        if (replacements
+            .GroupBy(entitlement => new
+            {
+                entitlement.TenantId,
+                entitlement.TicketTypeId,
+                entitlement.TargetEventId,
+                entitlement.EntitlementScopeTypeId,
+                entitlement.ScopeId
+            })
+            .Any(group => group.Count() > 1))
+        {
+            throw new ArgumentException(
+                "A ticket type can grant only one entitlement for each canonical target scope.",
+                nameof(entitlements));
+        }
+
+        _entitlements.Clear();
+        _entitlements.AddRange(replacements);
     }
+
+    private static bool HasSameCanonicalScope(
+        TicketTypeEntitlement left,
+        TicketTypeEntitlement right) =>
+        left.TenantId == right.TenantId &&
+        left.TicketTypeId == right.TicketTypeId &&
+        left.TargetEventId == right.TargetEventId &&
+        left.EntitlementScopeTypeId == right.EntitlementScopeTypeId &&
+        left.ScopeId == right.ScopeId;
 
     internal EventTicketType CloneTo(Guid catalogId)
     {

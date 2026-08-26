@@ -125,6 +125,31 @@ resourcePolicy:
               has(request.principal.attr.eventCreateGroups) &&
               request.resource.attr.organizerGroupId in request.principal.attr.eventCreateGroups))
 
+    - actions: ["event_check_in:view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_check_in_staff
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            ("event_check_in:view" in request.principal.attr.eventAssignments[request.resource.attr.eventId].permissions ||
+             "event_check_in:manage" in request.principal.attr.eventAssignments[request.resource.attr.eventId].permissions)
+
+    - actions: ["event_check_in:manage"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_check_in_staff
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            "event_check_in:manage" in request.principal.attr.eventAssignments[request.resource.attr.eventId].permissions
+
     - actions: ["manage-paid-event-commerce"]
       effect: EFFECT_ALLOW
       roles:

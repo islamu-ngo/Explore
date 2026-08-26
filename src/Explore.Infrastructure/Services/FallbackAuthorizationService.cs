@@ -473,6 +473,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageRegistrationChannels
             or AuthorizationActions.Events.ViewRegistrationProviderHealth
             or AuthorizationActions.Events.ManageTickets
+            or AuthorizationActions.Events.EventCheckInView
+            or AuthorizationActions.Events.EventCheckInManage
             or AuthorizationActions.Events.ManagePaidEventCommerce;
 
     private static bool IsTenantAdminEventAction(string action) =>
@@ -484,6 +486,15 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ViewOrganizerClaims
             or AuthorizationActions.Events.ReviewOrganizerClaim;
+
+    private static bool IsAdmissionCheckInAction(string action) =>
+        action is AuthorizationActions.Events.EventCheckInView
+            or AuthorizationActions.Events.EventCheckInManage;
+
+    private static bool HasAdmissionCheckInRole(EventAuthorityForUser authority) =>
+        authority.RoleCodes.Contains("event.owner")
+        || authority.RoleCodes.Contains("event.manager")
+        || authority.RoleCodes.Contains("event.check_in_staff");
 
     private static bool IsEventModerationAction(string action) =>
         action is AuthorizationActions.Events.ModerateLight
@@ -516,6 +527,10 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             return PermissionCodes.EventRegistrationManage;
         if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageTickets)
             return PermissionCodes.EventManageTickets;
+        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.EventCheckInView)
+            return PermissionCodes.EventCheckInView;
+        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.EventCheckInManage)
+            return PermissionCodes.EventCheckInManage;
         if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManagePaidEventCommerce)
             return PermissionCodes.EventManageFinance;
 

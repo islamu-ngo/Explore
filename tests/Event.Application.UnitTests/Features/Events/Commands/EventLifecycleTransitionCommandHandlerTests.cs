@@ -188,6 +188,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             });
         var fanout = new FanoutFixture(() => occurrenceCreatedBeforeCommit = !transactionCompleted);
         var campaigns = Substitute.For<IRefundCampaignRepository>();
+        var admissionOutbox = Substitute.For<IOutboxRepository>();
         campaigns.CreateAsync(Arg.Any<RefundCampaign>(), Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -203,6 +204,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
             campaigns,
+            admissionOutbox,
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -212,6 +214,10 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsTrue();
+        await admissionOutbox.Received(1).Create(
+            Arg.Is<OutboxMessage>(message =>
+                message.EventType == AdmissionRevocationOutboxMessageFactory.EventCancellationRequested &&
+                message.AggregateId == eventEntity.Id));
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Cancelled);
         await eventRepository.Received(1).Update(eventEntity);
         await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
@@ -255,6 +261,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
             Substitute.For<IRefundCampaignRepository>(),
+            Substitute.For<IOutboxRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -382,6 +389,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
             Substitute.For<IRefundCampaignRepository>(),
+            Substitute.For<IOutboxRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -422,6 +430,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             fanout.Coordinator,
             Substitute.For<IEventLifecycleScheduler>(),
             Substitute.For<IRefundCampaignRepository>(),
+            Substitute.For<IOutboxRepository>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand

@@ -32,6 +32,15 @@ public enum ParitySubject
 
     /// <summary>A machine principal acting through an API key.</summary>
     MachineCaller,
+
+    /// <summary>Event owner assignment without an admission permission.</summary>
+    EventOwnerWithoutAdmissionPermission,
+
+    /// <summary>Check-in staff assignment with view-only admission permission.</summary>
+    AdmissionViewer,
+
+    /// <summary>Check-in staff assignment with admission management permission.</summary>
+    AdmissionManager,
 }
 
 /// <summary>
@@ -135,6 +144,8 @@ public static class ParityCorpus
         SubmittedByUserId: null);
 
     /// <summary>Event facts for an event a specific user personally owns.</summary>
+    public static EventScopedAuthorizationFacts AdmissionEvent() => new(TenantId, EventId);
+
     public static EventAuthorizationFacts UserOwnedEvent(Guid ownerUserId) => new(
         TenantId,
         EventId,
@@ -252,6 +263,84 @@ public static class ParityCorpus
             ExpectedAllowed: false,
             Lanes: ParityLane.Both,
             Rationale: "With no trusted facts there is nothing to weigh, so the provider must deny."),
+
+        // ---- admission authority parity ------------------------------------------------------------
+        new(
+            Id: "tenant-admin-cannot-view-admission",
+            Category: "normal-deny",
+            Subject: ParitySubject.TenantAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInView,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenant administration is not door authority; admission requires an exact event assignment."),
+
+        new(
+            Id: "organization-admin-cannot-manage-admission",
+            Category: "normal-deny",
+            Subject: ParitySubject.OrganizationAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInManage,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Broad organization event authority must not imply admission management."),
+
+        new(
+            Id: "event-owner-without-admission-permission-cannot-view-admission",
+            Category: "normal-deny",
+            Subject: ParitySubject.EventOwnerWithoutAdmissionPermission,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInView,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "An eligible event role still needs an explicit admission permission."),
+
+        new(
+            Id: "admission-viewer-can-view-but-cannot-manage",
+            Category: "normal-allow",
+            Subject: ParitySubject.AdmissionViewer,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInView,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Check-in staff with event_check_in:view may read bounded admission state."),
+
+        new(
+            Id: "admission-viewer-cannot-manage",
+            Category: "normal-deny",
+            Subject: ParitySubject.AdmissionViewer,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInManage,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "The view permission never implies admission mutation authority."),
+
+        new(
+            Id: "admission-manager-can-view-through-manage-permission",
+            Category: "normal-allow",
+            Subject: ParitySubject.AdmissionManager,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInView,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Cerbos explicitly lets event_check_in:manage satisfy admission view."),
+
+        new(
+            Id: "admission-manager-can-manage",
+            Category: "normal-allow",
+            Subject: ParitySubject.AdmissionManager,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.EventCheckInManage,
+            Facts: AdmissionEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Check-in staff with the exact manage permission may mutate admission state."),
 
         // ---- machine caller ------------------------------------------------------------------------
         new(

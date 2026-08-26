@@ -13,6 +13,20 @@ public sealed class TicketTypeEntitlementConfiguration : IEntityTypeConfiguratio
     {
         builder.ToTable("ticket_type_entitlements");
         builder.Property(entitlement => entitlement.Id).ValueGeneratedNever();
+        builder.Property(entitlement => entitlement.ScopeId)
+            .HasComputedColumnSql(
+                "COALESCE(event_session_id, event_day_id, target_event_id)",
+                stored: true);
+        builder.HasIndex(entitlement => new
+            {
+                entitlement.TenantId,
+                entitlement.TicketTypeId,
+                entitlement.TargetEventId,
+                entitlement.EntitlementScopeTypeId,
+                entitlement.ScopeId
+            })
+            .HasDatabaseName("ux_ticket_type_entitlements_canonical_scope")
+            .IsUnique();
         builder.HasOne<EventTicketType>().WithMany(ticketType => ticketType.Entitlements)
             .HasForeignKey(entitlement => new { entitlement.TenantId, entitlement.TicketTypeId })
             .HasPrincipalKey(ticketType => new { ticketType.TenantId, ticketType.Id }).OnDelete(DeleteBehavior.Restrict);

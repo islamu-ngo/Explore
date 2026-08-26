@@ -2,6 +2,7 @@
 // ABOUTME: Preserves pre-generated Added stamps while rotating Modified IConcurrencyAware entities and audit metadata.
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Secrets;
 using Explore.Persistence.QueryFilters;
@@ -66,6 +67,7 @@ public partial class ExploreDbContext
         ValidateRegistrationProviderConnectionSecrets();
         ValidateRegistrationProviderBindingSecrets();
         ValidateRegistrationAttemptProviderRevisions();
+        ValidateAdmissionIntegrity();
         PopulateMySqlPortableComputedValues();
         var userId = GetCurrentUserId();
         var now = DateTime.UtcNow;
@@ -76,6 +78,12 @@ public partial class ExploreDbContext
                 && entry.State is EntityState.Modified or EntityState.Deleted)
             {
                 throw new InvalidOperationException("Webhook audit events are append-only and cannot be modified or deleted.");
+            }
+
+            if (entry.Entity is AdmissionCheckInEvent
+                && entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException("Admission check-in events are append-only and cannot be modified or deleted.");
             }
 
             if (entry.Entity is Explore.Domain.EventLocationDisclosureAudit
@@ -227,6 +235,56 @@ public partial class ExploreDbContext
             if (binding?.PublishedMappingRevisionHash?.Value != attempt.ProviderMappingRevisionHash?.Value)
             {
                 throw new InvalidOperationException("Registration attempts must pin the published provider binding mapping revision.");
+            }
+        }
+    }
+
+    private void ValidateAdmissionIntegrity()
+    {
+        foreach (var entry in ChangeTracker.Entries<AdmissionTarget>()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            AdmissionTarget target = entry.Entity;
+            bool validScope = (AdmissionTargetTypeEnum)target.AdmissionTargetTypeId switch
+            {
+                AdmissionTargetTypeEnum.Event =>
+                    target.EventDayId is null && target.EventSessionId is null && target.ScopeId == target.EventId,
+                AdmissionTargetTypeEnum.EventDay =>
+                    target.EventDayId.HasValue && target.EventSessionId is null && target.ScopeId == target.EventDayId,
+                AdmissionTargetTypeEnum.EventSession =>
+                    target.EventDayId is null && target.EventSessionId.HasValue && target.ScopeId == target.EventSessionId,
+                _ => false
+            };
+            if (!validScope)
+            {
+                throw new InvalidOperationException(
+                    "Admission targets must persist one known canonical event, day, or session scope.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<AdmissionCheckInEvent>()
+                     .Where(item => item.State == EntityState.Added))
+        {
+            AdmissionCheckInEvent fact = entry.Entity;
+            bool validAuthority = fact.ActorId.HasValue != fact.ScannerCapabilityId.HasValue;
+            bool validShape = (AdmissionCheckInActionEnum)fact.AdmissionCheckInActionId switch
+            {
+                AdmissionCheckInActionEnum.CheckIn =>
+                    fact.AdmissionCheckInUndoReasonCodeId is null &&
+                    fact.CompensatedCheckInEventId is null,
+                AdmissionCheckInActionEnum.Undo =>
+                    fact.AdmissionCheckInUndoReasonCodeId.HasValue &&
+                    Enum.IsDefined(
+                        typeof(AdmissionCheckInUndoReasonCodeEnum),
+                        fact.AdmissionCheckInUndoReasonCodeId.Value) &&
+                    fact.CompensatedCheckInEventId.HasValue &&
+                    fact.CompensatedCheckInEventId != fact.Id,
+                _ => false
+            };
+            if (!validAuthority || !validShape)
+            {
+                throw new InvalidOperationException(
+                    "Admission facts require a known action, exactly one authority, and a valid action/reason/compensation shape.");
             }
         }
     }

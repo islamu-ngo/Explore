@@ -27,7 +27,7 @@ Hi.Events validates the product need for reservation-first checkout, commercial 
 2. Purchaser PII lives in `RegistrationOrderPii`. Participants and participant PII are separate entities. A participant need not be a User, and one purchaser may manage several independently consenting participants.
 3. Each `RegistrationOrderLine` references one ticket type and snapshots every fact needed to interpret the purchase, including name, currency, pricing mode, chosen unit amount in integer minor units, bounds, applicable catalog version, and non-zero platform-fee policy version.
 4. Ticket assignments reference a concrete order line. Database and domain rules prevent assignments from exceeding that line's quantity.
-5. `EventRegistration` remains the materialized per-session admission row, linked to a participant rather than requiring a User. A future `AdmissionTicket` owns admission credentials and check-in; display IDs never authorize access or admission.
+5. `EventRegistration` remains the materialized per-session admission row, linked to a participant rather than requiring a User. `AdmissionTicket` now owns independently revocable/rotatable credentials and entitlement delivery; display IDs never authorize access or admission. Append-only check-in facts remain governed by ADR-023 and the later scanner/check-in phase.
 
 ### Catalog, pricing, and monetization
 

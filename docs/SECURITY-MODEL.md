@@ -372,9 +372,63 @@ Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()`
 
 ### Public Transactional Capability Foundation
 
-Future public transactional capabilities are opaque, scoped, single-purpose, expiring bearer values and never prove user identity. A future implementation must persist only hashes, use constant-time comparison, support expiry and rotation, and reveal plaintext exactly once; plaintext values must never be persisted, logged, returned after issuance, or turned into browser-visible authority claims. This traffic-controls phase adds no capability endpoint or capability claim.
+Public transactional capabilities are opaque, scoped, single-purpose, expiring bearer values and never prove user identity. Admission recovery now implements this foundation with keyed lookup digests, constant-time comparison, active-key rotation, atomic single-use consumption, and encrypted delivery intents. Plaintext capabilities are revealed only through their intended delivery boundary and are never persisted, logged, exposed as browser authority claims, or returned by administrative status surfaces.
 
-ADR-022 and ADR-023 apply the same foundation to paid checkout, ticket recovery, transfer acceptance, admission credentials, and scanner operation. Stripe onboarding and Checkout return URLs are navigation only; raw signed webhook evidence plus account/payment retrieval and reconciliation determine provider truth. Admission QR content is a versioned high-entropy opaque credential with no PII, amount, email, display ID, or authorization claims, and persistence keeps only a keyed lookup digest. Transfer and reissue rotate the credential. Scanner capabilities are separately hashed, tenant/event/target/action/expiry scoped, revocable, and excluded from ordinary logs and metrics. Initial admission validation is online; offline signing remains deferred pending key-custody and revocation design.
+ADR-022 and ADR-023 apply the same foundation to paid checkout, ticket recovery, transfer acceptance, admission credentials, and scanner operation. Stripe onboarding and Checkout return URLs are navigation only; raw signed webhook evidence plus account/payment retrieval and reconciliation determine provider truth. Paid admission requires the confirmed order, one exact reconciled success observation, its succeeded provider-neutral payment attempt, and matching currency/minor-unit snapshots; missing authority keeps the durable finalization effect retryable. Successful refunds reach admission only through persisted line allocations and accepted commercial snapshots: full matching ticket-line allocation revokes, while partial and unrelated add-on allocation preserves. Order and event cancellation use identifier-only outbox messages and idempotent transactional credential revocation. Admission QR content is a versioned high-entropy opaque credential with no PII, amount, email, display ID, or authorization claims, and persistence keeps only a keyed lookup digest. Transfer and reissue rotate the credential. Scanner capabilities are separately hashed, tenant/event/target/action/expiry scoped, revocable, and excluded from ordinary logs and metrics. Initial admission validation is online; offline signing remains deferred pending key-custody and revocation design.
+
+Admission recovery requests are anonymous `PublicTransactional` writes protected by the exact
+per-IP policy and idempotency middleware, while a chained limiter independently applies the
+tenant-scoped recovery budget. Capability consumption retains the dedicated tenant limiter and
+deliberately bypasses idempotency replay: the keyed, expiring capability is atomically single-use,
+and replaying a cached successful bearer response would violate that authority.
+
+### Admission Check-In Authority Boundary
+
+Phase 21 admission check-in keeps staff and scanner authority deliberately separate:
+
+| Path | Authentication | Target authority | Prohibited authority |
+|---|---|---|---|
+| Staff `/api/events/{eventId}/admission/check-ins` | Existing BFF/JWT staff authentication | Event check-in permission; request body carries `TargetId` | Scanner bearer, roster/payment/registration authority outside the authorized event. |
+| Scanner `/api/admission/scanner/check-ins` | Dedicated `AdmissionScanner` authentication scheme | Authenticated capability supplies the one exact target | Caller-selected target, staff-role substitution, roster/payment/registration authority. |
+
+Every write remains authenticated. Capability authentication is necessary but not sufficient: the
+Application layer rechecks tenant, event, exact target, allowed action, expiry, and revocation scope
+on every operation. One `AdmissionScannerCapability` is bound to **one exact `AdmissionTargetId`**;
+a separate target requires a separate capability. This prevents a bearer from choosing or spanning
+door scopes.
+
+Capability plaintext is consumed only by the dedicated authentication service and is never forwarded
+as a controller or orchestration value. Issuance persists a keyed digest and supports exactly one
+plaintext disclosure to the successful issuance winner. Reads and revocations expose masked data
+only. The issuance action suppresses generic HTTP idempotency response storage because its own
+tenant-qualified `IssueRequestId` fence returns plaintext only to the winner; an optional
+`Idempotency-Key` can neither persist nor replay that response. Credentials, capability values,
+ticket/actor/device identifiers, raw scan input, and free-form
+reasons are excluded from ProblemDetails, logs, metrics, traces, and export-safe audit.
+
+Scanner paths select the dedicated authentication scheme before rate limiting. Valid capabilities
+partition the limiter and idempotency fingerprint by the authenticated capability UUID, while
+invalid traffic remains in the anonymous partition; neither the plaintext header nor its digest is
+stored as an identity. Capability issuance requires an existing active target under the same
+tenant/event and a `PlatformManaged` participation configuration. Revocation verifies the routed
+event before mutating the capability, preventing event-A authority from revoking event-B scanners.
+Revoking one capability is the device-containment control. Stopping an `AdmissionTarget` is the
+stronger serialization barrier: staff check-in, scanner check-in, and new scanner-capability
+issuance all take the same target fence and fail closed until authorized restore. Dependency
+failure reports the target state as `Unavailable` rather than fabricating a durable `Stopped`
+decision.
+
+Public failures are deliberately generic: malformed, revoked, expired, wrong-tenant, wrong-event,
+and wrong-target authority return the same bounded rejection. Internal append-only audit facts may
+record only one closed undo reason code (`OperatorCorrection`, `DuplicateScan`, `WrongTarget`, or
+`ExceptionalReconciliation`), never operator prose. A generic response must not be expanded into a
+diagnostic oracle.
+
+The client action boundary is HAL. `check-in-admissions` is the entry relation, and check-in, undo,
+issuance, revocation, stop, restore, and reconciliation controls are rendered only when the server
+emits their relation. A missing relation is a denial; cached roles, claims, status guesses, or scanner
+state cannot recreate it. See [Admission Check-In Operations](OPERATIONS.md#admission-check-in-operations-phase-21)
+for the incident and restore procedures.
 
 ## Storage Upload Session Binding
 

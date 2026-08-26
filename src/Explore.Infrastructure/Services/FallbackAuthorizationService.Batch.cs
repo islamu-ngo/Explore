@@ -174,6 +174,9 @@ public partial class FallbackAuthorizationService
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_event" when action == AuthorizationActions.Events.ManageTickets
                 => EvaluateManageTicketsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
+            "islamuevent_event" when IsAdmissionCheckInAction(action)
+                => EvaluateAdmissionCheckInWithProfile(
+                    profile, eventAuthority, resourceId, action, resourceAttributes),
             "islamuevent_event" when action == AuthorizationActions.Events.ManagePaidEventCommerce
                 => EvaluateManagePaidEventCommerceWithProfile(profile, resourceId, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
@@ -260,6 +263,31 @@ public partial class FallbackAuthorizationService
         && HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes)
         && (IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes)
             || HasEventRolePermission(eventAuthority, ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, resourceAttributes));
+
+    private static bool EvaluateAdmissionCheckInWithProfile(
+        AuthorityProfile profile,
+        EventAuthoritySnapshot? eventAuthority,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (profile.IsInstanceAdmin
+            || profile.IsTenantAdmin
+            || !HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes)
+            || eventAuthority is null
+            || !TryResolveEventContext(
+                ResourceKinds.Event, resourceId, resourceAttributes, out _, out Guid eventId)
+            || !eventAuthority.Events.TryGetValue(eventId, out EventAuthorityForUser? authority)
+            || !HasAdmissionCheckInRole(authority))
+        {
+            return false;
+        }
+
+        return action == AuthorizationActions.Events.EventCheckInView
+            ? authority.PermissionCodes.Contains(PermissionCodes.EventCheckInView)
+                || authority.PermissionCodes.Contains(PermissionCodes.EventCheckInManage)
+            : authority.PermissionCodes.Contains(PermissionCodes.EventCheckInManage);
+    }
 
     private static bool EvaluateManagePaidEventCommerceWithProfile(
         AuthorityProfile profile,

@@ -39,6 +39,12 @@ internal sealed class AdmissionApiScenario
     internal Guid TenantId { get; }
     internal Guid OtherTenantId { get; }
     internal Guid EventId { get; }
+    internal Guid AccountOrderId { get; } = Guid.CreateVersion7();
+    internal string AccountHolderDisplayName { get; } = "Account ticket holder";
+    internal string AccountTicketTypeName { get; } = "General admission";
+    internal string AccountEventTitle { get; } = "Community gathering";
+    internal string AccountSessionTitle { get; } = "Opening session";
+    internal DateTime IssuedAtUtc { get; } = UtcNow.AddDays(-1);
     internal Guid AccountTicketId { get; }
     internal Guid RecoveryTicketId { get; }
     internal Guid CrossTenantTicketId { get; }
@@ -123,6 +129,9 @@ internal sealed class AdmissionApiScenario
                 eventId = EventId,
                 statusCode = ActiveStatusCode,
                 displayReference = AccountDisplayReference,
+                holderDisplayName = AccountHolderDisplayName,
+                ticketTypeName = AccountTicketTypeName,
+                entitlements = EntitlementPayload(),
                 manualCode = ManualCredential,
                 manualCodeClassificationCode = SensitiveClassification,
                 qrRepresentation = QrRepresentation,
@@ -159,6 +168,9 @@ internal sealed class AdmissionApiScenario
         eventId = EventId,
         statusCode = ActiveStatusCode,
         displayReference = RecoveryDisplayReference,
+        holderDisplayName = AccountHolderDisplayName,
+        ticketTypeName = AccountTicketTypeName,
+        entitlements = EntitlementPayload(),
         qrRepresentation = QrRepresentation,
         printModel = PrintModel,
         manualCode = ManualCredential,
@@ -171,8 +183,26 @@ internal sealed class AdmissionApiScenario
         ticketId,
         eventId = EventId,
         statusCode = status,
-        displayReference = AccountDisplayReference
+        displayReference = AccountDisplayReference,
+        registrationOrderId = AccountOrderId,
+        holderDisplayName = AccountHolderDisplayName,
+        ticketTypeName = AccountTicketTypeName,
+        issuedAtUtc = IssuedAtUtc,
+        entitlements = EntitlementPayload()
     }, TestJsonOptions.Default);
+
+    private object[] EntitlementPayload() =>
+    [
+        new
+        {
+            scopeCode = "EVENT_SESSION",
+            eventTitle = AccountEventTitle,
+            dayLabel = (string?)null,
+            localDate = (DateOnly?)null,
+            sessionTitle = AccountSessionTitle,
+            includedQuantity = 1
+        }
+    ];
 
     private static object? FromJson(Type responseType, string json) =>
         JsonSerializer.Deserialize(json, responseType, TestJsonOptions.Default);

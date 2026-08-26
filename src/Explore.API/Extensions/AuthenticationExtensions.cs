@@ -215,6 +215,9 @@ public static class AuthenticationExtensions
                 _ => { })
             .AddScheme<AuthenticationSchemeOptions, PrivacyErasureReceiptAuthenticationHandler>(
                 ApiAuthenticationSchemeNames.PrivacyErasureReceipt,
+                _ => { })
+            .AddScheme<AuthenticationSchemeOptions, AdmissionScannerAuthenticationHandler>(
+                AdmissionScannerAuthenticationDefaults.Scheme,
                 _ => { });
 
         services.AddAuthorizationBuilder()
@@ -298,6 +301,13 @@ public static class AuthenticationExtensions
                 ManagedControlPlaneAuthenticationDefaults.HeaderName))
         {
             return ManagedControlPlaneAuthenticationDefaults.Scheme;
+        }
+
+        if (context.Request.Path.StartsWithSegments(
+                "/api/admission/scanner/check-ins",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return AdmissionScannerAuthenticationDefaults.Scheme;
         }
 
         if (ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request))

@@ -92,6 +92,7 @@ public static class SecretDefinitionRegistry
         {
             public const string CredentialLookupHmacKey = "admissions.credential_lookup_hmac_key";
             public const string RecoveryCapabilityHmacKey = "admissions.recovery_capability_hmac_key";
+            public const string ScannerCapabilityHmacKey = "admissions.scanner_capability_hmac_key";
         }
 
         public static class Atproto
@@ -418,6 +419,17 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "ADMISSIONS_RECOVERY_CAPABILITY_HMAC_KEY",
                 IsBootstrapSecret = false,
                 Description = "Versioned backend-only HMAC key for admission recovery capability digests.",
+            },
+            new()
+            {
+                Key = Keys.Admissions.ScannerCapabilityHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/admissions",
+                DefaultInfisicalKey = "ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY",
+                DefaultEnvironmentVariableName = "ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY",
+                IsBootstrapSecret = false,
+                Description = "Versioned backend-only HMAC key for admission scanner capability digests.",
             },
 
             new()

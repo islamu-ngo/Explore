@@ -2,9 +2,8 @@
 // ABOUTME: Designed for observability; never logs sensitive data such as headers or bodies.
 
 using System.Diagnostics;
-using System.Security.Claims;
-using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
+using Microsoft.AspNetCore.Routing;
 
 namespace Explore.API.Middleware;
 
@@ -36,28 +35,55 @@ public sealed class RequestLoggingMiddleware
         {
             var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
-            var userId = context.User?.FindFirst("sub")?.Value
-                ?? context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            var tenantId = tenantContextAccessor.TenantId?.ToString();
-            var tenantSlug = context.Request.Headers[TenantHeaderNames.TenantSlug].FirstOrDefault();
             var correlationId = context.Items["CorrelationId"] as string;
-            var authHeaderPresent = context.Request.Headers.ContainsKey("Authorization");
-            var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
+            if (TryGetAdmissionRouteIdentity(context, out string routeIdentity))
+            {
+                _logger.LogInformation(
+                    "HTTP {Method} {Route} responded {StatusCode} in {ElapsedMs:0.00}ms | CorrelationId={CorrelationId}",
+                    context.Request.Method,
+                    routeIdentity,
+                    context.Response.StatusCode,
+                    elapsed.TotalMilliseconds,
+                    correlationId ?? "-");
+            }
+            else
+            {
+                var userId = context.User?.FindFirst("sub")?.Value
+                    ?? context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var tenantId = tenantContextAccessor.TenantId?.ToString();
+                var tenantSlug = context.Request.Headers[
+                    Explore.Application.Constants.TenantHeaderNames.TenantSlug].FirstOrDefault();
+                var authHeaderPresent = context.Request.Headers.ContainsKey("Authorization");
+                var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
 
-            _logger.LogInformation(
-                "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Authenticated={IsAuthenticated} AuthHeaderPresent={AuthHeaderPresent} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
-                context.Request.Method,
-                context.Request.Path.Value,
-                context.Response.StatusCode,
-                elapsed.TotalMilliseconds,
-                userId ?? "-",
-                isAuthenticated,
-                authHeaderPresent,
-                tenantId ?? "-",
-                tenantSlug ?? "-",
-                correlationId ?? "-");
+                _logger.LogInformation(
+                    "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Authenticated={IsAuthenticated} AuthHeaderPresent={AuthHeaderPresent} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
+                    context.Request.Method,
+                    context.Request.Path.Value,
+                    context.Response.StatusCode,
+                    elapsed.TotalMilliseconds,
+                    userId ?? "-",
+                    isAuthenticated,
+                    authHeaderPresent,
+                    tenantId ?? "-",
+                    tenantSlug ?? "-",
+                    correlationId ?? "-");
+            }
         }
+    }
+
+    internal static bool TryGetAdmissionRouteIdentity(HttpContext context, out string routeIdentity)
+    {
+        routeIdentity = string.Empty;
+        if (context.GetEndpoint() is not RouteEndpoint endpoint)
+            return false;
+
+        string pattern = endpoint.RoutePattern.RawText ?? string.Empty;
+        if (!pattern.Contains("/admission/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        routeIdentity = "/" + pattern.Trim('/').ToLowerInvariant();
+        return true;
     }
 }
 

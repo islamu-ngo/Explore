@@ -43,6 +43,7 @@ public class EndpointClassificationArchitectureTests
 
     private static readonly HashSet<string> AnonymousMutatingEndpointExceptions = new(StringComparer.Ordinal)
     {
+        "AdmissionTicketRecoveryController.Consume",
         "InstanceOnboardingController.ValidateSecret",
         "AnalyticsRelayController.Relay",
         "EmailUnsubscribeController.Post",

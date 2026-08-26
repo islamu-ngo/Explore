@@ -33,10 +33,16 @@ public sealed class AdmissionCredentialDigestService(
 
         int keyVersion = options.Value.ActiveKeyVersion;
         byte[] hmacKey = await ResolveKeyAsync(keyVersion, cancellationToken);
-        string bearer = CreateBearer();
-        string digest = ComputeDigest(hmacKey, request.TenantId, request.Purpose, bearer);
-        CryptographicOperations.ZeroMemory(hmacKey);
-        return new AdmissionCredentialMaterial(bearer, digest, keyVersion, request.CredentialVersion);
+        try
+        {
+            string bearer = CreateBearer();
+            string digest = ComputeDigest(hmacKey, request.TenantId, request.Purpose, bearer);
+            return new AdmissionCredentialMaterial(bearer, digest, keyVersion, request.CredentialVersion);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(hmacKey);
+        }
     }
 
     public async Task<AdmissionCredentialVerificationOutcome> VerifyAsync(
@@ -75,14 +81,28 @@ public sealed class AdmissionCredentialDigestService(
             return AdmissionCredentialVerificationOutcome.KeyUnavailable;
         }
 
-        byte[] computed = Convert.FromBase64String(ComputeDigest(
-            key, request.TenantId, request.Purpose, request.PlaintextCredential));
-        CryptographicOperations.ZeroMemory(key);
-        bool matches = CryptographicOperations.FixedTimeEquals(expected, computed);
-        CryptographicOperations.ZeroMemory(computed);
-        return matches
-            ? AdmissionCredentialVerificationOutcome.Match
-            : AdmissionCredentialVerificationOutcome.Mismatch;
+        byte[] computed;
+        try
+        {
+            computed = Convert.FromBase64String(ComputeDigest(
+                key, request.TenantId, request.Purpose, request.PlaintextCredential));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(expected, computed)
+                ? AdmissionCredentialVerificationOutcome.Match
+                : AdmissionCredentialVerificationOutcome.Mismatch;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(computed);
+            CryptographicOperations.ZeroMemory(expected);
+        }
     }
 
     public static bool Matches(string candidateDigest, string expectedDigest)

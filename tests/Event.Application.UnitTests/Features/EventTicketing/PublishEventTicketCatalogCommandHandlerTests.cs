@@ -2,6 +2,7 @@
 // ABOUTME: Ensures invalid or failed publication does not mutate the repository or clear event detail cache.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -30,6 +31,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IEventDayRepository _eventDays = Substitute.For<IEventDayRepository>();
     private readonly IEventSessionRepository _eventSessions = Substitute.For<IEventSessionRepository>();
+    private readonly IAdmissionTargetMaterializer _admissionTargets = Substitute.For<IAdmissionTargetMaterializer>();
     private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
     private readonly IOrganizerPaymentProviderConnectionRepository _connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
     private readonly IOrganizationTenantRepository _organizationTenants = Substitute.For<IOrganizationTenantRepository>();
@@ -204,6 +206,10 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         await Assert.That(flushes.Count).IsEqualTo(2);
         await Assert.That(flushes[0]).IsEqualTo(((int)TicketCatalogStatusEnum.Retired, (int)TicketCatalogStatusEnum.Draft));
         await Assert.That(flushes[1]).IsEqualTo(((int)TicketCatalogStatusEnum.Retired, (int)TicketCatalogStatusEnum.Published));
+        await _admissionTargets.Received(1).MaterializeAsync(
+            Arg.Is<DomainEvent>(target => target.Id == _eventId),
+            draft,
+            Arg.Any<CancellationToken>());
         await Assert.That(cacheObservedCommittedUow).IsTrue();
         await _cache.Received(1).RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
     }
@@ -351,7 +357,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     }
 
     private PublishEventTicketCatalogCommandHandler CreateHandler(IUnitOfWork unitOfWork) =>
-        new(_events, _catalogs, _eventDays, _eventSessions, _tenant, unitOfWork, CreatePreflight(), _cache);
+        new(_events, _catalogs, _eventDays, _eventSessions, _admissionTargets, _tenant, unitOfWork, CreatePreflight(), _cache);
 
     private PaidEventPublicationPreflightService CreatePreflight() => new(
         _events,

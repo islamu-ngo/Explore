@@ -41,11 +41,31 @@ public enum AdmissionCredentialVerificationOutcome
     InvalidRequest
 }
 
+public static class AdmissionIssuanceAuthority
+{
+    public const string ConfirmedFreeOrder = "ConfirmedFreeOrder";
+    public const string ReconciledPaidFinalization = "ReconciledPaidFinalization";
+
+    public static string ForOrderTotal(long totalDueMinor) => totalDueMinor switch
+    {
+        < 0 => throw new ArgumentOutOfRangeException(nameof(totalDueMinor)),
+        0 => ConfirmedFreeOrder,
+        _ => ReconciledPaidFinalization
+    };
+}
+
 public sealed record AdmissionIssuanceRequest(
     Guid TenantId,
     Guid RegistrationOrderId,
     Guid FinalizationEffectId,
     string Authority);
+
+public interface IAdmissionIssuanceService
+{
+    Task<AdmissionIssuanceResult> IssueConfirmedAsync(
+        AdmissionIssuanceRequest request,
+        CancellationToken cancellationToken);
+}
 
 public sealed record AdmissionAssignmentFact(
     RegistrationOrderLine OrderLine,

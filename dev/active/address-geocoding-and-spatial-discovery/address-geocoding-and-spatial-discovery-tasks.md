@@ -7,9 +7,9 @@ Last Updated: 2026-08-25 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Phase 1 in progress; Task 1.1 Red specifications independently confirmed in the task-owned isolated worktree.
-- **Completed:** 1/19 implementation tasks (phase verification tracked separately).
-- **Current priority:** Task 1.2, atomic Location address transitions and direct-write contraction.
+- **Overall status:** Phase 1 complete; Phase 2 Tasks 2.1-2.2 independently verified in the task-owned isolated worktree.
+- **Completed:** 6/19 implementation tasks (phase verification tracked separately).
+- **Current priority:** Task 2.3, effective governance policy and SQL-first local suggestion query.
 - **Next recommended slice:** Complete Phase 1 only.
 - **I-VSD:** [I-VSD Address Geocoding And Spatial Discovery](../../../islamic-value-sensitive-design/i-vsd-address-geocoding-and-spatial-discovery.md)
 - **Spatial ownership:** Exact PostGIS work is deferred to `dev/active/home-discovery-experience/` Phase 6; no spatial runtime task exists here.
@@ -54,7 +54,7 @@ Last Updated: 2026-08-25 Europe/Brussels
   - **Dependencies:** User approval of Phase 1.
   - **Guidance:** Plan Decisions 1-2; `criticality-guardrail`; Application/Domain/test rules.
 
-- [ ] **1.2 Green Phase - Implement Atomic Location Address Transitions**
+- [x] **1.2 Green Phase - Implement Atomic Location Address Transitions**
   - **Files:**
     - `src/Explore.Domain/Location.cs` (existing)
     - `src/Explore.Domain/LocationPii.cs` (existing)
@@ -69,16 +69,17 @@ Last Updated: 2026-08-25 Europe/Brussels
     - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*UpdateLocationCommandHandlerTests/*"`
     - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*PrivateHomeOwnershipCommandHandlerTests/*"`
   - **Acceptance:**
-    - [ ] Real construction no longer depends on proxy-setter AutoMapper behavior.
-    - [ ] No partial/non-finite coordinate state is constructible through the public aggregate write API.
-    - [ ] Manual address mutation clears stale coordinates/provider selection.
-    - [ ] Request tenant/context mismatch fails closed; body tenancy remains absent.
-    - [ ] Private-home anti-resurrection and consent tests remain green.
+    - [x] Real construction no longer depends on proxy-setter AutoMapper behavior.
+    - [x] No partial/non-finite coordinate state is constructible through the public aggregate write API.
+    - [x] Manual address mutation clears stale coordinates/provider selection.
+    - [x] Request tenant/context mismatch fails closed; body tenancy remains absent.
+    - [x] Private-home anti-resurrection and consent tests remain green.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding`; 158 focused/legacy/persistence/API tests passed with 0 failures, seven affected Release builds passed with 0 warnings/errors, all 12 changed production files were LSP-clean, and `git diff --check` plus generated/migration scope checks were clean.
   - **Effort:** L
   - **Dependencies:** 1.1 Red evidence.
   - **Guidance:** Plan Section 3.1; `clean-architecture-rules`; `cqrs-mediatr-guidelines`.
 
-- [ ] **1.3 Green Phase - Contract Nested Event And AI Location Writes**
+- [x] **1.3 Green Phase - Contract Nested Event And AI Location Writes**
   - **Files:**
     - `src/Explore.Application/DTOs/Event/CreateEventLocationDto.cs` (existing)
     - `src/Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs` (existing)
@@ -87,39 +88,44 @@ Last Updated: 2026-08-25 Europe/Brussels
     - `src/Explore.Application/Features/AiAssistant/Actions/CreateEventDraftAiActionMapper.cs` (existing)
     - Existing Event/AI tests plus Task 1.1 tests
   - **Description:** Remove model/browser coordinate authority from nested Event and AI draft paths. Route nested creation through governed manual address semantics now and the protected-selection abstraction when it exists. Do not change authorized disclosure/read contracts.
-  - **Green command:** `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*CreateEventLocationWriteContractTests/*|/*/*/*CreateEventDraftLocationWriteContractTests/*"`
+  - **Green commands:**
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*CreateEventLocationWriteContractTests/*"`
+    - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*CreateEventDraftLocationWriteContractTests/*"`
   - **Acceptance:**
-    - [ ] No nested Event or AI draft write payload carries latitude/longitude.
-    - [ ] Manual nested creation stores no coordinates.
-    - [ ] AI/model output cannot manufacture trusted coordinates.
-    - [ ] Existing EventLocation disclosure paths remain unchanged.
+    - [x] No nested Event or AI draft write payload carries latitude/longitude.
+    - [x] Manual nested creation stores no coordinates.
+    - [x] AI/model output cannot manufacture trusted coordinates.
+    - [x] Existing EventLocation disclosure paths remain unchanged.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding`; 74 focused/existing Event and AI tests passed, both affected Release builds passed with 0 warnings/errors, changed Task 1.3 files were LSP-clean, and the architecture ratchet reported only six generated-client write members owned by Task 1.4 while all authorized-read controls passed.
   - **Effort:** L
   - **Dependencies:** 1.2.
   - **Guidance:** Plan Decision 1; AI/privacy disclosure guards.
 
-- [ ] **1.4 Refactor Phase - Regenerate Contracts And Ratchet Boundaries**
+- [x] **1.4 Refactor Phase - Regenerate Contracts And Ratchet Boundaries**
   - **Files:** `LocationController.cs`, affected Event/AI API surfaces, `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, `EventApiClient.g.cs`, affected services/dialogs/tests, `docs/API.md`, `docs/API_CHANGELOG.md` (existing/generated)
   - **Description:** Regenerate one breaking contract after every write path is current. Preserve operation IDs and private-home operations. Delete obsolete coordinate input UI/client code directly. Add the architecture ratchet without pinning prose.
   - **Target commands:**
-    - `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj -- --treenode-filter "/*/*/*CoordinateWriteAuthorityArchitectureTests/*|/*/*/*EventLocationDisclosureConvergenceTests/*"`
+    - `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj -- --treenode-filter "/*/*/*CoordinateWriteAuthorityArchitectureTests/*"`
+    - `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj -- --treenode-filter "/*/*/*EventLocationDisclosureConvergenceTests/*"`
     - `dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj -- --treenode-filter "/*/*/*LocationControllerTests/*"`
   - **Acceptance:**
-    - [ ] OpenAPI/inventory/client are generated and contain no write-coordinate members or aliases.
-    - [ ] Authorized disclosure read fields remain governed and present where intended.
-    - [ ] Private-home routes, operation IDs, `If-Match`, and consent semantics are unchanged.
-    - [ ] `docs/API_CHANGELOG.md` records the direct breaking change and affected consumers.
+    - [x] OpenAPI/inventory/client are generated and contain no write-coordinate members or aliases.
+    - [x] Authorized disclosure read fields remain governed and present where intended.
+    - [x] Private-home routes, operation IDs, `If-Match`, and consent semantics are unchanged.
+    - [x] `docs/API_CHANGELOG.md` records the direct breaking change and affected consumers.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding`; canonical API/inventory/NSwag regeneration was hash-stable, the generated write graph contains no coordinate member while authorized reads retain coordinates, architecture/disclosure/API/private-home gates passed, 11 focused deterministic dialog/validator tests passed, and affected API/Blazor/architecture projects compiled. Razor LSP is unavailable; compiled Razor and focused bUnit tests are the verification substitute.
   - **Effort:** L
   - **Dependencies:** 1.2, 1.3.
   - **Guidance:** `openapi-contract-change`; API controller and generated-artifact rules.
 
 ### Phase 1 Verification - RUN ONCE AFTER TASKS 1.1-1.4
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 2: Governed Persistence And Local-Only Acquisition - NOT STARTED
+## Phase 2: Governed Persistence And Local-Only Acquisition - IN PROGRESS
 
-- [ ] **2.1 Red Phase - Specify Conservative Address State And Isolation**
+- [x] **2.1 Red Phase - Specify Conservative Address State And Isolation**
   - **Files:**
     - `tests/Event.Application.UnitTests/Features/Locations/AddressGovernancePolicyTests.cs` (new)
     - `tests/Event.Persistence.IntegrationTests/Repositories/LocalAddressSuggestionQueryTests.cs` (new)
@@ -127,25 +133,28 @@ Last Updated: 2026-08-25 Europe/Brussels
   - **Description:** Author failing tests for source/visibility independence, `UnknownLegacy+Quarantined`, Private Home non-promotion, creator/organization/tenant-approved scope, user-scope non-escalation, missing organization/tenant failure, SQL-before-PII filtering, idempotent/concurrent promotion, and current provider migration heads.
   - **Red commands:**
     - `dotnet run --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj -- --treenode-filter "/*/*/*AddressGovernancePolicyTests/*"`
-    - `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj -- --treenode-filter "/*/*/*LocalAddressSuggestionQueryTests/*|/*/*/*LocationAddressGovernanceMigrationTests/*"`
+    - `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj -- --treenode-filter "/*/*/*LocalAddressSuggestionQueryTests/*"`
+    - `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj -- --treenode-filter "/*/*/*LocationAddressGovernanceMigrationTests/*"`
   - **Acceptance:**
-    - [ ] Tests fail for the missing governance state/query/migration behavior.
-    - [ ] PostgreSQL and SQLite cases are real relational executions.
-    - [ ] SQL Server/MariaDB/MySQL are labeled model/migration parity unless real lanes are added.
+    - [x] Tests fail for the missing governance state/query/migration behavior.
+    - [x] PostgreSQL and SQLite cases are real relational executions.
+    - [x] SQL Server/MariaDB/MySQL are labeled model/migration parity unless real lanes are added.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding`; independently reproduced `AddressGovernancePolicyTests` 1/33 passing, `LocalAddressSuggestionQueryTests` 2/6 passing, and `LocationAddressGovernanceMigrationTests` 1/13 passing. All 48 failures are intentional missing Task 2.2-2.4 contracts; PostgreSQL and SQLite relational controls passed, all three files were LSP-clean, and no production/generated artifact changed.
   - **Effort:** L
   - **Dependencies:** Phase 1 complete.
   - **Guidance:** Plan Decisions 3-4; `dotnet-efcore-guidelines`; migration/test rules.
 
-- [ ] **2.2 Green Phase - Persist Source Visibility And Organization Scope**
+- [x] **2.2 Green Phase - Persist Source Visibility And Organization Scope**
   - **Files:** `Location.cs`; new lookup enums/entities/configuration/seeding; Location configuration; all five generated provider migrations/snapshots; migration tests
   - **Description:** Add independent source and visibility state plus nullable organization scope. Reuse `CreatedBy`. Introduce `UnknownLegacy`, `Manual`, provider-selected source semantics and `Quarantined`, creator, organization, tenant-approved visibility. Generate migrations from the then-current immutable head.
   - **Green command:** `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj -- --treenode-filter "/*/*/*LocationAddressGovernanceMigrationTests/*"`
   - **Acceptance:**
-    - [ ] Existing rows are `UnknownLegacy+Quarantined`, never guessed or tenant-reusable.
-    - [ ] Source and visibility cannot overwrite each other.
-    - [ ] Every non-approved current row has one conservative private scope.
-    - [ ] Private Home cannot be `TenantApproved`.
-    - [ ] Five provider snapshots/migrations are generated and spatial/provider-transport free.
+    - [x] Existing rows are `UnknownLegacy+Quarantined`, never guessed or tenant-reusable.
+    - [x] Source and visibility cannot overwrite each other.
+    - [x] Every non-approved current row has one conservative private scope.
+    - [x] Private Home cannot be `TenantApproved`.
+    - [x] Five provider snapshots/migrations are generated and spatial/provider-transport free.
+  - **Evidence:** `/home/amir/ISLAMU/Github/Event-address-geocoding`; independently confirmed domain 5/5, privacy lifecycle 10/10, lookup seeder 3/3, generator operation 4/4, monetary backfill 1/1, and migration/provider parity 13/13. PostgreSQL and SQLite executed the generated governance head against dynamic predecessor models; all five generated heads/snapshots are pending-model clean with exact seed ordering, constraints, FKs, and no unrelated operations.
   - **Effort:** XL
   - **Dependencies:** 2.1 Red evidence.
   - **Guidance:** EF migration generation invariant; lookup seeding parity.
