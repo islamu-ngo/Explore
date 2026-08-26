@@ -1,6 +1,6 @@
 ---
 name: cqrs-mediatr-guidelines
-description: "Load for MediatR/CQRS commands, queries, handlers, validators, pipeline behaviors, cache invalidation, idempotency, or specification-driven reads in `Explore.Application`; not for controller-only or repository-only edits."
+description: "Load for MediatR/CQRS commands, queries, immutable request/result contracts, handlers, validators, pipeline behaviors, cache invalidation, idempotency, or specification-driven reads in `Explore.Application`; not for controller-only or repository-only edits."
 type: pattern
 enforcement: suggest
 priority: high
@@ -8,61 +8,35 @@ priority: high
 <!-- ABOUTME: CQRS and MediatR guidance for commands, queries, handlers, validators, caching, and specification usage. -->
 <!-- ABOUTME: Keeps Explore.Application handlers thin, entity-first, cancellation-aware, and aligned with repository and response contracts. -->
 
-## Must-Read Docs
-- [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
-- [../../../docs/API.md](../../../docs/API.md)
-- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
+## Resources
+- [Record contracts](../../../docs/RECORD_CONTRACTS.md) — load for request/result record selection, factories, collection ownership, and trusted authority.
+- [Architecture](../../../docs/ARCHITECTURE.md) — load for Application boundaries and CQRS flow.
+- [API](../../../docs/API.md) — load when result mapping or the public HTTP contract changes.
+- [Quick reference](../../../docs/QUICK_REFERENCE.md) — load for repository-wide CQRS invariants.
 
-## Top 5 Invariants
-1. Commands return `BaseCommandResponse<Guid>` for create or update work or `bool` for many deletes, while queries return DTOs or `PaginatedResult<TDto>`.
-2. Repositories return entities and handler code performs DTO mapping, so projection boundaries stay in Application.
-3. Validators are manually instantiated inside handlers and are never injected as `IValidator<T>` through DI.
-4. Handlers pass `CancellationToken` end to end and use HybridCache with `GetOrCreateAsync` for queries and `RemoveAsync` for command invalidation.
-5. `IQuerySpecification<T>` and immutable fluent composition via `And(...)` live in Application, while repositories apply the specification to `IQueryable<T>`.
+## Rules
 
-## Top 5 Anti-Patterns
-1. Mixing command and query logic in one handler creates blurred responsibilities and makes pipeline behavior harder to reason about.
-2. Injecting `IValidator<T>` through DI breaks the project validation standard and weakens handler-local control.
-3. Returning domain entities from handlers leaks persistence-shaped objects into API or Blazor consumers.
-4. Using `ExploreDbContext` directly in handlers bypasses repository abstractions and couples Application to EF Core.
-5. Returning `IQueryable` from repositories leaks EF concerns into Application and lets handlers compose persistence logic ad hoc.
+- Concrete MediatR requests default to sealed records. Prefer positional records only for short stable contracts; use nominal `init`/`required` members for long, optional, attributed, or presence-sensitive contracts.
+- A request carries client intent, not current authority. HTTP or trusted adapters supply current tenant/user facts from principal, route, or tenant context; body identifiers name only independently authorized targets.
+- `BaseCommandResponse<TKey>` and concrete payload results are immutable valid-state records. Use named success/failure factories and the shared RFC 7807 mapper; never restore public setters or contradictory constructor states.
+- Repositories return entities. Handlers perform DTO mapping and never consume `ExploreDbContext` or a repository-returned `IQueryable`.
+- Validators are manually instantiated in the handler. Cancellation flows end to end.
+- Queries may use HybridCache read-through; commands invalidate affected keys after the owning write succeeds.
+- `IQuerySpecification<T>` composition remains immutable and Application-owned; Persistence applies it to EF queries.
 
-## Minimal Examples
-```csharp
-public sealed record GetEventByIdQuery(Guid Id);
+## Workflow
 
-public sealed class GetEventByIdHandler(IEventRepository repository, HybridCache cache)
-{
-    public async Task<EventDto?> Handle(GetEventByIdQuery request, CancellationToken cancellationToken)
-    {
-        var validator = new GetEventByIdQueryValidator();
-        await validator.ValidateAndThrowAsync(request, cancellationToken);
+1. Lock request construction, result-state mapping, trusted authority, and consumed equality with focused tests.
+2. Change the request/result contract and migrate all handlers, controllers, tests, and mappers in the same slice.
+3. Replace mutable result assembly with named factories and mutable request rewrites with initialization or `with`.
+4. Verify CQRS conventions plus the affected handler and API mapping tests.
 
-        return await cache.GetOrCreateAsync(
-            $"events:{request.Id}",
-            async token =>
-            {
-                Event? entity = await repository.GetByIdAsync(request.Id, token);
-                return entity is null ? null : new EventDto(entity.Id, entity.Title);
-            },
-            cancellationToken: cancellationToken);
-    }
-}
-```
-
-```csharp
-IQuerySpecification<Event> spec = EventQuerySpecification.Create()
-    .WithPublishedOnly()
-    .And(EventQuerySpecification.Create().WithTenant(tenantId))
-    .And(EventQuerySpecification.Create().WithSearch(searchTerm));
-```
-
-## Verification Hooks
+## Verification
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/CqrsPatternTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 - `dotnet build --configuration Release --verbosity quiet`
 
-## Related Skills
+## Related
 - [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
 - [../dotnet-efcore-guidelines/SKILL.md](../dotnet-efcore-guidelines/SKILL.md)
 - [../auth-patterns/SKILL.md](../auth-patterns/SKILL.md)
