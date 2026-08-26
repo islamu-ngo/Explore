@@ -274,7 +274,7 @@ public sealed class PromotionContractPrivacyTests
 
     private static string ExtractGeneratedType(string generated, string typeName)
     {
-        var typeStart = generated.IndexOf($"partial class {typeName}", StringComparison.Ordinal);
+        int typeStart = FindGeneratedTypeStart(generated, typeName);
         if (typeStart < 0)
         {
             return string.Empty;
@@ -282,6 +282,18 @@ public sealed class PromotionContractPrivacyTests
 
         var typeEnd = generated.IndexOf("\n    [System.CodeDom.Compiler.GeneratedCode", typeStart + 1, StringComparison.Ordinal);
         return typeEnd < 0 ? generated[typeStart..] : generated[typeStart..typeEnd];
+    }
+
+    private static int FindGeneratedTypeStart(string generated, string typeName)
+    {
+        int recordStart = generated.IndexOf(
+            $"partial record class {typeName}",
+            StringComparison.Ordinal);
+        return recordStart >= 0
+            ? recordStart
+            : generated.IndexOf(
+                $"partial class {typeName}",
+                StringComparison.Ordinal);
     }
 
     private static string ExtractGeneratedMethodSignature(string generated, string methodName)

@@ -107,8 +107,7 @@ public sealed class StudioAttendeesTests : IDisposable
     public async Task EventPage_ExportActionRequiresExactHalRelation(bool hasExportRelation, int expectedButtons)
     {
         Guid eventId = Guid.CreateVersion7();
-        EventDto resource = Event(eventId);
-        resource.OrganizerActorId = Guid.CreateVersion7();
+        EventDto resource = Event(eventId) with { OrganizerActorId = Guid.CreateVersion7() };
         var links = new Dictionary<string, object> { ["view-participants"] = new { href = "/participants" } };
         if (hasExportRelation)
         {
@@ -139,8 +138,7 @@ public sealed class StudioAttendeesTests : IDisposable
     {
         Guid eventId = Guid.CreateVersion7();
         Guid organizerActorId = Guid.CreateVersion7();
-        EventDto resource = Event(eventId);
-        resource.OrganizerActorId = organizerActorId;
+        EventDto resource = Event(eventId) with { OrganizerActorId = organizerActorId };
         resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
             new Dictionary<string, object>
             {

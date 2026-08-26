@@ -96,8 +96,7 @@ public sealed class HeroCarouselTests : IDisposable
     public async Task HeroCarouselRendersTitleBeforeCompactClassificationBadges()
     {
         var events = CreateEvents(1);
-        events[0].EventTypeFullName = "Community gathering";
-        events[0].EventFormatFullName = "In-Person";
+        events[0] = events[0] with { EventTypeFullName = "Community gathering", EventFormatFullName = "In-Person" };
 
         var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
             .Add(component => component.Events, events));
@@ -116,10 +115,7 @@ public sealed class HeroCarouselTests : IDisposable
     {
         var actorId = Guid.NewGuid();
         var events = CreateEvents(1);
-        events[0].ActorId = actorId;
-        events[0].ActorTypeId = 2;
-        events[0].ActorDisplayName = "Community organizer";
-        events[0].ActorProfilePictureUri = "https://example.test/actors/community-organizer.webp";
+        events[0] = events[0] with { ActorId = actorId, ActorTypeId = 2, ActorDisplayName = "Community organizer", ActorProfilePictureUri = "https://example.test/actors/community-organizer.webp" };
 
         var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
             .Add(component => component.Events, events));
@@ -181,7 +177,7 @@ public sealed class HeroCarouselTests : IDisposable
     public async Task HeroCarouselUsesImageHelperFallbackForMissingImage()
     {
         var events = CreateEvents(1);
-        events[0].FeaturedImageUri = null;
+        events[0] = events[0] with { FeaturedImageUri = null };
 
         var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
             .Add(component => component.Events, events));
@@ -195,7 +191,7 @@ public sealed class HeroCarouselTests : IDisposable
     public async Task HeroCarouselUsesImageHelperFallbackForCanonicalPlaceholder()
     {
         var events = CreateEvents(1);
-        events[0].FeaturedImageUri = "https://placeholder.islamu.org/event-default.jpg";
+        events[0] = events[0] with { FeaturedImageUri = "https://placeholder.islamu.org/event-default.jpg" };
 
         var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
             .Add(component => component.Events, events));

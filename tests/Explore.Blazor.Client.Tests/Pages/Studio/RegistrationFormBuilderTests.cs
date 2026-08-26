@@ -271,7 +271,7 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         RegistrationFormSectionDto section = version.Sections.OrderBy(item => item.Ordinal).First();
         RegistrationFormFieldDto[] fields = section.Fields.OrderBy(item => item.Ordinal).ToArray();
         HalResourceOfRegistrationFormVersionDto authoritative = VersionGraph(eventId, form.Id, "DRAFT", includeFields: true);
-        authoritative.Sections.First().Fields = [fields[1], fields[0]];
+        authoritative.Sections = [authoritative.Sections.First() with { Fields = [fields[1], fields[0]] }, ..authoritative.Sections.Skip(1)];
         _service.ReorderFieldsAsync(eventId, form.Id, version.Id, section.Id, version.ConcurrencyStamp,
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<HalLink>(), Arg.Any<CancellationToken>()).Returns(authoritative);
 
@@ -326,7 +326,7 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         RegistrationFormSectionDto section = version.Sections.OrderBy(item => item.Ordinal).First();
         RegistrationFormFieldDto[] fields = section.Fields.OrderBy(item => item.Ordinal).ToArray();
         HalResourceOfRegistrationFormVersionDto authoritative = VersionGraph(eventId, form.Id, "DRAFT", includeFields: true);
-        authoritative.Sections.First().Fields = [fields[1], fields[0]];
+        authoritative.Sections = [authoritative.Sections.First() with { Fields = [fields[1], fields[0]] }, ..authoritative.Sections.Skip(1)];
         _service.ReorderFieldsAsync(eventId, form.Id, version.Id, section.Id, version.ConcurrencyStamp,
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<HalLink>(), Arg.Any<CancellationToken>()).Returns(authoritative);
 
@@ -440,8 +440,10 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         RegistrationFormSectionDto section = version.Sections.First();
         RegistrationFormFieldDto field = section.Fields.First();
         RegistrationFormFieldOptionDto option = Option("General", 1, eventId, form.Id, version.Id, section.Id, field.Id);
-        field.Options = [option];
+        field = field with { Options = [option] };
+        section = section with { Fields = [field, ..section.Fields.Skip(1)] };
         RegistrationFormRuleDto rule = Rule(eventId, form.Id, version.Id, field);
+        version.Sections = [section, ..version.Sections.Skip(1)];
         version.Rules = [rule];
         version._links = Links(
             ("add-section", $"/api/events/{eventId}/registration-forms/{form.Id}/versions/{version.Id}/sections", "POST"),
@@ -541,8 +543,9 @@ public sealed class RegistrationFormBuilderTests : IDisposable
 
     private void Configure(Guid eventId, HalResourceOfRegistrationWorkflowDto workflow, HalResourceOfRegistrationFormDto form, HalResourceOfRegistrationFormVersionDto version)
     {
-        form.Versions.First().Id = version.Id;
-        workflow.Forms.First().Versions.First().Id = version.Id;
+        RegistrationFormVersionSummaryDto summary = form.Versions.First() with { Id = version.Id };
+        form.Versions = [summary];
+        workflow.Forms = [workflow.Forms.First() with { Versions = [summary] }];
         _service.GetWorkflowAsync(eventId, Arg.Any<CancellationToken>()).Returns(workflow);
         _service.GetFormAsync(eventId, form.Id, Arg.Any<CancellationToken>()).Returns(form);
         _service.GetVersionAsync(eventId, form.Id, version.Id, Arg.Any<CancellationToken>()).Returns(version);
@@ -568,7 +571,7 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         var second = Section("Preferences", 1, eventId, formId, versionId);
         if (includeFields)
         {
-            first.Fields = [Field("Name", 1, eventId, formId, versionId, first.Id), Field("Email", 2, eventId, formId, versionId, first.Id)];
+            first = first with { Fields = [Field("Name", 1, eventId, formId, versionId, first.Id), Field("Email", 2, eventId, formId, versionId, first.Id)] };
         }
         return new HalResourceOfRegistrationFormVersionDto
         {

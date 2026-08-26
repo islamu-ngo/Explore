@@ -46,12 +46,27 @@ public sealed class StorageUploadOpenApiContractTests
 
         foreach (var typeName in generatedStorageMetadataTypes)
         {
-            var typeStart = generatedClient.IndexOf($"partial class {typeName}", StringComparison.Ordinal);
+            int typeStart = FindGeneratedTypeStart(
+                generatedClient,
+                typeName);
+            await Assert.That(typeStart).IsGreaterThanOrEqualTo(0);
             var typeEnd = generatedClient.IndexOf("\n    [System.CodeDom.Compiler.GeneratedCode", typeStart + 1, StringComparison.Ordinal);
             var generatedType = typeEnd >= 0 ? generatedClient[typeStart..typeEnd] : generatedClient[typeStart..];
 
             await Assert.That(generatedType).DoesNotContain("ObjectKey");
         }
+    }
+
+    private static int FindGeneratedTypeStart(string generated, string typeName)
+    {
+        int recordStart = generated.IndexOf(
+            $"partial record class {typeName}",
+            StringComparison.Ordinal);
+        return recordStart >= 0
+            ? recordStart
+            : generated.IndexOf(
+                $"partial class {typeName}",
+                StringComparison.Ordinal);
     }
 
     [Test]

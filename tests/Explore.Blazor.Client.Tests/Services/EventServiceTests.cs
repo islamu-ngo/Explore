@@ -536,22 +536,25 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var expectedEvent = ComponentDataBuilder.EventDto.Generate();
-        expectedEvent.Id = eventId;
-        expectedEvent.ActorTypeFullName ??= "Organization";
-        expectedEvent.EventStatusId = 1;
-        expectedEvent.EventStatusFullName = "Draft";
-        expectedEvent.EventStatusMasterCode = "DRFT";
-        expectedEvent.EventFormatId = 1;
-        expectedEvent.EventFormatFullName = "In-Person";
-        expectedEvent.EventFormatMasterCode = "INPERSON";
-        expectedEvent.VisibilityTypeId = 1;
-        expectedEvent.VisibilityTypeFullName = "Public";
-        expectedEvent.VisibilityTypeMasterCode = "PUBLIC";
-        expectedEvent.FeaturedImageId = Guid.NewGuid();
-        expectedEvent.FeaturedImageUri = "https://example.com/image.png";
-        expectedEvent.SessionCount = 1;
-        expectedEvent.Timezone = "UTC";
+        var generatedEvent = ComponentDataBuilder.EventDto.Generate();
+        var expectedEvent = generatedEvent with
+        {
+            Id = eventId,
+            ActorTypeFullName = generatedEvent.ActorTypeFullName ?? "Organization",
+            EventStatusId = 1,
+            EventStatusFullName = "Draft",
+            EventStatusMasterCode = "DRFT",
+            EventFormatId = 1,
+            EventFormatFullName = "In-Person",
+            EventFormatMasterCode = "INPERSON",
+            VisibilityTypeId = 1,
+            VisibilityTypeFullName = "Public",
+            VisibilityTypeMasterCode = "PUBLIC",
+            FeaturedImageId = Guid.NewGuid(),
+            FeaturedImageUri = "https://example.com/image.png",
+            SessionCount = 1,
+            Timezone = "UTC"
+        };
         var halResponse = CreateHalResourceResponse(expectedEvent);
 
         _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -587,12 +590,14 @@ public class EventServiceTests
     public async Task GetEventByIdAsync_WhenPublicDetailHiddenAndManagementDetailAllowed_ReturnsManagementEvent()
     {
         var eventId = Guid.NewGuid();
-        var expectedEvent = ComponentDataBuilder.EventDto.Generate();
-        expectedEvent.Id = eventId;
-        expectedEvent.Title = "Moderated management event";
-        expectedEvent.EventStatusId = 6;
-        expectedEvent.EventStatusFullName = "Moderated";
-        expectedEvent.EventStatusMasterCode = "MODERATED";
+        var expectedEvent = ComponentDataBuilder.EventDto.Generate() with
+        {
+            Id = eventId,
+            Title = "Moderated management event",
+            EventStatusId = 6,
+            EventStatusFullName = "Moderated",
+            EventStatusMasterCode = "MODERATED"
+        };
         var managementResponse = CreateHalResourceResponse(expectedEvent);
 
         _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

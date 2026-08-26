@@ -280,8 +280,7 @@ public sealed class StudioEventShellTests : IDisposable
     [Arguments("view-registration-provider-health")]
     public async Task IntegrationsRoute_WithProviderRelation_RendersManagementPage(string relation)
     {
-        var resource = CreateEvent(relation);
-        resource.TenantId = Guid.CreateVersion7();
+        var resource = CreateEvent(relation) with { TenantId = Guid.CreateVersion7() };
         _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
         var integrationService = _ctx.AddMockService<IRegistrationProviderIntegrationService>();
         integrationService.GetConnectionsAsync(resource.TenantId.Value, resource.Id.Value, Arg.Any<CancellationToken>())

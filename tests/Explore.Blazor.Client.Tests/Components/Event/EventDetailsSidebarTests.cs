@@ -37,7 +37,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
         const string href = "/api/events/public-actions/123/redirect";
         const string title = "Reserve with the organizer";
         var detail = CreateEventDetail(eventId, includeStartRegistrationLink: false);
-        detail.AdditionalProperties = CreateHalLink("external-registration", href, title);
+        detail = detail with { AdditionalProperties = CreateHalLink("external-registration", href, title) };
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
@@ -59,7 +59,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
         var eventId = Guid.NewGuid();
         const string href = "/api/events/public-actions/123/redirect?campaign=summer&surface=event_detail#registration";
         var detail = CreateEventDetail(eventId, includeStartRegistrationLink: false);
-        detail.AdditionalProperties = CreateHalLink("external-registration", href, "Reserve with the organizer");
+        detail = detail with { AdditionalProperties = CreateHalLink("external-registration", href, "Reserve with the organizer") };
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
@@ -80,7 +80,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventItem = CreateEventListItem(eventId);
-        eventItem.FeaturedImageUri = "https://example.test/event-image.webp";
+        eventItem = eventItem with { FeaturedImageUri = "https://example.test/event-image.webp" };
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, eventItem)
@@ -147,7 +147,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
     {
         var eventItem = CreateEventListItem(Guid.NewGuid());
         const string sourceHref = "/api/event/federated/record/source";
-        eventItem.Id = null;
+        eventItem = eventItem with { Id = null };
         eventItem.AdditionalProperties["eventDiscoverySource"] = "atproto";
         eventItem.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
             new Dictionary<string, HalLink>

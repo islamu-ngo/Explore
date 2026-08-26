@@ -40,15 +40,13 @@ public class EventCardTests : IDisposable
         VisibilityTypeFullName = "Public"
     };
 
-    private static EventListDto CreateTestEventWithLongestTicketPriceSummary()
+    private static EventListDto CreateTestEventWithLongestTicketPriceSummary() => CreateTestEvent() with
     {
-        var eventDto = CreateTestEvent();
-        eventDto.TicketPriceSummary = new EventTicketPriceSummaryDto
+        TicketPriceSummary = new EventTicketPriceSummaryDto
         {
             SummaryCode = "MIXED_WITH_FREE"
-        };
-        return eventDto;
-    }
+        }
+    };
 
     private static string GetPriceSummarySelector(LayoutMode layout) => layout switch
     {
@@ -95,7 +93,7 @@ public class EventCardTests : IDisposable
     public async Task EventCard_CommunityReportedBadge_CannotBeConfiguredAway(LayoutMode layout)
     {
         var eventDto = CreateTestEvent();
-        eventDto.ProvenanceTypeCode = "COMMUNITY_REPORTED";
+        eventDto = eventDto with { ProvenanceTypeCode = "COMMUNITY_REPORTED" };
         var visibility = new Dictionary<string, bool>
         {
             ["event_list.card.show_date"] = false,
@@ -232,7 +230,7 @@ public class EventCardTests : IDisposable
     {
         var eventDto = CreateTestEvent();
         var pastDate = new DateTimeOffset(DateTimeOffset.Now.Year - 1, 7, 25, 17, 0, 0, TimeSpan.Zero);
-        eventDto.FirstSessionDate = pastDate;
+        eventDto = eventDto with { FirstSessionDate = pastDate };
         var expected =
             $"{pastDate.ToString("ddd", CultureInfo.InvariantCulture)}, {pastDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {pastDate:dd}, {pastDate:yyyy}, {pastDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
 
@@ -287,7 +285,7 @@ public class EventCardTests : IDisposable
     public async Task EventCard_WhenPast_RendersEndedBadgeAndSuppressesShareAction()
     {
         var eventDto = CreateTestEvent();
-        eventDto.IsPast = true;
+        eventDto = eventDto with { IsPast = true };
 
         var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
             .Add(x => x.Event, eventDto)
@@ -432,7 +430,7 @@ public class EventCardTests : IDisposable
         var selectCount = 0;
         var eventDto = CreateTestEvent();
         const string sourceHref = "/api/event/federated/record/source";
-        eventDto.Id = null;
+        eventDto = eventDto with { Id = null };
         eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
         eventDto.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
             new Dictionary<string, HalLink>
@@ -463,7 +461,7 @@ public class EventCardTests : IDisposable
     {
         var selectCount = 0;
         var eventDto = CreateTestEvent();
-        eventDto.Id = null;
+        eventDto = eventDto with { Id = null };
         eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
         var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
             .Add(component => component.Event, eventDto)
@@ -483,8 +481,7 @@ public class EventCardTests : IDisposable
     public async Task LocalEventCard_WithFailedPdsDelivery_ShowsStableRecoveryGuidanceOnly()
     {
         var eventDto = CreateTestEvent();
-        eventDto.AtprotoDeliveryStatus = "failed";
-        eventDto.AtprotoDeliveryFailureCode = "session_unavailable";
+        eventDto = eventDto with { AtprotoDeliveryStatus = "failed", AtprotoDeliveryFailureCode = "session_unavailable" };
         var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
             .Add(component => component.Event, eventDto)
             .Add(component => component.Layout, LayoutMode.DetailedList));
@@ -498,8 +495,7 @@ public class EventCardTests : IDisposable
     public async Task LocalEventCard_WithUnknownPdsFailure_RendersBoundedGuidanceWithoutRawFailure()
     {
         var eventDto = CreateTestEvent();
-        eventDto.AtprotoDeliveryStatus = "failed";
-        eventDto.AtprotoDeliveryFailureCode = "HTTP 500 provider body: private upstream detail";
+        eventDto = eventDto with { AtprotoDeliveryStatus = "failed", AtprotoDeliveryFailureCode = "HTTP 500 provider body: private upstream detail" };
         var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
             .Add(component => component.Event, eventDto)
             .Add(component => component.Layout, LayoutMode.SingleRow));
@@ -517,7 +513,7 @@ public class EventCardTests : IDisposable
     public async Task FederatedEventStateSemanticsPersistAcrossNarrowAndWideLayoutClasses(LayoutMode layout)
     {
         var eventDto = CreateTestEvent();
-        eventDto.Id = null;
+        eventDto = eventDto with { Id = null };
         eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
         var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
             .Add(component => component.Event, eventDto)

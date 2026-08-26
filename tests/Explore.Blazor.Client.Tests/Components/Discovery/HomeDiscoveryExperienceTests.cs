@@ -87,8 +87,18 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     public async Task CurrentLocationActionIsHiddenWithoutCentroidAreas()
     {
         var home = CompleteHome(Guid.NewGuid());
-        home.Context!.AvailableAreas!.Single().CentroidLatitude = null;
-        home.Context.AvailableAreas.Single().CentroidLongitude = null;
+        var area = home.Context!.AvailableAreas!.Single();
+        home = home with
+        {
+            Context = home.Context with
+            {
+                AvailableAreas = home.Context.AvailableAreas
+                    .Select(candidate => candidate == area
+                        ? candidate with { CentroidLatitude = null, CentroidLongitude = null }
+                        : candidate with { })
+                    .ToList()
+            }
+        };
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
 
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
@@ -162,7 +172,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         var areaId = Guid.NewGuid();
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(CompleteHome(areaId));
         var online = CompleteHome(areaId);
-        online.Context!.Mode = HomeDiscoveryMode.Online;
+        online = online with { Context = online.Context! with { Mode = HomeDiscoveryMode.Online } };
         discoveryService.SelectOnlineAsync(areaId, Arg.Any<CancellationToken>()).Returns(online);
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
@@ -185,7 +195,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     public async Task EmptyHeroKeepsContextAndShowsCompactEmptyState()
     {
         var home = CompleteHome(Guid.NewGuid());
-        home.Hero = [];
+        home = home with { Hero = [] };
         home.SectionStatuses!["hero"] = HomeDiscoverySectionStatus.Empty;
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
 
@@ -211,7 +221,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
             SortOrder = 2
         });
         var selected = CompleteHome(selectedAreaId);
-        selected.Context!.SelectedAreaDisplayName = "Antwerp";
+        selected = selected with { Context = selected.Context! with { SelectedAreaDisplayName = "Antwerp" } };
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(initial);
         discoveryService.SelectAreaAsync(selectedAreaId, Arg.Any<CancellationToken>()).Returns(selected);
 
@@ -235,7 +245,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     public async Task FailedSectionShowsBoundedMessageWhileSuccessfulSectionsRemain()
     {
         var home = CompleteHome(Guid.NewGuid());
-        home.UpcomingInArea = [];
+        home = home with { UpcomingInArea = [] };
         home.SectionStatuses!["upcoming"] = HomeDiscoverySectionStatus.Failed;
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
 
@@ -251,25 +261,28 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     public async Task FederatedHomeEventRendersTypedDataWithoutInventingSourceAction()
     {
         var home = CompleteHome(Guid.NewGuid());
-        home.UpcomingInArea =
-        [
-            new EventDiscoveryItemDto
-            {
-                Source = "atproto",
-                FederatedEvent = new FederatedEventDto
+        home = home with
+        {
+            UpcomingInArea =
+            [
+                new EventDiscoveryItemDto
                 {
-                    Name = "Federated neighborhood iftar",
-                    Description = "Published from a community PDS",
-                    StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero),
-                    Mode = "in-person"
-                },
-                Federation = new EventFederationMetadataDto
-                {
-                    AtprotoRecordId = Guid.NewGuid(),
-                    Provenance = "AT Protocol"
+                    Source = "atproto",
+                    FederatedEvent = new FederatedEventDto
+                    {
+                        Name = "Federated neighborhood iftar",
+                        Description = "Published from a community PDS",
+                        StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero),
+                        Mode = "in-person"
+                    },
+                    Federation = new EventFederationMetadataDto
+                    {
+                        AtprotoRecordId = Guid.NewGuid(),
+                        Provenance = "AT Protocol"
+                    }
                 }
-            }
-        ];
+            ]
+        };
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
 
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
@@ -300,7 +313,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
             {
                 ["source"] = new() { Href = sourcePath, Method = "GET" }
             });
-        home.Hero = [federated];
+        home = home with { Hero = [federated] };
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
 
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
@@ -315,20 +328,23 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     {
         var areaId = Guid.NewGuid();
         var stale = CompleteHome(areaId);
-        stale.UpcomingInArea =
-        [
-            new EventDiscoveryItemDto
-            {
-                Source = "atproto",
-                FederatedEvent = new FederatedEventDto
+        stale = stale with
+        {
+            UpcomingInArea =
+            [
+                new EventDiscoveryItemDto
                 {
-                    Name = "Tombstoned federated gathering",
-                    StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero)
+                    Source = "atproto",
+                    FederatedEvent = new FederatedEventDto
+                    {
+                        Name = "Tombstoned federated gathering",
+                        StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero)
+                    }
                 }
-            }
-        ];
+            ]
+        };
         var refreshed = CompleteHome(areaId);
-        refreshed.Context!.Mode = HomeDiscoveryMode.Online;
+        refreshed = refreshed with { Context = refreshed.Context! with { Mode = HomeDiscoveryMode.Online } };
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(stale);
         discoveryService.LoadAsync(null, "online", Arg.Any<CancellationToken>()).Returns(refreshed);
 
@@ -349,9 +365,9 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         var areaId = Guid.NewGuid();
         var initial = CompleteHome(areaId);
         var stale = CompleteHome(areaId);
-        stale.UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Canceled stale event", "stale") }];
+        stale = stale with { UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Canceled stale event", "stale") }] };
         var current = CompleteHome(areaId);
-        current.UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Current refreshed event", "current") }];
+        current = current with { UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Current refreshed event", "current") }] };
         var staleCompletion = new TaskCompletionSource<HomeDiscoveryDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken staleCancellation = default;
         discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(initial);

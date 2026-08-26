@@ -91,7 +91,7 @@ public class ApiClientNamingTests
         new(@"^[A-Z][A-Za-z0-9]+Async$", RegexOptions.Compiled);
 
     private static readonly Regex GeneratedAnonymousClassName =
-        new(@"public partial class Anonymous\d+", RegexOptions.Compiled);
+        new(@"public partial (?:record )?class Anonymous\d+", RegexOptions.Compiled);
 
     [Test]
     public async Task IEventApiClient_IsDiscoverable()
@@ -207,7 +207,7 @@ public class ApiClientNamingTests
     {
         var generatedClientSource = GetGeneratedClientSource();
         var missing = RequiredSchedulingDtoTypeNames
-            .Where(typeName => !generatedClientSource.Contains($"public partial class {typeName}", StringComparison.Ordinal))
+            .Where(typeName => !generatedClientSource.Contains($"public partial record class {typeName}", StringComparison.Ordinal))
             .OrderBy(name => name)
             .ToList();
 
@@ -257,6 +257,23 @@ public class ApiClientNamingTests
         await Assert.That(offenders).IsEmpty()
             .Because("OpenAPI schemas should use named component references instead of inline object schemas that NSwag emits as AnonymousN classes. "
                 + $"Actual offenders: [{string.Join(", ", offenders)}].");
+    }
+
+    [Test]
+    public async Task GeneratedClientCarriesOwnedRecordTransformationStamp()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+
+        await Assert.That(generatedClientSource)
+            .Contains("// <generated-record-policy version=\"1\">");
+        await Assert.That(generatedClientSource)
+            .Contains("public partial record class ActorDto");
+        await Assert.That(generatedClientSource)
+            .Contains("public partial class EventApiClient");
+        await Assert.That(generatedClientSource)
+            .Contains("public partial class HalResourceOfActorDto");
+        await Assert.That(generatedClientSource)
+            .Contains("public partial class PatchTenantFooterSettingsDto");
     }
 
     private static List<string> GetAsyncMethodNames() =>

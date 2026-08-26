@@ -309,9 +309,12 @@ public sealed class TenantPoliciesSectionTests : IDisposable
     public async Task PolicySwitch_WhenKeyMetadataIsMissing_FailsClosed()
     {
         SettingGroupResponseDto events = CreatePolicyCategory("Events");
-        events.Settings = events.Settings
-            .Where(setting => setting.Key != "events.user_submission_enabled")
-            .ToList();
+        events = events with
+        {
+            Settings = events.Settings
+                .Where(setting => setting.Key != "events.user_submission_enabled")
+                .ToList()
+        };
         _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>()).Returns(events);
 
         var cut = RenderComponent();

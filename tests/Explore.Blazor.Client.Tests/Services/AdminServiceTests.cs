@@ -87,8 +87,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        var expected = ComponentDataBuilder.OrganizationDto.Generate();
-        expected.Id = orgId;
+        var expected = ComponentDataBuilder.OrganizationDto.Generate() with { Id = orgId };
         var halResponse = CreateOrgResourceResponse(expected);
 
         _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

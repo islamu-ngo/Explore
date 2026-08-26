@@ -18,6 +18,10 @@ public sealed class PublishedCollectionContractArchitectureTests
 {
     private const string BaselinePath =
         "tests/Event.Architecture.Tests/Baselines/published-collection-contract-dispositions.json";
+    private const string GeneratedClientPath =
+        "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs";
+    private const string GeneratedRecordDeclaration =
+        "public partial record class ";
 
     private static readonly Assembly[] ContractAssemblies =
     [
@@ -34,6 +38,9 @@ public sealed class PublishedCollectionContractArchitectureTests
         "immutable-snapshot",
         "intentionally-mutable-owner",
     };
+
+    private static readonly Lazy<HashSet<string>> GeneratedClientRecordNames =
+        new(ReadGeneratedClientRecordNames);
 
     [Test]
     public async Task DispositionSchemaRejectsMalformedDuplicateUnsortedAndStaleEntries()
@@ -64,6 +71,9 @@ public sealed class PublishedCollectionContractArchitectureTests
         await Assert.That(HasFailure(failures, "blank")).IsTrue();
         await Assert.That(HasFailure(failures, "stale")).IsTrue();
         await Assert.That(HasFailure(failures, "not generated")).IsTrue();
+        await Assert.That(GeneratedClientRecordNames.Value.Count)
+            .IsEqualTo(653);
+        await Assert.That(IsGenerated(typeof(ActorDto))).IsTrue();
     }
 
     [Test]
@@ -101,6 +111,7 @@ public sealed class PublishedCollectionContractArchitectureTests
             .ToHashSet(StringComparer.Ordinal);
         var failures = current
             .Where(property => IsMutableCollectionType(property.Property.PropertyType))
+            .Where(property => !property.IsGenerated)
             .Where(property => !approvedMutableMembers.Contains(property.Member))
             .Select(property => $"{property.Member} exposes mutable {GetTypeName(property.Property.PropertyType)}")
             .Order(StringComparer.Ordinal)
@@ -145,7 +156,27 @@ public sealed class PublishedCollectionContractArchitectureTests
 
     private static bool IsGenerated(Type type) =>
         type.GetCustomAttribute<GeneratedCodeAttribute>() is not null
-        || type.GetCustomAttribute<CompilerGeneratedAttribute>() is not null;
+        || type.GetCustomAttribute<CompilerGeneratedAttribute>() is not null
+        || (type.Assembly == typeof(IEventApiClient).Assembly
+            && type.Namespace == typeof(IEventApiClient).Namespace
+            && GeneratedClientRecordNames.Value.Contains(type.Name));
+
+    private static HashSet<string> ReadGeneratedClientRecordNames()
+    {
+        string path = Path.Combine(
+            FindRepositoryRoot(),
+            GeneratedClientPath);
+        return File.ReadLines(path)
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(
+                GeneratedRecordDeclaration,
+                StringComparison.Ordinal))
+            .Select(line => line[GeneratedRecordDeclaration.Length..]
+                .Split(
+                    [' ', '<'],
+                    StringSplitOptions.RemoveEmptyEntries)[0])
+            .ToHashSet(StringComparer.Ordinal);
+    }
 
     private static bool IsCollectionType(Type type) =>
         type != typeof(string)

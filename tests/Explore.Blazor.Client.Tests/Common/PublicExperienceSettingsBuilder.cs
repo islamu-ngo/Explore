@@ -21,21 +21,21 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// </remarks>
 public sealed class PublicExperienceSettingsBuilder
 {
-    private readonly PublicExperienceSettingsDto _model = new();
+    private PublicExperienceSettingsDto _model = new();
 
     // ── Tenant Identity ─────────────────────────────────────────────────
 
     /// <summary>Sets the tenant ID for the settings.</summary>
     public PublicExperienceSettingsBuilder WithTenantId(Guid tenantId)
     {
-        _model.TenantId = tenantId;
+        _model = _model with { TenantId = tenantId };
         return this;
     }
 
     /// <summary>Sets deployment mode. Common values: "SingleTenant", "MultiTenant".</summary>
     public PublicExperienceSettingsBuilder WithDeploymentMode(string mode)
     {
-        _model.DeploymentMode = mode;
+        _model = _model with { DeploymentMode = mode };
         return this;
     }
 
@@ -44,23 +44,23 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Sets brand display name and optional logo URL.</summary>
     public PublicExperienceSettingsBuilder WithBranding(string displayName, string? logoUrl = null)
     {
-        _model.BrandDisplayName = displayName;
+        _model = _model with { BrandDisplayName = displayName };
         if (logoUrl is not null)
-            _model.BrandLogoUrl = logoUrl;
+            _model = _model with { BrandLogoUrl = logoUrl };
         return this;
     }
 
     /// <summary>Sets the brand favicon URL.</summary>
     public PublicExperienceSettingsBuilder WithFavicon(string faviconUrl)
     {
-        _model.BrandFaviconUrl = faviconUrl;
+        _model = _model with { BrandFaviconUrl = faviconUrl };
         return this;
     }
 
     /// <summary>Sets a custom CSS URL for tenant white-labeling.</summary>
     public PublicExperienceSettingsBuilder WithCustomCss(string cssUrl)
     {
-        _model.BrandCustomCssUrl = cssUrl;
+        _model = _model with { BrandCustomCssUrl = cssUrl };
         return this;
     }
 
@@ -69,21 +69,21 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Sets the instance base domain (e.g., "explore.islamu.org").</summary>
     public PublicExperienceSettingsBuilder WithBaseDomain(string baseDomain)
     {
-        _model.InstanceBaseDomain = baseDomain;
+        _model = _model with { InstanceBaseDomain = baseDomain };
         return this;
     }
 
     /// <summary>Sets the tenant subdomain (e.g., "community1").</summary>
     public PublicExperienceSettingsBuilder WithSubdomain(string subdomain)
     {
-        _model.Subdomain = subdomain;
+        _model = _model with { Subdomain = subdomain };
         return this;
     }
 
     /// <summary>Sets the tenant custom domain (e.g., "events.myorg.com").</summary>
     public PublicExperienceSettingsBuilder WithCustomDomain(string customDomain)
     {
-        _model.CustomDomain = customDomain;
+        _model = _model with { CustomDomain = customDomain };
         return this;
     }
 
@@ -92,14 +92,14 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Sets the preferred home page. "EventList" (default) or "LandingPage".</summary>
     public PublicExperienceSettingsBuilder WithHomePage(string preferredHomePage)
     {
-        _model.PreferredHomePage = preferredHomePage;
+        _model = _model with { PreferredHomePage = preferredHomePage };
         return this;
     }
 
     /// <summary>Configures event card click to open detail page.</summary>
     public PublicExperienceSettingsBuilder WithEventCardOpensDetail(bool enabled = true)
     {
-        _model.EventCardClickOpensDetailPage = enabled;
+        _model = _model with { EventCardClickOpensDetailPage = enabled };
         return this;
     }
 
@@ -108,7 +108,7 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Enables the Islamic module.</summary>
     public PublicExperienceSettingsBuilder WithIslamicModule(bool enabled = true)
     {
-        _model.IsIslamicModuleEnabled = enabled;
+        _model = _model with { IsIslamicModuleEnabled = enabled };
         if (enabled && !_model.EnabledModules.Contains("Islamic"))
             _model.EnabledModules.Add("Islamic");
         return this;
@@ -117,7 +117,7 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Enables the Tech module.</summary>
     public PublicExperienceSettingsBuilder WithTechModule(bool enabled = true)
     {
-        _model.IsTechModuleEnabled = enabled;
+        _model = _model with { IsTechModuleEnabled = enabled };
         if (enabled && !_model.EnabledModules.Contains("Tech"))
             _model.EnabledModules.Add("Tech");
         return this;
@@ -128,48 +128,48 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Controls whether users can submit events.</summary>
     public PublicExperienceSettingsBuilder WithUserSubmittedEvents(bool allowed = true)
     {
-        _model.AllowUserSubmittedEvents = allowed;
+        _model = _model with { AllowUserSubmittedEvents = allowed };
         return this;
     }
 
     /// <summary>Controls whether organizations can submit events.</summary>
     public PublicExperienceSettingsBuilder WithOrganizationSubmittedEvents(bool allowed = true)
     {
-        _model.AllowOrganizationSubmittedEvents = allowed;
+        _model = _model with { AllowOrganizationSubmittedEvents = allowed };
         return this;
     }
 
     /// <summary>Controls whether groups can submit events.</summary>
     public PublicExperienceSettingsBuilder WithGroupSubmittedEvents(bool allowed = true)
     {
-        _model.AllowGroupSubmittedEvents = allowed;
+        _model = _model with { AllowGroupSubmittedEvents = allowed };
         return this;
     }
 
     /// <summary>Controls whether organizations can self-register.</summary>
     public PublicExperienceSettingsBuilder WithOrganizationSelfRegistration(bool allowed = true)
     {
-        _model.AllowOrganizationSelfRegistration = allowed;
+        _model = _model with { AllowOrganizationSelfRegistration = allowed };
         return this;
     }
 
     /// <summary>Controls whether groups can self-register.</summary>
     public PublicExperienceSettingsBuilder WithGroupSelfRegistration(bool allowed = true)
     {
-        _model.AllowGroupSelfRegistration = allowed;
+        _model = _model with { AllowGroupSelfRegistration = allowed };
         return this;
     }
 
     public PublicExperienceSettingsBuilder WithClientPickerEnabled(bool enabled)
     {
-        _model.ClientPickerEnabled = enabled;
+        _model = _model with { ClientPickerEnabled = enabled };
         return this;
     }
 
     /// <summary>Sets community guidelines content.</summary>
     public PublicExperienceSettingsBuilder WithCommunityGuidelines(string content)
     {
-        _model.CommunityGuidelinesContent = content;
+        _model = _model with { CommunityGuidelinesContent = content };
         return this;
     }
 
@@ -188,27 +188,25 @@ public sealed class PublicExperienceSettingsBuilder
         string? apiKey = null,
         string? endpointUrl = null)
     {
-        _model.AnalyticsProvider = provider;
-        _model.AnalyticsEnabled = !provider.Equals("none", StringComparison.OrdinalIgnoreCase);
-        _model.AnalyticsConsentMode = consentMode;
+        _model = _model with { AnalyticsProvider = provider, AnalyticsEnabled = !provider.Equals("none", StringComparison.OrdinalIgnoreCase), AnalyticsConsentMode = consentMode };
         if (apiKey is not null)
-            _model.AnalyticsPublicApiKey = apiKey;
+            _model = _model with { AnalyticsPublicApiKey = apiKey };
         if (endpointUrl is not null)
-            _model.AnalyticsEndpointUrl = endpointUrl;
+            _model = _model with { AnalyticsEndpointUrl = endpointUrl };
         return this;
     }
 
     /// <summary>Sets analytics transport mode: "direct" or "proxy".</summary>
     public PublicExperienceSettingsBuilder WithAnalyticsTransport(string transportMode)
     {
-        _model.AnalyticsTransportMode = transportMode;
+        _model = _model with { AnalyticsTransportMode = transportMode };
         return this;
     }
 
     /// <summary>Enables or disables analytics user identification.</summary>
     public PublicExperienceSettingsBuilder WithAnalyticsIdentify(bool allowed = true)
     {
-        _model.AnalyticsAllowIdentify = allowed;
+        _model = _model with { AnalyticsAllowIdentify = allowed };
         return this;
     }
 
@@ -217,23 +215,21 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Sets the render policy preset and version.</summary>
     public PublicExperienceSettingsBuilder WithRenderPolicy(string preset, int version = 1)
     {
-        _model.RenderPolicyPreset = preset;
-        _model.RenderPolicyVersion = version;
+        _model = _model with { RenderPolicyPreset = preset, RenderPolicyVersion = version };
         return this;
     }
 
     /// <summary>Enables advanced render policy overrides.</summary>
     public PublicExperienceSettingsBuilder WithAdvancedRenderOverrides(bool enabled = true)
     {
-        _model.EnableAdvancedRenderPolicyOverrides = enabled;
+        _model = _model with { EnableAdvancedRenderPolicyOverrides = enabled };
         return this;
     }
 
     /// <summary>Sets the global render mode and prerender flag.</summary>
     public PublicExperienceSettingsBuilder WithGlobalRenderMode(string mode, bool prerender = false)
     {
-        _model.GlobalRenderMode = mode;
-        _model.GlobalPrerenderEnabled = prerender;
+        _model = _model with { GlobalRenderMode = mode, GlobalPrerenderEnabled = prerender };
         return this;
     }
 
@@ -242,8 +238,7 @@ public sealed class PublicExperienceSettingsBuilder
     /// <summary>Sets AI assistant enabled flag and availability (configured state).</summary>
     public PublicExperienceSettingsBuilder WithAiAssistant(bool available = true)
     {
-        _model.IsAiAssistantEnabled = true;
-        _model.IsAiAssistantAvailable = available;
+        _model = _model with { IsAiAssistantEnabled = true, IsAiAssistantAvailable = available };
         return this;
     }
 

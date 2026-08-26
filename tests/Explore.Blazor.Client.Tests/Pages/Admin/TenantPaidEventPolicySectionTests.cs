@@ -93,8 +93,9 @@ public sealed class TenantPaidEventPolicySectionTests : IDisposable
     {
         var tenantId = Guid.CreateVersion7();
         HalResourceOfTenantPaidEventPolicyConfigurationDto configuration = Configuration(tenantId, editable: true);
-        configuration.ActiveTenantOverride!.AllowedOrganizerKindIds = [2, 4];
-        configuration.EffectivePolicy = configuration.ActiveTenantOverride;
+        var tenantOverride = configuration.ActiveTenantOverride! with { AllowedOrganizerKindIds = [2, 4] };
+        configuration.ActiveTenantOverride = tenantOverride;
+        configuration.EffectivePolicy = tenantOverride;
         _service.GetTenantAsync(tenantId, Arg.Any<CancellationToken>()).Returns(configuration);
 
         var cut = Render(tenantId);

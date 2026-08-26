@@ -205,8 +205,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
-        var organization = ComponentDataBuilder.OrganizationDto.Generate();
-        organization.Id = organizationId;
+        var organization = ComponentDataBuilder.OrganizationDto.Generate() with { Id = organizationId };
         var halResponse = CreateOrgResourceResponse(organization);
 
         _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

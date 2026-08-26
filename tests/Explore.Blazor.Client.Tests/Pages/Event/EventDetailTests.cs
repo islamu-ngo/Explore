@@ -41,9 +41,7 @@ public sealed class EventDetailTests : IDisposable
     public async Task Render_WhenBackgroundColorMissing_KeepsThemeBackgroundAndPublishesFullBleedLayoutStyle()
     {
         var eventDto = CreateEventDto("PUBLISHED", "Published");
-        eventDto.BackgroundColor = null;
-        eventDto.BackgroundImageUri = "https://example.test/background.webp";
-        eventDto.BackgroundEffect = "SoftOverlay";
+        eventDto = eventDto with { BackgroundColor = null, BackgroundImageUri = "https://example.test/background.webp", BackgroundEffect = "SoftOverlay" };
         var appearanceState = new MainContentAppearanceState();
         RegisterEventDetailServices(eventDto);
         _ctx.Services.AddSingleton(appearanceState);
@@ -62,9 +60,7 @@ public sealed class EventDetailTests : IDisposable
     public async Task Render_WhenBackgroundColorPresent_PublishesBackgroundColorOnly()
     {
         var eventDto = CreateEventDto("PUBLISHED", "Published");
-        eventDto.BackgroundColor = "#123456";
-        eventDto.BackgroundImageUri = "https://example.test/background.webp";
-        eventDto.BackgroundEffect = "StrongOverlay";
+        eventDto = eventDto with { BackgroundColor = "#123456", BackgroundImageUri = "https://example.test/background.webp", BackgroundEffect = "StrongOverlay" };
         var appearanceState = new MainContentAppearanceState();
         RegisterEventDetailServices(eventDto);
         _ctx.Services.AddSingleton(appearanceState);
@@ -150,7 +146,7 @@ public sealed class EventDetailTests : IDisposable
         const string href = "/api/events/public-actions/456/redirect?surface=event_detail";
         const string title = "Continue with the organizer";
         var eventDto = CreateEventDto("PUBLISHED", "Published");
-        eventDto.AdditionalProperties = CreateHalLink("external-registration", href, title);
+        eventDto = eventDto with { AdditionalProperties = CreateHalLink("external-registration", href, title) };
         RegisterEventDetailServices(eventDto);
 
         var cut = _ctx.RenderMudComponent<EventDetail>();
@@ -369,9 +365,11 @@ public sealed class EventDetailTests : IDisposable
         var eventId = Guid.NewGuid();
         var firstSessionId = Guid.NewGuid();
         var secondSessionId = Guid.NewGuid();
-        var eventDto = CreateEventDto("PUBLISHED", "Published");
-        eventDto.Id = eventId;
-        eventDto.SessionCount = 2;
+        var eventDto = CreateEventDto("PUBLISHED", "Published") with
+        {
+            Id = eventId,
+            SessionCount = 2
+        };
 
         var sessions = new List<EventSessionListDto>
         {
@@ -444,10 +442,10 @@ public sealed class EventDetailTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var restoredEvent = CreateEventDto("DRAFT", "Draft");
-        restoredEvent.Id = eventId;
+        restoredEvent = restoredEvent with { Id = eventId };
 
         var refreshedEvent = CreateEventDto("DRAFT", "Draft", "edit", "publish", "cancel", "archive");
-        refreshedEvent.Id = eventId;
+        refreshedEvent = refreshedEvent with { Id = eventId };
 
         var eventService = Substitute.For<IEventService>();
         eventService.GetEventByIdAsync(eventId).Returns(refreshedEvent);

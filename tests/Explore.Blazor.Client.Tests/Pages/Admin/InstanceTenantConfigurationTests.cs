@@ -266,8 +266,10 @@ public sealed class InstanceTenantConfigurationTests : IDisposable
     [Test]
     public async Task MixedDirectionContent_IsolatesDescriptionsTechnicalFactsAndQuotaValues()
     {
-        var setting = Setting("email.smtp_host", "smtp.example.test");
-        setting.Description = "خادم SMTP الأساسي.";
+        var setting = Setting("email.smtp_host", "smtp.example.test") with
+        {
+            Description = "خادم SMTP الأساسي."
+        };
         _configurationService.GetEffectiveConfigurationAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfControlPlaneTenantEffectiveConfigurationDto
             {

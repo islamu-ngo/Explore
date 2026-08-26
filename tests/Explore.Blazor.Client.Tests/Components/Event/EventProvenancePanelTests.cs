@@ -51,7 +51,7 @@ public sealed class EventProvenancePanelTests : IDisposable
     public async Task Render_WithUnsafeAbsoluteSourceHalLink_HidesSourceLink()
     {
         var eventDto = CreateCommunityEvent();
-        eventDto.AdditionalProperties = CreateHalLinks(("source", "https://attacker.test/event"));
+        eventDto = eventDto with { AdditionalProperties = CreateHalLinks(("source", "https://attacker.test/event")) };
 
         var cut = _ctx.RenderMudComponent<EventProvenancePanel>(parameters => parameters
             .Add(component => component.Event, eventDto));

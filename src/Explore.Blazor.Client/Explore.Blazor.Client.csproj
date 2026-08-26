@@ -15,6 +15,11 @@
     <!-- Blazor WASM client runtime packages (Microsoft.NET.Sdk.WebAssembly.Pack) track host runtime patch versions,
          making static lock files non-portable across dev and CI runners. -->
     <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <GeneratedApiClientFile>$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs</GeneratedApiClientFile>
+    <DotNetToolManifest>$(MSBuildProjectDirectory)\..\..\dotnet-tools.json</DotNetToolManifest>
+    <GeneratedRecordTransformerProject>$(MSBuildProjectDirectory)\..\..\eng\tools\Explore.GeneratedContracts\Explore.GeneratedContracts.csproj</GeneratedRecordTransformerProject>
+    <GeneratedRecordMutablePolicy>$(MSBuildProjectDirectory)\..\..\eng\tools\Explore.GeneratedContracts\mutable-generated-contracts.txt</GeneratedRecordMutablePolicy>
+    <GeneratedRecordTransformerStamp>$(BaseIntermediateOutputPath)$(Configuration)\$(TargetFramework)\generated-api-client-records.stamp</GeneratedRecordTransformerStamp>
   </PropertyGroup>
 
   <ItemGroup>
@@ -81,20 +86,46 @@
     </Task>
   </UsingTask>
 
-  <!-- NSwag Client Generation - Runs BEFORE compilation -->
-  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile" Inputs="..\..\schemas\openapi_islamu-event.json;nswag.json" Outputs="Clients\EventApiClient.g.cs" Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
+  <ItemGroup>
+    <GeneratedRecordTransformerInput Include="$(MSBuildProjectDirectory)\..\..\eng\tools\Explore.GeneratedContracts\*.cs" />
+    <GeneratedRecordTransformerInput Include="$(GeneratedRecordTransformerProject)" />
+    <GeneratedRecordTransformerInput Include="$(GeneratedRecordMutablePolicy)" />
+  </ItemGroup>
+
+  <!-- NSwag emits the canonical raw client before repository-owned policy is applied. -->
+  <Target Name="GenerateApiClientSource" Inputs="..\..\schemas\openapi_islamu-event.json;nswag.json;$(DotNetToolManifest)" Outputs="$(GeneratedApiClientFile)" Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
     <Message Importance="high" Text="NSwag: Regenerating API client from openapi_islamu-event.json..." />
     <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
-    <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
-    <Message Importance="high" Text="NSwag: API client regenerated and patched successfully." />
   </Target>
 
-  <!-- Fix NSwag void return bug - ALWAYS runs before compilation (no Inputs/Outputs skip) -->
-  <Target Name="FixNSwagVoidReturns" BeforeTargets="CoreCompile">
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
+  <!-- Fix the NSwag 204-response bug before syntax-aware record transformation. -->
+  <Target Name="FixNSwagVoidReturns" DependsOnTargets="GenerateApiClientSource">
+    <ReplaceFileText InputFilename="$(GeneratedApiClientFile)" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+  </Target>
+
+  <!-- Convert only structurally eligible generated contracts through the owned Roslyn tool. -->
+  <Target Name="TransformGeneratedApiClientRecords"
+          DependsOnTargets="FixNSwagVoidReturns"
+          Inputs="$(GeneratedApiClientFile);@(GeneratedRecordTransformerInput)"
+          Outputs="$(GeneratedRecordTransformerStamp)"
+          Condition="Exists('$(GeneratedApiClientFile)')">
+    <Exec Command="dotnet run --project &quot;$(GeneratedRecordTransformerProject)&quot; --configuration Release --no-launch-profile -- &quot;$(GeneratedApiClientFile)&quot; &quot;$(GeneratedRecordMutablePolicy)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" />
+    <Touch Files="$(GeneratedRecordTransformerStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <!-- Final byte normalization runs after semantic syntax transformation. -->
+  <Target Name="NormalizeGeneratedApiClient"
+          DependsOnTargets="TransformGeneratedApiClientRecords"
+          Condition="Exists('$(GeneratedApiClientFile)')">
+    <ReplaceFileText InputFilename="$(GeneratedApiClientFile)" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
+  </Target>
+
+  <!-- Canonical client preparation - runs before every compilation and remains incremental. -->
+  <Target Name="GenerateApiClient"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="NormalizeGeneratedApiClient"
+          Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
+    <Message Importance="high" Text="NSwag: API client generated, record-transformed, and normalized successfully." />
   </Target>
 
   <!-- Exclude generated file from source analysis (it's auto-generated) -->

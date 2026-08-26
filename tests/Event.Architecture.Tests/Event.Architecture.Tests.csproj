@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\..\src\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
+    <ProjectReference Include="..\..\eng\tools\Explore.GeneratedContracts\Explore.GeneratedContracts.csproj" />
   </ItemGroup>
 
 </Project>

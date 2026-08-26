@@ -82,8 +82,7 @@ public sealed class EventEditTests : IDisposable
         var imageId = Guid.NewGuid();
         var component = CreateComponent(eventId, canAddSession: true);
         var currentEvent = GetPrivateField<EventDto>(component, "currentEvent");
-        currentEvent.FeaturedImageId = imageId;
-        currentEvent.FeaturedImageUri = null;
+        SetField(component, "currentEvent", currentEvent with { FeaturedImageId = imageId, FeaturedImageUri = null });
 
         InvokePrivate(component, "PopulateFormFromEvent");
 

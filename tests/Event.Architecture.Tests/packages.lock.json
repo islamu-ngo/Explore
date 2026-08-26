@@ -1170,6 +1170,9 @@
           "Microsoft.Extensions.Compliance.Abstractions": "[10.8.0, )"
         }
       },
+      "explore.generatedcontracts": {
+        "type": "Project"
+      },
       "explore.infrastructure": {
         "type": "Project",
         "dependencies": {

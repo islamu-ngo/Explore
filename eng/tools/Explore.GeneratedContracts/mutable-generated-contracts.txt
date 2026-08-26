@@ -1,0 +1,33 @@
+# ABOUTME: Names generated response contracts that intentionally remain mutable UI or service state.
+# ABOUTME: Every entry has observed post-construction mutation and is ratcheted as a protected class.
+
+# Instance administration and onboarding edit state.
+AiAssistantGovernanceSettingsDto
+AnalyticsGovernanceSettingsDto
+AuthProviderConfigurationDto
+AuthorizationProviderConfigurationDto
+BaseCommandResponseOfGuid
+BrandingSettingsDto
+CustomPropertyDefinitionDto
+DomainSettingsDto
+EventPolicyDto
+EventSessionAgendaItemListDto
+EventSessionListDto
+FooterGovernanceSettingsDto
+FooterLinkGroupListDto
+InstanceSmtpSettingsDto
+McpGovernanceSettingsDto
+ModuleSettingsDto
+Options
+OrganizationPolicyDto
+RenderPolicySettingsDto
+
+# Tenant administration and plan edit state.
+EffectiveSettingDto
+TenantDelegationSettingsDto
+TenantNavigationLinkDto
+TenantPolicySettingsDto
+
+# Mutable storage routing models.
+Routes
+Routes2

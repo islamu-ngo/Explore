@@ -1,8 +1,9 @@
 // ABOUTME: Regression coverage for JSON contracts consumed by the generated Event API client.
-// ABOUTME: Proves string enums nested inside dictionary response values deserialize correctly.
+// ABOUTME: Proves AOT extension data, HAL payloads, and nested string enums round-trip correctly.
 
 using System.Net;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
@@ -34,7 +35,7 @@ public sealed class EventApiClientSerializationTests
     ];
 
     [Test]
-    public async Task RegeneratedWriteBodiesRemainGeneratedClassesWithoutTenantAuthority()
+    public async Task RegeneratedWriteBodiesRemainGeneratedAndWithoutTenantAuthority()
     {
         foreach (var bodyType in AuthorityFreeRequestBodies)
         {
@@ -50,6 +51,137 @@ public sealed class EventApiClientSerializationTests
 
         await Assert.That(json).Contains("\"masterCode\":\"COMMUNITY\"");
         await Assert.That(json).DoesNotContain("tenantId");
+    }
+
+    [Test]
+    public async Task GeneratedNominalContractsUseRecordAndInitSemantics()
+    {
+        string[] recordNames = GetGeneratedRecordTypeNames();
+        Type[] candidates = recordNames
+            .Select(name => typeof(ActorDto).Assembly.GetType(
+                $"{typeof(ActorDto).Namespace}.{name}",
+                throwOnError: true)!)
+            .ToArray();
+        string[] classDebt = candidates
+            .Where(type => !IsRecord(type))
+            .Select(type => type.FullName!)
+            .ToArray();
+        string[] setterDebt = candidates
+            .SelectMany(type => type.GetProperties(
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(property => property.SetMethod?.IsPublic == true
+                && property.GetCustomAttribute<
+                    System.Text.Json.Serialization.JsonExtensionDataAttribute>()
+                    is null
+                && !property.SetMethod.ReturnParameter
+                    .GetRequiredCustomModifiers()
+                    .Contains(typeof(IsExternalInit)))
+            .Select(property => $"{property.DeclaringType!.FullName}.{property.Name}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(candidates.Length).IsEqualTo(653);
+        await Assert.That(classDebt).IsEmpty()
+            .Because($"plain generated nominal contracts must be records; first debt: {string.Join(", ", classDebt.Take(20))}");
+        await Assert.That(setterDebt).IsEmpty()
+            .Because($"generated record properties must be init-only; first debt: {string.Join(", ", setterDebt.Take(20))}");
+    }
+
+    [Test]
+    public async Task FrameworkSensitiveGeneratedContractsRemainClasses()
+    {
+        Type[] protectedTypes =
+        [
+            typeof(EventApiClient),
+            typeof(ApiException),
+            typeof(ApiException<>),
+            typeof(FileResponse),
+            typeof(FileContentResult),
+            typeof(HalResourceOfActorDto),
+            typeof(HalCollectionResourceOfActorListDto),
+            typeof(PatchTenantFooterSettingsDto),
+            typeof(UpdateCategoryDto),
+        ];
+
+        string[] accidentalRecords = protectedTypes
+            .Where(IsRecord)
+            .Select(type => type.FullName!)
+            .ToArray();
+
+        await Assert.That(accidentalRecords).IsEmpty();
+        await Assert.That(typeof(PatchTenantFooterSettingsDto)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Any(property => property.SetMethod?.IsPublic == true
+                    && !property.SetMethod.ReturnParameter
+                        .GetRequiredCustomModifiers()
+                        .Contains(typeof(IsExternalInit))))
+            .IsTrue();
+
+        Type[] mutableStateTypes = LoadMutableGeneratedContractNames()
+            .Select(name => typeof(ActorDto).Assembly.GetType(
+                $"{typeof(ActorDto).Namespace}.{name}",
+                throwOnError: true)!)
+            .ToArray();
+        await Assert.That(mutableStateTypes.Where(IsRecord)).IsEmpty();
+        await Assert.That(mutableStateTypes.All(type => type
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Any(property => property.SetMethod?.IsPublic == true
+                    && !property.SetMethod.ReturnParameter
+                        .GetRequiredCustomModifiers()
+                        .Contains(typeof(IsExternalInit)))))
+            .IsTrue();
+    }
+
+    [Test]
+    public async Task GeneratedRecordSupportsWithCopyAndAotJsonRoundTrip()
+    {
+        Guid originalId = Guid.CreateVersion7();
+        Guid replacementId = Guid.CreateVersion7();
+        var original = new ActorDto { Id = originalId };
+
+        ActorDto replacement = original with { Id = replacementId };
+        string json = JsonSerializer.Serialize(
+            replacement,
+            AppJsonSerializerContext.Default.ActorDto);
+        ActorDto? restored = JsonSerializer.Deserialize(
+            json,
+            AppJsonSerializerContext.Default.ActorDto);
+
+        await Assert.That(original.Id).IsEqualTo(originalId);
+        await Assert.That(replacement.Id).IsEqualTo(replacementId);
+        await Assert.That(restored).IsNotNull();
+        await Assert.That(restored!.Id).IsEqualTo(replacementId);
+    }
+
+    [Test]
+    public async Task GeneratedRecordAotRoundTripPreservesUnknownHalExtensionData()
+    {
+        Guid actorId = Guid.CreateVersion7();
+        string json =
+            $$"""
+              {
+                "id": "{{actorId}}",
+                "_links": {
+                  "self": {
+                    "href": "/api/actor/{{actorId}}"
+                  }
+                }
+              }
+              """;
+
+        ActorDto? restored = JsonSerializer.Deserialize(
+            json,
+            AppJsonSerializerContext.Default.ActorDto);
+        string roundTripped = JsonSerializer.Serialize(
+            restored,
+            AppJsonSerializerContext.Default.ActorDto);
+
+        await Assert.That(restored).IsNotNull();
+        await Assert.That(restored!.AdditionalProperties)
+            .ContainsKey("_links");
+        await Assert.That(roundTripped).Contains("\"_links\"");
+        await Assert.That(roundTripped)
+            .Contains($"/api/actor/{actorId}");
     }
 
     [Test]
@@ -209,4 +341,43 @@ public sealed class EventApiClientSerializationTests
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
             });
     }
+
+    private static bool IsRecord(Type type) =>
+        type.GetMethod(
+            "<Clone>$",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        is not null;
+
+    private static string[] GetGeneratedRecordTypeNames()
+    {
+        string sourcePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
+        const string declaration = "public partial record class ";
+        return File.ReadLines(sourcePath)
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(
+                declaration,
+                StringComparison.Ordinal))
+            .Select(line => line[declaration.Length..]
+                .Split(
+                    [' ', '<'],
+                    StringSplitOptions.RemoveEmptyEntries)[0])
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static HashSet<string> LoadMutableGeneratedContractNames()
+    {
+        string policyPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../eng/tools/Explore.GeneratedContracts/mutable-generated-contracts.txt"));
+        return File.ReadAllLines(policyPath)
+            .Select(line => line.Trim())
+            .Where(line => line.Length != 0
+                && !line.StartsWith('#'))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
 }

@@ -38,7 +38,7 @@ public sealed class UpcomingEventListTests : IDisposable
     public async Task MissingFeaturedImageUsesLocalGeneratedArtwork()
     {
         var events = CreateEvents(1);
-        events[0].FeaturedImageUri = null;
+        events[0] = events[0] with { FeaturedImageUri = null };
 
         var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
             .Add(component => component.Events, events));
