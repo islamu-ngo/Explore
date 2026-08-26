@@ -49,7 +49,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | API | `API.md`, `API_CHANGELOG.md`, OpenAPI/client-generation guidance in `GOVERNANCE.md` |
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
-| Contributor Experience | `DEVELOPER_GUIDE.md`, `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `CONTRIBUTOR_RECIPES.md`, `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
+| Contributor Experience | `DEVELOPER_GUIDE.md`, `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `RECORD_CONTRACTS.md`, `CONTRIBUTOR_RECIPES.md`, `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
 | Agent Context | `AGENTS.md`, `.agents/contract/`, `.agents/skills/`, `dev/_journal/` |
 
 ## Metadata Policy

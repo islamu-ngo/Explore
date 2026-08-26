@@ -34,6 +34,19 @@ Use the specialized docs for deep detail:
 
 The browser never owns access tokens. Interactive UI calls go through the BFF or generated client services; API remains the hard authorization boundary.
 
+## Generated Client Record Ownership
+
+`schemas/openapi_islamu-event.json` and `src/Explore.Blazor.Client/nswag.json` remain the canonical generated-client inputs. The `GenerateApiClient` MSBuild target runs pinned NSwag 14.6.3, fixes the known `void` response artifact, applies `eng/tools/Explore.GeneratedContracts`, and performs final byte normalization.
+
+Use [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) when changing record eligibility, mutable exclusions, AOT extension data, or generated-client construction.
+
+- Plain generated response/value contracts are nominal record classes with init-only properties. Construct them with object initializers and create changed snapshots with `with`.
+- Protocol input graphs, HAL resources, inherited contracts, `EventApiClient`, exceptions, file wrappers, and the reasoned mutable edit/service inventory remain classes.
+- `[JsonExtensionData] AdditionalProperties` remains settable on records because System.Text.Json AOT populates extension data after construction.
+- Generated records emit value-free diagnostic text; `ToString()` never enumerates PII, tokens, free text, or other member values.
+- Mutable generated class names are explicit in `eng/tools/Explore.GeneratedContracts/mutable-generated-contracts.txt`; adding or removing an entry requires a consuming behavior test.
+- Generated output is never hand-edited. Run `dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj -target:GenerateApiClient -property:Configuration=Release`, then the focused client and architecture tests.
+
 ## Hosting Topology: Split and Standalone
 
 `Explore.API`, `Explore.Blazor`, and `Event.Standalone` are the three application composition roots. AppHost defaults `Hosting:Topology` to `Split`; `Hosting:Topology=Standalone` is an explicit opt-in that starts `Event.Standalone`, not a different API contract or authorization model.

@@ -6,7 +6,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Audience:** Operators | Contributors | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-06-12
+> **Last Verified:** 2026-08-26
 > **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
 
 Start with [README.md](../README.md) if you are new to the project. Use this page when you already know your task or need the complete documentation inventory.
@@ -27,6 +27,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
 | Contribute code or docs | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md), [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
+| Choose records, classes, or generated contract shapes | [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) | [GOVERNANCE.md](GOVERNANCE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TESTING.md](TESTING.md) |
 | Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
 | Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
@@ -52,6 +53,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) - high-level visual architecture, C4 diagrams, and component interactions.
 - [REQUEST_FLOWS.md](REQUEST_FLOWS.md) - end-to-end request lifecycles with sequence diagrams.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - layer boundaries, BFF model, CQRS flow.
+- [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) - record/class selection, immutable results and collections, semantic values, persistence checks, and generated C# contracts.
 - [DOMAIN.md](DOMAIN.md) - domain entities and important relationships.
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.
 - [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md) - generated inventory of every OpenAPI operation.

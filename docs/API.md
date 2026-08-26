@@ -6,13 +6,21 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-08-15
+> **Last Verified:** 2026-08-26
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
 This document describes the full API behavior in `Explore.API`: the middleware pipeline, rate limiting, request timeouts, caching strategy, HATEOAS implementation, specification pattern, error handling, content negotiation, and client-generation flow.
 
 For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Generated OpenAPI output remains the endpoint and DTO reference; Scalar is a development/testing UI over that contract.
+
+### Generated C# Client Shape
+
+The OpenAPI document defines wire shape; repository generation policy defines the checked-in C# shape. Pinned NSwag first emits POCO syntax, then `eng/tools/Explore.GeneratedContracts` converts structurally eligible response/value schemas into nominal records without changing JSON names, requiredness, nullability, HAL relations, operation methods, or wire payloads. Protocol inputs, nested request graphs, HAL resources, inherited schemas, clients, exceptions, file wrappers, and explicitly mutable UI/service contracts remain classes. Generated record properties are init-only except `[JsonExtensionData] AdditionalProperties`, which stays settable for System.Text.Json AOT compatibility.
+
+This is a source-level breaking change for consumers of the generated C# client: use object initializers or `with` copies instead of post-construction mutation. It is not a wire-format compatibility layer, and the pre-v1 repository carries no legacy generated-client variant.
+
+See [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) for exact eligibility, privacy-safe diagnostics, generation steps, and focused tests.
 
 ## Runtime Endpoints
 ### Development And Testing

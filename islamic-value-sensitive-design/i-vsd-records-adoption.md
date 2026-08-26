@@ -144,11 +144,11 @@ These are engineering/provider-responsibility decisions, not religious-legal rul
 
 ## Validation Gaps
 
-- The exact direct-construction and derived-type surface for immutable `BaseCommandResponse<T>` migration remains a Phase 7 Red inventory.
-- The complete repository-wide collection disposition set remains a Phase 8 output.
-- Money, coordinate, and temporal primitive owners are evidenced, but exact migrated owners and persistence representation remain Phase 9–10 Red outputs.
-- The pinned NSwag configuration currently proves POCO output; native record capability remains a Phase 11 public-interface capability check.
-- Generated EF migration operations and generated-client diffs are intentionally unknown until their Red specifications and source model/generator changes exist.
+- Phase 7 closed the complete `BaseCommandResponse<T>` descendant and direct-construction inventory with immutable valid-state factories and exhaustive RFC 7807 mapping evidence.
+- Phase 8 classified every published collection-bearing record and removed mutable exposure without claiming deep collection equality.
+- Phases 9–10 implemented the approved money, coordinate, local-date, and UTC-instant values, then generated four reversible constraints for all five providers with pre-DDL malformed-row protection.
+- Phase 11 proved pinned NSwag has no native record mode and added a repository-owned SDK-Roslyn transform with exact eligibility, inheritance, protocol-input, HAL, file, exception, mutable-state, AOT, and privacy-safe diagnostic ratchets.
+- No implementation validation gap remains inside Phases 7–11. Unrelated shared-worktree gates remain classified in the active workstream context.
 
 ## Escalation Needed
 
@@ -182,6 +182,8 @@ These are engineering/provider-responsibility decisions, not religious-legal rul
 - `src/Explore.Blazor.Client/Explore.Blazor.Client.csproj` generation target and pinned NSwag tool manifest.
 - `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` ownership and generated shape.
 - `src/Explore.Blazor.Client/Serialization/AppJsonSerializerContext.cs`.
+- `eng/tools/Explore.GeneratedContracts/**` and its direct synthetic policy tests.
+- `dev/active/records-adoption/phase11-clean-room-provenance.md`.
 - `.github/workflows/openapi-contract.yml` and `schemas/openapi_islamu-event.json`.
 - Representative API identity, OpenAPI, Application, Domain, and Blazor serialization tests identified during repository exploration.
 - Microsoft Learn: C# record types, immutable System.Text.Json types, ASP.NET Core constructor/record model binding, and EF Core entity constructors.
@@ -191,7 +193,7 @@ These are engineering/provider-responsibility decisions, not religious-legal rul
 - AnySearch MCP and Context7 MCP were requested but are not registered in this session.
 - The configured general web-search provider failed; official documentation was fetched directly from Microsoft Learn URLs.
 - No external issue tracker, roadmap, customer-support system, or production incident evidence was needed or reviewed for this internal refactor plan.
-- Expanded Phase 7–11 implementation diffs, generated EF operations, and generated-record output do not exist yet because this update changes planning artifacts only.
+- No external implementation source, template, snippet, AST, migration, test, comment, or asset informed Phase 11. The clean-room disposition and independent SSO/dependency review are recorded in the linked provenance artifact.
 
 ## Context Inventory
 

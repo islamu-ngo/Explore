@@ -5,6 +5,8 @@ ABOUTME: Prioritizes non-inferable patterns (PII split tables, aspects, filters,
 
 This project stores most entities directly under `Explore.Domain/` (not in an `Entities/` subfolder).
 
+For Domain value semantics, entity-versus-record selection, and the scalar EF persistence boundary, see [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md).
+
 ## Core Aggregates
 
 1. Tenant and access scope:

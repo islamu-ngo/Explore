@@ -20,13 +20,14 @@ Key TUnit features used:
 
 ## Test Projects
 
-Each project has a specific role. Run individually — never use solution-level `dotnet test`. Currently 9 projects.
+Each project has a specific role. Run individually — never use solution-level `dotnet test`. The primary projects are listed below.
 
 | Project | Layer | Role | Requires Infra |
 |---------|-------|------|----------------|
 | `Event.Domain.UnitTests` | Domain | Entity invariants, value objects, domain logic | No |
 | `Event.Application.UnitTests` | Application | Handler logic, validation, mapping | No |
 | `Event.Architecture.Tests` | Cross-cutting | Convention enforcement via reflection | No |
+| `Explore.GeneratedContracts.Tests` | Tooling | Roslyn transformer classification, reversibility, privacy, and deterministic output | No |
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, restart-based credential rotation | No |
 | `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, provider migrations | PostgreSQL plus the real-engine provider matrix |
@@ -42,6 +43,7 @@ Each project has a specific role. Run individually — never use solution-level 
 dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 
