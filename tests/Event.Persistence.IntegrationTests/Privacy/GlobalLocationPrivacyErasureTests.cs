@@ -23,6 +23,7 @@ using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -1070,6 +1071,207 @@ public sealed class ExternalDatabasePrivacyErasureAuthorityTests(
 {
     [Test]
     [Timeout(240_000)]
+    public async Task ProvisioningAllowsAdministratorButRejectsExplicitRuntimeMembership()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityAdminDbContext();
+        await context.Database.OpenConnectionAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql);
+            await context.Database.ExecuteSqlRawAsync(
+                "GRANT privacy_erasure_authority_runtime TO CURRENT_USER");
+
+            PostgresException? exception = await Assert.ThrowsAsync<PostgresException>(() =>
+                context.Database.ExecuteSqlRawAsync(
+                    PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql));
+
+            await Assert.That(exception!.SqlState).IsEqualTo("P0001");
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+            await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    [Test]
+    [Timeout(240_000)]
+    public async Task ProvisioningRejectsFixedRoleMembershipDriftBeforeLifecycleInstallation()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityAdminDbContext();
+        await context.Database.OpenConnectionAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "GRANT privacy_erasure_authority_migrator TO privacy_erasure_authority_runtime");
+            await context.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql);
+
+            PostgresException? exception = await Assert.ThrowsAsync<PostgresException>(() =>
+                context.Database.ExecuteSqlRawAsync(
+                    PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql));
+
+            await Assert.That(exception!.SqlState).IsEqualTo("P0001");
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+            await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    [Test]
+    [Timeout(240_000)]
+    public async Task MigratorMaintenance_IsAtomicAndHoldAware()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityAdminDbContext();
+        await context.Database.OpenConnectionAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var repository = new EfCorePrivacyErasureAuthorityRepository(
+                context,
+                Options.Create(new PrivacyErasureOptions()));
+            IPrivacyErasureAuthorityMaintenance maintenance = repository;
+            PrivacyErasureIntent[] facts = new PrivacyErasureIntent[3];
+            for (var index = 0; index < facts.Length; index++)
+            {
+                facts[index] = await repository.AppendAsync(new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    Guid.CreateVersion7(),
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1));
+            }
+            await context.Database.ExecuteSqlRawAsync(
+                "SELECT set_config('privacy_erasure_authority.maintenance', 'on', true); "
+                + "UPDATE privacy_erasure_authority.erasure_intents "
+                + "SET requested_at_utc = {0}, recorded_at_utc = {0}, retention_expires_at_utc = {1} "
+                + "WHERE authority_sequence >= {2} AND authority_sequence <= {3};",
+                DateTime.UtcNow.AddDays(-2),
+                DateTime.UtcNow.AddDays(-1),
+                facts[0].AuthoritySequence,
+                facts[^1].AuthoritySequence);
+
+            var request = new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                [facts[1].AuthoritySequence]);
+            PrivacyErasureRetentionEvaluation dryRun =
+                await maintenance.EvaluateRetentionAsync(request);
+            PrivacyErasureCompactionResult compacted =
+                await maintenance.CompactExpiredIntentsAsync(request);
+
+            await Assert.That(dryRun.EligibleCount).IsEqualTo(1);
+            await Assert.That(dryRun.HeldCount).IsEqualTo(1);
+            await Assert.That(compacted.DeletedCount).IsEqualTo(1);
+            await Assert.That(compacted.PseudonymizedCount).IsEqualTo(1);
+            await Assert.That(compacted.State.RetainedFloorSequence)
+                .IsEqualTo(facts[1].AuthoritySequence);
+            IReadOnlyList<PrivacyErasureIntent> replayable = await repository.ReadAfterAsync(
+                compacted.State.RetainedFloorSequence,
+                100);
+            await Assert.That(replayable.Select(fact => fact.AuthoritySequence))
+                .IsEquivalentTo([facts[2].AuthoritySequence]);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+            await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    [Test]
+    [Timeout(240_000)]
+    public async Task MigratorMaintenance_TailGapRollsBackWithoutAdvancingFloor()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityAdminDbContext();
+        await context.Database.OpenConnectionAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var repository = new EfCorePrivacyErasureAuthorityRepository(
+                context,
+                Options.Create(new PrivacyErasureOptions()));
+            PrivacyErasureIntent[] facts = new PrivacyErasureIntent[3];
+            for (var index = 0; index < 3; index++)
+            {
+                facts[index] = await repository.AppendAsync(new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    Guid.CreateVersion7(),
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1));
+            }
+            await context.Database.ExecuteSqlRawAsync(
+                "SELECT set_config('privacy_erasure_authority.maintenance', 'on', true); "
+                + "UPDATE privacy_erasure_authority.erasure_intents "
+                + "SET requested_at_utc = {0}, recorded_at_utc = {0}, retention_expires_at_utc = {1}; "
+                + "DELETE FROM privacy_erasure_authority.erasure_intents WHERE authority_sequence = {2};",
+                DateTime.UtcNow.AddDays(-2),
+                DateTime.UtcNow.AddDays(-1),
+                facts[^1].AuthoritySequence);
+            var request = new PrivacyErasureRetentionRequest(DateTime.UtcNow, 100, []);
+
+            await transaction.CreateSavepointAsync("before_evaluation");
+            await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(
+                () => repository.EvaluateRetentionAsync(request));
+            await transaction.RollbackToSavepointAsync("before_evaluation");
+            await transaction.CreateSavepointAsync("before_compaction");
+            await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(
+                () => repository.CompactExpiredIntentsAsync(request));
+            await transaction.RollbackToSavepointAsync("before_compaction");
+            await Assert.That(await repository.GetStateAsync())
+                .IsEqualTo(new PrivacyErasureAuthorityState(facts[^1].AuthoritySequence, 0));
+            IReadOnlyList<PrivacyErasureIntent> retained = await repository.ReadAfterAsync(0, 100);
+            await Assert.That(retained.Select(fact => fact.AuthoritySequence))
+                .IsEquivalentTo(facts[..^1].Select(fact => fact.AuthoritySequence));
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+            await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    [Test]
+    [Timeout(240_000)]
+    public async Task RuntimeRole_CannotCompactOrDeleteAuthorityRows()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
+        var repository = new EfCorePrivacyErasureAuthorityRepository(
+            context,
+            Options.Create(new PrivacyErasureOptions()));
+
+        PostgresException? compactDenied = await Assert.ThrowsAsync<PostgresException>(() =>
+            repository.CompactExpiredIntentsAsync(
+                new PrivacyErasureRetentionRequest(DateTime.UtcNow, 100, [])));
+        await Assert.That(compactDenied!.SqlState)
+            .IsEqualTo(PostgresErrorCodes.InsufficientPrivilege);
+
+        await context.Database.OpenConnectionAsync();
+        try
+        {
+            var connection = (NpgsqlConnection)context.Database.GetDbConnection();
+            await using var directDelete = new NpgsqlCommand(
+                "DELETE FROM privacy_erasure_authority.erasure_intents",
+                connection);
+            PostgresException? deleteDenied = await Assert.ThrowsAsync<PostgresException>(() =>
+                directDelete.ExecuteNonQueryAsync());
+            await Assert.That(deleteDenied!.SqlState)
+                .IsEqualTo(PostgresErrorCodes.InsufficientPrivilege);
+        }
+        finally
+        {
+            await context.Database.CloseConnectionAsync();
+        }
+    }
+
+    [Test]
+    [Timeout(240_000)]
     public async Task RuntimeRole_AppendsAndReadsThroughFunctionsButCannotAccessAuthorityTables()
     {
         await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
@@ -1431,6 +1633,12 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         await using (PrivacyErasureAuthorityDbContext authorityContext = CreateAuthorityAdminDbContext())
         {
             await authorityContext.Database.MigrateAsync();
+            await authorityContext.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql);
+            await authorityContext.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql);
+            await authorityContext.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql);
         }
         await using (var connection = new NpgsqlConnection(_authorityContainer.GetConnectionString()))
         {
@@ -1513,7 +1721,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         return new PrivacyErasureAuthorityDbContext(options);
     }
 
-    private PrivacyErasureAuthorityDbContext CreateAuthorityAdminDbContext()
+    public PrivacyErasureAuthorityDbContext CreateAuthorityAdminDbContext()
     {
         var options = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
             .UseNpgsql(_authorityContainer.GetConnectionString())

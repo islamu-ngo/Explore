@@ -17,7 +17,8 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasDefaultSchema("privacy_erasure_authority")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -32,12 +33,20 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                         .HasColumnType("bigint")
                         .HasColumnName("last_sequence");
 
+                    b.Property<long>("RetainedFloorSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("retained_floor_sequence");
+
                     b.HasKey("Singleton")
                         .HasName("pk_authority_counter");
 
                     b.ToTable("authority_counter", "privacy_erasure_authority", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_retained_floor", "retained_floor_sequence >= 0 AND retained_floor_sequence <= last_sequence");
 
                             t.HasCheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
                         });
@@ -52,6 +61,12 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                     b.Property<Guid>("IntentId")
                         .HasColumnType("uuid")
                         .HasColumnName("intent_id");
+
+                    b.Property<bool>("IsLegalHoldPseudonymized")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_legal_hold_pseudonymized");
 
                     b.Property<int>("PolicyVersion")
                         .HasColumnType("integer")
@@ -97,7 +112,7 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
 
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "is_legal_hold_pseudonymized OR substring(intent_id::text, 15, 1) = '7'");
 
                             t.HasCheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
 

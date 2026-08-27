@@ -125,6 +125,39 @@ public sealed partial class PrivacyErasureAuthorityDatabaseContractTests
         await Assert.That(sql).Contains("SET last_sequence = v_next_sequence");
     }
 
+    [Test]
+    public async Task RetentionLifecycle_IsAtomicHoldAwareAndFunctionOnly()
+    {
+        string sql = PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql;
+
+        await Assert.That(sql).Contains("SECURITY DEFINER");
+        await Assert.That(sql).Contains($"SET search_path = pg_catalog, {Schema}");
+        await Assert.That(sql).Contains("FOR UPDATE");
+        await Assert.That(sql).Contains("is_legal_hold_pseudonymized = true");
+        await Assert.That(sql).Contains("SET retained_floor_sequence = v_new_floor");
+        await Assert.That(sql).Contains("p_held_authority_sequences IS NULL");
+        await Assert.That(sql).Contains("p_as_of_utc > statement_timestamp()");
+        await Assert.That(sql).Contains("v_candidate.authority_sequence <> v_expected_sequence");
+        await Assert.That(PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql)
+            .Contains($"GRANT {Migrator} TO CURRENT_USER");
+        await Assert.That(PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql)
+            .Contains("FROM pg_catalog.pg_auth_members AS edge");
+        await Assert.That(PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql)
+            .Contains($"WHERE role.rolname = '{Runtime}'");
+        await Assert.That(PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql)
+            .DoesNotContain($"pg_has_role(CURRENT_USER, '{Runtime}', 'MEMBER')");
+        await Assert.That(sql).Contains("v_expected_sequence < v_high_water_sequence");
+        await Assert.That(sql).Contains("v_expected_sequence < high_water_sequence");
+        await Assert.That(sql).Contains(
+            "WHERE retained.authority_sequence = v_expected_sequence + 1");
+        await Assert.That(sql).Contains($"REVOKE ALL ON FUNCTION {Schema}.compact_expired_intents");
+        await Assert.That(sql).Contains($"TO {Migrator};");
+        await Assert.That(sql).DoesNotContain(
+            $"GRANT EXECUTE ON FUNCTION {Schema}.compact_expired_intents(timestamp with time zone, integer, bigint[])\n    TO {Runtime}");
+        await Assert.That(sql).DoesNotContain("GRANT DELETE ON");
+        await Assert.That(sql).DoesNotContain("GRANT UPDATE ON");
+    }
+
     private static string ContractSql() =>
         (string?)typeof(PrivacyErasureAuthorityDatabaseContract)
             .GetProperty("MigrationSql", BindingFlags.Public | BindingFlags.Static)

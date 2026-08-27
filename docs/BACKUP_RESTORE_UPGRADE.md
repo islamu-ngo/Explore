@@ -152,18 +152,33 @@ Choose the contract before restoring:
 
 ### Privacy-erasure retention and incident recovery
 
-The authority currently has no update, delete, or pruning surface. Retain its immutable intents and counter indefinitely; at minimum, they must outlive every application backup, replica snapshot, object-store backup, and disaster-recovery artifact that could reintroduce pre-erasure state. Application checkpoints are also append-only evidence. General correction outbox retention follows the outbox runbook, but failed and dead-lettered corrections remain until operators reconcile them.
+Authority retention is bounded by `MaximumBackupHorizon +
+AuthorityRetentionSafetyMargin`. Before executing maintenance, prove that no
+supported primary backup or replica snapshot is older than that declared
+horizon and obtain the complete legal-hold set as PII-free authority sequence
+numbers. Run `EvaluateRetentionAsync` first and compare aggregate counts and the
+projected floor; never put identifiers in the maintenance evidence. The apply
+operation deletes only an expired contiguous prefix, pseudonymizes the first
+held fact, and advances the durable floor in the same provider transaction.
+Direct SQL deletion or counter edits are unsupported.
 
-Below-floor compaction and DR rehearsals are still pending until shipped; do not infer RPO/RTO or compaction guarantees from this runbook.
+A backup with an application checkpoint below the retained floor is no longer
+replay-safe. Retention therefore defines the oldest restorable primary state,
+not merely the authority database size. Keep at least one verified primary
+backup at or above the current floor, plus the newest independently protected
+authority backup. Application checkpoints remain append-only evidence. General
+correction outbox retention follows the outbox runbook, but failed and
+dead-lettered corrections remain until operators reconcile them.
 
 If startup replay fails:
 
 1. Keep the API and BFF out of service. A failed process, refused socket, and absent readiness response are the expected safe state.
 2. Record only the bounded failure type, release identifier, authority/application watermarks, checkpoint count, and correction counts. Do not record connection details or opaque IDs.
 3. For authority unavailability, restore connectivity or the independently verified authority backup, then retry startup.
-4. If the authority watermark is behind the application checkpoint, or a sequence/checkpoint integrity check fails, stop. Restore an authority backup that contains the checkpointed fact and every later retained fact. Never bypass the gate, rewrite the counter, delete a local checkpoint, or synthesize an intent from restored application PII.
-5. For application replay failure, restore the application backup into a clean database and overlay the unchanged authority again. The per-intent application transaction is atomic, so restart resumes from the last committed checkpoint without duplicate tombstones or outbox rows.
-6. After replay succeeds, verify tombstones, cache invalidation, checkpoint equality, correction rows, and dead letters before starting the BFF or admitting traffic.
+4. For `stale_restore_below_retained_floor`, keep the latest authority unchanged and restore a verified primary backup whose checkpoint is at or above the floor. If none exists, keep the service offline and escalate as unrecoverable restore-policy drift; rolling the authority backward could lose later erasure evidence.
+5. For `checkpoint_ahead_of_authority` or `sequence_gap_detected`, stop and restore a verified authority artifact that preserves the checkpointed fact and every later allocated fact. Never bypass the gate, rewrite the counter, delete a local checkpoint, or synthesize an intent from restored application PII.
+6. For application replay failure, restore the application backup into a clean database and overlay the unchanged authority again. The per-intent application transaction is atomic, so restart resumes from the last committed checkpoint without duplicate tombstones or outbox rows.
+7. After replay succeeds, verify tombstones, cache invalidation, checkpoint equality, correction rows, and dead letters before starting the BFF or admitting traffic.
 
 Prompt injection is not applicable to this recovery path: startup consumes
 typed authority facts and configuration, not natural-language or model-provided
@@ -178,7 +193,10 @@ instructions.
 5. Run `Event.MigrationService` with migrator credentials and require exit code
    zero. It selects the provider-specific application and Data Protection
    migration assemblies, migrates configured authority storage, enables SQLite
-   WAL where applicable, and seeds. Run the service a second time in the
+   WAL where applicable, reapplies external-authority role isolation and
+   lifecycle functions idempotently, and seeds. Direct `dotnet ef database
+   update` is not complete external-authority deployment evidence because it
+   does not run that post-migration contract. Run the service a second time in the
    rehearsal environment to prove idempotency. Do not start deployed API
    replicas until it succeeds.
 6. Start the upgraded stack:
@@ -220,6 +238,14 @@ rollback for evidence-bearing webhook rows and do not guess provider success dur
 
 Rollback depends on whether migrations are reversible:
 
+The `AddRetainedAuthorityLifecycle` migration is forward-only once authority
+maintenance has run. Do not apply its generated EF `Down` migration to a live
+or compacted authority. Roll back by stopping writes, restoring a matched
+pre-upgrade primary backup and independently verified authority backup, and
+then starting the previous images. If no matched authority backup exists, keep
+the service offline; deleting the floor or reconstructing erased facts from
+restored PII is not a recovery path.
+
 | Situation | Rollback Action |
 |---|---|
 | No schema/data migration ran | Revert images and restart services. |
@@ -236,7 +262,8 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 - [ ] The release manifest records the selected primary database and effective namespace: configured schema for PostgreSQL/SQL Server, local file for SQLite, or database name for MariaDB/MySQL.
 - [ ] Restore was tested in non-production.
 - [ ] The retained erasure authority was backed up and restored independently, and its watermark/hash are recorded without identifiers or connection details.
-- [ ] For either authority topology, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.
+- [ ] API startup replay advanced the application checkpoint to the authority high-water mark; `authorityRetainedFloor <= checkpoint <= authorityHighWater`, restored PII canaries are absent, and outbox evidence is present once before BFF startup.
+- [ ] Retention dry-run used the complete explicit legal-hold sequence set, and every supported primary backup retained after compaction has a checkpoint at or above the projected floor.
 - [ ] `EmbeddedSqlite` restore evidence proves the dedicated authority file was not overwritten by the primary restore and writer replica count remained one.
 - [ ] `CoLocated` restore evidence proves app + authority rows were restored and replay catches up correctly from the shared checkpoint.
 - [ ] `Event.MigrationService` completed twice against the restored provider before API/BFF startup.

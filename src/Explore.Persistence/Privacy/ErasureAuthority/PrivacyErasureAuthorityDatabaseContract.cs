@@ -12,12 +12,26 @@ public static class PrivacyErasureAuthorityDatabaseContract
     public const string LegacyAppendFunction = "append_erasure_intent";
     public const string AppendFunction = "append_erasure_intent_with_retention";
     public const string ReadFunction = "read_erasure_intents_after";
+    public const string GetStateFunction = "get_authority_state";
+    public const string EvaluateRetentionFunction = "evaluate_retention";
+    public const string CompactRetentionFunction = "compact_expired_intents";
+    public const string StaleCheckpointSqlState = "P1001";
+    public const string SequenceGapSqlState = "P1002";
 
     public static string AppendFunctionSql =>
         $"{SchemaName}.{AppendFunction}";
 
     public static string ReadFunctionSql =>
         $"{SchemaName}.{ReadFunction}";
+
+    public static string GetStateFunctionSql =>
+        $"{SchemaName}.{GetStateFunction}";
+
+    public static string EvaluateRetentionFunctionSql =>
+        $"{SchemaName}.{EvaluateRetentionFunction}";
+
+    public static string CompactRetentionFunctionSql =>
+        $"{SchemaName}.{CompactRetentionFunction}";
 
     public static string RoleProvisioningSql { get; } = $"""
         DO $contract$
@@ -43,6 +57,34 @@ public static class PrivacyErasureAuthorityDatabaseContract
         $contract$;
 
         GRANT {OwnerRole} TO {MigratorRole};
+        DO $contract$
+        BEGIN
+            IF EXISTS (
+                WITH RECURSIVE inherited_roles(roleid) AS
+                (
+                    SELECT edge.roleid
+                    FROM pg_catalog.pg_auth_members AS edge
+                    WHERE edge.member = (
+                        SELECT role.oid
+                        FROM pg_catalog.pg_roles AS role
+                        WHERE role.rolname = CURRENT_USER)
+                    UNION
+                    SELECT edge.roleid
+                    FROM pg_catalog.pg_auth_members AS edge
+                    INNER JOIN inherited_roles AS inherited
+                        ON edge.member = inherited.roleid
+                )
+                SELECT 1
+                FROM inherited_roles
+                WHERE roleid = (
+                    SELECT role.oid
+                    FROM pg_catalog.pg_roles AS role
+                    WHERE role.rolname = '{RuntimeRole}')) THEN
+                RAISE EXCEPTION 'privacy erasure authority runtime and migrator logins must remain separate';
+            END IF;
+        END
+        $contract$;
+        GRANT {MigratorRole} TO CURRENT_USER;
         """;
 
     public static string AuthorityObjectsSql { get; } = $"""
@@ -413,6 +455,340 @@ public static class PrivacyErasureAuthorityDatabaseContract
         $function$;
         ALTER FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer, interval)
             OWNER TO {OwnerRole};
+        """;
+
+    public static string RetentionLifecycleMigrationSql { get; } = $"""
+        CREATE OR REPLACE FUNCTION {SchemaName}.reject_erasure_intent_mutation()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        BEGIN
+            IF current_setting('privacy_erasure_authority.maintenance', true) IS DISTINCT FROM 'on' THEN
+                RAISE EXCEPTION 'privacy erasure authority facts are immutable'
+                    USING ERRCODE = '55000';
+            END IF;
+            RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.reject_erasure_intent_mutation()
+            OWNER TO {OwnerRole};
+
+        CREATE OR REPLACE FUNCTION {SchemaName}.{GetStateFunction}()
+        RETURNS TABLE
+        (
+            high_water_sequence bigint,
+            retained_floor_sequence bigint
+        )
+        LANGUAGE plpgsql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        BEGIN
+            RETURN QUERY
+            SELECT counter.last_sequence, counter.retained_floor_sequence
+            FROM {SchemaName}.authority_counter AS counter
+            WHERE counter.singleton;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'Erasure authority counter is unavailable'
+                    USING ERRCODE = '55000';
+            END IF;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.{GetStateFunction}()
+            OWNER TO {OwnerRole};
+
+        CREATE OR REPLACE FUNCTION {SchemaName}.{ReadFunction}(
+            p_authority_sequence bigint,
+            p_limit integer)
+        RETURNS TABLE
+        (
+            authority_sequence bigint,
+            intent_id uuid,
+            subject_kind smallint,
+            subject_id uuid,
+            reason_code smallint,
+            policy_version integer,
+            requested_at_utc timestamp with time zone,
+            recorded_at_utc timestamp with time zone,
+            retention_expires_at_utc timestamp with time zone
+        )
+        LANGUAGE plpgsql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        DECLARE
+            v_retained_floor bigint;
+        BEGIN
+            IF p_authority_sequence IS NULL OR p_authority_sequence < 0 THEN
+                RAISE EXCEPTION 'Authority sequence checkpoint cannot be negative'
+                    USING ERRCODE = '22023';
+            END IF;
+            IF p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 500 THEN
+                RAISE EXCEPTION 'Read limit must be between 1 and 500'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            SELECT counter.retained_floor_sequence
+            INTO v_retained_floor
+            FROM {SchemaName}.authority_counter AS counter
+            WHERE counter.singleton;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'Erasure authority counter is unavailable'
+                    USING ERRCODE = '55000';
+            END IF;
+            IF p_authority_sequence < v_retained_floor THEN
+                RAISE EXCEPTION 'Authority checkpoint is below the retained floor'
+                    USING ERRCODE = '{StaleCheckpointSqlState}';
+            END IF;
+
+            RETURN QUERY
+            SELECT retained.authority_sequence,
+                   retained.intent_id,
+                   retained.subject_kind,
+                   retained.subject_id,
+                   retained.reason_code,
+                   retained.policy_version,
+                   retained.requested_at_utc,
+                   retained.recorded_at_utc,
+                   retained.retention_expires_at_utc
+            FROM {SchemaName}.erasure_intents AS retained
+            WHERE retained.authority_sequence > p_authority_sequence
+            ORDER BY retained.authority_sequence
+            LIMIT p_limit;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.{ReadFunction}(bigint, integer)
+            OWNER TO {OwnerRole};
+
+        CREATE OR REPLACE FUNCTION {SchemaName}.{EvaluateRetentionFunction}(
+            p_as_of_utc timestamp with time zone,
+            p_batch_size integer,
+            p_held_authority_sequences bigint[])
+        RETURNS TABLE
+        (
+            eligible_count integer,
+            held_count integer,
+            current_floor_sequence bigint,
+            projected_floor_sequence bigint
+        )
+        LANGUAGE plpgsql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        DECLARE
+            v_candidate record;
+            v_held bigint[] := p_held_authority_sequences;
+            v_expected_sequence bigint;
+            v_high_water_sequence bigint;
+        BEGIN
+            IF p_as_of_utc IS NULL
+               OR p_as_of_utc > statement_timestamp()
+               OR p_batch_size IS NULL
+               OR p_batch_size NOT BETWEEN 1 AND 1000
+               OR p_held_authority_sequences IS NULL THEN
+                RAISE EXCEPTION 'Retention evaluation parameters are invalid'
+                    USING ERRCODE = '22023';
+            END IF;
+            IF EXISTS (SELECT 1 FROM unnest(v_held) AS held(sequence) WHERE held.sequence <= 0) THEN
+                RAISE EXCEPTION 'Held authority sequences must be positive'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            SELECT counter.last_sequence, counter.retained_floor_sequence
+            INTO v_high_water_sequence, current_floor_sequence
+            FROM {SchemaName}.authority_counter AS counter
+            WHERE counter.singleton;
+            IF NOT FOUND THEN
+                eligible_count := 0;
+                held_count := 0;
+                current_floor_sequence := 0;
+                projected_floor_sequence := 0;
+                RETURN NEXT;
+                RETURN;
+            END IF;
+
+            eligible_count := 0;
+            held_count := 0;
+            projected_floor_sequence := current_floor_sequence;
+            v_expected_sequence := current_floor_sequence;
+            FOR v_candidate IN
+                SELECT retained.authority_sequence,
+                       retained.retention_expires_at_utc,
+                       retained.is_legal_hold_pseudonymized
+                FROM {SchemaName}.erasure_intents AS retained
+                WHERE retained.authority_sequence > current_floor_sequence
+                   OR (retained.authority_sequence = current_floor_sequence
+                       AND retained.is_legal_hold_pseudonymized)
+                ORDER BY retained.authority_sequence
+                LIMIT p_batch_size
+            LOOP
+                IF v_candidate.authority_sequence = v_expected_sequence
+                   AND v_candidate.is_legal_hold_pseudonymized THEN
+                    NULL;
+                ELSE
+                    v_expected_sequence := v_expected_sequence + 1;
+                    IF v_candidate.authority_sequence <> v_expected_sequence THEN
+                        RAISE EXCEPTION 'Authority sequence gap detected'
+                            USING ERRCODE = '{SequenceGapSqlState}';
+                    END IF;
+                END IF;
+                EXIT WHEN v_candidate.retention_expires_at_utc > p_as_of_utc;
+                projected_floor_sequence := GREATEST(
+                    projected_floor_sequence,
+                    v_candidate.authority_sequence);
+                IF v_candidate.authority_sequence = ANY(v_held) THEN
+                    held_count := held_count + 1;
+                    EXIT;
+                END IF;
+                eligible_count := eligible_count + 1;
+            END LOOP;
+            IF v_expected_sequence < v_high_water_sequence
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM {SchemaName}.erasure_intents AS retained
+                   WHERE retained.authority_sequence = v_expected_sequence + 1) THEN
+                RAISE EXCEPTION 'Authority sequence gap detected'
+                    USING ERRCODE = '{SequenceGapSqlState}';
+            END IF;
+            RETURN NEXT;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.{EvaluateRetentionFunction}(timestamp with time zone, integer, bigint[])
+            OWNER TO {OwnerRole};
+
+        CREATE OR REPLACE FUNCTION {SchemaName}.{CompactRetentionFunction}(
+            p_as_of_utc timestamp with time zone,
+            p_batch_size integer,
+            p_held_authority_sequences bigint[])
+        RETURNS TABLE
+        (
+            deleted_count integer,
+            pseudonymized_count integer,
+            high_water_sequence bigint,
+            retained_floor_sequence bigint
+        )
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        DECLARE
+            v_candidate record;
+            v_changed integer;
+            v_held bigint[] := p_held_authority_sequences;
+            v_new_floor bigint;
+            v_expected_sequence bigint;
+        BEGIN
+            IF p_as_of_utc IS NULL
+               OR p_as_of_utc > statement_timestamp()
+               OR p_batch_size IS NULL
+               OR p_batch_size NOT BETWEEN 1 AND 1000
+               OR p_held_authority_sequences IS NULL THEN
+                RAISE EXCEPTION 'Retention compaction parameters are invalid'
+                    USING ERRCODE = '22023';
+            END IF;
+            IF EXISTS (SELECT 1 FROM unnest(v_held) AS held(sequence) WHERE held.sequence <= 0) THEN
+                RAISE EXCEPTION 'Held authority sequences must be positive'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            SELECT counter.last_sequence, counter.retained_floor_sequence
+            INTO high_water_sequence, v_new_floor
+            FROM {SchemaName}.authority_counter AS counter
+            WHERE counter.singleton
+            FOR UPDATE;
+            IF NOT FOUND THEN
+                deleted_count := 0;
+                pseudonymized_count := 0;
+                high_water_sequence := 0;
+                retained_floor_sequence := 0;
+                RETURN NEXT;
+                RETURN;
+            END IF;
+
+            deleted_count := 0;
+            pseudonymized_count := 0;
+            v_expected_sequence := v_new_floor;
+            PERFORM set_config('privacy_erasure_authority.maintenance', 'on', true);
+            FOR v_candidate IN
+                SELECT retained.authority_sequence,
+                       retained.retention_expires_at_utc,
+                       retained.is_legal_hold_pseudonymized
+                FROM {SchemaName}.erasure_intents AS retained
+                WHERE retained.authority_sequence > v_new_floor
+                   OR (retained.authority_sequence = v_new_floor
+                       AND retained.is_legal_hold_pseudonymized)
+                ORDER BY retained.authority_sequence
+                LIMIT p_batch_size
+            LOOP
+                IF v_candidate.authority_sequence = v_expected_sequence
+                   AND v_candidate.is_legal_hold_pseudonymized THEN
+                    NULL;
+                ELSE
+                    v_expected_sequence := v_expected_sequence + 1;
+                    IF v_candidate.authority_sequence <> v_expected_sequence THEN
+                        RAISE EXCEPTION 'Authority sequence gap detected'
+                            USING ERRCODE = '{SequenceGapSqlState}';
+                    END IF;
+                END IF;
+                EXIT WHEN v_candidate.retention_expires_at_utc > p_as_of_utc;
+                IF v_candidate.authority_sequence = ANY(v_held) THEN
+                    IF NOT v_candidate.is_legal_hold_pseudonymized THEN
+                        UPDATE {SchemaName}.erasure_intents AS retained
+                        SET intent_id = gen_random_uuid(),
+                            subject_id = gen_random_uuid(),
+                            is_legal_hold_pseudonymized = true
+                        WHERE retained.authority_sequence = v_candidate.authority_sequence;
+                        GET DIAGNOSTICS v_changed = ROW_COUNT;
+                        pseudonymized_count := pseudonymized_count + v_changed;
+                    END IF;
+                    v_new_floor := GREATEST(
+                        v_new_floor,
+                        v_candidate.authority_sequence);
+                    EXIT;
+                END IF;
+
+                DELETE FROM {SchemaName}.erasure_intents AS retained
+                WHERE retained.authority_sequence = v_candidate.authority_sequence;
+                GET DIAGNOSTICS v_changed = ROW_COUNT;
+                deleted_count := deleted_count + v_changed;
+                v_new_floor := GREATEST(
+                    v_new_floor,
+                    v_candidate.authority_sequence);
+            END LOOP;
+
+            IF v_expected_sequence < high_water_sequence
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM {SchemaName}.erasure_intents AS retained
+                   WHERE retained.authority_sequence = v_expected_sequence + 1) THEN
+                RAISE EXCEPTION 'Authority sequence gap detected'
+                    USING ERRCODE = '{SequenceGapSqlState}';
+            END IF;
+
+            UPDATE {SchemaName}.authority_counter AS counter
+            SET retained_floor_sequence = v_new_floor
+            WHERE counter.singleton;
+            retained_floor_sequence := v_new_floor;
+            RETURN NEXT;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.{CompactRetentionFunction}(timestamp with time zone, integer, bigint[])
+            OWNER TO {OwnerRole};
+
+        REVOKE ALL ON FUNCTION {SchemaName}.{GetStateFunction}() FROM PUBLIC, {RuntimeRole};
+        REVOKE ALL ON FUNCTION {SchemaName}.{EvaluateRetentionFunction}(timestamp with time zone, integer, bigint[])
+            FROM PUBLIC, {RuntimeRole};
+        REVOKE ALL ON FUNCTION {SchemaName}.{CompactRetentionFunction}(timestamp with time zone, integer, bigint[])
+            FROM PUBLIC, {RuntimeRole}, {MigratorRole};
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{GetStateFunction}() TO {RuntimeRole};
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{EvaluateRetentionFunction}(timestamp with time zone, integer, bigint[])
+            TO {RuntimeRole};
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{CompactRetentionFunction}(timestamp with time zone, integer, bigint[])
+            TO {MigratorRole};
         """;
 
     public static string RuntimeAclSql { get; } = $"""

@@ -52,6 +52,8 @@ public class StructuredDatabaseDeploymentInputTests
         await Assert.That(environmentExample).Contains("ERASURE_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db");
         await Assert.That(environmentExample).Contains("ERASURE_WRITER_REPLICA_COUNT=1");
         await Assert.That(environmentExample).Contains("ERASURE_BUSY_TIMEOUT_SECONDS=30");
+        await Assert.That(environmentExample).DoesNotContain("ExternalDatabase | None");
+        await Assert.That(environmentExample).DoesNotContain("In-memory no-op authority");
 
         await Assert.That(compose).Contains("PrivacyErasure__Authority__Topology: ${ERASURE_TOPOLOGY:-${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}}");
         await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__Path:");

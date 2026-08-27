@@ -15,10 +15,27 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
     IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext> contextFactory,
     TimeProvider timeProvider,
     IOptions<PrivacyErasureOptions> options,
-    EmbeddedPrivacyErasureAuthorityStorage? storage = null) : IPrivacyErasureAuthority, IDisposable
+    EmbeddedPrivacyErasureAuthorityStorage? storage = null)
+    : IPrivacyErasureAuthority, IPrivacyErasureAuthorityMaintenance, IDisposable
 {
     public const int MaximumReadBatchSize = 500;
     private readonly SemaphoreSlim _writerLock = new(1, 1);
+
+    public async Task<PrivacyErasureAuthorityState> GetStateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (storage is not null)
+        {
+            await storage.EnsureReadyAsync(cancellationToken);
+        }
+
+        await using EmbeddedPrivacyErasureAuthorityDbContext db =
+            await contextFactory.CreateDbContextAsync(cancellationToken);
+        PrivacyErasureCounter? counter = await db.AuthorityCounters
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken);
+        return counter?.GetState() ?? new PrivacyErasureAuthorityState(0, 0);
+    }
 
     public async Task<PrivacyErasureIntent> AppendAsync(
         PrivacyErasureRequest intent,
@@ -91,6 +108,14 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         }
         await using EmbeddedPrivacyErasureAuthorityDbContext db =
             await contextFactory.CreateDbContextAsync(cancellationToken);
+        PrivacyErasureCounter? counter = await db.AuthorityCounters
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken);
+        if (authoritySequence < (counter?.RetainedFloorSequence ?? 0))
+        {
+            throw new Explore.Application.Exceptions.StaleRestoreBelowRetainedFloorException();
+        }
+
         return await db.ErasureIntents
             .AsNoTracking()
             .Where(item => item.AuthoritySequence > authoritySequence)
@@ -99,7 +124,236 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<PrivacyErasureRetentionEvaluation> EvaluateRetentionAsync(
+        PrivacyErasureRetentionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureCutoffIsNotInFuture(request);
+        await EnsureStorageReadyAsync(cancellationToken);
+        await _writerLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using EmbeddedPrivacyErasureAuthorityDbContext db =
+                await contextFactory.CreateDbContextAsync(cancellationToken);
+            PrivacyErasureCounter? counter = await db.AuthorityCounters
+                .AsNoTracking()
+                .SingleOrDefaultAsync(cancellationToken);
+            if (counter is null)
+            {
+                return new PrivacyErasureRetentionEvaluation(0, 0, 0, 0);
+            }
+
+            List<PrivacyErasureIntent> candidates = await LoadMaintenanceCandidatesAsync(
+                db,
+                counter.RetainedFloorSequence,
+                request.BatchSize,
+                cancellationToken);
+            PrivacyErasureRetentionEvaluation evaluation = Evaluate(
+                candidates,
+                counter.RetainedFloorSequence,
+                request,
+                out long expectedSequence);
+            await EnsureNextSequenceExistsAsync(
+                db,
+                expectedSequence,
+                counter.LastSequence,
+                cancellationToken);
+            return evaluation;
+        }
+        finally
+        {
+            _writerLock.Release();
+        }
+    }
+
+    public async Task<PrivacyErasureCompactionResult> CompactExpiredIntentsAsync(
+        PrivacyErasureRetentionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureCutoffIsNotInFuture(request);
+        await EnsureStorageReadyAsync(cancellationToken);
+        await _writerLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using EmbeddedPrivacyErasureAuthorityDbContext db =
+                await contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction =
+                await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            PrivacyErasureCounter? counter = await db.AuthorityCounters.SingleOrDefaultAsync(cancellationToken);
+            if (counter is null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return new PrivacyErasureCompactionResult(
+                    0,
+                    0,
+                    new PrivacyErasureAuthorityState(0, 0));
+            }
+
+            List<PrivacyErasureIntent> candidates = await LoadMaintenanceCandidatesAsync(
+                db,
+                counter.RetainedFloorSequence,
+                request.BatchSize,
+                cancellationToken);
+            var deleted = 0;
+            var pseudonymized = 0;
+            long expectedSequence = counter.RetainedFloorSequence;
+            foreach (PrivacyErasureIntent candidate in candidates)
+            {
+                EnsureContiguous(candidate, ref expectedSequence);
+                if (candidate.RetentionExpiresAtUtc > request.AsOfUtc)
+                {
+                    break;
+                }
+
+                if (request.HeldAuthoritySequences.Contains(candidate.AuthoritySequence))
+                {
+                    if (!candidate.IsLegalHoldPseudonymized)
+                    {
+                        Guid intentAuditToken = Guid.NewGuid();
+                        Guid subjectAuditToken = Guid.NewGuid();
+                        db.Entry(candidate).State = EntityState.Detached;
+                        string sql = "UPDATE " + RelationalModelNamespace.Prefix
+                            + "erasure_intents SET intent_id = {0}, subject_id = {1}, "
+                            + "is_legal_hold_pseudonymized = 1 WHERE authority_sequence = {2}";
+                        await db.Database.ExecuteSqlRawAsync(
+                            sql,
+                            [intentAuditToken, subjectAuditToken, candidate.AuthoritySequence],
+                            cancellationToken);
+                        pseudonymized++;
+                    }
+
+                    if (candidate.AuthoritySequence > counter.RetainedFloorSequence)
+                    {
+                        counter.AdvanceRetainedFloorTo(candidate.AuthoritySequence);
+                    }
+
+                    break;
+                }
+
+                db.ErasureIntents.Remove(candidate);
+                deleted++;
+                if (candidate.AuthoritySequence > counter.RetainedFloorSequence)
+                {
+                    counter.AdvanceRetainedFloorTo(candidate.AuthoritySequence);
+                }
+            }
+
+            await EnsureNextSequenceExistsAsync(
+                db,
+                expectedSequence,
+                counter.LastSequence,
+                cancellationToken);
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            storage?.HardenCompanionFiles();
+            return new PrivacyErasureCompactionResult(deleted, pseudonymized, counter.GetState());
+        }
+        finally
+        {
+            _writerLock.Release();
+        }
+    }
+
     public void Dispose() => _writerLock.Dispose();
+
+    private async Task EnsureStorageReadyAsync(CancellationToken cancellationToken)
+    {
+        if (storage is not null)
+        {
+            await storage.EnsureReadyAsync(cancellationToken);
+        }
+    }
+
+    private void EnsureCutoffIsNotInFuture(PrivacyErasureRetentionRequest request)
+    {
+        if (request.AsOfUtc > timeProvider.GetUtcNow().UtcDateTime)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+    }
+
+    private static Task<List<PrivacyErasureIntent>> LoadMaintenanceCandidatesAsync(
+        EmbeddedPrivacyErasureAuthorityDbContext db,
+        long retainedFloorSequence,
+        int batchSize,
+        CancellationToken cancellationToken) =>
+        db.ErasureIntents
+            .Where(intent => intent.AuthoritySequence > retainedFloorSequence
+                || (intent.AuthoritySequence == retainedFloorSequence
+                    && intent.IsLegalHoldPseudonymized))
+            .OrderBy(intent => intent.AuthoritySequence)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+
+    private static PrivacyErasureRetentionEvaluation Evaluate(
+        IReadOnlyList<PrivacyErasureIntent> candidates,
+        long retainedFloorSequence,
+        PrivacyErasureRetentionRequest request,
+        out long expectedSequence)
+    {
+        var eligible = 0;
+        var held = 0;
+        long projectedFloor = retainedFloorSequence;
+        expectedSequence = retainedFloorSequence;
+        foreach (PrivacyErasureIntent candidate in candidates)
+        {
+            EnsureContiguous(candidate, ref expectedSequence);
+            if (candidate.RetentionExpiresAtUtc > request.AsOfUtc)
+            {
+                break;
+            }
+
+            projectedFloor = Math.Max(projectedFloor, candidate.AuthoritySequence);
+            if (request.HeldAuthoritySequences.Contains(candidate.AuthoritySequence))
+            {
+                held++;
+                break;
+            }
+
+            eligible++;
+        }
+
+        return new PrivacyErasureRetentionEvaluation(
+            eligible,
+            held,
+            retainedFloorSequence,
+            projectedFloor);
+    }
+
+    private static async Task EnsureNextSequenceExistsAsync(
+        EmbeddedPrivacyErasureAuthorityDbContext db,
+        long expectedSequence,
+        long highWaterSequence,
+        CancellationToken cancellationToken)
+    {
+        if (expectedSequence < highWaterSequence
+            && !await db.ErasureIntents.AnyAsync(
+                intent => intent.AuthoritySequence == expectedSequence + 1,
+                cancellationToken))
+        {
+            throw new Explore.Application.Exceptions.PrivacyErasureSequenceGapException();
+        }
+    }
+
+    private static void EnsureContiguous(
+        PrivacyErasureIntent candidate,
+        ref long expectedSequence)
+    {
+        if (candidate.AuthoritySequence == expectedSequence
+            && candidate.IsLegalHoldPseudonymized)
+        {
+            return;
+        }
+
+        expectedSequence++;
+        if (candidate.AuthoritySequence != expectedSequence)
+        {
+            throw new Explore.Application.Exceptions.PrivacyErasureSequenceGapException();
+        }
+    }
 
     private static void EnsureSamePayload(
         PrivacyErasureIntent existing,

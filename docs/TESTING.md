@@ -244,13 +244,18 @@ Generated files are never patched to make a matrix lane pass.
 `EmbeddedPrivacyErasureRecoveryTests` uses a dedicated temporary local file,
 not the primary database. It proves private-cache/WAL/busy-timeout storage
 policy, restrictive permissions and symlink rejection, authority-first commit,
-primary-only restore replay convergence, and idempotent restart. Configuration
+primary-only restore replay convergence, idempotent restart, dry-run/apply
+retention, legal-hold pseudonymization/release, atomic floor movement, and
+concurrent append/compaction serialization. Configuration
 tests separately prove the one-writer and local-path bounds.
 
 `ExternalDatabasePrivacyErasureAuthorityTests` and
 `ExternalDatabasePrivacyErasureRestoreTests` use an explicit application
 container plus a distinct authority container. They prove function-only
 runtime ACLs, fresh-context concurrent allocation, and the real application-only restore path.
+The authority class also proves state/evaluate execution and compact denial
+under the runtime role, migrator-only hold-aware atomic floor advancement, and
+denial of direct table deletion.
 The restore fixture applies application migrations, seeds PII, executes
 `pg_dump --format=custom` inside the application container, creates a unique
 fixture-owned database from `template0`, and runs `pg_restore --exit-on-error`
@@ -279,7 +284,7 @@ Credential rotation coverage is restart-based today: the owning service reloads 
 
 Disabled tests are allowed only when the test still expresses required future behavior and cannot run in the current lane. Do not comment out `[Test]`; either keep the test active, mark it with `[Skip("Category: ... Removal: ...")]`, or delete it when the behavior is obsolete or unnecessary.
 
-Use `[Explicit]` for valid, intentionally opt-in runtime or release-rehearsal tests whose infrastructure or duration makes them unsuitable for an unfiltered developer run. Keep a positive category filter documented so the evidence remains runnable. Below-floor compaction and DR rehearsals are pending until shipped; do not treat them as covered test evidence yet.
+Use `[Explicit]` for valid, intentionally opt-in runtime or release-rehearsal tests whose infrastructure or duration makes them unsuitable for an unfiltered developer run. Keep a positive category filter documented so the evidence remains runnable. Below-floor rejection and SQLite compaction are covered in the focused lane; the external PostgreSQL runtime-role scenario remains a container-backed CI/rehearsal check.
 
 Skip reason requirements:
 

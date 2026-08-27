@@ -128,8 +128,22 @@ public sealed class RetainedAuthorityPrivacyErasureWorkflow(
     public async Task ReplayPendingAsync(CancellationToken cancellationToken)
     {
         PrivacyErasureReplayCheckpoint? latest = await checkpointRepository.GetLatestAsync(cancellationToken);
-        long afterSequence = 0;
-        bool latestVerified = latest is null;
+        PrivacyErasureAuthorityState state = await authority.GetStateAsync(cancellationToken);
+        long latestSequence = latest?.AuthoritySequence ?? 0;
+        if (latestSequence < state.RetainedFloorSequence)
+        {
+            throw new StaleRestoreBelowRetainedFloorException();
+        }
+
+        if (latestSequence > state.HighWaterSequence)
+        {
+            throw new PrivacyErasureCheckpointAheadException();
+        }
+
+        long afterSequence = latestSequence > state.RetainedFloorSequence
+            ? latestSequence - 1
+            : latestSequence;
+        bool latestVerified = latest is null || latestSequence == state.RetainedFloorSequence;
 
         while (true)
         {
@@ -139,10 +153,9 @@ public sealed class RetainedAuthorityPrivacyErasureWorkflow(
                 cancellationToken);
             if (facts.Count == 0)
             {
-                if (!latestVerified)
+                if (!latestVerified || afterSequence < state.HighWaterSequence)
                 {
-                    throw new InvalidOperationException(
-                        "The application erasure checkpoint is not continuous with the retained authority.");
+                    throw new PrivacyErasureSequenceGapException();
                 }
 
                 return;
@@ -152,15 +165,14 @@ public sealed class RetainedAuthorityPrivacyErasureWorkflow(
             {
                 if (intent.AuthoritySequence != afterSequence + 1)
                 {
-                    throw new InvalidOperationException("The retained privacy-erasure authority contains a sequence gap.");
+                    throw new PrivacyErasureSequenceGapException();
                 }
 
                 if (latest?.AuthoritySequence == intent.AuthoritySequence)
                 {
                     if (!latest.Matches(intent))
                     {
-                        throw new InvalidOperationException(
-                            "The application erasure checkpoint does not match the retained authority.");
+                        throw new PrivacyErasureSequenceGapException();
                     }
 
                     latestVerified = true;

@@ -297,6 +297,11 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
                     ? [retainedIntent]
                     : [];
             });
+        authority
+            .GetStateAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new PrivacyErasureAuthorityState(
+                retainedIntent?.AuthoritySequence ?? 0,
+                0));
         checkpointRepository
             .GetLatestAsync(Arg.Any<CancellationToken>())
             .Returns(_ => checkpoint);

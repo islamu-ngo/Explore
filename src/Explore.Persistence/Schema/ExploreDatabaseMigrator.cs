@@ -105,14 +105,6 @@ public static class ExploreDatabaseMigrator
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        if (topology == PrivacyErasureAuthorityTopology.None)
-        {
-            logger.LogInformation(
-                "Database migration operation {Operation} skipped (Topology: None).",
-                "AuthorityNone");
-            return;
-        }
-
         if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration
@@ -124,7 +116,22 @@ public static class ExploreDatabaseMigrator
                         PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable))
                 .UseSnakeCaseNamingConvention();
             await using var externalAuthorityDb = new PrivacyErasureAuthorityDbContext(externalAuthorityOptions.Options);
+            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql,
+                cancellationToken);
+            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql,
+                cancellationToken);
             await externalAuthorityDb.Database.MigrateAsync(cancellationToken);
+            await using var lifecycleTransaction = await externalAuthorityDb.Database
+                .BeginTransactionAsync(cancellationToken);
+            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql,
+                cancellationToken);
+            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql,
+                cancellationToken);
+            await lifecycleTransaction.CommitAsync(cancellationToken);
             logger.LogInformation(
                 "Database migration operation {Operation} completed.",
                 "AuthorityExternalDatabasePostgreSql");

@@ -445,7 +445,7 @@ Checks:
 **Symptoms:** `DELETE /api/user` returned `202` but the receipt-status route still reports `provider_pending`, `/health` shows privacy-erasure degradation, replay lag grows, or provider work/dead letters remain uncleared.
 
 Checks:
-1. Query `/health` and inspect the `privacy-erasure` check only. It reports `topology`, `restoreReplayProtection`, `replayCaughtUp`, `providerDue`, `providerUnknown`, `providerDeadLettered`, `cacheConvergenceIncomplete`, and `cacheConvergenceDeadLettered`. Do not copy subject ids, locators, payloads, endpoints, or exception text into tickets.
+1. Query `/health` and inspect the `privacy-erasure` check only. It reports `topology`, `restoreReplayProtection`, `authorityHighWater`, `authorityRetainedFloor`, `replayCaughtUp`, `replayReasonCode`, `providerDue`, `providerUnknown`, `providerDeadLettered`, `cacheConvergenceIncomplete`, and `cacheConvergenceDeadLettered`. Do not copy subject ids, locators, payloads, endpoints, or exception text into tickets.
 2. For user-facing status, call `GET /api/privacy-erasure/status` with `Authorization: ErasureReceipt <receipt>`. Missing, invalid, wrong, and expired receipts all return `401` and must be treated identically.
 3. If `replayCaughtUp` is false, the retained authority checkpoint is behind the replay fence; allow replay to finish before retrying the request. The API should still return bounded status, not raw replay detail.
 4. If `providerUnknown` is non-zero, use the provider-work reconciliation path; `Unknown` is the expected ambiguous-ack state. `providerDeadLettered` and `providerDue` indicate operator action or worker lag, not user-visible failure detail.
@@ -459,6 +459,13 @@ Checks:
    | `EmbeddedSqlite` | Primary database and dedicated authority-file backups | `true` when the authority file is excluded from the primary restore |
    | `CoLocated` | One primary database backup containing authority rows | `false` |
    | `ExternalDatabase` | Primary database and independently managed external PostgreSQL authority backups | `true` when the external authority has an independent restore lifecycle |
+
+9. Interpret replay codes without bypassing the gate:
+   - `replay_pending`: wait for the normal startup replay to reach the high-water mark.
+   - `stale_restore_below_retained_floor`: the primary restore is older than retained authority evidence. Keep the newest authority unchanged and restore a verified primary backup at or above the floor.
+   - `checkpoint_ahead_of_authority`: authority rollback or loss is possible. Keep traffic stopped and restore a verified authority artifact that reaches at least the checkpoint and preserves every later fact.
+   - `sequence_gap_detected`: treat the authority as corrupt/incomplete. Restore verified authority evidence; never renumber, synthesize, or delete facts/checkpoints.
+10. Before any retention apply, run the dry-run evaluation with the complete explicit PII-free legal-hold sequence set. Confirm the projected floor is not newer than every primary backup the operator still claims is restorable.
 
 ## Email Dispatch Issues
 

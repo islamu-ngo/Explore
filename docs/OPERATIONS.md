@@ -571,8 +571,8 @@ Readiness interpretation:
 
 Operational rules:
 
-- Privacy-erasure readiness exposes only topology, restore capability, replay-caught-up state, and aggregate due/unknown/dead-letter counts. It never exposes intent IDs, subject IDs, provider targets, endpoints, payloads, credentials, connection details, or exception text.
-- Privacy-erasure cleanup is finite and bounded: receipt hashes and provider locators expire, and the cleanup worker can run in dry-run mode before mutation. Do not describe compaction or legal hold as shipped; those remain gaps.
+- Privacy-erasure readiness exposes only topology, restore capability, aggregate high-water/floor values, bounded replay reason, replay-caught-up state, and aggregate due/unknown/dead-letter counts. It never exposes intent IDs, subject IDs, provider targets, endpoints, payloads, credentials, connection details, or exception text.
+- Privacy-erasure cleanup is finite and bounded: receipt hashes and provider locators expire through the scheduled dry-run-capable cleanup, while authority maintenance separately evaluates or atomically compacts an expired contiguous prefix. Authority compaction requires the caller to provide the complete explicit PII-free legal-hold sequence set; held rows are pseudonymized and the floor never advances past the first held row in that pass.
 - Unknown provider work is not self-healing. Explicit reconciliation may move it to completed or retry-scheduled state, and dead-lettered work stays operator attention.
 - Payment readiness exposes only aggregate `due`, `unknown`, `parked`, `configurationBlocked`, `duplicateSucceededOrders`, bounded `code`, and `oldestDueAtUtc` fields. It never exposes tenant/order/attempt/provider object IDs, account IDs, request IDs, URLs, PII, or secrets.
 

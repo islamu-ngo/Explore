@@ -350,14 +350,15 @@ application migration. The primary file must not be named
 ### Privacy-erasure authority topology
 
 `PrivacyErasure:Authority:Topology` accepts `EmbeddedSqlite` (the default),
-`CoLocated`, `ExternalDatabase`, or `None`.
+`CoLocated`, or `ExternalDatabase`. The removed `None` value fails validation;
+an in-memory authority cannot remain consistent with a persisted replay
+checkpoint across process restart.
 
 | Topology | Supported Primary Providers | Authority Storage Placement |
 |---|---|---|
 | `EmbeddedSqlite` *(default)* | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | Dedicated local `/app/data/privacy_erasure_authority.db` file. |
 | `CoLocated` | **PostgreSQL or SQLite only** | Primary application database (shares application connection). |
 | `ExternalDatabase` | **All 5 providers** | Separate physical PostgreSQL database instance. |
-| `None` | **All 5 providers** | In-memory no-op authority (zero extra database files or tables). |
 
 `EmbeddedSqlite` stores authority facts in the dedicated
 `/app/data/privacy_erasure_authority.db` file; it never shares the primary
@@ -376,8 +377,6 @@ credentials. The primary database keeps only the replay checkpoint in
 `EmbeddedSqlite` and `ExternalDatabase`. `CoLocated` additionally keeps the
 retained authority rows there because the primary database is its sole sink.
 
-`None` disables the retained privacy erasure authority database entirely. An in-memory no-op authority is registered, and no separate SQLite files, PostgreSQL authority tables, or authority migrations are created or migrated. This is suitable for ephemeral dev environments or operators opting out of independent cryptographic audit logs.
-
 | Topology | Operator backup units | `restoreReplayProtection` |
 |---|---|---:|
 | `EmbeddedSqlite` | Primary database backup plus the dedicated authority-file backup | `true` when the authority file is excluded from the primary restore |
@@ -390,13 +389,16 @@ retained authority rows there because the primary database is its sole sink.
 | `PrivacyErasure:ReceiptLifetime` | `7.00:00:00` | Short-lived status-receipt lifetime; must be greater than zero and no more than 30 days. |
 | `PrivacyErasure:MaximumBackupHorizon` | `365.00:00:00` | Longest supported application-backup horizon used to derive retained-authority lifecycle requirements. |
 | `PrivacyErasure:AuthorityRetentionSafetyMargin` | `30.00:00:00` | Additional authority-retention margin beyond the maximum backup horizon. |
+| `PrivacyErasure:RetentionCleanupEnabled` | `true` | Registers the existing receipt-hash/provider-locator cleanup job. It does not authorize authority compaction; authority maintenance additionally requires an explicit legal-hold sequence set. |
+| `PrivacyErasure:RetentionCleanupDryRun` | `true` | Keeps receipt-hash/provider-locator cleanup non-mutating. Authority-ledger dry run uses `EvaluateRetentionAsync` and is separate from apply. |
+| `PrivacyErasure:RetentionCleanupBatchSize` | `100` | Bounds one credential-cleanup pass; valid range `1..1000`, matching the authority-maintenance request ceiling. |
 | `PrivacyErasureAuthorityEmbedded:Path` | `/app/data/privacy_erasure_authority.db` | Absolute local authority file used only by `EmbeddedSqlite`; URI and network paths are rejected. |
 | `PrivacyErasureAuthorityEmbedded:WriterReplicaCount` | `1` | Must be exactly `1`; startup rejects multi-writer embedded deployments. |
 | `PrivacyErasureAuthorityEmbedded:BusyTimeoutSeconds` | `30` | SQLite busy timeout; valid range `1..300`. |
 | `Database:Erasure:Provider` / `PrivacyErasureAuthorityDatabase:Provider` | none | Must be `PostgreSql` for `ExternalDatabase`. Other providers fail validation. |
 | `Database:Erasure:Host`, `Port`, `Database`, `TlsMode`, `TrustServerCertificate` | none | Structured external authority endpoint and TLS policy under `/database/erasure`. |
-| `Database:Erasure:Runtime:Username`, `Password` | none | API-only function-execution credential for `ExternalDatabase`. |
-| `Database:Erasure:Migrator:Username`, `Password` | none | MigrationService-only schema/grant credential for `ExternalDatabase`. |
+| `Database:Erasure:Runtime:Username`, `Password` | none | API-only function-execution credential for `ExternalDatabase`; its username must differ from the migrator username. |
+| `Database:Erasure:Migrator:Username`, `Password` | none | MigrationService-only schema/grant credential for `ExternalDatabase`; role collapse with runtime fails startup/provisioning. |
 
 Compose and Infisical map `ERASURE_TOPOLOGY` (or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`),
 `ERASURE_EMBEDDED_PATH`, `ERASURE_WRITER_REPLICA_COUNT`, and

@@ -134,6 +134,26 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
             .WithMessageContaining("Provider must be PostgreSql");
     }
 
+    [Test]
+    public async Task SharedRuntimeAndMigratorUsernameFailsClosed()
+    {
+        IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+            ["PrivacyErasureAuthorityDatabase:Host"] = "authority.example.test",
+            ["PrivacyErasureAuthorityDatabase:Database"] = "privacy_authority",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "shared_role",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = "runtime-secret",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "SHARED_ROLE",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-secret",
+        });
+
+        Action act = () => PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
+
+        await Assert.That(act).Throws<OptionsValidationException>()
+            .WithMessageContaining("Runtime and Migrator usernames must be distinct");
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 }

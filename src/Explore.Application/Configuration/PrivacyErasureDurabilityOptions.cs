@@ -9,8 +9,7 @@ public enum PrivacyErasureAuthorityTopology
 {
     EmbeddedSqlite,
     ExternalDatabase,
-    CoLocated,
-    None
+    CoLocated
 }
 
 public sealed class PrivacyErasureDurabilityOptions
@@ -22,7 +21,7 @@ public sealed class PrivacyErasureDurabilityOptions
         PrivacyErasureAuthorityTopology.EmbeddedSqlite;
 
     public bool RestoreReplayProtection =>
-        Topology != PrivacyErasureAuthorityTopology.CoLocated && Topology != PrivacyErasureAuthorityTopology.None;
+        Topology != PrivacyErasureAuthorityTopology.CoLocated;
 
     public static PrivacyErasureDurabilityOptions FromConfiguration(
         IConfiguration configuration)
@@ -62,17 +61,10 @@ public sealed class PrivacyErasureDurabilityOptions
         {
             topology = PrivacyErasureAuthorityTopology.ExternalDatabase;
         }
-        else if (string.Equals(
-            configuredTopology,
-            nameof(PrivacyErasureAuthorityTopology.None),
-            StringComparison.OrdinalIgnoreCase))
-        {
-            topology = PrivacyErasureAuthorityTopology.None;
-        }
         else
         {
             throw InvalidConfiguration(
-                $"{SectionName}:Topology must be EmbeddedSqlite, ExternalDatabase, CoLocated, or None.");
+                $"{SectionName}:Topology must be EmbeddedSqlite, ExternalDatabase, or CoLocated.");
         }
 
         return topology;

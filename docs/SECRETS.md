@@ -114,8 +114,13 @@ Blazor client.
 | `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` (in `/database/erasure`) or `DATABASE_ERASURE_MIGRATOR_USERNAME` | `Database:Erasure:Migrator:Username`, `Database:Erasure:Migrator:Password` | `Event.MigrationService` only |
 
 For `ExternalDatabase`, endpoint metadata is supplied under `/database/erasure` in Infisical (or via `DATABASE_ERASURE_HOST`, `PORT`, `DATABASE_NAME`, `TLS_MODE`, and `TRUST_SERVER_CERTIFICATE` / `PrivacyErasureAuthorityDatabase:*`); the provider is fixed to PostgreSQL. Use separate
-roles: runtime receives only authority append/read function execution, while
-migrator owns schema and grants. Never pass either authority credential to
+roles: runtime receives only authority append/read/state/evaluate function
+execution and still has zero table or sequence access, while the migrator owns
+schema, lifecycle functions, grants, and destructive compaction execution. The
+usernames must be different; configuration binding and PostgreSQL provisioning
+both fail closed when one login is shared across these trust boundaries.
+Never pass either
+authority credential to
 `Explore.Blazor` or `Explore.Blazor.Client`. Rotate the migrator credential
 independently of runtime. These values are unused in `EmbeddedSqlite` topology;
 that mode has no database username/password and protects its dedicated local

@@ -22,6 +22,197 @@ namespace Event.Persistence.IntegrationTests.Privacy;
 public sealed class EmbeddedPrivacyErasureRecoveryTests
 {
     [Test]
+    [Arguments(2L)]
+    [Arguments(3L)]
+    public async Task RetentionMaintenance_SequenceGapFailsAtomicallyWithoutAdvancingFloor(
+        long missingSequence)
+    {
+        DirectoryInfo root = Directory.CreateTempSubdirectory("orea-gap-");
+        string authorityPath = Path.Combine(root.FullName, "privacy_erasure_authority.db");
+        try
+        {
+            await using ServiceProvider provider = await CreateAuthorityProviderAsync(authorityPath);
+            IPrivacyErasureAuthority authority = provider.GetRequiredService<IPrivacyErasureAuthority>();
+            IPrivacyErasureAuthorityMaintenance maintenance =
+                provider.GetRequiredService<IPrivacyErasureAuthorityMaintenance>();
+            PrivacyErasureIntent[] facts = new PrivacyErasureIntent[3];
+            for (var index = 0; index < facts.Length; index++)
+            {
+                facts[index] = await authority.AppendAsync(new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    Guid.CreateVersion7(),
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1));
+            }
+
+            IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext> factory = provider
+                .GetRequiredService<IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>>();
+            await using (EmbeddedPrivacyErasureAuthorityDbContext corruption =
+                await factory.CreateDbContextAsync())
+            {
+                await ExpireFactsAsync(corruption);
+                await corruption.ErasureIntents
+                    .Where(fact => fact.AuthoritySequence == missingSequence)
+                    .ExecuteDeleteAsync();
+            }
+
+            var request = new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                []);
+            await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(() =>
+                maintenance.EvaluateRetentionAsync(request));
+            await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(() =>
+                maintenance.CompactExpiredIntentsAsync(request));
+
+            await Assert.That(await authority.GetStateAsync())
+                .IsEqualTo(new PrivacyErasureAuthorityState(3, 0));
+            await using EmbeddedPrivacyErasureAuthorityDbContext verification =
+                await factory.CreateDbContextAsync();
+            long[] retained = await verification.ErasureIntents
+                .OrderBy(fact => fact.AuthoritySequence)
+                .Select(fact => fact.AuthoritySequence)
+                .ToArrayAsync();
+            await Assert.That(retained)
+                .IsEquivalentTo(facts
+                    .Where(fact => fact.AuthoritySequence != missingSequence)
+                    .Select(fact => fact.AuthoritySequence));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task RetentionMaintenance_DryRunHoldCompactionReleaseAndFloorAreAtomic()
+    {
+        DirectoryInfo root = Directory.CreateTempSubdirectory("orea-maintenance-");
+        string authorityPath = Path.Combine(root.FullName, "privacy_erasure_authority.db");
+        try
+        {
+            await using ServiceProvider provider = await CreateAuthorityProviderAsync(authorityPath);
+            IPrivacyErasureAuthority authority = provider.GetRequiredService<IPrivacyErasureAuthority>();
+            IPrivacyErasureAuthorityMaintenance maintenance =
+                provider.GetRequiredService<IPrivacyErasureAuthorityMaintenance>();
+            PrivacyErasureIntent[] facts = new PrivacyErasureIntent[3];
+            for (var index = 0; index < facts.Length; index++)
+            {
+                facts[index] = await authority.AppendAsync(new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    Guid.CreateVersion7(),
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1));
+            }
+            await ExpireFactsAsync(provider);
+
+            var heldRequest = new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                [facts[1].AuthoritySequence]);
+            PrivacyErasureRetentionEvaluation evaluation =
+                await maintenance.EvaluateRetentionAsync(heldRequest);
+
+            await Assert.That(evaluation.EligibleCount).IsEqualTo(1);
+            await Assert.That(evaluation.HeldCount).IsEqualTo(1);
+            await Assert.That(evaluation.ProjectedFloorSequence)
+                .IsEqualTo(facts[1].AuthoritySequence);
+            await Assert.That(await authority.GetStateAsync())
+                .IsEqualTo(new PrivacyErasureAuthorityState(3, 0));
+
+            PrivacyErasureCompactionResult compacted =
+                await maintenance.CompactExpiredIntentsAsync(heldRequest);
+
+            await Assert.That(compacted.DeletedCount).IsEqualTo(1);
+            await Assert.That(compacted.PseudonymizedCount).IsEqualTo(1);
+            await Assert.That(compacted.State).IsEqualTo(new PrivacyErasureAuthorityState(3, 2));
+            IReadOnlyList<PrivacyErasureIntent> replayable = await authority.ReadAfterAsync(2, 100);
+            await Assert.That(replayable.Select(fact => fact.AuthoritySequence)).IsEquivalentTo([3L]);
+
+            IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext> factory = provider
+                .GetRequiredService<IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>>();
+            await using (EmbeddedPrivacyErasureAuthorityDbContext verification =
+                await factory.CreateDbContextAsync())
+            {
+                PrivacyErasureIntent held = await verification.ErasureIntents
+                    .AsNoTracking()
+                    .SingleAsync(fact => fact.AuthoritySequence == 2);
+                await Assert.That(held.IsLegalHoldPseudonymized).IsTrue();
+                await Assert.That(held.IntentId).IsNotEqualTo(facts[1].IntentId);
+                await Assert.That(held.SubjectId).IsNotEqualTo(facts[1].SubjectId);
+            }
+
+            var releasedRequest = new PrivacyErasureRetentionRequest(
+                heldRequest.AsOfUtc,
+                100,
+                []);
+            PrivacyErasureCompactionResult released =
+                await maintenance.CompactExpiredIntentsAsync(releasedRequest);
+
+            await Assert.That(released.DeletedCount).IsEqualTo(2);
+            await Assert.That(released.PseudonymizedCount).IsEqualTo(0);
+            await Assert.That(released.State).IsEqualTo(new PrivacyErasureAuthorityState(3, 3));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentAppendAndCompaction_KeepUniqueSequencesAndValidFloor()
+    {
+        DirectoryInfo root = Directory.CreateTempSubdirectory("orea-concurrency-");
+        string authorityPath = Path.Combine(root.FullName, "privacy_erasure_authority.db");
+        try
+        {
+            await using ServiceProvider provider = await CreateAuthorityProviderAsync(authorityPath);
+            IPrivacyErasureAuthority authority = provider.GetRequiredService<IPrivacyErasureAuthority>();
+            IPrivacyErasureAuthorityMaintenance maintenance =
+                provider.GetRequiredService<IPrivacyErasureAuthorityMaintenance>();
+            await authority.AppendAsync(new PrivacyErasureRequest(
+                Guid.CreateVersion7(),
+                PrivacyErasureSubjectKind.User,
+                Guid.CreateVersion7(),
+                PrivacyErasureReasonCode.AccountDeletion,
+                1));
+            await ExpireFactsAsync(provider);
+            var request = new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                []);
+
+            await Task.WhenAll(
+                authority.AppendAsync(new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    Guid.CreateVersion7(),
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1)),
+                maintenance.CompactExpiredIntentsAsync(request));
+
+            PrivacyErasureAuthorityState state = await authority.GetStateAsync();
+            IReadOnlyList<PrivacyErasureIntent> remaining =
+                await authority.ReadAfterAsync(state.RetainedFloorSequence, 100);
+            await Assert.That(state.HighWaterSequence).IsEqualTo(2);
+            await Assert.That(state.RetainedFloorSequence <= state.HighWaterSequence).IsTrue();
+            await Assert.That(remaining.Select(fact => fact.AuthoritySequence).Distinct().Count())
+                .IsEqualTo(remaining.Count);
+            await Assert.That(remaining.All(fact =>
+                fact.AuthoritySequence > state.RetainedFloorSequence)).IsTrue();
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Test]
     [Timeout(300_000)]
     public async Task PrimaryOnlyRestore_RetainsEmbeddedAuthorityAndReplayConvergesExactlyOnce()
     {
@@ -240,6 +431,23 @@ public sealed class EmbeddedPrivacyErasureRecoveryTests
         await context.Database.EnsureCreatedAsync();
         return provider;
     }
+
+    private static async Task ExpireFactsAsync(ServiceProvider provider)
+    {
+        IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext> factory = provider
+            .GetRequiredService<IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>>();
+        await using EmbeddedPrivacyErasureAuthorityDbContext context =
+            await factory.CreateDbContextAsync();
+        await ExpireFactsAsync(context);
+    }
+
+    private static Task<int> ExpireFactsAsync(
+        EmbeddedPrivacyErasureAuthorityDbContext context) =>
+        context.Database.ExecuteSqlRawAsync(
+            "UPDATE ie_erasure_intents "
+            + "SET requested_at_utc = {0}, recorded_at_utc = {0}, retention_expires_at_utc = {1}",
+            DateTime.UtcNow.AddDays(-2),
+            DateTime.UtcNow.AddDays(-1));
 
     private static EmbeddedPrivacyErasureAuthorityOptions EmbeddedOptions(string path) => new()
     {

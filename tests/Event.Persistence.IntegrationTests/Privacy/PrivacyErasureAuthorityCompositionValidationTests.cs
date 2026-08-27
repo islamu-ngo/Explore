@@ -143,6 +143,57 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         await Assert.That(replay.Select(item => item.IntentId)).IsEquivalentTo([request.IntentId]);
         await Assert.That(context.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
             .IsEqualTo(schema);
+
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE \"custom_event\".\"erasure_intents\" "
+            + "SET requested_at_utc = {0}, recorded_at_utc = {0}, retention_expires_at_utc = {1} "
+            + "WHERE authority_sequence = {2}",
+            DateTime.UtcNow.AddDays(-2),
+            DateTime.UtcNow.AddDays(-1),
+            appended.AuthoritySequence);
+
+        await using var appendContext = new CoLocatedPrivacyErasureAuthorityDbContext(
+            runtimeOptions.Options);
+        await using var compactContext = new CoLocatedPrivacyErasureAuthorityDbContext(
+            runtimeOptions.Options);
+        var appendAuthority = new CoLocatedPostgresPrivacyErasureAuthorityRepository(
+            appendContext,
+            TimeProvider.System,
+            Options.Create(new PrivacyErasureOptions()));
+        var compactAuthority = new CoLocatedPostgresPrivacyErasureAuthorityRepository(
+            compactContext,
+            TimeProvider.System,
+            Options.Create(new PrivacyErasureOptions()));
+        Task<PrivacyErasureIntent> appendTask = appendAuthority.AppendAsync(
+            new PrivacyErasureRequest(
+                Guid.CreateVersion7(),
+                PrivacyErasureSubjectKind.User,
+                Guid.CreateVersion7(),
+                PrivacyErasureReasonCode.SubjectErasureRequest,
+                1));
+        Task<PrivacyErasureCompactionResult> compactTask = compactAuthority
+            .CompactExpiredIntentsAsync(new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                []));
+
+        await Task.WhenAll(appendTask, compactTask);
+
+        PrivacyErasureIntent concurrent = await appendTask;
+        PrivacyErasureAuthorityState state = await compactAuthority.GetStateAsync();
+        await Assert.That(concurrent.AuthoritySequence).IsEqualTo(2);
+        await Assert.That(state).IsEqualTo(new PrivacyErasureAuthorityState(2, 1));
+        await compactContext.ErasureIntents
+            .Where(fact => fact.AuthoritySequence == concurrent.AuthoritySequence)
+            .ExecuteDeleteAsync();
+
+        var gapRequest = new PrivacyErasureRetentionRequest(DateTime.UtcNow, 100, []);
+        await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(
+            () => compactAuthority.EvaluateRetentionAsync(gapRequest));
+        await Assert.ThrowsAsync<Explore.Application.Exceptions.PrivacyErasureSequenceGapException>(
+            () => compactAuthority.CompactExpiredIntentsAsync(gapRequest));
+        await Assert.That(await compactAuthority.GetStateAsync())
+            .IsEqualTo(new PrivacyErasureAuthorityState(2, 1));
     }
 
     [Test]

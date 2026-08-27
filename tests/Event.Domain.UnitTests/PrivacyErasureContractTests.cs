@@ -101,11 +101,61 @@ public sealed class PrivacyErasureContractTests
     {
         PrivacyErasureCounter counter = PrivacyErasureCounter.Start();
 
+        await Assert.That(counter.Singleton).IsTrue();
         await Assert.That(counter.AllocateNext()).IsEqualTo(1);
         counter.AdvanceTo(2);
         await Assert.That(counter.LastSequence).IsEqualTo(2);
-        await Assert.That(() => counter.AdvanceTo(2)).Throws<InvalidOperationException>();
+        InvalidOperationException? duplicate = await Assert.That(() => counter.AdvanceTo(2))
+            .Throws<InvalidOperationException>();
+        await Assert.That(duplicate!.Message).Contains("advance the ledger by one");
         await Assert.That(() => counter.AdvanceTo(4)).Throws<InvalidOperationException>();
+
+        typeof(PrivacyErasureCounter).GetProperty(nameof(PrivacyErasureCounter.LastSequence))!
+            .SetValue(counter, long.MaxValue);
+        InvalidOperationException? exhausted = await Assert.That(() => counter.AllocateNext())
+            .Throws<InvalidOperationException>();
+        await Assert.That(exhausted!.Message).Contains("sequence is exhausted");
+    }
+
+    [Test]
+    public async Task PrivacyErasureAuthorityState_RejectsNegativeOrInvertedWatermarks()
+    {
+        var state = new PrivacyErasureAuthorityState(50, 20);
+        var compactedToHighWater = new PrivacyErasureAuthorityState(50, 50);
+
+        await Assert.That(state.HighWaterSequence).IsEqualTo(50);
+        await Assert.That(state.RetainedFloorSequence).IsEqualTo(20);
+        await Assert.That(compactedToHighWater.RetainedFloorSequence).IsEqualTo(50);
+        await Assert.That(() => new PrivacyErasureAuthorityState(-1, 0))
+            .Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => new PrivacyErasureAuthorityState(50, -1))
+            .Throws<ArgumentOutOfRangeException>();
+        ArgumentException? inverted = await Assert.That(() =>
+                new PrivacyErasureAuthorityState(50, 51))
+            .Throws<ArgumentException>();
+        await Assert.That(inverted!.Message).Contains("retained floor");
+    }
+
+    [Test]
+    public async Task PrivacyErasureCounter_AdvancesRetainedFloorMonotonicallyWithinHighWater()
+    {
+        PrivacyErasureCounter counter = PrivacyErasureCounter.Start();
+        counter.AdvanceTo(1);
+        counter.AdvanceTo(2);
+        counter.AdvanceRetainedFloorTo(1);
+
+        await Assert.That(counter.GetState())
+            .IsEqualTo(new PrivacyErasureAuthorityState(2, 1));
+        counter.AdvanceRetainedFloorTo(1);
+        counter.AdvanceRetainedFloorTo(2);
+        await Assert.That(counter.GetState())
+            .IsEqualTo(new PrivacyErasureAuthorityState(2, 2));
+        InvalidOperationException? rollback = await Assert.That(() =>
+                counter.AdvanceRetainedFloorTo(0))
+            .Throws<InvalidOperationException>();
+        await Assert.That(rollback!.Message).Contains("advance monotonically");
+        await Assert.That(() => counter.AdvanceRetainedFloorTo(3))
+            .Throws<InvalidOperationException>();
     }
 
     [Test]

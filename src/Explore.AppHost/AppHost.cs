@@ -1596,16 +1596,8 @@ static PrivacyErasureAuthorityTopology ParsePrivacyErasureTopology(string value)
         return PrivacyErasureAuthorityTopology.CoLocated;
     }
 
-    if (string.Equals(
-            value,
-            nameof(PrivacyErasureAuthorityTopology.None),
-            StringComparison.OrdinalIgnoreCase))
-    {
-        return PrivacyErasureAuthorityTopology.None;
-    }
-
     throw new InvalidOperationException(
-        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite, CoLocated, ExternalDatabase, or None.");
+        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite, CoLocated, or ExternalDatabase.");
 }
 
 static HostingTopology ParseHostingTopology(string? rawValue)

@@ -923,6 +923,16 @@ the API.
 
 For `CoLocated`, no separate authority target is configured and it shares the
 primary `PostgreSql` or `Sqlite` database. Other primary providers fail closed. Raw authority connection strings are not supported.
+
+The authority reports `authorityHighWater`, `authorityRetainedFloor`, and a
+bounded `replayReasonCode` through readiness. Retention maintenance must first
+run its dry-run evaluation with the complete explicit legal-hold sequence set.
+Apply removes only an expired contiguous prefix and moves the floor atomically;
+held rows keep sequence continuity with randomized audit tokens. After the floor
+moves, primary backups with checkpoints below it are intentionally not
+restorable. Preserve a verified primary backup at or above the floor and never
+repair an incident with direct authority-table DML.
+
 See [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for full architectural guidance.
 
 ---

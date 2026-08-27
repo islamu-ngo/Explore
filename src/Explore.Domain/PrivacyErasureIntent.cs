@@ -18,6 +18,7 @@ public sealed class PrivacyErasureIntent
     public DateTime RequestedAtUtc { get; private set; }
     public DateTime RecordedAtUtc { get; private set; }
     public DateTime RetentionExpiresAtUtc { get; private set; }
+    public bool IsLegalHoldPseudonymized { get; private set; }
 
     public static PrivacyErasureIntent Record(
         Guid intentId,

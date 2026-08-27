@@ -336,12 +336,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPrivacyErasureProviderWorkRepository, PrivacyErasureProviderWorkRepository>();
         services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         services.AddScoped<IUserPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
-        if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.None)
-        {
-            services.TryAddSingleton<TimeProvider>(TimeProvider.System);
-            services.AddSingleton<IPrivacyErasureAuthority, NoOpPrivacyErasureAuthorityRepository>();
-        }
-        else if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
+        if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             PrimaryDatabaseConnectionOptions authorityDatabaseOptions =
                 PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
@@ -380,6 +375,8 @@ public static class PersistenceServicesRegistration
                 services.TryAddSingleton<TimeProvider>(TimeProvider.System);
                 services.AddScoped<IPrivacyErasureAuthority,
                     CoLocatedPostgresPrivacyErasureAuthorityRepository>();
+                services.AddScoped<IPrivacyErasureAuthorityMaintenance>(provider =>
+                    (IPrivacyErasureAuthorityMaintenance)provider.GetRequiredService<IPrivacyErasureAuthority>());
             }
             else if (applicationProvider == PrimaryDatabaseProvider.Sqlite)
             {
@@ -389,6 +386,8 @@ public static class PersistenceServicesRegistration
                         applicationRuntimeOptions));
                 services.TryAddSingleton<TimeProvider>(TimeProvider.System);
                 services.AddSingleton<IPrivacyErasureAuthority, EmbeddedPrivacyErasureAuthorityRepository>();
+                services.AddSingleton<IPrivacyErasureAuthorityMaintenance>(provider =>
+                    (IPrivacyErasureAuthorityMaintenance)provider.GetRequiredService<IPrivacyErasureAuthority>());
             }
             else
             {
@@ -412,6 +411,8 @@ public static class PersistenceServicesRegistration
                 EmbeddedPrivacyErasureAuthorityDbContextFactory.Configure(options, embedded));
             services.TryAddSingleton<TimeProvider>(TimeProvider.System);
             services.AddSingleton<IPrivacyErasureAuthority, EmbeddedPrivacyErasureAuthorityRepository>();
+            services.AddSingleton<IPrivacyErasureAuthorityMaintenance>(provider =>
+                (IPrivacyErasureAuthorityMaintenance)provider.GetRequiredService<IPrivacyErasureAuthority>());
         }
 
         // Storage Repository

@@ -1192,6 +1192,14 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
     {
         private PrivacyErasureIntent? _intent;
 
+        public Task<PrivacyErasureAuthorityState> GetStateAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            long highWater = _intent?.AuthoritySequence ?? 0;
+            return Task.FromResult(new PrivacyErasureAuthorityState(highWater, 0));
+        }
+
         public Task<PrivacyErasureIntent> AppendAsync(
             PrivacyErasureRequest intent,
             CancellationToken cancellationToken = default)

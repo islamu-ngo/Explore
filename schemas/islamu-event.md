@@ -3042,8 +3042,9 @@ Table "privacy_erasure_replay_checkpoints" {
 Table "privacy_erasure_authority"."authority_counter" {
   "singleton" boolean [pk, not null]
   "last_sequence" bigint [not null]
+  "retained_floor_sequence" bigint [not null, default: 0]
 
-  Note: 'Singleton sequence allocator for typed platform privacy-erasure facts. Application migrations own this table for CoLocated/application-mirror storage; dedicated authority migrations own it only in an external database.'
+  Note: 'Singleton sequence allocator and durable compaction floor for typed platform privacy-erasure facts. Checks require 0 <= retained_floor_sequence <= last_sequence. The selected topology migration owns this table.'
 }
 
 Table "privacy_erasure_authority"."erasure_intents" {
@@ -3056,13 +3057,14 @@ Table "privacy_erasure_authority"."erasure_intents" {
   "requested_at_utc" timestamptz [not null]
   "recorded_at_utc" timestamptz [not null]
   "retention_expires_at_utc" timestamptz [not null]
+  "is_legal_hold_pseudonymized" boolean [not null, default: false]
 
   indexes {
     intent_id [unique, name: 'ak_privacy_erasure_intents_intent_id']
     (intent_id, subject_kind, policy_version) [unique, name: 'ix_erasure_intents_intent_id_subject_kind_policy_version']
   }
 
-  Note: 'Immutable typed User-erasure facts for CoLocated authority/application-mirror storage and ExternalDatabase authority storage. Checks enforce positive sequence, UUIDv7/RFC variant identity, non-empty opaque subject, closed reasons, positive policy version, recording order, and bounded retention. External runtime access is only through approved append/read functions; direct table SELECT and DML are denied.'
+  Note: 'Typed User-erasure facts for all retained-authority placements. Normal facts are immutable and require UUIDv7/RFC identity; maintenance may atomically delete expired prefix rows or replace held intent/subject identifiers with random audit tokens while preserving sequence/timestamps. External runtime access is function-only for append/read/state/evaluate; destructive compact execution belongs only to the migrator role, and direct table SELECT/DML are denied.'
 }
 
 // Privacy Erasure Lifecycle

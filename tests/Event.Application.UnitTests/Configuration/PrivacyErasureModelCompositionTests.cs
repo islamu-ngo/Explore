@@ -1,5 +1,9 @@
+// ABOUTME: Verifies privacy-erasure composition keeps topology and maintenance boundaries explicit.
+// ABOUTME: Prevents fallback adapters, secret reads, and accidental Application-owned persistence registration.
+
 using Explore.Application;
 using Explore.Application.Configuration;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Microsoft.Extensions.Configuration;
@@ -78,6 +82,30 @@ public sealed class PrivacyErasureModelCompositionTests
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType.FullName ==
             "Explore.Application.Contracts.PrivacyErasure.IPrivacyErasureAuthority")).IsFalse();
+    }
+
+    [Test]
+    public async Task AuthorityMaintenanceContract_SeparatesDryRunFromApply()
+    {
+        string[] methodNames = typeof(IPrivacyErasureAuthorityMaintenance)
+            .GetMethods()
+            .Select(method => method.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(methodNames).IsEquivalentTo([
+            "CompactExpiredIntentsAsync",
+            "EvaluateRetentionAsync"]);
+    }
+
+    [Test]
+    public async Task AuthorityMaintenanceRequest_RequiresAnExplicitPiiFreeHoldSet()
+    {
+        await Assert.That(() => new PrivacyErasureRetentionRequest(
+                DateTime.UtcNow,
+                100,
+                null!))
+            .Throws<ArgumentNullException>();
     }
 
     [Test]

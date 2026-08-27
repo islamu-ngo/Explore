@@ -2,6 +2,7 @@
 // ABOUTME: Preserves caller cancellation and exposes only sanitized fail-closed errors.
 
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 
 namespace Explore.API.BackgroundServices;
 
@@ -24,10 +25,22 @@ public static class PrivacyErasureStartupGate
         {
             throw;
         }
-        catch (Exception exception)
+        catch (PrivacyErasureReplayException exception)
+        {
+            string reasonCode = exception switch
+            {
+                StaleRestoreBelowRetainedFloorException => "stale_restore_below_retained_floor",
+                PrivacyErasureSequenceGapException => "sequence_gap_detected",
+                PrivacyErasureCheckpointAheadException => "checkpoint_ahead_of_authority",
+                _ => "privacy_erasure_replay_failed"
+            };
+            throw new InvalidOperationException(
+                $"Privacy-erasure replay failed ({reasonCode}); API startup is blocked.");
+        }
+        catch (Exception)
         {
             throw new InvalidOperationException(
-                $"External privacy-erasure replay failed ({exception.GetType().Name}); API startup is blocked.");
+                "Privacy-erasure replay failed (privacy_erasure_replay_failed); API startup is blocked.");
         }
     }
 }

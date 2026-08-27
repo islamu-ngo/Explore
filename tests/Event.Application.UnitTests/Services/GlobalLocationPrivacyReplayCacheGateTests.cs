@@ -6,6 +6,7 @@ using Explore.Application.Configuration;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 using Explore.Application.Services;
 using Explore.Domain;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -54,7 +55,42 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
             Arg.Any<CancellationToken>());
     }
 
-    private static ReplayHarness CreateHarness(string? failOnTag = null)
+    [Test]
+    public async Task CheckpointBelowRetainedFloor_FailsBeforeReadingOrMutating()
+    {
+        ReplayHarness harness = CreateHarness(new PrivacyErasureAuthorityState(2, 2));
+
+        StaleRestoreBelowRetainedFloorException? exception = await Assert.ThrowsAsync<
+            StaleRestoreBelowRetainedFloorException>(() =>
+                harness.Service.ReplayPendingAsync(CancellationToken.None));
+
+        await Assert.That(exception!.ReasonCode)
+            .IsEqualTo("stale_restore_below_retained_floor");
+        await harness.Authority.DidNotReceive().ReadAfterAsync(
+            Arg.Any<long>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CheckpointAheadOfAuthority_FailsBeforeReadingOrMutating()
+    {
+        ReplayHarness harness = CreateHarness(new PrivacyErasureAuthorityState(0, 0));
+
+        PrivacyErasureReplayException? exception = await Assert.ThrowsAsync<
+            PrivacyErasureReplayException>(() =>
+                harness.Service.ReplayPendingAsync(CancellationToken.None));
+
+        await Assert.That(exception!.ReasonCode).IsEqualTo("checkpoint_ahead_of_authority");
+        await harness.Authority.DidNotReceive().ReadAfterAsync(
+            Arg.Any<long>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static ReplayHarness CreateHarness(
+        PrivacyErasureAuthorityState? authorityState = null,
+        string? failOnTag = null)
     {
         Guid ownerUserId = Guid.CreateVersion7();
         DateTime recordedAtUtc = DateTime.UtcNow;
@@ -80,6 +116,8 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
 
         IPrivacyErasureAuthority authority =
             Substitute.For<IPrivacyErasureAuthority>();
+        authority.GetStateAsync(Arg.Any<CancellationToken>())
+            .Returns(authorityState ?? new PrivacyErasureAuthorityState(1, 0));
         authority.ReadAfterAsync(Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<long>(0) == 0 ? [intent] : []);
 

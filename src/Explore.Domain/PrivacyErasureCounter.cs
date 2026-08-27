@@ -11,11 +11,13 @@ public sealed class PrivacyErasureCounter
 
     public bool Singleton { get; private set; }
     public long LastSequence { get; private set; }
+    public long RetainedFloorSequence { get; private set; }
 
     public static PrivacyErasureCounter Start() => new()
     {
         Singleton = true,
-        LastSequence = 0
+        LastSequence = 0,
+        RetainedFloorSequence = 0
     };
 
     public long AllocateNext()
@@ -37,4 +39,17 @@ public sealed class PrivacyErasureCounter
 
         LastSequence = sequence;
     }
+
+    public void AdvanceRetainedFloorTo(long sequence)
+    {
+        if (sequence < RetainedFloorSequence || sequence > LastSequence)
+        {
+            throw new InvalidOperationException("The retained floor must advance monotonically within the high-water mark.");
+        }
+
+        RetainedFloorSequence = sequence;
+    }
+
+    public PrivacyErasureAuthorityState GetState() =>
+        new(LastSequence, RetainedFloorSequence);
 }

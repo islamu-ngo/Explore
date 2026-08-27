@@ -5,6 +5,7 @@ using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using NpgsqlTypes;
@@ -13,9 +14,32 @@ namespace Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 
 public sealed class EfCorePrivacyErasureAuthorityRepository(
     PrivacyErasureAuthorityDbContext dbContext,
-    IOptions<PrivacyErasureOptions> options) : IPrivacyErasureAuthority
+    IOptions<PrivacyErasureOptions> options)
+    : IPrivacyErasureAuthority, IPrivacyErasureAuthorityMaintenance
 {
     public const int MaximumReadBatchSize = 500;
+
+    public async Task<PrivacyErasureAuthorityState> GetStateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await using NpgsqlCommand command = CreateCommand(
+                $"SELECT high_water_sequence, retained_floor_sequence FROM {PrivacyErasureAuthorityDatabaseContract.GetStateFunctionSql}()");
+            await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                return new PrivacyErasureAuthorityState(reader.GetInt64(0), reader.GetInt64(1));
+            }
+
+            throw new InvalidOperationException("The erasure-authority state query returned no state.");
+        }
+        finally
+        {
+            await dbContext.Database.CloseConnectionAsync();
+        }
+    }
 
     public async Task<PrivacyErasureIntent> AppendAsync(
         PrivacyErasureRequest intent,
@@ -73,10 +97,18 @@ public sealed class EfCorePrivacyErasureAuthorityRepository(
             command.Parameters.AddWithValue("authority_sequence", NpgsqlDbType.Bigint, authoritySequence);
             command.Parameters.AddWithValue("limit", NpgsqlDbType.Integer, limit);
             var facts = new List<PrivacyErasureIntent>(limit);
-            await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
+            try
             {
-                facts.Add(ReadFact(reader));
+                await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    facts.Add(ReadFact(reader));
+                }
+            }
+            catch (PostgresException exception) when (
+                exception.SqlState == PrivacyErasureAuthorityDatabaseContract.StaleCheckpointSqlState)
+            {
+                throw new Explore.Application.Exceptions.StaleRestoreBelowRetainedFloorException();
             }
 
             return facts;
@@ -87,10 +119,101 @@ public sealed class EfCorePrivacyErasureAuthorityRepository(
         }
     }
 
+    public async Task<PrivacyErasureRetentionEvaluation> EvaluateRetentionAsync(
+        PrivacyErasureRetentionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await using NpgsqlCommand command = CreateCommand(
+                $"SELECT eligible_count, held_count, current_floor_sequence, projected_floor_sequence FROM {PrivacyErasureAuthorityDatabaseContract.EvaluateRetentionFunctionSql}(@as_of_utc, @batch_size, @held_authority_sequences)");
+            AddMaintenanceParameters(command, request);
+            NpgsqlDataReader reader;
+            try
+            {
+                reader = await command.ExecuteReaderAsync(cancellationToken);
+            }
+            catch (PostgresException exception) when (
+                exception.SqlState == PrivacyErasureAuthorityDatabaseContract.SequenceGapSqlState)
+            {
+                throw new Explore.Application.Exceptions.PrivacyErasureSequenceGapException();
+            }
+            await using (reader)
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                return new PrivacyErasureRetentionEvaluation(
+                    reader.GetInt32(0),
+                    reader.GetInt32(1),
+                    reader.GetInt64(2),
+                    reader.GetInt64(3));
+            }
+
+            throw new InvalidOperationException("The erasure-authority retention evaluation returned no result.");
+        }
+        finally
+        {
+            await dbContext.Database.CloseConnectionAsync();
+        }
+    }
+
+    public async Task<PrivacyErasureCompactionResult> CompactExpiredIntentsAsync(
+        PrivacyErasureRetentionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await using NpgsqlCommand command = CreateCommand(
+                $"SELECT deleted_count, pseudonymized_count, high_water_sequence, retained_floor_sequence FROM {PrivacyErasureAuthorityDatabaseContract.CompactRetentionFunctionSql}(@as_of_utc, @batch_size, @held_authority_sequences)");
+            AddMaintenanceParameters(command, request);
+            NpgsqlDataReader reader;
+            try
+            {
+                reader = await command.ExecuteReaderAsync(cancellationToken);
+            }
+            catch (PostgresException exception) when (
+                exception.SqlState == PrivacyErasureAuthorityDatabaseContract.SequenceGapSqlState)
+            {
+                throw new Explore.Application.Exceptions.PrivacyErasureSequenceGapException();
+            }
+            await using (reader)
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                return new PrivacyErasureCompactionResult(
+                    reader.GetInt32(0),
+                    reader.GetInt32(1),
+                    new PrivacyErasureAuthorityState(reader.GetInt64(2), reader.GetInt64(3)));
+            }
+
+            throw new InvalidOperationException("The erasure-authority compaction returned no result.");
+        }
+        finally
+        {
+            await dbContext.Database.CloseConnectionAsync();
+        }
+    }
+
     private NpgsqlCommand CreateCommand(string sql)
     {
         var connection = (NpgsqlConnection)dbContext.Database.GetDbConnection();
-        return new NpgsqlCommand(sql, connection);
+        var transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction()
+            as NpgsqlTransaction;
+        return new NpgsqlCommand(sql, connection, transaction);
+    }
+
+    private static void AddMaintenanceParameters(
+        NpgsqlCommand command,
+        PrivacyErasureRetentionRequest request)
+    {
+        command.Parameters.AddWithValue("as_of_utc", NpgsqlDbType.TimestampTz, request.AsOfUtc);
+        command.Parameters.AddWithValue("batch_size", NpgsqlDbType.Integer, request.BatchSize);
+        command.Parameters.AddWithValue(
+            "held_authority_sequences",
+            NpgsqlDbType.Array | NpgsqlDbType.Bigint,
+            request.HeldAuthoritySequences.Order().ToArray());
     }
 
     private static PrivacyErasureIntent ReadFact(NpgsqlDataReader reader) =>

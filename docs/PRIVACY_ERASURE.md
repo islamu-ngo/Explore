@@ -6,7 +6,7 @@
 > **Audience:** Operators | Self-Hosters | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Security / Platform
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-27
 > **Source Anchors:** `src/Explore.Application/Configuration/PrivacyErasureOptions.cs`, `src/Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `src/Explore.Application/Services/PrivacyErasureApplier.cs`, `src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityStorage.cs`, `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EmbeddedPrivacyErasureAuthorityRepository.cs`, `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EfCorePrivacyErasureAuthorityRepository.cs`, `src/Explore.Persistence/Privacy/ErasureAuthority/PrivacyErasureAuthorityDbContext.cs`, `src/Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `src/Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`
 
 ---
@@ -45,36 +45,37 @@ erasure request -> append authority fact (committed first)
 3. **Atomic Local Settlement**: Local PII hard-deletes, anonymizations, actor tombstones, application mirror/checkpoint updates, protected provider outbox materialization, and receipt hash persistence execute within a single serializable application transaction.
 4. **Truthful Asynchronous Contract**: Initial requests return `202 Accepted` alongside a short-lived `ErasureReceipt` authentication token. Status polling (`GET /api/privacy-erasure/status`) requires the receipt token and returns non-cacheable (`private, no-store`) bounded phase codes.
 5. **Startup & Restore Replay**: At application startup, the startup gate replays all authority facts missing from the local checkpoint before serving traffic.
+6. **Bounded Retention**: The authority publishes a PII-free high-water/floor state. Compaction deletes only an expired contiguous prefix, preserves and pseudonymizes held evidence, and advances the floor in the same transaction.
 
 ---
 
-## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`, `None`
+## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`
 
-The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`ERASURE_TOPOLOGY` or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of four persistence topologies for storing the authority ledger.
+The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`ERASURE_TOPOLOGY` or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of three durable persistence topologies for storing the authority ledger. The former non-durable `None` mode is rejected because its in-memory watermark could not remain consistent with the persisted replay checkpoint across restart.
 
-| Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode | `None` Mode |
-|---|---|---|---|---|
-| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance | In-memory no-op authority (zero database storage) |
-| **Supported Primary DBs** | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | **PostgreSQL or SQLite only** | **All 5 providers** (Authority DB itself is separate PostgreSQL) | **All 5 providers** |
-| **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles | None |
-| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle | `false` |
-| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **No** — in-memory only |
-| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB | **No** |
-| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs | Unlimited |
-| **Operator Backup Units** | Primary database backup **plus** the dedicated authority-file backup | One primary database backup containing authority rows | Primary database backup **plus** an independently managed external PostgreSQL authority backup | Primary database backup only |
-| **Target Use Case** | Local development, CI, and single-replica self-hosting (Default) | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage | Ephemeral testing or operators opting out of retained cryptographic erasure audit logs |
+| Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode |
+|---|---|---|---|
+| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance |
+| **Supported Primary DBs** | **All 5 providers** (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL) | **PostgreSQL or SQLite only** | **All 5 providers** (Authority DB itself is separate PostgreSQL) |
+| **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles |
+| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle |
+| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction |
+| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB |
+| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs |
+| **Operator Backup Units** | Primary database backup **plus** the dedicated authority-file backup | One primary database backup containing authority rows | Primary database backup **plus** an independently managed external PostgreSQL authority backup |
+| **Target Use Case** | Local development, CI, and single-replica self-hosting (Default) | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage |
 
 ### Primary Database vs. Privacy Authority Compatibility Matrix
 
 The primary application persistence (users, events, registrations, ASP.NET Data Protection keys) fully supports all five database engines. The Privacy Erasure Authority topology compatibility is as follows:
 
-| Primary Database Provider | `EmbeddedSqlite` (Default) | `CoLocated` | `ExternalDatabase` | `None` |
-|---|:---:|:---:|:---:|:---:|
-| **PostgreSQL** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
-| **SQLite** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
-| **SQL Server** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
-| **MariaDB** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
-| **MySQL** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) | ✅ Supported |
+| Primary Database Provider | `EmbeddedSqlite` (Default) | `CoLocated` | `ExternalDatabase` |
+|---|:---:|:---:|:---:|
+| **PostgreSQL** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
+| **SQLite** | ✅ Supported | ✅ Supported | ✅ Supported (separate PostgreSQL instance) |
+| **SQL Server** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+| **MariaDB** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
+| **MySQL** | ✅ Supported | ❌ Fails Closed | ✅ Supported (separate PostgreSQL instance) |
 
 #### Why does `CoLocated` only support PostgreSQL and SQLite?
 The Privacy Erasure Authority is not a generic CRUD table; it requires strict engine-level concurrency and writer serialization guarantees:
@@ -85,7 +86,7 @@ The Privacy Erasure Authority is not a generic CRUD table; it requires strict en
 #### Why does `ExternalDatabase` require a separate PostgreSQL database?
 `ExternalDatabase` is the high-compliance, multi-replica/HA deployment mode. It is architected around PostgreSQL-specific security controls:
 1. **Zero-Table-Access Runtime Role**: The runtime application role has no direct table permissions (no `SELECT`, `INSERT`, `UPDATE`, or `DELETE` on raw ledger tables).
-2. **`SECURITY DEFINER` Stored Functions**: All reads and appends execute through hardened PostgreSQL functions (`AppendFunctionSql`) with strict parameter validation and fixed ACLs.
+2. **`SECURITY DEFINER` Stored Functions**: Append, replay, state reads, retention evaluation, and compaction execute through hardened PostgreSQL functions with strict parameter validation and a fixed `search_path`.
 3. **Role Separation**: Migration DDL runs under a dedicated `migrator` role, while runtime traffic uses the restricted `runtime` role.
 4. Standardizing the external compliance server on PostgreSQL provides an enterprise-hardened, audit-ready compliance sink without maintaining parallel function-level security definitions for other engines.
 
@@ -166,7 +167,42 @@ each other or with the selected authority path. The documented standalone
 image is the in-process exception: it applies those same three migration
 responsibilities before binding HTTP.
 
-## 6. Configuration Reference
+## 6. Retained Floor, Holds, and Recovery
+
+`PrivacyErasureAuthorityState` contains only `HighWaterSequence` and
+`RetainedFloorSequence`. The high-water mark is the greatest sequence ever
+allocated. The floor is the greatest sequence whose original replay identity
+is no longer required. Both values are monotonic and the floor can never exceed
+the high-water mark.
+
+Every newly appended fact receives `RetentionExpiresAtUtc` derived from
+`MaximumBackupHorizon + AuthorityRetentionSafetyMargin`. Maintenance is exposed
+only through the internal `IPrivacyErasureAuthorityMaintenance` boundary; there
+is no public HTTP endpoint and operators must never run direct table DML.
+
+- `EvaluateRetentionAsync` is the non-mutating dry run. It reports the expired
+  contiguous prefix, held count, current floor, and projected floor.
+- `CompactExpiredIntentsAsync` performs deletion, hold pseudonymization, and
+  floor movement atomically under the provider's writer lock/transaction.
+- The caller must explicitly supply the complete PII-free set of held authority
+  sequences, including an explicit empty set when policy confirms no holds.
+- An expired held row keeps its sequence and timestamps but replaces live
+  intent/subject identifiers with random audit tokens. The floor may advance to
+  that row, never past it in the same pass. After the hold is released, a later
+  pass deletes it without moving the floor backward.
+- Once compaction has run, the retained-authority lifecycle migration is
+  forward-only. Recovery uses a matched primary and independently protected
+  authority backup; an EF `Down` migration must not discard the floor or later
+  erasure evidence.
+
+Startup and readiness compare the primary checkpoint with this state. A
+checkpoint below the floor fails closed as
+`stale_restore_below_retained_floor`; a checkpoint above the high-water mark
+fails as `checkpoint_ahead_of_authority`; a missing next sequence fails as
+`sequence_gap_detected`. These bounded codes never include subject identifiers,
+connection data, or raw exceptions.
+
+## 7. Configuration Reference
 
 Set the following environment variables in `.env` (or in Infisical under `/database/erasure`):
 
@@ -202,7 +238,7 @@ unsupported and block startup.
 
 ---
 
-## 7. Related Documentation
+## 8. Related Documentation
 
 - [Backup, Restore, and Upgrade Runbook](BACKUP_RESTORE_UPGRADE.md)
 - [Self-Hosting Guide](SELF_HOSTING.md)

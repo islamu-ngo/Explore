@@ -5,6 +5,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.BackgroundServices;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,6 +60,34 @@ public sealed class PrivacyErasureStartupGateTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             PrivacyErasureStartupGate.RunAsync(services, cancellation.Token));
+    }
+
+    [Test]
+    public async Task ReplayInvariantFailure_ReportsOnlyBoundedReasonCode()
+    {
+        await using ServiceProvider services = new ServiceCollection()
+            .AddScoped<IPrivacyErasureReplayService, StaleRestoreReplay>()
+            .BuildServiceProvider();
+
+        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            PrivacyErasureStartupGate.RunAsync(services, CancellationToken.None));
+
+        await Assert.That(exception!.Message).Contains("stale_restore_below_retained_floor");
+        await Assert.That(exception.Message).DoesNotContain(nameof(StaleRestoreBelowRetainedFloorException));
+    }
+
+    [Test]
+    public async Task UnknownReplayException_MapsToGenericBoundedReasonCode()
+    {
+        await using ServiceProvider services = new ServiceCollection()
+            .AddScoped<IPrivacyErasureReplayService, UntrustedReasonReplay>()
+            .BuildServiceProvider();
+
+        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            PrivacyErasureStartupGate.RunAsync(services, CancellationToken.None));
+
+        await Assert.That(exception!.Message).Contains("privacy_erasure_replay_failed");
+        await Assert.That(exception.Message).DoesNotContain(UntrustedReplayException.Canary);
     }
 
     private sealed class ReplayFailureFactory : AuthenticatedWebApplicationFactory
@@ -118,6 +147,24 @@ public sealed class PrivacyErasureStartupGateTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class StaleRestoreReplay : IPrivacyErasureReplayService
+    {
+        public Task ReplayAsync(CancellationToken cancellationToken) =>
+            throw new StaleRestoreBelowRetainedFloorException();
+    }
+
+    private sealed class UntrustedReasonReplay : IPrivacyErasureReplayService
+    {
+        public Task ReplayAsync(CancellationToken cancellationToken) =>
+            throw new UntrustedReplayException();
+    }
+
+    private sealed class UntrustedReplayException()
+        : PrivacyErasureReplayException(Canary)
+    {
+        public const string Canary = "subject-and-secret-canary";
     }
 
     private sealed class StartupMarker

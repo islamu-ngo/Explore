@@ -25,6 +25,7 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         PrimaryDatabaseRole role)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        EnsureDistinctRoleUsernames(configuration);
 
         IConfiguration projected = BuildPrimaryProjection(configuration);
         PrimaryDatabaseConnectionOptions options;
@@ -43,6 +44,30 @@ public static class PrivacyErasureAuthorityDatabaseConfiguration
         }
 
         return options;
+    }
+
+    private static void EnsureDistinctRoleUsernames(IConfiguration configuration)
+    {
+        string? runtimeUsername = ReadRole(
+            configuration,
+            "Runtime",
+            "Username",
+            "RUNTIME_USERNAME");
+        string? migratorUsername = ReadRole(
+            configuration,
+            "Migrator",
+            "Username",
+            "MIGRATOR_USERNAME");
+        if (!string.IsNullOrWhiteSpace(runtimeUsername)
+            && !string.IsNullOrWhiteSpace(migratorUsername)
+            && string.Equals(
+                runtimeUsername.Trim(),
+                migratorUsername.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw InvalidConfiguration(
+                "Runtime and Migrator usernames must be distinct.");
+        }
     }
 
     public static PrimaryDatabaseConnectionResult ResolveRuntimeConnectionString(

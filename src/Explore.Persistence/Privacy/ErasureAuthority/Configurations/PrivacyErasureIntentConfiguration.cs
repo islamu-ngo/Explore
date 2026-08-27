@@ -15,7 +15,9 @@ public sealed class PrivacyErasureIntentConfiguration
         builder.ToTable("erasure_intents", table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
-            table.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
+            table.HasCheckConstraint(
+                "ck_privacy_erasure_intents_intent_uuid_v7",
+                "is_legal_hold_pseudonymized OR substring(intent_id::text, 15, 1) = '7'");
             table.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
             table.HasCheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
             table.HasCheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
@@ -32,6 +34,7 @@ public sealed class PrivacyErasureIntentConfiguration
             .IsUnique();
         builder.Property(item => item.SubjectKind).HasConversion<short>();
         builder.Property(item => item.ReasonCode).HasConversion<short>();
+        builder.Property(item => item.IsLegalHoldPseudonymized).HasDefaultValue(false);
         builder.Property(item => item.RetentionExpiresAtUtc)
             .HasDefaultValueSql("'infinity'::timestamp with time zone");
     }

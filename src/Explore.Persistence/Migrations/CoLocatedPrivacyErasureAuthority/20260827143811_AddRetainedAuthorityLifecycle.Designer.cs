@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.CoLocatedPrivacyErasureAuthority
 {
     [DbContext(typeof(CoLocatedPrivacyErasureAuthorityDbContext))]
-    partial class CoLocatedPrivacyErasureAuthorityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827143811_AddRetainedAuthorityLifecycle")]
+    partial class AddRetainedAuthorityLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
