@@ -52,6 +52,31 @@ steps.
 - Replacement, squash, merge, rebase, or regeneration drift MUST invalidate the
   candidate and require a new reviewed `B`, because each produces a different object.
 
+## Change identity allocation and correction
+
+- New public change identifiers MUST use the release engine's sortable
+  ULID-style `CHG-<26 Crockford Base32 characters>` format. Sequential
+  `CHG-<year>-<number>` identifiers are immutable historical inputs only and
+  MUST NOT be allocated for new work.
+- Fragment creation and footer emission MUST be one operation. The generated
+  identifier is accepted only when it is absent from all visible local refs,
+  existing fragments, and commit-bound correction records.
+- Commit-time validation MUST reject a proposed footer already reachable from
+  the configured target. Pre-merge validation MUST compare the complete
+  `target..head` range before conflict resolution and reject target collisions,
+  duplicate feature IDs, or missing/mismatched fragments.
+- An immutable commit footer MAY be corrected without rewriting history only
+  through one `change-id-rename.v1` record named by and bound to the exact full
+  commit object ID. The record MUST state the old ID, a generated replacement
+  ID, and a bounded reason. It is valid only while the bound commit still
+  carries the old footer.
+- A correction record MUST NOT be a branch alias, wildcard, range mapping,
+  reused replacement, or authority to reinterpret any other commit. Candidate
+  preparation applies the replacement before fragment linkage and records the
+  resulting commit OID plus effective Change-Id in canonical context. Relevant
+  correction records are included in the candidate's canonical release-source
+  digest together with linked fragments.
+
 ## Ref namespace
 
 - Version tags own the `v*` glob outright. Creating any branch matching

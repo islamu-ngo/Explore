@@ -130,6 +130,22 @@ public sealed class CommitPolicyTests
     }
 
     [Test]
+    public async Task ChangeIdBeforeBotAttributionStillBindsExactlyOnce()
+    {
+        CommitPolicyResult result = Policy.EvaluateCommit(
+            "feat(registration): let attendees correct registration details\n" +
+            "\n" +
+            "Change-Id: CHG-2026-0011\n" +
+            "\n" +
+            "Generated with the repository automation.\n" +
+            "\n" +
+            "Co-authored-by: Automation <automation@example.test>");
+
+        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.ChangeId).IsEqualTo("CHG-2026-0011");
+    }
+
+    [Test]
     public async Task BodyLookalikeSkipTrailerRemainsInertProse()
     {
         CommitPolicyResult result = Policy.EvaluateCommit(

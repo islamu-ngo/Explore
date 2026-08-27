@@ -6,6 +6,73 @@
 `ISLAMU.ReleaseEngineering` is a standalone `net10.0` console project for
 governed release tooling. It has no references to product projects.
 
+## Collision-proof change workflow
+
+New public changes use sortable ULID-style identifiers such as
+`CHG-01K3Q8Y7M6N5P4R3T2V1W0X9ZA`. Sequential identifiers are historical
+provenance only; no command allocates them.
+
+Create the fragment and exact commit footer in one operation:
+
+```bash
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  create-change \
+  --target develop \
+  --type feat \
+  --scope registration \
+  --title "Attendee correction window" \
+  --summary "Attendees can correct registration details." \
+  --group registration-correction
+```
+
+The command atomically creates
+`docs/releases/changes/<Change-Id>.yaml`, initializes every required impact
+section for review, and prints `commit_footer: Change-Id: <Change-Id>`. Use
+`allocate-change-id --target develop` only when another tool owns fragment
+creation.
+
+Install local commit checks once:
+
+```bash
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  install-change-hooks --target develop
+```
+
+The installer creates `pre-commit` and `commit-msg` checks. If either hook
+already exists, it is preserved as `<hook>.before-islamu-release` and called
+first. An ambiguous overwrite fails closed.
+
+Before starting a merge, validate the complete feature range:
+
+```bash
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  preflight-range --target develop --head HEAD
+```
+
+This compares effective Change-Ids in `develop..HEAD` with every ID reachable
+from `develop`, rejects duplicates inside the feature range, and requires an
+exactly named fragment for every linked ID. Fragments and correction records
+must already be committed at `HEAD`; staged, modified, or untracked release
+sources fail closed.
+
+If an immutable commit already has a colliding footer, do not amend or rebase
+it. Bind only that exact full commit object to a generated replacement ID:
+
+```bash
+dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+  rename-change \
+  --commit <full-commit-oid> \
+  --from CHG-2026-0011 \
+  --reason "Target branch already owns the original identifier."
+```
+
+The command creates or reuses the replacement fragment and writes
+`docs/releases/change-id-renames/<full-commit-oid>.yaml`. Preparation and
+candidate verification apply the replacement only when the immutable commit
+still has the recorded old footer. The old footer remains unchanged; a loose
+alias, branch-bound mapping, or reused replacement ID is rejected. Commit the
+fragment and correction record before rerunning `preflight-range`.
+
 ```bash
 export ISLAMU_RELEASE_TOOL_BUNDLE=/absolute/path/to/promoted/bundle
 dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- verify-tools

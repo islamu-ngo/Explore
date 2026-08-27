@@ -10,7 +10,7 @@ Fragments are append-only after merge. Do not delete or mutate an existing fragm
 ## Example
 
 ```yaml
-Change-Id: CHG-2026-0001
+Change-Id: CHG-01K3Q8Y7M6N5P4R3T2V1W0X9ZA
 Title: Attendee credential migration
 Type: feat
 Scope: registration
@@ -43,7 +43,16 @@ Impacts:
 
 Rules:
 
-- `Change-Id` is stable and uses `CHG-<year>-<number>`.
+- New `Change-Id` values use the sortable collision-resistant
+  `CHG-<26-character Crockford Base32 ULID>` form emitted by
+  `create-change`. Historical `CHG-<year>-<number>` values remain valid only
+  because existing Git provenance is immutable; they are never allocated for
+  new work.
+- Run `preflight-range --target develop --head HEAD` before merging. A feature
+  ID already reachable from the target fails before conflict resolution.
+- A correction for an immutable colliding footer is an exact-commit
+  `change-id-rename.v1` record under
+  `docs/releases/change-id-renames/`, never a loose alias or history rewrite.
 - `Backport-Of`, when present, is the full original Git object ID, not a short display ID.
 - `Type` and `Scope` follow the release commit policy registries.
 - `Group` is optional and deterministic; fragments in one group must share a compatible public scope.

@@ -26,6 +26,7 @@ Reconciliation claims at most 50 rows in stable `next_attempt_at/created_at/id` 
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
 | Prepare, attest, tag, or re-verify a governed release | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | You are running `prepare`, `verify-candidate`, `verify-tag`, `verify-main`, `verify-baseline`, opening or deleting a maintenance line, or checking an existing release from its tag alone. |
+| Prevent or repair Change-Id collisions | [Release Engineering](../eng/release/README.md#collision-proof-change-workflow) | You are creating a public change, preflighting a feature range, installing commit hooks, or binding an immutable colliding footer to a replacement fragment. |
 | Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
 ## Admission Check-In Operations (Phase 21)
@@ -446,6 +447,45 @@ replicas, then verify quarantined rows remain absent and an explicitly approved 
 inside its tenant.
 
 ## API Startup Behavior
+
+### Configuration-manifest bootstrap runbook
+
+Configuration bootstrap is owned by the process that owns application startup:
+the API in split deployments and the Standalone host in combined deployments.
+`Event.MigrationService` must complete the generated provider migrations first.
+The owning host then reads
+`CONFIGURATION_MANIFEST_PATH` only when
+`CONFIGURATION_MANIFEST_MODE` is `ValidateOnly` or `Bootstrap`.
+
+Use this sequence:
+
+1. Validate the file against
+   `schemas/configuration-manifest-v1alpha1.schema.json` and mount it read-only
+   at `/etc/islamu-event/bootstrap/configuration-manifest.json`.
+2. Run `ValidateOnly`. It performs bounded file, UTF-8 JSON, contract, catalog,
+   complete-state, authority, and paid-policy narrowing checks without writes.
+3. Run MigrationService, then start the owning host with `Bootstrap`.
+4. Confirm the instance-section digest, operation audit, per-tenant results,
+   and durable effect state. Instance state is applied before tenants inside
+   one serializable lock-ordered transaction.
+5. Disable bootstrap or remove the mounted file after success. A repeated file
+   is not desired-state reconciliation: an already-applied instance section
+   must match its digest, existing tenant results are wholesale skips, and only
+   absent tenants may be added under the unchanged instance section.
+
+On any validation, concurrency, or persistence failure, fix the source and run
+`ValidateOnly` again; do not patch audit or result rows. Because this is a
+development breaking cutover, databases containing the removed unapplied
+tenant-shaped bootstrap model must be reset or recreated before rehearsal
+rather than migrated through compatibility aliases. See
+`docs/TROUBLESHOOTING.md` for digest mismatch, unsafe path, oversize file,
+provider availability, and durable-effect recovery codes.
+
+Instance administrators may export an Overrides or Portable view from the
+control plane. Export is capped at 4 MiB and intentionally omits secrets,
+credentials, topology, PII, payment execution, and application data. Treat it
+as bootstrap configuration, not as a database, secret, or disaster-recovery
+backup.
 
 In deployed environments, `Event.MigrationService` owns the primary application
 and Data Protection schemas. It binds `Database:Migrator`, selects the closed
@@ -1909,3 +1949,47 @@ The governance report surfaces Layer 3 custom property definitions that may be c
 | `ConsiderLayer1Promotion` | `IsModerationRelevant` AND (`IsSearchable` or `IsFilterable`) AND used by ≥30% of tenant's events |
 
 Review quarterly. Promotion is an operational decision, not an automated action.
+
+## Configuration-manifest paid-policy operations
+
+Before deploying a manifest containing `instance.paid_event_policy` or
+`tenant.paid_event_policy`:
+
+1. review the current instance paid-event policy through the authorized
+   administration API and decide whether the manifest is the first bootstrap
+   or a same-section rerun after Day 2 changes;
+2. include only fields admitted by the governed typed documents; tenant policy
+   must narrow the instance policy and callers never provide revision authority;
+3. do not add
+   provider, operator, buyer, refund-execution, or sale-control data;
+4. validate against
+   `schemas/configuration-manifest-v1alpha1.schema.json`;
+5. mount the immutable file through the documented manifest path and run the
+   one-shot migration/startup owner;
+6. verify the scope-qualified operation audit and the instance/tenant
+   paid-policy HAL resources
+   before admitting traffic.
+
+The startup transaction acquires the manifest lock, sorted instance-resource
+locks, then sorted tenant/resource locks. It replays preflight against current
+authority inside the serializable transaction. First bootstrap applies the
+instance policy before tenant narrowing and records the resulting revision;
+same-section reruns never reapply historical instance policy and bind new
+tenants to the fresh active revision. A concurrent revision, policy collision,
+invalid narrowing, or later audit/outbox write rolls back instance settings,
+policy, tenant creation, tenant settings/documents, and operation evidence
+together.
+
+Do not retry by deleting payment, sale-control, checkout, or reconciliation
+rows. Correct an invalid narrowing and rerun the unchanged instance section. A
+changed post-bootstrap instance section fails closed and must be handled
+through authenticated Day 2 administration or a complete disposable-
+development reset. An already-created tenant is skipped wholesale; subsequent
+policy changes use authenticated paid-policy administration. Provider handoff
+and stop/review workflows remain independent runtime authorities and are never
+replayed from a manifest.
+
+Operational logs and metrics may record stable failure codes, operation IDs,
+tenant IDs, lock outcomes, and revision numbers. Never record manifest payloads,
+provider credentials, buyer acceptance data, payment references, email
+addresses, or other PII.

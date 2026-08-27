@@ -52,7 +52,6 @@ public sealed class ReleasePolicy
     private const string ChangeIdTrailer = "Change-Id";
     private const int MaximumSubjectUtf8Bytes = 256;
     private const int MaximumTrailerValueUtf8Bytes = 2_048;
-    private static readonly Regex ChangeIdPattern = new("^CHG-[0-9]{4}-[0-9]{4}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     private ReleasePolicy(ReleasePolicyYaml policy, ScopeRegistryYaml scopes)
     {
@@ -112,8 +111,12 @@ public sealed class ReleasePolicy
         string description = header.Groups["description"].Value;
         bool hasBang = header.Groups["typeBang"].Success || header.Groups["scopeBang"].Success;
         string[] footerLines = ReadFooterBlock(lines);
-        bool hasBreakingFooter = HasFooter(footerLines, breakingFooter, out string? breakingText);
+        bool hasBreakingFooter = HasDedicatedFooter(
+            lines,
+            breakingFooter,
+            out string? breakingText);
         TrailerState trailers = ReadTrailers(footerLines);
+        (string? changeId, bool invalidChangeId) = ReadChangeId(lines);
 
         if (System.Text.Encoding.UTF8.GetByteCount(description) > MaximumSubjectUtf8Bytes)
         {
@@ -162,7 +165,7 @@ public sealed class ReleasePolicy
             diagnostics.Add("changelog_reason_without_skip");
         }
 
-        if (trailers.InvalidChangeId)
+        if (invalidChangeId)
         {
             diagnostics.Add("invalid_change_id_trailer");
         }
@@ -183,7 +186,7 @@ public sealed class ReleasePolicy
             scope,
             description,
             trailers.SkipReason,
-            trailers.ChangeId,
+            changeId,
             diagnostics);
     }
 
@@ -227,9 +230,7 @@ public sealed class ReleasePolicy
     {
         bool changelogSkip = false;
         bool invalidChangelog = false;
-        bool invalidChangeId = false;
         string? skipReason = null;
-        string? changeId = null;
         foreach (string line in footerLines)
         {
             int separator = line.IndexOf(':', StringComparison.Ordinal);
@@ -258,18 +259,33 @@ public sealed class ReleasePolicy
 
                 skipReason = value;
             }
-            else if (string.Equals(name, ChangeIdTrailer, StringComparison.Ordinal))
-            {
-                if (changeId is not null || !ChangeIdPattern.IsMatch(value))
-                {
-                    invalidChangeId = true;
-                }
-
-                changeId = value;
-            }
         }
 
-        return new TrailerState(changelogSkip, skipReason, changeId, invalidChangelog, invalidChangeId);
+        return new TrailerState(changelogSkip, skipReason, invalidChangelog);
+    }
+
+    private static (string? ChangeId, bool Invalid) ReadChangeId(string[] lines)
+    {
+        string? changeId = null;
+        bool invalid = false;
+        string prefix = ChangeIdTrailer + ":";
+        foreach (string line in lines.Skip(1))
+        {
+            if (!line.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            string value = line[prefix.Length..].Trim();
+            if (changeId is not null || !ChangeIdPolicy.IsValid(value))
+            {
+                invalid = true;
+            }
+
+            changeId = value;
+        }
+
+        return (changeId, invalid);
     }
 
     private string[] ReadFooterBlock(string[] lines)
@@ -309,14 +325,33 @@ public sealed class ReleasePolicy
             name.All(character => char.IsLetterOrDigit(character) || character == '-');
     }
 
-    private static bool HasFooter(string[] footerLines, string footerName, out string? value)
+    private static bool HasDedicatedFooter(
+        string[] lines,
+        string footerName,
+        out string? value)
     {
         string prefix = footerName + ":";
-        foreach (string line in footerLines)
+        for (int index = 1; index < lines.Length;)
         {
-            if (line.StartsWith(prefix, StringComparison.Ordinal))
+            while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
             {
-                value = line[prefix.Length..].Trim();
+                index++;
+            }
+
+            if (index >= lines.Length)
+            {
+                break;
+            }
+
+            int blockStart = index;
+            while (index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]))
+            {
+                index++;
+            }
+
+            if (lines[blockStart].StartsWith(prefix, StringComparison.Ordinal))
+            {
+                value = lines[blockStart][prefix.Length..].Trim();
                 return true;
             }
         }
@@ -358,7 +393,7 @@ public sealed class ReleasePolicy
         ? throw new InvalidOperationException($"Release policy value is missing: {name}.")
         : value;
 
-    private sealed record TrailerState(bool ChangelogSkip, string? SkipReason, string? ChangeId, bool InvalidChangelog, bool InvalidChangeId);
+    private sealed record TrailerState(bool ChangelogSkip, string? SkipReason, bool InvalidChangelog);
     private sealed class ReleasePolicyYaml
     {
         public int SchemaVersion { get; set; }

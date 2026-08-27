@@ -181,7 +181,9 @@ public sealed class ProgramTests
         int exitCode = Program.Run(["unexpected-command"], output);
 
         await Assert.That(exitCode).IsEqualTo(Program.UsageError);
-        await Assert.That(output.ToString()).IsEqualTo("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, verify-baseline, open-maintenance-line, activate-trust, and verify-tools" + Environment.NewLine);
+        await Assert.That(output.ToString()).IsEqualTo(
+            "unknown_command: run without arguments to see supported commands" +
+            Environment.NewLine);
     }
 
     [Test]
@@ -192,9 +194,12 @@ public sealed class ProgramTests
         int exitCode = Program.Run(["verify-tools", "extra"], output);
 
         await Assert.That(exitCode).IsEqualTo(Program.UsageError);
-        await Assert.That(output.ToString()).IsEqualTo(
-            "invalid_arguments: verify-tools accepts no arguments" + Environment.NewLine +
-            "usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid> | verify-baseline <baseline-ref> <target-oid> <tag-object-oid> | open-maintenance-line <release-directory> <tag-object-oid> | activate-trust --release-principal <name> --release-key <public-key> --promotion-principal <name> --promotion-key <public-key> --valid-from <yyyy-MM-dd> --valid-until <yyyy-MM-dd> --output <trust-directory> [--replace]" + Environment.NewLine);
+        await Assert.That(output.ToString()).StartsWith(
+            "invalid_arguments: verify-tools accepts no arguments" +
+            Environment.NewLine +
+            "usage: release-engine allocate-change-id");
+        await Assert.That(output.ToString()).Contains("preflight-range");
+        await Assert.That(output.ToString()).Contains("rename-change");
     }
 
     private sealed class ToolFixture : IDisposable

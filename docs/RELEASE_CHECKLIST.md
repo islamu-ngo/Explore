@@ -82,6 +82,19 @@ Pull requests that touch security/auth, migration/data/rollback, configuration/s
 
 Use `Not applicable` only when the change has no release-impact category. If the check flags a category, update the PR body and link the relevant documentation or release-note evidence before requesting release approval.
 
+## Change-Id Preflight
+
+- [ ] Public change metadata was created with `create-change`, which emitted
+  one collision-resistant fragment ID and its exact commit footer together.
+- [ ] Local `pre-commit` and `commit-msg` checks are installed through
+  `install-change-hooks --target develop` or equivalent CI checks enforce the
+  same commands.
+- [ ] `preflight-range --target develop --head <feature-head>` passes before
+  merge conflict resolution begins.
+- [ ] Any immutable-footer correction has one reviewed
+  `docs/releases/change-id-renames/<full-commit-oid>.yaml` record and generated
+  replacement fragment; no amend, rebase, force-push, or loose alias was used.
+
 ## Release Metadata
 
 - [ ] Version/tag is selected.
@@ -157,6 +170,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 ## CI/CD Evidence Contract
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
+- [ ] `schemas/configuration-manifest-v1alpha1.schema.json` passes the generator `--check` command, is staged with release contract assets, and its exact SHA-256 is included in durable release evidence.
 - [ ] Intentional breaking API contract changes include a matching `docs/API_CHANGELOG.md` entry with affected route/schema/client method, old/new behavior, affected clients, migration guidance, release target, and retained OpenAPI / advisory `oasdiff` evidence links when available.
 - [ ] Container image digest, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
@@ -170,6 +184,7 @@ Expected artifact names:
 - `test-results-fast`
 - `test-results-integration`
 - `openapi-contract-guard`
+- `configuration-manifest-v1alpha1.schema.json`
 - `security-test-evidence`
 - `cerbos-policy-evidence`
 - `cerbos-policy-publish-evidence`
