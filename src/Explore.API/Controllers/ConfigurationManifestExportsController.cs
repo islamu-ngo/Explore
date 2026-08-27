@@ -51,7 +51,7 @@ public sealed class ConfigurationManifestExportsController(IMediator mediator)
             cancellationToken);
 
         return File(
-            export.Utf8Json,
+            export.Utf8Json.ToArray(),
             ConfigurationManifestExportApiContract.MediaType,
             export.FileName);
     }

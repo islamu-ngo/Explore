@@ -32,7 +32,7 @@ public sealed record ConfigurationManifestExportResult
 
     public required string FileName { get; init; }
 
-    public required byte[] Utf8Json { get; init; }
+    public required ReadOnlyMemory<byte> Utf8Json { get; init; }
 
     public bool SensitiveValuesOmitted => true;
 }

@@ -123,7 +123,7 @@ public sealed class ExportConfigurationManifestQueryHandlerTests
                 .IsTrue();
         }
 
-        await Assert.That(result.Utf8Json.AsSpan().IndexOf("must-never-export"u8))
+        await Assert.That(result.Utf8Json.Span.IndexOf("must-never-export"u8))
             .IsEqualTo(-1);
         await fixture.Tenants.Received(1)
             .GetAllActiveForConfigurationManifestExportAsync(
@@ -223,7 +223,7 @@ public sealed class ExportConfigurationManifestQueryHandlerTests
                     .GetBoolean())
                 .IsFalse();
         }
-        await Assert.That(first.Utf8Json).IsEquivalentTo(second.Utf8Json);
+        await Assert.That(first.Utf8Json.Span.SequenceEqual(second.Utf8Json.Span)).IsTrue();
 
         await fixture.Resolver.Received(2).ResolveBatchAsync(
             Arg.Is<IEnumerable<string>>(keys =>

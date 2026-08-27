@@ -158,7 +158,8 @@ public sealed class ConfigurationManifestExportQueryTests
 
         Type resultType = RequireApplicationType(
             "Explore.Application.Features.ConfigurationManifest.Requests.Queries.ConfigurationManifestExportResult");
-        await Assert.That(resultType.GetProperty("Utf8Json")?.PropertyType).IsEqualTo(typeof(byte[]));
+        await Assert.That(resultType.GetProperty("Utf8Json")?.PropertyType)
+            .IsEqualTo(typeof(ReadOnlyMemory<byte>));
         await Assert.That(resultType.GetProperty("FileName")?.PropertyType).IsEqualTo(typeof(string));
     }
 
