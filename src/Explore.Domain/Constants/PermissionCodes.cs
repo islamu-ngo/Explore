@@ -15,6 +15,7 @@ public static class PermissionCodes
     public const string EventUpdate = "event:update";
     public const string EventDelete = "event:delete";
     public const string EventPublish = "event:publish";
+    public const string EventApprovePublish = "event:approve-publish";
     public const string EventManageTeam = "event:manage-team";
     public const string EventManageOwner = "event:manage-owner";
     public const string EventTransferOwnership = "event:transfer-ownership";

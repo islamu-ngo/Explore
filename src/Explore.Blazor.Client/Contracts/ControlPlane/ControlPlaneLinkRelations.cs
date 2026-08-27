@@ -37,4 +37,6 @@ public static class ControlPlaneLinkRelations
     public const string Override = "override";
     public const string Lock = "lock";
     public const string Unlock = "unlock";
+    public const string ExportConfigurationOverrides = "export-configuration-overrides";
+    public const string ExportConfigurationPortable = "export-configuration-portable";
 }

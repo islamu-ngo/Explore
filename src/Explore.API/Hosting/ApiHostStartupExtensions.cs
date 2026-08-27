@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Infrastructure.ConfigurationManifest;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.API.Hosting;
@@ -59,36 +60,49 @@ public static class ApiHostStartupExtensions
 
             try
             {
-                if (app.Environment.IsDevelopment())
+                if (app.Environment.IsDevelopment() && state.OwnsDevelopmentMigrations)
                 {
                     var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-                    if (db.Database.IsRelational())
-                    {
-                        logger.LogInformation("Applying database migrations...");
-                        await ExploreDatabaseMigrator.MigrateAsync(db, app.Configuration);
-                        await PostgresModelConstraintApplier.ApplyAsync(db);
-                        logger.LogInformation("Database migrations completed successfully.");
-                    }
-                    else
-                    {
-                        logger.LogInformation(
-                            "Skipping database migrations because provider {ProviderName} is non-relational.",
-                            db.Database.ProviderName ?? "(unknown)");
-                    }
+                    var startupSequence = scope.ServiceProvider
+                        .GetRequiredService<IConfigurationManifestPostMigrationSequence>();
+                    await startupSequence.RunAsync(
+                        async cancellationToken =>
+                        {
+                            if (db.Database.IsRelational())
+                            {
+                                logger.LogInformation("Applying database migrations...");
+                                await ExploreDatabaseMigrator.MigrateAsync(
+                                    db,
+                                    app.Configuration);
+                                await PostgresModelConstraintApplier.ApplyAsync(
+                                    db,
+                                    cancellationToken);
+                                logger.LogInformation(
+                                    "Database migrations completed successfully.");
+                            }
+                            else
+                            {
+                                logger.LogInformation(
+                                    "Skipping database migrations because provider {ProviderName} is non-relational.",
+                                    db.Database.ProviderName ?? "(unknown)");
+                            }
 
-                    var seedDevelopmentData =
-                        !app.Configuration.GetValue<bool>("Testing:DisableDevelopmentDataSeed");
-                    await DatabaseSeeder.SeedAsync(
-                        db,
-                        app.Environment,
-                        seedDevelopmentData,
-                        app.Configuration);
-                    logger.LogInformation("Database seeding completed.");
+                            var seedDevelopmentData =
+                                !app.Configuration.GetValue<bool>(
+                                    "Testing:DisableDevelopmentDataSeed");
+                            await DatabaseSeeder.SeedAsync(
+                                db,
+                                app.Environment,
+                                seedDevelopmentData,
+                                app.Configuration);
+                            logger.LogInformation("Database seeding completed.");
+                        },
+                        shutdownCts.Token);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "Application and Data Protection migrations are owned by Event.MigrationService outside Development.");
+                        "This API startup path does not own migration or configuration-manifest bootstrap.");
                 }
 
                 if (state.UseQuartzScheduler)

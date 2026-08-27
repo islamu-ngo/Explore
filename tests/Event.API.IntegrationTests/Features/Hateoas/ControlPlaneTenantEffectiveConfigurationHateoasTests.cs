@@ -49,6 +49,9 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(assignment.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(assignment.PermissionResourceId).IsEqualTo(GetControlPlaneTenantPlanAssignmentQuery.SettingKey);
         await Assert.That(RouteValues(assignment)["tenantId"]).IsEqualTo(configuration.TenantId);
+        await Assert.That(links.Any(link =>
+            link.Rel is LinkRelations.ExportConfigurationOverrides
+                or LinkRelations.ExportConfigurationPortable)).IsFalse();
     }
 
     [Test]

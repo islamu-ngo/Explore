@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\src\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\..\src\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
     <ProjectReference Include="..\..\eng\tools\Explore.GeneratedContracts\Explore.GeneratedContracts.csproj" />
+    <ProjectReference Include="..\..\eng\configuration-manifest-schema\src\ISLAMU.ConfigurationManifest.SchemaGenerator\ISLAMU.ConfigurationManifest.SchemaGenerator.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,7 @@ using Explore.Domain.Ai;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Modules;
+using Explore.Domain.Settings.Definitions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Seed;
@@ -1964,6 +1965,7 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingGroupSubmissionEnabledId, SettingKey = GovernanceSettingKeys.Events.GroupSubmissionEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether groups are allowed to submit events", Category = "Events", DisplayOrder = 5, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingOrgSelfRegistrationEnabledId, SettingKey = GovernanceSettingKeys.Organizations.SelfRegistrationEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether users can self-register organizations", Category = "Organizations", DisplayOrder = 3, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingGroupSelfRegistrationEnabledId, SettingKey = GovernanceSettingKeys.Groups.SelfRegistrationEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether users can self-register groups", Category = "Groups", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingEventReportingIntakeEnabledId, SettingKey = EventReportingIntakeSettingDefinitions.IntakeEnabled.Key, Value = EventReportingIntakeSettingDefinitions.IntakeEnabled.DefaultValue, ValueType = EventReportingIntakeSettingDefinitions.IntakeEnabled.ValueType, IsLocked = false, Description = EventReportingIntakeSettingDefinitions.IntakeEnabled.Description, Category = EventReportingIntakeSettingDefinitions.IntakeEnabled.Category, DisplayOrder = 1, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingDomainsInstanceBaseDomainId, SettingKey = GovernanceSettingKeys.Domains.InstanceBaseDomain, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Instance base domain used for tenant subdomain generation", Category = "Domains", DisplayOrder = 1, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingDomainsAllowTenantCustomDomainId, SettingKey = GovernanceSettingKeys.Domains.AllowTenantCustomDomain, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether tenant administrators can configure custom domains", Category = "Domains", DisplayOrder = 2, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingDomainsTenantSubdomainId, SettingKey = GovernanceSettingKeys.Domains.TenantSubdomain, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Tenant subdomain override placeholder", Category = "Domains", DisplayOrder = 3, CreatedAt = seedTimestamp },
@@ -2197,6 +2199,20 @@ public static class LookupTableSeeder
         ]);
         AddPermissions("event_registration", "Event Operations", RoleScopeEnum.Event, ["manage"]);
         AddPermissions("event_check_in", "Event Operations", RoleScopeEnum.Event, ["view", "manage"]);
+
+        expectedPermissions.Add(new Permission
+        {
+            Id = id++,
+            ResourceKind = "event",
+            Action = "approve-publish",
+            MasterCode = PermissionCodes.EventApprovePublish,
+            FullName = "Approve Publish Event",
+            GroupName = "Event Moderation",
+            Scope = RoleScopeEnum.Platform,
+            IsSystem = true,
+            IsFiltered = true,
+            IsActive = true
+        });
 
         var existingCodes = await context.Permissions
             .AsNoTracking()

@@ -33,6 +33,9 @@ public sealed class StandaloneProviderCompositionTests
         await Assert.That(File.Exists(Path.Combine(repositoryRoot, "docker-compose.standalone.yml"))).IsFalse();
         await Assert.That(dockerfile).Contains("EXPOSE 8080");
         await Assert.That(dockerfile).Contains("USER $APP_UID");
+        await Assert.That(dockerfile).Contains("/etc/islamu-event/bootstrap");
+        await Assert.That(dockerfile).Contains(
+            "/app/schemas/configuration-manifest-v1alpha1.schema.json");
         await Assert.That(dockerfile).Contains("ENTRYPOINT [\"./Event.Standalone\"]");
     }
 

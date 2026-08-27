@@ -104,6 +104,15 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
             logger.LogWarning(
                 "Authorization decision: {Decision} request={RequestType} resource={Resource} action={Action} reason={Reason} provider={Provider} correlationId={CorrelationId}",
                 "deny", requestType, resourceKind, action, decision.ReasonCode, decision.Provider.ProviderId, correlationId);
+
+            if (string.Equals(
+                    decision.ReasonCode,
+                    AuthorizationDecisionReasonCodes.ProviderUnavailable,
+                    StringComparison.Ordinal))
+            {
+                throw new AuthorizationProviderUnavailableException(resourceKind, action);
+            }
+
             throw new AuthorizationException(resourceKind, action);
         }
 

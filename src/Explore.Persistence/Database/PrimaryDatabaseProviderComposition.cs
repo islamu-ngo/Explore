@@ -31,7 +31,27 @@ public static class PrimaryDatabaseProviderComposition
     public static PrimaryDatabaseConnectionResult ConfigureApplication(
         DbContextOptionsBuilder optionsBuilder,
         PrimaryDatabaseConnectionOptions options)
-        => Configure(optionsBuilder, options, PrimaryDatabaseMigrationTarget.Application);
+    {
+        PrimaryDatabaseConnectionResult database = Configure(
+            optionsBuilder,
+            options,
+            PrimaryDatabaseMigrationTarget.Application);
+        switch (options.Provider)
+        {
+            case PrimaryDatabaseProvider.MariaDb:
+            case PrimaryDatabaseProvider.MySql:
+                optionsBuilder.AddInterceptors(
+                    MySqlNamedLockTransactionInterceptor.Instance);
+                break;
+            case PrimaryDatabaseProvider.Sqlite:
+                optionsBuilder.AddInterceptors(
+                    SqliteNamedLockTransactionInterceptor.Instance,
+                    SqliteProjectionLockTransactionInterceptor.Instance);
+                break;
+        }
+
+        return database;
+    }
 
     public static PrimaryDatabaseConnectionResult ConfigureDataProtection(
         DbContextOptionsBuilder optionsBuilder,

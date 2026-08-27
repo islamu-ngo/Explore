@@ -122,7 +122,10 @@ public static class QuartzSchedulerExtensions
         services.AddSingleton(new QuartzRecurringJobManifest(
             QuartzSchedulerKeys.OwnedRecurringJobs,
             desiredRecurringJobs));
-        services.AddHostedService<QuartzOwnedRecurringJobReconciler>();
+        if (settings.Enabled)
+        {
+            services.AddHostedService<QuartzOwnedRecurringJobReconciler>();
+        }
 
         return services;
     }

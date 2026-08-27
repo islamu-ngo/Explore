@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
+using Explore.Blazor.Client.Contracts.Services.Reporting;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.Shell;
@@ -76,6 +77,7 @@ public class BlazorTestContext : BunitContext
         Services.AddSingleton(Substitute.For<IBffAuthApi>());
         Services.AddSingleton(Substitute.For<IEventApiClient>());
         Services.AddSingleton(Substitute.For<IAtprotoFederationSettingsService>());
+        Services.AddSingleton(Substitute.For<ITenantReportingIntakePolicyService>());
         Services.AddSingleton(Substitute.For<IBrowserActionInterop>());
         // EventLocation disclosure is now a page-level dependency of EventDetail. A default fail-closed
         // substitute (no disclosures) keeps unrelated page tests from having to know about venue privacy.

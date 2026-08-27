@@ -9,6 +9,7 @@ public static class EventReportFailureCodes
     public const string UserUnresolved = "event_report_user_unresolved";
     public const string ReporterActorUnresolved = "event_report_actor_unresolved";
     public const string TenantUnresolved = "event_report_tenant_unresolved";
+    public const string IntakeDisabled = "event_reporting_intake_disabled";
     public const string EventNotFound = "event_report_event_not_found";
     public const string EventInvalidStatus = "event_report_event_invalid_status";
     public const string Duplicate = "event_report_duplicate";

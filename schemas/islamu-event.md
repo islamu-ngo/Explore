@@ -1459,6 +1459,50 @@ Table "managed_tenant_provisioning_operations" {
   Note: 'Tenant remains nullable before success. The partial-lifecycle shape is why migration-authored fk_email_dispatch_outbox_managed_operation_tenant enforces (tenant_id, managed_tenant_provisioning_operation_id) rather than using an EF alternate-key relationship.'
 }
 
+Table "configuration_manifest_operations" {
+  "id" uuid [pk, not null, note: 'Application-generated UUIDv7']
+  "mode" varchar(20) [not null, note: 'ValidateOnly or Bootstrap']
+  "api_version" varchar(100) [not null]
+  "kind" varchar(100) [not null]
+  "manifest_name" varchar(100) [not null]
+  "digest" char(64) [not null, note: 'SHA-256 over exact manifest bytes; provenance, not idempotency']
+  "status" varchar(20) [not null, note: 'Validated, Applied, or Failed']
+  "requested_tenant_count" int [not null]
+  "created_tenant_count" int [not null]
+  "skipped_existing_tenant_count" int [not null]
+  "failed_tenant_count" int [not null]
+  "reason_code" varchar(200)
+  "reason" varchar(500)
+  "started_at" timestamptz [not null]
+  "completed_at" timestamptz [not null]
+
+  indexes {
+    (digest, mode, completed_at) [name: 'ix_configuration_manifest_operations_digest_mode_completed']
+    (status, completed_at) [name: 'ix_configuration_manifest_operations_status_completed']
+  }
+
+  Note: 'Append-only deployment audit. Stores bounded contract identity and safe terminal outcome only; never raw manifest bytes, paths, setting/document values, secrets, report content, or PII.'
+}
+
+Table "configuration_manifest_tenant_results" {
+  "id" uuid [pk, not null, note: 'Application-generated UUIDv7']
+  "operation_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "status" varchar(24) [not null, note: 'Created or SkippedExisting']
+  "reason_code" varchar(200) [not null]
+  "completed_at" timestamptz [not null]
+  "changed_setting_key_names" varchar(4096) [not null]
+  "changed_document_key_names" varchar(4096) [not null]
+
+  indexes {
+    operation_id [name: 'ix_configuration_manifest_tenant_results_operation_id']
+    (tenant_id, status, completed_at) [name: 'ix_configuration_manifest_results_tenant_status_completed']
+    (tenant_id, operation_id) [unique, name: 'ux_configuration_manifest_results_tenant_operation']
+  }
+
+  Note: 'Append-only tenant-filtered outcome evidence. Changed-key columns contain sorted canonical names only and never corresponding values.'
+}
+
 Table "email_dispatch_outbox" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
@@ -7338,6 +7382,8 @@ Table "event_role_assignments" {
 Ref: "tenants"."tenant_status_id" > "tenant_statuses"."id" [delete: restrict]
 Ref: "tenant_settings_documents"."tenant_id" - "tenants"."id" [delete: cascade]
 Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "configuration_manifest_tenant_results"."operation_id" > "configuration_manifest_operations"."id" [delete: restrict]
+Ref: "configuration_manifest_tenant_results"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_navigation_links"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_footer_link_groups"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_footer_links"."footer_link_group_id" > "tenant_footer_link_groups"."id" [delete: cascade]

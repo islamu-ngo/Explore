@@ -518,3 +518,20 @@ tests:
           update: EFFECT_DENY
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
+
+  - name: "Event roles retain ordinary publish but cannot acquire approval publish"
+    input:
+      principals: ["event_owner", "event_manager"]
+      resources: ["event_1"]
+      actions: ["publish", "approve-publish"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_1"
+        actions:
+          publish: EFFECT_ALLOW
+          approve-publish: EFFECT_DENY
+      - principal: "event_manager"
+        resource: "event_1"
+        actions:
+          publish: EFFECT_ALLOW
+          approve-publish: EFFECT_DENY

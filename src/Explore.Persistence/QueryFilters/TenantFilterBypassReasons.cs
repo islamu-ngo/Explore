@@ -5,6 +5,12 @@ namespace Explore.Persistence.QueryFilters;
 
 public static class TenantFilterBypassReasons
 {
+    public const string ConfigurationManifestOperationReplay =
+        "Manifest retry reconstructs post-commit effects for one exact operation id across its bounded tenant results.";
+
+    public const string InstanceConfigurationManifestExport =
+        "Instance-authorized configuration manifest export reads every active tenant for one whole-instance artifact.";
+
     public const string TenantScopedRepositoryExactTenantPredicate =
         "Repository bypasses the ambient tenant filter only after applying an explicit tenant predicate.";
 

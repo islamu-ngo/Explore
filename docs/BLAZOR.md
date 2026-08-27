@@ -95,6 +95,14 @@ The embedded instance console owns the public tenant-plan workflows. `/admin/ins
 
 Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/settings/instance?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
 
+Whole-instance configuration export lives at
+`/settings/instance?section=configuration-manifest` in both deployment modes.
+The section explains that the file covers instance configuration and all active
+tenants, omits secrets and operational/sovereign records, and is bootstrap
+configuration rather than a data backup. Overrides and portable download
+actions render only from the matching control-plane overview HAL relations.
+The tenant settings navigation never exposes this instance-authority action.
+
 ## Public Home Discovery Boundary
 
 `/home` renders the same discovery composition for anonymous and authenticated visitors unless the existing organization-centric shell branch is authoritative. `HomeDiscoveryExperience` owns one persisted `HomeDiscoveryDto`, so PublicSeo prerendering can hydrate without issuing a duplicate discovery request. The obsolete standalone marketing page has been removed.
@@ -117,12 +125,23 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 | User/session view | `/bff/me` | `BffPreferenceEndpoints.cs` |
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
 | White-label manifest | `/manifest.webmanifest` | `BffManifestEndpoints.cs` |
+| Configuration manifest export | `/bff/control-plane/configuration-manifest/export` | `BffConfigurationManifestEndpoints.cs` |
 | Setup secret | `GET/POST/DELETE /bff/setup-secret`, `/bff/setup-secret/sync` | `BffSetupSecretEndpoints.cs` |
 | Storage upload proxy | `/bff/storage/upload-session`, `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
 | Registration provider embed host | `/bff/registration-provider-embed/tenants/{tenantId}/events/{eventId}/workflows/{workflowId}/requirements/{requirementId}/channels/{channelId}/bindings/{bindingId}` | `BffRegistrationProviderEmbedEndpoints.cs` |
 | Support access | `/bff/support-access/current`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/tenants/{targetTenantId}/sessions`, `/bff/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events`, `/bff/support-access/sessions/{sessionId}/force-stop` | `BffSupportAccessEndpoints.cs` |
 
 Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic. `AntiforgeryEndpointExtensions.cs` provides `ValidateAntiforgery()` request-token validation filters for state-changing BFF endpoints. The manifest endpoint resolves public-experience branding through the server-side API client and falls back to generic install metadata when branding cannot be read; do not reintroduce a static tenant-branded manifest file.
+
+Configuration-manifest download is an authenticated, safe `GET` through the
+fixed same-origin BFF route. Immediately before forwarding, both the client
+adapter and BFF reload the control-plane overview and require the exact
+`export-configuration-overrides` or `export-configuration-portable` HAL
+relation. The BFF never follows a browser-provided URL or HAL href, calls only
+the generated canonical API operation, buffers at most 4 MiB, and accepts only
+the exact manifest media type and per-view filename. Responses are `no-store`;
+downstream failures preserve safe status codes without forwarding provider
+bodies. Access tokens and raw API authority remain server-side.
 
 Registration-provider embeds are BFF-mediated only. The client builds only the same-origin BFF URL from the server lineage; the BFF fetches the launch descriptor from the API, rejects query strings, lineage mismatch, unavailable descriptors, non-embed modes, non-HTTPS targets, and local/private literal hosts, then emits a per-route CSP with exact `frame-src`. The iframe is sandboxed and paired with a new-tab fallback. `RegistrationProviderLaunchState` treats iframe load/navigation as display status only; completion authority is the polled order/requirement status from API/HAL resources.
 

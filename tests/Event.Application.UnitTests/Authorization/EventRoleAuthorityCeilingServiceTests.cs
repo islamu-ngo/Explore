@@ -16,6 +16,7 @@ public class EventRoleAuthorityCeilingServiceTests
     private static readonly Guid TenantId = Guid.Parse("018f0000-0000-7000-8000-000000000101");
     private static readonly Guid EventId = Guid.Parse("018f0000-0000-7000-8000-000000000202");
     private static readonly Guid AssignerUserId = Guid.Parse("018f0000-0000-7000-8000-000000000303");
+    private const string ApprovalPublishPermission = "event:approve-publish";
 
     private readonly IEventAuthoritySnapshotService _snapshotService;
     private readonly IRoleRepository _roleRepository;
@@ -44,7 +45,8 @@ public class EventRoleAuthorityCeilingServiceTests
                 PermissionCodes.EventManageOwner,
                 PermissionCodes.EventTransferOwnership,
                 PermissionCodes.EventDelete,
-                PermissionCodes.EventManageFinance)));
+                PermissionCodes.EventManageFinance,
+                ApprovalPublishPermission)));
 
         _roleRepository.GetByScopeAsync(RoleScopeEnum.Event).Returns(Task.FromResult<IReadOnlyList<Role>>(
             new[]
@@ -127,6 +129,31 @@ public class EventRoleAuthorityCeilingServiceTests
         await Assert.That(result.IsAllowed).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
         await Assert.That(result.MissingPermissionCodes).Contains(PermissionCodes.EventManageOwner);
+    }
+
+    [Test]
+    public async Task CanAssignRoleAsync_WhenRoleContainsApprovalPublish_DeniesPrivilegedAuthorityDelegation()
+    {
+        _roleRepository.GetPermissionsForRoleAsync((int)RoleEnum.EventManager).Returns(Task.FromResult<IReadOnlyList<Permission>>(
+            PermissionCodesFor(
+                PermissionCodes.EventManageTeam,
+                PermissionCodes.EventUpdate,
+                ApprovalPublishPermission)));
+        ConfigureSnapshot(
+            PermissionCodes.EventManageTeam,
+            PermissionCodes.EventUpdate,
+            ApprovalPublishPermission);
+
+        var result = await _service.CanAssignRoleAsync(
+            TenantId,
+            EventId,
+            AssignerUserId,
+            (int)RoleEnum.EventManager,
+            CancellationToken.None);
+
+        await Assert.That(result.IsAllowed).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
+        await Assert.That(result.MissingPermissionCodes).Contains(ApprovalPublishPermission);
     }
 
     [Test]

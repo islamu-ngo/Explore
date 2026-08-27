@@ -27,6 +27,142 @@ public sealed class EventActorResolverTests
     }
 
     [Test]
+    public async Task ResolveAsync_PersonalActorWithDisabledTenantSubmissionPolicy_IsRejected()
+    {
+        var result = await ResolveAsync(
+            ActorForUser(Guid.CreateVersion7()),
+            ActorResolutionPath.User,
+            userSubmissionEnabled: false);
+
+        await Assert.That(result.Succeeded).IsFalse();
+    }
+
+    [Test]
+    [Category("TCM110SubmissionPolicyMatrix")]
+    public async Task ResolveAsync_OrganizationSubmissionDisabled_UsesOrganizationPolicyAndRejectsBeforeEligibilityReads()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var scenario = CreateScenario(
+            tenantId,
+            userSubmissionEnabled: true,
+            organizationSubmissionEnabled: false,
+            groupSubmissionEnabled: true);
+
+        var result = await scenario.Resolver.ResolveAsync(userId, organizationId, null, CancellationToken.None);
+
+        await AssertResolvedSettingAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled, tenantId);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        await Assert.That(result.Succeeded).IsFalse();
+        await scenario.OrganizationMemberRepository.DidNotReceive().HasPermissionInOrganization(
+            organizationId, userId, PermissionCodes.EventCreate);
+        await scenario.ActorRepository.DidNotReceive().GetActorByOrganizationId(organizationId);
+        await scenario.OrganizationTenantRepository.DidNotReceive().GetByOrganizationAndTenant(
+            organizationId, tenantId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("TCM110SubmissionPolicyMatrix")]
+    public async Task ResolveAsync_OrganizationSubmissionEnabled_UsesOrganizationPolicyDespiteDisabledGroupPolicy()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var actor = ActorForOrganization(organizationId);
+        var scenario = CreateScenario(
+            tenantId,
+            userSubmissionEnabled: true,
+            organizationSubmissionEnabled: true,
+            groupSubmissionEnabled: false);
+        scenario.OrganizationMemberRepository.HasPermissionInOrganization(
+            organizationId, userId, PermissionCodes.EventCreate).Returns(true);
+        scenario.ActorRepository.GetActorByOrganizationId(organizationId).Returns(actor);
+        scenario.OrganizationTenantRepository.GetByOrganizationAndTenant(
+                organizationId,
+                tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(OrganizationParticipation(
+                organizationId,
+                ApprovalStatusEnum.Approved,
+                organizerEligible: true,
+                suspended: false,
+                deleted: false,
+                tenantId));
+
+        var result = await scenario.Resolver.ResolveAsync(userId, organizationId, null, CancellationToken.None);
+
+        await AssertResolvedSettingAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled, tenantId);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(actor.Id);
+    }
+
+    [Test]
+    [Category("TCM110SubmissionPolicyMatrix")]
+    public async Task ResolveAsync_GroupSubmissionDisabled_UsesGroupPolicyAndRejectsBeforeEligibilityReads()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var groupId = Guid.CreateVersion7();
+        var scenario = CreateScenario(
+            tenantId,
+            userSubmissionEnabled: true,
+            organizationSubmissionEnabled: true,
+            groupSubmissionEnabled: false);
+
+        var result = await scenario.Resolver.ResolveAsync(userId, null, groupId, CancellationToken.None);
+
+        await AssertResolvedSettingAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.GroupSubmissionEnabled, tenantId);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        await Assert.That(result.Succeeded).IsFalse();
+        await scenario.GroupMemberRepository.DidNotReceive().HasPermissionInGroup(
+            groupId, userId, PermissionCodes.EventCreate);
+        await scenario.ActorRepository.DidNotReceive().GetActorByGroupId(groupId);
+        await scenario.GroupTenantRepository.DidNotReceive().GetByGroupAndTenant(
+            groupId, tenantId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("TCM110SubmissionPolicyMatrix")]
+    public async Task ResolveAsync_GroupSubmissionEnabled_UsesGroupPolicyDespiteDisabledOrganizationPolicy()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var groupId = Guid.CreateVersion7();
+        var actor = ActorForGroup(groupId);
+        var scenario = CreateScenario(
+            tenantId,
+            userSubmissionEnabled: true,
+            organizationSubmissionEnabled: false,
+            groupSubmissionEnabled: true);
+        scenario.GroupMemberRepository.HasPermissionInGroup(groupId, userId, PermissionCodes.EventCreate).Returns(true);
+        scenario.ActorRepository.GetActorByGroupId(groupId).Returns(actor);
+        scenario.GroupTenantRepository.GetByGroupAndTenant(
+                groupId,
+                tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(GroupParticipation(
+                groupId,
+                ApprovalStatusEnum.Approved,
+                organizerEligible: true,
+                suspended: false,
+                deleted: false,
+                tenantId));
+
+        var result = await scenario.Resolver.ResolveAsync(userId, null, groupId, CancellationToken.None);
+
+        await AssertResolvedSettingAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.GroupSubmissionEnabled, tenantId);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        await AssertSettingWasNotResolvedAsync(scenario.SettingsResolver, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(actor.Id);
+    }
+
+    [Test]
     public async Task ResolveAsync_PersonalActorWithInactiveTenantUser_IsRejected()
     {
         var userId = Guid.CreateVersion7();
@@ -157,56 +293,34 @@ public sealed class EventActorResolverTests
         ActorResolutionPath resolutionPath,
         bool activeTenantUser = true,
         OrganizationTenant? organizationParticipation = null,
-        GroupTenant? groupParticipation = null)
+        GroupTenant? groupParticipation = null,
+        bool userSubmissionEnabled = true)
     {
         var tenantId = organizationParticipation?.TenantId
             ?? groupParticipation?.TenantId
             ?? Guid.CreateVersion7();
-        var actorRepository = Substitute.For<IActorRepository>();
-        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
-        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
-        var tenantUserRepository = Substitute.For<ITenantUserRepository>();
-        var organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
-        var groupTenantRepository = Substitute.For<IGroupTenantRepository>();
-        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
-        settingsResolver.ResolveAsync<bool>(
-                "events.user_submission_enabled",
-                Arg.Any<SettingContext>(),
-                Arg.Any<CancellationToken>())
-            .Returns(true);
-        var tenantContext = Substitute.For<ITenantContext>();
-        tenantContext.TenantId.Returns(tenantId);
-        var resolver = new EventActorResolver(
-            actorRepository,
-            organizationMemberRepository,
-            groupMemberRepository,
-            settingsResolver,
-            tenantContext,
-            tenantUserRepository,
-            organizationTenantRepository,
-            groupTenantRepository);
-
+        var scenario = CreateScenario(tenantId, userSubmissionEnabled);
         var currentUserId = actor.UserId ?? Guid.CreateVersion7();
         switch (resolutionPath)
         {
             case ActorResolutionPath.User:
-                actorRepository.GetActorByUserId(currentUserId).Returns(actor);
+                scenario.ActorRepository.GetActorByUserId(currentUserId).Returns(actor);
                 if (actor.UserId is { } userId)
                 {
-                    tenantUserRepository.IsActiveTenantUserAsync(tenantId, userId, Arg.Any<CancellationToken>())
+                    scenario.TenantUserRepository.IsActiveTenantUserAsync(tenantId, userId, Arg.Any<CancellationToken>())
                         .Returns(activeTenantUser);
                 }
                 break;
             case ActorResolutionPath.Organization:
-                organizationMemberRepository.HasPermissionInOrganization(
+                scenario.OrganizationMemberRepository.HasPermissionInOrganization(
                         Arg.Any<Guid>(),
                         currentUserId,
                         PermissionCodes.EventCreate)
                     .Returns(true);
-                actorRepository.GetActorByOrganizationId(Arg.Any<Guid>()).Returns(actor);
+                scenario.ActorRepository.GetActorByOrganizationId(Arg.Any<Guid>()).Returns(actor);
                 if (actor.OrganizationId is { } organizationId)
                 {
-                    organizationTenantRepository.GetByOrganizationAndTenant(
+                    scenario.OrganizationTenantRepository.GetByOrganizationAndTenant(
                             organizationId,
                             tenantId,
                             Arg.Any<CancellationToken>())
@@ -214,15 +328,15 @@ public sealed class EventActorResolverTests
                 }
                 break;
             case ActorResolutionPath.Group:
-                groupMemberRepository.HasPermissionInGroup(
+                scenario.GroupMemberRepository.HasPermissionInGroup(
                         Arg.Any<Guid>(),
                         currentUserId,
                         PermissionCodes.EventCreate)
                     .Returns(true);
-                actorRepository.GetActorByGroupId(Arg.Any<Guid>()).Returns(actor);
+                scenario.ActorRepository.GetActorByGroupId(Arg.Any<Guid>()).Returns(actor);
                 if (actor.GroupId is { } groupId)
                 {
-                    groupTenantRepository.GetByGroupAndTenant(groupId, tenantId, Arg.Any<CancellationToken>())
+                    scenario.GroupTenantRepository.GetByGroupAndTenant(groupId, tenantId, Arg.Any<CancellationToken>())
                         .Returns(groupParticipation);
                 }
                 break;
@@ -230,12 +344,72 @@ public sealed class EventActorResolverTests
                 throw new ArgumentOutOfRangeException(nameof(resolutionPath), resolutionPath, null);
         }
 
-        return await resolver.ResolveAsync(
+        return await scenario.Resolver.ResolveAsync(
             currentUserId,
             resolutionPath == ActorResolutionPath.Organization ? actor.OrganizationId : null,
             resolutionPath == ActorResolutionPath.Group ? actor.GroupId : null,
             CancellationToken.None);
     }
+
+    private static ResolverScenario CreateScenario(
+        Guid tenantId,
+        bool userSubmissionEnabled = true,
+        bool organizationSubmissionEnabled = true,
+        bool groupSubmissionEnabled = true)
+    {
+        var actorRepository = Substitute.For<IActorRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var tenantUserRepository = Substitute.For<ITenantUserRepository>();
+        var organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
+        var groupTenantRepository = Substitute.For<IGroupTenantRepository>();
+        tenantContext.TenantId.Returns(tenantId);
+        settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Events.UserSubmissionEnabled, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(userSubmissionEnabled);
+        settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(organizationSubmissionEnabled);
+        settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Events.GroupSubmissionEnabled, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(groupSubmissionEnabled);
+
+        return new ResolverScenario(
+            new EventActorResolver(
+                actorRepository,
+                organizationMemberRepository,
+                groupMemberRepository,
+                settingsResolver,
+                tenantContext,
+                tenantUserRepository,
+                organizationTenantRepository,
+                groupTenantRepository),
+            actorRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            settingsResolver,
+            tenantUserRepository,
+            organizationTenantRepository,
+            groupTenantRepository);
+    }
+
+    private static async Task AssertResolvedSettingAsync(
+        IHierarchicalSettingsResolver settingsResolver,
+        string settingKey,
+        Guid tenantId) =>
+        await settingsResolver.Received(1).ResolveAsync<bool>(
+            settingKey,
+            Arg.Is<SettingContext>(context => HasTenantId(context, tenantId)),
+            Arg.Any<CancellationToken>());
+
+    private static bool HasTenantId(SettingContext? context, Guid tenantId) => context?.TenantId == tenantId;
+
+    private static async Task AssertSettingWasNotResolvedAsync(
+        IHierarchicalSettingsResolver settingsResolver,
+        string settingKey) =>
+        await settingsResolver.DidNotReceive().ResolveAsync<bool>(
+            settingKey,
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
 
     private static Actor ActorForUser(Guid userId) => new()
     {
@@ -269,10 +443,11 @@ public sealed class EventActorResolverTests
         ApprovalStatusEnum approvalStatus,
         bool organizerEligible,
         bool suspended,
-        bool deleted) => new()
+        bool deleted,
+        Guid? tenantId = null) => new()
         {
             Id = Guid.CreateVersion7(),
-            TenantId = Guid.CreateVersion7(),
+            TenantId = tenantId ?? Guid.CreateVersion7(),
             Tenant = null!,
             OrganizationId = organizationId,
             Organization = null!,
@@ -289,10 +464,11 @@ public sealed class EventActorResolverTests
         ApprovalStatusEnum approvalStatus,
         bool organizerEligible,
         bool suspended,
-        bool deleted) => new()
+        bool deleted,
+        Guid? tenantId = null) => new()
         {
             Id = Guid.CreateVersion7(),
-            TenantId = Guid.CreateVersion7(),
+            TenantId = tenantId ?? Guid.CreateVersion7(),
             Tenant = null!,
             GroupId = groupId,
             Group = null!,
@@ -303,6 +479,16 @@ public sealed class EventActorResolverTests
             IsSuspended = suspended,
             IsDeleted = deleted
         };
+
+    private sealed record ResolverScenario(
+        EventActorResolver Resolver,
+        IActorRepository ActorRepository,
+        IOrganizationMemberRepository OrganizationMemberRepository,
+        IGroupMemberRepository GroupMemberRepository,
+        IHierarchicalSettingsResolver SettingsResolver,
+        ITenantUserRepository TenantUserRepository,
+        IOrganizationTenantRepository OrganizationTenantRepository,
+        IGroupTenantRepository GroupTenantRepository);
 
     private enum ActorResolutionPath
     {

@@ -1,6 +1,7 @@
 // ABOUTME: Thin orchestrator for instance-level governance settings using typed setting groups.
 // ABOUTME: Reads via IHierarchicalSettingsResolver batch resolution, writes via SettingUpsertService.
 
+using System.Collections.Immutable;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
@@ -179,7 +180,24 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await ApplyMcpGovernanceSettingsAsync(settings.Mcp, actorUserId);
         await ApplyRenderPolicySettingsInternalAsync(settings.RenderPolicy, actorUserId);
         await ApplyModuleSettingsAsync(defaultTenantId, settings.Modules, actorUserId, cancellationToken);
-        await ApplyEventPolicyAsync(settings.EventPolicy, actorUserId);
+        PublicationPolicyMutationResult eventPolicyResult = await ApplyEventPolicyAsync(
+            settings.EventPolicy,
+            actorUserId,
+            cancellationToken);
+        if (!eventPolicyResult.Success)
+        {
+            string failureCode = string.IsNullOrWhiteSpace(eventPolicyResult.FailureCode)
+                ? "event_reporting_intake_policy_invalid"
+                : eventPolicyResult.FailureCode;
+            throw new FluentValidation.ValidationException([
+                new FluentValidation.Results.ValidationFailure(nameof(InstanceGovernanceSettings.EventPolicy), string.Empty)
+                {
+                    ErrorCode = failureCode
+                }
+            ]);
+        }
+
+        deferredNotifications.AddRange(eventPolicyResult.DeferredNotifications);
         await ApplyOrganizationPolicyAsync(settings.OrganizationPolicy, actorUserId);
         await ApplyBrandingSettingsAsync(settings.Branding, actorUserId);
         await ApplyDomainSettingsAsync(settings.Domains, actorUserId);
@@ -258,63 +276,72 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         }
     }
 
-    public async Task ApplyEventPolicyAsync(EventPolicyDto ep, Guid? actorUserId)
+    public async Task<PublicationPolicyMutationResult> ApplyEventPolicyAsync(
+        EventPolicyDto ep,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Events.UserSubmissionEnabled,
-            SettingValueSerializer.Serialize(ep.AllowUserSubmittedEvents), actorUserId);
+        DateTime occurredAtUtc = DateTime.UtcNow;
+        PublicationPolicyMutationResult boundaryResult = await _upsertService.ApplyInstancePublicationPolicyAsync(
+            new PublicationPolicyInstanceMutationRequest(
+                actorUserId ?? Guid.Empty,
+                occurredAtUtc,
+                CreateSubmissionMutations(
+                    ep.AllowUserSubmittedEvents,
+                    ep.AllowOrganizationSubmittedEvents,
+                    ep.AllowGroupSubmittedEvents)),
+            cancellationToken);
+        if (!boundaryResult.Success)
+            return boundaryResult;
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
-            SettingValueSerializer.Serialize(ep.AllowOrganizationSubmittedEvents), actorUserId);
-
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Events.GroupSubmissionEnabled,
-            SettingValueSerializer.Serialize(ep.AllowGroupSubmittedEvents), actorUserId);
-
-        await _upsertService.UpsertValueAsync(
+        DeferredSettingUpsertResult cardClickResult = await _upsertService.UpsertValueWithDeferredInvalidationAsync(
             GovernanceSettingKeys.Events.CardClickOpensDetailPage,
             SettingValueSerializer.Serialize(ep.EventCardClickOpensDetailPage),
-            isLocked: ep.LockTenantEventCardClickBehavior, actorUserId);
+            actorUserId,
+            isLocked: ep.LockTenantEventCardClickBehavior,
+            cancellationToken: cancellationToken);
+        return SucceededEventPolicyResult(boundaryResult, [cardClickResult.Notification]);
     }
 
-    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyEventPolicyPatchAsync(
+    public async Task<PublicationPolicyMutationResult> ApplyEventPolicyPatchAsync(
         PatchEventPolicyDto patch,
         EventPolicyDto eventPolicy,
         Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var notifications = new List<SettingChangedNotification>();
+        var valuesByKey = new Dictionary<string, bool>(StringComparer.Ordinal);
         if (patch.AllowUserSubmittedEvents.HasValue)
-        {
-            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
-                GovernanceSettingKeys.Events.UserSubmissionEnabled,
-                SettingValueSerializer.Serialize(eventPolicy.AllowUserSubmittedEvents),
-                actorUserId,
-                cancellationToken: cancellationToken)).Notification);
-        }
-
+            valuesByKey[GovernanceSettingKeys.Events.UserSubmissionEnabled] = eventPolicy.AllowUserSubmittedEvents;
         if (patch.AllowOrganizationSubmittedEvents.HasValue)
-        {
-            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
-                GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
-                SettingValueSerializer.Serialize(eventPolicy.AllowOrganizationSubmittedEvents),
-                actorUserId,
-                cancellationToken: cancellationToken)).Notification);
-        }
-
+            valuesByKey[GovernanceSettingKeys.Events.OrganizationSubmissionEnabled] = eventPolicy.AllowOrganizationSubmittedEvents;
         if (patch.AllowGroupSubmittedEvents.HasValue)
+            valuesByKey[GovernanceSettingKeys.Events.GroupSubmissionEnabled] = eventPolicy.AllowGroupSubmittedEvents;
+
+        PublicationPolicyMutationResult boundaryResult = new(true, null, string.Empty, []);
+        if (valuesByKey.Count > 0)
         {
-            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
-                GovernanceSettingKeys.Events.GroupSubmissionEnabled,
-                SettingValueSerializer.Serialize(eventPolicy.AllowGroupSubmittedEvents),
-                actorUserId,
-                cancellationToken: cancellationToken)).Notification);
+            DateTime occurredAtUtc = DateTime.UtcNow;
+            boundaryResult = await _upsertService.ApplyInstancePublicationPolicyAsync(
+                new PublicationPolicyInstanceMutationRequest(
+                    actorUserId ?? Guid.Empty,
+                    occurredAtUtc,
+                    [.. PublicationPolicySettingKeys.All
+                        .Where(valuesByKey.ContainsKey)
+                        .Select(key => new PublicationPolicySettingMutation(
+                            key,
+                            PublicationPolicyMutationKind.Set,
+                            SettingValueSerializer.Serialize(valuesByKey[key]),
+                            TenantId: null,
+                            IsLocked: false))]),
+                cancellationToken);
+            if (!boundaryResult.Success)
+                return boundaryResult;
         }
 
+        var unguardedNotifications = new List<SettingChangedNotification>();
         if (patch.EventCardClickOpensDetailPage.HasValue)
         {
-            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
+            unguardedNotifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Events.CardClickOpensDetailPage,
                 SettingValueSerializer.Serialize(eventPolicy.EventCardClickOpensDetailPage),
                 actorUserId,
@@ -323,7 +350,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         }
         else if (patch.LockTenantEventCardClickBehavior.HasValue)
         {
-            notifications.Add(await _upsertService.UpsertLockAsync(
+            unguardedNotifications.Add(await _upsertService.UpsertLockAsync(
                 GovernanceSettingKeys.Events.CardClickOpensDetailPage,
                 SettingValueSerializer.Serialize(eventPolicy.EventCardClickOpensDetailPage),
                 eventPolicy.LockTenantEventCardClickBehavior,
@@ -331,8 +358,38 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
                 cancellationToken));
         }
 
-        return notifications;
+        return SucceededEventPolicyResult(boundaryResult, unguardedNotifications);
     }
+
+    private static ImmutableArray<PublicationPolicySettingMutation> CreateSubmissionMutations(
+        bool allowUserSubmittedEvents,
+        bool allowOrganizationSubmittedEvents,
+        bool allowGroupSubmittedEvents)
+    {
+        var valuesByKey = new Dictionary<string, bool>(StringComparer.Ordinal)
+        {
+            [GovernanceSettingKeys.Events.UserSubmissionEnabled] = allowUserSubmittedEvents,
+            [GovernanceSettingKeys.Events.OrganizationSubmissionEnabled] = allowOrganizationSubmittedEvents,
+            [GovernanceSettingKeys.Events.GroupSubmissionEnabled] = allowGroupSubmittedEvents
+        };
+
+        return [.. PublicationPolicySettingKeys.All
+            .Where(valuesByKey.ContainsKey)
+            .Select(key => new PublicationPolicySettingMutation(
+                key,
+                PublicationPolicyMutationKind.Set,
+                SettingValueSerializer.Serialize(valuesByKey[key]),
+                TenantId: null,
+                IsLocked: false))];
+    }
+
+    private static PublicationPolicyMutationResult SucceededEventPolicyResult(
+        PublicationPolicyMutationResult boundaryResult,
+        IReadOnlyList<SettingChangedNotification> unguardedNotifications) =>
+        new(true, null, boundaryResult.Message, [
+            .. boundaryResult.DeferredNotifications,
+            .. unguardedNotifications
+        ]);
 
     public async Task ApplyOrganizationPolicyAsync(OrganizationPolicyDto op, Guid? actorUserId)
     {

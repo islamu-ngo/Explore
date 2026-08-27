@@ -41,17 +41,17 @@ internal sealed class MySqlNamedLockTransactionInterceptor : DbTransactionInterc
     public override Task TransactionCommittedAsync(
         DbTransaction transaction,
         TransactionEndEventData eventData,
-        CancellationToken cancellationToken = default) => ReleaseAsync(transaction, cancellationToken);
+        CancellationToken cancellationToken = default) => ReleaseAsync(transaction);
 
     public override Task TransactionRolledBackAsync(
         DbTransaction transaction,
         TransactionEndEventData eventData,
-        CancellationToken cancellationToken = default) => ReleaseAsync(transaction, cancellationToken);
+        CancellationToken cancellationToken = default) => ReleaseAsync(transaction);
 
     public override Task TransactionFailedAsync(
         DbTransaction transaction,
         TransactionErrorEventData eventData,
-        CancellationToken cancellationToken = default) => ReleaseAsync(transaction, cancellationToken);
+        CancellationToken cancellationToken = default) => ReleaseAsync(transaction);
 
     public InterceptionResult ConnectionClosing(
         DbConnection connection,
@@ -73,7 +73,7 @@ internal sealed class MySqlNamedLockTransactionInterceptor : DbTransactionInterc
     {
         foreach (DbTransaction transaction in TransactionsFor(connection))
         {
-            await ReleaseAsync(transaction, CancellationToken.None).ConfigureAwait(false);
+            await ReleaseAsync(transaction).ConfigureAwait(false);
         }
 
         return result;
@@ -117,7 +117,7 @@ internal sealed class MySqlNamedLockTransactionInterceptor : DbTransactionInterc
         }
     }
 
-    private async Task ReleaseAsync(DbTransaction transaction, CancellationToken cancellationToken)
+    private async Task ReleaseAsync(DbTransaction transaction)
     {
         if (!_locks.TryRemove(transaction, out HashSet<string>? resources))
         {
@@ -132,9 +132,10 @@ internal sealed class MySqlNamedLockTransactionInterceptor : DbTransactionInterc
 
         try
         {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             foreach (string resource in Snapshot(resources))
             {
-                await RelationalNamedLock.ReleaseMySqlAsync(connection, resource, cancellationToken)
+                await RelationalNamedLock.ReleaseMySqlAsync(connection, resource, timeout.Token)
                     .ConfigureAwait(false);
             }
         }

@@ -32,6 +32,7 @@
     <ProjectReference Include="..\Explore.Persistence.Migrations.MySql\Explore.Persistence.Migrations.MySql.csproj" />
     <ProjectReference Include="..\Explore.Persistence.Migrations.Sqlite\Explore.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\Explore.Persistence.Migrations.SqlServer\Explore.Persistence.Migrations.SqlServer.csproj" />
+    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />

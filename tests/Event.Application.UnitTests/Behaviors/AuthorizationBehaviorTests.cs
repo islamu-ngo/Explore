@@ -314,6 +314,18 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task PublishEventCommand_DeclaresThePublishAuthorizationAction()
+    {
+        var metadata = (AuthorizeResourceAttribute?)Attribute.GetCustomAttribute(
+            typeof(PublishEventCommand),
+            typeof(AuthorizeResourceAttribute));
+
+        await Assert.That(metadata).IsNotNull();
+        await Assert.That(metadata!.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(metadata.Action).IsEqualTo(AuthorizationActions.Events.Publish);
+    }
+
+    [Test]
     public async Task Handle_WithPublishEventCommand_PassesEventScopedFacts()
     {
         var secureBehavior = new AuthorizationBehavior<PublishEventCommand, BaseCommandResponse<Guid>>(
@@ -331,7 +343,7 @@ public class AuthorizationBehaviorTests
             MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 eventId.ToString(),
-                AuthorizationActions.Update,
+                AuthorizationActions.Events.Publish,
                 new EventScopedAuthorizationFacts(Guid.Empty, eventId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
@@ -341,10 +353,47 @@ public class AuthorizationBehaviorTests
         await Assert.That(result.IsSuccess).IsTrue();
         await _authService.Received(1).AuthorizeAsync(
             MatchesAuthorizationRequest(
-            ResourceKinds.Event,
-            eventId.ToString(),
-            AuthorizationActions.Update,
-            new EventScopedAuthorizationFacts(Guid.Empty, eventId)),
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Events.Publish,
+                new EventScopedAuthorizationFacts(Guid.Empty, eventId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ApprovePublishEventCommandUsesPrivilegedActionAndEventScopedFacts()
+    {
+        var metadata = (AuthorizeResourceAttribute?)Attribute.GetCustomAttribute(
+            typeof(ApprovePublishEventCommand),
+            typeof(AuthorizeResourceAttribute));
+        var secureBehavior = new AuthorizationBehavior<ApprovePublishEventCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<ApprovePublishEventCommand, BaseCommandResponse<Guid>>>>());
+        Guid eventId = Guid.NewGuid();
+        var command = new ApprovePublishEventCommand
+        {
+            Id = eventId,
+            Request = new PublishEventRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
+        };
+        _authService.AuthorizeAsync(Arg.Any<AuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AllowedDecision);
+
+        var result = await secureBehavior.Handle(
+            command,
+            _ => Task.FromResult(BaseCommandResponse.Success(Guid.Empty)),
+            CancellationToken.None);
+
+        await Assert.That(metadata).IsNotNull();
+        await Assert.That(metadata!.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(metadata.Action).IsEqualTo(AuthorizationActions.Events.ApprovePublish);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await _authService.Received(1).AuthorizeAsync(
+            Arg.Is<AuthorizationRequest>(request =>
+                request != null
+                && request.ResourceKind == ResourceKinds.Event
+                && request.Action == AuthorizationActions.Events.ApprovePublish
+                && request.ResourceId == eventId.ToString()
+                && Equals(request.Facts, new EventScopedAuthorizationFacts(Guid.Empty, eventId))),
             Arg.Any<CancellationToken>());
     }
 

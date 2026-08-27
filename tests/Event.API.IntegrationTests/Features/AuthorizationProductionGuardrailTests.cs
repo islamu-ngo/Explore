@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -154,6 +155,8 @@ public class AuthorizationProductionGuardrailTests
 
             builder.ConfigureTestServices(services =>
             {
+                services.RemoveAll<IPrivacyErasureReplayService>();
+                services.AddScoped<IPrivacyErasureReplayService, SuccessfulPrivacyErasureReplay>();
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.RequireHttpsMetadata = false;
@@ -225,6 +228,8 @@ public class AuthorizationProductionGuardrailTests
 
             builder.ConfigureTestServices(services =>
             {
+                services.RemoveAll<IPrivacyErasureReplayService>();
+                services.AddScoped<IPrivacyErasureReplayService, SuccessfulPrivacyErasureReplay>();
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.RequireHttpsMetadata = false;
@@ -238,6 +243,15 @@ public class AuthorizationProductionGuardrailTests
                     };
                 });
             });
+        }
+    }
+
+    private sealed class SuccessfulPrivacyErasureReplay : IPrivacyErasureReplayService
+    {
+        public Task ReplayAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
         }
     }
 

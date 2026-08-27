@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Exceptions;
 using Explore.Application.Notifications;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using FluentValidation.Results;
@@ -16,6 +17,7 @@ public partial class TenantPolicySettingService
 {
     private static readonly string[] TenantPolicySettingKeys =
     [
+        .. PublicationPolicySettingKeys.All,
         GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
         GovernanceSettingKeys.AiAssistant.AllowedModelIds,
         GovernanceSettingKeys.AiAssistant.ApiKey,
@@ -28,10 +30,6 @@ public partial class TenantPolicySettingService
         GovernanceSettingKeys.Domains.TenantCustomDomain,
         GovernanceSettingKeys.Domains.TenantSubdomain,
         GovernanceSettingKeys.Events.CardClickOpensDetailPage,
-        GovernanceSettingKeys.Events.GroupSubmissionEnabled,
-        GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
-        GovernanceSettingKeys.Events.RequireApproval,
-        GovernanceSettingKeys.Events.UserSubmissionEnabled,
         GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
         GovernanceSettingKeys.Mcp.EnableLegacySse,
         GovernanceSettingKeys.Mcp.Enabled,
@@ -113,10 +111,6 @@ public partial class TenantPolicySettingService
                 id, key, value, actor, notifications, cancellationToken);
         }
 
-        var userSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.UserSubmissionEnabled);
-        var orgSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
-        var groupSubmissionSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
-        var requireApprovalSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.RequireApproval);
         var eventCardClickSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
         var requireVerificationSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Organizations.VerificationRequired);
         var canOmitVerificationSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
@@ -135,37 +129,72 @@ public partial class TenantPolicySettingService
         var lockAiAssistantSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
         var lockMcpSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockMcp);
         var lockMcpLegacySseSetting = systemSettings.GetValueOrDefault(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
+        var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+        var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
+        var aiAssistantProvider = NormalizeAiAssistantProvider(settings.AiAssistantProvider, settings.AiAssistantEnabled);
+        var usesOfficialProvider = aiAssistantProvider is "openai" or "anthropic";
+        var usesCompatibleProvider = aiAssistantProvider is "openai-compatible" or "anthropic-compatible";
+        var usesExternalProvider = usesOfficialProvider || usesCompatibleProvider;
+        var aiAssistantAllowedModelIds = usesExternalProvider
+            ? NormalizeAiModelIds([settings.AiAssistantModelId], settings.AiAssistantAllowedModelIds)
+            : [];
+
+        if (canOverrideAiAssistant)
+        {
+            ValidateAiAssistantSettings(settings, aiAssistantProvider);
+        }
+
+        var occurredAtUtc = DateTime.UtcNow;
+        PublicationPolicyMutationResult publicationPolicyResult = await _publicationPolicyMutationBoundary.ApplyTenantAsync(
+            new PublicationPolicyTenantMutationRequest(
+                tenantId,
+                actorUserId ?? Guid.Empty,
+                occurredAtUtc,
+                [
+                    new PublicationPolicySettingMutation(
+                        GovernanceSettingKeys.Events.RequireApproval,
+                        PublicationPolicyMutationKind.Set,
+                        JsonSerializer.Serialize(settings.RequireEventApproval),
+                        tenantId,
+                        IsLocked: null),
+                    new PublicationPolicySettingMutation(
+                        GovernanceSettingKeys.Events.UserSubmissionEnabled,
+                        PublicationPolicyMutationKind.Set,
+                        JsonSerializer.Serialize(settings.AllowUserSubmittedEvents),
+                        tenantId,
+                        IsLocked: null),
+                    new PublicationPolicySettingMutation(
+                        GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+                        PublicationPolicyMutationKind.Set,
+                        JsonSerializer.Serialize(settings.AllowOrganizationSubmittedEvents),
+                        tenantId,
+                        IsLocked: null),
+                    new PublicationPolicySettingMutation(
+                        GovernanceSettingKeys.Events.GroupSubmissionEnabled,
+                        PublicationPolicyMutationKind.Set,
+                        JsonSerializer.Serialize(settings.AllowGroupSubmittedEvents),
+                        tenantId,
+                        IsLocked: null)
+                ],
+                PublicationPolicyLockedSystemBehavior.RemoveOverride),
+            cancellationToken);
+        if (!publicationPolicyResult.Success)
+        {
+            var failureCode = string.IsNullOrWhiteSpace(publicationPolicyResult.FailureCode)
+                ? "event_reporting_intake_policy_invalid"
+                : publicationPolicyResult.FailureCode;
+            throw new FluentValidation.ValidationException([
+                new ValidationFailure(nameof(UpdateTenantPolicyRequest), string.Empty)
+                {
+                    ErrorCode = failureCode
+                }
+            ]);
+        }
+
+        notifications.AddRange(publicationPolicyResult.DeferredNotifications);
+
         var tenant = await _tenantRepository.GetByIdAsNoTrackingAsync(tenantId, cancellationToken);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
-        var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-
-        await SetBooleanTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Events.UserSubmissionEnabled,
-            settings.AllowUserSubmittedEvents,
-            userSubmissionSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetBooleanTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
-            settings.AllowOrganizationSubmittedEvents,
-            orgSubmissionSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetBooleanTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Events.GroupSubmissionEnabled,
-            settings.AllowGroupSubmittedEvents,
-            groupSubmissionSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetBooleanTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Events.RequireApproval,
-            settings.RequireEventApproval,
-            requireApprovalSetting?.IsLocked != true,
-            actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
@@ -346,20 +375,6 @@ public partial class TenantPolicySettingService
             settings.AdminPrerenderEnabled,
             canOverrideAdmin,
             actorUserId);
-
-        var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
-        var aiAssistantProvider = NormalizeAiAssistantProvider(settings.AiAssistantProvider, settings.AiAssistantEnabled);
-        var usesOfficialProvider = aiAssistantProvider is "openai" or "anthropic";
-        var usesCompatibleProvider = aiAssistantProvider is "openai-compatible" or "anthropic-compatible";
-        var usesExternalProvider = usesOfficialProvider || usesCompatibleProvider;
-        var aiAssistantAllowedModelIds = usesExternalProvider
-            ? NormalizeAiModelIds([settings.AiAssistantModelId], settings.AiAssistantAllowedModelIds)
-            : [];
-
-        if (canOverrideAiAssistant)
-        {
-            ValidateAiAssistantSettings(settings, aiAssistantProvider);
-        }
 
         await SetBooleanTenantOverrideAsync(
             tenantId,

@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Explore.Domain.Constants;
 using Explore.Persistence;
+using Explore.Infrastructure.ConfigurationManifest;
 using Event.Standalone.Hosting;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -26,11 +27,14 @@ namespace Event.Standalone.IntegrationTests.Fixtures;
 public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<StandaloneHostMarker>
 {
     private readonly IReadOnlyDictionary<string, string?>? _configurationOverrides;
+    private readonly IConfigurationManifestStartupRunner? _startupRunner;
 
     public StandaloneWebApplicationFactory(
-        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null,
+        IConfigurationManifestStartupRunner? startupRunner = null)
     {
         _configurationOverrides = configurationOverrides;
+        _startupRunner = startupRunner;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -44,6 +48,8 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
                 ["Database:Provider"] = "PostgreSql",
                 ["Database:Host"] = "postgres.example.test",
                 ["Database:Database"] = "event_test",
+                ["Database:Runtime:Database"] = "event_test",
+                ["Database:Migrator:Database"] = "event_test",
                 ["Database:Runtime:Username"] = "event_test",
                 ["Database:Runtime:Password"] = "test-only-secret",
                 ["ExploreApi:BaseUrl"] = "http://127.0.0.1:7039/",
@@ -73,6 +79,11 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
             services.AddDistributedMemoryCache();
             services.RemoveAll<ISetupSecretProvider>();
             services.AddSingleton<ISetupSecretProvider, TestSetupSecretProvider>();
+            if (_startupRunner is not null)
+            {
+                services.RemoveAll<IConfigurationManifestStartupRunner>();
+                services.AddSingleton(_startupRunner);
+            }
             services.RemoveAll<IDynamicAuthSchemeManager>();
             services.AddSingleton<DynamicAuthInitializationProbe>();
             services.AddSingleton<IDynamicAuthSchemeManager>(services =>
@@ -122,6 +133,21 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
         public void Lock() { }
     }
 
+}
+
+public sealed class ConfigurationManifestStartupProbe
+    : IConfigurationManifestStartupRunner
+{
+    private int _runCount;
+
+    public int RunCount => Volatile.Read(ref _runCount);
+
+    public Task RunAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Interlocked.Increment(ref _runCount);
+        return Task.CompletedTask;
+    }
 }
 
 public sealed class DynamicAuthInitializationProbe(IServiceScopeFactory scopeFactory) : IDynamicAuthSchemeManager

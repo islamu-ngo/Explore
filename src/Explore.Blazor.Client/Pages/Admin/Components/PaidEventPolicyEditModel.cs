@@ -162,7 +162,8 @@ public sealed class PaidEventPolicyEditModel
             }
         }
 
-        foreach (CurrencyRiskLimits2 ceiling in activeInstanceCeiling.CurrencyRiskLimits ?? [])
+        foreach (PaidEventPolicyCurrencyRiskLimitDto ceiling in
+                 activeInstanceCeiling.CurrencyRiskLimits ?? [])
         {
             if (string.IsNullOrWhiteSpace(ceiling.CurrencyCode) || !AllowedCurrencyCodes.Contains(ceiling.CurrencyCode, StringComparer.Ordinal))
             {
@@ -204,7 +205,8 @@ public sealed class PaidEventPolicyCurrencyRiskLimitEditModel
     public long? RollingOrganizerSalesCeilingMinor { get; set; }
     public long? HighValueReviewThresholdMinor { get; set; }
 
-    public static PaidEventPolicyCurrencyRiskLimitEditModel FromDto(CurrencyRiskLimits2 dto) => new()
+    public static PaidEventPolicyCurrencyRiskLimitEditModel FromDto(
+        PaidEventPolicyCurrencyRiskLimitDto dto) => new()
     {
         CurrencyCode = dto.CurrencyCode ?? string.Empty,
         PerEventSalesCeilingMinor = dto.PerEventSalesCeilingMinor,

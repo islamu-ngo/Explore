@@ -8,7 +8,6 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Features.Settings.Requests.Commands;
-using Explore.Application.Notifications;
 using Explore.Application.Services.Federation;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -76,7 +75,9 @@ public sealed class AtprotoFederationGovernanceTests
             currentUser,
             admin,
             Substitute.For<IMediator>(),
-            Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+            Substitute.For<ILogger<UpdateSettingCommandHandler>>(),
+            Substitute.For<IPublicationPolicyMutationBoundary>(),
+            Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new UpdateSettingCommand
         {
@@ -141,7 +142,9 @@ public sealed class AtprotoFederationGovernanceTests
             currentUser,
             admin,
             Substitute.For<IMediator>(),
-            Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+            Substitute.For<ILogger<UpdateSettingCommandHandler>>(),
+            Substitute.For<IPublicationPolicyMutationBoundary>(),
+            Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new UpdateSettingCommand
         {
@@ -176,7 +179,9 @@ public sealed class AtprotoFederationGovernanceTests
             currentUser,
             admin,
             Substitute.For<IMediator>(),
-            Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+            Substitute.For<ILogger<UpdateSettingCommandHandler>>(),
+            Substitute.For<IPublicationPolicyMutationBoundary>(),
+            Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new UpdateSettingCommand
         {
@@ -213,7 +218,9 @@ public sealed class AtprotoFederationGovernanceTests
             currentUser,
             admin,
             Substitute.For<IMediator>(),
-            Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+            Substitute.For<ILogger<UpdateSettingCommandHandler>>(),
+            Substitute.For<IPublicationPolicyMutationBoundary>(),
+            Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new UpdateSettingCommand
         {
@@ -248,7 +255,9 @@ public sealed class AtprotoFederationGovernanceTests
             currentUser,
             admin,
             Substitute.For<IMediator>(),
-            Substitute.For<ILogger<UnlockSettingCommandHandler>>());
+            Substitute.For<ILogger<UnlockSettingCommandHandler>>(),
+            Substitute.For<IPublicationPolicyMutationBoundary>(),
+            Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new UnlockSettingCommand
         {

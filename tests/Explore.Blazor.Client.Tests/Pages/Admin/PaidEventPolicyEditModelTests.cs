@@ -129,7 +129,7 @@ public sealed class PaidEventPolicyEditModelTests
         string[]? currencyCodes = null,
         string? defaultCurrencyCode = "EUR",
         int[]? refundProtectionIds = null,
-        CurrencyRiskLimits2[]? riskLimits = null,
+        PaidEventPolicyCurrencyRiskLimitDto[]? riskLimits = null,
         bool requiresFirstPaidEventReview = true,
         int? farFutureDays = 180)
         => new()
@@ -145,7 +145,7 @@ public sealed class PaidEventPolicyEditModelTests
             FarFutureReviewThresholdDays = farFutureDays
         };
 
-    private static CurrencyRiskLimits2 RiskLimit(
+    private static PaidEventPolicyCurrencyRiskLimitDto RiskLimit(
         string currencyCode,
         long? perEventSalesCeilingMinor,
         long? rollingOrganizerSalesCeilingMinor,

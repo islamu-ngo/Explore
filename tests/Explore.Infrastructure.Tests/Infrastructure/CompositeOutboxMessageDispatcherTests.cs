@@ -13,6 +13,7 @@ using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Application.Services.Registration;
@@ -455,6 +456,28 @@ public sealed class CompositeOutboxMessageDispatcherTests
     }
 
     [Test]
+    public async Task DispatchAsync_WithConfigurationManifestEffects_RoutesByOperationIdentity()
+    {
+        var manifestDispatcher =
+            Substitute.For<IConfigurationManifestEffectDispatcher>();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            manifestEffectDispatcher: manifestDispatcher);
+        Guid operationId = Guid.CreateVersion7();
+        OutboxMessage message = ConfigurationManifestEffectOutbox.Create(
+            Guid.CreateVersion7(),
+            operationId,
+            DateTime.UtcNow);
+
+        await dispatcher.DispatchAsync(message);
+
+        await manifestDispatcher.Received(1).DispatchAsync(
+            operationId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     [Category("EventLocationPrivacy")]
     public async Task ReconcileDeadLetterAsync_WithUnsupportedEventType_Throws()
     {
@@ -631,7 +654,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
         IAdmissionRefundRevocationService? admissionRefundRevocationService = null,
         IAdmissionEventCancellationService? admissionEventCancellationService = null,
         IRefundAttemptRepository? refundRepository = null,
-        IRefundCreator? refundCreator = null)
+        IRefundCreator? refundCreator = null,
+        IConfigurationManifestEffectDispatcher? manifestEffectDispatcher = null)
     {
         HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
@@ -675,7 +699,9 @@ public sealed class CompositeOutboxMessageDispatcherTests
             CreateMetrics(),
             TimeProvider.System,
             mediator ?? Substitute.For<IMediator>(),
-            NullLogger<CompositeOutboxMessageDispatcher>.Instance);
+            NullLogger<CompositeOutboxMessageDispatcher>.Instance,
+            manifestEffectDispatcher
+                ?? Substitute.For<IConfigurationManifestEffectDispatcher>());
     }
 
     private static PaidOrderAcceptanceSnapshot RefundAcceptance(Guid tenantId) =>

@@ -15,6 +15,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.AiAssistant.Actors;
+using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Features.Authentication.Atproto.Services;
@@ -28,6 +29,7 @@ using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Features.EventOrganizerClaims.Authorization;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 using Explore.Application.Features.EventReporting;
+using Explore.Application.Features.Events;
 using Explore.Application.Features.EventTicketing.Services;
 using Explore.Application.Features.EventSessionAgendaItems.Authorization;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
@@ -55,6 +57,8 @@ using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.StorageObjects.Authorization;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
+using Explore.Application.Features.ConfigurationManifest.Preflight;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Federation;
@@ -267,6 +271,7 @@ public static class ApplicationServicesRegistration
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();
         services.AddScoped<ITenantStorageSettingService, TenantStorageSettingService>();
+        services.AddConfigurationManifestApplication();
         services.AddScoped<ITenantBrandingSettingsDocumentProvisioningService, TenantBrandingSettingsDocumentProvisioningService>();
         services.AddScoped<ITenantBrandingSettingsDocumentLockService, TenantBrandingSettingsDocumentLockService>();
         services.AddScoped<FooterLinkMutationGuard>();
@@ -281,6 +286,9 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IAccountAuthorityLifecycleEmailService, DefaultAccountAuthorityLifecycleEmailService>();
         services.AddScoped<IKeycloakRealmDesiredStateBuilder, KeycloakRealmDesiredStateBuilder>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
+        services.AddScoped<
+            IPaidEventPolicyMutationBoundary,
+            PaidEventPolicyMutationBoundary>();
         services.AddScoped<ILocationPrivacyGovernanceService, LocationPrivacyGovernanceService>();
         services.AddScoped<ILocationPrivacyGovernanceMutationService, LocationPrivacyGovernanceMutationService>();
         services.AddScoped<IAddressGovernancePolicyResolver, AddressGovernancePolicyResolver>();
@@ -389,6 +397,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<AtprotoPdsRecoveryPolicyResolver>();
         services.AddScoped<IEventLifecyclePolicyProvider, EventLifecyclePolicyProvider>();
         services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
+        services.AddScoped<IEventReportingIntakeGuard, EventReportingIntakeGuard>();
+        services.AddScoped<EventPublicationExecutor>();
         services.AddScoped<IScheduledDeadlineDispatcher, NoOpScheduledDeadlineDispatcher>();
         services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
         services.AddSingleton<IWebhookEventTypeRegistry, WebhookEventTypeRegistry>();

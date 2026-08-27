@@ -262,6 +262,10 @@
                         {
                             <SupportAccessConsoleSection />
                         }
+                        else if (_currentSection == "configuration-manifest")
+                        {
+                            <ConfigurationManifestExportSection />
+                        }
                         else if (_currentSection == "scheduler" && _schedulerAvailable)
                         {
                             <InstanceSchedulerSection />
@@ -870,6 +874,7 @@
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
                 new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
                 new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
+                new("configuration-manifest", Icons.Material.Filled.FileDownload, "Configuration Manifest", Group: "Operations"),
                 new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access",   Group: "Operations"),
                 new("support-access-evidence", Icons.Material.Filled.ReceiptLong, "Support Evidence", Group: "Operations"),
                 new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
@@ -898,6 +903,7 @@
             new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
             new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
             new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
+            new("configuration-manifest", Icons.Material.Filled.FileDownload, "Configuration Manifest", Group: "Operations"),
             new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
             new("support-access-evidence", Icons.Material.Filled.ReceiptLong, "Support Evidence", Group: "Operations"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),

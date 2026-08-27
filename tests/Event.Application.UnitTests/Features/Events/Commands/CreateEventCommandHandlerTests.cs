@@ -852,6 +852,116 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
+    [Category("TCM110SubmissionPolicyVertical")]
+    public async Task Handle_OrganizationCreationWithDisabledTenantSubmissionPolicy_RejectsBeforePersistenceAndPublicationSideEffects()
+    {
+        var userId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            ActorTypeId = (int)ActorTypeEnum.Organization,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Organization publisher" }
+        };
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _organizationRepository.Exists(organizationId).Returns(true);
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(tenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum>(),
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(
+                Arg.Any<Explore.Domain.Event>(),
+                ValidationProfile.EventPublish,
+                Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+
+        var handler = CreateHandler(CreateManagedActorResolver(
+            tenantId,
+            userId,
+            actor,
+            organizationSubmissionEnabled: false,
+            groupSubmissionEnabled: true));
+
+        var result = await handler.Handle(new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Disabled organization submission",
+                OrganizationId = organizationId,
+                EventStatusId = (int)EventStatusEnum.Published,
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                Sessions = []
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    [Category("TCM110SubmissionPolicyVertical")]
+    public async Task Handle_GroupCreationWithDisabledTenantSubmissionPolicy_RejectsBeforePersistenceAndPublicationSideEffects()
+    {
+        var userId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        var groupId = Guid.CreateVersion7();
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            GroupId = groupId,
+            ActorTypeId = (int)ActorTypeEnum.Group,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Group publisher" }
+        };
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _groupRepository.Exists(groupId).Returns(true);
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(tenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublish,
+                RequiredEventFields = new HashSet<Enum>(),
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(
+                Arg.Any<Explore.Domain.Event>(),
+                ValidationProfile.EventPublish,
+                Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
+
+        var handler = CreateHandler(CreateManagedActorResolver(
+            tenantId,
+            userId,
+            actor,
+            organizationSubmissionEnabled: true,
+            groupSubmissionEnabled: false));
+
+        var result = await handler.Handle(new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Disabled group submission",
+                GroupId = groupId,
+                EventStatusId = (int)EventStatusEnum.Published,
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                Sessions = []
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
     public async Task Handle_WhenOrganizationAdminCheckFails_ReturnsFailedResponse()
     {
         var userId = Guid.NewGuid();
@@ -2213,6 +2323,150 @@ public class CreateEventCommandHandlerTests
             session.RoomId == selectedRoom.Id
             && session.LocationId == selectedLocation.Id
             && session.Slug == "default-room-selection-session-1"));
+    }
+
+    private CreateEventCommandHandler CreateHandler(IEventActorResolver actorResolver)
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
+        var eventLocationRepository = Substitute.For<IEventLocationRepository>();
+        eventLocationRepository.AddAsync(Arg.Any<EventLocation>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<EventLocation>(0));
+        var eventLocationAttachmentService = new EventLocationAttachmentService(
+            eventLocationRepository,
+            _userContext,
+            _tenantContext,
+            TimeProvider.System);
+
+        return new CreateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _eventSessionSpeakerRepository,
+            _eventIslamicAspectRepository,
+            _eventSessionIslamicAspectRepository,
+            _eventSessionLanguageRepository,
+            _eventRoleAssignmentRepository,
+            actorResolver,
+            _audienceAgeRepository,
+            _audienceGenderRepository,
+            _eventTypeRepository,
+            _storageObjectRepository,
+            _eventTemplateRepository,
+            _eventSeriesRepository,
+            _eventRegistrationPolicyRepository,
+            _eventCustomPropertyRepository,
+            _projectionUpdater,
+            _instantiationService,
+            _eventSessionTemplateRepository,
+            _eventSessionCustomPropertyRepository,
+            _eventSessionCustomPropertyProjectionUpdater,
+            _eventSessionTemplateInstantiationService,
+            _organizationRepository,
+            _groupRepository,
+            _locationRepository,
+            _registrationModeRepository,
+            _languageRepository,
+            _madhabRepository,
+            _categoryRepository,
+            _tagRepository,
+            _scheduleItemKindRepository,
+            _eventSessionKindRepository,
+            _actorRepository,
+            _eventDayRepository,
+            _locationRoomRepository,
+            _eventAgendaItemRepository,
+            _eventCategoriesRepository,
+            _eventTagsRepository,
+            _scheduleProjectionCalculator,
+            _addressGovernancePolicyResolver,
+            _userContext,
+            _tenantContext,
+            _cache,
+            new BusinessMetrics(meterFactory),
+            _unitOfWork,
+            _outboxRepository,
+            _lifecyclePolicyProvider,
+            _lifecycleReadinessEvaluator,
+            eventLocationAttachmentService,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System);
+    }
+
+    private static IEventActorResolver CreateManagedActorResolver(
+        Guid tenantId,
+        Guid userId,
+        Actor actor,
+        bool organizationSubmissionEnabled,
+        bool groupSubmissionEnabled)
+    {
+        var actorRepository = Substitute.For<IActorRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var tenantUserRepository = Substitute.For<ITenantUserRepository>();
+        var organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
+        var groupTenantRepository = Substitute.For<IGroupTenantRepository>();
+
+        tenantContext.TenantId.Returns(tenantId);
+        settingsResolver.ResolveAsync<bool>("events.user_submission_enabled", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        settingsResolver.ResolveAsync<bool>("events.organization_submission_enabled", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(organizationSubmissionEnabled);
+        settingsResolver.ResolveAsync<bool>("events.group_submission_enabled", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(groupSubmissionEnabled);
+
+        if (actor.OrganizationId is { } organizationId)
+        {
+            organizationMemberRepository.HasPermissionInOrganization(organizationId, userId, Arg.Any<string>())
+                .Returns(true);
+            actorRepository.GetActorByOrganizationId(organizationId).Returns(actor);
+            organizationTenantRepository.GetByOrganizationAndTenant(organizationId, tenantId, Arg.Any<CancellationToken>())
+                .Returns(new OrganizationTenant
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    OrganizationId = organizationId,
+                    Organization = null!,
+                    ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                    ApprovalStatus = null!,
+                    IsOrganizerEligible = true,
+                    IsSuspended = false,
+                    IsDeleted = false
+                });
+        }
+
+        if (actor.GroupId is { } groupId)
+        {
+            groupMemberRepository.HasPermissionInGroup(groupId, userId, Arg.Any<string>())
+                .Returns(true);
+            actorRepository.GetActorByGroupId(groupId).Returns(actor);
+            groupTenantRepository.GetByGroupAndTenant(groupId, tenantId, Arg.Any<CancellationToken>())
+                .Returns(new GroupTenant
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    GroupId = groupId,
+                    Group = null!,
+                    ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                    ApprovalStatus = null!,
+                    IsOrganizerEligible = true,
+                    IsSuspended = false,
+                    IsDeleted = false
+                });
+        }
+
+        return new EventActorResolver(
+            actorRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            settingsResolver,
+            tenantContext,
+            tenantUserRepository,
+            organizationTenantRepository,
+            groupTenantRepository);
     }
 
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()

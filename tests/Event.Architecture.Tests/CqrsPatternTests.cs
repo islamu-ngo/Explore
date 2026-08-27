@@ -1,3 +1,6 @@
+// ABOUTME: Enforces project CQRS namespace placement for commands, queries, and handlers.
+// ABOUTME: Reports exact violating type names so architecture regressions are actionable.
+
 namespace Event.Architecture.Tests;
 
 using System.Reflection;
@@ -25,7 +28,7 @@ public class CqrsPatternTests
             .ResideInNamespaceContaining("Commands")
             .GetResult();
 
-        await Assert.That(result.IsSuccessful).IsTrue();
+        await Assert.That(result.FailingTypeNames ?? []).IsEmpty();
     }
 
     [Test]
@@ -71,7 +74,7 @@ public class CqrsPatternTests
             .ResideInNamespaceContaining("Queries")
             .GetResult();
 
-        await Assert.That(result.IsSuccessful).IsTrue();
+        await Assert.That(result.FailingTypeNames ?? []).IsEmpty();
     }
 
     [Test]
@@ -87,6 +90,40 @@ public class CqrsPatternTests
             .GetResult();
 
         await Assert.That(result.IsSuccessful).IsTrue();
+    }
+
+    [Test]
+    public async Task ConfigurationManifestQueries_ShouldUseCanonicalQuerySuffixAndNamespace()
+    {
+        var result = Types.InAssembly(ApplicationAssembly)
+            .That()
+            .ResideInNamespaceContaining("Features.ConfigurationManifest")
+            .And()
+            .HaveNameEndingWith("Query")
+            .And()
+            .AreClasses()
+            .Should()
+            .ResideInNamespaceContaining("Requests.Queries")
+            .GetResult();
+
+        await Assert.That(result.FailingTypeNames ?? []).IsEmpty();
+    }
+
+    [Test]
+    public async Task ConfigurationManifestQueryHandlers_ShouldUseCanonicalSuffixAndNamespace()
+    {
+        var result = Types.InAssembly(ApplicationAssembly)
+            .That()
+            .ResideInNamespaceContaining("Features.ConfigurationManifest")
+            .And()
+            .HaveNameEndingWith("QueryHandler")
+            .And()
+            .AreClasses()
+            .Should()
+            .ResideInNamespaceContaining("Handlers.Queries")
+            .GetResult();
+
+        await Assert.That(result.FailingTypeNames ?? []).IsEmpty();
     }
 
     #endregion

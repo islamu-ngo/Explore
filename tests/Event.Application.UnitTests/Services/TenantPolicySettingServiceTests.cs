@@ -1,10 +1,12 @@
 // ABOUTME: Unit tests for tenant policy effective setting resolution.
 // ABOUTME: Protects MCP runtime defaults and tenant-lock behavior in the tenant admin read model.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using NSubstitute;
@@ -17,6 +19,8 @@ public sealed class TenantPolicySettingServiceTests
     private readonly ITenantSettingRepository _tenantSettings = Substitute.For<ITenantSettingRepository>();
     private readonly ITenantRepository _tenants = Substitute.For<ITenantRepository>();
     private readonly RecordingSettingMutationLock _mutationLock = new();
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyBoundary =
+        Substitute.For<IPublicationPolicyMutationBoundary>();
     private readonly TenantPolicySettingService _service;
 
     public TenantPolicySettingServiceTests()
@@ -33,12 +37,17 @@ public sealed class TenantPolicySettingServiceTests
         _tenants.GetByIdAsNoTrackingAsync(
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SucceededBoundaryResult());
 
         _service = new TenantPolicySettingService(
             _systemSettings,
             _tenantSettings,
             _tenants,
-            _mutationLock);
+            _mutationLock,
+            _publicationPolicyBoundary);
     }
 
     [Test]
@@ -133,6 +142,9 @@ public sealed class TenantPolicySettingServiceTests
 
         await Assert.That(_mutationLock.Keys.Count).IsEqualTo(
             _mutationLock.Keys.Distinct(StringComparer.Ordinal).Count());
+        await Assert.That(_mutationLock.Keys.Where(PublicationPolicySettingKeys.All.Contains).SequenceEqual(
+            PublicationPolicySettingKeys.All)).IsTrue();
+        await Assert.That(_mutationLock.Keys).Contains(GovernanceSettingKeys.EventReporting.IntakeEnabled);
         await Assert.That(_mutationLock.Keys).Contains(GovernanceSettingKeys.Deployment.Mode);
         await Assert.That(_mutationLock.Keys).Contains(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
         await Assert.That(allSystemReadsInsideLock).IsTrue();
@@ -197,6 +209,229 @@ public sealed class TenantPolicySettingServiceTests
         await Assert.That(removal.OldValue).IsEqualTo("true");
         await Assert.That(removal.NewValue).IsNull();
     }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_WhenIntakeIsDisabledAndProposedSubmissionIsUnsafe_ThrowsMachineFailureBeforeOtherWrites()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        PublicationPolicyTenantMutationRequest? boundaryRequest = null;
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                boundaryRequest = callInfo.ArgAt<PublicationPolicyTenantMutationRequest>(0);
+                return FailedBoundaryResult("event_reporting_intake_unsafe_publication_policy");
+            });
+
+        FluentValidation.ValidationException exception = (await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            _service.ApplyTenantSettingsAsync(tenantId, actorUserId, new UpdateTenantPolicyRequest
+            {
+                AllowUserSubmittedEvents = true,
+                AllowOrganizationSubmittedEvents = false,
+                AllowGroupSubmittedEvents = false,
+                RequireEventApproval = false
+            })))!;
+
+        await Assert.That(exception.Errors.Count()).IsEqualTo(1);
+        await Assert.That(exception.Errors.Single().ErrorCode)
+            .IsEqualTo("event_reporting_intake_unsafe_publication_policy");
+        await Assert.That(boundaryRequest).IsNotNull();
+        await Assert.That(boundaryRequest!.Mutations.Any(mutation =>
+            mutation.Key == GovernanceSettingKeys.Events.UserSubmissionEnabled
+            && mutation.Kind == PublicationPolicyMutationKind.Set
+            && mutation.JsonValue == "true")).IsTrue();
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs().RemoveOverrideAsync(default, default!, default);
+    }
+
+    [Test]
+    [Arguments("event_reporting_intake_policy_invalid")]
+    [Arguments("event_reporting_policy_locked")]
+    public async Task ApplyTenantSettingsAsync_WhenBoundaryRejects_MapsExactMachineFailureWithoutWritesOrNotifications(
+        string failureCode)
+    {
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(FailedBoundaryResult(failureCode));
+
+        FluentValidation.ValidationException exception = (await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            _service.ApplyTenantSettingsAsync(Guid.NewGuid(), Guid.NewGuid(), new UpdateTenantPolicyRequest())))!;
+
+        await Assert.That(exception.Errors.Count()).IsEqualTo(1);
+        await Assert.That(exception.Errors.Single().ErrorCode).IsEqualTo(failureCode);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs().RemoveOverrideAsync(default, default!, default);
+    }
+
+    [Test]
+    [Arguments(true, true, true, true)]
+    [Arguments(false, false, false, false)]
+    public async Task ApplyTenantSettingsAsync_WhenProposedPublicationPolicyIsSafe_SubmitsOneCompleteBoundaryBatch(
+        bool requireApproval,
+        bool allowUserSubmission,
+        bool allowOrganizationSubmission,
+        bool allowGroupSubmission)
+    {
+        var tenantId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource();
+        PublicationPolicyTenantMutationRequest? boundaryRequest = null;
+        CancellationToken boundaryCancellationToken = default;
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                boundaryRequest = callInfo.ArgAt<PublicationPolicyTenantMutationRequest>(0);
+                boundaryCancellationToken = callInfo.ArgAt<CancellationToken>(1);
+                return SucceededBoundaryResult();
+            });
+
+        await _service.ApplyTenantSettingsAsync(tenantId, actorUserId, new UpdateTenantPolicyRequest
+        {
+            RequireEventApproval = requireApproval,
+            AllowUserSubmittedEvents = allowUserSubmission,
+            AllowOrganizationSubmittedEvents = allowOrganizationSubmission,
+            AllowGroupSubmittedEvents = allowGroupSubmission
+        }, cancellation.Token);
+
+        await Assert.That(boundaryRequest).IsNotNull();
+        await Assert.That(boundaryRequest!.TenantId).IsEqualTo(tenantId);
+        await Assert.That(boundaryRequest.ActorUserId).IsEqualTo(actorUserId);
+        await Assert.That(boundaryRequest.OccurredAtUtc.Kind).IsEqualTo(DateTimeKind.Utc);
+        await Assert.That(boundaryRequest.OccurredAtUtc).IsNotEqualTo(default(DateTime));
+        await Assert.That(boundaryRequest.LockedSystemBehavior)
+            .IsEqualTo(PublicationPolicyLockedSystemBehavior.RemoveOverride);
+        await Assert.That(boundaryRequest.Mutations.Select(mutation => mutation.Key).SequenceEqual(
+        [
+            GovernanceSettingKeys.Events.RequireApproval,
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+            GovernanceSettingKeys.Events.GroupSubmissionEnabled
+        ])).IsTrue();
+        await Assert.That(boundaryRequest.Mutations.All(mutation =>
+            mutation.Kind == PublicationPolicyMutationKind.Set
+            && mutation.TenantId == tenantId
+            && mutation.IsLocked is null)).IsTrue();
+        await Assert.That(boundaryRequest.Mutations.Select(mutation => mutation.JsonValue).SequenceEqual(
+        [
+            requireApproval ? "true" : "false",
+            allowUserSubmission ? "true" : "false",
+            allowOrganizationSubmission ? "true" : "false",
+            allowGroupSubmission ? "true" : "false"
+        ])).IsTrue();
+        await Assert.That(boundaryRequest.Mutations.Any(mutation =>
+            mutation.Key == GovernanceSettingKeys.EventReporting.IntakeEnabled)).IsFalse();
+        await Assert.That(boundaryCancellationToken).IsEqualTo(cancellation.Token);
+        await Assert.That(_mutationLock.LastCancellationToken).IsEqualTo(cancellation.Token);
+        await _publicationPolicyBoundary.Received(1).ApplyTenantAsync(
+            Arg.Any<PublicationPolicyTenantMutationRequest>(),
+            cancellation.Token);
+    }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_MergesDeferredBoundaryNotificationsBeforeUnguardedNotifications()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var boundaryNotification = new SettingChangedNotification(
+            GovernanceSettingKeys.Events.RequireApproval,
+            "false",
+            "true",
+            SettingSource.TenantOverride,
+            tenantId,
+            actorUserId,
+            DateTime.UtcNow);
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SucceededBoundaryResult(boundaryNotification));
+
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyTenantSettingsAsync(
+            tenantId,
+            actorUserId,
+            new UpdateTenantPolicyRequest { AnnouncementBarEnabled = true });
+
+        await Assert.That(notifications[0]).IsEqualTo(boundaryNotification);
+        await Assert.That(notifications.Skip(1).Any(notification =>
+            notification.Key == GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled)).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_WhenEventPolicyIsLocked_DelegatesOverrideCleanupToBoundary()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var removal = new SettingChangedNotification(
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            "true",
+            null,
+            SettingSource.TenantOverride,
+            tenantId,
+            actorUserId,
+            DateTime.UtcNow);
+        PublicationPolicyTenantMutationRequest? boundaryRequest = null;
+        _publicationPolicyBoundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                boundaryRequest = callInfo.ArgAt<PublicationPolicyTenantMutationRequest>(0);
+                return SucceededBoundaryResult(removal);
+            });
+
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyTenantSettingsAsync(
+            tenantId,
+            actorUserId,
+            new UpdateTenantPolicyRequest { AllowUserSubmittedEvents = false });
+
+        await Assert.That(boundaryRequest).IsNotNull();
+        await Assert.That(boundaryRequest!.LockedSystemBehavior)
+            .IsEqualTo(PublicationPolicyLockedSystemBehavior.RemoveOverride);
+        await Assert.That(notifications[0]).IsEqualTo(removal);
+        await _tenantSettings.DidNotReceive().SetValueAsync(
+            tenantId,
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<Guid?>());
+    }
+
+    [Test]
+    public async Task ApplyTenantSettingsAsync_WhenAiProviderIsInvalid_DoesNotInvokeBoundaryOrWrite()
+    {
+        await Assert.ThrowsAsync<Explore.Application.Exceptions.ValidationException>(() =>
+            _service.ApplyTenantSettingsAsync(Guid.NewGuid(), Guid.NewGuid(), new UpdateTenantPolicyRequest
+            {
+                AiAssistantEnabled = true,
+                AiAssistantProvider = "unsupported"
+            }));
+
+        await _publicationPolicyBoundary.DidNotReceiveWithAnyArgs().ApplyTenantAsync(default!, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs().RemoveOverrideAsync(default, default!, default);
+    }
+
+    private static Task<PublicationPolicyMutationResult> SucceededBoundaryResult(
+        params SettingChangedNotification[] notifications) =>
+        Task.FromResult(new PublicationPolicyMutationResult(
+            Success: true,
+            FailureCode: null,
+            Message: string.Empty,
+            DeferredNotifications: [.. notifications]));
+
+    private static Task<PublicationPolicyMutationResult> FailedBoundaryResult(string failureCode) =>
+        Task.FromResult(new PublicationPolicyMutationResult(
+            Success: false,
+            FailureCode: failureCode,
+            Message: string.Empty,
+            DeferredNotifications: []));
 
     private void UseSystemSettings(params SystemSetting[] settings)
     {

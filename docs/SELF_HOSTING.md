@@ -1288,10 +1288,163 @@ Exact proximity discovery is **planned, not implemented**. The current database 
 
 ---
 
+## Configuration Manifest Deployment And Recovery
+
+One `ConfigurationManifest` configures one deployment instance. Its required
+`spec.instance` section and one-or-more `spec.tenants` entries use the same
+schema in single-tenant and multi-tenant mode. Treat the file as reviewed,
+non-secret bootstrap input under operator version control, not as a desired-
+state reconciler or backup.
+
+### Split Compose
+
+Compose mounts `${CONFIGURATION_MANIFEST_HOST_DIRECTORY}` read-only at
+`/etc/islamu-event/bootstrap` only in `event-migrationservice`. The API does
+not receive manifest inputs and waits for the one-shot migration service to
+complete successfully.
+
+1. Copy the example environment file and leave
+   `CONFIGURATION_MANIFEST_MODE=Off` until the JSON is ready.
+2. Place the file at
+   `./deploy/bootstrap/configuration-manifest.json`, or set
+   `CONFIGURATION_MANIFEST_HOST_DIRECTORY` to another existing host directory.
+3. Validate against
+   `schemas/configuration-manifest-v1alpha1.schema.json`.
+4. Set `CONFIGURATION_MANIFEST_MODE=ValidateOnly` and run the migration service.
+5. After validation succeeds, set the mode to `Bootstrap` and start the stack.
+
+`CONFIGURATION_MANIFEST_PATH` is the container-internal path. It does not copy
+or mount the host file. `.env` contains only the mode, the path visible to the
+owner, and the host directory selected for Compose; instance and tenant
+business values stay in the mounted JSON file. Keep `/app/data` for mutable
+databases, setup state, and durable runtime data; convention discovery never
+reads manifests from that directory.
+
+### Standalone `docker run`
+
+Pass the environment file and configuration mount as separate inputs:
+
+```bash
+docker run --rm \
+  --env-file .env \
+  --env CONFIGURATION_MANIFEST_MODE=Bootstrap \
+  --env CONFIGURATION_MANIFEST_PATH=/etc/islamu-event/bootstrap/configuration-manifest.json \
+  --mount type=bind,src="$(pwd)/configuration-manifest.json",dst=/etc/islamu-event/bootstrap/configuration-manifest.json,readonly \
+  --mount type=volume,src=islamu-event-data,dst=/app/data \
+  --publish 8080:8080 \
+  ghcr.io/islamu/event-standalone@sha256:<published-digest>
+```
+
+The container runs as `$APP_UID`. Every host directory in the manifest path
+must grant directory traversal and the file must grant read access to that
+UID. Prefer ownership or an ACL; do not use world-writable permissions.
+Typical non-secret configuration permissions are `0755` on directories and
+`0644` on the file.
+
+### Pinned Derived Image
+
+For immutable infrastructure, pin the approved base digest and copy the file
+with non-root ownership:
+
+```dockerfile
+FROM ghcr.io/islamu/event-standalone@sha256:<published-digest>
+COPY --chown=$APP_UID:$APP_UID configuration-manifest.json /etc/islamu-event/bootstrap/configuration-manifest.json
+ENV CONFIGURATION_MANIFEST_MODE=Bootstrap
+ENV CONFIGURATION_MANIFEST_PATH=/etc/islamu-event/bootstrap/configuration-manifest.json
+```
+
+Never use a floating deployment tag for this workflow. Rebuild after every
+manifest or base-image change and record both digests in the release evidence.
+
+### Rerun And Recovery
+
+- `Off` performs no discovery. `ValidateOnly` validates the complete instance
+  and tenant document and writes nothing.
+- The first successful `Bootstrap` applies the approved instance section,
+  absent tenants, operation evidence, and durable effects atomically. It
+  records an immutable normalized instance-section digest and bootstrap
+  generation.
+- A same-section rerun does not replay historical instance values. New tenants
+  are validated against fresh Day 2 instance authority; existing tenant slugs
+  are skipped wholesale.
+- A changed instance section fails with
+  `configuration_manifest_instance_already_bootstrapped`. Use authenticated
+  Day 2 administration for instance changes. Reset the development database
+  and its manifest audit state only when intentionally rebuilding a disposable
+  development deployment; do not delete rows selectively.
+- A pre-commit validation, lock, or write failure rolls back the whole
+  manifest. Correct the file or database condition and rerun the same owner.
+- A committed operation is durable even if post-commit cache/notification
+  delivery is interrupted. Split startup leaves those runtime-only effects in
+  the generic outbox; the API dispatcher retries them after startup.
+- Startup logs expose mode, API version, digest prefix, byte count, tenant
+  count, operation ID, and stable failure code. They intentionally do not log
+  the configured path or manifest values.
+- To disable future startup processing, set the mode to `Off` and recreate the
+  owning process. If convention discovery was used, removing the convention
+  file is also a no-op; a missing explicitly configured path intentionally
+  remains a startup failure. Disablement does not delete or revert applied
+  state.
+
+### Operator State/Action Matrix
+
+| State | Safe action |
+|---|---|
+| Explicit path is missing or unreadable | Restore/mount the exact reviewed file or correct the owner-visible absolute path. Startup remains failed; do not move bootstrap to an API replica. |
+| Convention file is absent | Leave mode `Off` or continue with the documented no-op. Use an explicit path when deployment policy requires a file. |
+| File is invalid | Run `ValidateOnly`, correct every stable error, and rerun. No state was applied. |
+| Original instance section is lost | Use the operation ID, manifest name, digest, and changed-key codes to locate the source in operator version control or backup. Audit deliberately cannot reconstruct values. |
+| Same section follows Day 2 changes | Keep the recorded instance section unchanged. New tenants validate against current effective instance settings and policy revisions; historical bootstrap values are not reapplied. |
+| Instance-section digest changes | Make the instance change through Day 2 API/UI, or reset the whole disposable development instance before a fresh bootstrap. Never force-overwrite the recorded digest. |
+| Tenant already exists | Manage it through Day 2 API/UI. Bootstrap skips the tenant and every nested value wholesale. |
+| New tenant conflicts with current instance policy | Correct the tenant section or change current authority through its owning Day 2 workflow, then rerun the unchanged instance section. |
+| Failure audit cannot be persisted | Treat startup as failed. Restore database availability and use correlation/trace evidence to diagnose; never assume success. |
+| Database is restored | Restore matching manifest source and bootstrap/audit data from the same recovery point, then validate the digest before traffic. |
+| Export exceeds 4 MiB | Use supported Day 2 APIs or a database backup. The whole-instance export returns `configuration_manifest_export_too_large` before sending partial bytes and is not a backup. |
+| Processing must be disabled | Set `CONFIGURATION_MANIFEST_MODE=Off` and recreate the owner. Preserve applied data and audit evidence. |
+
+## Configuration Manifest Export Workflow
+
+Only instance/Control Plane authority may export the whole deployment. The
+canonical **Overrides** and **Portable** views include approved instance
+configuration and all active tenants in one bounded, deterministic file.
+Tenant administrators do not receive a manifest-shaped partial export. HAL is
+the sole affordance gate; absent export relations mean the browser does not
+offer the action.
+
+Both views omit secrets, PII, provider credentials, and operational/sovereign
+state. Portable values remain constrained by the target instance's current
+authority. Keep Infisical or `.env` material and database backups independent;
+export is neither secret recovery nor database recovery.
+
+### Self-hosted paid-policy documents
+
+Self-hosted operators may include the typed `instance.paid_event_policy` and
+tenant `tenant.paid_event_policy` documents. Callers do not select persisted
+revision authority. The complete compiler binds each tenant narrowing to the
+exact effective instance revision proposed or reread by the same apply plan,
+and every tenant value must remain inside that ceiling. A concurrent or Day 2
+policy change is fenced inside the serializable transaction; startup either
+uses fresh authority or fails without partial instance or tenant state.
+
+The document is not provider configuration. Keep platform API keys, webhook
+secrets, connected-account identities, provider profiles, and other secret
+material in Infisical or `.env`; they are forbidden in manifests and exports.
+Stop/review state, checkout handoff, reconciliation, dispute/liability
+allocation, and refund execution also remain operational data and cannot be
+restored from configuration.
+
+Portable export is deployment-bound because it records current authority and
+flattened safe values. Before applying it elsewhere, compare the target
+instance ceiling and legal/provider operating model. Technical broadening
+rejection is not a substitute for operator, legal, or scholarly review of a
+deployment's payment model.
+
 ## Related Documentation
 
 | Document | Purpose |
 |---|---|
+| [API.md](API.md) | Authenticated API and HAL contracts |
 | [CONFIGURATION.md](CONFIGURATION.md) | Full runtime configuration reference and key mappings |
 | [SECRETS.md](SECRETS.md) | Secret provider behavior and key mapping |
 | [OPERATIONS.md](OPERATIONS.md) | Health, startup, shutdown, and runtime safeguards |

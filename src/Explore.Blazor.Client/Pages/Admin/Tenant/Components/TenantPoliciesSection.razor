@@ -1,5 +1,5 @@
 @* ABOUTME: Renders event and organization policy settings for the Tenant Admin Settings sidebar. *@
-@* ABOUTME: Includes user submission, approval, and verification switches with instance-level lock support. *@
+@* ABOUTME: Includes reporting intake, submission, approval, and verification controls with authoritative locks. *@
 
 @implements IDisposable
 @using MudBlazor
@@ -20,6 +20,7 @@
             Control how events are submitted, approved, and how organizations are verified.
         </MudText>
     </div>
+    <TenantReportingIntakePolicySection />
     <MudStack Spacing="3">
         <MudSwitch T="bool?"
                    Value="@PolicyDisplayValue(EventsUserSubmissionEnabledKey)"

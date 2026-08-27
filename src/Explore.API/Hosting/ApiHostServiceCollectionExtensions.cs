@@ -48,13 +48,15 @@ namespace Explore.API.Hosting;
 public sealed record ApiHostCompositionState(
     bool IsOpenApiGeneration,
     bool UseQuartzScheduler,
-    bool HttpsRedirectionEnabled);
+    bool HttpsRedirectionEnabled,
+    bool OwnsDevelopmentMigrations = true);
 
 public static class ApiHostServiceCollectionExtensions
 {
     public static ApiHostCompositionState AddApiHostServices(
         this WebApplicationBuilder builder,
-        Func<bool> isShuttingDown)
+        Func<bool> isShuttingDown,
+        bool ownsDevelopmentMigrations = true)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(isShuttingDown);
@@ -123,6 +125,7 @@ public static class ApiHostServiceCollectionExtensions
 
         builder.Services.AddApiCaching();
         builder.Services.AddScoped<IAtprotoDiscoveryCacheInvalidator, AtprotoDiscoveryCacheInvalidator>();
+        builder.Services.AddScoped<IEventReportingOutputCacheInvalidator, EventReportingOutputCacheInvalidator>();
         builder.Services.AddSingleton<IEventCalendarFileBuilder, IcalNetEventCalendarFileBuilder>();
         builder.Services.AddSingleton<IEventOpenGraphImageRenderer, SkiaEventOpenGraphImageRenderer>();
         builder.Services.AddScoped<ICoopWebhookSignatureValidator, CoopWebhookSignatureValidator>();
@@ -275,6 +278,7 @@ public static class ApiHostServiceCollectionExtensions
             options.AddOperationTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddOperationTransformer<StorageUploadRequestBodyTransformer>();
             options.AddOperationTransformer<EventOpenGraphImageResponseTransformer>();
+            options.AddOperationTransformer<ConfigurationManifestExportResponseTransformer>();
         });
 
         builder.AddApiBackgroundProcessing(
@@ -451,7 +455,8 @@ public static class ApiHostServiceCollectionExtensions
         return new ApiHostCompositionState(
             isOpenApiGeneration,
             useQuartzScheduler,
-            httpsRedirectionEnabled);
+            httpsRedirectionEnabled,
+            ownsDevelopmentMigrations);
     }
 
 

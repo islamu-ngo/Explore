@@ -88,6 +88,7 @@ public class EventMappingProfile : Profile
 
         // Event → EventDto
         CreateMap<Event, EventDto>()
+            .ForMember(dest => dest.IsReportingIntakeEnabled, opt => opt.Ignore())
             .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
             .ForMember(dest => dest.TicketPriceSummary, opt => opt.MapFrom(src => EventTicketPriceSummaryMapper.Map(src)))
             .ForMember(dest => dest.ProvenanceTypeId, opt => opt.MapFrom(src => src.EventProvenanceTypeId))
@@ -155,6 +156,7 @@ public class EventMappingProfile : Profile
 
         // Event → EventListDto
         CreateMap<Event, EventListDto>()
+            .ForMember(dest => dest.IsReportingIntakeEnabled, opt => opt.Ignore())
             .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
             .ForMember(dest => dest.TicketPriceSummary, opt => opt.MapFrom(src => EventTicketPriceSummaryMapper.Map(src)))
             .ForMember(dest => dest.EventTypeFullName, opt => opt.MapFrom(src => src.EventType != null ? src.EventType.FullName : null))

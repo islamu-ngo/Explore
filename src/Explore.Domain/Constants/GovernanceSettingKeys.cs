@@ -96,6 +96,11 @@ public static class GovernanceSettingKeys
         public const string CardClickOpensDetailPage = "events.card_click_opens_detail_page";
     }
 
+    public static class EventReporting
+    {
+        public const string IntakeEnabled = "event_reporting.intake_enabled";
+    }
+
     public static class Organizations
     {
         public const string VerificationRequired = "organizations.verification_required";

@@ -18,12 +18,29 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (!IsTenantBrandingDocument(resourceAttributes)
+        bool isView = string.Equals(
+            action,
+            AuthorizationActions.TenantSettings.View,
+            StringComparison.Ordinal);
+        if (!isView
+            && !IsTenantBrandingDocument(resourceAttributes)
             && resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
             && lockedObj is true)
         {
             LogDecision("deny", "locked_by_instance", "islamuevent_tenant_setting", action);
             return false;
+        }
+
+        bool isInstanceAdmin =
+            await _adminContext.IsInstanceAdminAsync(cancellationToken);
+        if (isInstanceAdmin && isView)
+        {
+            LogDecision(
+                "allow",
+                "is_instance_admin=true,action=view",
+                ResourceKinds.TenantSetting,
+                action);
+            return true;
         }
 
         var tenantId = _tenantContext.TenantId;
@@ -530,6 +547,29 @@ public partial class FallbackAuthorizationService
 
         LogDecision("deny", "no_event_authority", resourceKind, action);
         return false;
+    }
+
+    private async Task<bool> EvaluateApprovePublishAccessAsync(
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (_machinePrincipalAccessor.IsMachineCaller
+            || !TryResolveEventContext(ResourceKinds.Event, resourceId, resourceAttributes, out var tenantId, out var eventId)
+            || tenantId == Guid.Empty
+            || eventId == Guid.Empty
+            || tenantId != _tenantContext.TenantId)
+        {
+            return false;
+        }
+
+        if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
+        {
+            return true;
+        }
+
+        return !SafeMode
+            && await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
     }
 
     private async Task<bool> EvaluateManageRegistrationsAccessAsync(

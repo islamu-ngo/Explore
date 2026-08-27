@@ -286,8 +286,21 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             reporterIpHash: null,
             reporterUserAgentHash: null,
             "spam",
+            "misleading",
             twentyFourHoursAgo,
             CancellationToken.None);
+        var differentRemedyExists = await repository
+            .ExistsByReporterAndEventAsync(
+                tenant.Id,
+                @event.Id,
+                user.Id,
+                actor.Id,
+                reporterIpHash: null,
+                reporterUserAgentHash: null,
+                "spam",
+                "legal_or_copyright_complaint",
+                twentyFourHoursAgo,
+                CancellationToken.None);
         var outsideWindowExists = await repository.ExistsByReporterAndEventAsync(
             tenant.Id,
             @event.Id,
@@ -296,6 +309,7 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             reporterIpHash: null,
             reporterUserAgentHash: null,
             "spam",
+            "misleading",
             now.AddMinutes(-30),
             CancellationToken.None);
         var wrongTenantExists = await repository.ExistsByReporterAndEventAsync(
@@ -306,6 +320,7 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             reporterIpHash: null,
             reporterUserAgentHash: null,
             "spam",
+            "misleading",
             twentyFourHoursAgo,
             CancellationToken.None);
         var reporterCount = await repository.CountByReporterSinceAsync(
@@ -332,6 +347,7 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             CancellationToken.None);
 
         await Assert.That(duplicateExists).IsTrue();
+        await Assert.That(differentRemedyExists).IsFalse();
         await Assert.That(outsideWindowExists).IsFalse();
         await Assert.That(wrongTenantExists).IsFalse();
         await Assert.That(reporterCount).IsEqualTo(2);

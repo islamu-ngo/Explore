@@ -5,9 +5,11 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain.Settings;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,8 @@ public class UnlockSettingCommandHandler
     private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UnlockSettingCommandHandler> _logger;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyMutationBoundary;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UnlockSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -30,6 +34,8 @@ public class UnlockSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<UnlockSettingCommandHandler> logger,
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
+        IUnitOfWork unitOfWork,
         ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
@@ -39,6 +45,8 @@ public class UnlockSettingCommandHandler
         _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
+        _publicationPolicyMutationBoundary = publicationPolicyMutationBoundary;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -69,6 +77,55 @@ public class UnlockSettingCommandHandler
 
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
             request.Scope, _tenantContext, _currentUserService);
+
+        bool isGuardedPublicationPolicyMutation = PublicationPolicySettingKeys.All
+            .Contains(request.Key, StringComparer.Ordinal);
+        if (isGuardedPublicationPolicyMutation && request.Scope == SettingScope.Tenant)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                "setting_not_lockable",
+                $"Setting '{request.Key}' cannot be unlocked at Tenant scope.");
+        }
+
+        if (isGuardedPublicationPolicyMutation)
+        {
+            var context = SettingCommandHelper.BuildSettingContext(
+                request.Scope, _tenantContext, _currentUserService);
+            ResolvedSetting? resolved = await _resolver.ResolveWithMetadataAsync(
+                request.Key, context, cancellationToken);
+            string value = resolved?.Value ?? definition.DefaultValue;
+            DateTime occurredAtUtc = DateTime.UtcNow;
+            PublicationPolicyMutationResult mutationResult = await _unitOfWork.ExecuteInTransactionAsync(
+                token => _publicationPolicyMutationBoundary.ApplyInstanceAsync(
+                    new PublicationPolicyInstanceMutationRequest(
+                        actorId,
+                        occurredAtUtc,
+                        [new PublicationPolicySettingMutation(
+                            request.Key,
+                            PublicationPolicyMutationKind.Set,
+                            value,
+                            TenantId: null,
+                            IsLocked: false)]),
+                    token),
+                cancellationToken);
+            if (!mutationResult.Success)
+            {
+                string failureCode = string.IsNullOrWhiteSpace(mutationResult.FailureCode)
+                    ? "event_reporting_intake_policy_invalid"
+                    : mutationResult.FailureCode;
+                return BaseCommandResponse.Failure<Guid>(failureCode, mutationResult.Message);
+            }
+
+            _resolver.InvalidateCache(request.Scope, scopeId);
+            foreach (SettingChangedNotification notification in mutationResult.DeferredNotifications)
+            {
+                await _mediator.Publish(notification, CancellationToken.None);
+            }
+
+            return BaseCommandResponse.Success(
+                scopeId,
+                $"Setting '{request.Key}' unlocked at {request.Scope} scope.");
+        }
 
         await _resolver.UnlockAsync(
             request.Key, request.Scope, scopeId, actorId, cancellationToken);

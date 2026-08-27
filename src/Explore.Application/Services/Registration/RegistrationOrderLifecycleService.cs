@@ -1282,8 +1282,19 @@ public sealed partial class RegistrationOrderLifecycleService(
     private static RegistrationOrderLifecycleResponseDto Failure(
         Guid orderId,
         RegistrationOrder? order,
-        string error) => RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.Validation(
-            [error], "Registration order lifecycle change failed.", orderId));
+        string error)
+    {
+        BaseCommandResponse<Guid> failure = BaseCommandResponse.Validation(
+            [error], "Registration order lifecycle change failed.", orderId);
+        return new RegistrationOrderLifecycleResponseDto(
+            failure.Id,
+            failure.IsSuccess,
+            failure.Message,
+            failure.Errors,
+            failure.FailureCode,
+            failure.QuotaExceeded,
+            order is null ? null : RegistrationOrderDto.From(order));
+    }
 
 
     private sealed record FinalizationPlan(

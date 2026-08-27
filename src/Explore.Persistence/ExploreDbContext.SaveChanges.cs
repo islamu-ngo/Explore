@@ -86,6 +86,14 @@ public partial class ExploreDbContext
                 throw new InvalidOperationException("Admission check-in events are append-only and cannot be modified or deleted.");
             }
 
+            if (entry.Entity is Explore.Domain.ConfigurationManifestOperation
+                    or Explore.Domain.ConfigurationManifestTenantResult
+                && entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Configuration manifest audit evidence is append-only and cannot be modified or deleted.");
+            }
+
             if (entry.Entity is Explore.Domain.EventLocationDisclosureAudit
                     or Explore.Domain.EventLocationExactReadAudit
                     or Explore.Domain.PrivacyErasureReplayCheckpoint

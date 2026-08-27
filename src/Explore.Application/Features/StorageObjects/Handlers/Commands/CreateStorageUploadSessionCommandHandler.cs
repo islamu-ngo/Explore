@@ -20,6 +20,7 @@ namespace Explore.Application.Features.StorageObjects.Handlers.Commands;
 public class CreateStorageUploadSessionCommandHandler
     : IRequestHandler<CreateStorageUploadSessionCommand, BaseCommandResponse<StorageUploadSessionDto>>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromMinutes(15);
 
     private readonly IStoragePolicyResolver _storagePolicyResolver;
@@ -278,8 +279,8 @@ public class CreateStorageUploadSessionCommandHandler
             : BaseCommandResponse.Failure<StorageUploadSessionDto>(failureCode, message, errors);
 
     private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
-        BaseCommandResponse.Validation<StorageUploadSessionDto>(
-            ["Upload session reservation failed."],
+        BaseCommandResponse.Failure<StorageUploadSessionDto>(
+            PrivacyErasureFencedFailureCode,
             "Upload session reservation failed.");
 
     internal static StorageUploadSessionDto Map(

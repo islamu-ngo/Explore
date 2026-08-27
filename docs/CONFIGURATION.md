@@ -25,6 +25,56 @@ Secrets have an additional ownership contract that applies across the platform:
 
 Do not treat environment variables as absolute authority forever. In application-managed mode the precedence is: explicit saved application/database setting, then deployment bootstrap value, then default. In deployment-managed mode the selected external source is authoritative and application-managed DB values for that field are ignored.
 
+## Configuration Manifest Contract
+
+The governed editor and operator contract is
+[`schemas/configuration-manifest-v1alpha1.schema.json`](../schemas/configuration-manifest-v1alpha1.schema.json).
+It uses JSON Schema Draft 2020-12 with immutable identifier
+`https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json`.
+That URL is currently an identifier, not a promise that a public endpoint serves the
+bytes. Documentation must not describe it as downloadable until deployment evidence
+proves the published bytes match the checked-in artifact.
+
+The current envelope is exact and case-sensitive:
+
+- `$schema`: `https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json`
+- `apiVersion`: `configuration.islamu.org/v1alpha1`
+- `kind`: `ConfigurationManifest`
+- required `spec.instance.settings` and `spec.instance.documents` closed maps
+- required `spec.tenants` array containing one or more unique tenant entries
+
+The same envelope configures single-tenant and multi-tenant deployments. The
+instance and tenant catalogs are independent explicit allowlists; adding a
+setting to the general registry never makes it manifest-owned. Credentials,
+provider configuration, deployment topology, operational locks, audit state,
+PII, and persistence identities remain excluded. `additionalProperties: false`
+closes every typed object.
+
+Generate or verify the artifact with the repository-pinned .NET SDK:
+
+```bash
+dotnet run \
+  --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
+  --configuration Release -- \
+  --write schemas/configuration-manifest-v1alpha1.schema.json
+
+dotnet run \
+  --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
+  --configuration Release -- \
+  --check schemas/configuration-manifest-v1alpha1.schema.json
+```
+
+Never hand-edit the generated artifact. JSON Schema supports editor completion and
+preflight diagnostics, but the bounded runtime reader and Application validator remain
+authoritative for duplicate keys, exact UTF-8 bytes, publication-policy
+cross-references, sensitive-key rejection, and bootstrap eligibility.
+
+The ingestion option contract recognizes `CONFIGURATION_MANIFEST_MODE=Off`,
+`ValidateOnly`, or `Bootstrap`, plus optional absolute
+`CONFIGURATION_MANIFEST_PATH`. Startup application of those options is activated in the
+post-migration bootstrap phase; the schema and reader contract alone do not perform
+database writes.
+
 ## Aspire Hosting Topology
 
 `Hosting:Topology` is an AppHost-only setting for local Aspire composition; it
@@ -1657,8 +1707,128 @@ Split `Explore.Blazor` requires `ConnectionStrings:cache` to reach Redis for one
 
 Instance and tenant paid-event policies are database-governed versioned settings rather than deployment configuration. The instance policy is the ceiling; tenant policy can only narrow allowed organizer kinds and currencies, risk ceilings, review thresholds, and cannot weaken mandatory refund protections or verification/review floors. Direct-charge Checkout and reconciliation are implemented; refunds and disputes remain deferred. Organizers connect only their own eligible actor merchant account; no administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless its separate approvals are current.
 
+## Configuration Manifest Startup
+
+Configuration bootstrap uses three non-secret deployment inputs:
+
+| Input | Default | Meaning |
+|---|---|---|
+| `CONFIGURATION_MANIFEST_MODE` | `Off` | Exact value `Off`, `ValidateOnly`, or `Bootstrap` |
+| `CONFIGURATION_MANIFEST_PATH` | `/etc/islamu-event/bootstrap/configuration-manifest.json` in container examples | Absolute path visible to the owning process |
+| `CONFIGURATION_MANIFEST_HOST_DIRECTORY` | `./deploy/bootstrap` in Compose/Aspire examples | Host directory projected into the owning process; it is not an application setting |
+
+`Off` performs no file discovery. `ValidateOnly` performs bounded regular-file,
+strict UTF-8 JSON, contract, catalog, and complete proposed-state validation
+without writes. The first successful `Bootstrap` applies the approved instance
+section before tenant sections in one serializable transaction, creates absent
+tenants, and records the normalized instance-section digest and bootstrap
+generation. A same-section rerun never reapplies historical instance values:
+new tenants are validated against fresh Day 2 instance authority, while
+existing tenant slugs are skipped wholesale. A changed instance section fails
+with `configuration_manifest_instance_already_bootstrapped`; it is never treated
+as reconciliation or forced over current administration state.
+
+In split topology, only `Event.MigrationService` receives these inputs; API
+replicas never own or reconcile manifests. In Standalone topology, only
+`Event.Standalone` owns the sequence. Aspire computes an absolute host path
+from `CONFIGURATION_MANIFEST_HOST_DIRECTORY`; Compose sets
+`CONFIGURATION_MANIFEST_PATH` to the container path. `.env` selects the mode,
+container-visible path, and host mount directory; it never contains manifest
+business values and setting a path does not mount or copy a file.
+
+The canonical JSON Schema is
+`schemas/configuration-manifest-v1alpha1.schema.json`. Container images also
+publish it at
+`/app/schemas/configuration-manifest-v1alpha1.schema.json`. Schema validation
+is an authoring aid; startup always reruns the complete server-owned validator.
+
+## Paid-event policy manifest boundary
+
+`instance.paid_event_policy` and `tenant.paid_event_policy` are the only
+payment-related manifest documents. Both are typed `schemaVersion: 1`
+documents. Public input cannot select a stored revision. The first bootstrap
+creates or revises the instance policy through the canonical paid-policy
+mutation boundary, and each tenant narrowing is bound internally to the exact
+effective instance revision selected by the same transaction. Same-section
+reruns use the fresh active Day 2 revision instead of replaying historical
+instance values. Tenant payloads may contain only:
+
+- payment enablement, eligible-organizer subsets, and the local-verification
+  floor;
+- ordered currency subsets and a default inside that subset;
+- the complete refund-protection floor;
+- per-currency amount, count, rolling-window, and high-value-review ceilings;
+- first-paid-event and far-future review thresholds.
+
+The server constructs the typed policy versions and runs
+`PaidEventPolicyRules.ValidateTenantPolicy` before mutation. Unknown fields,
+unsupported currencies, invalid risk pairs, weaker refund protection,
+instance-ceiling broadening, stale authority, and direct tenant identifiers
+fail closed. The manifest handler then calls the same
+`PaidEventPolicyMutationBoundary` used by paid-policy CQRS commands inside the
+outer manifest transaction and canonical instance/tenant named locks.
+
+Manifests do **not** own operator identity, official origin or status, provider
+profiles or credentials, connected accounts, charge type, buyer acceptance,
+sale-control state, provider handoff, reconciliation, disputes, liability,
+negative balances, or refund execution. Those remain persisted sovereign
+authorities. In particular, there is no manifest stop-sale boolean; use the
+audited stop/resume/review workflows for operational governance.
+
+Exports make this boundary machine-readable. `metadata.export.authorityScope`
+is `InstanceAndTenants`, `sovereignValuesOmitted` is `true`, and
+`sovereignLockedFields` carries the fixed platform-owned field taxonomy.
+Overrides emits a paid-policy document only when an active tenant narrowing
+exists. Portable emits the active tenant narrowing or the flattened active
+instance policy, always pinned to the current instance-policy version. Portable
+is therefore an authoring aid for a reviewed target, not authority to broaden a
+different instance ceiling and not a backup.
+
+## Reporting Intake Administration
+
+Tenant administrators manage the effective reporting-intake policy in **Tenant
+settings > Policies**. The UI treats the API's HAL response as authoritative:
+an `edit` relation is required before the control becomes writable, and an
+enabled policy can be disabled only when the server also returns
+`CanDisable=true`. Instance locks and server-authored safety reasons remain
+visible in read-only form. The browser does not infer permission or publication
+safety from roles, claims, or local configuration.
+
+Reporting intake and external reporting-provider routing are separate controls.
+Disabling tenant intake stops new reports at this tenant; it does not disable an
+external provider, delete existing reports, or remove independent correction,
+legal, or copyright contact channels published by the tenant. These statements
+describe product behavior, not a legal or religious guarantee.
+
+After every accepted update, the UI reloads the effective HAL policy instead of
+assuming the requested value became authoritative. Session expiry, access
+denial, transport failure, instance locking, or a changed publication-safety
+decision therefore fail closed and do not leave a locally calculated writable
+state.
+
+### Tenant Administrator Exports
+
+When the reporting-intake HAL resource advertises
+`export-configuration-overrides` or `export-configuration-portable`, the same
+Policies page presents only those authorized export choices. The browser starts
+the download through the authenticated same-origin BFF endpoint; it never calls
+the privileged API export endpoint directly and never receives an access token.
+
+- **Overrides** contains tenant-owned non-secret overrides. Inherited and
+  default values remain absent so another environment keeps ownership of them.
+- **Portable** contains flattened effective non-secret values for transfer.
+  Operators must review target defaults, locks, and policy before applying it.
+
+Both views use the server-authored deterministic attachment filename and omit
+secret values while retaining non-secret omission metadata. Neither view is a
+backup and neither can restore secret material. Managed reconciliation,
+field-ownership tracking, drift/conflict policy, deletion semantics, and
+takeover rules remain deferred; there is no dormant `Reconcile` runtime mode or
+placeholder UI.
+
 ## Related
 
+- [API.md](API.md)
 - [SECRETS.md](SECRETS.md)
 - [SELF_HOSTING.md](SELF_HOSTING.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)

@@ -42,6 +42,30 @@ internal static class RelationalNamedLock
 
         if (providerName == SqliteProvider)
         {
+            string sqliteResource = resource.Trim();
+            if (SqliteNamedLockTransactionInterceptor.Instance.IsTracked(
+                    transaction,
+                    sqliteResource))
+            {
+                return NoopLease.Instance;
+            }
+
+            SemaphoreSlim semaphore = await AcquireSqliteProcessLockAsync(
+                sqliteResource,
+                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                SqliteNamedLockTransactionInterceptor.Instance.Track(
+                    transaction,
+                    sqliteResource,
+                    semaphore);
+            }
+            catch
+            {
+                semaphore.Release();
+                throw;
+            }
+
             return NoopLease.Instance;
         }
 
@@ -98,8 +122,9 @@ internal static class RelationalNamedLock
         if (providerName == SqliteProvider)
         {
             // ponytail: process-only lock assumes documented single-instance SQLite; use a lock service if SQLite becomes multi-instance.
-            SemaphoreSlim semaphore = SqliteLocks.GetOrAdd(resource.Trim(), static _ => new SemaphoreSlim(1, 1));
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            SemaphoreSlim semaphore = await AcquireSqliteProcessLockAsync(
+                resource,
+                cancellationToken).ConfigureAwait(false);
             return new SemaphoreLease(semaphore);
         }
 
@@ -148,6 +173,17 @@ internal static class RelationalNamedLock
     {
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(resource));
         return BinaryPrimitives.ReadInt64BigEndian(hash);
+    }
+
+    private static async Task<SemaphoreSlim> AcquireSqliteProcessLockAsync(
+        string resource,
+        CancellationToken cancellationToken)
+    {
+        SemaphoreSlim semaphore = SqliteLocks.GetOrAdd(
+            resource.Trim(),
+            static _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return semaphore;
     }
 
     internal static void EnsureAcquireSucceeded(string providerName, object? result)
@@ -282,6 +318,16 @@ internal static class RelationalNamedLock
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0)
             {
+                return;
+            }
+
+            if (connection.State != ConnectionState.Open)
+            {
+                if (connection.State != ConnectionState.Closed)
+                {
+                    await connection.CloseAsync().ConfigureAwait(false);
+                }
+
                 return;
             }
 

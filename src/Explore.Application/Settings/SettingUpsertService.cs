@@ -18,17 +18,25 @@ public class SettingUpsertService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IMediator _mediator;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyMutationBoundary;
     private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public SettingUpsertService(
         ISystemSettingRepository systemSettingRepository,
         IMediator mediator,
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
         ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _systemSettingRepository = systemSettingRepository;
         _mediator = mediator;
+        _publicationPolicyMutationBoundary = publicationPolicyMutationBoundary;
         _locationPrivacyMutations = locationPrivacyMutations;
     }
+
+    public Task<PublicationPolicyMutationResult> ApplyInstancePublicationPolicyAsync(
+        PublicationPolicyInstanceMutationRequest request,
+        CancellationToken cancellationToken = default) =>
+        _publicationPolicyMutationBoundary.ApplyInstanceAsync(request, cancellationToken);
 
     /// <summary>
     /// Creates or updates a system setting by key. Sets audit timestamps automatically.
@@ -44,6 +52,7 @@ public class SettingUpsertService
         Guid? actorId = null,
         CancellationToken cancellationToken = default)
     {
+        EnsureUnguarded(settingKey);
         SettingPersistenceResult persistence = await PersistAsync(new SystemSetting
         {
             SettingKey = settingKey,
@@ -83,13 +92,16 @@ public class SettingUpsertService
         bool isLocked,
         Guid? actorId,
         CancellationToken cancellationToken = default)
-        => _ = await UpsertValueCoreAsync(
+    {
+        EnsureUnguarded(settingKey);
+        _ = await UpsertValueCoreAsync(
             settingKey,
             value,
             isLocked,
             actorId,
             invalidateAfterCommit: true,
             cancellationToken);
+    }
 
     public async Task<SettingChangedNotification> UpsertLockAsync(
         string settingKey,
@@ -98,6 +110,7 @@ public class SettingUpsertService
         Guid? actorId,
         CancellationToken cancellationToken = default)
     {
+        EnsureUnguarded(settingKey);
         var definition = Domain.Settings.SettingRegistry.Get(settingKey);
         var changedAt = DateTime.UtcNow;
         string? previousStoredValue = await _systemSettingRepository.UpsertLockAsync(new SystemSetting
@@ -129,19 +142,74 @@ public class SettingUpsertService
             changedAt);
     }
 
+    public async Task<InstanceSettingMutationResult>
+        UpsertInstanceValueInCurrentTransactionAsync(
+            InstanceSettingMutationInput input,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (input.OccurredAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException(
+                "Instance setting mutation timestamp must use UTC kind.",
+                nameof(input));
+        }
+
+        Domain.Settings.SettingDefinition definition =
+            Domain.Settings.SettingRegistry.Get(input.Key)
+            ?? throw new ArgumentOutOfRangeException(
+                nameof(input),
+                input.Key,
+                "Unknown instance setting key.");
+        if (definition.IsSensitive
+            || definition.MinScope > Domain.Settings.SettingScope.Instance
+            || definition.MaxScope < Domain.Settings.SettingScope.Instance)
+        {
+            throw new InvalidOperationException(
+                "The setting is not eligible for instance mutation.");
+        }
+
+        EnsureUnguarded(input.Key);
+        if (_locationPrivacyMutations?.Handles(input.Key) == true)
+        {
+            throw new InvalidOperationException(
+                "Location-privacy settings require their specialized current-transaction boundary.");
+        }
+
+        DeferredSettingUpsertResult result = await UpsertValueCoreAsync(
+            input.Key,
+            input.SerializedValue,
+            isLocked: false,
+            input.ActorUserId,
+            invalidateAfterCommit: false,
+            cancellationToken,
+            input.OccurredAtUtc,
+            useCallerTransaction: true);
+        return new InstanceSettingMutationResult(result.Notification);
+    }
+
     internal Task<DeferredSettingUpsertResult> UpsertValueWithDeferredInvalidationAsync(
         string settingKey,
         string value,
         Guid? actorId,
         bool isLocked = false,
-        CancellationToken cancellationToken = default) =>
-        UpsertValueCoreAsync(
+        CancellationToken cancellationToken = default)
+    {
+        EnsureUnguarded(settingKey);
+        return UpsertValueCoreAsync(
             settingKey,
             value,
             isLocked,
             actorId,
             invalidateAfterCommit: false,
             cancellationToken);
+    }
+
+    private static void EnsureUnguarded(string settingKey)
+    {
+        if (PublicationPolicySettingKeys.All.Contains(settingKey, StringComparer.Ordinal))
+            throw new InvalidOperationException($"Guarded publication policy setting '{settingKey}' requires coordinated mutation.");
+    }
 
     private async Task<DeferredSettingUpsertResult> UpsertValueCoreAsync(
         string settingKey,
@@ -149,8 +217,11 @@ public class SettingUpsertService
         bool isLocked,
         Guid? actorId,
         bool invalidateAfterCommit,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTime? occurredAtUtc = null,
+        bool useCallerTransaction = false)
     {
+        DateTime changedAtUtc = occurredAtUtc ?? DateTime.UtcNow;
         var definition = Domain.Settings.SettingRegistry.Get(settingKey);
         SettingPersistenceResult persistence = await PersistAsync(new SystemSetting
         {
@@ -161,11 +232,11 @@ public class SettingUpsertService
             Description = definition?.Description,
             Category = definition?.Category ?? "Unknown",
             DisplayOrder = 0,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = changedAtUtc,
             CreatedBy = actorId,
-            UpdatedAt = DateTime.UtcNow,
+            UpdatedAt = changedAtUtc,
             UpdatedBy = actorId
-        }, actorId, cancellationToken);
+        }, actorId, cancellationToken, useCallerTransaction);
 
         var notification = new SettingChangedNotification(
             settingKey,
@@ -174,7 +245,7 @@ public class SettingUpsertService
             isLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
             null,
             actorId,
-            DateTime.UtcNow);
+            changedAtUtc);
 
         if (invalidateAfterCommit)
         {
@@ -188,12 +259,26 @@ public class SettingUpsertService
     private async Task<SettingPersistenceResult> PersistAsync(
         SystemSetting setting,
         Guid? actorId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool useCallerTransaction = false)
     {
         if (_locationPrivacyMutations?.Handles(setting.SettingKey) != true)
         {
-            string? previousStoredValue = await _systemSettingRepository.UpsertAsync(setting, cancellationToken);
+            string? previousStoredValue = useCallerTransaction
+                ? await _systemSettingRepository
+                    .UpsertInCurrentTransactionAsync(
+                        setting,
+                        cancellationToken)
+                : await _systemSettingRepository.UpsertAsync(
+                    setting,
+                    cancellationToken);
             return new(previousStoredValue, null);
+        }
+
+        if (useCallerTransaction)
+        {
+            throw new InvalidOperationException(
+                "Location-privacy settings require their specialized current-transaction boundary.");
         }
 
         LocationPrivacyGovernanceMutationResult mutation = await _locationPrivacyMutations.ExecuteAsync(
@@ -235,3 +320,12 @@ public class SettingUpsertService
 internal sealed record DeferredSettingUpsertResult(
     SettingChangedNotification Notification,
     LocationPrivacyGovernanceMutationResult? Mutation);
+
+public sealed record InstanceSettingMutationInput(
+    string Key,
+    string SerializedValue,
+    Guid? ActorUserId,
+    DateTime OccurredAtUtc);
+
+public sealed record InstanceSettingMutationResult(
+    SettingChangedNotification Notification);

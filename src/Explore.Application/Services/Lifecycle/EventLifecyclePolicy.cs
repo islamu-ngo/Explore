@@ -30,6 +30,12 @@ public sealed record EventLifecyclePolicy
     public required IReadOnlySet<Enum> RequiredSessionFields { get; init; }
 
     /// <summary>
+    /// Whether direct publication requires a separate approval decision.
+    /// This is policy metadata; lifecycle readiness does not interpret it as a field requirement.
+    /// </summary>
+    public bool RequiresApproval { get; init; }
+
+    /// <summary>
     /// Human-readable description of the policy source (e.g., "default", "tenant-override").
     /// </summary>
     public string Source { get; init; } = "default";

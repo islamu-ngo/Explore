@@ -63,6 +63,16 @@ Task<string> GetPreferredMotionAsync();  // Returns "reduce" or "no-preference"
 
 **Focus restore fallback chain:** saved element → `fallbackSelector` → `#main-content` → `<body>`.
 
+Instance configuration-manifest downloads use a two-stage focus and
+announcement policy. A successfully started same-origin download is announced
+politely without moving focus. If immediate HAL revalidation removes the
+requested affordance, every download action disappears, an operator-safe alert
+is rendered, and focus moves to that alert. Because focused content announces
+itself, this failure path must not also call the global announcer. The section
+uses native buttons through the control-plane action primitive, an `h2` under
+the page `h1`, logical CSS properties, project focus/target tokens, and
+localized labels and guidance.
+
 **Dialog/modal pattern:**
 ```csharp
 // Before opening

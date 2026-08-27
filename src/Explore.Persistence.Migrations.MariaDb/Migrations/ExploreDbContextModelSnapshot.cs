@@ -3364,6 +3364,191 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_configuration_change_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ConfigurationManifestOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("api_version");
+
+                    b.Property<int?>("BootstrapGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("bootstrap_generation");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<int>("CreatedTenantCount")
+                        .HasColumnType("int")
+                        .HasColumnName("created_tenant_count");
+
+                    b.Property<string>("Digest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("digest")
+                        .IsFixedLength();
+
+                    b.Property<int>("FailedTenantCount")
+                        .HasColumnType("int")
+                        .HasColumnName("failed_tenant_count");
+
+                    b.Property<string>("InstanceSectionDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("instance_section_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("ManifestName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("manifest_name");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<int>("RequestedTenantCount")
+                        .HasColumnType("int")
+                        .HasColumnName("requested_tenant_count");
+
+                    b.Property<int>("SkippedExistingTenantCount")
+                        .HasColumnType("int")
+                        .HasColumnName("skipped_existing_tenant_count");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("_instanceChangedDocumentKeyNames")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("varchar(4096)")
+                        .HasColumnName("instance_changed_document_key_names");
+
+                    b.Property<string>("_instanceChangedSettingKeyNames")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("varchar(4096)")
+                        .HasColumnName("instance_changed_setting_key_names");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_manifest_operations");
+
+                    b.HasIndex("Status", "CompletedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_configuration_manifest_operations_status_completed");
+
+                    b.HasIndex("Digest", "Mode", "CompletedAt")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_configuration_manifest_operations_digest_mode_completed");
+
+                    b.HasIndex("Status", "BootstrapGeneration", "CompletedAt")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("IX_ie_configuration_manifest_operations_status_bootstra_3773C4A7");
+
+                    b.ToTable("ie_configuration_manifest_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_configuration_manifest_operations_bootstrap_state", "(instance_section_digest IS NULL AND bootstrap_generation IS NULL) OR (instance_section_digest IS NOT NULL AND bootstrap_generation > 0)");
+
+                            t.HasCheckConstraint("ck_configuration_manifest_operations_counts", "requested_tenant_count >= 0 AND created_tenant_count >= 0 AND skipped_existing_tenant_count >= 0 AND failed_tenant_count >= 0");
+
+                            t.HasCheckConstraint("ck_configuration_manifest_operations_outcome", "(status = 'Validated' AND mode = 'ValidateOnly' AND created_tenant_count = 0 AND skipped_existing_tenant_count = 0 AND failed_tenant_count = 0 AND reason_code IS NULL AND reason IS NULL) OR (status = 'Applied' AND mode = 'Bootstrap' AND created_tenant_count + skipped_existing_tenant_count = requested_tenant_count AND failed_tenant_count = 0 AND reason_code IS NULL AND reason IS NULL AND instance_section_digest IS NOT NULL AND bootstrap_generation > 0) OR (status = 'Failed' AND created_tenant_count = 0 AND skipped_existing_tenant_count = 0 AND reason_code IS NOT NULL AND reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_configuration_manifest_operations_timestamps", "completed_at >= started_at");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.ConfigurationManifestTenantResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("operation_id");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("_changedDocumentKeyNames")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("varchar(4096)")
+                        .HasColumnName("changed_document_key_names");
+
+                    b.Property<string>("_changedSettingKeyNames")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("varchar(4096)")
+                        .HasColumnName("changed_setting_key_names");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_manifest_tenant_results");
+
+                    b.HasIndex("OperationId")
+                        .HasDatabaseName("ix_ie_configuration_manifest_tenant_results_operation_id");
+
+                    b.HasIndex("TenantId", "OperationId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_configuration_manifest_tenant_results_tenant_id_o_7FEDB165");
+
+                    b.HasIndex("TenantId", "Status", "CompletedAt")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("IX_ie_configuration_manifest_tenant_results_tenant_id_s_57D4CF44");
+
+                    b.ToTable("ie_configuration_manifest_tenant_results", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.ContactShareConsentSubjectType", b =>
                 {
                     b.Property<int>("Id")
@@ -33425,6 +33610,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasConstraintName("FK_ie_configuration_change_logs_ie_setting_scopes_setti_CEF2F753");
 
                     b.Navigation("SettingScope");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ConfigurationManifestTenantResult", b =>
+                {
+                    b.HasOne("Explore.Domain.ConfigurationManifestOperation", "Operation")
+                        .WithMany()
+                        .HasForeignKey("OperationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_configuration_manifest_tenant_results_ie_configur_6FBD2055");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_configuration_manifest_tenant_results_tenants_tenant_id");
+
+                    b.Navigation("Operation");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>

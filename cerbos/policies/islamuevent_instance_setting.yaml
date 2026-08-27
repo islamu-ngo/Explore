@@ -13,8 +13,29 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_instance_setting.json
   rules:
-    # Instance admins can do everything with instance settings
-    - actions: ["view", "update", "delete", "lock", "unlock"]
+    # Ordinary instance-setting reads retain their existing instance-admin authority.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+      condition:
+        match:
+          expr: request.resource.id != "instance.configuration-manifest.export"
+
+    # Whole-instance export requires the closed server-projected export fact.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id == "instance.configuration-manifest.export"
+              - expr: request.resource.attr.configurationManifestExport == true
+
+    # Instance admins retain mutation authority for instance settings.
+    - actions: ["update", "delete", "lock", "unlock"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_instance_admin

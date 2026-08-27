@@ -32,7 +32,8 @@ public sealed class EventRoleAuthorityCeilingService : IEventRoleAuthorityCeilin
         PermissionCodes.EventManageOwner,
         PermissionCodes.EventTransferOwnership,
         PermissionCodes.EventDelete,
-        PermissionCodes.EventManageFinance
+        PermissionCodes.EventManageFinance,
+        PermissionCodes.EventApprovePublish
     };
 
     private readonly IEventAuthoritySnapshotService _authoritySnapshotService;

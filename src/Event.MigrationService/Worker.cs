@@ -4,6 +4,7 @@
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
+using Explore.Infrastructure.ConfigurationManifest;
 
 namespace Event.MigrationService;
 
@@ -26,12 +27,16 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
     {
         await using var scope = serviceProvider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        await ExploreDatabaseMigrator.MigrateAndSeedAsync(
-            db,
-            environment,
-            configuration,
-            migrationDatabaseOptions,
-            logger,
+        var startupSequence = scope.ServiceProvider
+            .GetRequiredService<IConfigurationManifestPostMigrationSequence>();
+        await startupSequence.RunAsync(
+            cancellationToken => ExploreDatabaseMigrator.MigrateAndSeedAsync(
+                db,
+                environment,
+                configuration,
+                migrationDatabaseOptions,
+                logger,
+                cancellationToken),
             stoppingToken);
 
         lifetime.StopApplication();

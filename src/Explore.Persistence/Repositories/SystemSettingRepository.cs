@@ -4,6 +4,7 @@
 namespace Explore.Persistence.Repositories;
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,41 +34,48 @@ public class SystemSettingRepository : ISystemSettingRepository
         SystemSetting setting,
         CancellationToken cancellationToken = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(setting.SettingKey, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         return _mutationLock.ExecuteAsync(
             setting.SettingKey,
-            async token =>
-            {
-                SystemSetting? existing = await _dbContext.SystemSettings
-                    .FirstOrDefaultAsync(candidate => candidate.SettingKey == setting.SettingKey, token);
-                string? previousValue = existing?.Value;
-
-                if (existing is null)
-                {
-                    _dbContext.SystemSettings.Add(setting);
-                }
-                else
-                {
-                    existing.Value = setting.Value;
-                    existing.ValueType = setting.ValueType;
-                    existing.IsLocked = setting.IsLocked;
-                    existing.AllowedValues = setting.AllowedValues;
-                    existing.Description = setting.Description;
-                    existing.Category = setting.Category;
-                    existing.DisplayOrder = setting.DisplayOrder;
-                    existing.UpdatedAt = setting.UpdatedAt ?? DateTime.UtcNow;
-                    existing.UpdatedBy = setting.UpdatedBy;
-                }
-
-                await _dbContext.SaveChangesAsync(token);
-                return previousValue;
-            },
+            token => UpsertCoreAsync(setting, token),
             cancellationToken);
+    }
+
+    public Task<string?> UpsertInCurrentTransactionAsync(
+        SystemSetting setting,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(setting);
+        if (_dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "Caller-owned system-setting writes require an active transaction.");
+        }
+
+        if (PublicationPolicySettingKeys.All.Contains(
+                setting.SettingKey,
+                StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Guarded publication-policy settings require coordinated mutation.");
+        }
+
+        return UpsertCoreAsync(setting, cancellationToken);
     }
 
     public Task<string?> UpsertLockAsync(
         SystemSetting setting,
         CancellationToken cancellationToken = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(setting.SettingKey, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         return _mutationLock.ExecuteAsync(
             setting.SettingKey,
             async token =>
@@ -117,5 +125,36 @@ public class SystemSettingRepository : ISystemSettingRepository
             .FirstOrDefaultAsync(s => s.SettingKey == settingKey, cancellationToken);
 
         return setting?.IsLocked ?? false;
+    }
+
+    private async Task<string?> UpsertCoreAsync(
+        SystemSetting setting,
+        CancellationToken cancellationToken)
+    {
+        SystemSetting? existing = await _dbContext.SystemSettings
+            .FirstOrDefaultAsync(
+                candidate => candidate.SettingKey == setting.SettingKey,
+                cancellationToken);
+        string? previousValue = existing?.Value;
+
+        if (existing is null)
+        {
+            _dbContext.SystemSettings.Add(setting);
+        }
+        else
+        {
+            existing.Value = setting.Value;
+            existing.ValueType = setting.ValueType;
+            existing.IsLocked = setting.IsLocked;
+            existing.AllowedValues = setting.AllowedValues;
+            existing.Description = setting.Description;
+            existing.Category = setting.Category;
+            existing.DisplayOrder = setting.DisplayOrder;
+            existing.UpdatedAt = setting.UpdatedAt ?? DateTime.UtcNow;
+            existing.UpdatedBy = setting.UpdatedBy;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return previousValue;
     }
 }

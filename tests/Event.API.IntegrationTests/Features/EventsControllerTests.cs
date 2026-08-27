@@ -6,6 +6,7 @@ using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
@@ -14,8 +15,10 @@ using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -205,7 +208,20 @@ public class EventsControllerTests
             "{id:guid}/publish",
             RouteNames.PublishEvent,
             typeof(PublishEventCommand),
-            AuthorizationActions.Update);
+            AuthorizationActions.Events.Publish);
+
+        await AssertEventLifecyclePostRoute(
+            nameof(EventLifecycleController.ApprovePublish),
+            "{id:guid}/approve-publish",
+            RouteNames.ApprovePublishEvent,
+            typeof(ApprovePublishEventCommand),
+            AuthorizationActions.Events.ApprovePublish);
+
+        var approvePublish = EventFamilyAction(nameof(EventLifecycleController.ApprovePublish));
+        await Assert.That(approvePublish.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(approvePublish.GetCustomAttribute<RequestTimeoutAttribute>()?.PolicyName)
+            .IsEqualTo(RequestTimeoutExtensions.DefaultPolicy);
 
         await AssertEventLifecyclePostRoute(
             nameof(EventLifecycleController.Archive),

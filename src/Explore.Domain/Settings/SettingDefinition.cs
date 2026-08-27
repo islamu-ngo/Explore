@@ -55,4 +55,7 @@ public sealed record SettingDefinition
     public bool IsLockable { get; }
     public bool IsSensitive { get; }
     public ImmutableList<string>? AllowedValues { get; }
+
+    /// <summary>Whether this setting must participate in coordinated policy mutation.</summary>
+    public bool RequiresCoordinatedMutation { get; init; } = false;
 }

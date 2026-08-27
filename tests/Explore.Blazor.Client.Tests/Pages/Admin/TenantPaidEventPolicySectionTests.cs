@@ -65,6 +65,47 @@ public sealed class TenantPaidEventPolicySectionTests : IDisposable
     }
 
     [Test]
+    public async Task AuthorityFactsExplainManifestAndSovereignBoundariesWithoutAddingActions()
+    {
+        var tenantId = Guid.CreateVersion7();
+        HalResourceOfTenantPaidEventPolicyConfigurationDto configuration =
+            Configuration(
+                tenantId,
+                editable: false,
+                effectiveValuesInherited: true,
+                hasTenantNarrowing: false);
+        _service.GetTenantAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(configuration);
+
+        var cut = Render(tenantId);
+
+        var authority = cut.WaitForElement(
+            "[data-testid='tenant-paid-policy-authority']");
+        await Assert.That(authority.QuerySelector(
+            "#tenant-paid-policy-authority-title")?.TagName).IsEqualTo("H3");
+        await Assert.That(authority.QuerySelector(
+            "#tenant-paid-policy-manifest-title")?.TagName).IsEqualTo("H4");
+        await Assert.That(authority.QuerySelector(
+            "#tenant-paid-policy-sovereign-title")?.TagName).IsEqualTo("H4");
+        await Assert.That(authority.QuerySelector(
+            "[data-testid='tenant-paid-policy-authority-source']")
+            ?.GetAttribute("data-source")).IsEqualTo("inherited");
+        await Assert.That(authority.QuerySelector(
+            "[data-testid='tenant-paid-policy-manifest-facts']")).IsNotNull();
+        await Assert.That(authority.QuerySelector(
+            "[data-testid='tenant-paid-policy-sovereign-facts']")).IsNotNull();
+        foreach (string code in configuration.Authority!.SovereignLockedFields ?? [])
+        {
+            await Assert.That(authority.QuerySelectorAll("*").Any(element =>
+                string.Equals(
+                    element.TextContent.Trim(),
+                    code,
+                    StringComparison.Ordinal))).IsFalse();
+        }
+        await Assert.That(cut.FindAll("[data-testid='save-tenant-paid-policy']")).IsEmpty();
+    }
+
+    [Test]
     public async Task ExactEditRelationSavesNarrowedGeneratedRequestAndReloads()
     {
         var tenantId = Guid.CreateVersion7();
@@ -92,10 +133,10 @@ public sealed class TenantPaidEventPolicySectionTests : IDisposable
     public async Task InvalidBroaderOverrideBlocksServiceCallWithSafeMessage()
     {
         var tenantId = Guid.CreateVersion7();
-        HalResourceOfTenantPaidEventPolicyConfigurationDto configuration = Configuration(tenantId, editable: true);
-        var tenantOverride = configuration.ActiveTenantOverride! with { AllowedOrganizerKindIds = [2, 4] };
-        configuration.ActiveTenantOverride = tenantOverride;
-        configuration.EffectivePolicy = tenantOverride;
+        HalResourceOfTenantPaidEventPolicyConfigurationDto configuration = Configuration(
+            tenantId,
+            editable: true,
+            tenantOrganizerKindIds: [2, 4]);
         _service.GetTenantAsync(tenantId, Arg.Any<CancellationToken>()).Returns(configuration);
 
         var cut = Render(tenantId);
@@ -132,24 +173,63 @@ public sealed class TenantPaidEventPolicySectionTests : IDisposable
         _ctx.RenderMudComponent<TenantPaidEventPolicySection>(parameters => parameters
             .Add(component => component.TenantId, tenantId));
 
-    private static HalResourceOfTenantPaidEventPolicyConfigurationDto Configuration(Guid tenantId, bool editable)
+    private static HalResourceOfTenantPaidEventPolicyConfigurationDto Configuration(
+        Guid tenantId,
+        bool editable,
+        bool effectiveValuesInherited = false,
+        bool hasTenantNarrowing = true,
+        int[]? tenantOrganizerKindIds = null)
     {
         PaidEventPolicyDto ceiling = Policy([2], ["EUR"]);
-        PaidEventPolicyDto tenant = Policy([2], ["EUR"]);
-        var configuration = new HalResourceOfTenantPaidEventPolicyConfigurationDto
+        PaidEventPolicyDto tenant = Policy(tenantOrganizerKindIds ?? [2], ["EUR"]);
+        return new HalResourceOfTenantPaidEventPolicyConfigurationDto
         {
             ActiveInstanceCeiling = ceiling,
             ActiveTenantOverride = tenant,
-            EffectivePolicy = tenant
-        };
-        if (editable)
-        {
-            configuration._links = new Dictionary<string, HalLink>
+            EffectivePolicy = tenant,
+            Authority = new PaidEventPolicyAuthorityDto
             {
-                ["edit"] = new() { Href = $"/api/tenants/{tenantId}/settings/paid-event-policy", Method = "PUT" }
-            };
-        }
-        return configuration;
+                InstancePolicyVersion = 2,
+                EffectiveValuesInherited = effectiveValuesInherited,
+                HasTenantNarrowing = hasTenantNarrowing,
+                ManifestOwnedFields =
+                [
+                    "allowedCurrencyCodes",
+                    "allowedOrganizerKindIds",
+                    "currencyRiskLimits",
+                    "defaultCurrencyCode",
+                    "farFutureReviewThresholdDays",
+                    "isPaymentsEnabled",
+                    "refundProtectionIds",
+                    "requiresFirstPaidEventReview",
+                    "requiresLocalVerification"
+                ],
+                SovereignLockedFields =
+                [
+                    "buyerAcceptance",
+                    "chargeType",
+                    "connectedAccounts",
+                    "disputeHandling",
+                    "liability",
+                    "negativeBalances",
+                    "officialOrigin",
+                    "officialStatus",
+                    "operatorIdentity",
+                    "providerCredentials",
+                    "providerHandoff",
+                    "providerProfiles",
+                    "reconciliation",
+                    "refundExecution",
+                    "saleControl"
+                ]
+            },
+            _links = editable
+                ? new Dictionary<string, HalLink>
+                {
+                    ["edit"] = new() { Href = $"/api/tenants/{tenantId}/settings/paid-event-policy", Method = "PUT" }
+                }
+                : null
+        };
     }
 
     private static PaidEventPolicyDto Policy(int[] organizerKindIds, string[] currencies) => new()
@@ -162,7 +242,7 @@ public sealed class TenantPaidEventPolicySectionTests : IDisposable
         RefundProtectionIds = [1, 2, 3, 4, 5, 6, 7],
         CurrencyRiskLimits =
         [
-            new CurrencyRiskLimits2
+            new PaidEventPolicyCurrencyRiskLimitDto
             {
                 CurrencyCode = currencies[0],
                 PerEventSalesCeilingMinor = 500_000,

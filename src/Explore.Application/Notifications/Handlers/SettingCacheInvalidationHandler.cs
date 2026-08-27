@@ -12,13 +12,16 @@ public sealed class SettingCacheInvalidationHandler : INotificationHandler<Setti
 {
     private readonly IHierarchicalSettingsResolver _resolver;
     private readonly IEnumerable<IAtprotoDiscoveryCacheInvalidator> _atprotoDiscoveryCacheInvalidators;
+    private readonly IEnumerable<IEventReportingOutputCacheInvalidator> _eventReportingOutputCacheInvalidators;
 
     public SettingCacheInvalidationHandler(
         IHierarchicalSettingsResolver resolver,
-        IEnumerable<IAtprotoDiscoveryCacheInvalidator> atprotoDiscoveryCacheInvalidators)
+        IEnumerable<IAtprotoDiscoveryCacheInvalidator> atprotoDiscoveryCacheInvalidators,
+        IEnumerable<IEventReportingOutputCacheInvalidator> eventReportingOutputCacheInvalidators)
     {
         _resolver = resolver;
         _atprotoDiscoveryCacheInvalidators = atprotoDiscoveryCacheInvalidators;
+        _eventReportingOutputCacheInvalidators = eventReportingOutputCacheInvalidators;
     }
 
     public async Task Handle(SettingChangedNotification notification, CancellationToken cancellationToken)
@@ -36,6 +39,17 @@ public sealed class SettingCacheInvalidationHandler : INotificationHandler<Setti
                 StringComparison.Ordinal))
         {
             foreach (IAtprotoDiscoveryCacheInvalidator invalidator in _atprotoDiscoveryCacheInvalidators)
+            {
+                await invalidator.InvalidateAsync(cancellationToken);
+            }
+        }
+
+        if (string.Equals(
+                notification.Key,
+                GovernanceSettingKeys.EventReporting.IntakeEnabled,
+                StringComparison.Ordinal))
+        {
+            foreach (IEventReportingOutputCacheInvalidator invalidator in _eventReportingOutputCacheInvalidators)
             {
                 await invalidator.InvalidateAsync(cancellationToken);
             }

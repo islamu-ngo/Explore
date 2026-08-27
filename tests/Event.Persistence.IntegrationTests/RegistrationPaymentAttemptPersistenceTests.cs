@@ -4,7 +4,6 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Payments;
-using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.ValueObjects;

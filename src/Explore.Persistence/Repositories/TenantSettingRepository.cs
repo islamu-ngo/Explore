@@ -62,6 +62,11 @@ public class TenantSettingRepository : ITenantSettingRepository
         CancellationToken cancellationToken = default,
         Guid? actorId = null)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         DateTime now = DateTime.UtcNow;
         int updated = await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
@@ -138,6 +143,11 @@ public class TenantSettingRepository : ITenantSettingRepository
         string key,
         CancellationToken cancellationToken = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         int removed = await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .Where(setting => setting.TenantId == tenantId && setting.SettingKey == key)
@@ -152,6 +162,11 @@ public class TenantSettingRepository : ITenantSettingRepository
         Guid actorId,
         CancellationToken cancellationToken = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         DateTime now = DateTime.UtcNow;
         int updated = await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
@@ -174,6 +189,11 @@ public class TenantSettingRepository : ITenantSettingRepository
         Guid actorId,
         CancellationToken cancellationToken = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         DateTime now = DateTime.UtcNow;
         int updated = await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
@@ -205,6 +225,13 @@ public class TenantSettingRepository : ITenantSettingRepository
         Guid actorId,
         CancellationToken cancellationToken = default)
     {
+        if (overrides.Any(overrideValue => PublicationPolicySettingKeys.All.Contains(
+                overrideValue.SettingKey,
+                StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         if (overrides.Count == 0)
         {
             return;
@@ -243,5 +270,53 @@ public class TenantSettingRepository : ITenantSettingRepository
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task CreateManyForTenantAsync(
+        Guid tenantId,
+        IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
+        Guid? actorId,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(tenantId, Guid.Empty);
+        ArgumentNullException.ThrowIfNull(overrides);
+        if (occurredAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Setting creation timestamp must use UTC kind.", nameof(occurredAtUtc));
+        }
+
+        if (overrides.Any(overrideValue => PublicationPolicySettingKeys.All.Contains(
+                overrideValue.SettingKey,
+                StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
+        if (overrides.Select(value => value.SettingKey).Distinct(StringComparer.Ordinal).Count()
+            != overrides.Count)
+        {
+            throw new ArgumentException("Tenant setting keys must be unique.", nameof(overrides));
+        }
+
+        foreach (TenantSettingOverrideUpsert overrideValue in overrides)
+        {
+            _dbContext.TenantSettingOverrides.Add(new TenantSetting
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                Tenant = null!,
+                SettingKey = overrideValue.SettingKey,
+                Value = overrideValue.Value,
+                IsLocked = overrideValue.IsLocked,
+                CreatedAt = occurredAtUtc,
+                CreatedBy = actorId
+            });
+        }
+
+        if (overrides.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

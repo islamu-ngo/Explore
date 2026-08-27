@@ -403,6 +403,23 @@ Audit entries track: Operation, ProviderType, KeyPattern (redacted), Timestamp, 
 
 Typical startup: `services.AddSecretManagement(configuration)` registers everything.
 
+## Configuration Manifest Is Not A Secret Store
+
+`CONFIGURATION_MANIFEST_MODE`, `CONFIGURATION_MANIFEST_PATH`, and
+`CONFIGURATION_MANIFEST_HOST_DIRECTORY` are non-secret deployment metadata. Do not
+store the manifest body in `.env`, Infisical, command-line arguments, or image
+environment layers. Mount the JSON file separately as read-only configuration.
+The `.env` path and host-directory values select where the owning process sees
+the file; they neither mount the file nor carry instance or tenant business
+values.
+
+The independent instance and tenant catalogs exclude credentials, tokens,
+connection strings, encryption/signing material, provider secrets, secret
+references, PII, and payment operational state. Keep those values in Infisical
+or the documented `.env` bindings. Unknown, sensitive, or non-catalog keys fail
+closed before any instance or tenant state is written. Export remains a
+secret-free configuration artifact, never a database or secret backup.
+
 ## Related
 
 - [CONFIGURATION.md](CONFIGURATION.md) — application settings

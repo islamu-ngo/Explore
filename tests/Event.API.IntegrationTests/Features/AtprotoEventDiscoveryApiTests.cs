@@ -169,7 +169,7 @@ public sealed class AtprotoEventDiscoveryApiTests
     {
         var resolver = Substitute.For<IHierarchicalSettingsResolver>();
         var invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
-        var handler = new SettingCacheInvalidationHandler(resolver, [invalidator]);
+        var handler = new SettingCacheInvalidationHandler(resolver, [invalidator], []);
 
         await handler.Handle(new SettingChangedNotification(
             GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
@@ -188,7 +188,7 @@ public sealed class AtprotoEventDiscoveryApiTests
     {
         var resolver = Substitute.For<IHierarchicalSettingsResolver>();
         var invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
-        var handler = new SettingCacheInvalidationHandler(resolver, [invalidator]);
+        var handler = new SettingCacheInvalidationHandler(resolver, [invalidator], []);
 
         await handler.Handle(new SettingChangedNotification(
             GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations,

@@ -143,10 +143,39 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         CancellationToken cancellationToken = default,
         IAuthorizationFacts? facts = null)
     {
+        if (IsConfigurationManifestExport(resourceKind, resourceId, action))
+        {
+            bool hasExportFact =
+                resourceAttributes?.TryGetValue("configurationManifestExport", out object? exportFact) == true
+                && exportFact is true;
+            bool isExportingInstanceAdmin =
+                await _adminContext.IsInstanceAdminAsync(cancellationToken);
+            bool exportDecision = hasExportFact && isExportingInstanceAdmin;
+            LogDecision(
+                exportDecision ? "allow" : "deny",
+                exportDecision ? "configuration_manifest_export" : "configuration_manifest_export_authority_missing",
+                resourceKind,
+                action);
+            return exportDecision;
+        }
+
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
             LogDecision("deny", "unsupported_event_action", resourceKind, action);
             return false;
+        }
+
+        if (resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ApprovePublish)
+        {
+            var approvalDecision = await EvaluateApprovePublishAccessAsync(
+                resourceId, resourceAttributes, cancellationToken);
+            LogDecision(
+                approvalDecision ? "allow" : "deny",
+                approvalDecision ? "publication_approval_admin" : "publication_approval_authority_missing",
+                resourceKind,
+                action);
+            return approvalDecision;
         }
 
         if (_machinePrincipalAccessor.IsMachineCaller)
@@ -358,6 +387,17 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ViewOrganizerClaims
             or AuthorizationActions.Events.ReviewOrganizerClaim;
 
+    private static bool IsConfigurationManifestExport(
+        string resourceKind,
+        string resourceId,
+        string action) =>
+        resourceKind == ResourceKinds.InstanceSetting
+        && action == AuthorizationActions.InstanceSettings.View
+        && string.Equals(
+            resourceId,
+            "instance.configuration-manifest.export",
+            StringComparison.Ordinal);
+
     private static bool IsInstanceAdminFallbackAllowed(string resourceKind, string action) => resourceKind switch
     {
         ResourceKinds.InstanceSetting => action is AuthorizationActions.InstanceSettings.View
@@ -462,6 +502,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Update
             or AuthorizationActions.Delete
             or AuthorizationActions.Events.Publish
+            or AuthorizationActions.Events.ApprovePublish
             or AuthorizationActions.Events.ViewManagement
             or AuthorizationActions.Events.ModerateLight
             or AuthorizationActions.Events.ModerateHeavy

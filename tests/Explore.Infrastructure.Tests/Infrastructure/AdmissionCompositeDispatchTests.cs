@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Models;
 using Explore.Application.Services;
@@ -151,7 +152,8 @@ public sealed class AdmissionCompositeDispatchTests
             CreateMetrics(),
             TimeProvider.System,
             Substitute.For<IMediator>(),
-            NullLogger<CompositeOutboxMessageDispatcher>.Instance);
+            NullLogger<CompositeOutboxMessageDispatcher>.Instance,
+            Substitute.For<IConfigurationManifestEffectDispatcher>());
     }
 
     private static NotificationFanoutOccurrenceHandoffService CreateNotificationHandoff()

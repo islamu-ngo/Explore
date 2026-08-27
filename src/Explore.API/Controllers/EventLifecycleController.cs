@@ -15,6 +15,7 @@ using Explore.Application.DTOs.EventProgram;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
+using Explore.Application.Features.Events;
 using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
@@ -25,6 +26,7 @@ using Explore.Application.Responses;
 using Explore.Application.Specifications.Events;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
@@ -61,6 +63,11 @@ public class EventLifecycleController : ExploreControllerBase
         "Event validation failed",
         "Event publishing failed.");
 
+    private static readonly ApiValidationProblemDescriptor ApprovePublishValidationProblem = new(
+        "event",
+        "Event validation failed",
+        "Event approval-publication failed.");
+
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "event",
         "Event validation failed",
@@ -79,6 +86,14 @@ public class EventLifecycleController : ExploreControllerBase
     private static readonly ApiNotFoundProblemDescriptor EventNotFoundProblem = new(
         "Event not found",
         "Event not found.");
+
+    private static readonly CommandFailurePolicy ApprovePublishFailures = CommandFailurePolicy
+        .ValidatedBy(ApprovePublishValidationProblem)
+        .NotFound(EventNotFoundProblem, FailureCodes.NotFound)
+        .Conflict(
+            "Event approval-publication conflict",
+            "Event approval-publication conflict.",
+            EventPublicationExecutor.ConcurrencyConflictCode);
 
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
@@ -183,6 +198,39 @@ public class EventLifecycleController : ExploreControllerBase
         }
 
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Approve and publish a draft event through the privileged approval boundary.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/approve-publish", Name = RouteNames.ApprovePublishEvent)]
+    [EndpointSummary("Approve And Publish Event")]
+    [EndpointDescription("Approves and publishes a ready draft event after privileged authorization and concurrency validation. Side effects are written to the transactional outbox.")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.DefaultPolicy)]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ApprovePublish(
+        Guid id,
+        [FromBody] PublishEventRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ApprovePublishEventCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        return response.IsSuccess
+            ? Ok(response)
+            : ApprovePublishFailures.Map(this, response);
     }
 
     /// <summary>

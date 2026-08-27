@@ -6,6 +6,10 @@
     "settingKey": {
       "type": "string",
       "description": "Canonical instance setting key. Storage administration sends the bounded key 'storage' for HAL affordance checks."
+    },
+    "configurationManifestExport": {
+      "type": "boolean",
+      "description": "Server-projected fact proving the request is the canonical whole-instance configuration manifest export."
     }
   }
 }

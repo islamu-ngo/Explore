@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
@@ -54,6 +55,12 @@ public sealed class EventReportsControllerTests
     {
         var getOptions = typeof(EventReportsController).GetMethod(nameof(EventReportsController.GetOptions))!;
         var submit = typeof(EventReportsController).GetMethod(nameof(EventReportsController.Submit))!;
+        var submitCorrection = typeof(EventReportsController)
+            .GetMethod(nameof(EventReportsController.SubmitCorrection))!;
+        var submitUnsafeExternalLink = typeof(EventReportsController)
+            .GetMethod(nameof(EventReportsController.SubmitUnsafeExternalLink))!;
+        var submitLegalOrCopyrightComplaint = typeof(EventReportsController)
+            .GetMethod(nameof(EventReportsController.SubmitLegalOrCopyrightComplaint))!;
         var getMyReports = typeof(EventReportsController).GetMethod(nameof(EventReportsController.GetMyReports))!;
         var getMyReport = typeof(EventReportsController).GetMethod(nameof(EventReportsController.GetMyReport))!;
         var updateCommunicationConsent = typeof(EventReportsController)
@@ -70,6 +77,41 @@ public sealed class EventReportsControllerTests
         await Assert.That(submit.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
         await Assert.That(submit.GetCustomAttribute<EndpointClassificationAttribute>()?.Class).IsEqualTo(EndpointClass.Authenticated);
         await Assert.That(GetRateLimitPolicy(submit)).IsEqualTo(RateLimitingExtensions.WritePolicy);
+
+        foreach ((MethodInfo Method, string Template, string RouteName) remedy in new[]
+                 {
+                     (
+                         submitCorrection,
+                         "corrections",
+                         RouteNames.SubmitEventCorrection),
+                     (
+                         submitUnsafeExternalLink,
+                         "unsafe-external-links",
+                         RouteNames.SubmitUnsafeExternalLinkReport),
+                     (
+                         submitLegalOrCopyrightComplaint,
+                         "legal-or-copyright-complaints",
+                         RouteNames.SubmitLegalOrCopyrightComplaint)
+                 })
+        {
+            await AssertRoute(
+                remedy.Method,
+                typeof(HttpPostAttribute),
+                remedy.Template,
+                remedy.RouteName);
+            await Assert.That(remedy.Method.GetCustomAttribute<AuthorizeAttribute>())
+                .IsNotNull();
+            await Assert.That(
+                    remedy.Method.GetCustomAttribute<AllowAnonymousAttribute>())
+                .IsNull();
+            await Assert.That(
+                    remedy.Method
+                        .GetCustomAttribute<EndpointClassificationAttribute>()
+                        ?.Class)
+                .IsEqualTo(EndpointClass.Authenticated);
+            await Assert.That(GetRateLimitPolicy(remedy.Method))
+                .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        }
 
         await AssertRoute(getMyReports, typeof(HttpGetAttribute), "my", RouteNames.GetMyEventReports);
         await Assert.That(getMyReports.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
@@ -158,12 +200,59 @@ public sealed class EventReportsControllerTests
                 ReferenceEquals(command.Request, dto) &&
                 command.Request.ReportCaseUpdatesConsent &&
                 !command.Request.ReportFollowUpContactConsent &&
+                command.SubmissionChannel == EventReportSubmissionChannel.General &&
                 command.ReporterIpHash == expectedIpHash &&
                 command.ReporterUserAgentHash == expectedUserAgentHash &&
                 command.ReporterIpHash != "203.0.113.5" &&
                 command.ReporterUserAgentHash != "EventReportingTests/1.0" &&
                 command.CorrelationId == "corr-report-1"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments("Correction")]
+    [Arguments("UnsafeExternalLink")]
+    [Arguments("LegalOrCopyright")]
+    public async Task RemedyRoutes_DispatchServerOwnedSubmissionChannel(
+        string channelName)
+    {
+        EventReportSubmissionChannel expectedChannel =
+            Enum.Parse<EventReportSubmissionChannel>(channelName);
+        _mediator.Send(
+                Arg.Any<SubmitEventReportCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(BaseCommandResponse.Success(
+                Guid.CreateVersion7(),
+                "Submitted."));
+        EventReportsController controller = CreateController(
+            "203.0.113.5",
+            "EventReportingTests/1.0",
+            "corr-remedy");
+        SubmitEventReportDto request = CreateSubmitDto();
+
+        _ = expectedChannel switch
+        {
+            EventReportSubmissionChannel.Correction =>
+                await controller.SubmitCorrection(
+                    request,
+                    CancellationToken.None),
+            EventReportSubmissionChannel.UnsafeExternalLink =>
+                await controller.SubmitUnsafeExternalLink(
+                    request,
+                    CancellationToken.None),
+            EventReportSubmissionChannel.LegalOrCopyright =>
+                await controller.SubmitLegalOrCopyrightComplaint(
+                    request,
+                    CancellationToken.None),
+            _ => throw new InvalidOperationException(
+                "Only remedy channels are valid for this test.")
+        };
+
+        await _mediator.Received(1).Send(
+            Arg.Is<SubmitEventReportCommand>(command =>
+                ReferenceEquals(command.Request, request)
+                && command.SubmissionChannel == expectedChannel),
+            CancellationToken.None);
     }
 
     [Test]
@@ -185,6 +274,29 @@ public sealed class EventReportsControllerTests
         await Assert.That(problemDetails).IsNotNull();
         await Assert.That(problemDetails!.Title).IsEqualTo("Event report conflict");
         await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(EventReportFailureCodes.Duplicate);
+    }
+
+    [Test]
+    public async Task Submit_WhenIntakeIsDisabled_DelegatesCanonicalConflictMapping()
+    {
+        _mediator.Send(Arg.Any<SubmitEventReportCommand>(), Arg.Any<CancellationToken>())
+            .Returns(BaseCommandResponse.Failure<Guid>(
+                "event_reporting_intake_disabled",
+                "Event report intake is disabled for this tenant."));
+        var controller = CreateController("203.0.113.5", "EventReportingTests/1.0", "corr-report-intake-disabled");
+
+        var actionResult = await controller.Submit(CreateSubmitDto(), CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        var problemDetails = objectResult.Value as ProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Type).IsEqualTo(ApiProblemTypes.Conflict);
+        await Assert.That(problemDetails.Title).IsEqualTo("Event report conflict");
+        await Assert.That(problemDetails.Detail).IsEqualTo("Event report intake is disabled for this tenant.");
+        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo("event_reporting_intake_disabled");
+        await _mediator.Received(1).Send(Arg.Any<SubmitEventReportCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

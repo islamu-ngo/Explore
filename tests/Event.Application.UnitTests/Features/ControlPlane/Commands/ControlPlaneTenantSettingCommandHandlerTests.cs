@@ -5,6 +5,8 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
+using Explore.Application.Notifications;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
@@ -36,7 +38,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
     [Arguments("email.smtp_password", "sensitive_setting_not_supported")]
     public async Task Set_DeniesInvalidTargetBeforeRepositoryAccess(string key, string failureCode)
     {
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "value"),
@@ -54,7 +56,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
     {
         const string key = GovernanceSettingKeys.Email.SmtpHost;
         _systemSettings.IsLocked(key, Arg.Any<CancellationToken>()).Returns(true);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -74,7 +76,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
     public async Task Set_DeniesInvalidValueBeforeTenantRepositoryAccess(string key, string value)
     {
         _systemSettings.IsLocked(key, Arg.Any<CancellationToken>()).Returns(false);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, value),
@@ -92,7 +94,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
         const string key = GovernanceSettingKeys.Email.SmtpSkipCertValidation;
         var cancellationToken = new CancellationTokenSource().Token;
         _systemSettings.IsLocked(key, cancellationToken).Returns(false);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
@@ -111,7 +113,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
     {
         const string key = GovernanceSettingKeys.Email.SmtpHost;
         _systemSettings.IsLocked(key, Arg.Any<CancellationToken>()).Returns(false);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -135,7 +137,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
         _systemSettings.IsLocked(key, cancellation.Token).Returns(false);
         _tenantSettings.SetValueAsync(_tenantId, key, Arg.Any<string>(), cancellation.Token, _actorUserId)
             .Returns(Task.FromCanceled(cancellation.Token));
-        var handler = new SetControlPlaneTenantSettingCommandHandler(_tenantSettings, _systemSettings, _mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler();
 
         await Assert.That(async () => await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -166,6 +168,58 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
         await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().LockAsync(default, default!, default, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().UnlockAsync(default, default!, default);
+    }
+
+    [Test]
+    public async Task Lock_GuardedPublicationPolicyKey_FailsBeforeCoordinationOrSideEffects()
+    {
+        string key = PublicationPolicySettingKeys.All[0];
+        var mutationLock = Substitute.For<ISettingMutationLock>();
+        var handler = new LockControlPlaneTenantSettingCommandHandler(
+            _tenantSettings,
+            _systemSettings,
+            mutationLock,
+            _currentUserService,
+            _settingsResolver,
+            _mediator);
+
+        var result = await handler.Handle(
+            new LockControlPlaneTenantSettingCommand(_tenantId, key),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("setting_not_lockable");
+        await Assert.That(mutationLock.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_systemSettings.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_tenantSettings.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_settingsResolver.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_mediator.ReceivedCalls().Count()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Unlock_GuardedPublicationPolicyKey_FailsBeforeCoordinationOrSideEffects()
+    {
+        string key = PublicationPolicySettingKeys.All[0];
+        var mutationLock = Substitute.For<ISettingMutationLock>();
+        var handler = new UnlockControlPlaneTenantSettingCommandHandler(
+            _tenantSettings,
+            _systemSettings,
+            mutationLock,
+            _currentUserService,
+            _settingsResolver,
+            _mediator);
+
+        var result = await handler.Handle(
+            new UnlockControlPlaneTenantSettingCommand(_tenantId, key),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("setting_not_lockable");
+        await Assert.That(mutationLock.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_systemSettings.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_tenantSettings.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_settingsResolver.ReceivedCalls().Count()).IsEqualTo(0);
+        await Assert.That(_mediator.ReceivedCalls().Count()).IsEqualTo(0);
     }
 
     [Test]
@@ -292,13 +346,7 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
         var mutationLock = Substitute.For<ISettingMutationLock>();
         _currentUserService.UserId.Returns((Guid?)null);
         _currentUserService.IsAuthenticated.Returns(false);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(
-            _tenantSettings,
-            _systemSettings,
-            mutationLock,
-            _currentUserService,
-            _settingsResolver,
-            _mediator);
+        var handler = CreateSetHandler(mutationLock);
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -349,6 +397,308 @@ public sealed class ControlPlaneTenantSettingCommandHandlerTests
         await _tenantSettings.DidNotReceiveWithAnyArgs().LockAsync(default, default!, default, default);
         await _tenantSettings.DidNotReceiveWithAnyArgs().UnlockAsync(default, default!, default, default);
         await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Test]
+    public async Task Set_GuardedPublicationPolicyKey_DelegatesOneRejectingMutationToBoundary()
+    {
+        const string key = GovernanceSettingKeys.EventReporting.IntakeEnabled;
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        var mutationLock = Substitute.For<ISettingMutationLock>();
+        var unitOfWork = new ImmediateUnitOfWork();
+        var cancellationToken = new CancellationTokenSource().Token;
+        PublicationPolicyTenantMutationRequest? observedRequest = null;
+        CancellationToken observedCancellationToken = default;
+        boundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                observedRequest = call.Arg<PublicationPolicyTenantMutationRequest>();
+                observedCancellationToken = call.Arg<CancellationToken>();
+                return Task.FromResult(BoundaryResult(accepted: true));
+            });
+        var handler = CreateGuardedSetHandler(boundary, unitOfWork, mutationLock);
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            cancellationToken);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(observedRequest).IsNotNull();
+        await Assert.That(observedRequest!.TenantId).IsEqualTo(_tenantId);
+        await Assert.That(observedRequest.ActorUserId).IsEqualTo(_actorUserId);
+        await Assert.That(observedRequest.OccurredAtUtc.Kind).IsEqualTo(DateTimeKind.Utc);
+        await Assert.That(observedRequest.LockedSystemBehavior)
+            .IsEqualTo(PublicationPolicyLockedSystemBehavior.Reject);
+        await Assert.That(observedRequest.Mutations.Length).IsEqualTo(1);
+        await Assert.That(observedRequest.Mutations[0].Kind).IsEqualTo(PublicationPolicyMutationKind.Set);
+        await Assert.That(observedRequest.Mutations[0].Key).IsEqualTo(key);
+        await Assert.That(observedRequest.Mutations[0].JsonValue).IsEqualTo("true");
+        await Assert.That(observedRequest.Mutations[0].TenantId).IsEqualTo(_tenantId);
+        await Assert.That(observedRequest.Mutations[0].IsLocked).IsNull();
+        await Assert.That(observedCancellationToken).IsEqualTo(cancellationToken);
+        await boundary.Received(1).ApplyTenantAsync(
+            Arg.Any<PublicationPolicyTenantMutationRequest>(),
+            cancellationToken);
+        await _systemSettings.DidNotReceiveWithAnyArgs().IsLocked(default!, default);
+        await mutationLock.DidNotReceiveWithAnyArgs().ExecuteAsync<object>(default!, default!, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs().GetByTenantAndKey(default, default!, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+    }
+
+    [Test]
+    [Arguments("event_reporting_intake_unsafe_publication_policy")]
+    [Arguments("event_reporting_intake_policy_invalid")]
+    [Arguments("event_reporting_policy_locked")]
+    public async Task Set_GuardedPublicationPolicyBoundaryFailure_MapsExactFailureWithoutSideEffects(
+        string failureCode)
+    {
+        const string key = GovernanceSettingKeys.EventReporting.IntakeEnabled;
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        var unitOfWork = new ImmediateUnitOfWork();
+        boundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(BoundaryResult(accepted: false, failureCode)));
+        var handler = CreateGuardedSetHandler(boundary, unitOfWork);
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "false"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(string.IsNullOrWhiteSpace(result.FailureCode)).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(failureCode);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        _settingsResolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Test]
+    public async Task Set_AcceptedGuardedPublicationPolicyWrite_CommitsBeforeDeferredCanonicalEffects()
+    {
+        const string key = GovernanceSettingKeys.EventReporting.IntakeEnabled;
+        var calls = new List<string>();
+        var unitOfWork = new RecordingUnitOfWork(calls);
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        SettingChangedNotification first = Notification("events.require_approval");
+        SettingChangedNotification second = Notification(key);
+        boundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("boundary");
+                return Task.FromResult(BoundaryResult(accepted: true, notifications: [first, second]));
+            });
+        _settingsResolver.When(resolver => resolver.InvalidateCache(SettingScope.Tenant, _tenantId))
+            .Do(_ => calls.Add("invalidate"));
+        _mediator.Publish(Arg.Any<SettingChangedNotification>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                SettingChangedNotification notification = call.Arg<SettingChangedNotification>()!;
+                calls.Add($"publish:{notification.Key}");
+                return Task.CompletedTask;
+            });
+        var handler = CreateGuardedSetHandler(boundary, unitOfWork);
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(calls.SequenceEqual([
+            "transaction-start",
+            "boundary",
+            "transaction-commit",
+            "invalidate",
+            "publish:events.require_approval",
+            $"publish:{key}"
+        ])).IsTrue();
+    }
+
+    [Test]
+    public async Task Set_AcceptedGuardedPublicationPolicyWriteWithNoDeferredEffects_DoesNotInvalidateOrPublish()
+    {
+        const string key = GovernanceSettingKeys.EventReporting.IntakeEnabled;
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        boundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(BoundaryResult(accepted: true)));
+        var handler = CreateGuardedSetHandler(boundary, new ImmediateUnitOfWork());
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        _settingsResolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Test]
+    public async Task Set_UnguardedSetting_PreservesDirectRepositoryCacheAndNotificationBehavior()
+    {
+        const string key = GovernanceSettingKeys.Email.SmtpSkipCertValidation;
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        var handler = CreateGuardedSetHandler(boundary, new ImmediateUnitOfWork());
+        _systemSettings.IsLocked(key, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await boundary.DidNotReceiveWithAnyArgs()
+            .ApplyTenantAsync(default!, default);
+        await _tenantSettings.Received(1)
+            .SetValueAsync(_tenantId, key, "true", Arg.Any<CancellationToken>(), _actorUserId);
+        _settingsResolver.Received(1).InvalidateCache(SettingScope.Tenant, _tenantId);
+        await _mediator.Received(1).Publish(
+            Arg.Is<Explore.Application.Notifications.SettingChangedNotification>(notification =>
+                notification != null
+                && notification.Key == key
+                && notification.ActorUserId == _actorUserId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Set_GuardedPublicationPolicyKey_WhenOperatorIdentityIsMissingOrEmpty_FailsBeforeBoundary(
+        bool missingIdentity)
+    {
+        const string key = GovernanceSettingKeys.EventReporting.IntakeEnabled;
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        _currentUserService.UserId.Returns(missingIdentity ? null : Guid.Empty);
+        var handler = CreateGuardedSetHandler(boundary, new ImmediateUnitOfWork());
+
+        var result = await handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("authenticated_operator_required");
+        await boundary.DidNotReceiveWithAnyArgs()
+            .ApplyTenantAsync(default!, default);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+        _settingsResolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Test]
+    public async Task Set_GuardedPublicationPolicyKey_PropagatesCancellationFromBoundary()
+    {
+        const string key = GovernanceSettingKeys.Events.RequireApproval;
+        using var cancellation = new CancellationTokenSource();
+        var boundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        var boundaryCalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var boundaryResult = new TaskCompletionSource<PublicationPolicyMutationResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        boundary.ApplyTenantAsync(
+                Arg.Any<PublicationPolicyTenantMutationRequest>(),
+                cancellation.Token)
+            .Returns(_ =>
+            {
+                boundaryCalled.TrySetResult();
+                return boundaryResult.Task;
+            });
+        var handler = CreateGuardedSetHandler(boundary, new ImmediateUnitOfWork());
+
+        Task act = handler.Handle(
+            new SetControlPlaneTenantSettingCommand(_tenantId, key, "true"),
+            cancellation.Token);
+        await boundaryCalled.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await cancellation.CancelAsync();
+        boundaryResult.SetCanceled(cancellation.Token);
+
+        await Assert.That(async () => await act).Throws<OperationCanceledException>();
+        await boundary.Received(1).ApplyTenantAsync(Arg.Any<PublicationPolicyTenantMutationRequest>(), cancellation.Token);
+        await _tenantSettings.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default, default!, default!, default, default);
+    }
+
+    private SetControlPlaneTenantSettingCommandHandler CreateSetHandler(
+        ISettingMutationLock? mutationLock = null) => CreateGuardedSetHandler(
+        Substitute.For<IPublicationPolicyMutationBoundary>(),
+        new ImmediateUnitOfWork(),
+        mutationLock);
+
+    private SetControlPlaneTenantSettingCommandHandler CreateGuardedSetHandler(
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
+        IUnitOfWork unitOfWork,
+        ISettingMutationLock? mutationLock = null) => new(
+        _tenantSettings,
+        _systemSettings,
+        mutationLock ?? _mutationLock,
+        _currentUserService,
+        _settingsResolver,
+        _mediator,
+        publicationPolicyMutationBoundary,
+        unitOfWork);
+
+    private SettingChangedNotification Notification(string key) => new(
+        key,
+        null,
+        "true",
+        SettingSource.TenantOverride,
+        _tenantId,
+        _actorUserId,
+        DateTime.UtcNow);
+
+    private static PublicationPolicyMutationResult BoundaryResult(
+        bool accepted,
+        string? failureCode = null,
+        params SettingChangedNotification[] notifications) => new(
+        Success: accepted,
+        FailureCode: failureCode,
+        Message: accepted ? "Publication policy updated." : "Publication policy rejected.",
+        DeferredNotifications: [.. notifications]);
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public async Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => await operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+    }
+
+    private sealed class RecordingUnitOfWork(List<string> calls) : IUnitOfWork
+    {
+        public async Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default)
+        {
+            calls.Add("transaction-start");
+            await operation(ct);
+            calls.Add("transaction-commit");
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            calls.Add("transaction-start");
+            T result = await operation(ct);
+            calls.Add("transaction-commit");
+            return result;
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
     }
 
     private TenantSetting TenantSetting(string key, bool isLocked) => new()

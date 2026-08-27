@@ -10,8 +10,10 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["src/Event.MigrationService/Event.MigrationService.csproj", "src/Event.MigrationService/packages.lock.json", "src/Event.MigrationService/"]
+COPY ["src/Explore.Atproto.Transport/Explore.Atproto.Transport.csproj", "src/Explore.Atproto.Transport/packages.lock.json", "src/Explore.Atproto.Transport/"]
 COPY ["src/Explore.Application/Explore.Application.csproj", "src/Explore.Application/packages.lock.json", "src/Explore.Application/"]
 COPY ["src/Explore.Domain/Explore.Domain.csproj", "src/Explore.Domain/packages.lock.json", "src/Explore.Domain/"]
+COPY ["src/Explore.Infrastructure/Explore.Infrastructure.csproj", "src/Explore.Infrastructure/packages.lock.json", "src/Explore.Infrastructure/"]
 COPY ["src/Explore.Persistence/Explore.Persistence.csproj", "src/Explore.Persistence/packages.lock.json", "src/Explore.Persistence/"]
 COPY ["src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj", "src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/packages.lock.json", "src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/"]
 COPY ["src/Explore.Persistence.DataProtection.Migrations.MariaDb/Explore.Persistence.DataProtection.Migrations.MariaDb.csproj", "src/Explore.Persistence.DataProtection.Migrations.MariaDb/packages.lock.json", "src/Explore.Persistence.DataProtection.Migrations.MariaDb/"]
@@ -32,4 +34,6 @@ RUN dotnet publish "Event.MigrationService.csproj" -c $BUILD_CONFIGURATION -o /a
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY --chown=$APP_UID:$APP_UID --from=build /src/deploy/bootstrap/README.md /etc/islamu-event/bootstrap/README.md
+COPY --chown=$APP_UID:$APP_UID --from=build /src/schemas/configuration-manifest-v1alpha1.schema.json /app/schemas/configuration-manifest-v1alpha1.schema.json
 ENTRYPOINT ["dotnet", "Event.MigrationService.dll"]

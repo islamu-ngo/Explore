@@ -7,8 +7,10 @@ using System.Security.Claims;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.ControlPlane;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
+using Microsoft.AspNetCore.Http;
 
 public sealed class ControlPlaneOverviewLinkPolicy : ILinkPolicy<ControlPlaneOverviewDto>
 {
@@ -65,7 +67,33 @@ public sealed class ControlPlaneOverviewLinkPolicy : ILinkPolicy<ControlPlaneOve
             "GET",
             "Authorization provider status",
             "authorization-provider");
+
+        yield return ConfigurationManifestExportLink(
+            LinkRelations.ExportConfigurationOverrides,
+            ConfigurationManifestExportView.Overrides);
+
+        yield return ConfigurationManifestExportLink(
+            LinkRelations.ExportConfigurationPortable,
+            ConfigurationManifestExportView.Portable);
     }
+
+    private static LinkDefinition ConfigurationManifestExportLink(
+        string relation,
+        ConfigurationManifestExportView view) =>
+        new LinkDefinition(
+                relation,
+                RouteNames.ExportConfigurationManifest,
+                new { view = view.ToString() },
+                HttpMethods.Get,
+                view == ConfigurationManifestExportView.Portable
+                    ? "Export portable configuration manifest"
+                    : "Export configuration manifest overrides",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.InstanceSettings.View,
+                ResourceKinds.InstanceSetting,
+                ExportConfigurationManifestQuery.ResourceKey,
+                facts: new ConfigurationManifestExportAuthorizationFacts());
 
     private static LinkDefinition InstanceSettingLink(
         string rel,

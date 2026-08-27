@@ -140,7 +140,15 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             new HalResourceOfTenantPaidEventPolicyConfigurationDto
             {
                 ActiveInstanceCeiling = PaidPolicy(),
-                EffectivePolicy = PaidPolicy()
+                EffectivePolicy = PaidPolicy(),
+                Authority = new PaidEventPolicyAuthorityDto
+                {
+                    InstancePolicyVersion = 1,
+                    EffectiveValuesInherited = true,
+                    HasTenantNarrowing = false,
+                    ManifestOwnedFields = ["allowedCurrencyCodes"],
+                    SovereignLockedFields = ["providerCredentials", "saleControl"]
+                }
             });
         var cut = RenderLayout();
 
@@ -272,7 +280,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         RefundProtectionIds = [1, 2, 3, 4, 5, 6, 7],
         CurrencyRiskLimits =
         [
-            new CurrencyRiskLimits2
+            new PaidEventPolicyCurrencyRiskLimitDto
             {
                 CurrencyCode = "EUR",
                 PerEventSalesCeilingMinor = 500_000,

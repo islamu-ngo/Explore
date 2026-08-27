@@ -1253,6 +1253,12 @@
           "OpenTelemetry.Instrumentation.Runtime": "[1.17.0, )"
         }
       },
+      "islamu.configurationmanifest.schemagenerator": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Application": "[1.0.0, )"
+        }
+      },
       "Asp.Versioning.Mvc": {
         "type": "CentralTransitive",
         "requested": "[10.0.1, )",

@@ -114,10 +114,37 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         IAuthorizationFacts? facts)
     {
+        if (IsConfigurationManifestExport(resourceKind, resourceId, action))
+        {
+            bool hasExportFact =
+                resourceAttributes?.TryGetValue("configurationManifestExport", out object? exportFact) == true
+                && exportFact is true;
+            bool exportDecision = hasExportFact && profile.IsInstanceAdmin;
+            LogDecision(
+                exportDecision ? "allow" : "deny",
+                exportDecision ? "configuration_manifest_export" : "configuration_manifest_export_authority_missing",
+                resourceKind,
+                action);
+            return exportDecision;
+        }
+
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
             LogDecision("deny", "unsupported_event_action", resourceKind, action);
             return false;
+        }
+
+        if (resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ApprovePublish)
+        {
+            var approvalDecision = EvaluateApprovePublishWithProfile(
+                profile, resourceId, resourceAttributes);
+            LogDecision(
+                approvalDecision ? "allow" : "deny",
+                approvalDecision ? "publication_approval_admin" : "publication_approval_authority_missing",
+                resourceKind,
+                action);
+            return approvalDecision;
         }
 
         if (profile.IsInstanceAdmin && IsInstanceAdminFallbackAllowed(resourceKind, action))
@@ -209,6 +236,23 @@ public partial class FallbackAuthorizationService
 
         LogDecision(decision ? "allow" : "deny", "fallback_batch_policy", resourceKind, action);
         return decision;
+    }
+
+    private bool EvaluateApprovePublishWithProfile(
+        AuthorityProfile profile,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return TryResolveEventContext(
+                ResourceKinds.Event,
+                resourceId,
+                resourceAttributes,
+                out var tenantId,
+                out var eventId)
+            && tenantId != Guid.Empty
+            && eventId != Guid.Empty
+            && tenantId == profile.TenantId
+            && (profile.IsInstanceAdmin || !SafeMode && profile.IsTenantAdmin);
     }
 
     private static bool EvaluateTenantSettingWithProfile(

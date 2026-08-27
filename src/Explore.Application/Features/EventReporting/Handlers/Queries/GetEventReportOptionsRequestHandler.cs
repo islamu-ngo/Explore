@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventReporting;
 using Explore.Application.Features.EventReporting.Policies;
 using Explore.Application.Features.EventReporting.Requests.Queries;
@@ -16,6 +17,7 @@ namespace Explore.Application.Features.EventReporting.Handlers.Queries;
 public sealed class GetEventReportOptionsRequestHandler(
     IEventRepository eventRepository,
     ITenantContext tenantContext,
+    IEventReportingIntakeGuard intakeGuard,
     HybridCache cache,
     IOptions<EventReportSubmissionOptions> optionsAccessor)
     : IRequestHandler<GetEventReportOptionsRequest, EventReportOptionsDto?>
@@ -27,7 +29,8 @@ public sealed class GetEventReportOptionsRequestHandler(
         GetEventReportOptionsRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.EventId == Guid.Empty || tenantContext.TenantId == Guid.Empty)
+        var tenantId = tenantContext.TenantId;
+        if (request.EventId == Guid.Empty || tenantId == Guid.Empty)
         {
             return null;
         }
@@ -35,12 +38,34 @@ public sealed class GetEventReportOptionsRequestHandler(
         var eventEntity = await eventRepository.GetAuthorizationTargetByIdAsync(
             request.EventId,
             cancellationToken);
-        if (eventEntity is null || eventEntity.TenantId != tenantContext.TenantId)
+        if (eventEntity is null || eventEntity.TenantId != tenantId)
+        {
+            return null;
+        }
+
+        if (!await eventRepository.IsPubliclyEligibleAsync(
+                tenantId,
+                request.EventId,
+                cancellationToken))
         {
             return null;
         }
 
         var maxReporterTextLength = Math.Max(1, optionsAccessor.Value.MaxReporterTextLength);
+        EventReportingIntakeDecision intakeDecision = await intakeGuard.ResolveAsync(tenantId, cancellationToken);
+        if (!intakeDecision.IntakeEnabled)
+        {
+            return new EventReportOptionsDto
+            {
+                EventId = request.EventId,
+                IsReportable = false,
+                UnavailableReasonCode = intakeDecision.ReasonCode,
+                UnavailableReasonMessage = intakeDecision.Message,
+                MaxReporterTextLength = maxReporterTextLength,
+                ReasonOptions = []
+            };
+        }
+
         if (eventEntity.EventStatusId != (int)EventStatusEnum.Published)
         {
             return new EventReportOptionsDto

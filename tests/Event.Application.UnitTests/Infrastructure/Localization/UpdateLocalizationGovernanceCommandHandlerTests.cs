@@ -33,7 +33,10 @@ public class UpdateLocalizationGovernanceCommandHandlerTests
         _adminContext.IsInstanceAdminAsync(ActorId, Arg.Any<CancellationToken>()).Returns(true);
         _settingRepository = Substitute.For<ISystemSettingRepository>();
         var mediator = Substitute.For<IMediator>();
-        var upsertService = new SettingUpsertService(_settingRepository, mediator);
+        var upsertService = new SettingUpsertService(
+            _settingRepository,
+            mediator,
+            Substitute.For<IPublicationPolicyMutationBoundary>());
         _configResolver = Substitute.For<ITranslationConfigResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _tenantContext.TenantId.Returns(Guid.NewGuid());

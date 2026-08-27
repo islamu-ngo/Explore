@@ -158,6 +158,7 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
         string? reporterIpHash,
         string? reporterUserAgentHash,
         string reasonCode,
+        string? subcategoryCode,
         DateTime createdAfterUtc,
         CancellationToken cancellationToken)
     {
@@ -166,6 +167,9 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
             return false;
         }
 
+        string? normalizedSubcategory = string.IsNullOrWhiteSpace(subcategoryCode)
+            ? null
+            : subcategoryCode.Trim();
         var query = ApplyReporterIdentity(
             _dbContext.EventReports
                 .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
@@ -173,6 +177,7 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
                 .Where(report => report.TenantId == tenantId
                     && report.EventId == eventId
                     && report.ReasonCode == reasonCode.Trim()
+                    && report.SubcategoryCode == normalizedSubcategory
                     && report.CreatedAt >= createdAfterUtc),
             reporterUserId,
             reporterActorId,

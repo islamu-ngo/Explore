@@ -130,14 +130,14 @@ public sealed class InstancePaidEventPolicySectionTests : IDisposable
             RefundProtectionIds = [1, 2, 3, 4, 5, 6, 7],
             CurrencyRiskLimits =
             [
-                new CurrencyRiskLimits
+                new PaidEventPolicyCurrencyRiskLimitDto
                 {
                     CurrencyCode = "EUR",
                     PerEventSalesCeilingMinor = 500_000,
                     RollingOrganizerSalesCeilingMinor = 1_000_000,
                     HighValueReviewThresholdMinor = 250_000
                 },
-                new CurrencyRiskLimits { CurrencyCode = "USD" }
+                new PaidEventPolicyCurrencyRiskLimitDto { CurrencyCode = "USD" }
             ],
             RequiresFirstPaidEventReview = true,
             FarFutureReviewThresholdDays = 180

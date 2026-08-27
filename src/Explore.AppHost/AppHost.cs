@@ -32,6 +32,19 @@ builder.Configuration.AddInfisical(builder.Configuration, source =>
 });
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var hostingTopology = ParseHostingTopology(builder.Configuration["Hosting:Topology"]);
+var configurationManifestMode = ConfiguredValue(
+    builder.Configuration,
+    "CONFIGURATION_MANIFEST_MODE",
+    "Off");
+var configurationManifestHostDirectory = ConfiguredValue(
+    builder.Configuration,
+    "CONFIGURATION_MANIFEST_HOST_DIRECTORY",
+    Path.Combine("deploy", "bootstrap"));
+var configurationManifestHostPath = Path.GetFullPath(
+    Path.Combine(
+        configurationManifestHostDirectory,
+        "configuration-manifest.json"),
+    repositoryRoot);
 var eventLocationPrivacyMigrationStage =
     builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
 var privacyErasureTopology = ParsePrivacyErasureTopology(
@@ -158,6 +171,11 @@ var migrations = WithProfileSecretMode(
         runMode,
         builder.Configuration)
     .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString());
+migrations = ConfigureConfigurationManifestOwner(
+    migrations,
+    ownsConfigurationManifest: hostingTopology == HostingTopology.Split,
+    configurationManifestMode,
+    configurationManifestHostPath);
 
 if (usesEmbeddedPrivacyErasureAuthority)
 {
@@ -450,6 +468,11 @@ else
             "CONTROL_PLANE_PUBLIC_ORIGIN",
             BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
         .WaitFor(mailpit);
+    eventStandalone = ConfigureConfigurationManifestOwner(
+        eventStandalone,
+        ownsConfigurationManifest: hostingTopology == HostingTopology.Standalone,
+        configurationManifestMode,
+        configurationManifestHostPath);
 
     if (usesEmbeddedPrivacyErasureAuthority)
     {
@@ -1708,6 +1731,17 @@ static (string Image, string Tag) ResolveImageAndTag(string image, string defaul
 
     return (trimmed, defaultTag);
 }
+
+static IResourceBuilder<ProjectResource> ConfigureConfigurationManifestOwner(
+    IResourceBuilder<ProjectResource> resource,
+    bool ownsConfigurationManifest,
+    string configuredMode,
+    string manifestPath) =>
+    resource
+        .WithEnvironment(
+            "CONFIGURATION_MANIFEST_MODE",
+            ownsConfigurationManifest ? configuredMode : "Off")
+        .WithEnvironment("CONFIGURATION_MANIFEST_PATH", manifestPath);
 
 static string ConfiguredValue(IConfiguration configuration, string key, string fallback) =>
     string.IsNullOrWhiteSpace(configuration[key]) ? fallback : configuration[key]!;

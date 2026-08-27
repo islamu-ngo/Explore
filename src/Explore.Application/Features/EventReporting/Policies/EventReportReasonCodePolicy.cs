@@ -13,6 +13,8 @@ public static class EventReportReasonCodePolicy
     public const string InvalidReasonCodeFailureCode = "event_report_reason_code_invalid";
     public const string EventCorrectionSuggestionSubcategory = "event_correction_suggestion";
     public const string UnsafeExternalLinkSubcategory = "unsafe_external_link";
+    public const string LegalOrCopyrightComplaintSubcategory =
+        "legal_or_copyright_complaint";
 
     private static readonly ReasonCodeMetadata[] ReasonCodes =
     [
@@ -54,6 +56,26 @@ public static class EventReportReasonCodePolicy
         return match is null
             ? null
             : ((int)match.ReasonCode, match.Code, match.DisplayName, match.Description);
+    }
+
+    public static bool IsReservedRemedySubcategory(string? subcategoryCode)
+    {
+        if (string.IsNullOrWhiteSpace(subcategoryCode))
+            return false;
+
+        string normalized = subcategoryCode.Trim();
+        return string.Equals(
+                normalized,
+                EventCorrectionSuggestionSubcategory,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                normalized,
+                UnsafeExternalLinkSubcategory,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                normalized,
+                LegalOrCopyrightComplaintSubcategory,
+                StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool TryNormalize(

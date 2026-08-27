@@ -99,7 +99,8 @@
     {
       "FileName": "ControlPlaneOverviewLinkPolicy.cs",
       "Relations": [
-        "rel-\u003ErouteName"
+        "rel-\u003ErouteName",
+        "relation-\u003ERouteNames.ExportConfigurationManifest"
       ],
       "Permissions": [
         "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View"
@@ -247,15 +248,17 @@
         "LinkRelations.PublicActions-\u003ERouteNames.GetEventPublicActions",
         "LinkRelations.Publish-\u003ERouteNames.PublishEvent",
         "LinkRelations.PublishReadiness-\u003ERouteNames.GetEventPublishReadiness",
+        "LinkRelations.RefundCampaigns-\u003ERouteNames.GetRefundCampaigns",
         "LinkRelations.ReportEvent-\u003ERouteNames.SubmitEventReport",
-        "LinkRelations.ReportExternalLink-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.ReportExternalLink-\u003ERouteNames.SubmitUnsafeExternalLinkReport",
+        "LinkRelations.ReportLegalOrCopyright-\u003ERouteNames.SubmitLegalOrCopyrightComplaint",
         "LinkRelations.SessionCreateContext-\u003ERouteNames.GetEventSessionCreateContext",
         "LinkRelations.SessionGroups-\u003ERouteNames.GetEventSessionGroupsByEvent",
         "LinkRelations.Sessions-\u003ERouteNames.GetEventSessions",
         "LinkRelations.SignInToRegister-\u003ERouteNames.StartAuthenticatedRegistrationOrder",
         "LinkRelations.StartGuestRegistration-\u003ERouteNames.StartGuestRegistrationOrder",
         "LinkRelations.StartRegistration-\u003ERouteNames.StartAuthenticatedRegistrationOrder",
-        "LinkRelations.SuggestCorrection-\u003ERouteNames.SubmitEventReport",
+        "LinkRelations.SuggestCorrection-\u003ERouteNames.SubmitEventCorrection",
         "LinkRelations.Team-\u003ERouteNames.GetEventTeam",
         "LinkRelations.Unmoderate-\u003ERouteNames.UnmoderateEvent",
         "LinkRelations.ViewParticipants-\u003ERouteNames.GetEventRegistrationOrders",
@@ -266,6 +269,7 @@
       ],
       "Permissions": [
         "ResourceDescriptors.Event:AuthorizationActions.Delete",
+        "ResourceDescriptors.Event:AuthorizationActions.Events.ManagePaidEventCommerce",
         "ResourceDescriptors.Event:AuthorizationActions.Events.ManagePublicActions",
         "ResourceDescriptors.Event:AuthorizationActions.Events.ManageRegistrationChannels",
         "ResourceDescriptors.Event:AuthorizationActions.Events.ManageRegistrationWorkflow",
@@ -757,12 +761,17 @@
         "LinkRelations.Cancel-\u003ERouteNames.CancelAuthenticatedRegistrationOrder",
         "LinkRelations.Continue-\u003ERouteNames.ContinueAuthenticatedRegistrationOrder",
         "LinkRelations.Finalize-\u003ERouteNames.FinalizeAuthenticatedRegistrationOrder",
+        "LinkRelations.PaymentAcceptance-\u003ERouteNames.GetAuthenticatedPaidOrderAcceptance",
+        "LinkRelations.PaymentStatus-\u003ERouteNames.GetAuthenticatedRegistrationPayment",
         "LinkRelations.RemovePromotion-\u003ERouteNames.RemoveAuthenticatedRegistrationOrderPromotion",
         "LinkRelations.RequirementProgress-\u003ERouteNames.GetAuthenticatedNativeRegistrationRequirementProgress",
         "LinkRelations.Self-\u003ERouteNames.GetCurrentRegistrationOrder",
+        "LinkRelations.StartPayment-\u003ERouteNames.StartAuthenticatedRegistrationPayment",
+        "LinkRelations.StudioPaymentStatus-\u003ERouteNames.GetStudioRegistrationPayment",
         "LinkRelations.ViewParticipants-\u003ERouteNames.GetAuthenticatedRegistrationOrderParticipants"
       ],
       "Permissions": [
+        "resourceKind:AuthorizationActions.Events.ManagePaidEventCommerce",
         "resourceKind:AuthorizationActions.RegistrationOrders.Cancel",
         "resourceKind:AuthorizationActions.RegistrationOrders.Continue",
         "resourceKind:AuthorizationActions.RegistrationOrders.Finalize",
@@ -921,6 +930,16 @@
         "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.Update",
         "ResourceKinds.InstanceSetting:AuthorizationActions.InstanceSettings.View",
         "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update"
+      ]
+    },
+    {
+      "FileName": "TenantReportingIntakePolicyLinkPolicy.cs",
+      "Relations": [
+        "LinkRelations.Self-\u003ERouteNames.GetTenantReportingIntakePolicy"
+      ],
+      "Permissions": [
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.Update",
+        "ResourceKinds.TenantSetting:AuthorizationActions.TenantSettings.View"
       ]
     },
     {

@@ -14,6 +14,9 @@ public sealed record InstanceScopedAuthorizationFacts : IAuthorizationFacts
     public static readonly InstanceScopedAuthorizationFacts Instance = new();
 }
 
+/// <summary>Facts that distinguish the privileged whole-instance manifest export operation.</summary>
+public sealed record ConfigurationManifestExportAuthorizationFacts : IAuthorizationFacts;
+
 /// <summary>
 /// Facts for a create check evaluated before the aggregate row exists. There is nothing to load, so
 /// these facts pass through resource resolution untouched and carry the pre-create lifecycle phase that

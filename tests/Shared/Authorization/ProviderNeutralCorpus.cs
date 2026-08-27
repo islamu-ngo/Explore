@@ -27,6 +27,12 @@ public enum ParitySubject
     /// <summary>Administrator of <see cref="ParityCorpus.OrganizationId"/> only.</summary>
     OrganizationAdmin,
 
+    /// <summary>Owner of <see cref="ParityCorpus.EventId"/> through an event-scoped role.</summary>
+    EventOwner,
+
+    /// <summary>Manager of <see cref="ParityCorpus.EventId"/> through an event-scoped role.</summary>
+    EventManager,
+
     /// <summary>Instance administrator.</summary>
     InstanceAdmin,
 
@@ -94,6 +100,8 @@ public sealed record ParityScenario(
 /// </summary>
 public static class ParityCorpus
 {
+    public const string ApprovePublishAction = "approve-publish";
+
     public static readonly Guid TenantId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     public static readonly Guid OtherTenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     public static readonly Guid OrganizationId = Guid.Parse("33333333-3333-3333-3333-333333333333");
@@ -341,6 +349,140 @@ public static class ParityCorpus
             ExpectedAllowed: true,
             Lanes: ParityLane.Both,
             Rationale: "Check-in staff with the exact manage permission may mutate admission state."),
+
+        // ---- approval-publish privilege ------------------------------------------------------------
+        new(
+            Id: "tenant-admin-approves-publication-in-own-tenant",
+            Category: "administrator",
+            Subject: ParitySubject.TenantAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenant approval policy is administered by the matching tenant administrator."),
+
+        new(
+            Id: "instance-admin-approves-publication",
+            Category: "administrator",
+            Subject: ParitySubject.InstanceAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Instance moderation authority may approve publication without acquiring event authorship."),
+
+        new(
+            Id: "event-owner-cannot-approve-publication",
+            Category: "normal-deny",
+            Subject: ParitySubject.EventOwner,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Event ownership is delegable authorship and cannot satisfy an independent approval boundary."),
+
+        new(
+            Id: "event-manager-cannot-approve-publication",
+            Category: "normal-deny",
+            Subject: ParitySubject.EventManager,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Event management authority cannot approve the manager's own publication."),
+
+        new(
+            Id: "actor-owner-cannot-approve-publication",
+            Category: "normal-deny",
+            Subject: ParitySubject.StandardUser,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: UserOwnedEvent(UserId),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Owning the event actor grants authorship, not privileged publication approval."),
+
+        new(
+            Id: "organization-admin-cannot-approve-publication",
+            Category: "normal-deny",
+            Subject: ParitySubject.OrganizationAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Organization administration remains inside the submitting authority and cannot self-approve."),
+
+        new(
+            Id: "tenant-admin-cannot-approve-other-tenant-publication",
+            Category: "wrong-tenant",
+            Subject: ParitySubject.TenantAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(tenantId: OtherTenantId),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Approval authority is tenant-qualified and must fail closed across tenant boundaries."),
+
+        new(
+            Id: "machine-caller-cannot-approve-publication",
+            Category: "machine-caller",
+            Subject: ParitySubject.MachineCaller,
+            ResourceKind: ResourceKinds.Event,
+            Action: ApprovePublishAction,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: false,
+            Lanes: ParityLane.Both,
+            Rationale: "Approval is a privileged human moderation decision and is never delegated to an API key."),
+
+        // ---- ordinary publication controls ---------------------------------------------------------
+        new(
+            Id: "event-owner-retains-ordinary-publish",
+            Category: "normal-allow",
+            Subject: ParitySubject.EventOwner,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.Publish,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenants without approval requirements retain existing event-owner publication authority."),
+
+        new(
+            Id: "event-manager-retains-ordinary-publish",
+            Category: "normal-allow",
+            Subject: ParitySubject.EventManager,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.Publish,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenants without approval requirements retain existing event-manager publication authority."),
+
+        new(
+            Id: "actor-owner-retains-ordinary-publish",
+            Category: "normal-allow",
+            Subject: ParitySubject.StandardUser,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.Publish,
+            Facts: UserOwnedEvent(UserId),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenants without approval requirements retain existing actor-owner publication authority."),
+
+        new(
+            Id: "organization-admin-retains-ordinary-publish",
+            Category: "normal-allow",
+            Subject: ParitySubject.OrganizationAdmin,
+            ResourceKind: ResourceKinds.Event,
+            Action: AuthorizationActions.Events.Publish,
+            Facts: OrganizationOwnedEvent(),
+            ExpectedAllowed: true,
+            Lanes: ParityLane.Both,
+            Rationale: "Tenants without approval requirements retain existing organization publication authority."),
 
         // ---- machine caller ------------------------------------------------------------------------
         new(

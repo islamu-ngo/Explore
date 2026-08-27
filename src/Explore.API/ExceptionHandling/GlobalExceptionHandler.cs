@@ -3,9 +3,10 @@
 
 using Explore.API.Middleware;
 using Explore.Application.Exceptions;
-using Microsoft.Net.Http.Headers;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.API.ExceptionHandling;
 
@@ -25,6 +26,7 @@ internal sealed class GlobalExceptionHandler(
             [StatusCodes.Status403Forbidden] = ApiProblemTypes.Forbidden,
             [StatusCodes.Status404NotFound] = ApiProblemTypes.NotFound,
             [StatusCodes.Status409Conflict] = ApiProblemTypes.Conflict,
+            [StatusCodes.Status413PayloadTooLarge] = ApiProblemTypes.PayloadTooLarge,
             [StatusCodes.Status422UnprocessableEntity] = ApiProblemTypes.UnprocessableEntity,
             [StatusCodes.Status429TooManyRequests] = ApiProblemTypes.TooManyRequests,
             [StatusCodes.Status500InternalServerError] = ApiProblemTypes.InternalServerError,
@@ -53,11 +55,21 @@ internal sealed class GlobalExceptionHandler(
                 "Unauthorized",
                 "Authentication is required to access this resource.",
                 ApiProblemCodes.AuthenticationRequired),
+            AuthorizationProviderUnavailableException => (
+                StatusCodes.Status503ServiceUnavailable,
+                "Authorization provider unavailable",
+                "Authorization could not be evaluated. Try again later.",
+                ApiProblemCodes.AuthorizationProviderUnavailable),
             AuthorizationException => (
                 StatusCodes.Status403Forbidden,
                 "Forbidden",
                 "You do not have permission to perform this action.",
                 ApiProblemCodes.Forbidden),
+            ConfigurationManifestExportTooLargeException tooLargeException => (
+                StatusCodes.Status413PayloadTooLarge,
+                "Configuration manifest export too large",
+                tooLargeException.Message,
+                tooLargeException.FailureCode),
             ConcurrencyConflictException concurrencyConflictException => (
                 StatusCodes.Status409Conflict,
                 "Concurrency conflict",

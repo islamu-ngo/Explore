@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
+using Explore.Persistence.Repositories;
 using Explore.Persistence.Security;
 using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -101,14 +102,15 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     }
 
     [Test]
-    [Arguments(PrimaryDatabaseProvider.PostgreSql, false)]
-    [Arguments(PrimaryDatabaseProvider.Sqlite, false)]
-    [Arguments(PrimaryDatabaseProvider.SqlServer, false)]
-    [Arguments(PrimaryDatabaseProvider.MariaDb, true)]
-    [Arguments(PrimaryDatabaseProvider.MySql, true)]
-    public async Task ConfigurePersistenceServices_SelectsProviderNeutralLocksAndMySqlInterceptor(
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, false, false)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, false, true)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, false, false)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, true, false)]
+    [Arguments(PrimaryDatabaseProvider.MySql, true, false)]
+    public async Task ConfigurePersistenceServices_SelectsProviderNeutralLocksAndTransactionInterceptors(
         PrimaryDatabaseProvider provider,
-        bool expectsMySqlInterceptor)
+        bool expectsMySqlInterceptor,
+        bool expectsSqliteInterceptors)
     {
         var services = new ServiceCollection();
         services.ConfigurePersistenceServices(
@@ -121,11 +123,59 @@ public sealed class PrimaryDatabaseProviderCompositionTests
             .ImplementationType).IsEqualTo(typeof(RelationalSettingMutationLock));
         await Assert.That(services.Single(service => service.ServiceType == typeof(IAtprotoSessionRefreshLock))
             .ImplementationType).IsEqualTo(typeof(RelationalAtprotoSessionRefreshLock));
+        ServiceDescriptor coordinatedStoreDescriptor = services.Single(service =>
+            service.ServiceType == typeof(ICoordinatedSettingMutationStore));
+        await Assert.That(coordinatedStoreDescriptor.ImplementationType)
+            .IsEqualTo(typeof(CoordinatedSettingMutationRepository));
+        await Assert.That(coordinatedStoreDescriptor.Lifetime).IsEqualTo(ServiceLifetime.Scoped);
+        using (IServiceScope scope = serviceProvider.CreateScope())
+        {
+            ICoordinatedSettingMutationStore resolved =
+                scope.ServiceProvider.GetRequiredService<ICoordinatedSettingMutationStore>();
+            await Assert.That(resolved.GetType()).IsEqualTo(typeof(CoordinatedSettingMutationRepository));
+        }
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
         var interceptors = options.FindExtension<CoreOptionsExtension>()?.Interceptors ?? [];
 
-        await Assert.That(interceptors.Any(interceptor => interceptor is MySqlNamedLockTransactionInterceptor))
-            .IsEqualTo(expectsMySqlInterceptor);
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is MySqlNamedLockTransactionInterceptor))
+            .IsEqualTo(expectsMySqlInterceptor ? 1 : 0);
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is SqliteNamedLockTransactionInterceptor))
+            .IsEqualTo(expectsSqliteInterceptors ? 1 : 0);
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is SqliteProjectionLockTransactionInterceptor))
+            .IsEqualTo(expectsSqliteInterceptors ? 1 : 0);
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, false, false)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, false, true)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, false, false)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, true, false)]
+    [Arguments(PrimaryDatabaseProvider.MySql, true, false)]
+    public async Task ConfigureApplication_InstallsSharedTransactionLockInterceptors(
+        PrimaryDatabaseProvider provider,
+        bool expectsMySqlInterceptor,
+        bool expectsSqliteInterceptors)
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            builder,
+            CreateOptions(provider));
+
+        var interceptors = builder.Options
+            .FindExtension<CoreOptionsExtension>()?.Interceptors ?? [];
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is MySqlNamedLockTransactionInterceptor))
+            .IsEqualTo(expectsMySqlInterceptor ? 1 : 0);
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is SqliteNamedLockTransactionInterceptor))
+            .IsEqualTo(expectsSqliteInterceptors ? 1 : 0);
+        await Assert.That(interceptors.Count(interceptor =>
+                interceptor is SqliteProjectionLockTransactionInterceptor))
+            .IsEqualTo(expectsSqliteInterceptors ? 1 : 0);
     }
 
     [Test]
