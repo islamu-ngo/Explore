@@ -16,7 +16,7 @@ This document records the legal contribution gate decision and automation threat
 | Question | Current Answer |
 |---|---|
 | Legal posture | CLA only. Every non-bot contributor must sign the ISLAMU Event CLA. |
-| Inbound scope | Broad copyright and patent license grant to the ISLAMU project steward so ISLAMU Event can be maintained, provided, sold, sublicensed, or relicensed under alternative terms when sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, or social-impact needs require it. |
+| Inbound scope | Broad copyright and patent license grant to the ISLAMU project steward so ISLAMU Event can be maintained, provided, and relicensed under alternative terms for enterprise internal-use on-premises compliance, nonprofit, humanitarian, public-sector, or procurement-restricted needs—subject to the Project Steward's binding covenant against closed-source proprietary SaaS commercialization (all SaaS providers must use AGPL-3.0). |
 | Enforcing workflow | `.github/workflows/cla.yml` validates pull request and issue-comment metadata with `contributor-assistant/github-action`, pinned to a full commit SHA. A pre-flight `actions/github-script` step (also SHA-pinned) short-circuits the full action when all commit authors are already signed or allowlisted. |
 | Approved legal document | `legal/CLA.md` is the active CLA v1.0 operational draft, pending final legal review. |
 | Signature storage | Same-repository signature JSON at `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch, plus GitHub PR/comment audit trail. |

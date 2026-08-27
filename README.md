@@ -177,9 +177,14 @@ AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
 
 Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
 
-### ✍️ Contributor License Agreement
+### ✍️ Contributor License Agreement & Community Protection
 
 All non-bot contributors must sign the [ISLAMU Contributor License Agreement][cla-link] before a pull request can be merged. Signing is handled automatically directly in your PR with a simple comment reply—see [`legal/CLA.md`][cla-link] for full terms.
+
+> **🛡️ Why We Have a CLA & Why You Can Trust It:**
+> * **Community-First Invariant:** Contributors retain ownership of their contributions. The CLA grants ISLAMU inbound rights so the non-profit can offer alternative licensing for enterprise compliance on private internal networks.
+> * **The Anti-SaaS Covenant:** ISLAMU is bound by a strict governance commitment **never to grant an alternative license permitting a third party to operate a closed-source, proprietary SaaS or cloud service**. 
+> * **Universal Parity:** Any company offering ISLAMU Event as a public SaaS must do so under `AGPL-3.0-or-later`, guaranteeing that all SaaS improvements are shared back with the community. Your contributions will never be locked behind a proprietary vendor wall.
 
 ## 📚 Documentation
 
@@ -311,9 +316,19 @@ For any question or problem reporting, please consider opening a [new issue][git
 
 You can find details [here][privacy-policy].
 
-## 📄 License
+## 📄 License & Ecosystem Architecture
 
 This project is licensed under the terms of [GNU AGPL-3.0-or-later][license-link].
+
+### 🌐 The Three-Pillar Ecosystem
+
+ISLAMU Event operates on a transparent three-pillar model designed for universal community parity and sustainable open-source governance:
+
+1. **Community Commons (`AGPL-3.0-or-later`):** 100% Free & Open Source for everyone. Any organization or hoster can run a SaaS or self-host under AGPLv3. All SaaS modifications must be published openly, ensuring complete community parity.
+2. **Enterprise Internal-Use License (Anti-SaaS):** For enterprises whose internal compliance policies ban AGPL copyleft on private internal infrastructure. This license waives Section 13 network copyleft for private on-premises/VPC deployments and internal corporate events, while **strictly forbidding external SaaS or commercial cloud hosting**. Paid for commercial corporations (funding security audits and maintainers); gratis ($0) for verified non-profits and educational institutions.
+3. **Official Partner Program:** For certified agencies, hosters, and integrators. Partners operate on the exact same 100% AGPLv3 codebase (no proprietary code privilege). Commercial value is generated through quality certification, trust branding, and official directory listings.
+
+For the full ethical and strategic design analysis, see the [I-VSD Strategy Review](islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md).
 
 ### Standalone Core And Optional Services
 

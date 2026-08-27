@@ -7,7 +7,7 @@
 > **Status:** Operational draft pending legal review
 > **Owner:** ISLAMU nonprofit | Platform/Ops
 > **Maintainer of record:** Amir Akrari
-> **Purpose:** Preserve the ISLAMU nonprofit's ability to keep ISLAMU Event public under AGPL-3.0-or-later while also offering alternative terms for legitimate sustainability, enterprise, nonprofit, humanitarian, public-sector, procurement-restricted, hosted-service, and social-impact deployments.
+> **Purpose:** Preserve the ISLAMU nonprofit's ability to keep ISLAMU Event public under AGPL-3.0-or-later while also offering alternative terms for legitimate sustainability, enterprise internal-use compliance, nonprofit, humanitarian, public-sector, and procurement-restricted on-premises deployments—with an explicit Project Steward governance commitment against closed-source proprietary SaaS commercialization.
 
 A new CLA version is published by bumping the `Version` line above and updating the `path-to-signatures` version segment in `.github/workflows/cla.yml` (e.g. `signatures/v1.0/cla.json`). Earlier signatures remain valid only for the CLA version under which they were recorded; a contributor must re-sign when the version changes.
 
@@ -19,9 +19,16 @@ This document is not personal legal advice. Contributors should only sign if the
 
 ISLAMU Event is publicly distributed under AGPL-3.0-or-later. That public license remains in place for the open-source project and for anyone who receives ISLAMU Event under AGPL-3.0-or-later.
 
-This CLA is an additional inbound license from contributors to the ISLAMU project steward. It allows the ISLAMU nonprofit, once incorporated, to also offer ISLAMU Event and contributed material under alternative terms when needed for legitimate deployments, including nonprofit, humanitarian, public-sector, enterprise, procurement-restricted, hosted-service, commercial sustainability, or special social-impact arrangements.
+This CLA is an additional inbound license from contributors to the ISLAMU project steward. It allows the ISLAMU nonprofit, once incorporated, to also offer ISLAMU Event and contributed material under alternative terms when needed for legitimate deployments, such as enterprise internal-use on-premises/VPC compliance (where corporate policies ban AGPL network copyleft contagion for private intranet tools), humanitarian missions, public-sector procurement, or commercial sustainability.
 
 The CLA does not take ownership away from contributors. Contributors keep ownership of their own Contributions. The CLA gives the Project Steward the rights needed to maintain, distribute, sublicense, relicense, commercialize, and protect ISLAMU Event sustainably.
+
+### Community Protection & The Anti-SaaS Covenant
+
+The Project Steward is bound by a strict community stewardship principle: **No entity may use an alternative license from ISLAMU to build an unfair, closed-source Software-as-a-Service (SaaS) or managed cloud service that denies source code back to the community.**
+
+1. **Enterprise Internal-Use Only:** Any alternative commercial or institutional license granted by the Project Steward is strictly restricted to **internal organizational operations and private on-premises/VPC events**. It waives AGPL copyleft fears for private enterprise integrations (e.g., Active Directory, internal APIs) but expressly prohibits reselling or offering ISLAMU Event as an external hosted service or SaaS to third parties.
+2. **Universal SaaS Parity:** Any party wishing to offer ISLAMU Event as a public or commercial SaaS to third parties must do so under the public **AGPL-3.0-or-later** license. This legally guarantees that all SaaS operators must publish their source code modifications, ensuring that no vendor can create an asymmetric proprietary feature advantage over the open-source community.
 
 ## Agreement
 
