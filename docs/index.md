@@ -31,7 +31,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Choose records, classes, or generated contract shapes | [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) | [GOVERNANCE.md](GOVERNANCE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TESTING.md](TESTING.md) |
 | Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
-| Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
+| Use an AI coding agent or understand context engineering | [AGENTIC_CONTEXT_ENGINEERING.md](AGENTIC_CONTEXT_ENGINEERING.md) | [../AGENTS.md](../AGENTS.md), [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 
 ## How To Use This Index
 
@@ -117,6 +117,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
 - [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, and manual-test tracking.
 - [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
+- [AGENTIC_CONTEXT_ENGINEERING.md](AGENTIC_CONTEXT_ENGINEERING.md) - canonical visual guide to the agentic context engineering system, cold-start lifecycle, multi-harness bootloaders, twin rules, dev-doc triad, and QA evidence gates.
 - [AI_RAG_FOUNDATION.md](AI_RAG_FOUNDATION.md) - tenant-safe summary-only boundary for future AI vector/RAG support.
 - [AI_AGENT_CONTRACT_INVENTORY.md](AI_AGENT_CONTRACT_INVENTORY.md) - generated inventory of registry-governed AI agent tool contracts.
 - [AI_AGENT_EXPERIENCE_HARDENING.md](AI_AGENT_EXPERIENCE_HARDENING.md) - guarded context summaries, proposal-only plan previews, and fake/replay AI usability reports.
