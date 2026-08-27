@@ -123,7 +123,10 @@ public class LockSettingCommandHandler
                 string failureCode = string.IsNullOrWhiteSpace(mutationResult.FailureCode)
                     ? "event_reporting_intake_policy_invalid"
                     : mutationResult.FailureCode;
-                return BaseCommandResponse.Failure<Guid>(failureCode, mutationResult.Message);
+                string failureMessage = string.IsNullOrWhiteSpace(mutationResult.Message)
+                    ? PublicationPolicyMutationMessages.InvalidPolicy
+                    : mutationResult.Message;
+                return BaseCommandResponse.Failure<Guid>(failureCode, failureMessage);
             }
 
             _resolver.InvalidateCache(request.Scope, scopeId);

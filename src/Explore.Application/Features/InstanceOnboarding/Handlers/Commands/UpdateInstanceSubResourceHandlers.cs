@@ -103,9 +103,12 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
             string failureCode = string.IsNullOrWhiteSpace(result.FailureCode)
                 ? "event_reporting_intake_policy_invalid"
                 : result.FailureCode;
+            string failureMessage = string.IsNullOrWhiteSpace(result.Message)
+                ? PublicationPolicyMutationMessages.InvalidPolicy
+                : result.Message;
             return BaseCommandResponse.Failure<Guid>(
                 failureCode,
-                result.Message,
+                failureMessage,
                 [failureCode]);
         }
 

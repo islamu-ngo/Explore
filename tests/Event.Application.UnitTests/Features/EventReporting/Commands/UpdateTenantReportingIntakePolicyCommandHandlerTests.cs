@@ -272,7 +272,7 @@ public sealed class UpdateTenantReportingIntakePolicyCommandHandlerTests
         Task.FromResult(new PublicationPolicyMutationResult(
             Success: false,
             FailureCode: failureCode,
-            Message: "Reporting intake policy rejected.",
+            Message: string.Empty,
             DeferredNotifications: ImmutableArray<SettingChangedNotification>.Empty));
 
     private sealed class RecordingUnitOfWork(List<string>? calls = null) : IUnitOfWork

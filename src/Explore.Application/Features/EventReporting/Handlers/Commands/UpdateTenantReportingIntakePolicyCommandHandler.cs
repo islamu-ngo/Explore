@@ -96,11 +96,22 @@ public sealed class UpdateTenantReportingIntakePolicyCommandHandler(
         Guid tenantId,
         string failureCode,
         string message,
-        IEnumerable<string> errors) => BaseCommandResponse.Failure<Guid>(
-        failureCode,
-        message,
-        errors,
-        tenantId);
+        IEnumerable<string> errors)
+    {
+        string normalizedMessage = string.IsNullOrWhiteSpace(message)
+            ? PublicationPolicyMutationMessages.InvalidPolicy
+            : message;
+        string[] normalizedErrors = errors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .ToArray();
+        if (normalizedErrors.Length == 0)
+        {
+            normalizedErrors = [failureCode];
+        }
+
+        return BaseCommandResponse.Failure<Guid>(
+            failureCode, normalizedMessage, normalizedErrors, tenantId);
+    }
 }
 
 public sealed class UpdateTenantReportingIntakePolicyCommandValidator
