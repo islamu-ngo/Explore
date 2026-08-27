@@ -3,7 +3,7 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-24 Europe/Brussels
+Last Updated: 2026-08-27 Europe/Brussels
 
 ---
 
@@ -277,13 +277,14 @@ Historical Phase 17 acceptance is complete. The 2026-08-21 full-Phase approval a
 - **Studio integration re-baseline (2026-07-26):** Treat the implemented workspace shell from `dev/active/dynamic-event-management-ui/` as current architecture. Organizer ticketing, orders, attendees, registration forms, and provider operations extend the existing Studio workspace and its single contextual sidebar; they do not create a parallel `/events/manage` navigation system. Public and guest checkout remains outside Studio.
 - **Commerce/admission re-baseline request (2026-08-13):** Activate the deferred payment and admission inventory inside this workstream. Add ADR-gated implementation phases for Stripe Connect `OrganizerDirect`, actor-bound merchant onboarding, effective currency policy, provider-neutral payment/refund attempts, local promotion codes, cancellation/refund/dispute reconciliation, `AdmissionTicket`/QR/check-in, transfers, anti-enumeration recovery/self-service, waitlists, event-bound add-ons, a separately gated `ProtectedDelayedPayout` profile, and production hardening. The payment phases must cite `islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md` as their product-risk authority.
 - **Product-boundary correction (2026-08-13):** ISLAMU Event owns event operations only. Email marketing remains delegated to Listmonk; bookkeeping, tax determination, legal invoice/credit-note issuance, and accounting remain delegated to Qonto or other external systems. The former tax/invoice phase is removed from this active plan and preserved with the future integration design in `dev/report/event-platform-boundary-and-external-business-integrations.md`.
+- **Successor split decision (2026-08-27):** The user confirmed that the workstream had drifted beyond its original event-forms purpose. Implemented Phases 0–21 remain here; every unimplemented former Phase 22+ capability and deferred item moves to `dev/active/event-ticketing-lifecycle/`. Backward compatibility remains explicitly waived.
 - **Task directory:** `dev/active/registration-data-collection/`
-- **Planning status:** Phases 0–15 retain their recorded implementation state, Phase 15 is complete, and Phase 16 is in progress with Tasks 16.1 and 16.2 independently confirmed. On 2026-08-13 the user approved planning expansion through Phase 25; 47 implementation tasks remain unchecked and Phase 16.3 is next. This ledger closeout changes no runtime source, package, migration, or provider configuration.
+- **Planning status:** **Complete at Phase 21.** All 132 implementation tasks owned by this workstream are checked. Two historical full-project verification boxes remain visibly qualified by unrelated shared-suite failures; owned Phase evidence is recorded and no successor work depends on reclassifying those runs. No Phase 22+ runtime work started here.
 - **Matched intent:** `registration-data-collection`, the dedicated cross-cutting intent created in Phase 0. Its related granular intents remain `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `blazor-component-affordance`, `cerbos-policy-change`, and `openapi-contract-change`.
-- **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `error-tracking`.
+- **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `accessibility`, `error-tracking`, `criticality-guardrail`, `epistemic-mad-review`, `ip-clean-room`.
 - **Relevant rules:** `.agents/rules/domain.md`, `application-layer.md`, `efcore-persistence.md`, `efcore-migrations.md`, `api-controllers.md`, `api-hateoas.md`, `blazor-server.md`, `blazor-client.md`, `tests.md`, `ip-clean-room.md`.
 - **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor (BFF + WASM), Cerbos policies, Docs, DevOps (compose profiles for Formbricks, later phases).
-- **Complexity:** **XL** — 26 phases, 141 implementation tasks, three form-provider channels, one payment provider, multiple security-sensitive capability surfaces, provider reconciliation, commercial and admission state machines, and Studio/public self-service integration. The expansion is deliberately phased so the default safe path (`OrganizerDirect`, online admission validation, local promotions) lands before optional event breadth and the conditional protected-payout profile.
+- **Complexity:** **XL, completed** — 132 implemented tasks across forms, provider evidence, orders, payments, refunds, admission, recovery, and check-in. Future ticket-lifecycle complexity is owned only by the successor workstream.
 
 ---
 
@@ -2419,6 +2420,10 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 
 ---
 
+## Historical Phase 22+ Draft And Handoffs — SUPERSEDED 2026-08-27
+
+> The material below through Section 18 is retained as append-only planning history and MUST NOT be implemented. Its successor is [`event-ticketing-lifecycle-plan.md`](../event-ticketing-lifecycle/event-ticketing-lifecycle-plan.md). Phases 0–21 above remain unchanged.
+
 ### Phase 22: Ticket Transfer, Reissue, Reassignment, And Holder Self-Service
 - **Goal:** Transfer future admission safely without rewriting purchase/payment/consent history or leaving copied QR credentials valid.
 - **Depends on:** Phases 20–21.
@@ -2808,3 +2813,35 @@ The highest-risk new slice is **Phase 18C–19**: paid Checkout exists before th
 - **Known external blockers:** the complete API suite still contains 24 unrelated shared-worktree fixture failures; the broad Persistence suite exposes a pre-existing `ManyServiceProvidersCreatedWarning`; local Aspire API startup is blocked by an existing PostgreSQL schema whose objects lack matching migration history. No local database was deleted.
 - **Shared-worktree boundary:** queue-driven-worker migration, records-adoption, agent-governance, and the two snapshot EOF-only changes are unrelated and must remain outside this workstream's commits.
 - **Resume point:** start Phase 19 Task 19.0 with failing refund reservation, cancellation campaign, dispute, tenant-isolation, idempotency, capability, and HAL specifications. Refund execution remains unavailable until its authority and operating model are implemented and verified.
+
+## 19. Successor Workstream Boundary And Completion — 2026-08-27 Europe/Brussels
+
+This workstream is complete at its implemented Phase 21 boundary. It remains the historical authority for event registration data collection, versioned forms/provider evidence, orders, OrganizerDirect payments, refunds/disputes, admission credentials/recovery, and online check-in.
+
+All unimplemented former Phase 22+ behavior now belongs exclusively to:
+
+- [Event Ticketing Lifecycle plan](../event-ticketing-lifecycle/event-ticketing-lifecycle-plan.md)
+- [Event Ticketing Lifecycle context](../event-ticketing-lifecycle/event-ticketing-lifecycle-context.md)
+- [Event Ticketing Lifecycle tasks](../event-ticketing-lifecycle/event-ticketing-lifecycle-tasks.md)
+- [Event Ticketing Lifecycle I-VSD report](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md)
+
+### 19.1 Migrated Scope
+
+| Former owner | Successor owner |
+|---|---|
+| Phase 22 access modes and purchase governance | Successor Phases 0–1 |
+| Phase 23 participant requirement scope, completion, approval, and admission gating | Successor Phases 2–3 |
+| Phase 24 transfer, claim, correction, reissue, and credential rotation | Successor Phase 4 |
+| Phase 25 fair-return waitlist | Successor Phase 5 |
+| Phase 26 optional event-bound add-ons | Successor Phase 6 |
+| Phase 27 recovery, deployment capability truth, generated contracts, and release | Successor Phases 7–8 |
+| Entire Remaining / Deferred Work inventory | Successor task ledger, with inherited disposition recorded item by item |
+
+### 19.2 Completion Boundary
+
+- All 132 implementation tasks owned by this workstream are checked through Phase 21.
+- Two historical full-project verification checkboxes remain open because their recorded runs contained unrelated shared-suite failures; owned behavior is evidenced and the qualification remains intact rather than being rewritten as a pass.
+- No former Phase 22+ runtime source, package, configuration, migration, generated contract, or capability was implemented here.
+- Historical Phase 22+ design/task prose is retained only for audit continuity and is explicitly non-executable.
+- `phase22-plus-clean-room-evidence.md` and `registration-data-collection-cto-review.md` remain predecessor evidence explaining the split; implementation receives the successor clean-room handoff instead.
+- This plan has no current implementation priority, unchecked owned task, or deferred product item.
