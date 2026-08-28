@@ -12,6 +12,9 @@ using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
 using TUnit.Core;
 using DomainEvent = Explore.Domain.Event;
 
