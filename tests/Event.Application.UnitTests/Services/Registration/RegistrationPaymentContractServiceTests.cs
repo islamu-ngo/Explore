@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Payments;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
@@ -246,6 +247,7 @@ public sealed class RegistrationPaymentContractServiceTests
             ReadyGovernance(),
             Substitute.For<IPaidCheckoutActivationService>(),
             Substitute.For<IPaymentProviderDescriptor>(),
+            Substitute.For<ITypedSettingsDocumentResolver>(),
             new FixedTimeProvider(UtcNow));
         return new(
             _attempts,

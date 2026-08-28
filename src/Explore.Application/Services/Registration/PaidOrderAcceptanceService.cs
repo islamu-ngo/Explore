@@ -5,11 +5,15 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Contracts.Payments;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Services.Registration;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Services.Registration;
@@ -54,6 +58,7 @@ public sealed class PaidOrderAcceptanceService(
     IPaidCheckoutGovernance governance,
     IPaidCheckoutActivationService activation,
     IPaymentProviderDescriptor providerDescriptor,
+    ITypedSettingsDocumentResolver settingsDocumentResolver,
     TimeProvider timeProvider) : IPaidOrderAcceptanceService
 {
     public Task<PaidOrderAcceptanceResult> DescribeAsync(
@@ -130,6 +135,15 @@ public sealed class PaidOrderAcceptanceService(
             return Failure("payment_acceptance_unavailable", "Complete current payment disclosures are unavailable.");
         }
 
+        ResolvedSettingsDocument<BrandingSettings>? branding = await settingsDocumentResolver
+            .ResolveTenantDocumentAsync<BrandingSettings>(
+                new SettingsResolutionContext(
+                    order.TenantId,
+                    RequestedDocuments: [SettingsDocumentKeys.Tenant.Branding]),
+                SettingsDocumentKeys.Tenant.Branding,
+                cancellationToken);
+        string paidEventDirectoryDisclaimer = PaidEventDisclaimerFormatter.Format(branding?.Payload.DisplayName);
+
         PaidCheckoutOperatorDisclosure operatorDisclosure;
         PaidOrderDeliverySnapshot delivery;
         PaidCheckoutProviderDisclosure providerDisclosure;
@@ -159,6 +173,7 @@ public sealed class PaidOrderAcceptanceService(
             instancePolicy.Id.ToString("N"),
             tenantPolicy?.Id.ToString("N") ?? "none",
             catalog.MerchantDisclosureText,
+            paidEventDirectoryDisclaimer,
             operatorDisclosure.OperatorId.ToString("N"), operatorDisclosure.OperatorDisplayName,
             operatorDisclosure.IsOfficialInstance.ToString(), operatorDisclosure.OfficialOrigin,
             operatorDisclosure.RegionCode, operatorDisclosure.WebsiteUrl, operatorDisclosure.LegalNoticeUrl,
@@ -183,6 +198,7 @@ public sealed class PaidOrderAcceptanceService(
         {
             DisclosureRevision = revision,
             MerchantDisclosureText = catalog.MerchantDisclosureText,
+            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
             OperatorDisplayName = operatorDisclosure.OperatorDisplayName,
             IsOfficialInstance = operatorDisclosure.IsOfficialInstance,
             OfficialOrigin = operatorDisclosure.OfficialOrigin,

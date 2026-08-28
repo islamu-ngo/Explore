@@ -1,11 +1,16 @@
 // ABOUTME: Builds public ticket-selection data from the current published catalog.
 // ABOUTME: Fails closed for non-public, ineligible, or non-platform-managed events.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
+using Explore.Application.Settings;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using MediatR;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers.Queries;
@@ -14,6 +19,8 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
     IEventRepository events,
     IEventTicketCatalogRepository catalogs,
     IPlatformFeePolicyRepository feePolicies,
+    IPaidEventPolicyRepository paidEventPolicies,
+    ITypedSettingsDocumentResolver settingsDocumentResolver,
     IOrganizerEarningsCalculator earningsCalculator)
     : IRequestHandler<GetRegistrationCheckoutCompositionQuery, RegistrationCheckoutCompositionDto?>
 {
@@ -32,17 +39,43 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
         }
 
         var catalog = await catalogs.GetPublishedCatalogAsync(@event.Id, @event.TenantId, cancellationToken);
-        var feePolicy = catalog is null ? null : await feePolicies.GetActiveAsync(cancellationToken);
-        return catalog is null
-            ? null
-            : new RegistrationCheckoutCompositionDto
+        if (catalog is null)
+        {
+            return null;
+        }
+
+        var ticketTypes = catalog.TicketTypes
+            .Where(ticketType => !ticketType.IsDeleted)
+            .ToArray();
+        var feePolicy = await feePolicies.GetActiveAsync(cancellationToken);
+        string? paidEventDirectoryDisclaimer = null;
+        if (ticketTypes.Any(ticketType => ticketType.TicketPricingModeId != (int)TicketPricingModeEnum.Free))
+        {
+            var instancePolicy = await paidEventPolicies.GetActiveInstanceAsync(cancellationToken);
+            var tenantPolicy = instancePolicy is null
+                ? null
+                : await paidEventPolicies.GetActiveTenantAsync(@event.TenantId, cancellationToken);
+            if (instancePolicy is not null &&
+                PaidEventPolicyRules.GetEffectiveCurrencyCodes(instancePolicy, tenantPolicy).Count > 0)
             {
-                EventId = @event.Id,
-                TicketCatalogVersionId = catalog.Id,
-                CurrencyCode = catalog.CurrencyCode,
-                TicketTypes = catalog.TicketTypes
-                    .Where(ticketType => !ticketType.IsDeleted)
-                    .Select(ticketType => new RegistrationCheckoutTicketTypeDto
+                var branding = await settingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
+                    new SettingsResolutionContext(
+                        @event.TenantId,
+                        RequestedDocuments: [SettingsDocumentKeys.Tenant.Branding]),
+                    SettingsDocumentKeys.Tenant.Branding,
+                    cancellationToken);
+                paidEventDirectoryDisclaimer = PaidEventDisclaimerFormatter.Format(branding?.Payload.DisplayName);
+            }
+        }
+
+        return new RegistrationCheckoutCompositionDto
+        {
+            EventId = @event.Id,
+            TicketCatalogVersionId = catalog.Id,
+            CurrencyCode = catalog.CurrencyCode,
+            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
+            TicketTypes = ticketTypes
+                .Select(ticketType => new RegistrationCheckoutTicketTypeDto
                     {
                         Id = ticketType.Id,
                         Name = ticketType.Name,
@@ -61,8 +94,8 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
                                 earningsCalculator)
                             : []
                     })
-                    .ToArray()
-            };
+                .ToArray()
+        };
     }
 
     private static IReadOnlyList<RegistrationCheckoutSlidingScaleOptionDto> BuildSlidingScaleOptions(

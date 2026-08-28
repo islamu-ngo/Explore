@@ -14,6 +14,7 @@ using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums.Analytics;
+using Explore.Domain.Services.Registration;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
 using MediatR;
@@ -33,6 +34,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
+    private readonly IPaidEventPolicyRepository _paidEventPolicyRepository;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
 
@@ -48,6 +50,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         IAnalyticsRuntimeProfileResolver runtimeProfileResolver,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver,
         ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
+        IPaidEventPolicyRepository paidEventPolicyRepository,
         IFooterLinkGroupRepository footerLinkGroupRepository,
         IMapper mapper)
     {
@@ -62,6 +65,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _runtimeProfileResolver = runtimeProfileResolver;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
         _typedSettingsDocumentResolver = typedSettingsDocumentResolver;
+        _paidEventPolicyRepository = paidEventPolicyRepository;
         _footerLinkGroupRepository = footerLinkGroupRepository;
         _mapper = mapper;
     }
@@ -71,6 +75,14 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var tenantId = _tenantContext.TenantId;
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
         var brandingDocument = await ResolveTypedBrandingAsync(tenantId, cancellationToken);
+        var instancePaidEventPolicy = await _paidEventPolicyRepository.GetActiveInstanceAsync(cancellationToken);
+        var tenantPaidEventPolicy = instancePaidEventPolicy is null
+            ? null
+            : await _paidEventPolicyRepository.GetActiveTenantAsync(tenantId, cancellationToken);
+        string? paidEventDirectoryDisclaimer = instancePaidEventPolicy is not null &&
+            PaidEventPolicyRules.GetEffectiveCurrencyCodes(instancePaidEventPolicy, tenantPaidEventPolicy).Count > 0
+                ? PaidEventDisclaimerFormatter.Format(brandingDocument?.Payload.DisplayName)
+                : null;
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
@@ -133,6 +145,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             DeploymentMode = deploymentMode,
             PreferredHomePage = effectiveTenantSettings.PreferredHomePage,
             BrandDisplayName = brandingDocument?.Payload.DisplayName ?? string.Empty,
+            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
             BrandLogoUrl = brandingDocument?.Payload.LogoUrl ?? string.Empty,
             BrandFaviconUrl = brandingDocument?.Payload.FaviconUrl ?? string.Empty,
             BrandCustomCssUrl = brandingDocument?.Payload.CustomCssUrl ?? string.Empty,

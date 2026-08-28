@@ -203,9 +203,40 @@ Tenants store overrides in `TenantSetting` with the same `routing.render_policy.
 
 See [RENDER_POLICIES.md](RENDER_POLICIES.md) for full delegation details.
 
+## Branding Governance, Single-to-Multi-Tenant Transition & Legal Disclosures
+
+### 1. Why Instance Branding Exists
+Even in a tenant-centric platform, Instance Branding (`GovernanceSettingKeys.Branding.*`) is architecturally mandatory for surfaces that operate outside or above an individual tenant boundary:
+
+1. **Pre-Tenant & Cross-Tenant Entry Points**: Global authentication and IdP redirect pages before a tenant subdomain or slug is resolved.
+2. **Global Error & Maintenance Pages**: Unresolved subdomain 404s, platform-wide 500 errors, and system maintenance screens.
+3. **Instance Control Plane & Administration**: Backoffice management surfaces (`/admin/instance`, `/admin/instance/tenants`).
+4. **Platform System Communications**: Master billing receipts, security alerts, and infrastructure-level emails.
+5. **Governance Floor & White-Labeling Control**: When `Tenants.WhiteLabelingEnabled = false`, instance branding acts as the enforced visual identity across all tenancies.
+
+### 2. Single-to-Multi-Tenant Transition Lifecycle
+* **Single-Tenant Mode**: The instance and the default tenant share the same visual identity. Instance branding settings define the tenant experience.
+* **Transitioning to Multi-Tenant Mode**:
+  * The primary/default tenant retains its existing branding.
+  * When provisioning additional tenancies (2nd, 3rd, etc.), the tenant creation flow initializes `BrandingSettings.DisplayName` from the provided tenant name (e.g., `"Dallas Muslim Center"`).
+  * If white-labeling is permitted (`Tenants.WhiteLabelingEnabled = true`), tenant administrators can independently manage their display name, logo, favicon, and custom stylesheet.
+
+### 3. Fallback Philosophy: Defensive Graceful Degradation
+In multi-tenant mode, resolving `BrandDisplayName` falls back to the instance name (and ultimately `"ISLAMU"`) if a tenant's display name is unconfigured or locked by instance governance. This is **not a defect**; it is an essential architectural safety net ensuring public pages, notification emails, and SEO metadata never render blank strings or crash during onboarding or misconfiguration.
+
+### 4. Legal Disclosures: Tenant Directory vs. Instance Operator
+Multi-tenant e-commerce and legal disclosures are strictly partitioned:
+
+* **Tenant Directory Disclaimer**: Buyer-facing directory notices (e.g., *"{TenantBrand} provides an event discovery and management directory only..."*) dynamically interpolate the **Tenant Brand** to clarify that the local directory host is not the event organizer.
+* **Instance Operator Disclosure**: Statutory e-commerce, payment-processing, and Stripe Connect disclosures use the **Instance Operator Identity** (`IPaidCheckoutGovernance`), clearly naming the platform entity operating the technical payment infrastructure.
+
+See [PAYMENTS.md](PAYMENTS.md#3-legal-disclaimers-multi-party-responsibilities--dynamic-branding) for the full sequence flow and presentation matrix.
+
 ## Related
 
 - [CONFIGURATION.md](CONFIGURATION.md)
 - [OPERATIONS.md](OPERATIONS.md)
 - [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md)
 - [RENDER_POLICIES.md](RENDER_POLICIES.md)
+- [PAYMENTS.md](PAYMENTS.md)
+

@@ -143764,6 +143764,7 @@
         "required": [
           "disclosureRevision",
           "merchantDisclosureText",
+          "paidEventDirectoryDisclaimer",
           "operatorDisplayName",
           "isOfficialInstance",
           "officialOrigin",
@@ -143805,6 +143806,9 @@
             "type": "string"
           },
           "merchantDisclosureText": {
+            "type": "string"
+          },
+          "paidEventDirectoryDisclaimer": {
             "type": "string"
           },
           "operatorDisplayName": {
@@ -146039,6 +146043,12 @@
           "brandDisplayName": {
             "type": "string"
           },
+          "paidEventDirectoryDisclaimer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "brandLogoUrl": {
             "type": "string"
           },
@@ -146889,6 +146899,12 @@
           },
           "currencyCode": {
             "type": "string"
+          },
+          "paidEventDirectoryDisclaimer": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "ticketTypes": {
             "type": "array",

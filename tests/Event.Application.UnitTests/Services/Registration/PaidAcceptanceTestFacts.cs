@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Domain.Services.Registration;
 
 namespace Event.Application.UnitTests.Services.Registration;
 
@@ -41,6 +42,7 @@ internal static class PaidAcceptanceTestFacts
     {
         DisclosureRevision = snapshot.DisclosureRevision,
         MerchantDisclosureText = snapshot.MerchantDisclosureText,
+        PaidEventDirectoryDisclaimer = PaidEventDisclaimerFormatter.Format(snapshot.OperatorDisplayName),
         OperatorDisplayName = snapshot.OperatorDisplayName,
         IsOfficialInstance = snapshot.IsOfficialInstance,
         OfficialOrigin = snapshot.OfficialOrigin,

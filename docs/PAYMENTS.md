@@ -97,7 +97,7 @@ To maintain Islamic Value-Sensitive Design principles (Trust / *Amanah*, Justice
 
 Under [`PaidEventPolicyRules`](../src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs), tenant policies can **only narrow** the instance policy ceiling, never broaden it:
 
-1. **Payments Activation**: If disabled at the instance level, no tenant can enable payments. If enabled at the instance level, a tenant can disable payments for itself.
+1. **Payments Activation**: If disabled at the instance level (`IsPaymentsEnabled = false`), no tenant can enable payments. If enabled at the instance level, a tenant can disable payments (`IsPaymentsEnabled = false`) for itself.
 2. **Allowed Currencies**: Effective currencies = `Instance Currencies ∩ Tenant Currencies ∩ Provider Capabilities`.
 3. **Organizer Types**: If the instance allows `[Organization, Group, User]`, a tenant can restrict its policy to `[Organization]` only.
 4. **Verification Floor**: If the instance requires local verification, a tenant cannot waive it.
@@ -105,7 +105,87 @@ Under [`PaidEventPolicyRules`](../src/Explore.Domain/Services/Registration/PaidE
 
 ---
 
-## 3. Core Operating Profiles
+## 3. Legal Disclaimers, Multi-Party Responsibilities & Dynamic Branding
+
+In marketplace and community platform law (as well as Stripe Connect requirements), financial liability and commercial relationships involve distinct legal entities:
+
+| Role | System Scope | Example | Responsibility |
+|---|---|---|---|
+| **Platform Operator** | **Instance Level** | *ISLAMU Platform Inc.* | Runs the core software, manages the Stripe Connect platform account, provisions technical infrastructure, and oversees telemetry. |
+| **Directory Host / Portal** | **Tenant Level** | *Dallas Muslim Center Events* | Curates the community portal, manages categories, navigations, and local directory listings. |
+| **Merchant / Event Organizer** | **Organizer Actor** | *Youth Halaqa Club* | Direct merchant of record for the event; receives ticket funds in their connected Stripe account, fulfills event delivery, sets refund terms. |
+| **Buyer / Attendee** | **End User / Order** | *Jane Doe* | Purchases tickets, accepts organizer refund policies, and enters a direct sales contract with the Organizer. |
+
+### Dynamic Directory Intermediary Disclaimer
+
+When paid events are enabled for a tenancy (i.e. Instance `IsPaymentsEnabled = true` AND Tenant `IsPaymentsEnabled = true`), the platform dynamically injects the canonical intermediary disclaimer:
+
+> **"{BrandName} provides an event discovery and management directory only. {BrandName} does not process ticket sales or act as event organizer. Any financial transaction or contract is strictly between the attendee and the external organizer."**
+
+#### Dynamic Author / Branding Resolution Rules
+
+The `{BrandName}` token interpolates dynamically based on the tenancy and deployment mode:
+
+```mermaid
+flowchart TD
+    Mode{Deployment Mode?}
+    Mode -->|SingleTenant| Single[Use Instance Branding / AppSetting DisplayName]
+    Mode -->|MultiTenant| Multi[Query Tenant Branding Document]
+
+    Multi -->|Tenant DisplayName set & unlocked| TenantName[Use Tenant DisplayName]
+    Multi -->|Tenant DisplayName empty or locked| FallbackInstance[Fallback to Instance DisplayName]
+    FallbackInstance -->|Instance DisplayName empty| DefaultFallback[Fallback to 'ISLAMU']
+```
+
+1. **Multi-Tenant Mode**:
+   - Primary: Uses the tenant's `BrandingSettings.DisplayName` from `SettingsDocumentKeys.Tenant.Branding` (e.g., *"Dallas Muslim Center"*).
+   - Fallback: If unconfigured or locked by instance governance (`displayName.IsLocked == true`), gracefully falls back to the instance-level display name (`GovernanceSettingKeys.Branding.DisplayName`), and finally to default `"ISLAMU"`.
+2. **Single-Tenant Mode**:
+   - The instance is the single tenant. It directly uses the instance-level `Branding.DisplayName` (or default `"ISLAMU"`).
+
+### Dynamic Disclaimer Flow & Touchpoints
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Attendee as Attendee / Buyer
+    participant UI as Blazor Client (TicketSelection / EventDetail / Footer)
+    participant App as Application (PaidOrderAcceptanceService / PublicExperience)
+    participant Domain as Domain (PaidEventPolicyRules / LegalDisclaimerFormatter)
+
+    Note over App,Domain: 1. Policy & Payment Activation Check
+    App->>Domain: IsPaymentsEnabled(instancePolicy, tenantPolicy)
+    Domain-->>App: True (Paid events active for tenancy)
+
+    Note over App: 2. Dynamic Branding Interpolation
+    App->>App: Resolve effective BrandDisplayName
+    App->>Domain: FormatDirectoryDisclaimer(brandDisplayName)
+    Domain-->>App: Formatted Legal Text
+
+    Note over UI,App: 3. Delivery across Buyer-Facing Surfaces
+    App-->>UI: PaidOrderAcceptanceDisclosureDto / PublicExperienceSettingsDto
+    UI-->>Attendee: Display Intermediary Disclaimer in Event Details, Ticket Selection & Checkout
+```
+
+### Surface Presentation Table
+
+| Surface | Component / Handler | Behavior when Paid Events Enabled |
+|---|---|---|
+| **Paid Order Acceptance** | `PaidOrderAcceptanceService.DescribeAsync()` | Injects disclaimer into `PaidOrderAcceptanceDisclosureDto` and includes it in the cryptographic SHA-256 `DisclosureRevision` hash acknowledged before Stripe handoff. |
+| **Ticket Selection** | `TicketSelection.razor` | Displays prominent legal callout above ticket reservation options. |
+| **Event Details** | `EventDetail.razor` | Renders directory intermediary disclaimer inside the Participation / Pricing section for paid events. |
+| **Payment Status / Return** | `PaymentStatusPanel.razor`, `OrderRecovery.razor` | Displays directory disclaimer during order summary and payment confirmation. |
+| **Public Footer** | `PublicExperienceSettingsDto`, `Footer.razor` | Displays directory legal disclaimer in public footer when tenancy has paid events enabled. |
+
+### Directory Disclaimer vs. Operator Payment Disclosure
+
+It is critical to distinguish between the **Tenant Directory Disclaimer** and the **Instance Operator Disclosure**:
+* **Tenant Directory Disclaimer**: Uses the **Tenant Brand** (e.g. *Dallas Muslim Center*) to clarify to local community members that the host organization/directory is not organizing or holding ticket revenue for third-party events listed on its portal.
+* **Instance Operator Disclosure**: Uses the **Instance Operator Identity** (`IPaidCheckoutGovernance`), providing Stripe Connect and consumer-protection disclosures (legal entity name, registered country, operator terms of service, and dispute/complaint contacts).
+
+---
+
+## 4. Core Operating Profiles
 
 ### `OrganizerDirect` (Default & Active)
 In the `OrganizerDirect` profile:
@@ -121,7 +201,7 @@ In the `OrganizerDirect` profile:
 
 ---
 
-## 4. Financial Invariants & Safety Rules
+## 5. Financial Invariants & Safety Rules
 
 1. **Integer Minor Units**: All monetary amounts are stored and calculated as integer minor units (`long` or `int`, e.g., cents, pence) using the [`Money`](../src/Explore.Domain/ValueObjects/Money.cs) value object. Floating-point types (`float`, `double`, `decimal`) are strictly forbidden in domain money calculations to eliminate rounding errors.
 2. **Explicit Single Currency**: Every ticket catalog version and registration order is bound to exactly one immutable ISO-4217 currency code (e.g. `EUR`, `USD`, `SAR`). Mixed-currency orders and silent foreign exchange conversions are forbidden.
@@ -132,7 +212,7 @@ In the `OrganizerDirect` profile:
 
 ---
 
-## 5. End-to-End Payment Flow
+## 6. End-to-End Payment Flow
 
 ```mermaid
 sequenceDiagram
@@ -174,7 +254,7 @@ sequenceDiagram
 
 ---
 
-## 6. Organizer Payment Onboarding Flow
+## 7. Organizer Payment Onboarding Flow
 
 To publish paid events, an organizer actor must connect an eligible merchant account:
 
@@ -204,7 +284,7 @@ To publish paid events, an organizer actor must connect an eligible merchant acc
 
 ---
 
-## 7. Refunds And Balance Liability In OrganizerDirect
+## 8. Refunds And Balance Liability In OrganizerDirect
 
 `OrganizerDirect` is a technical direct-charge profile, not a universal legal or loss-allocation conclusion. Provider balance recovery, bank debit eligibility, negative-balance collection, and liability vary by provider configuration, controller country, connected-account agreement, payment method, and applicable law. Operators must verify those facts against current provider and contractual evidence; this document does not state that a provider will debit an organizer automatically, pursue one party, or insulate another party from loss.
 
@@ -229,7 +309,7 @@ Replacement settlement is the hard ordering fence. Persistence records `Replacem
 
 The waitlist itself never accepts paid priority. Queue order is policy priority descending, enqueue time ascending, then UUID ascending. Commercial substitution requires exact tenant, event, ticket type, catalog, purchase-policy snapshot, currency, commerce digest, entitlement digest, gross minor units, and refund-funding mode equality.
 
-## 8. Developer Guide: Adding a New Payment Provider
+## 9. Developer Guide: Adding a New Payment Provider
 
 To integrate a new payment gateway (e.g. `paypal`, `mollie`, `lemonsqueezy`), follow this step-by-step procedure:
 
@@ -322,7 +402,7 @@ Create an incoming webhook verifier and handler in `src/Explore.Infrastructure/P
 
 ---
 
-## 9. Configuration & Secrets Reference
+## 10. Configuration & Secrets Reference
 
 ### Environment & AppSettings Keys
 
@@ -342,7 +422,7 @@ Create an incoming webhook verifier and handler in `src/Explore.Infrastructure/P
 
 ---
 
-## 10. Configuration Manifest Tenant Payment Boundary
+## 11. Configuration Manifest Tenant Payment Boundary
 
 Tenant bootstrap may declare only the provider-neutral narrowing document
 `tenant.paid_event_policy`. The document is pinned to the active
@@ -376,7 +456,7 @@ tenant narrowing; `Portable` flattens the active safe policy while explicitly
 marking sovereign values omitted and locked. Neither export claims refund,
 liability, dispute, or provider behavior.
 
-## 11. Related Documentation & Decisions
+## 12. Related Documentation & Decisions
 
 - [ADR-022: Paid Event Commerce And Stripe Connect](adr/ADR-022-paid-event-commerce-and-stripe-connect.md)
 - [ADR-024: External Business Integrations And Protected Payout Boundaries](adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md)

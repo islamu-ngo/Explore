@@ -30,6 +30,7 @@
                 <MudText Id="payment-acceptance-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.acceptance.heading", "Review before payment")</MudText>
                 <dl>
                     <dt>@T("payment.acceptance.merchant", "Merchant disclosure")</dt><dd>@_acceptance.MerchantDisclosureText</dd>
+                    <dt>@T("payment.acceptance.platformRole", "Platform role")</dt><dd lang="en" dir="ltr" data-testid="payment-acceptance-paid-event-directory-disclaimer">@_acceptance.PaidEventDirectoryDisclaimer</dd>
                     <dt>@T("payment.acceptance.operator", "Instance operator")</dt><dd>@_acceptance.OperatorDisplayName (@(_acceptance.IsOfficialInstance == true ? T("payment.operator.official", "official") : T("payment.operator.independent", "independent"))), @_acceptance.OperatorRegionCode</dd>
                     <dt>@T("payment.acceptance.officialOrigin", "Operator origin")</dt><dd data-testid="acceptance-official-origin">@_acceptance.OfficialOrigin</dd>
                     <dt>@T("payment.acceptance.activationStatus", "Operator activation status")</dt><dd data-testid="acceptance-activation-status">@_acceptance.OperatorActivationStatus</dd>

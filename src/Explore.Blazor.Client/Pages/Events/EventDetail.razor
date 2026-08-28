@@ -462,6 +462,19 @@
                             {
                                 <AppButton Href="@($"/auth/login?returnUrl={Uri.EscapeDataString($"/registration/events/{_eventDetails.Id}/tickets")}")">Sign in to register</AppButton>
                             }
+
+                            @if (ShouldShowPaidEventDirectoryDisclaimer)
+                            {
+                                <aside class="event-registration-card__directory-notice"
+                                       role="note"
+                                       aria-labelledby="event-paid-directory-heading"
+                                       data-testid="event-detail-paid-event-directory-disclaimer">
+                                    <MudText Id="event-paid-directory-heading" Typo="Typo.subtitle2" HtmlTag="p">
+                                        <span lang="en" dir="ltr">About paid ticket transactions</span>
+                                    </MudText>
+                                    <MudText Typo="Typo.body2"><span lang="en" dir="ltr">@_paidEventDirectoryDisclaimer</span></MudText>
+                                </aside>
+                            }
                         </div>
                     </div>
                     }

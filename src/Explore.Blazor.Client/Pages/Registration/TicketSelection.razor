@@ -11,6 +11,19 @@
 <MudContainer MaxWidth="MaxWidth.Small" Class="ticket-selection">
     <MudText Typo="Typo.h4" HtmlTag="h1">Select tickets</MudText>
 
+    @if (!_isLoading && !string.IsNullOrWhiteSpace(_composition?.PaidEventDirectoryDisclaimer))
+    {
+        <aside class="ticket-selection__directory-notice"
+               role="note"
+               aria-labelledby="paid-event-directory-heading"
+               data-testid="ticket-selection-paid-event-directory-disclaimer">
+            <MudText Id="paid-event-directory-heading" Typo="Typo.subtitle1" HtmlTag="h2">
+                <span lang="en" dir="ltr">About paid ticket transactions</span>
+            </MudText>
+            <MudText Typo="Typo.body2"><span lang="en" dir="ltr">@_composition.PaidEventDirectoryDisclaimer</span></MudText>
+        </aside>
+    }
+
     @if (_isLoading)
     {
         <div role="status">Loading ticket choices…</div>

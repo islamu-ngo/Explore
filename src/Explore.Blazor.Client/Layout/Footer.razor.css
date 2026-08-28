@@ -221,3 +221,12 @@
     );
     transform: translateY(-0.125rem);
 }
+
+.site-footer__directory-notice {
+    max-inline-size: 80ch;
+    margin-block-start: var(--isl-space-4);
+    padding-block-start: var(--isl-space-3);
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+    overflow-wrap: anywhere;
+    color: var(--mud-palette-text-primary);
+}

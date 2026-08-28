@@ -64,6 +64,16 @@
                                                 OnCookieSettingsClick="HandleCookieSettingsClick" />
                     break;
             }
+
+            @if (!string.IsNullOrWhiteSpace(_paidEventDirectoryDisclaimer))
+            {
+                <aside class="site-footer__directory-notice"
+                       role="note"
+                       aria-label="Paid event directory notice"
+                       data-testid="footer-paid-event-directory-disclaimer">
+                    <MudText Typo="Typo.body2" HtmlTag="p"><span lang="en" dir="ltr">@_paidEventDirectoryDisclaimer</span></MudText>
+                </aside>
+            }
         </MudContainer>
     </footer>
     </div>
@@ -82,6 +92,7 @@
     private bool _showCookieSettingsLink = true;
     private List<FooterLinkGroupDto> _linkGroups = [];
     private bool _showCommunityGuidelinesLink;
+    private string? _paidEventDirectoryDisclaimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,6 +102,7 @@
 
         _brandDisplayName = settings.BrandDisplayName ?? string.Empty;
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+        _paidEventDirectoryDisclaimer = settings.PaidEventDirectoryDisclaimer;
 
         var footer = settings.FooterConfig;
         var footerSettings = footer?.Settings;

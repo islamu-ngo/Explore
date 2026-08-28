@@ -143619,6 +143619,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string MerchantDisclosureText { get; init; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("paidEventDirectoryDisclaimer")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PaidEventDirectoryDisclaimer { get; init; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("operatorDisplayName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string OperatorDisplayName { get; init; } = default!;
@@ -146249,6 +146253,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("brandDisplayName")]
         public string? BrandDisplayName { get; init; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("paidEventDirectoryDisclaimer")]
+        public string? PaidEventDirectoryDisclaimer { get; init; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("brandLogoUrl")]
         public string? BrandLogoUrl { get; init; } = default!;
 
@@ -147165,6 +147172,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
         public string? CurrencyCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("paidEventDirectoryDisclaimer")]
+        public string? PaidEventDirectoryDisclaimer { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("ticketTypes")]
         public System.Collections.Generic.ICollection<RegistrationCheckoutTicketTypeDto>? TicketTypes { get; init; } = default!;

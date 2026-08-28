@@ -76,6 +76,8 @@ public sealed class PaymentStatusPanelTests : IDisposable
         await Assert.That(start.HasAttribute("disabled")).IsTrue();
         await Assert.That(cut.Markup).Contains("Localized payment review");
         await Assert.That(cut.Markup).DoesNotContain("Review before payment");
+        await Assert.That(cut.Find("[data-testid='payment-acceptance-paid-event-directory-disclaimer']").TextContent)
+            .Contains("Tenant Events provides an event discovery and management directory only.");
         await Assert.That(cut.Markup).Contains("Independent Operator");
         await Assert.That(cut.Markup).Contains("EUR 10.00");
         await Assert.That(cut.Markup).Contains("Europe/Brussels");
@@ -496,6 +498,7 @@ public sealed class PaymentStatusPanelTests : IDisposable
     {
         DisclosureRevision = "revision",
         MerchantDisclosureText = "Example Organizer, legal merchant",
+        PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only.",
         OperatorDisplayName = "Independent Operator",
         IsOfficialInstance = false,
         OfficialOrigin = "https://events.example.test",

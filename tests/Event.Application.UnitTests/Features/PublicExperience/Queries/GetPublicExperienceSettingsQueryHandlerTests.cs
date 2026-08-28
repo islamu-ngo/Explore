@@ -36,6 +36,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
+    private readonly IPaidEventPolicyRepository _paidEventPolicyRepository;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
@@ -55,6 +56,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             .Returns(new AnalyticsRuntimeProfile());
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _typedSettingsDocumentResolver = Substitute.For<ITypedSettingsDocumentResolver>();
+        _paidEventPolicyRepository = Substitute.For<IPaidEventPolicyRepository>();
         _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AnalyticsSettingGroup());
@@ -90,8 +92,58 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _runtimeProfileResolver,
             _hierarchicalSettingsResolver,
             _typedSettingsDocumentResolver,
+            _paidEventPolicyRepository,
             _footerLinkGroupRepository,
             _mapper);
+    }
+
+    [Test]
+    public async Task Handle_WhenPaidEventsAreEffective_ExposesTenantBrandedDirectoryDisclaimer()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _typedSettingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
+                Arg.Any<SettingsResolutionContext>(),
+                SettingsDocumentKeys.Tenant.Branding,
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSettingsDocument<BrandingSettings>
+            {
+                DocumentKey = SettingsDocumentKeys.Tenant.Branding,
+                SchemaVersion = 1,
+                DefaultsVersion = "1",
+                Payload = new BrandingSettings { DisplayName = "Tenant Events" },
+                Source = SettingsDocumentSource.Tenant,
+                SourceScopeId = tenantId,
+                ConcurrencyStamp = Guid.CreateVersion7()
+            });
+        _paidEventPolicyRepository.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(EnabledInstancePolicy());
+
+        PublicExperienceSettingsDto result = await _handler.Handle(
+            new GetPublicExperienceSettingsQuery(),
+            CancellationToken.None);
+
+        await Assert.That(result.PaidEventDirectoryDisclaimer).StartsWith(
+            "Tenant Events provides an event discovery and management directory only.");
+    }
+
+    [Test]
+    public async Task Handle_WhenInstanceDisablesPaidEvents_OmitsDirectoryDisclaimer()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _paidEventPolicyRepository.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+
+        PublicExperienceSettingsDto result = await _handler.Handle(
+            new GetPublicExperienceSettingsQuery(),
+            CancellationToken.None);
+
+        await Assert.That(result.PaidEventDirectoryDisclaimer).IsNull();
     }
 
     [Test]
@@ -538,5 +590,20 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Mcp = new McpGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto()
         };
+    }
+
+    private static PaidEventPolicyVersion EnabledInstancePolicy()
+    {
+        PaidEventPolicyVersion policy = PaidEventPolicyVersion.CreateDefaultInstance();
+        return policy.CreateRevision(
+            true,
+            policy.AllowedOrganizerKinds,
+            policy.RequiresLocalVerification,
+            policy.AllowedCurrencyCodes,
+            policy.DefaultCurrencyCode,
+            policy.RefundProtections,
+            policy.CurrencyRiskLimits,
+            policy.RequiresFirstPaidEventReview,
+            policy.FarFutureReviewThresholdDays);
     }
 }

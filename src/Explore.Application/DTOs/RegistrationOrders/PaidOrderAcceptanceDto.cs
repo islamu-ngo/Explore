@@ -7,6 +7,7 @@ public sealed record PaidOrderAcceptanceDisclosureDto
 {
     public required string DisclosureRevision { get; init; }
     public required string MerchantDisclosureText { get; init; }
+    public required string PaidEventDirectoryDisclaimer { get; init; }
     public required string OperatorDisplayName { get; init; }
     public required bool IsOfficialInstance { get; init; }
     public required string OfficialOrigin { get; init; }

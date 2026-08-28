@@ -168,6 +168,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _wasLoading = true;
     private bool _hasHandledReportIntent;
     private string _brandDisplayName = DefaultBrandDisplayName;
+    private string? _paidEventDirectoryDisclaimer;
 
     private ICollection<EventDayListDto>? _eventDays;
 
@@ -205,6 +206,10 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private bool HasMultipleSessions => _eventSessions?.Count > 1;
     private string BrandDisplayName => _brandDisplayName;
+    private bool ShouldShowPaidEventDirectoryDisclaimer =>
+        !string.IsNullOrWhiteSpace(_paidEventDirectoryDisclaimer) &&
+        _eventDetails?.TicketPriceSummary is { } summary &&
+        !string.Equals(summary.SummaryCode, "FREE", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -221,12 +226,15 @@ public partial class EventDetail : ComponentBase, IDisposable
         try
         {
             var shell = await PublicExperienceService.GetCachedShellAsync();
+            var settings = await PublicExperienceService.GetCachedSettingsAsync();
             _brandDisplayName = NormalizeBrandDisplayName(shell?.Home?.BrandDisplayName);
+            _paidEventDirectoryDisclaimer = settings?.PaidEventDirectoryDisclaimer;
         }
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Unable to load public brand display name for event metadata");
             _brandDisplayName = DefaultBrandDisplayName;
+            _paidEventDirectoryDisclaimer = null;
         }
     }
 

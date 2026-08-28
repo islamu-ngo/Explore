@@ -17,6 +17,17 @@
     padding-block-start: 0;
 }
 
+.event-registration-card__directory-notice {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin-block: var(--isl-space-3);
+    padding: var(--isl-space-3);
+    border-inline-start: var(--isl-space-1) solid var(--isl-color-info);
+    border-radius: var(--isl-radius-card);
+    overflow-wrap: anywhere;
+    background: color-mix(in srgb, var(--isl-color-info) 8%, var(--isl-color-surface));
+}
+
 .event-detail-container {
     box-sizing: border-box;
     max-width: 1000px !important;

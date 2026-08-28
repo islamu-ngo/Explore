@@ -14,6 +14,7 @@ public sealed record PublicExperienceSettingsDto
     public string DeploymentMode { get; init; } = "SingleTenant";
     public string PreferredHomePage { get; init; } = "EventList";
     public string BrandDisplayName { get; init; } = string.Empty;
+    public string? PaidEventDirectoryDisclaimer { get; init; }
     public string BrandLogoUrl { get; init; } = string.Empty;
     public string BrandFaviconUrl { get; init; } = string.Empty;
     public string BrandCustomCssUrl { get; init; } = string.Empty;

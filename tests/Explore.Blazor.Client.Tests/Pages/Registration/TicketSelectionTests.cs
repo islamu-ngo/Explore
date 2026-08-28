@@ -18,6 +18,40 @@ public sealed class TicketSelectionTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
+    public async Task PaidDirectoryDisclaimer_RendersServerAuthoredTenantBranding()
+    {
+        _ctx.SetAnonymousUser();
+        Guid eventId = Guid.CreateVersion7();
+        _service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(new RegistrationCheckoutCompositionDto
+        {
+            EventId = eventId,
+            TicketCatalogVersionId = Guid.CreateVersion7(),
+            CurrencyCode = "EUR",
+            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only.",
+            TicketTypes =
+            [
+                new RegistrationCheckoutTicketTypeDto
+                {
+                    Id = Guid.CreateVersion7(),
+                    Name = "General admission",
+                    TicketPricingModeCode = "FIXED",
+                    FixedPriceMinor = 1200
+                }
+            ]
+        });
+
+        var cut = _ctx.RenderMudComponent<TicketSelection>(
+            parameters => parameters.Add(component => component.EventId, eventId));
+
+        var notice = cut.WaitForElement("[data-testid='ticket-selection-paid-event-directory-disclaimer']");
+
+        await Assert.That(notice.TextContent)
+            .Contains("Tenant Events provides an event discovery and management directory only.");
+        await Assert.That(notice.GetAttribute("dir")).IsNull();
+        await Assert.That(notice.QuerySelectorAll("[lang='en'][dir='ltr']").Length).IsEqualTo(2);
+    }
+
+    [Test]
     public async Task SubmitGuestSelection_UsesServerCatalogAndNavigatesToRecovery()
     {
         _ctx.SetAnonymousUser();

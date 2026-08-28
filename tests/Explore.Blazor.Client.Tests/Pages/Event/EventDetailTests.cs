@@ -8,6 +8,7 @@ using Blazouter.Services;
 using Explore.Blazor.Client.Components.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -464,6 +465,64 @@ public sealed class EventDetailTests : IDisposable
     }
 
     public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task PaidEventDirectoryDisclaimer_RendersForPaidPlatformManagedEvent()
+    {
+        EventDto eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration") with
+        {
+            TicketPriceSummary = new TicketPriceSummary
+            {
+                SummaryCode = "FIXED",
+                CurrencyCode = "EUR",
+                CurrencyMinorUnitDigits = 2,
+                FromAmountMinor = 1200
+            }
+        };
+        RegisterEventDetailServices(eventDto);
+        var publicExperience = Substitute.For<IPublicExperienceService>();
+        publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
+        {
+            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only."
+        });
+        _ctx.Services.AddSingleton(publicExperience);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+
+        var notice = cut.WaitForElement("[data-testid='event-detail-paid-event-directory-disclaimer']");
+
+        await Assert.That(notice.TextContent)
+            .Contains("Tenant Events provides an event discovery and management directory only.");
+        await Assert.That(notice.GetAttribute("dir")).IsNull();
+        await Assert.That(notice.QuerySelectorAll("[lang='en'][dir='ltr']").Length).IsEqualTo(2);
+    }
+
+    [Test]
+    public void PaidEventDirectoryDisclaimer_DoesNotRenderForFreeEvent()
+    {
+        EventDto eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration") with
+        {
+            TicketPriceSummary = new TicketPriceSummary
+            {
+                SummaryCode = "FREE",
+                CurrencyMinorUnitDigits = 0,
+                FromAmountMinor = 0
+            }
+        };
+        RegisterEventDetailServices(eventDto);
+        var publicExperience = Substitute.For<IPublicExperienceService>();
+        publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
+        {
+            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only."
+        });
+        _ctx.Services.AddSingleton(publicExperience);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+
+        cut.WaitForElement("a[href*='/registration/events/'][href$='/tickets']");
+        cut.WaitForAssertion(() =>
+            Assert.That(cut.FindAll("[data-testid='event-detail-paid-event-directory-disclaimer']")).IsEmpty());
+    }
 
     private void RegisterEventDetailServices(
         EventDto eventDto,

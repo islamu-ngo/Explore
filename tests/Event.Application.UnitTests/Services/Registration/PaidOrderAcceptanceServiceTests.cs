@@ -2,11 +2,15 @@
 // ABOUTME: Ensures incomplete startup governance or fabricated schedule evidence fails closed.
 
 using Explore.Application.Contracts.Payments;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Settings;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using NSubstitute;
@@ -26,6 +30,7 @@ public sealed class PaidOrderAcceptanceServiceTests
     private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
     private readonly IPaymentProviderDescriptor _provider = Substitute.For<IPaymentProviderDescriptor>();
     private readonly IPaidCheckoutActivationService _activation = Substitute.For<IPaidCheckoutActivationService>();
+    private readonly ITypedSettingsDocumentResolver _settings = Substitute.For<ITypedSettingsDocumentResolver>();
 
     [Test]
     public async Task DescribeAndAcceptUseExactScheduleOperatorProviderAndTypedLineFacts()
@@ -42,6 +47,10 @@ public sealed class PaidOrderAcceptanceServiceTests
         }, UtcNow, CancellationToken.None);
 
         await Assert.That(described.Disclosure!.MerchantDisclosureText).Contains("legal merchant");
+        await Assert.That(described.Disclosure.PaidEventDirectoryDisclaimer).IsEqualTo(
+            "Tenant Events provides an event discovery and management directory only. " +
+            "Tenant Events does not process ticket sales or act as event organizer. " +
+            "Any financial transaction or contract is strictly between the attendee and the external organizer.");
         await Assert.That(described.Disclosure.DeliveryStartsAtUtc).IsEqualTo(DateTimeOffset.Parse("2026-09-10T17:00:00Z"));
         await Assert.That(described.Disclosure.DeliveryEndsAtUtc).IsEqualTo(DateTimeOffset.Parse("2026-09-10T20:00:00Z"));
         await Assert.That(described.Disclosure.EventTimeZoneId).IsEqualTo("Europe/Brussels");
@@ -63,6 +72,27 @@ public sealed class PaidOrderAcceptanceServiceTests
         PaidOrderAcceptanceResult changed = await Service(Governance()).DescribeAsync(order, CancellationToken.None);
 
         await Assert.That(changed.Disclosure!.DisclosureRevision).IsNotEqualTo(first.Disclosure!.DisclosureRevision);
+    }
+
+    [Test]
+    public async Task DisclosureRevisionChangesWhenEffectiveTenantBrandChanges()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog) = OrderAndCatalog();
+        ConfigureCurrentFacts(order, catalog);
+        _settings.ResolveTenantDocumentAsync<BrandingSettings>(
+                Arg.Any<SettingsResolutionContext>(),
+                SettingsDocumentKeys.Tenant.Branding,
+                Arg.Any<CancellationToken>())
+            .Returns(Branding("Tenant Events"), Branding("Renamed Events"));
+        PaidOrderAcceptanceService service = Service(Governance());
+
+        PaidOrderAcceptanceResult first = await service.DescribeAsync(order, CancellationToken.None);
+        PaidOrderAcceptanceResult changed = await service.DescribeAsync(order, CancellationToken.None);
+
+        await Assert.That(changed.Disclosure!.PaidEventDirectoryDisclaimer)
+            .StartsWith("Renamed Events provides");
+        await Assert.That(changed.Disclosure.DisclosureRevision)
+            .IsNotEqualTo(first.Disclosure!.DisclosureRevision);
     }
 
     [Test]
@@ -257,7 +287,7 @@ public sealed class PaidOrderAcceptanceServiceTests
     {
         _activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
             .Returns(new PaidCheckoutActivationResult(true, null, "active"));
-        return new(_catalogs, _events, _policies, governance, _activation, _provider, new FixedTimeProvider(UtcNow));
+        return new(_catalogs, _events, _policies, governance, _activation, _provider, _settings, new FixedTimeProvider(UtcNow));
     }
 
     private void ConfigureCurrentFacts(RegistrationOrder order, EventTicketCatalogVersion catalog, DomainEvent? eventTarget = null)
@@ -268,6 +298,11 @@ public sealed class PaidOrderAcceptanceServiceTests
         _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(EnabledPolicy());
         _provider.Describe().Returns(new PaymentProviderDescriptor(
             "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
+        _settings.ResolveTenantDocumentAsync<BrandingSettings>(
+                Arg.Any<SettingsResolutionContext>(),
+                SettingsDocumentKeys.Tenant.Branding,
+                Arg.Any<CancellationToken>())
+            .Returns(Branding("Tenant Events"));
     }
 
     private (RegistrationOrder Order, EventTicketCatalogVersion Catalog) OrderAndCatalog(bool includeSecondLine = false)
@@ -368,4 +403,15 @@ public sealed class PaidOrderAcceptanceServiceTests
         governance.IsActivated.Returns(activationStatus == "approved");
         return governance;
     }
+
+    private ResolvedSettingsDocument<BrandingSettings> Branding(string displayName) => new()
+    {
+        DocumentKey = SettingsDocumentKeys.Tenant.Branding,
+        SchemaVersion = 1,
+        DefaultsVersion = "1",
+        Payload = new BrandingSettings { DisplayName = displayName },
+        Source = SettingsDocumentSource.Tenant,
+        SourceScopeId = _tenantId,
+        ConcurrencyStamp = Guid.CreateVersion7()
+    };
 }

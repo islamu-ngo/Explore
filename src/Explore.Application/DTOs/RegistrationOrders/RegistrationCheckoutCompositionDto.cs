@@ -8,6 +8,7 @@ public sealed record RegistrationCheckoutCompositionDto
     public Guid EventId { get; init; }
     public Guid TicketCatalogVersionId { get; init; }
     public string CurrencyCode { get; init; } = string.Empty;
+    public string? PaidEventDirectoryDisclaimer { get; init; }
     public IReadOnlyList<RegistrationCheckoutTicketTypeDto> TicketTypes { get; init; } = [];
 }
 

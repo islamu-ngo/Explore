@@ -38,7 +38,7 @@
 
 .payment-acceptance__links a:focus-visible,
 .payment-acceptance__acknowledgement input:focus-visible {
-    outline: 2px solid var(--isl-color-focus);
+    outline: 2px solid var(--mud-palette-primary);
     outline-offset: 2px;
 }
 
