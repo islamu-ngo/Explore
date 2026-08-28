@@ -14,7 +14,6 @@ public sealed class ParticipantAdmissionEligibilityConfiguration :
         EntityTypeBuilder<ParticipantAdmissionEligibility> builder)
     {
         builder.ToTable(
-            "participant_admission_eligibilities",
             table =>
             {
                 table.HasCheckConstraint(

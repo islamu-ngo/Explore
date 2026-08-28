@@ -14,7 +14,6 @@ public sealed class TicketPurchasePolicyVersionConfiguration :
         EntityTypeBuilder<TicketPurchasePolicyVersion> builder)
     {
         builder.ToTable(
-            "ticket_purchase_policy_versions",
             table =>
             {
                 table.HasCheckConstraint(
@@ -55,7 +54,6 @@ public sealed class TicketPurchaseAuthorityUsageConfiguration :
         EntityTypeBuilder<TicketPurchaseAuthorityUsage> builder)
     {
         builder.ToTable(
-            "ticket_purchase_authority_usages",
             table =>
             {
                 table.HasCheckConstraint(
@@ -97,7 +95,6 @@ public sealed class TicketPurchaseOperationConfiguration :
         EntityTypeBuilder<TicketPurchaseOperation> builder)
     {
         builder.ToTable(
-            "ticket_purchase_operations",
             table =>
             {
                 table.HasCheckConstraint(
