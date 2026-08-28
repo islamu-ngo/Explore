@@ -3,7 +3,7 @@
 
 # EF Core-First Persistence Hardening — Implementation Plan
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-28 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -13,8 +13,9 @@ Last Updated: 2026-08-27 Europe/Brussels
   naming, and all supported databases retain enterprise-grade behavior without
   backward-compatibility shims.
 - **Task directory:** `dev/active/efcore-first-persistence-hardening/`
-- **Planning status:** Draft; ready for user review. Product implementation has
-  not started.
+- **Planning status:** Implementation delivered through Phase 8; final
+  monolithic test-project verification remains blocked by stale pre-hardening
+  integration fixtures recorded in the context and Task 8.8.
 - **Change classification:** Mixed.
   - **Behavioral Delta:** fixes provider portability defects, makes unsupported
     physical-name paths work through the EF model, and formalizes concurrency
@@ -409,16 +410,23 @@ after backup/restore implications are documented.
 
 ### Phase 0 — Baseline, Impact Graph, And Invariant Breakers
 
-Establish the clean code/build and relevant test baseline once. Capture the
+Establish the code/build and relevant test baseline once. A green inherited
+baseline remains the default. If the unmodified branch already contains
+reproducible failures owned by a later phase, Phase 0 may proceed only after
+the Release build is green, the failure is reproduced with deterministic test
+settings, its root category is recorded in reviewer-readable evidence, and it
+is mapped to an exact owning task. This is not a waiver: every inherited
+failure must be green at its owning phase and the final gate. Capture the
 current raw/naming/provider inventory as machine-readable evidence. Use the
 knowledge graph to map callers, affected flows, and tests for each repository
 cluster. Add failing invariant-breaker tests for physical naming, provider
 parity, tenant isolation, critical concurrency, erasure ordering, and
 zero-sensitive evidence before production edits.
 
-**Exit criteria:** the baseline is recorded; every affected cluster has named
-callers/tests; Red tests fail for the intended defect; unrelated failures are
-identified without being fixed.
+**Exit criteria:** the green build and deterministic test baseline are
+recorded; every inherited failure has a root category and exact owning phase;
+every affected cluster has named callers/tests; Red tests fail for the
+intended defect; unrelated failures are identified without being fixed.
 
 ### Phase 1 — Architecture Gates And Exception Registry
 
@@ -554,6 +562,11 @@ parallelism. Do not rerun the unchanged full baseline after each edit.
 - `Event.API.IntegrationTests` only for externally observable critical flows
   whose persistence outcome changes.
 - Release build at phase boundaries and PR completion.
+
+An inherited red baseline never relaxes a phase exit. A phase may carry only
+the failures explicitly assigned to a later phase in the Phase 0 evidence.
+The owning phase must remove its assigned failures, and Phase 8 requires every
+required project to exit zero.
 
 ### 7.4 Real-Engine Evidence
 

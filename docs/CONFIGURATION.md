@@ -386,6 +386,23 @@ migration path remains separate from those provider-native application and Data
 Protection assemblies and their distinct history tables; MigrationService never
 combines authority paths.
 
+The current pre-v1 application histories start from one generated initial per
+provider:
+
+| Provider | Generated application initial |
+|---|---|
+| PostgreSQL | `20260828035010_InitialApplication` |
+| SQLite | `20260828040252_InitialApplication` |
+| SQL Server | `20260828040310_InitialApplication` |
+| MariaDB | `20260828040320_InitialApplication` |
+| MySQL | `20260828040329_InitialApplication` |
+
+These initials replace the former development application chains; they are not
+incremental upgrades from those removed histories. Recreate the disposable
+development application database, then let MigrationService apply the selected
+initial. Preserve Data Protection and privacy-erasure authority storage unless
+their own documented recovery procedure explicitly requires restoration.
+
 SQLite adds three non-negotiable deployment rules: use durable local storage,
 mount the file into both migration and API processes at the same path, and run
 one application instance. Startup sets a 30-second busy timeout through the

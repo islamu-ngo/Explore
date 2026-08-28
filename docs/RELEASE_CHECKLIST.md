@@ -143,6 +143,9 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Namespace evidence proves PostgreSQL/SQL Server use the configured schema with clean unprefixed table names, while SQLite/MariaDB/MySQL force `ie_` for application and history tables.
 - [ ] Quartz scheduler-schema ownership remains in the API as idempotent DDL (no EF Core migration, no second `DbContext`); every provider release lane proves the `QRTZ_` tables are created and that re-running startup is non-destructive.
 - [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive. Do not claim below-floor compaction or DR rehearsal coverage, or any RPO/RTO number, until it is shipped and linked in evidence.
+- [ ] Every changed primary provider passes generated application and Data Protection apply/rollback/reapply, pending-model, runtime behavior, and lock contracts.
+- [ ] A five-provider migration rebaseline records every generated initial ID and states explicitly whether existing databases require recreation; removed development histories are never stamped as already applied.
+- [ ] Persistence evidence records bounded query shape, a critical owned mutation score above 85%, and zero-sensitive logs/reports.
 - [ ] Data-protection/key storage impact is documented if changed.
 - [ ] Seed data or lookup table changes are documented.
 - [ ] Rollback strategy is documented in release notes.

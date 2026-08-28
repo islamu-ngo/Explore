@@ -1126,3 +1126,54 @@ keep package-policy approval distinct from assembled-distribution legal complian
 - [x] Stays in journal only (one-off audit lesson)
 
 ---
+
+[2026-08-28 Europe/Brussels] — Advisory locks and serializable snapshots can hide winners
+
+**Context**: While completing the Tier 0 payment-concurrency matrix for
+`update-repository-query`, two independent payment retry services had to
+converge on one active replacement attempt.
+
+**Symptom / Observation**: PostgreSQL raised `23505: duplicate key value
+violates unique constraint
+"ix_payment_attempts_active_scope_key_active_uniqueness_slot"` even though both
+transactions acquired the same order-scoped advisory lock before querying the
+active attempt.
+
+**Root Cause**: `pg_advisory_xact_lock` is itself the first statement in the
+serializable transaction. A waiting transaction therefore establishes its
+serializable snapshot before the winner commits; after the lock is acquired,
+later reads can still use that pre-winner snapshot and attempt a duplicate
+insert. The lock serialized execution but not snapshot visibility.
+
+**Resolution**: The payment-attempt claim uses the provider-default transaction
+isolation with the existing order-scoped database lock as its serialization
+boundary. A waiter now takes fresh reads after lock acquisition and reuses the
+winner. Terminal retries also treat an already-released active slot
+idempotently and reuse immutable acceptance evidence only when its composition
+matches the locked order. Focused verification passed
+`RegistrationPaymentAttemptClaimServiceTests` 22/22 and
+`ConcurrentExplicitTerminalRetryServicesCreateOrReuseOneActiveReplacement`
+1/1.
+
+**Why This Matters for Future Work**: Do not assume a transaction-scoped
+advisory lock refreshes a serializable snapshot. For winner-reuse workflows,
+either acquire a session lock before opening the transaction, use a
+read-committed transaction whose first post-lock read can observe the winner,
+or design an explicit retry for the resulting unique conflict.
+
+**References**:
+- `src/Explore.Application/Services/Registration/RegistrationPaymentAttemptClaimService.cs:59`
+- `src/Explore.Persistence/Repositories/RegistrationInventoryRepository.cs:39`
+- `src/Explore.Persistence/Database/ProviderPrimitives/RelationalNamedLock.cs:26`
+- `tests/Event.Persistence.IntegrationTests/Repositories/RegistrationInventoryHoldConcurrencyTests.cs:650`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

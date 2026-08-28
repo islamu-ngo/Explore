@@ -5,7 +5,7 @@ ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — i
 
 > Non-intuitive patterns, hidden knowledge, and things requiring deep analysis.
 > This document captures what you cannot guess from reading ARCHITECTURE.md alone.
-> Last Updated: 2026-05-27
+> Last Updated: 2026-08-28
 
 ---
 
@@ -742,3 +742,49 @@ Do not assume every provider supports the same semantics. The abstraction is des
 - `analytics.personal_api_key`
 
 `analytics.endpoint_url` is canonical. `analytics.endpoint` and `analytics.site_id` are legacy drift, not valid runtime contract keys.
+
+---
+
+## 36. Portable EF Persistence Has Three Non-Obvious Fences
+
+### Provider identity is a package contract
+
+MariaDB and MySQL run through `Microting.EntityFrameworkCore.MySql`; their EF
+provider name is `Microting.EntityFrameworkCore.MySql`, not Pomelo's package
+name. Provider checks belong in `RelationalProviderClassifier` or the approved
+primitive that owns the capability. Repositories must not compare provider-name
+strings.
+
+### An advisory lock does not refresh a serializable snapshot
+
+On PostgreSQL, `pg_advisory_xact_lock` can establish a serializable transaction
+snapshot before the waiter acquires the lock. After the winner commits, the
+waiter can still read its pre-winner snapshot and collide on the active unique
+slot. Winner-reuse workflows therefore use an order-scoped database lock with
+the provider-default transaction isolation so the first post-lock read observes
+the committed winner. Capacity calculations that do not rely on winner reuse
+remain serializable.
+
+### Set-based mutations bypass tracked entity values
+
+`ExecuteUpdateAsync` and provider-returning mutations update the database
+without updating already tracked instances. A workflow that reads the same
+entity again through the same `DbContext` must reload that tracked entry or
+clear the relevant tracker state before making an idempotency decision.
+Otherwise a successful database transition can be followed by a false stale
+result.
+
+Physical identifiers follow the EF model, not handwritten constants:
+
+- snake case comes from `EFCore.NamingConventions`;
+- PostgreSQL/SQL Server use `Database:Schema`;
+- SQLite/MariaDB/MySQL use `ie_`;
+- MariaDB/MySQL identifiers use deterministic 64-character shortening;
+- unique-conflict classifiers resolve expected names and columns from finalized
+  EF metadata and reject unrelated provider errors.
+
+The five application histories were deliberately rebaselined to one generated
+initial migration per provider during development. This is not an in-place
+upgrade path for databases on the removed development history: recreate or
+restore a compatible database, run the generated initial, and verify no pending
+model changes.

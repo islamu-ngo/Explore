@@ -6,6 +6,12 @@ Project islamu_event {
   Note: 'ISLAMU Event multi-tenant platform with ATProto federation and modular event composition. This is the logical unprefixed model: PostgreSQL and SQL Server place these names in the configured schema; SQLite, MariaDB, and MySQL materialize them with the fixed ie_ prefix.'
 }
 
+// Generated application lifecycle heads (2026-08-28):
+// PostgreSQL 20260828035010, SQLite 20260828040252,
+// SQL Server 20260828040310, MariaDB 20260828040320,
+// MySQL 20260828040329. Physical identifier shortening is provider-owned;
+// this DBML remains the logical unprefixed model.
+
 // ============================================================
 // Lookup / Reference Tables (int PK, ValueGeneratedNever)
 // ============================================================

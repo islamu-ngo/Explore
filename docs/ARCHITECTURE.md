@@ -60,6 +60,41 @@ MariaDB/MySQL databases. Quartz scheduler state is co-located in the same
 database under the `QRTZ_` table prefix on every provider, created by idempotent
 DDL rather than an EF Core migration.
 
+## Persistence Capability Ladder
+
+Persistence code follows one ordered capability ladder:
+
+1. **EF Core LINQ and set-based APIs** are the default for reads and mutations.
+   Repositories stay provider-neutral and return Domain entities or
+   domain-owned atomic outcomes.
+2. **Public provider APIs and translations** are used only when EF Core cannot
+   express the required database behavior portably.
+3. **Provider primitives** isolate the remaining capability gap. Parameterized
+   SQL, provider-name checks, lock commands, and migration-generator coupling
+   live only under `Explore.Persistence/Database/ProviderPrimitives` or
+   `Explore.Persistence/Schema/ProviderPrimitives`.
+
+`EFCore.NamingConventions` owns ordinary snake-case identifiers.
+`RelationalModelNamespace` applies the configured PostgreSQL/SQL Server schema
+or the fixed `ie_` SQLite/MariaDB/MySQL prefix. Finalized EF metadata, rather
+than source literals, resolves tables, columns, keys, indexes, and constraints.
+`MySqlModelIdentifierPolicy` shortens identifiers over 64 characters with a
+stable hash so generated MariaDB and MySQL names remain distinct.
+
+The approved primitive set includes transaction/session named locks, row
+fences, skip-locked queue claims, projection locks, provider database clocks,
+and configurable-schema migration generators. Adding another exception
+requires a demonstrated EF capability gap, a parameterized implementation,
+real-engine tests for every affected provider, an architecture allowlist, and
+operator documentation. Ordinary repository branching or raw SQL is not an
+exception path.
+
+Application and Data Protection migrations have independent generated
+histories for all five providers. Retained privacy-erasure authority has its
+own topology-specific histories. Migration and model-snapshot files are
+generated artifacts: change model/configuration code, then regenerate; never
+patch generated migration C# manually.
+
 ## Request Flow
 1. HTTP request enters the middleware pipeline (exception handling → security headers → correlation ID → logging → compression → HATEOAS → routing → timeouts → auth → rate limiting → authorization → output cache → ETag → idempotency).
 2. Controller receives request, dispatches MediatR command/query.
