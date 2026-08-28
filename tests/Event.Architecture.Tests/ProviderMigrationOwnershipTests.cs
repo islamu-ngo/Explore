@@ -5,16 +5,74 @@ using Explore.Domain.Federation;
 using Explore.Domain;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Schema;
 using Explore.Persistence.ValueGenerators;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Event.Architecture.Tests;
 
 public sealed class ProviderMigrationOwnershipTests
 {
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql, "Explore.Persistence.Schema.ConfigurableNpgsqlMigrationsSqlGenerator", 2)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite, "Explore.Persistence.Schema.ConfigurableSqliteMigrationsSqlGenerator", 2)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer, "Explore.Persistence.Schema.ConfigurableSqlServerMigrationsSqlGenerator", 2)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, "Explore.Persistence.Schema.ConfigurableMySqlMigrationsSqlGenerator", 3)]
+    [Arguments(PrimaryDatabaseProvider.MySql, "Explore.Persistence.Schema.ConfigurableMySqlMigrationsSqlGenerator", 3)]
+    public async Task MigrationServicesResolveConfiguredGeneratorAndStableConstructorShape(
+        PrimaryDatabaseProvider provider,
+        string expectedGeneratorTypeName,
+        int expectedConstructorParameterCount)
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            builder,
+            CreateOptions(provider));
+        await using var context = new ExploreDbContext(builder.Options);
+
+        IMigrationsSqlGenerator generator =
+            context.GetService<IMigrationsSqlGenerator>();
+        IHistoryRepository history = context.GetService<IHistoryRepository>();
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+
+        Type generatorType = generator.GetType();
+        await Assert.That(generatorType.FullName).IsEqualTo(expectedGeneratorTypeName);
+        await Assert.That(generatorType.GetConstructors()).Count().IsEqualTo(1);
+        await Assert.That(generatorType.GetConstructors().Single().GetParameters())
+            .Count()
+            .IsEqualTo(expectedConstructorParameterCount);
+        await Assert.That(history).IsNotNull();
+        await Assert.That(migrations.Assembly).IsNotNull();
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task MigrationServicesUseProviderModelDifferWithoutScaffoldTimeBackfillAdapter(
+        PrimaryDatabaseProvider provider)
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            builder,
+            CreateOptions(provider));
+        await using var context = new ExploreDbContext(builder.Options);
+
+        IMigrationsModelDiffer modelDiffer =
+            context.GetService<IMigrationsModelDiffer>();
+
+        await Assert.That(modelDiffer.GetType().FullName)
+            .IsNotEqualTo("Explore.Persistence.Schema.ApplicationMigrationsModelDiffer");
+        await Assert.That(modelDiffer.GetType().Assembly)
+            .IsNotEqualTo(typeof(ExploreDbContext).Assembly);
+    }
+
     [Test]
     [Arguments(PrimaryDatabaseProvider.PostgreSql, "Explore.Persistence", "Explore.Persistence")]
     [Arguments(PrimaryDatabaseProvider.Sqlite, "Explore.Persistence.Migrations.Sqlite", "Explore.Persistence.DataProtection.Migrations.Sqlite")]
