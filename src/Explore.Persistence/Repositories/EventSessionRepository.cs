@@ -7,6 +7,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Specifications.EventSessions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -15,7 +16,6 @@ namespace Explore.Persistence.Repositories;
 
 public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEventSessionRepository
 {
-    private const string RoomNoOverlapConstraintName = "EX_EventSession_RoomNoOverlap";
     private const string ExclusionViolationSqlState = "23P01";
     private readonly ExploreDbContext _dbContext;
 
@@ -41,23 +41,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            if (_dbContext.Database.CurrentTransaction is null)
-            {
-                throw new InvalidOperationException("Event-session row locks require an active transaction.");
-            }
-
-            await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                SELECT id
-                FROM event_sessions
-                WHERE id = {eventSessionId}
-                  AND event_id = {eventId}
-                  AND tenant_id = {tenantId}
-                  AND is_deleted = false
-                FOR UPDATE
-                """, cancellationToken);
-        }
+        await RelationalEntityRowFence.AcquireAsync<EventSession>(
+            _dbContext,
+            tenantId,
+            session => session.Id,
+            eventSessionId,
+            cancellationToken);
 
         return await _dbContext.EventSessions.FirstOrDefaultAsync(
             session => session.Id == eventSessionId && session.EventId == eventId && session.TenantId == tenantId,
@@ -333,18 +322,17 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         }
 
         _dbContext.Entry(session).State = EntityState.Detached;
-        int affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-            UPDATE event_sessions
-            SET event_id = {eventId},
-                event_location_id = {eventLocation.Id},
-                location_id = {eventLocation.LocationId},
-                room_id = {roomId},
-                event_day_id = NULL
-            WHERE tenant_id = {session.TenantId}
-              AND id = {session.Id}
-              AND is_deleted = FALSE
-            """,
+        int affectedRows = await _dbContext.EventSessions
+            .Where(candidate =>
+                candidate.TenantId == session.TenantId &&
+                candidate.Id == session.Id)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(candidate => candidate.EventId, eventId)
+                    .SetProperty(candidate => candidate.EventLocationId, eventLocation.Id)
+                    .SetProperty(candidate => candidate.LocationId, eventLocation.LocationId)
+                    .SetProperty(candidate => candidate.RoomId, roomId)
+                    .SetProperty(candidate => candidate.EventDayId, (Guid?)null),
             cancellationToken);
         if (affectedRows != 1)
         {
@@ -392,14 +380,15 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         }
     }
 
-    private static bool IsRoomNoOverlapViolation(DbUpdateException ex, Guid? roomId)
+    private bool IsRoomNoOverlapViolation(DbUpdateException ex, Guid? roomId)
     {
         return roomId.HasValue
-            && ex.InnerException is PostgresException
-            {
-                SqlState: ExclusionViolationSqlState,
-                ConstraintName: RoomNoOverlapConstraintName
-            };
+            && ex.InnerException is PostgresException postgres
+            && postgres.SqlState == ExclusionViolationSqlState
+            && string.Equals(
+                postgres.ConstraintName,
+                RelationalConstraintDescriptorResolver.ExclusionConstraint<EventSession>(_dbContext),
+                StringComparison.Ordinal);
     }
 
     private static RoomScheduleConflictException CreateRoomScheduleConflict(Guid roomId) =>

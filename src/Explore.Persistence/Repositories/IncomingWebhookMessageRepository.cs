@@ -14,7 +14,6 @@ namespace Explore.Persistence.Repositories;
 public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepository
 {
     private const string UniqueViolationSqlState = "23505";
-    private const string EffectReceiptIdentityIndexName = "ux_incoming_webhook_effect_receipts_identity";
     private readonly ExploreDbContext _dbContext;
 
     public IncomingWebhookMessageRepository(ExploreDbContext dbContext)
@@ -152,13 +151,10 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
     {
         var leaseExpiresAt = request.ClaimedAt.Add(request.LeaseDuration);
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                ["incoming-webhook-claim"],
-                cancellationToken);
-        }
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            "incoming-webhook-claim",
+            cancellationToken);
 
         var candidates = await _dbContext.IncomingWebhookMessages
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
@@ -301,16 +297,23 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: UniqueViolationSqlState,
-                ConstraintName: EffectReceiptIdentityIndexName
-            })
+        catch (DbUpdateException exception) when (IsEffectReceiptIdentityViolation(exception))
         {
             throw new IncomingWebhookEffectReceiptConflictException(exception);
         }
     }
+
+    private bool IsEffectReceiptIdentityViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: UniqueViolationSqlState,
+            ConstraintName: { } constraintName
+        } &&
+        constraintName == RelationalConstraintDescriptorResolver.UniqueIndex<IncomingWebhookEffectReceipt>(
+            _dbContext,
+            nameof(IncomingWebhookEffectReceipt.TenantId),
+            nameof(IncomingWebhookEffectReceipt.IncomingWebhookMessageId),
+            nameof(IncomingWebhookEffectReceipt.EffectKind)).Name;
 
     private void TrackEvidenceForTrackedAggregates()
     {

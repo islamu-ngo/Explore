@@ -192,7 +192,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                 await transaction.CommitAsync(cancellationToken);
                 return new(RegistrationSubmissionPersistenceOutcome.Inserted, submission);
             }
-            catch (DbUpdateException exception) when (IsSubmissionIdentityUniqueViolation(exception))
+            catch (DbUpdateException exception) when (IsSubmissionIdentityUniqueViolation(dbContext, exception))
             {
                 await transaction.RollbackAsync(cancellationToken);
                 dbContext.ChangeTracker.Clear();
@@ -226,7 +226,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
             await dbContext.SaveChangesAsync(cancellationToken);
             return new(RegistrationSubmissionPersistenceOutcome.Inserted, submission);
         }
-        catch (DbUpdateException exception) when (IsSubmissionIdentityUniqueViolation(exception))
+        catch (DbUpdateException exception) when (IsSubmissionIdentityUniqueViolation(dbContext, exception))
         {
             dbContext.ChangeTracker.Clear();
             RegistrationSubmission? raced = await FindExistingAsync(submission, cancellationToken);
@@ -325,7 +325,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                 await transaction.CommitAsync(cancellationToken);
                 return true;
             }
-            catch (DbUpdateException exception) when (IsRevisionIdentityUniqueViolation(exception))
+            catch (DbUpdateException exception) when (IsRevisionIdentityUniqueViolation(dbContext, exception))
             {
                 await transaction.RollbackAsync(cancellationToken);
                 dbContext.ChangeTracker.Clear();
@@ -427,9 +427,13 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
             ? new(RegistrationSubmissionPersistenceOutcome.Existing, existing)
             : new(RegistrationSubmissionPersistenceOutcome.EvidenceOnlyConflict, existing);
 
-    internal static bool IsSubmissionIdentityUniqueViolation(DbUpdateException exception) =>
-        RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(exception);
+    internal static bool IsSubmissionIdentityUniqueViolation(
+        ExploreDbContext context,
+        DbUpdateException exception) =>
+        RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(context, exception);
 
-    internal static bool IsRevisionIdentityUniqueViolation(DbUpdateException exception) =>
-        RegistrationUniqueConflictClassifier.IsRevisionIdentityConflict(exception);
+    internal static bool IsRevisionIdentityUniqueViolation(
+        ExploreDbContext context,
+        DbUpdateException exception) =>
+        RegistrationUniqueConflictClassifier.IsRevisionIdentityConflict(context, exception);
 }

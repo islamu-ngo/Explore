@@ -45,7 +45,7 @@ public sealed class AdmissionCheckInRepository(
         await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
             dbContext,
             request.TenantId,
-            "id",
+            ticket => ticket.Id,
             resolved.Id,
             cancellationToken);
 
@@ -65,7 +65,7 @@ public sealed class AdmissionCheckInRepository(
         await RelationalEntityRowFence.AcquireAsync<AdmissionTarget>(
             dbContext,
             request.TenantId,
-            "id",
+            target => target.Id,
             request.TargetId,
             cancellationToken);
         AdmissionTarget? target = await dbContext.AdmissionTargets
@@ -85,7 +85,7 @@ public sealed class AdmissionCheckInRepository(
             await RelationalEntityRowFence.AcquireAsync<AdmissionScannerCapability>(
                 dbContext,
                 request.TenantId,
-                "id",
+                capability => capability.Id,
                 request.ScannerCapabilityId.Value,
                 cancellationToken);
             scannerCapability = await dbContext.AdmissionScannerCapabilities
@@ -134,7 +134,7 @@ public sealed class AdmissionCheckInRepository(
             await RelationalEntityRowFence.AcquireAsync<AdmissionCheckInState>(
                 dbContext,
                 request.TenantId,
-                "id",
+                state => state.Id,
                 current.Id,
                 cancellationToken);
             await dbContext.Entry(current).ReloadAsync(cancellationToken);

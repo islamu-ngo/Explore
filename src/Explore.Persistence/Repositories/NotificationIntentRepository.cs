@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -15,9 +16,6 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
     IRecipientNotificationGraphRepository
 {
     private const string UniqueViolationSqlState = "23505";
-    private const string IntentPrimaryKeyConstraintName = "pk_notification_intents";
-    private const string DeduplicationConstraintName = "ux_notification_intents_tenant_deduplication_key";
-    private const string OccurrenceRecipientConstraintName = "ux_notification_intents_tenant_occurrence_recipient";
     private readonly ExploreDbContext _dbContext;
 
     public NotificationIntentRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -39,16 +37,37 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
             await _dbContext.SaveChangesAsync(cancellationToken);
             return intent;
         }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-        {
-            SqlState: UniqueViolationSqlState,
-            ConstraintName: IntentPrimaryKeyConstraintName
-                or DeduplicationConstraintName
-                or OccurrenceRecipientConstraintName
-        })
+        catch (DbUpdateException ex) when (IsDeduplicationConflict(ex))
         {
             throw new NotificationIntentDeduplicationConflictException(ex);
         }
+    }
+
+    private bool IsDeduplicationConflict(DbUpdateException exception)
+    {
+        if (exception.InnerException is not Npgsql.PostgresException
+            {
+                SqlState: UniqueViolationSqlState,
+                ConstraintName: { } constraintName
+            })
+        {
+            return false;
+        }
+
+        string primaryKey = RelationalConstraintDescriptorResolver
+            .PrimaryKey<NotificationIntent>(_dbContext).Name;
+        string deduplication = RelationalConstraintDescriptorResolver.UniqueIndex<NotificationIntent>(
+            _dbContext,
+            nameof(NotificationIntent.TenantId),
+            nameof(NotificationIntent.DeduplicationKey)).Name;
+        string occurrenceRecipient = RelationalConstraintDescriptorResolver.UniqueIndex<NotificationIntent>(
+            _dbContext,
+            nameof(NotificationIntent.TenantId),
+            nameof(NotificationIntent.FanoutOccurrenceId),
+            nameof(NotificationIntent.RecipientUserId)).Name;
+        return constraintName == primaryKey ||
+               constraintName == deduplication ||
+               constraintName == occurrenceRecipient;
     }
 
     public async Task<NotificationIntent?> GetGraphByTenantOccurrenceAndRecipientAsync(

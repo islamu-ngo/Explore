@@ -22,7 +22,7 @@ public sealed class AdmissionTargetOperationsRepository(ExploreDbContext dbConte
             await RelationalEntityRowFence.AcquireAsync<AdmissionTarget>(
                 dbContext,
                 tenantId,
-                "id",
+                target => target.Id,
                 targetId,
                 cancellationToken);
             return await dbContext.AdmissionTargets.SingleOrDefaultAsync(target =>

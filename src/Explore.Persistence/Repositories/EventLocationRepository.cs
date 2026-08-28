@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -200,12 +201,28 @@ public sealed class EventLocationRepository(ExploreDbContext dbContext) : IEvent
         }
     }
 
-    private static bool IsActivePairUniquenessViolation(DbUpdateException exception) =>
-        exception.InnerException is PostgresException
+    private bool IsActivePairUniquenessViolation(DbUpdateException exception)
+    {
+        if (exception.InnerException is not PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: { } constraintName
+            })
         {
-            SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: "ux_event_locations_active_physical" or "ux_event_locations_active_tba"
-        };
+            return false;
+        }
+
+        string activePhysical = RelationalConstraintDescriptorResolver.UniqueIndex<EventLocation>(
+            dbContext,
+            nameof(EventLocation.TenantId),
+            nameof(EventLocation.EventId),
+            nameof(EventLocation.LocationId)).Name;
+        string activeToBeAnnounced = RelationalConstraintDescriptorResolver.UniqueIndex<EventLocation>(
+            dbContext,
+            nameof(EventLocation.TenantId),
+            nameof(EventLocation.EventId)).Name;
+        return constraintName == activePhysical || constraintName == activeToBeAnnounced;
+    }
 
     private void RequireTenant(Guid? entityTenantId = null)
     {

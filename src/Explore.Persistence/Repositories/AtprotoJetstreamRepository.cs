@@ -12,6 +12,8 @@ using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using Explore.Domain.ValueObjects;
+using Explore.Persistence.Database;
+using Explore.Persistence.Database.ProviderPrimitives;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -626,45 +628,19 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
     private async Task AcquireConsumerLockAsync(string service, CancellationToken cancellationToken)
     {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                [$"atproto-jetstream:{service}"],
-                cancellationToken);
-        }
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            $"atproto-jetstream:{service}",
+            cancellationToken);
     }
 
     private async Task<bool> HasCurrentFenceAtCommitAsync(
         AtprotoJetstreamClaim claim,
-        CancellationToken cancellationToken)
-    {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            int affected = await _dbContext.Database.ExecuteSqlRawAsync(
-                """
-                UPDATE atproto_jetstream_consumer_states
-                SET service = service
-                WHERE id = {0}
-                  AND service = {1}
-                  AND lease_token = {2}
-                  AND lease_fence = {3}
-                  AND lease_expires_at > clock_timestamp()
-                """,
-                [claim.ConsumerStateId, claim.Service, claim.LeaseToken, claim.LeaseFence],
-                cancellationToken);
-            return affected == 1;
-        }
-
-        DateTime now = DateTime.UtcNow;
-        return await _dbContext.AtprotoJetstreamConsumerStates.AnyAsync(value =>
-            value.Id == claim.ConsumerStateId
-            && value.Service == claim.Service
-            && value.LeaseToken == claim.LeaseToken
-            && value.LeaseFence == claim.LeaseFence
-            && value.LeaseExpiresAt > now,
+        CancellationToken cancellationToken) =>
+        await AtprotoJetstreamCommitFence.IsCurrentAsync(
+            _dbContext,
+            claim,
             cancellationToken);
-    }
 
     private async Task<bool> ApplyRecordAsync(
         AtprotoJetstreamApplyRequest request,

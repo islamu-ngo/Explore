@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -11,7 +12,6 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class WebPushDispatchOutboxRepository : IWebPushDispatchOutboxRepository
 {
-    private const string NotificationSubscriptionUniqueIndexName = "ux_web_push_dispatch_outbox_notification_subscription";
     private const string UniqueViolationSqlState = "23505";
     private const int MaxErrorLength = 2000;
 
@@ -350,12 +350,17 @@ public sealed class WebPushDispatchOutboxRepository : IWebPushDispatchOutboxRepo
         return value is null || value.Length <= maxLength ? value : value[..maxLength];
     }
 
-    private static bool IsDuplicateNotificationSubscriptionViolation(DbUpdateException ex)
+    private bool IsDuplicateNotificationSubscriptionViolation(DbUpdateException ex)
     {
         return ex.InnerException is PostgresException
         {
             SqlState: UniqueViolationSqlState,
-            ConstraintName: NotificationSubscriptionUniqueIndexName
-        };
+            ConstraintName: { } constraintName
+        } &&
+        constraintName == RelationalConstraintDescriptorResolver.UniqueIndex<WebPushDispatchOutbox>(
+            _dbContext,
+            nameof(WebPushDispatchOutbox.TenantId),
+            nameof(WebPushDispatchOutbox.NotificationId),
+            nameof(WebPushDispatchOutbox.SubscriptionId)).Name;
     }
 }

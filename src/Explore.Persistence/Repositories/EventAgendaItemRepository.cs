@@ -59,18 +59,17 @@ public class EventAgendaItemRepository : GenericRepository<EventAgendaItem, Guid
         }
 
         _dbContext.Entry(agendaItem).State = EntityState.Detached;
-        int affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-            UPDATE event_agenda_items
-            SET event_id = {eventId},
-                event_location_id = {eventLocation.Id},
-                location_id = {eventLocation.LocationId},
-                room_id = {roomId},
-                event_day_id = NULL
-            WHERE tenant_id = {agendaItem.TenantId}
-              AND id = {agendaItem.Id}
-              AND is_deleted = FALSE
-            """,
+        int affectedRows = await _dbContext.EventAgendaItems
+            .Where(candidate =>
+                candidate.TenantId == agendaItem.TenantId &&
+                candidate.Id == agendaItem.Id)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(candidate => candidate.EventId, eventId)
+                    .SetProperty(candidate => candidate.EventLocationId, eventLocation.Id)
+                    .SetProperty(candidate => candidate.LocationId, eventLocation.LocationId)
+                    .SetProperty(candidate => candidate.RoomId, roomId)
+                    .SetProperty(candidate => candidate.EventDayId, (Guid?)null),
             cancellationToken);
         if (affectedRows != 1)
         {

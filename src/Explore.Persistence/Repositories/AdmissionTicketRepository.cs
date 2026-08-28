@@ -41,7 +41,7 @@ public sealed class AdmissionTicketRepository(ExploreDbContext dbContext) :
         await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
             dbContext,
             tenantId,
-            "id",
+            ticket => ticket.Id,
             admissionTicketId,
             cancellationToken);
         return await dbContext.AdmissionTickets

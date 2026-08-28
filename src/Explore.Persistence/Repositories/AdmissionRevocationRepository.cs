@@ -20,7 +20,7 @@ public sealed class AdmissionRevocationRepository(ExploreDbContext dbContext)
         await RelationalEntityRowFence.AcquireAsync<RegistrationOrder>(
             dbContext,
             request.TenantId,
-            "id",
+            order => order.Id,
             request.RegistrationOrderId,
             cancellationToken);
         IQueryable<RegistrationOrder> orders = dbContext.RegistrationOrders;
@@ -36,7 +36,7 @@ public sealed class AdmissionRevocationRepository(ExploreDbContext dbContext)
         await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
             dbContext,
             request.TenantId,
-            "registration_order_id",
+            ticket => ticket.RegistrationOrderId,
             request.RegistrationOrderId,
             cancellationToken);
         IQueryable<AdmissionTicket> tickets = dbContext.AdmissionTickets;

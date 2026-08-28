@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Federation;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -93,13 +94,10 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-            {
-                await _dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    ["atproto-pds-outbox-claim"],
-                    cancellationToken);
-            }
+            _ = await RelationalNamedLock.AcquireTransactionAsync(
+                _dbContext,
+                "atproto-pds-outbox-claim",
+                cancellationToken);
 
             var candidates = await CrossTenantOutbox()
                 .Where(value =>

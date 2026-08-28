@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -12,8 +13,6 @@ namespace Explore.Persistence.Repositories;
 public sealed class EventLocationDisclosureAuditRepository(ExploreDbContext dbContext)
     : IEventLocationDisclosureAuditRepository
 {
-    private const string PolicyVersionUniqueIndexName = "ux_event_location_disclosure_audits_policy_version";
-
     public async Task<EventLocationDisclosureAudit> AppendAsync(
         EventLocationDisclosureAudit audit,
         CancellationToken cancellationToken)
@@ -67,11 +66,7 @@ public sealed class EventLocationDisclosureAuditRepository(ExploreDbContext dbCo
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
-        {
-            SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: PolicyVersionUniqueIndexName
-        })
+        catch (DbUpdateException exception) when (IsPolicyVersionUniqueViolation(exception))
         {
             throw new ConcurrencyConflictException(
                 ConcurrencyConflictException.ConcurrentUpdate,
@@ -83,6 +78,18 @@ public sealed class EventLocationDisclosureAuditRepository(ExploreDbContext dbCo
 
         return audit;
     }
+
+    private bool IsPolicyVersionUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: { } constraintName
+        } &&
+        constraintName == RelationalConstraintDescriptorResolver.UniqueIndex<EventLocationDisclosureAudit>(
+            dbContext,
+            nameof(EventLocationDisclosureAudit.TenantId),
+            nameof(EventLocationDisclosureAudit.EventLocationId),
+            nameof(EventLocationDisclosureAudit.NewPolicyVersion)).Name;
 
     public async Task<IReadOnlyList<EventLocationDisclosureAudit>> GetByEventLocationAsync(
         Guid eventLocationId,

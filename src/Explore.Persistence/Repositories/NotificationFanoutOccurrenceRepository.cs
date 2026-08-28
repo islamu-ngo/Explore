@@ -1,6 +1,7 @@
 // ABOUTME: EF Core repository for immutable notification fanout occurrences.
 // ABOUTME: Resolves worker pointers with an exact tenant-and-occurrence predicate.
 
+using System.Linq.Expressions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.InternalEvents;
 using Explore.Domain;
@@ -195,24 +196,37 @@ public sealed class NotificationFanoutOccurrenceRepository
             throw new ArgumentException("Fanout run settlement time must be UTC.", nameof(settledAt));
         }
 
-        return await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
-            UPDATE notification_fanout_runs AS run
-            SET status = 'completed',
-                completed_at = GREATEST({{settledAt}}, run.created_at, run.started_at, run.updated_at),
-                processing_lease_owner = NULL,
-                processing_lease_token = NULL,
-                processing_lease_expires_at = NULL,
-                updated_at = GREATEST({{settledAt}}, run.created_at, run.started_at, run.updated_at)
-            WHERE run.tenant_id = {{tenantId}}
-              AND run.fanout_occurrence_id = {{occurrenceId}}
-              AND run.status IN ('pending', 'processing')
-              AND EXISTS (
-                  SELECT 1
-                  FROM notification_fanout_occurrences AS occurrence
-                  WHERE occurrence.tenant_id = run.tenant_id
-                    AND occurrence.id = run.fanout_occurrence_id
-                    AND occurrence.state = {{NotificationFanoutOccurrenceState.Superseded}})
-            """, cancellationToken);
+        Expression<Func<NotificationFanoutRun, DateTime?>> terminalTimestamp = run =>
+            run.UpdatedAt.HasValue &&
+            run.UpdatedAt.Value >= settledAt &&
+            (!run.StartedAt.HasValue || run.UpdatedAt.Value >= run.StartedAt.Value) &&
+            run.UpdatedAt.Value >= run.CreatedAt
+                ? run.UpdatedAt
+                : run.StartedAt.HasValue &&
+                  run.StartedAt.Value >= settledAt &&
+                  run.StartedAt.Value >= run.CreatedAt
+                    ? run.StartedAt
+                    : run.CreatedAt >= settledAt
+                        ? run.CreatedAt
+                        : settledAt;
+
+        return await dbContext.NotificationFanoutRuns
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .Where(run => run.TenantId == tenantId
+                && run.FanoutOccurrenceId == occurrenceId
+                && (run.Status == "pending" || run.Status == "processing"))
+            .Where(run => dbContext.NotificationFanoutOccurrences
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .Any(occurrence => occurrence.TenantId == run.TenantId
+                    && occurrence.Id == run.FanoutOccurrenceId
+                    && occurrence.State == NotificationFanoutOccurrenceState.Superseded))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(run => run.Status, "completed")
+                .SetProperty(run => run.CompletedAt, terminalTimestamp)
+                .SetProperty(run => run.ProcessingLeaseOwner, (string?)null)
+                .SetProperty(run => run.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(run => run.ProcessingLeaseExpiresAt, (DateTime?)null)
+                .SetProperty(run => run.UpdatedAt, terminalTimestamp), cancellationToken);
     }
 
     public async Task<NotificationFanoutOccurrence?> GetByPointerAsync(
