@@ -207,8 +207,6 @@ public sealed class AdmissionTransferDeliveryIntentConfiguration :
     public void Configure(
         EntityTypeBuilder<AdmissionTransferDeliveryIntent> builder)
     {
-        builder.ToTable(
-            "admission_transfer_delivery_intents");
         builder.Property(value => value.Id)
             .ValueGeneratedNever();
         builder.Property(value => value.CreatedAt)

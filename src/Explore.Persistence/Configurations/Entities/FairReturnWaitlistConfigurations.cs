@@ -15,7 +15,6 @@ public sealed class FairReturnSupplyPolicyConfiguration :
         EntityTypeBuilder<FairReturnSupplyPolicy> builder)
     {
         builder.ToTable(
-            "fair_return_supply_policies",
             table => table.HasCheckConstraint(
                 "ck_fair_return_supply_policy_lifetime",
                 "offer_lifetime_minutes BETWEEN 5 AND 43200"));
@@ -72,7 +71,6 @@ public sealed class FairReturnSupplyUnitConfiguration :
         EntityTypeBuilder<FairReturnSupplyUnit> builder)
     {
         builder.ToTable(
-            "fair_return_supply_units",
             table =>
             {
                 table.HasCheckConstraint(
@@ -140,7 +138,6 @@ public sealed class EventWaitlistEntryConfiguration :
         EntityTypeBuilder<EventWaitlistEntry> builder)
     {
         builder.ToTable(
-            "event_waitlist_entries",
             table =>
             {
                 table.HasCheckConstraint(
@@ -202,7 +199,6 @@ public sealed class EventWaitlistOfferConfiguration :
         EntityTypeBuilder<EventWaitlistOffer> builder)
     {
         builder.ToTable(
-            "event_waitlist_offers",
             table =>
             {
                 table.HasCheckConstraint(
@@ -279,7 +275,6 @@ public sealed class FairReturnSourceBindingConfiguration :
         EntityTypeBuilder<FairReturnSourceBinding> builder)
     {
         builder.ToTable(
-            "fair_return_source_bindings",
             table => table.HasCheckConstraint(
                 "ck_fair_return_source_bindings_amount",
                 "unit_amount_minor >= 0"));
@@ -340,8 +335,6 @@ public sealed class WaitlistProviderObservationConfiguration :
     public void Configure(
         EntityTypeBuilder<WaitlistProviderObservation> builder)
     {
-        builder.ToTable(
-            "waitlist_provider_observations");
         FairReturnSupplyPolicyConfiguration
             .ConfigureTenantEntity(builder);
         builder.Property(value => value.ProviderCode)
@@ -466,8 +459,6 @@ public sealed class WaitlistPaymentIntentConfiguration :
     public void Configure(
         EntityTypeBuilder<WaitlistPaymentIntent> builder)
     {
-        builder.ToTable(
-            "waitlist_payment_intents");
         FairReturnSupplyPolicyConfiguration
             .ConfigureTenantEntity(builder);
         builder.Property(value =>
@@ -546,7 +537,6 @@ public sealed class FairReturnOrchestrationEffectConfiguration :
         EntityTypeBuilder<FairReturnOrchestrationEffect> builder)
     {
         builder.ToTable(
-            "fair_return_orchestration_effects",
             table =>
             {
                 table.HasCheckConstraint(

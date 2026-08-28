@@ -41,10 +41,10 @@ public sealed class TicketPurchaseGovernanceApiTests
     public async Task PurchaseEndpointContractsUseScopedAuthRateLimitAndIdempotency()
     {
         MethodInfo? authenticated =
-            typeof(AuthenticatedRegistrationOrderController)
+            typeof(TicketPurchaseController)
                 .GetMethod(AuthenticatedMethod);
         MethodInfo? guest =
-            typeof(GuestRegistrationOrderController)
+            typeof(TicketPurchaseController)
                 .GetMethod(GuestMethod);
 
         await Assert.That(authenticated).IsNotNull();
