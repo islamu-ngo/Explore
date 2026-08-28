@@ -144,61 +144,64 @@ public class EventSessionCustomPropertyProjectionUpdater : IEventSessionCustomPr
             tenantId,
             cancellationToken);
 
-        var startedAt = DateTimeOffset.UtcNow;
-        long rowsProcessed = 0;
-        long rowsFailed = 0;
-
-        await using var transaction = await _dbContext.Database
-            .BeginTransactionAsync(cancellationToken);
-
-        if (!await TryAcquireExclusiveLockAsync(tenantId, cancellationToken))
+        return await _dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return new ProjectionRebuildResult(false, 0, 0, 0);
-        }
+            var startedAt = DateTimeOffset.UtcNow;
+            long rowsProcessed = 0;
+            long rowsFailed = 0;
 
-        var sessionIds = await _dbContext.EventSessions
-            .Where(s => s.TenantId == tenantId)
-            .Select(s => s.Id)
-            .ToListAsync(cancellationToken);
+            await using var transaction = await _dbContext.Database
+                .BeginTransactionAsync(cancellationToken);
 
-        foreach (var chunk in ProjectionInfrastructure.Chunk(sessionIds, effectiveBatchSize))
-        {
-            foreach (var sessionId in chunk)
+            if (!await TryAcquireExclusiveLockAsync(tenantId, cancellationToken))
             {
-                try
+                await transaction.RollbackAsync(cancellationToken);
+                return new ProjectionRebuildResult(false, 0, 0, 0);
+            }
+
+            var sessionIds = await _dbContext.EventSessions
+                .Where(s => s.TenantId == tenantId)
+                .Select(s => s.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var chunk in ProjectionInfrastructure.Chunk(sessionIds, effectiveBatchSize))
+            {
+                foreach (var sessionId in chunk)
                 {
-                    await RefreshForEventSessionAsync(sessionId, cancellationToken);
-                    rowsProcessed++;
-                }
-                catch (DbUpdateException)
-                {
-                    rowsFailed++;
+                    try
+                    {
+                        await RefreshForEventSessionAsync(sessionId, cancellationToken);
+                        rowsProcessed++;
+                    }
+                    catch (DbUpdateException)
+                    {
+                        rowsFailed++;
+                    }
                 }
             }
-        }
 
-        var drained = await DrainPendingScopesAsync(tenantId, effectiveBatchSize, cancellationToken);
+            var drained = await DrainPendingScopesAsync(tenantId, effectiveBatchSize, cancellationToken);
 
-        await _statusRepository.UpsertAsync(new CustomPropertyProjectionStatus
-        {
-            ProjectionName = ProjectionName,
-            ProjectionVersion = ProjectionVersion,
-            TenantId = tenantId,
-            State = rowsFailed == 0
-                ? CustomPropertyProjectionState.Idle
-                : CustomPropertyProjectionState.Failed,
-            LastRebuildStartedAt = startedAt,
-            LastRebuildCompletedAt = DateTimeOffset.UtcNow,
-            RowsProcessed = rowsProcessed,
-            RowsFailed = rowsFailed,
-            LastCheckpoint = null,
-            LastErrorMessage = null,
-        }, cancellationToken);
+            await _statusRepository.UpsertAsync(new CustomPropertyProjectionStatus
+            {
+                ProjectionName = ProjectionName,
+                ProjectionVersion = ProjectionVersion,
+                TenantId = tenantId,
+                State = rowsFailed == 0
+                    ? CustomPropertyProjectionState.Idle
+                    : CustomPropertyProjectionState.Failed,
+                LastRebuildStartedAt = startedAt,
+                LastRebuildCompletedAt = DateTimeOffset.UtcNow,
+                RowsProcessed = rowsProcessed,
+                RowsFailed = rowsFailed,
+                LastCheckpoint = null,
+                LastErrorMessage = null,
+            }, cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
-        return new ProjectionRebuildResult(true, rowsProcessed, rowsFailed, drained);
+            return new ProjectionRebuildResult(true, rowsProcessed, rowsFailed, drained);
+        });
     }
 
     public async Task<int> DrainDirtyScopesForTenantAsync(Guid tenantId, CancellationToken cancellationToken)

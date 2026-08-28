@@ -332,7 +332,7 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
         context.Events.Add(@event);
         await context.SaveChangesAsync();
 
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             EventId = @event.Id,
