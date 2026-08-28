@@ -217,33 +217,112 @@ Not fully implemented today:
 
 Outbound delivery remains database-first: capability, self-consent, linked session, source version, and `EventLocationDisclosurePurpose.Public` are rechecked immediately before remote I/O. Remote failure changes only delivery state; it never rolls back or deletes the committed local event.
 
-## EventLocation Disclosure Authority
+## Location Data Model & EventLocation Disclosure Architecture
 
-Venue visibility is an event-scoped decision, not a property of a venue. `EventLocation` is the
-first-class association between an `Event` and either a physical `Location` or an explicit
-to-be-announced placeholder, and it owns the seven visibility flags, the full-details audience, the
-server-side reveal instant, the policy version, and the privacy-review flag. Two events using the same
-building therefore disclose independently, and tightening one never leaks through the other.
+Venue visibility and privacy are strictly **event-scoped decisions**, not intrinsic properties of a physical building. The platform uses a three-tier location architecture where raw physical venues are separated from per-event disclosure policies, and session schedules are mediated exclusively through event-scoped location placements.
 
-- `EventLocationDisclosureEvaluator` is pure and synchronous. It takes immutable facts — placement,
-  location, room, effective governance, requester authority, server time — and returns a result. It
-  performs no I/O, so disclosure is decidable and exhaustively testable.
-- `IEventLocationDisclosureService` is the only request-scoped authority. `ResolveManyAsync` loads
-  placements, rooms, registration coverage, governance, and batched management authorization within a
-  bounded budget (one query per surface, one batched authorization) and then calls the evaluator per
-  row. Every query handler and projection converges here; `EventLocationDisclosureConvergenceTests`
-  fails the build if a new surface reaches the evaluator directly.
-- Two authorities sit beside it because they run without an HTTP requester:
-  `FanoutAttendeeLocationAuthorizationService` resolves one explicit background recipient, and
-  `PublicEventLocationDisclosureEvaluator` supplies fixed public-only authority to federation
-  snapshots. Both feed the same pure evaluator instead of reimplementing disclosure.
-- Purpose DTOs (`EventLocationPublicDto`, `EventLocationAttendeeDto`, `EventLocationManagementDto`)
-  have no public constructor. They can only be materialized from a disclosure result whose purpose
-  matches, which makes a contradictory response shape unrepresentable rather than merely discouraged.
-- Physical references are mediated in the database too: each carrier table (`event_sessions`,
-  `event_session_groups`, `event_agenda_items`, `event_session_agenda_items`) carries a check
-  constraint requiring `location_id IS NULL OR event_location_id IS NOT NULL`, so no write path can
-  attach a raw venue without a per-event disclosure policy.
+```mermaid
+classDiagram
+    class Location {
+        +Guid Id
+        +Guid TenantId
+        +string FullName
+        +string Country
+        +string City
+        +string Timezone
+        +int LocationKindId
+        +int LocationPrivacyStateId
+        +Guid OwnerUserId
+    }
+
+    class LocationRoom {
+        +Guid Id
+        +Guid LocationId
+        +Guid TenantId
+        +string Name
+        +int Capacity
+    }
+
+    class LocationPii {
+        +Guid LocationId
+        +string StreetAddress
+        +string PostalCode
+        +double Latitude
+        +double Longitude
+        +DateTime PiiErasedAtUtc
+    }
+
+    class EventLocation {
+        +Guid Id
+        +Guid TenantId
+        +Guid EventId
+        +Guid LocationId
+        +bool IsToBeAnnounced
+        +bool ShowVenueName
+        +bool ShowCity
+        +bool ShowCountry
+        +bool ShowRoomName
+        +bool ShowStreetAddress
+        +bool ShowPostcode
+        +bool ShowCoordinates
+        +int FullDetailsAudienceId
+        +DateTime RevealFullDetailsFromUtc
+        +bool NeedsPrivacyReview
+        +int PolicyVersion
+    }
+
+    class EventSession {
+        +Guid Id
+        +Guid TenantId
+        +Guid EventId
+        +Guid EventLocationId
+        +Guid RoomId
+        +DateTimeOffset StartTime
+        +DateTimeOffset EndTime
+    }
+
+    class EventAgendaItem {
+        +Guid Id
+        +Guid TenantId
+        +Guid EventId
+        +Guid EventLocationId
+        +Guid RoomId
+        +TimeOnly StartTime
+    }
+
+    Location "1" *-- "0..1" LocationPii : 1:1 Shared PK
+    Location "1" *-- "0..*" LocationRoom : Sub-venues / Rooms
+    Location "1" <-- "0..*" EventLocation : Physical Venue Link (Optional)
+    EventLocation "1" <-- "0..*" EventSession : Mediated Location Reference
+    EventLocation "1" <-- "0..*" EventAgendaItem : Mediated Location Reference
+```
+
+### Architectural Roles & Responsibilities
+
+1. **`Location` (Physical Venue Master Record):**
+   - Represents the physical real-world place (building, community center, private home, mosque).
+   - Tenant-scoped and reusable across many events over time.
+   - Exact address details and geographic coordinates reside in the 1:1 shared-PK extension table `LocationPii`, subject to strict privacy erasure lifecycle (`pii_erased_at_utc`).
+   - Sub-venues / rooms reside in `LocationRoom` (e.g. "Main Auditorium", "Room B").
+
+2. **`EventLocation` (Per-Event Association & Disclosure Authority):**
+   - First-class aggregate mediating an `Event` and either a physical `Location` (`LocationId != null`) or an explicit To-Be-Announced placeholder (`IsToBeAnnounced = true`, `LocationId = null`).
+   - Owns the 7 granular disclosure flags: `ShowVenueName`, `ShowCity`, `ShowCountry`, `ShowRoomName`, `ShowStreetAddress`, `ShowPostcode`, and `ShowCoordinates`.
+   - Controls audience gating (`FullDetailsAudienceId`: `Public`, `RegisteredAttendeesOnly`, `TicketHoldersOnly`, `StaffOnly`) and timed reveal (`RevealFullDetailsFromUtc`).
+   - Maintains an immutable audit trail (`EventLocationDisclosureAudit`, `EventLocationExactReadAudit`).
+   - Two events sharing the same physical venue disclose independently; tightening one event's privacy never affects the other.
+
+3. **`EventSession` & `EventAgendaItem` (Mediation Invariant):**
+   - Sessions and agenda items reference **`EventLocationId`** as their canonical location anchor, with an optional sub-room reference (`RoomId`).
+   - Database check constraints (`ck_event_session_physical_location_requires_event_location`, `ck_event_agenda_item_physical_location_requires_event_location`) strictly enforce that `location_id IS NULL OR event_location_id IS NOT NULL`. No write path can bypass the event's disclosure authority to attach an unmediated venue.
+   - When public or attendee agendas are queried, session locations are dynamically evaluated through the event's `EventLocation` policy before serialization, preventing undisclosed physical addresses or coordinates from leaking to unauthenticated clients.
+
+### Disclosure Evaluation Engine
+
+- `EventLocationDisclosureEvaluator` is pure and synchronous. It takes immutable facts — placement, location, room, effective governance, requester authority, server time — and returns a result. It performs no I/O, so disclosure is decidable and exhaustively testable.
+- `IEventLocationDisclosureService` is the only request-scoped authority. `ResolveManyAsync` loads placements, rooms, registration coverage, governance, and batched management authorization within a bounded budget (one query per surface, one batched authorization) and then calls the evaluator per row. Every query handler and projection converges here; `EventLocationDisclosureConvergenceTests` fails the build if a new surface reaches the evaluator directly.
+- Two authorities sit beside it because they run without an HTTP requester: `FanoutAttendeeLocationAuthorizationService` resolves one explicit background recipient, and `PublicEventLocationDisclosureEvaluator` supplies fixed public-only authority to federation snapshots. Both feed the same pure evaluator instead of reimplementing disclosure.
+- Purpose DTOs (`EventLocationPublicDto`, `EventLocationAttendeeDto`, `EventLocationManagementDto`) have no public constructor. They can only be materialized from a disclosure result whose purpose matches, which makes a contradictory response shape unrepresentable rather than merely discouraged.
 
 ## Outbox Pattern
 
