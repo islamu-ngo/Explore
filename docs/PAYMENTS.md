@@ -6,7 +6,7 @@
 > **Audience:** Operators | Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Commerce
-> **Last Verified:** 2026-08-24
+> **Last Verified:** 2026-08-27
 > **Source Anchors:** `Explore.Domain/PaymentAttempt.cs`, `Explore.Domain/OrganizerPaymentProviderConnection.cs`, `Explore.Domain/PaidEventPolicyVersion.cs`, `Explore.Domain/Services/Registration/PaidEventPolicyRules.cs`, `Explore.Application/Contracts/Payments/`, `Explore.Application/Contracts/Services/IOrganizerPaymentOnboardingProvider.cs`, `Explore.Application/Services/Registration/RegistrationPaymentAttemptClaimService.cs`, `Explore.Infrastructure/Payments/Stripe/`, `Explore.API/Controllers/PaidEventPolicySettingsController.cs`, `Explore.Blazor/Extensions/BffRegistrationPaymentEndpoints.cs`, `docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md`, `docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md`
 
 ISLAMU Event provides a robust, multi-tenant, and **provider-neutral payment architecture** for paid event ticketing. The subsystem is decoupled through Clean Architecture ports and adapters: domain and application logic remain completely independent of any specific payment vendor.
@@ -16,6 +16,20 @@ ISLAMU Event provides a robust, multi-tenant, and **provider-neutral payment arc
 New paid Checkout is disabled by default and fails closed until `Payments:CheckoutGovernance` names the independent instance operator, official origin, complaint contact, refund language, statement descriptor, and charge type. The browser first reads exact server facts and explicitly acknowledges their SHA-256 revision. The resulting `PaidOrderAcceptanceSnapshot` pins merchant/operator status, delivery, line and aggregate money, refund/support/complaint, provider, and descriptor facts before a provider session can be created. Historical attempts remain readable and reconcilable with a null acceptance reference; they are never backfilled. A global or event stop-sale blocks new claim and dispatch while signed webhooks, reconciliation, support, and reads continue. Refund initiation is not implemented and is not a stop-sale capability.
 
 `OrganizerDirect` describes the technical direct-charge profile. It does not establish who legally controls an account, bears loss, or owes a remedy in a particular deployment. Operators must retain provider, contractual, legal, and operational evidence for those deployment-specific conclusions.
+
+## Ticket Purchase Authority And Ceilings
+
+Purchase governance runs before payment-provider I/O. The Application handler derives quantity from the persisted registration-order lines, resolves the current tenant, and asks `TicketPurchaseAuthorityResolver` for a server-proven enforcement dimension. A command cannot supply an account ID, contact hash, enforcement key, or quantity.
+
+Hard cross-order ceilings use only stable authority:
+
+- an authenticated account remains the controlling key when the purchaser switches between personal, group, or organization actor contexts;
+- a verified guest uses the SHA-256 hash of the persisted, verified normalized contact; and
+- name-only access is honestly order-scoped and receives no claimed per-person cross-order guarantee.
+
+The pinned effective ceiling is the literal minimum of instance, tenant, and event policy versions. PostgreSQL serializes a canonical operation/authority lock set before opening the serializable transaction, then records cumulative authority usage and the tenant-qualified durable operation outcome. An exact key and fingerprint replays the original result. Reusing a key with a different tenant, principal, route-equivalent command scope, policy, quantity, actor context, or body conflicts rather than duplicating authority.
+
+These local database steps perform no payment-provider call. Provider claims and dispatch remain later durable operations, preserving the rule that remote I/O never occurs inside the purchase-governance transaction.
 
 **Stripe is currently the initial concrete payment provider adapter** implemented in Infrastructure via Stripe Connect. The platform is designed so additional payment gateways (such as PayPal, Mollie, Lemonsqueezy, or regional processors) can be added as modular Infrastructure adapters without altering the core Domain or Application business rules.
 
@@ -206,6 +220,14 @@ Any future refund implementation must:
 6. prove webhook, retry, duplicate-delivery, insufficient-balance, and restore behavior before activation.
 
 ---
+
+## Fair Return Replacement Settlement
+
+Fair return reuses the registration payment and refund aggregates; it does not create a second provider integration. A `WaitlistPaymentIntent` points to the buyer's replacement `PaymentAttempt` and to one capacity-reserving `RefundAttempt` for the original charge. `FairReturnOrchestrationEffect` owns the stable operation UUID, provider idempotency key, bounded retry count, processing fence, and lease. Unknown provider outcomes remain durable and retryable; they never release refund capacity or synthesize success.
+
+Replacement settlement is the hard ordering fence. Persistence records `ReplacementPaymentSettledAt` before it can create the pointer-only `WaitlistRefundIntent` and generic refund-dispatch outbox row in the same transaction. Provider refund I/O happens later through the existing refund dispatcher/reconciler. Replays return the existing stable intent, stale leases can be reclaimed after restart, and a refund cannot be staged from pending, failed, missing, or contradictory replacement evidence.
+
+The waitlist itself never accepts paid priority. Queue order is policy priority descending, enqueue time ascending, then UUID ascending. Commercial substitution requires exact tenant, event, ticket type, catalog, purchase-policy snapshot, currency, commerce digest, entitlement digest, gross minor units, and refund-funding mode equality.
 
 ## 8. Developer Guide: Adding a New Payment Provider
 

@@ -82,6 +82,19 @@ public static class RegistrationOrderRules
             : RegistrationOrderStatusEnum.AwaitingPayment;
     }
 
+    public static RegistrationOrderLifecycleDecision DescribeLifecycle(RegistrationOrderStatusEnum status)
+    {
+        return new RegistrationOrderLifecycleDecision(
+            CanContinue: status is RegistrationOrderStatusEnum.AwaitingRequirements or RegistrationOrderStatusEnum.ReadyForCheckout,
+            CanViewRequirementProgress: status == RegistrationOrderStatusEnum.AwaitingRequirements,
+            CanManagePromotion: status == RegistrationOrderStatusEnum.ReadyForCheckout,
+            CanFinalize: status == RegistrationOrderStatusEnum.ReadyForCheckout,
+            CanViewPaymentStatus: status is RegistrationOrderStatusEnum.AwaitingPayment
+                or RegistrationOrderStatusEnum.NeedsReconciliation
+                or RegistrationOrderStatusEnum.Confirmed,
+            CanCancel: CanTransition(status, RegistrationOrderStatusEnum.Cancelled));
+    }
+
     public static bool CanTransition(RegistrationOrderStatusEnum current, RegistrationOrderStatusEnum desired)
     {
         if (!Enum.IsDefined(current) || !Enum.IsDefined(desired))
@@ -115,3 +128,11 @@ public static class RegistrationOrderRules
     private static bool IsAssigned(RegistrationTicketAssignment assignment) =>
         assignment.AssignmentStatusId == (int)AssignmentStatusEnum.Assigned && assignment.ParticipantId is not null;
 }
+
+public readonly record struct RegistrationOrderLifecycleDecision(
+    bool CanContinue,
+    bool CanViewRequirementProgress,
+    bool CanManagePromotion,
+    bool CanFinalize,
+    bool CanViewPaymentStatus,
+    bool CanCancel);

@@ -1,0 +1,37 @@
+# ABOUTME: Machine-readable closeout evidence manifest for ticketing lifecycle Phase 0.
+# ABOUTME: Binds mutation, privacy, review, documentation, and source evidence to repository paths.
+
+schema_version: 1
+phase: 0
+status: pass
+sentinel_pii_scan: pass
+pii_scan:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-0-pii-scan.json
+mutation_reports:
+  - project: Explore.Domain
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-0/domain/reports/mutation-report.json
+    minimum_score_exclusive: 85
+  - project: Explore.Application
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-0/application/reports/mutation-report.json
+    minimum_score_exclusive: 85
+mad_review:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-0-mad-review.yaml
+  required_decision: pass
+documentation:
+  - docs/DOMAIN.md
+  - docs/GOVERNANCE.md
+  - docs/OPERATIONS.md
+source_evidence:
+  - src/Explore.Domain/RegistrationOrder.cs
+  - src/Explore.Domain/Services/Registration/RegistrationOrderRules.cs
+  - src/Explore.Application/Services/Registration/RegistrationOrderReadService.cs
+  - src/Explore.Application/Services/Registration/RegistrationOrderTransitionCoordinator.cs
+  - src/Explore.Persistence/Repositories/RegistrationInventoryRepository.cs
+  - src/Explore.API/Hateoas/Policies/RegistrationOrderLinkPolicy.cs
+comments:
+  - src/Explore.Domain/Services/Registration/RegistrationOrderRules.cs
+  - src/Explore.Application/Services/Registration/RegistrationOrderTransitionCoordinator.cs
+  - src/Explore.Persistence/Repositories/RegistrationInventoryRepository.cs
+evidence_artifacts:
+  - dev/active/event-ticketing-lifecycle/evidence/phase-0-mutation-scope.yaml
+generated_artifacts: []

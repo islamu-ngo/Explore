@@ -238,7 +238,27 @@ unsupported and block startup.
 
 ---
 
-## 8. Related Documentation
+## 8. Participant Admission Readiness Erasure
+
+Participant readiness stores no answer values, names, contact details, addresses, or consent text. It retains only tenant/order/assignment/participant identifiers, a linked subject identifier, canonical consent-record reference, bounded timestamps, and approval/revocation actor identifiers.
+
+During local user erasure, `UserLocationPrivacyErasureRepository` clears `SubjectUserId`, completion time, consent reference, and consent-grant time before unlinking the registration participant. This invalidates readiness immediately and prevents the restrictive subject foreign key from blocking erasure. A restored or raced worker cannot recreate active admission from the old projection because subject ownership and completion must be re-established from fresh canonical evidence.
+
+Approval and revocation facts remain PII-free operational audit state. Typed registration answers, participant PII, and file evidence continue through their existing subject-owned erasure paths; readiness never copies their payloads.
+
+The readiness API and UI do not expose a roster. A caller must name one exact event/order/participant/assignment tuple and prove subject, purchaser, organizer, or opaque capability authority. The response omits names, contact data, answers, consent text, actor identifiers, tenant identifiers, and capability material. Browser-visible status and support copy comes from closed vocabularies; scanner/support guidance never identifies which private requirement, payment fact, consent record, or approval is missing.
+
+## 9. Ticket Transfer Privacy And Erasure
+
+Ticket transfer records are deliberately payload-minimal. They retain tenant/event/ticket/order/line/assignment lineage, source and recipient participant references, recipient subject reference, bounded status and timestamps, hop/generation counters, and a one-way claim-capability digest. They do not copy names, email addresses, phone numbers, postal addresses, registration answers, consent text, payment instruments, provider payloads, or admission credential plaintext.
+
+Holder changes update the existing subject-reference authority and participant-readiness linkage under the same transaction fence. Commerce and append-only check-in evidence remain attached to their original lawful records rather than being copied to the recipient. The browser and API publish only closed transfer/support codes and HAL actions; generic unavailable outcomes do not reveal whether a participant, ticket, transfer, account, or capability exists.
+
+User erasure follows the existing subject-reference cleanup workflow. Removing a linked user cannot resurrect a consumed claim or old credential because transfer acceptance consumes the digest and rotates the ticket generation atomically. Historical non-PII operational lineage may remain under the platform retention policy, while linked participant and subject-owned PII continue through their canonical erasure paths.
+
+One-time claim and credential plaintext are never persisted and therefore require no database erasure path. They are displayed only in the immediate browser response, are excluded from URLs and diagnostics, and disappear with component/session state. Operators cannot recover either plaintext value from transfer status, outbox, telemetry, or administrative surfaces.
+
+## 10. Related Documentation
 
 - [Backup, Restore, and Upgrade Runbook](BACKUP_RESTORE_UPGRADE.md)
 - [Self-Hosting Guide](SELF_HOSTING.md)

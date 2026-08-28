@@ -341,6 +341,14 @@ public static class QuartzSchedulerExtensions
             "Drains durable Checkout dispatch and retrieves authoritative provider payment state.",
             desiredRecurringJobs);
 
+        AddCronJob<FairReturnOrchestrationJob>(
+            quartz,
+            QuartzSchedulerKeys.FairReturnOrchestration,
+            QuartzSchedulerKeys.FairReturnOrchestrationCron,
+            "Wakes the bounded durable fair-return " +
+            "payment and refund orchestration drain.",
+            desiredRecurringJobs);
+
         AddCronJob<RegistrationProviderSubmissionWriteDrainJob>(
             quartz,
             QuartzSchedulerKeys.RegistrationProviderSubmissionWriteDrain,

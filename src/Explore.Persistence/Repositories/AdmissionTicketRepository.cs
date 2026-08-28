@@ -38,6 +38,35 @@ public sealed class AdmissionTicketRepository(ExploreDbContext dbContext) :
         Guid admissionTicketId,
         CancellationToken cancellationToken)
     {
+        Guid? assignmentId =
+            await dbContext.AdmissionTickets
+                .AsNoTracking()
+                .Where(ticket =>
+                    ticket.TenantId == tenantId
+                    && ticket.Id == admissionTicketId)
+                .Select(ticket =>
+                    (Guid?)ticket
+                        .RegistrationTicketAssignmentId)
+                .SingleOrDefaultAsync(cancellationToken);
+        if (!assignmentId.HasValue)
+        {
+            return null;
+        }
+
+        await RelationalEntityRowFence
+            .AcquireAsync<RegistrationTicketAssignment>(
+                dbContext,
+                tenantId,
+                "id",
+                assignmentId.Value,
+                cancellationToken);
+        await RelationalEntityRowFence
+            .AcquireAsync<ParticipantAdmissionEligibility>(
+                dbContext,
+                tenantId,
+                "registration_ticket_assignment_id",
+                assignmentId.Value,
+                cancellationToken);
         await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
             dbContext,
             tenantId,

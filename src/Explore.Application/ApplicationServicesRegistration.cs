@@ -14,6 +14,7 @@ using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Contracts.Waitlist;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
@@ -60,6 +61,7 @@ using Explore.Application.Services;
 using Explore.Application.Services.Federation;
 using Explore.Application.Services.Lifecycle;
 using Explore.Application.Services.Registration;
+using Explore.Application.Services.Waitlist;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Settings;
 using Explore.Application.Telemetry;
@@ -341,6 +343,12 @@ public static class ApplicationServicesRegistration
         services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
         services.AddScoped<ICustomPropertyAutomationConditionPolicy, CustomPropertyAutomationConditionPolicy>();
         services.AddScoped<IEventActorResolver, EventActorResolver>();
+        services.AddScoped<
+            ITicketPurchaseAuthorityResolver,
+            TicketPurchaseAuthorityResolver>();
+        services.AddScoped<
+            ITicketPurchaseOrderResolver,
+            TicketPurchaseOrderResolver>();
         services.AddScoped<TicketTypeEntitlementResolver>();
         services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
         services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
@@ -371,12 +379,20 @@ public static class ApplicationServicesRegistration
         services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
         services.AddScoped<RegistrationOrderLifecycleService>();
+        services.AddScoped<IRegistrationOrderTransitionCoordinator, RegistrationOrderTransitionCoordinator>();
         services.AddScoped<RegistrationPaymentAttemptClaimService>();
         services.AddScoped<RegistrationPaymentContractService>();
         services.AddScoped<RegistrationPaymentCheckoutDispatchService>();
         services.AddScoped<RegistrationPaymentReconciliationService>();
         services.AddScoped<RefundDispatchService>();
         services.AddScoped<RefundReconciliationService>();
+        services.AddScoped<
+            FairReturnOrchestrationService>();
+        services.AddScoped<
+            IFairReturnOrchestrationDispatcher>(
+                provider => provider
+                    .GetRequiredService<
+                        FairReturnOrchestrationService>());
         services.AddScoped<RefundCampaignProcessor>();
         services.AddScoped<RegistrationRefundService>();
         services.AddScoped<RegistrationMaterialChangeChoiceService>();

@@ -477,6 +477,26 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         }
     }
 
+    public bool CanTransitionTo(RegistrationOrderStatusEnum desiredStatus) =>
+        RegistrationOrderRules.CanTransition(
+            (RegistrationOrderStatusEnum)RegistrationOrderStatusId,
+            desiredStatus);
+
+    public bool TryTransitionFrom(
+        RegistrationOrderStatusEnum expectedStatus,
+        RegistrationOrderStatusEnum desiredStatus,
+        DateTime timestamp)
+    {
+        if ((RegistrationOrderStatusEnum)RegistrationOrderStatusId != expectedStatus ||
+            !CanTransitionTo(desiredStatus))
+        {
+            return false;
+        }
+
+        TransitionTo(desiredStatus, timestamp);
+        return true;
+    }
+
     public bool TryBeginHoldExpiryRecovery(DateTime timestamp)
     {
         RegistrationOrderStatusEnum currentStatus = (RegistrationOrderStatusEnum)RegistrationOrderStatusId;

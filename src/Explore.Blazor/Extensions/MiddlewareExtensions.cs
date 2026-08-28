@@ -191,7 +191,20 @@ public static class MiddlewareExtensions
             }
 
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
-            if (IsSensitiveAdmissionPath(context.Request.Path))
+            if (IsSensitiveAdmissionPath(context.Request.Path)
+                || context.Request.Path.StartsWithSegments(
+                    "/bff/ticket-purchases")
+                || context.Request.Path.StartsWithSegments(
+                    "/bff/events")
+                && (context.Request.Path.Value?.Contains(
+                        "/participant-readiness/",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || context.Request.Path.Value?.Contains(
+                        "/admission-tickets/",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    && context.Request.Path.Value?.Contains(
+                        "/transfers",
+                        StringComparison.OrdinalIgnoreCase) == true))
             {
                 headers[HeaderNames.CacheControl] = "private, no-store";
                 headers[HeaderNames.Pragma] = "no-cache";

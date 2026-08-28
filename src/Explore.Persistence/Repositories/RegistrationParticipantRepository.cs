@@ -10,6 +10,21 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class RegistrationParticipantRepository(ExploreDbContext dbContext) : IRegistrationParticipantRepository
 {
+    public Task<RegistrationParticipant?> GetParticipantAsync(
+        Guid participantId,
+        Guid registrationOrderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationParticipants
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                participant =>
+                    participant.Id == participantId
+                    && participant.RegistrationOrderId ==
+                    registrationOrderId
+                    && participant.TenantId == tenantId,
+                cancellationToken);
+
     public Task<RegistrationParticipant?> GetParticipantForUpdateAsync(
         Guid participantId,
         Guid registrationOrderId,

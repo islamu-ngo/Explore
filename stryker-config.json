@@ -1,12 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
   "stryker-config": {
-    "solution": "Explore.slnx",
     "test-runner": "mtp",
     "thresholds": {
-      "high": 85,
-      "low": 70,
-      "break": 60
+      "high": 90,
+      "low": 86,
+      "break": 86
     },
     "reporters": [
       "progress",
@@ -14,13 +13,11 @@
       "json"
     ],
     "mutate": [
-      "src/Explore.Domain/**/*.cs",
-      "src/Explore.Application/**/*.cs",
-      "!src/**/Migrations/**",
-      "!src/**/bin/**",
-      "!src/**/obj/**",
-      "!src/**/*.Designer.cs",
-      "!src/**/*ModelSnapshot.cs"
+      "!**/Migrations/**",
+      "!**/bin/**",
+      "!**/obj/**",
+      "!**/*.Designer.cs",
+      "!**/*ModelSnapshot.cs"
     ],
     "ignore-mutations": [
       "string.IsNullOrEmpty",

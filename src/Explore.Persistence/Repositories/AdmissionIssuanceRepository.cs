@@ -9,8 +9,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IAdmissionIssuanceRepository
+public sealed class AdmissionIssuanceRepository(
+    ExploreDbContext dbContext,
+    IParticipantAdmissionReadinessAuthority readiness) :
+    IAdmissionIssuanceRepository
 {
+    public AdmissionIssuanceRepository(
+        ExploreDbContext dbContext) : this(
+        dbContext,
+        new ParticipantAdmissionEligibilityRepository(dbContext))
+    {
+    }
+
     public Task<AdmissionIssuanceContext?> LoadAsync(
         AdmissionIssuanceRequest request,
         CancellationToken cancellationToken) =>
@@ -90,27 +100,56 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
         List<AdmissionDeliveryIntent> existingDeliveryIntents = await dbContext.AdmissionDeliveryIntents
             .Where(value => value.TenantId == request.TenantId && value.FinalizationEffectId == effect.Id)
             .ToListAsync(cancellationToken);
-        Dictionary<Guid, RegistrationParticipant> participants = order.Participants.ToDictionary(value => value.Id);
-        Dictionary<Guid, EventTicketType> ticketTypes = catalog.TicketTypes.ToDictionary(value => value.Id);
+        Dictionary<Guid, RegistrationParticipant> participants =
+            order.Participants.ToDictionary(value => value.Id);
+        Dictionary<Guid, EventTicketType> ticketTypes =
+            catalog.TicketTypes.ToDictionary(value => value.Id);
         HashSet<Guid> fullyRefundedLineIds = order.TotalDueMinorSnapshot > 0
             ? await GetFullyRefundedLineIdsAsync(order, cancellationToken)
             : [];
-        AdmissionAssignmentFact[] assignments = order.Lines
-            .SelectMany(line => line.Assignments.Select(assignment => new AdmissionAssignmentFact(
-                line,
-                assignment,
-                participants[assignment.ParticipantId.GetValueOrDefault()],
-                ticketTypes[line.TicketTypeId],
-                line.PostDiscountLineSubtotalMinorSnapshot / line.Quantity,
-                line.PostDiscountLineSubtotalMinorSnapshot,
-                !fullyRefundedLineIds.Contains(line.Id))))
-            .ToArray();
         bool confirmed = order.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed &&
             order.ConfirmedAt is not null &&
             admissionEvent is not null &&
             admissionEvent.EventStatusId != (int)EventStatusEnum.Cancelled;
         bool paymentReconciled = order.TotalDueMinorSnapshot > 0 &&
             await HasExactReconciledPaymentAsync(order, cancellationToken);
+        bool paymentSatisfied =
+            order.TotalDueMinorSnapshot == 0
+            || paymentReconciled;
+        var assignments =
+            new List<AdmissionAssignmentFact>();
+        foreach (RegistrationOrderLine line in order.Lines)
+        {
+            foreach (
+                RegistrationTicketAssignment assignment
+                in line.Assignments)
+            {
+                bool isAdmissionLine =
+                    !fullyRefundedLineIds.Contains(line.Id);
+                ParticipantAdmissionReadinessDecision?
+                    readinessDecision = isAdmissionLine
+                    ? await readiness.EvaluateForUpdateAsync(
+                        order.TenantId,
+                        assignment.Id,
+                        confirmed,
+                        paymentSatisfied,
+                        cancellationToken)
+                    : null;
+                assignments.Add(
+                    new AdmissionAssignmentFact(
+                        line,
+                        assignment,
+                        participants[
+                            assignment.ParticipantId
+                                .GetValueOrDefault()],
+                        ticketTypes[line.TicketTypeId],
+                        line.PostDiscountLineSubtotalMinorSnapshot
+                        / line.Quantity,
+                        line.PostDiscountLineSubtotalMinorSnapshot,
+                        isAdmissionLine,
+                        readinessDecision));
+            }
+        }
         string? deliveryAddress = order.Pii?.Email;
         if (string.IsNullOrWhiteSpace(deliveryAddress) && order.AccountUserId.HasValue)
         {
@@ -133,7 +172,7 @@ public sealed class AdmissionIssuanceRepository(ExploreDbContext dbContext) : IA
             confirmed,
             order,
             catalog,
-            assignments,
+            assignments.ToArray(),
             existing,
             deliveryAddress ?? string.Empty,
             existingDeliveryIntents);

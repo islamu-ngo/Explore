@@ -115,6 +115,15 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<TicketPurchasePolicyVersion>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<TicketPurchaseAuthorityUsage>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<TicketPurchaseOperation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<RegistrationOrderLine>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
@@ -149,6 +158,30 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !EF.Property<bool>(e, "IsDeleted"));
 
         modelBuilder.Entity<AdmissionTicket>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<TicketTransferPolicy>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionTicketTransfer>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<AdmissionTransferDeliveryIntent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<FairReturnSupplyPolicy>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<FairReturnSupplyUnit>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<EventWaitlistEntry>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<EventWaitlistOffer>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<FairReturnSourceBinding>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<WaitlistProviderObservation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<WaitlistPaymentIntent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<WaitlistRefundIntent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<FairReturnOrchestrationEffect>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<AdmissionTicketCredential>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
@@ -279,6 +312,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<RegistrationRequirementFulfillment>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<ParticipantAdmissionEligibility>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<RegistrationFinalizationEffect>()

@@ -13,6 +13,11 @@ public interface IRegistrationInventoryRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<RegistrationOrder?> GetOrderWithPiiAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<RegistrationOrder?> GetOrderWithLinesAsync(
         Guid orderId,
         Guid tenantId,
@@ -131,14 +136,6 @@ public interface IRegistrationInventoryRepository
         Guid orderId,
         Guid tenantId,
         RegistrationInventoryHoldStatusEnum outcome,
-        DateTime utcNow,
-        CancellationToken cancellationToken);
-
-    Task<bool> TryTransitionOrderAsync(
-        Guid orderId,
-        Guid tenantId,
-        RegistrationOrderStatusEnum expectedStatus,
-        RegistrationOrderStatusEnum desiredStatus,
         DateTime utcNow,
         CancellationToken cancellationToken);
 

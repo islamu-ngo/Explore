@@ -4,6 +4,7 @@
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
 
@@ -37,6 +38,23 @@ public sealed record StartAuthenticatedRegistrationOrderCommand(
     IReadOnlyList<RegistrationOrderLineSelection> Lines,
     int? PlatformContributionBasisPoints = null)
     : IRequest<BaseCommandResponse<Guid>>;
+
+public sealed record ReserveAuthenticatedTicketPurchaseCommand(
+    Guid EventId,
+    Guid OrderId,
+    Guid? RequestedPurchaserActorId,
+    string OperationKey)
+    : IRequest<BaseCommandResponse<Guid>>,
+      IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record ReserveGuestTicketPurchaseCommand(
+    Guid EventId,
+    Guid OrderId,
+    TicketPurchaseAccessMode AccessMode,
+    string? CapabilityToken,
+    string OperationKey)
+    : IRequest<BaseCommandResponse<Guid>>,
+      IGuestRegistrationOrderAccessCommand;
 
 public sealed record ContinueGuestRegistrationOrderCommand(
     Guid EventId,

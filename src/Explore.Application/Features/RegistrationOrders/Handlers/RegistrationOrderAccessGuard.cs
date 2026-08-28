@@ -31,8 +31,30 @@ internal static class RegistrationOrderAccessGuard
             return null;
         }
 
-        return capabilities.Matches(capabilityToken, order.GuestAccessTokenHash) ? order : null;
+        return HasGuestAccess(
+            order,
+            eventId,
+            capabilityToken,
+            capabilities,
+            timeProvider)
+            ? order
+            : null;
     }
+
+    internal static bool HasGuestAccess(
+        RegistrationOrder order,
+        Guid eventId,
+        string? capabilityToken,
+        IGuestCapabilityTokenService capabilities,
+        TimeProvider timeProvider) =>
+        order.EventId == eventId
+        && order.GuestAccessTokenHash is not null
+        && (order.ExpiresAt is null
+            || order.ExpiresAt >
+            timeProvider.GetUtcNow().UtcDateTime)
+        && capabilities.Matches(
+            capabilityToken,
+            order.GuestAccessTokenHash);
 
     public static async Task<RegistrationOrder?> GetCurrentAccountOrderAsync(
         IRegistrationInventoryRepository inventory,

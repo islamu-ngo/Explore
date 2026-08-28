@@ -9,6 +9,35 @@ namespace Event.Domain.UnitTests.Services.Registration;
 public sealed class RegistrationOrderRulesTests
 {
     [Test]
+    public async Task DescribeLifecycleReturnsFailClosedStateDerivedAffordances()
+    {
+        RegistrationOrderLifecycleDecision awaitingRequirements = RegistrationOrderRules.DescribeLifecycle(
+            RegistrationOrderStatusEnum.AwaitingRequirements);
+        RegistrationOrderLifecycleDecision ready = RegistrationOrderRules.DescribeLifecycle(
+            RegistrationOrderStatusEnum.ReadyForCheckout);
+        RegistrationOrderLifecycleDecision awaitingPayment = RegistrationOrderRules.DescribeLifecycle(
+            RegistrationOrderStatusEnum.AwaitingPayment);
+        RegistrationOrderLifecycleDecision invalid = RegistrationOrderRules.DescribeLifecycle(
+            (RegistrationOrderStatusEnum)int.MaxValue);
+
+        await Assert.That(awaitingRequirements.CanContinue).IsTrue();
+        await Assert.That(awaitingRequirements.CanViewRequirementProgress).IsTrue();
+        await Assert.That(awaitingRequirements.CanManagePromotion).IsFalse();
+        await Assert.That(awaitingRequirements.CanFinalize).IsFalse();
+        await Assert.That(awaitingRequirements.CanViewPaymentStatus).IsFalse();
+        await Assert.That(awaitingRequirements.CanCancel).IsTrue();
+        await Assert.That(ready.CanContinue).IsTrue();
+        await Assert.That(ready.CanViewRequirementProgress).IsFalse();
+        await Assert.That(ready.CanManagePromotion).IsTrue();
+        await Assert.That(ready.CanFinalize).IsTrue();
+        await Assert.That(ready.CanCancel).IsTrue();
+        await Assert.That(ready.CanViewPaymentStatus).IsFalse();
+        await Assert.That(awaitingPayment.CanViewPaymentStatus).IsTrue();
+        await Assert.That(awaitingPayment.CanCancel).IsTrue();
+        await Assert.That(invalid).IsEqualTo(default(RegistrationOrderLifecycleDecision));
+    }
+
+    [Test]
     public async Task OrderLookupEnums_UseStableIntegerIdentifiers()
     {
         await Assert.That((int)RegistrationOrderStatusEnum.Draft).IsEqualTo(1);

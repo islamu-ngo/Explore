@@ -26,17 +26,11 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.Purpose).HasMaxLength(40).IsRequired();
         builder.Property(value => value.LookupDigest)
-            .HasConversion(
-                value => Convert.FromBase64String(value),
-                value => Convert.ToBase64String(value))
-            .HasMaxLength(32)
+            .HasMaxLength(44)
             .IsFixedLength()
             .IsRequired();
         builder.Property(value => value.LocatorDigest)
-            .HasConversion(
-                value => Convert.FromBase64String(value),
-                value => Convert.ToBase64String(value))
-            .HasMaxLength(32)
+            .HasMaxLength(44)
             .IsFixedLength()
             .IsRequired();
         builder.Property(value => value.ExpiresAt).IsRequired();

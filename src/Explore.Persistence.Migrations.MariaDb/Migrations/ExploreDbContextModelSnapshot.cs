@@ -886,17 +886,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("expires_at");
 
-                    b.Property<byte[]>("LocatorDigest")
+                    b.Property<string>("LocatorDigest")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("binary(32)")
+                        .HasMaxLength(44)
+                        .HasColumnType("char(44)")
                         .HasColumnName("locator_digest")
                         .IsFixedLength();
 
-                    b.Property<byte[]>("LookupDigest")
+                    b.Property<string>("LookupDigest")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("binary(32)")
+                        .HasMaxLength(44)
+                        .HasColumnType("char(44)")
                         .HasColumnName("lookup_digest")
                         .IsFixedLength();
 
@@ -1309,6 +1309,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("event_ticket_type_id");
 
+                    b.Property<Guid?>("HolderSubjectUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("holder_subject_user_id");
+
                     b.Property<DateTime>("LastTransitionAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("last_transition_at");
@@ -1340,6 +1344,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Property<Guid>("TicketCatalogVersionId")
                         .HasColumnType("char(36)")
                         .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<int>("TransferHopCount")
+                        .HasColumnType("int")
+                        .HasColumnName("transfer_hop_count");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime(6)")
@@ -1383,7 +1391,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
                         .HasDatabaseName("IX_ie_admission_tickets_tenant_id_registration_order_id_9866698F");
 
-                    b.ToTable("ie_admission_tickets", (string)null);
+                    b.ToTable("ie_admission_tickets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_tickets_transfer_hops", "transfer_hop_count >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionTicketCredential", b =>
@@ -1532,6 +1543,167 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_admission_ticket_statuses", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketTransfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<int?>("AcceptedCredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("accepted_credential_generation");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime?>("CapabilityConsumedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("capability_consumed_at");
+
+                    b.Property<string>("CapabilityDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("capability_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("credential_generation");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expired_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("FromParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("from_participant_id");
+
+                    b.Property<Guid>("OfferOperationKey")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("offer_operation_key");
+
+                    b.Property<DateTime>("OfferedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("offered_at");
+
+                    b.Property<Guid>("OpenAdmissionTicketId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("open_admission_ticket_id");
+
+                    b.Property<Guid?>("RecipientSubjectUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("recipient_subject_user_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<Guid>("RegistrationTicketAssignmentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_ticket_assignment_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid?>("ToParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("to_participant_id");
+
+                    b.Property<int>("TransferHop")
+                        .HasColumnType("int")
+                        .HasColumnName("transfer_hop");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_ticket_transfers");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_ticket_transfers_tenant_id_id");
+
+                    b.HasIndex("RecipientSubjectUserId")
+                        .HasDatabaseName("ix_ie_admission_ticket_transfers_recipient_subject_user_id");
+
+                    b.HasIndex("TenantId", "AdmissionTicketId")
+                        .HasDatabaseName("ix_ie_admission_ticket_transfers_tenant_id_admission_ticket_id");
+
+                    b.HasIndex("TenantId", "CapabilityDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_ticket_transfers_capability");
+
+                    b.HasIndex("TenantId", "OfferOperationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_ticket_transfers_operation");
+
+                    b.HasIndex("TenantId", "OpenAdmissionTicketId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_admission_ticket_transfers_tenant_id_open_admissi_F91A7C5D");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "FromParticipantId")
+                        .HasDatabaseName("IX_ie_admission_ticket_transfers_tenant_id_registration_C02BB593");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "ToParticipantId")
+                        .HasDatabaseName("IX_ie_admission_ticket_transfers_tenant_id_registration_19E2353B");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasDatabaseName("IX_ie_admission_ticket_transfers_tenant_id_registration_E38D89E8");
+
+                    b.ToTable("ie_admission_ticket_transfers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_ticket_transfers_positive", "transfer_hop > 0 AND credential_generation > 0 AND (accepted_credential_generation IS NULL OR accepted_credential_generation = credential_generation + 1)");
+
+                            t.HasCheckConstraint("ck_admission_ticket_transfers_status", "status_id BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_admission_ticket_transfers_terminal_facts", "(status_id = 1 AND accepted_at IS NULL AND cancelled_at IS NULL AND expired_at IS NULL AND capability_consumed_at IS NULL AND accepted_credential_generation IS NULL AND to_participant_id IS NULL AND recipient_subject_user_id IS NULL) OR (status_id = 2 AND accepted_at IS NOT NULL AND capability_consumed_at IS NOT NULL AND accepted_credential_generation IS NOT NULL AND to_participant_id IS NOT NULL AND recipient_subject_user_id IS NOT NULL AND cancelled_at IS NULL AND expired_at IS NULL) OR (status_id = 3 AND cancelled_at IS NOT NULL AND accepted_at IS NULL AND expired_at IS NULL) OR (status_id = 4 AND expired_at IS NOT NULL AND accepted_at IS NULL AND cancelled_at IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.AdmissionTicketTransitionReason", b =>
                 {
                     b.Property<int>("Id")
@@ -1566,6 +1738,57 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("ix_ie_admission_ticket_transition_reasons_master_code");
 
                     b.ToTable("ie_admission_ticket_transition_reasons", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTransferDeliveryIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketTransferId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("admission_ticket_transfer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("OutboxMessageId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("outbox_message_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_admission_transfer_delivery_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_admission_transfer_delivery_intents_tenant_id_id");
+
+                    b.HasIndex("OutboxMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admission_transfer_delivery_intents_outbox");
+
+                    b.HasIndex("TenantId", "AdmissionTicketTransferId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_admission_transfer_delivery_intents_tenant_id_adm_589612F1");
+
+                    b.ToTable("ie_admission_transfer_delivery_intents", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AdvanceRegistrationObligation", b =>
@@ -11071,6 +11294,251 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_event_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventWaitlistEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdmissionEntitlementDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("admission_entitlement_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("BuyerAccountUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("buyer_account_user_id");
+
+                    b.Property<string>("CommercialTermsDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("commercial_terms_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency_code")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("EnqueuedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("enqueued_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventTicketTypeId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_ticket_type_id");
+
+                    b.Property<long>("GrossMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gross_minor_units");
+
+                    b.Property<Guid?>("OpenRegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("open_registration_order_line_id");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("participant_id");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int")
+                        .HasColumnName("priority");
+
+                    b.Property<Guid>("PurchasePolicySnapshotId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("purchase_policy_snapshot_id");
+
+                    b.Property<int>("RefundFundingModeId")
+                        .HasColumnType("int")
+                        .HasColumnName("refund_funding_mode_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_waitlist_entries");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_waitlist_entries_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_event_waitlist_entries_tenant_id");
+
+                    b.HasIndex("TenantId", "OpenRegistrationOrderLineId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_event_waitlist_entries_tenant_id_open_registratio_5914F3DA");
+
+                    b.HasIndex("TenantId", "EventId", "EventTicketTypeId", "StatusId", "Priority", "EnqueuedAt", "Id")
+                        .HasDatabaseName("IX_ie_event_waitlist_entries_tenant_id_event_id_event_t_4DC4671C");
+
+                    b.ToTable("ie_event_waitlist_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_waitlist_entries_amount", "gross_minor_units >= 0");
+
+                            t.HasCheckConstraint("ck_event_waitlist_entries_state", "(status_id IN (1, 2) AND open_registration_order_line_id IS NOT NULL) OR (status_id IN (3, 4) AND open_registration_order_line_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_event_waitlist_entries_status", "status_id BETWEEN 1 AND 4");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventWaitlistOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventWaitlistEntryId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_waitlist_entry_id");
+
+                    b.Property<Guid>("ExistingCapacityHoldId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("existing_capacity_hold_id");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expired_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("FairReturnSourceBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_source_binding_id");
+
+                    b.Property<Guid>("FairReturnSupplyUnitId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_supply_unit_id");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("finalized_at");
+
+                    b.Property<DateTime>("OfferedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("offered_at");
+
+                    b.Property<Guid?>("OpenEventWaitlistEntryId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("open_event_waitlist_entry_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_waitlist_offers");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_waitlist_offers_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_event_waitlist_offers_tenant_id");
+
+                    b.HasIndex("TenantId", "EventWaitlistEntryId")
+                        .HasDatabaseName("ix_ie_event_waitlist_offers_tenant_id_event_waitlist_entry_id");
+
+                    b.HasIndex("TenantId", "FairReturnSourceBindingId")
+                        .HasDatabaseName("IX_ie_event_waitlist_offers_tenant_id_fair_return_sourc_721C8C67");
+
+                    b.HasIndex("TenantId", "FairReturnSupplyUnitId")
+                        .HasDatabaseName("ix_ie_event_waitlist_offers_tenant_id_fair_return_supply_unit_id");
+
+                    b.HasIndex("TenantId", "OpenEventWaitlistEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_event_waitlist_offers_tenant_id_open_event_waitli_5642EBDE");
+
+                    b.HasIndex("TenantId", "ExpiresAt", "StatusId")
+                        .HasDatabaseName("ix_ie_event_waitlist_offers_tenant_id_expires_at_status_id");
+
+                    b.ToTable("ie_event_waitlist_offers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_waitlist_offers_state", "(status_id = 1 AND open_event_waitlist_entry_id IS NOT NULL AND finalized_at IS NULL AND expired_at IS NULL) OR (status_id = 2 AND open_event_waitlist_entry_id IS NULL AND finalized_at IS NULL AND expired_at IS NOT NULL) OR (status_id = 3 AND open_event_waitlist_entry_id IS NULL AND finalized_at IS NOT NULL AND expired_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_event_waitlist_offers_status", "status_id BETWEEN 1 AND 3");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.ExternalActorSubject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11559,6 +12027,427 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("ux_external_workflow_provider_kinds_master_code");
 
                     b.ToTable("ie_external_workflow_provider_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnOrchestrationEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeadLetteredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("dead_lettered_at");
+
+                    b.Property<string>("LastFailureCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("last_failure_code");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("lease_expires_at");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<int>("MaximumAttempts")
+                        .HasColumnType("int")
+                        .HasColumnName("maximum_attempts");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<long>("ProcessingFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<long>("StableCursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("stable_cursor");
+
+                    b.Property<Guid>("StableOperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("stable_operation_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WaitlistPaymentIntentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("waitlist_payment_intent_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_fair_return_orchestration_effects");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_fair_return_orchestration_effects_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_fair_return_orchestration_effects_tenant_id");
+
+                    b.HasIndex("StableCursor", "Id")
+                        .HasDatabaseName("ix_ie_fair_return_orchestration_effects_stable_cursor_id");
+
+                    b.HasIndex("TenantId", "StableOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_orchestration_effects_tenant_id_stabl_055F60DB");
+
+                    b.HasIndex("TenantId", "WaitlistPaymentIntentId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_orchestration_effects_tenant_id_waitl_53044224");
+
+                    b.HasIndex("StatusId", "NextAttemptAt", "CreatedAt", "Id")
+                        .HasDatabaseName("IX_ie_fair_return_orchestration_effects_status_id_next__04995318");
+
+                    b.ToTable("ie_fair_return_orchestration_effects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_fair_return_effect_attempts", "attempt_count >= 0 AND maximum_attempts BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("ck_fair_return_effect_state", "(status_id = 1 AND lease_expires_at IS NULL AND lease_owner IS NULL AND completed_at IS NULL AND dead_lettered_at IS NULL) OR (status_id = 2 AND lease_expires_at IS NOT NULL AND lease_owner IS NOT NULL AND completed_at IS NULL AND dead_lettered_at IS NULL) OR (status_id = 3 AND lease_expires_at IS NULL AND lease_owner IS NULL AND completed_at IS NOT NULL AND dead_lettered_at IS NULL) OR (status_id = 4 AND lease_expires_at IS NULL AND lease_owner IS NULL AND completed_at IS NULL AND dead_lettered_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_fair_return_effect_status", "status_id BETWEEN 1 AND 4");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSourceBinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdmissionEntitlementDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("admission_entitlement_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("BuyerAccountUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("buyer_account_user_id");
+
+                    b.Property<Guid>("BuyerRegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("buyer_registration_order_id");
+
+                    b.Property<Guid>("BuyerRegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("buyer_registration_order_line_id");
+
+                    b.Property<string>("CommercialTermsDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("commercial_terms_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency_code")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("FairReturnSupplyUnitId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_supply_unit_id");
+
+                    b.Property<DateTime?>("PaymentDispatchClaimedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("payment_dispatch_claimed_at");
+
+                    b.Property<DateTime?>("SourceSubstitutedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("source_substituted_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("UnitAmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_amount_minor");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_fair_return_source_bindings");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_fair_return_source_bindings_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_fair_return_source_bindings_tenant_id");
+
+                    b.HasIndex("TenantId", "BuyerRegistrationOrderLineId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_source_bindings_tenant_id_buyer_regis_9115DF71");
+
+                    b.HasIndex("TenantId", "FairReturnSupplyUnitId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_source_bindings_tenant_id_fair_return_BFFBEABA");
+
+                    b.ToTable("ie_fair_return_source_bindings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_fair_return_source_bindings_amount", "unit_amount_minor >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSupplyPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventTicketTypeId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_ticket_type_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<int>("OfferLifetimeMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("offer_lifetime_minutes");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_fair_return_supply_policies");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_fair_return_supply_policies_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_fair_return_supply_policies_tenant_id");
+
+                    b.HasIndex("TenantId", "EventId", "TicketCatalogVersionId", "EventTicketTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_supply_policies_tenant_id_event_id_ti_7945615B");
+
+                    b.ToTable("ie_fair_return_supply_policies", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_fair_return_supply_policy_lifetime", "offer_lifetime_minutes BETWEEN 5 AND 43200");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSupplyUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdmissionEntitlementDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("admission_entitlement_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("BoundAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("bound_at");
+
+                    b.Property<string>("CommercialTermsDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("commercial_terms_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .HasColumnName("currency_code")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventTicketTypeId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_ticket_type_id");
+
+                    b.Property<long>("GrossMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gross_minor_units");
+
+                    b.Property<Guid>("PurchasePolicySnapshotId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("purchase_policy_snapshot_id");
+
+                    b.Property<int>("RefundFundingModeId")
+                        .HasColumnType("int")
+                        .HasColumnName("refund_funding_mode_id");
+
+                    b.Property<Guid>("SellerRegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("seller_registration_order_line_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("WithdrawnAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("withdrawn_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_fair_return_supply_units");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_fair_return_supply_units_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_fair_return_supply_units_tenant_id");
+
+                    b.HasIndex("TenantId", "SellerRegistrationOrderLineId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_fair_return_supply_units_tenant_id_seller_registr_891F34BB");
+
+                    b.HasIndex("TenantId", "EventId", "EventTicketTypeId", "TicketCatalogVersionId", "PurchasePolicySnapshotId", "CurrencyCode", "CommercialTermsDigest", "AdmissionEntitlementDigest", "GrossMinorUnits", "RefundFundingModeId", "StatusId", "CreatedAt", "Id")
+                        .HasDatabaseName("IX_ie_fair_return_supply_units_tenant_id_event_id_event_58DF906B");
+
+                    b.ToTable("ie_fair_return_supply_units", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_fair_return_supply_units_amount", "gross_minor_units >= 0");
+
+                            t.HasCheckConstraint("ck_fair_return_supply_units_state", "(status_id = 1 AND bound_at IS NULL AND withdrawn_at IS NULL) OR (status_id = 2 AND bound_at IS NOT NULL AND withdrawn_at IS NULL) OR (status_id = 3 AND withdrawn_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_fair_return_supply_units_status", "status_id BETWEEN 1 AND 3");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoEventProjection", b =>
@@ -18093,6 +18982,132 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.ParticipantAdmissionEligibility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("ApprovalRequired")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("approval_required");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid?>("ApprovedByActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("approved_by_actor_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<bool>("ConsentRequired")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("consent_required");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("participant_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<Guid>("RegistrationTicketAssignmentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_ticket_assignment_id");
+
+                    b.Property<DateTime?>("RequirementsCompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("requirements_completed_at");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedByActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("revoked_by_actor_id");
+
+                    b.Property<DateTime?>("SubjectConsentGrantedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("subject_consent_granted_at");
+
+                    b.Property<Guid?>("SubjectConsentRecordId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("subject_consent_record_id");
+
+                    b.Property<Guid?>("SubjectUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("subject_user_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_participant_admission_eligibilities");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_participant_admission_eligibilities_tenant_id_id");
+
+                    b.HasIndex("SubjectUserId")
+                        .HasDatabaseName("ix_ie_participant_admission_eligibilities_subject_user_id");
+
+                    b.HasIndex("TenantId", "EventId")
+                        .HasDatabaseName("ix_ie_participant_admission_eligibilities_tenant_id_event_id");
+
+                    b.HasIndex("TenantId", "RegistrationTicketAssignmentId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_participant_admission_eligibilities_tenant_id_reg_179DA9B7");
+
+                    b.HasIndex("TenantId", "SubjectConsentRecordId")
+                        .HasDatabaseName("IX_ie_participant_admission_eligibilities_tenant_id_sub_52BF87EC");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantId")
+                        .HasDatabaseName("IX_ie_participant_admission_eligibilities_tenant_id_reg_0621E8D6");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasDatabaseName("IX_ie_participant_admission_eligibilities_tenant_id_reg_60C6F4A7");
+
+                    b.ToTable("ie_participant_admission_eligibilities", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_participant_admission_approval", "(approved_at IS NULL AND approved_by_actor_id IS NULL) OR (approved_at IS NOT NULL AND approved_by_actor_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_participant_admission_completion_consent", "(subject_consent_record_id IS NULL AND subject_consent_granted_at IS NULL) OR (subject_consent_record_id IS NOT NULL AND subject_consent_granted_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_participant_admission_revocation", "(revoked_at IS NULL AND revoked_by_actor_id IS NULL) OR (revoked_at IS NOT NULL AND revoked_by_actor_id IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.ParticipantDataCollectionMode", b =>
                 {
                     b.Property<int>("Id")
@@ -21503,6 +22518,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ie_registration_consent_records");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_consent_records_tenant_id_id");
 
                     b.HasIndex("AnswerSubjectTypeId")
                         .HasDatabaseName("ix_ie_registration_consent_records_answer_subject_type_id");
@@ -28743,6 +29761,315 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_ticket_pricing_modes", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketPurchaseAuthorityUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AccessMode")
+                        .HasColumnType("int")
+                        .HasColumnName("access_mode");
+
+                    b.Property<Guid?>("ActingAccountUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("acting_account_user_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<int>("ConsumedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("consumed_quantity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EnforcementKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("enforcement_key");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("order_id");
+
+                    b.Property<Guid?>("PurchaserActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("purchaser_actor_id");
+
+                    b.Property<bool>("SupportsHardCrossOrderCeiling")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("supports_hard_cross_order_ceiling");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticket_purchase_authority_usages");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_ticket_purchase_authority_usages_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "EnforcementKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_ticket_purchase_authority_usages_tenant_id_event__F02F0591");
+
+                    b.ToTable("ie_ticket_purchase_authority_usages", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ticket_purchase_authority_usages_mode", "access_mode IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_ticket_purchase_authority_usages_quantity", "consumed_quantity >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketPurchaseOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AuthorityUsageId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("authority_usage_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<int>("ConsumedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("consumed_quantity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Disposition")
+                        .HasColumnType("int")
+                        .HasColumnName("disposition");
+
+                    b.Property<int>("EffectiveCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("effective_ceiling");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("FingerprintHash")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("varchar(44)")
+                        .HasColumnName("fingerprint_hash");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("varchar(44)")
+                        .HasColumnName("key_hash");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("order_id");
+
+                    b.Property<Guid>("PolicyVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("policy_version_id");
+
+                    b.Property<int>("RequestedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("requested_quantity");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticket_purchase_operations");
+
+                    b.HasIndex("TenantId", "KeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_ticket_purchase_operations_tenant_id_key_hash");
+
+                    b.HasIndex("TenantId", "EventId", "AuthorityUsageId")
+                        .HasDatabaseName("IX_ie_ticket_purchase_operations_tenant_id_event_id_aut_0753BBD6");
+
+                    b.HasIndex("TenantId", "EventId", "OrderId")
+                        .HasDatabaseName("ix_ie_ticket_purchase_operations_tenant_id_event_id_order_id");
+
+                    b.HasIndex("TenantId", "EventId", "PolicyVersionId")
+                        .HasDatabaseName("IX_ie_ticket_purchase_operations_tenant_id_event_id_pol_E2488F12");
+
+                    b.ToTable("ie_ticket_purchase_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ticket_purchase_operations_disposition", "disposition IN (1, 3)");
+
+                            t.HasCheckConstraint("ck_ticket_purchase_operations_quantities", "requested_quantity > 0 AND effective_ceiling > 0 AND consumed_quantity >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketPurchasePolicyVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EffectiveCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("effective_ceiling");
+
+                    b.Property<int>("EventCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("event_ceiling");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventPolicyVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_policy_version_id");
+
+                    b.Property<int>("InstanceCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("instance_ceiling");
+
+                    b.Property<Guid>("InstancePolicyVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("instance_policy_version_id");
+
+                    b.Property<int>("TenantCeiling")
+                        .HasColumnType("int")
+                        .HasColumnName("tenant_ceiling");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TenantPolicyVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_policy_version_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticket_purchase_policy_versions");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_ticket_purchase_policy_versions_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_ticket_purchase_policy_versions_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "InstancePolicyVersionId", "TenantPolicyVersionId", "EventPolicyVersionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_ticket_purchase_policy_versions_tenant_id_event_i_C9CF4637");
+
+                    b.ToTable("ie_ticket_purchase_policy_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ticket_purchase_policy_versions_ceilings", "instance_ceiling > 0 AND tenant_ceiling > 0 AND event_ceiling > 0 AND effective_ceiling > 0");
+
+                            t.HasCheckConstraint("ck_ticket_purchase_policy_versions_effective", "effective_ceiling <= instance_ceiling AND effective_ceiling <= tenant_ceiling AND effective_ceiling <= event_ceiling");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketTransferPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CutoffMinutesBeforeEvent")
+                        .HasColumnType("int")
+                        .HasColumnName("cutoff_minutes_before_event");
+
+                    b.Property<Guid>("EventTicketTypeId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_ticket_type_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<int>("MaximumHops")
+                        .HasColumnType("int")
+                        .HasColumnName("maximum_hops");
+
+                    b.Property<int>("OfferLifetimeMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("offer_lifetime_minutes");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticket_transfer_policies");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_ticket_transfer_policies_tenant_id_id");
+
+                    b.HasIndex("TenantId", "EventTicketTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ticket_transfer_policies_ticket_type");
+
+                    b.HasIndex("TenantId", "TicketCatalogVersionId")
+                        .HasDatabaseName("IX_ie_ticket_transfer_policies_tenant_id_ticket_catalog_66833FA1");
+
+                    b.ToTable("ie_ticket_transfer_policies", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ticket_transfer_policies_bounds", "maximum_hops BETWEEN 1 AND 100 AND offer_lifetime_minutes BETWEEN 5 AND 43200 AND cutoff_minutes_before_event BETWEEN 0 AND 525600");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.TicketTypeEntitlement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -29700,6 +31027,274 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_visibility_types");
 
                     b.ToTable("ie_visibility_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistPaymentIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("FairReturnSourceBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_source_binding_id");
+
+                    b.Property<Guid>("OriginalPaymentAllocationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("original_payment_allocation_id");
+
+                    b.Property<string>("ProviderIdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_idempotency_key");
+
+                    b.Property<Guid>("RefundIntentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("refund_intent_id");
+
+                    b.Property<Guid>("ReplacementPaymentAttemptId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("replacement_payment_attempt_id");
+
+                    b.Property<DateTime?>("ReplacementPaymentSettledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("replacement_payment_settled_at");
+
+                    b.Property<Guid>("ReservedRefundAttemptId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("reserved_refund_attempt_id");
+
+                    b.Property<Guid>("StableOperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("stable_operation_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_waitlist_payment_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_waitlist_payment_intents_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_waitlist_payment_intents_tenant_id");
+
+                    b.HasIndex("TenantId", "FairReturnSourceBindingId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_waitlist_payment_intents_tenant_id_fair_return_so_4B586086");
+
+                    b.HasIndex("TenantId", "ReplacementPaymentAttemptId")
+                        .HasDatabaseName("IX_ie_waitlist_payment_intents_tenant_id_replacement_pa_565D4450");
+
+                    b.HasIndex("TenantId", "ReservedRefundAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_waitlist_payment_intents_tenant_id_reserved_refun_C178BE3B");
+
+                    b.HasIndex("TenantId", "StableOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_waitlist_payment_intents_tenant_id_stable_operation_id");
+
+                    b.ToTable("ie_waitlist_payment_intents", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistProviderObservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("FairReturnSourceBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_source_binding_id");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("observed_at");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderObjectIdDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("provider_object_id_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("ProviderObjectType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("provider_object_type");
+
+                    b.Property<string>("ProviderObservationIdDigest")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .IsUnicode(false)
+                        .HasColumnType("char(44)")
+                        .HasColumnName("provider_observation_id_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("StateCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("state_code");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_waitlist_provider_observations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_waitlist_provider_observations_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_waitlist_provider_observations_tenant_id");
+
+                    b.HasIndex("TenantId", "FairReturnSourceBindingId")
+                        .HasDatabaseName("IX_ie_waitlist_provider_observations_tenant_id_fair_ret_A8F1EB5A");
+
+                    b.HasIndex("TenantId", "ProviderCode", "ProviderObjectType", "ProviderObjectIdDigest")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_waitlist_provider_observations_tenant_id_provider_380C9FD5");
+
+                    b.ToTable("ie_waitlist_provider_observations", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistRefundIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("FairReturnSourceBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("fair_return_source_binding_id");
+
+                    b.Property<Guid>("OriginalPaymentAllocationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("original_payment_allocation_id");
+
+                    b.Property<Guid>("OutboxMessageId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("outbox_message_id");
+
+                    b.Property<string>("ProviderIdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_idempotency_key");
+
+                    b.Property<Guid>("RefundAttemptId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("refund_attempt_id");
+
+                    b.Property<DateTime>("ReplacementPaymentSettledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("replacement_payment_settled_at");
+
+                    b.Property<Guid>("StableOperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("stable_operation_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_waitlist_refund_intents");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_waitlist_refund_intents_tenant_id_id");
+
+                    b.HasIndex("OutboxMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_waitlist_refund_intents_outbox_message_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_ie_waitlist_refund_intents_tenant_id");
+
+                    b.HasIndex("TenantId", "FairReturnSourceBindingId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_waitlist_refund_intents_tenant_id_fair_return_sou_49CE39D5");
+
+                    b.HasIndex("TenantId", "RefundAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_waitlist_refund_intents_tenant_id_refund_attempt_id");
+
+                    b.HasIndex("TenantId", "StableOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_waitlist_refund_intents_tenant_id_stable_operation_id");
+
+                    b.ToTable("ie_waitlist_refund_intents", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushDispatchOutbox", b =>
@@ -33113,6 +34708,78 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Navigation("AdmissionTicketCredentialStatus");
                 });
 
+            modelBuilder.Entity("Explore.Domain.AdmissionTicketTransfer", b =>
+                {
+                    b.HasOne("Explore.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientSubjectUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_admission_ticket_transfers_ie_users_recipient_sub_E84188AB");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_ticket_transfers_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_admission_ticket_transfers_ie_admission_tickets_t_47476C0A");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "FromParticipantId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_admission_ticket_transfers_ie_registration_partic_1CD63242");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "ToParticipantId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_admission_ticket_transfers_ie_registration_partic_70EBBCF1");
+
+                    b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_admission_ticket_transfers_ie_registration_ticket_B80DAF79");
+                });
+
+            modelBuilder.Entity("Explore.Domain.AdmissionTransferDeliveryIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.OutboxMessage", null)
+                        .WithMany()
+                        .HasForeignKey("OutboxMessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_admission_transfer_delivery_intents_ie_outbox_mes_EEB0AC47");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_admission_transfer_delivery_intents_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.AdmissionTicketTransfer", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AdmissionTicketTransferId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_admission_transfer_delivery_intents_ie_admission__BFADFDB9");
+                });
+
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
                 {
                     b.HasOne("Explore.Domain.Actor", "Actor")
@@ -35777,6 +37444,50 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventWaitlistEntry", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_event_waitlist_entries_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventWaitlistOffer", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_event_waitlist_offers_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventWaitlistEntry", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventWaitlistEntryId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_event_waitlist_offers_ie_event_waitlist_entries_t_CB930199");
+
+                    b.HasOne("Explore.Domain.FairReturnSourceBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSourceBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_event_waitlist_offers_ie_fair_return_source_bindi_23F4BBDB");
+
+                    b.HasOne("Explore.Domain.FairReturnSupplyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSupplyUnitId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_event_waitlist_offers_ie_fair_return_supply_units_1194AB75");
+                });
+
             modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
                 {
                     b.HasOne("Explore.Domain.ExternalApiKeyCreditPeriod", "ExternalApiKeyCreditPeriod")
@@ -35836,6 +37547,62 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasConstraintName("fk_ie_external_bindings_tenants_scope_tenant_id");
 
                     b.Navigation("ScopeTenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnOrchestrationEffect", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_fair_return_orchestration_effects_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WaitlistPaymentIntent", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "WaitlistPaymentIntentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_fair_return_orchestration_effects_ie_waitlist_pay_A4B1FB1F");
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSourceBinding", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_fair_return_source_bindings_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.FairReturnSupplyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSupplyUnitId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_fair_return_source_bindings_ie_fair_return_supply_E3B577CD");
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSupplyPolicy", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_fair_return_supply_policies_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.FairReturnSupplyUnit", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_fair_return_supply_units_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoEventProjection", b =>
@@ -37387,6 +39154,51 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_ie_paid_order_acceptance_snapshots_ie_registration_o_4FE3C00B");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ParticipantAdmissionEligibility", b =>
+                {
+                    b.HasOne("Explore.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_participant_admission_eligibilities_ie_users_subj_48692589");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_participant_admission_eligibilities_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationConsentRecord", "SubjectConsentRecord")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SubjectConsentRecordId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_participant_admission_eligibilities_ie_registrati_DCA43E38");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", "Participant")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_participant_admission_eligibilities_ie_registrati_0DF572C0");
+
+                    b.HasOne("Explore.Domain.RegistrationTicketAssignment", "RegistrationTicketAssignment")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_participant_admission_eligibilities_ie_registrati_E8D45C37");
+
+                    b.Navigation("Participant");
+
+                    b.Navigation("RegistrationTicketAssignment");
+
+                    b.Navigation("SubjectConsentRecord");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
@@ -42098,6 +43910,50 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Navigation("TenantUser");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketPurchaseOperation", b =>
+                {
+                    b.HasOne("Explore.Domain.TicketPurchaseAuthorityUsage", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "AuthorityUsageId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_ticket_purchase_operations_ie_ticket_purchase_aut_EFFDB36E");
+
+                    b.HasOne("Explore.Domain.TicketPurchasePolicyVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "PolicyVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_ticket_purchase_operations_ie_ticket_purchase_pol_6F63FFBB");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketTransferPolicy", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_ticket_transfer_policies_ie_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventTicketType", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventTicketTypeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_ticket_transfer_policies_ie_event_ticket_types_te_EDC53082");
+
+                    b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_ticket_transfer_policies_ie_event_ticket_catalog__A823FCF2");
+                });
+
             modelBuilder.Entity("Explore.Domain.TicketTypeEntitlement", b =>
                 {
                     b.HasOne("Explore.Domain.EntitlementScopeType", "EntitlementScopeType")
@@ -43067,6 +44923,91 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasConstraintName("fk_ie_user_preferences_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistPaymentIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_waitlist_payment_intents_ie_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.FairReturnSourceBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSourceBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_payment_intents_ie_fair_return_source_bi_E18E7DCF");
+
+                    b.HasOne("Explore.Domain.PaymentAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReplacementPaymentAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_payment_intents_ie_payment_attempts_tena_B480DAE5");
+
+                    b.HasOne("Explore.Domain.RefundAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReservedRefundAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_payment_intents_ie_refund_attempts_tenan_B15B4FAF");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistProviderObservation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_waitlist_provider_observations_ie_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.FairReturnSourceBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSourceBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_provider_observations_ie_fair_return_sou_4706D52B");
+                });
+
+            modelBuilder.Entity("Explore.Domain.WaitlistRefundIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.OutboxMessage", null)
+                        .WithMany()
+                        .HasForeignKey("OutboxMessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_refund_intents_ie_outbox_messages_outbox_9D37D0B7");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_waitlist_refund_intents_ie_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.FairReturnSourceBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FairReturnSourceBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_refund_intents_ie_fair_return_source_bin_B2E9FDEF");
+
+                    b.HasOne("Explore.Domain.RefundAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundAttemptId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_waitlist_refund_intents_ie_refund_attempts_tenant_89391695");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushDispatchOutbox", b =>

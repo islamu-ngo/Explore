@@ -4,6 +4,7 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using Explore.Application.Contracts.Admissions;
+using Explore.Domain;
 using System.Text;
 
 namespace ApplicationUnitTests.Contracts.Admissions.Support;
@@ -74,7 +75,9 @@ internal class IssuanceRepositoryFake : DispatchProxy
             ("EventTicketType", fact.TicketType),
             ("LineUnitMinor", scenario.Assignments[index].LineUnitMinor),
             ("RelevantLineTotalMinor", scenario.Assignments.Sum(value => value.LineUnitMinor)),
-            ("IsAdmissionLine", scenario.Assignments[index].IsAdmissionLine))).ToArray();
+            ("IsAdmissionLine", scenario.Assignments[index].IsAdmissionLine),
+            ("Readiness", new ParticipantAdmissionReadinessDecision(
+                ParticipantAdmissionReadinessCode.Ready)))).ToArray();
         Type payloadType = ExactPayload(returnType, "AdmissionIssuanceContext");
         object context = AdmissionContractRuntime.Create(
             payloadType,

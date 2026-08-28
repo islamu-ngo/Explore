@@ -30,11 +30,53 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
     private readonly IRegistrationPaymentAttemptRepository _paymentAttempts = Substitute.For<IRegistrationPaymentAttemptRepository>();
     private readonly IScheduledDeadlineDispatcher _deadlines = Substitute.For<IScheduledDeadlineDispatcher>();
+    private readonly IRegistrationOrderTransitionCoordinator _transitions =
+        Substitute.For<IRegistrationOrderTransitionCoordinator>();
 
     public RegistrationOrderLifecycleServiceTests()
     {
         _finalization.GetSucceededPaymentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(SucceededPaymentLookupResult.Missing());
+    }
+
+    [Test]
+    public async Task GetAsyncWhenOrderIsMissingReturnsNullWithoutLoadingContributionSettings()
+    {
+        Guid orderId = Guid.CreateVersion7();
+        using var cancellation = new CancellationTokenSource();
+
+        RegistrationOrderDto? result = await CreateService()
+            .GetAsync(orderId, _tenantId, cancellation.Token);
+
+        await Assert.That(result).IsNull();
+        await _inventory.Received(1).GetOrderWithLinesAsync(
+            orderId,
+            _tenantId,
+            cancellation.Token);
+        await _contributionSettings.DidNotReceive()
+            .GetActiveAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetByEventAsyncMapsEveryTenantQualifiedOrder()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder();
+        using var cancellation = new CancellationTokenSource();
+        _inventory.GetOrdersByEventAsync(
+                _eventId,
+                _tenantId,
+                cancellation.Token)
+            .Returns([order]);
+
+        IReadOnlyList<RegistrationOrderDto> result = await CreateService()
+            .GetByEventAsync(_eventId, _tenantId, cancellation.Token);
+
+        await Assert.That(result).HasSingleItem();
+        await Assert.That(result[0].Id).IsEqualTo(order.Id);
+        await _inventory.Received(1).GetOrdersByEventAsync(
+            _eventId,
+            _tenantId,
+            cancellation.Token);
     }
 
     [Test]
@@ -145,9 +187,9 @@ public sealed class RegistrationOrderLifecycleServiceTests
         RegistrationOrderLifecycleResponseDto capacity = await CreateService().FinalizePaidAsync(
             capacityOrder.Id, _tenantId, CancellationToken.None);
 
-        await Assert.That(requirements.Order!.StatusId)
+        await Assert.That(requirementsOrder.RegistrationOrderStatusId)
             .IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
-        await Assert.That(approval.Order!.StatusId)
+        await Assert.That(approvalOrder.RegistrationOrderStatusId)
             .IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingApproval);
         await Assert.That(capacity.Order!.StatusId)
             .IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
@@ -168,7 +210,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
         await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
@@ -203,7 +245,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingApproval);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingApproval);
         await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
@@ -409,7 +451,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizePaidAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
         await _inventory.DidNotReceive().TryConsumeActiveHoldsForOrderAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
@@ -657,8 +699,8 @@ public sealed class RegistrationOrderLifecycleServiceTests
             .ReadyForCheckoutAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
-        await _inventory.DidNotReceive().TryTransitionOrderAsync(
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
+        await _transitions.DidNotReceive().PersistAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<RegistrationOrderStatusEnum>(),
             Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
@@ -945,7 +987,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
         _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
             order.Id, _tenantId, Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<RegistrationOrderStatusEnum>(),
             UtcNow, Arg.Any<CancellationToken>()).Returns(true);
         var participantAttempts = new List<Guid[]>();
@@ -1026,7 +1068,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
                 order.Id,
                 _tenantId,
                 RegistrationOrderStatusEnum.ReadyForCheckout,
@@ -1040,7 +1082,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.ReadyForCheckout);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.ReadyForCheckout);
         await _inventory.DidNotReceive().AddEventRegistrationsAsync(
             Arg.Any<IReadOnlyCollection<EventRegistration>>(),
             Arg.Any<CancellationToken>());
@@ -1068,7 +1110,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
         await _inventory.DidNotReceive().TryConsumeActiveHoldsForOrderAsync(
             order.Id,
             _tenantId,
@@ -1345,10 +1387,10 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var result = await CreateService(unitOfWork).ReadyForCheckoutAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
         await Assert.That(timedHold.IsCapacityAllocated).IsTrue();
         await Assert.That(unitOfWork.RollbackCount).IsEqualTo(1);
-        await _inventory.DidNotReceive().TryTransitionOrderAsync(
+        await _transitions.DidNotReceive().PersistAsync(
             order.Id,
             _tenantId,
             Arg.Any<RegistrationOrderStatusEnum>(),
@@ -1379,7 +1421,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var result = await CreateService().ReadyForCheckoutAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
         await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
@@ -1404,8 +1446,8 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var result = await CreateService().RecoverExpiredHoldAsync(order.Id, _tenantId, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
-        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
-        await _inventory.DidNotReceive().TryTransitionOrderAsync(
+        await Assert.That(order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await _transitions.DidNotReceive().PersistAsync(
             order.Id,
             _tenantId,
             RegistrationOrderStatusEnum.NeedsReconciliation,
@@ -1423,7 +1465,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
                 order.Id,
                 _tenantId,
                 RegistrationOrderStatusEnum.AwaitingRequirements,
@@ -1494,14 +1536,14 @@ public sealed class RegistrationOrderLifecycleServiceTests
 
         await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingPayment);
-        await _inventory.Received(1).TryTransitionOrderAsync(
+        await _transitions.Received(1).PersistAsync(
             order.Id,
             _tenantId,
             RegistrationOrderStatusEnum.AwaitingApproval,
             RegistrationOrderStatusEnum.ReadyForCheckout,
             UtcNow,
             Arg.Any<CancellationToken>());
-        await _inventory.Received(1).TryTransitionOrderAsync(
+        await _transitions.Received(1).PersistAsync(
             order.Id,
             _tenantId,
             RegistrationOrderStatusEnum.ReadyForCheckout,
@@ -1519,7 +1561,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         ConfigureOrder(order, [hold]);
         _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
                 order.Id,
                 _tenantId,
                 RegistrationOrderStatusEnum.ReadyForCheckout,
@@ -1780,7 +1822,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         var messages = new List<OutboxMessage>();
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
                 order.Id,
                 _tenantId,
                 RegistrationOrderStatusEnum.AwaitingRequirements,
@@ -1892,7 +1934,8 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _paymentAttempts,
         _deadlines,
         new FixedTimeProvider(UtcNow),
-        paidAcceptance ?? Substitute.For<IPaidOrderAcceptanceService>());
+        paidAcceptance ?? Substitute.For<IPaidOrderAcceptanceService>(),
+        _transitions);
 
     private static PromotionReservation CreateActivePromotionReservation(
         RegistrationOrder order,
@@ -1923,7 +1966,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(holds);
-        _inventory.TryTransitionOrderAsync(
+        _transitions.PersistAsync(
                 order.Id,
                 _tenantId,
                 Arg.Any<RegistrationOrderStatusEnum>(),

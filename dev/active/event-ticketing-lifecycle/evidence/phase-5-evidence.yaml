@@ -1,0 +1,65 @@
+# ABOUTME: Machine-readable closeout evidence manifest for ticketing lifecycle Phase 5.
+# ABOUTME: Binds transfer mutation, privacy, review, docs, source, UI, and generated artifacts.
+
+schema_version: 1
+phase: 5
+status: pass
+sentinel_pii_scan: pass
+pii_scan:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-5-pii-scan.json
+mutation_reports:
+  - project: Explore.Domain
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-5/reports/mutation-report.json
+    minimum_score_exclusive: 85
+mad_review:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-5-mad-review.yaml
+  required_decision: pass
+documentation:
+  - SECURITY.md
+  - docs/SECURITY-MODEL.md
+  - docs/PRIVACY_ERASURE.md
+source_evidence:
+  - src/Explore.Domain/AdmissionTicketTransfer.cs
+  - src/Explore.Domain/AdmissionTicket.cs
+  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
+  - src/Explore.Application/Features/Admissions/Requests/TicketTransferRequests.cs
+  - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
+  - src/Explore.Persistence/Configurations/Entities/AdmissionTicketTransferConfiguration.cs
+  - src/Explore.API/Controllers/TicketTransferController.cs
+  - src/Explore.API/Hateoas/Policies/TicketTransferLinkPolicy.cs
+  - src/Explore.Blazor/Extensions/BffTicketTransferEndpoints.cs
+  - src/Explore.Blazor.Client/Services/Admissions/TicketTransferService.cs
+  - src/Explore.Blazor.Client/Components/Admissions/TicketTransferPanel.razor
+  - tests/Event.Persistence.IntegrationTests/TicketTransferConcurrencyTests.cs
+  - tests/Event.API.IntegrationTests/TicketTransferApiTests.cs
+  - tests/Explore.Blazor.IntegrationTests/TicketTransferBffTests.cs
+  - tests/Explore.Blazor.Client.Tests/TicketTransferComponentTests.cs
+comments:
+  - src/Explore.Domain/AdmissionTicketTransfer.cs
+  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
+  - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
+  - src/Explore.Blazor/Extensions/BffTicketTransferEndpoints.cs
+  - src/Explore.Blazor.Client/Components/Admissions/TicketTransferPanel.razor
+evidence_artifacts:
+  - dev/active/event-ticketing-lifecycle/evidence/phase-5-mutation-scope.yaml
+  - tests/Event.Domain.TicketingLifecycle.MutationTests/stryker-config.json
+  - dev/active/event-ticketing-lifecycle/evidence/phase-5-pii-scan.json
+  - dev/active/event-ticketing-lifecycle/evidence/phase-5-mad-review.yaml
+generated_artifacts:
+  - schemas/openapi_islamu-event.json
+  - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs
+  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.cs
+  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs

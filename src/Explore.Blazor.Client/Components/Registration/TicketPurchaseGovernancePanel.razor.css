@@ -1,0 +1,36 @@
+/* ABOUTME: Styles the accessible purchase-governance panel with logical, RTL-safe spacing. */
+/* ABOUTME: Uses existing theme tokens and preserves native focus and form-control semantics. */
+
+.ticket-purchase-governance {
+    display: grid;
+    gap: var(--space-4, 1rem);
+    margin-block: var(--space-4, 1rem);
+    padding: var(--space-4, 1rem);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.ticket-purchase-governance__choices {
+    display: grid;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-3, 0.75rem);
+}
+
+.ticket-purchase-governance__choices label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+}
+
+.ticket-purchase-governance__notice {
+    padding-inline-start: var(--space-3, 0.75rem);
+    border-inline-start: 0.25rem solid var(--mud-palette-warning);
+}
+
+.ticket-purchase-governance__submit {
+    justify-self: start;
+}
+
+.ticket-purchase-governance__status:empty {
+    display: none;
+}

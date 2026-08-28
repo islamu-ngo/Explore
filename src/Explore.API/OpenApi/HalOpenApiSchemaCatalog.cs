@@ -148,6 +148,9 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Admissions.AdmissionCheckInAuditPageDto),
         typeof(Explore.Application.DTOs.Admissions.AdmissionCheckInHealthDto),
         typeof(Explore.Application.DTOs.Admissions.AdmissionCheckInOperationalResultDto),
+        typeof(Explore.Application.DTOs.Admissions.ParticipantReadinessDto),
+        typeof(Explore.Application.DTOs.Admissions.TicketTransferDto),
+        typeof(Explore.Application.DTOs.Waitlist.FairReturnWaitlistDto),
         typeof(Explore.Application.Features.Promotions.PromotionManagementDto),
         typeof(Explore.Application.DTOs.EventTicketing.EventTicketCatalogManagementDto),
         typeof(Explore.Application.DTOs.EventTicketing.PaidEventPublicationPreflightDto),
@@ -155,6 +158,7 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.PaidEventPolicies.PaidEventPolicyDto),
         typeof(Explore.Application.DTOs.PaidEventPolicies.TenantPaidEventPolicyConfigurationDto),
         typeof(Explore.Application.DTOs.Payments.PaidCheckoutSaleControlDto),
+        typeof(Explore.API.Models.TicketPurchaseGovernanceResource),
         typeof(Explore.Application.DTOs.RegistrationForms.RegistrationWorkflowDto),
         typeof(Explore.Application.DTOs.RegistrationForms.RegistrationRequirementDto),
         typeof(Explore.Application.DTOs.RegistrationForms.RegistrationChannelDto),
@@ -244,6 +248,14 @@ internal static class HalOpenApiSchemaCatalog
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
     {
+        ["HalResourceOfTicketPurchaseGovernanceResource"] =
+            typeof(Explore.API.Models.TicketPurchaseGovernanceResource),
+        ["HalResourceOfParticipantReadinessDto"] =
+            typeof(Explore.Application.DTOs.Admissions.ParticipantReadinessDto),
+        ["HalResourceOfTicketTransferDto"] =
+            typeof(Explore.Application.DTOs.Admissions.TicketTransferDto),
+        ["HalResourceOfFairReturnWaitlistDto"] =
+            typeof(Explore.Application.DTOs.Waitlist.FairReturnWaitlistDto),
         ["HalResourceOfEventDto"] = typeof(Explore.Application.DTOs.Event.EventDto),
         ["HalResourceOfEventListDto"] = typeof(Explore.Application.DTOs.Event.EventListDto),
         ["HalResourceOfEventSeriesDto"] = typeof(Explore.Application.DTOs.EventSeries.EventSeriesDto),

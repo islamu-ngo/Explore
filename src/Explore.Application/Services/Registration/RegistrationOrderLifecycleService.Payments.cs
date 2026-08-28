@@ -55,13 +55,13 @@ public sealed partial class RegistrationOrderLifecycleService
                     false);
             }
 
-            if (!RegistrationOrderRules.CanTransition(status, RegistrationOrderStatusEnum.Cancelled) ||
+            if (!order.CanTransitionTo(RegistrationOrderStatusEnum.Cancelled) ||
                 !await paymentAttempts.CancelExpiredConfigurationBlockedAsync(claim, observedAt, token))
             {
                 return new(CheckoutDispatchConfigurationDisposition.Stale, false);
             }
 
-            if (!await inventory.TryTransitionOrderAsync(
+            if (!await transitions.PersistAsync(
                     order.Id,
                     order.TenantId,
                     status,
@@ -137,7 +137,7 @@ public sealed partial class RegistrationOrderLifecycleService
                 return Success(order, status, "Registration order is already cancelled.");
             }
 
-            if (!RegistrationOrderRules.CanTransition(status, RegistrationOrderStatusEnum.Cancelled))
+            if (!order.CanTransitionTo(RegistrationOrderStatusEnum.Cancelled))
             {
                 return Failure(order.Id, order, "Registration order cannot be cancelled from its current state.");
             }
@@ -148,7 +148,7 @@ public sealed partial class RegistrationOrderLifecycleService
             {
                 if (status != RegistrationOrderStatusEnum.NeedsReconciliation)
                 {
-                    _ = await inventory.TryTransitionOrderAsync(
+                    _ = await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         status,
@@ -160,7 +160,7 @@ public sealed partial class RegistrationOrderLifecycleService
                 return Failure(order.Id, order, "Payment reconciliation is required before cancellation.");
             }
 
-            if (!await inventory.TryTransitionOrderAsync(order.Id, tenantId, status, RegistrationOrderStatusEnum.Cancelled, now, token))
+            if (!await transitions.PersistAsync(order.Id, tenantId, status, RegistrationOrderStatusEnum.Cancelled, now, token))
             {
                 return await CurrentOrConflictAsync(orderId, tenantId, "Registration order changed while it was cancelled.", token);
             }
@@ -229,7 +229,7 @@ public sealed partial class RegistrationOrderLifecycleService
 
             RegistrationOrderStatusEnum status = (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId;
             if (status == RegistrationOrderStatusEnum.AwaitingPayment &&
-                !await inventory.TryTransitionOrderAsync(
+                !await transitions.PersistAsync(
                     order.Id,
                     order.TenantId,
                     RegistrationOrderStatusEnum.AwaitingPayment,

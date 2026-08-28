@@ -142,6 +142,7 @@
                     LineId = line.Id,
                     TicketTypeName = line.TicketTypeName ?? "Ticket",
                     Ordinal = ordinal,
+                    AssignmentId = assignment?.Id,
                     ParticipantId = participant?.Id,
                     ParticipantTypeId = participant?.ParticipantTypeId ?? (line.RequiresGuardian == true ? 2 : 1),
                     GuardianParticipantId = participant?.GuardianParticipantId,
@@ -156,7 +157,8 @@
         }
     }
 
-    private RenderFragment ParticipantFields(ParticipantEditorModel editor) => @<fieldset class="registration-participant-editor__participant" data-testid="participant-field-group">
+    private RenderFragment ParticipantFields(ParticipantEditorModel editor) => @<text>
+        <fieldset class="registration-participant-editor__participant" data-testid="participant-field-group">
             <legend>@editor.TicketTypeName ticket @editor.Ordinal</legend>
             @if (editor.RequiresGuardian)
             {
@@ -175,7 +177,19 @@
             {
                 <AppButton OnClick="@(() => SaveAsync(editor))">Save participant</AppButton>
             }
-        </fieldset>;
+        </fieldset>
+        @if (editor.ParticipantId is { } participantId
+            && editor.AssignmentId is { } assignmentId)
+        {
+            <ParticipantReadinessPanel
+                @key="assignmentId"
+                EventId="EventId"
+                OrderId="OrderId"
+                ParticipantId="participantId"
+                AssignmentId="assignmentId"
+                GuestCapability="GuestCapability?.Value" />
+        }
+    </text>;
 
     private async Task SaveAsync(ParticipantEditorModel editor)
     {
@@ -275,6 +289,7 @@
         public Guid LineId { get; init; }
         public string TicketTypeName { get; init; } = string.Empty;
         public int Ordinal { get; init; }
+        public Guid? AssignmentId { get; init; }
         public Guid? ParticipantId { get; init; }
         public int ParticipantTypeId { get; init; }
         public Guid? GuardianParticipantId { get; set; }

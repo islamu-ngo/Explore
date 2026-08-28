@@ -1,0 +1,437 @@
+@* ABOUTME: Renders bounded ticket-transfer state and only server-advertised HAL actions. *@
+@* ABOUTME: Protects one-time values while providing localized, deterministic, accessible outcomes. *@
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject ITicketTransferService Transfers
+@inject ITranslationService Translation
+@inject IAccessibilityFocusService Focus
+@implements IDisposable
+
+<section class="ticket-transfer"
+         data-testid="ticket-transfer"
+         aria-labelledby="@TitleId"
+         aria-busy="@_isBusy">
+    <h4 id="@TitleId"
+        class="ticket-transfer__title">
+        @Text("ticket_transfer_title", "Transfer ticket")
+    </h4>
+
+    @if (_isLoading)
+    {
+        <div class="ticket-transfer__state"
+             role="status">
+            @Text("ticket_transfer_loading", "Checking transfer status…")
+        </div>
+    }
+    else if (_resource is null && !CanOffer)
+    {
+        <div class="ticket-transfer__state ticket-transfer__state--error"
+             role="alert"
+             data-transfer-state="unavailable">
+            @Text("ticket_transfer_unavailable", "Ticket transfer is temporarily unavailable.")
+        </div>
+    }
+    else
+    {
+        @if (_resource is not null)
+        {
+            <div class="ticket-transfer__state"
+                 role="status"
+                 data-transfer-code="@_resource.StatusCode">
+                @StatusText(_resource.StatusCode)
+            </div>
+
+            @if (_resource.SupportCode is not "none")
+            {
+                <div class="ticket-transfer__support"
+                     data-support-code="@_resource.SupportCode">
+                    @SupportText(_resource.SupportCode)
+                </div>
+            }
+        }
+
+        @if (CanOffer)
+        {
+            <button type="button"
+                    class="ticket-transfer__action"
+                    data-relation="@OfferRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(OfferRelation))">
+                @Text("ticket_transfer_offer", "Create transfer offer")
+            </button>
+        }
+        @if (HasRelation(AcceptRelation))
+        {
+            <button type="button"
+                    class="ticket-transfer__action"
+                    data-relation="@AcceptRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(AcceptRelation))">
+                @Text("ticket_transfer_accept", "Accept transfer")
+            </button>
+        }
+        @if (HasRelation(CancelRelation))
+        {
+            <button type="button"
+                    class="ticket-transfer__action ticket-transfer__action--danger"
+                    data-relation="@CancelRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(CancelRelation))">
+                @Text("ticket_transfer_cancel", "Cancel transfer")
+            </button>
+        }
+        @if (HasRelation(CorrectRelation))
+        {
+            <button type="button"
+                    class="ticket-transfer__action"
+                    data-relation="@CorrectRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(CorrectRelation))">
+                @Text("ticket_transfer_correct", "Correct ticket holder")
+            </button>
+        }
+        @if (HasRelation(ReissueRelation))
+        {
+            <button type="button"
+                    class="ticket-transfer__action"
+                    data-relation="@ReissueRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(ReissueRelation))">
+                @Text("ticket_transfer_reissue", "Reissue ticket credential")
+            </button>
+        }
+
+        @if (_claimCapability is not null)
+        {
+            <div class="ticket-transfer__secret"
+                 role="status">
+                <strong>
+                    @Text("ticket_transfer_claim_capability", "One-time transfer claim")
+                </strong>
+                <output dir="ltr">@_claimCapability</output>
+                <span>
+                    @Text("ticket_transfer_claim_warning", "Share this value privately. It is shown only now.")
+                </span>
+            </div>
+        }
+        @if (_credential is not null)
+        {
+            <div class="ticket-transfer__secret"
+                 role="status">
+                <strong>
+                    @Text("ticket_transfer_credential", "New ticket credential")
+                </strong>
+                <output dir="ltr">@_credential</output>
+                <span>
+                    @Text("ticket_transfer_credential_warning", "Store this credential securely. It is shown only now.")
+                </span>
+            </div>
+        }
+
+        @if (_outcome is not null)
+        {
+            <div id="@OutcomeId"
+                 class="ticket-transfer__outcome"
+                 role="@(_outcomeIsError ? "alert" : "status")"
+                 aria-live="@(_outcomeIsError ? "assertive" : "polite")"
+                 tabindex="-1">
+                @_outcome
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private const string OfferRelation =
+        "offer-ticket-transfer";
+    private const string AcceptRelation =
+        "accept-ticket-transfer";
+    private const string CancelRelation =
+        "cancel-ticket-transfer";
+    private const string CorrectRelation =
+        "correct-ticket-transfer";
+    private const string ReissueRelation =
+        "reissue-transferred-ticket";
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid AdmissionTicketId { get; set; }
+    [Parameter] public Guid TransferId { get; set; }
+    [Parameter] public Guid RecipientParticipantId { get; set; }
+    [Parameter] public string? Capability { get; set; }
+    [Parameter]
+    public IDictionary<string, HalLink>? TicketLinks
+    {
+        get;
+        set;
+    }
+    [Parameter]
+    public HalResourceOfTicketTransferDto? InitialResource
+    {
+        get;
+        set;
+    }
+
+    private HalResourceOfTicketTransferDto? _resource;
+    private CancellationTokenSource? _operation;
+    private Guid _activeTransferId;
+    private bool _isLoading;
+    private bool _isBusy;
+    private bool _disposed;
+    private long _generation;
+    private string? _claimCapability;
+    private string? _credential;
+    private string? _outcome;
+    private bool _outcomeIsError;
+
+    private string TitleId =>
+        $"ticket-transfer-title-{AdmissionTicketId:N}";
+    private string OutcomeId =>
+        $"ticket-transfer-outcome-{AdmissionTicketId:N}";
+    private bool CanOffer =>
+        HasRelation(OfferRelation)
+        || TicketLinks?.ContainsKey(OfferRelation) == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        CancelOperation();
+        long generation = ++_generation;
+        _resource = InitialResource;
+        _activeTransferId = TransferId;
+        _claimCapability = null;
+        _credential = null;
+        _outcome = null;
+
+        if (_resource is not null || TransferId == Guid.Empty)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        _isLoading = true;
+        _operation = new CancellationTokenSource();
+        try
+        {
+            HalResourceOfTicketTransferDto? resource =
+                await Transfers.GetAsync(
+                    EventId,
+                    AdmissionTicketId,
+                    TransferId,
+                    Capability,
+                    _operation.Token);
+            if (!_disposed && generation == _generation)
+            {
+                _resource = resource;
+            }
+        }
+        catch (OperationCanceledException)
+            when (_operation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (!_disposed && generation == _generation)
+            {
+                _isLoading = false;
+            }
+        }
+    }
+
+    private async Task ExecuteAsync(string relation)
+    {
+        if (_isBusy
+            || relation == OfferRelation && !CanOffer
+            || relation != OfferRelation
+                && !HasRelation(relation))
+        {
+            return;
+        }
+
+        CancelOperation();
+        long generation = ++_generation;
+        _operation = new CancellationTokenSource();
+        _isBusy = true;
+        _claimCapability = null;
+        _credential = null;
+        _outcome = null;
+        try
+        {
+            bool succeeded = await ExecuteMutationAsync(
+                relation,
+                _operation.Token);
+            if (_disposed || generation != _generation)
+            {
+                return;
+            }
+
+            _outcomeIsError = !succeeded;
+            _outcome = succeeded
+                ? Text(
+                    "ticket_transfer_action_succeeded",
+                    "Ticket transfer updated.")
+                : Text(
+                    "ticket_transfer_action_failed",
+                    "Ticket transfer could not be updated.");
+            await InvokeAsync(StateHasChanged);
+            if (_outcomeIsError)
+            {
+                await Focus.FocusAsync($"#{OutcomeId}");
+            }
+        }
+        catch (OperationCanceledException)
+            when (_operation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (!_disposed && generation == _generation)
+            {
+                _isBusy = false;
+            }
+        }
+    }
+
+    private async Task<bool> ExecuteMutationAsync(
+        string relation,
+        CancellationToken cancellationToken)
+    {
+        switch (relation)
+        {
+            case OfferRelation:
+                TicketTransferOfferResponse? offer =
+                    await Transfers.OfferAsync(
+                        EventId,
+                        AdmissionTicketId,
+                        cancellationToken);
+                if (offer is null)
+                {
+                    return false;
+                }
+                _resource = offer.Transfer;
+                _activeTransferId = offer.Transfer.Id;
+                _claimCapability =
+                    offer.ClaimCapability;
+                return true;
+            case AcceptRelation:
+                if (RecipientParticipantId == Guid.Empty)
+                {
+                    return false;
+                }
+                return ApplyCredential(
+                    await Transfers.AcceptAsync(
+                        EventId,
+                        AdmissionTicketId,
+                        _activeTransferId,
+                        RecipientParticipantId,
+                        Capability,
+                        cancellationToken));
+            case CancelRelation:
+                HalResourceOfTicketTransferDto? cancelled =
+                    await Transfers.CancelAsync(
+                        EventId,
+                        AdmissionTicketId,
+                        _activeTransferId,
+                        cancellationToken);
+                _resource = cancelled ?? _resource;
+                return cancelled is not null;
+            case CorrectRelation:
+                return ApplyCredential(
+                    await Transfers.CorrectAsync(
+                        EventId,
+                        AdmissionTicketId,
+                        _activeTransferId,
+                        cancellationToken));
+            case ReissueRelation:
+                return ApplyCredential(
+                    await Transfers.ReissueAsync(
+                        EventId,
+                        AdmissionTicketId,
+                        _activeTransferId,
+                        cancellationToken));
+            default:
+                return false;
+        }
+    }
+
+    private bool ApplyCredential(
+        TicketTransferCredentialResponse? response)
+    {
+        if (response is null)
+        {
+            return false;
+        }
+        _resource = response.Transfer;
+        _credential = response.Credential;
+        return true;
+    }
+
+    private bool HasRelation(string relation) =>
+        _resource?._links?.ContainsKey(relation) == true;
+
+    private string StatusText(string? code) =>
+        code switch
+        {
+            "offered" =>
+                Text(
+                    "ticket_transfer_status_offered",
+                    "Transfer offer is awaiting acceptance."),
+            "accepted" =>
+                Text(
+                    "ticket_transfer_status_accepted",
+                    "Ticket transfer is complete."),
+            "cancelled" =>
+                Text(
+                    "ticket_transfer_status_cancelled",
+                    "Ticket transfer was cancelled."),
+            "expired" =>
+                Text(
+                    "ticket_transfer_status_expired",
+                    "Ticket transfer offer expired."),
+            _ =>
+                Text(
+                    "ticket_transfer_status_unknown",
+                    "Ticket transfer status is temporarily unavailable."),
+        };
+
+    private string SupportText(string? code) =>
+        code switch
+        {
+            "recipient_action_required" =>
+                Text(
+                    "ticket_transfer_support_recipient",
+                    "The recipient must use the private claim to continue."),
+            "contact_sender" =>
+                Text(
+                    "ticket_transfer_support_sender",
+                    "Contact the sender privately for assistance."),
+            "contact_organizer" =>
+                Text(
+                    "ticket_transfer_support_organizer",
+                    "Contact the event organizer for private assistance."),
+            _ =>
+                Text(
+                    "ticket_transfer_support_unavailable",
+                    "Follow an available action or contact the organizer."),
+        };
+
+    private string Text(string key, string fallback) =>
+        Translation.T(key, fallback);
+
+    private void CancelOperation()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = null;
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ++_generation;
+        CancelOperation();
+    }
+}

@@ -737,3 +737,55 @@ public class MyBffTests
     }
 }
 ```
+
+### Ticket Purchase Public-Surface Slices
+
+```bash
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*TicketPurchaseGovernanceApiTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*TicketPurchaseGeneratedContractTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*TicketPurchaseGovernanceBffTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*TicketPurchaseGovernanceComponentTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+```
+
+These slices jointly verify server-owned public input, HAL/OpenAPI shape, generated-client headers and mutability, antiforgery/cookie/capability behavior, tenant-spoof exclusion, private caching, accessible scope selection, and HAL-only UI affordances.
+
+### Participant Readiness Public-Surface Slices
+
+```bash
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*ParticipantReadinessApiTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*ParticipantReadinessGeneratedContractTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*ParticipantReadinessBffTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+
+dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj \
+  --configuration Release --verbosity quiet -- \
+  --treenode-filter "/*/*/*ParticipantReadinessComponentTests/*" \
+  --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+```
+
+These slices jointly prove exact-resource access, generic capability failure, PII-minimal OpenAPI/generated shapes, private caching, antiforgery and cookie authority, generated-client-only BFF forwarding, HAL-only actions, deterministic pending disabling, accessible error focus, and logical RTL-safe styling.

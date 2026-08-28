@@ -2,6 +2,7 @@
 // ABOUTME: Supports pre-confirm group booking and post-confirm optional or deferred admission amendments.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Validators;
@@ -18,6 +19,7 @@ public sealed class RegistrationParticipantCommandService(
     IRegistrationParticipantRepository participants,
     IEventTicketCatalogRepository catalogs,
     IEventSessionRepository eventSessions,
+    IParticipantAdmissionEligibilityRepository eligibility,
     ICurrentUserService currentUser,
     ITenantContext tenant,
     IUnitOfWork unitOfWork,
@@ -305,6 +307,15 @@ public sealed class RegistrationParticipantCommandService(
                 await participants.AddAssignmentsAsync(newAssignments, token);
                 await participants.AddAmendmentsAsync(amendments, token);
                 await participants.SaveChangesAsync(token);
+                await eligibility.EnsureForAssignmentsAsync(
+                    order.TenantId,
+                    order.EventId,
+                    order.Id,
+                    newAssignments
+                        .Select(assignment => assignment.Id)
+                        .ToArray(),
+                    now,
+                    token);
                 return CompanySuccess(order.Id, rows.Length, alreadyApplied: false, "Company assignment CSV imported.");
             }, cancellationToken);
         }
@@ -551,6 +562,17 @@ public sealed class RegistrationParticipantCommandService(
                 await participants.AddAssignmentsAsync(additions, token);
                 await participants.AddAmendmentsAsync(amendments, token);
                 await participants.SaveChangesAsync(token);
+                await eligibility.EnsureForAssignmentsAsync(
+                    order.TenantId,
+                    order.EventId,
+                    order.Id,
+                    byKey.Values
+                        .Where(assignment =>
+                            assignment.ParticipantId.HasValue)
+                        .Select(assignment => assignment.Id)
+                        .ToArray(),
+                    now,
+                    token);
                 return Success(order.Id, "Registration ticket assignments updated.");
             }, cancellationToken);
         }

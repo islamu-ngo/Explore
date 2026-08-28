@@ -8,6 +8,8 @@ using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Hateoas;
 using Explore.Application.Services.Registration;
+using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -15,6 +17,9 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
 {
     public IEnumerable<LinkDefinition> GetLinks(RegistrationOrderDto dto, ClaimsPrincipal? user)
     {
+        RegistrationOrderLifecycleDecision lifecycle = RegistrationOrderRules.DescribeLifecycle(
+            (RegistrationOrderStatusEnum)dto.StatusId);
+
         yield return new LinkDefinition(
                 LinkRelations.Self,
                 RouteNames.GetCurrentRegistrationOrder,
@@ -40,7 +45,7 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                 resourceId: dto.Id.ToString("D"),
                 facts: Facts(dto));
 
-        if (dto.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
+        if (lifecycle.CanContinue)
         {
             yield return new LinkDefinition(
                     LinkRelations.Continue,
@@ -56,7 +61,7 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: Facts(dto));
         }
 
-        if (dto.StatusCode == "AWAITING_REQUIREMENTS")
+        if (lifecycle.CanViewRequirementProgress)
         {
             yield return new LinkDefinition(
                     LinkRelations.RequirementProgress,
@@ -72,7 +77,7 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: Facts(dto));
         }
 
-        if (dto.StatusCode == "READY_FOR_CHECKOUT")
+        if (lifecycle.CanManagePromotion)
         {
             if (string.IsNullOrWhiteSpace(dto.AppliedPromotionDisplayLabel))
             {
@@ -152,7 +157,28 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: Facts(dto));
         }
 
-        if (dto.TotalDueMinor > 0 && dto.StatusCode is "AWAITING_PAYMENT" or "NEEDS_RECONCILIATION" or "CONFIRMED")
+        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+                dto.StatusId,
+                dto.TotalDueMinor,
+                dto.ExpiresAt,
+                timeProvider.GetUtcNow().UtcDateTime))
+        {
+            yield return new LinkDefinition(
+                    LinkRelations.ReservePurchaseAuthority,
+                    RouteNames.ReserveAuthenticatedPurchaseAuthority,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Post,
+                    "Reserve purchase authority",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Continue,
+                    resourceKind:
+                    ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    facts: Facts(dto));
+        }
+
+        if (dto.TotalDueMinor > 0 && lifecycle.CanViewPaymentStatus)
         {
             yield return new LinkDefinition(
                     LinkRelations.PaymentStatus,
@@ -181,7 +207,7 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
         }
 
-        if (dto.StatusCode is not ("AWAITING_PAYMENT" or "NEEDS_RECONCILIATION" or "CONFIRMED"))
+        if (lifecycle.CanCancel)
         {
             yield return new LinkDefinition(
                     LinkRelations.Cancel,

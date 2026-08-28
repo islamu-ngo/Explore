@@ -158,6 +158,9 @@ public partial class ExploreDbContext
     public DbSet<TicketTypeEntitlement> TicketTypeEntitlements { get; set; }
     public DbSet<EventCapacityPool> EventCapacityPools { get; set; }
     public DbSet<RegistrationOrder> RegistrationOrders { get; set; }
+    public DbSet<TicketPurchasePolicyVersion> TicketPurchasePolicyVersions { get; set; }
+    public DbSet<TicketPurchaseAuthorityUsage> TicketPurchaseAuthorityUsages { get; set; }
+    public DbSet<TicketPurchaseOperation> TicketPurchaseOperations { get; set; }
     public DbSet<RegistrationOrderLine> RegistrationOrderLines { get; set; }
     public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
     public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
@@ -197,6 +200,19 @@ public partial class ExploreDbContext
     public DbSet<RegistrationAnswerFileRelease> RegistrationAnswerFileReleases { get; set; }
     public DbSet<RegistrationSensitiveAnswerValue> RegistrationSensitiveAnswerValues { get; set; }
     public DbSet<RegistrationRequirementFulfillment> RegistrationRequirementFulfillments { get; set; }
+    public DbSet<ParticipantAdmissionEligibility> ParticipantAdmissionEligibilities { get; set; }
+    public DbSet<TicketTransferPolicy> TicketTransferPolicies { get; set; }
+    public DbSet<AdmissionTicketTransfer> AdmissionTicketTransfers { get; set; }
+    public DbSet<AdmissionTransferDeliveryIntent> AdmissionTransferDeliveryIntents { get; set; }
+    public DbSet<FairReturnSupplyPolicy> FairReturnSupplyPolicies { get; set; }
+    public DbSet<FairReturnSupplyUnit> FairReturnSupplyUnits { get; set; }
+    public DbSet<EventWaitlistEntry> EventWaitlistEntries { get; set; }
+    public DbSet<EventWaitlistOffer> EventWaitlistOffers { get; set; }
+    public DbSet<FairReturnSourceBinding> FairReturnSourceBindings { get; set; }
+    public DbSet<WaitlistProviderObservation> WaitlistProviderObservations { get; set; }
+    public DbSet<WaitlistPaymentIntent> WaitlistPaymentIntents { get; set; }
+    public DbSet<WaitlistRefundIntent> WaitlistRefundIntents { get; set; }
+    public DbSet<FairReturnOrchestrationEffect> FairReturnOrchestrationEffects { get; set; }
     public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
     public DbSet<AdmissionTicket> AdmissionTickets { get; set; }
     public DbSet<AdmissionTicketCredential> AdmissionTicketCredentials { get; set; }

@@ -12,6 +12,7 @@ using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Waitlist;
 using Explore.Domain;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Database;
@@ -234,6 +235,22 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
         services.AddScoped<IAdmissionTargetMaterializationRepository, AdmissionTargetMaterializationRepository>();
         services.AddScoped<IAdmissionIssuanceRepository, AdmissionIssuanceRepository>();
+        services.AddScoped<ParticipantAdmissionEligibilityRepository>();
+        services.AddScoped<IParticipantAdmissionEligibilityRepository>(
+            provider => provider.GetRequiredService<
+                ParticipantAdmissionEligibilityRepository>());
+        services.AddScoped<IParticipantAdmissionReadinessAuthority>(
+            provider => provider.GetRequiredService<
+                ParticipantAdmissionEligibilityRepository>());
+        services.AddScoped<
+            IAdmissionTicketTransferRepository,
+            AdmissionTicketTransferRepository>();
+        services.AddScoped<
+            IFairReturnWaitlistRepository,
+            FairReturnWaitlistRepository>();
+        services.AddScoped<
+            IFairReturnOrchestrationRepository,
+            FairReturnOrchestrationRepository>();
         services.AddScoped<IAdmissionCheckInTransaction, AdmissionCheckInRepository>();
         services.AddScoped<AdmissionCheckInReportingRepository>();
         services.AddScoped<IAdmissionCheckInSummaryQuery>(provider =>
@@ -268,6 +285,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IAdmissionCredentialDeliveryOutboxHandler, AdmissionCredentialDeliveryOutboxHandler>();
         services.AddScoped<IAdmissionDeliveryDispatcher, AdmissionDeliveryIntentDispatcher>();
         services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();
+        services.AddScoped<
+            ITicketPurchaseGovernanceRepository,
+            TicketPurchaseGovernanceRepository>();
         services.AddScoped<IPaidEventPolicyRepository, PaidEventPolicyRepository>();
         services.AddScoped<IPaidCheckoutActivationRepository, PaidCheckoutActivationRepository>();
         services.AddScoped<IPlatformFeePolicyRepository, PlatformFeePolicyRepository>();

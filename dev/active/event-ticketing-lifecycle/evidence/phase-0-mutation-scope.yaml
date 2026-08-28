@@ -1,0 +1,29 @@
+# ABOUTME: Records the reproducible changed-source mutation scope for ticketing lifecycle Phase 0.
+# ABOUTME: Binds Stryker version, test lanes, source spans, reports, and threshold without hiding legacy failures.
+
+schema_version: 1
+phase: 0
+tool:
+  package: dotnet-stryker
+  version: 4.16.0
+  license: Apache-2.0
+threshold:
+  comparison: greater_than
+  score: 85
+domain:
+  test_project: tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj
+  source_scope:
+    - src/Explore.Domain/RegistrationOrder.cs:CanTransitionTo-TryTransitionFrom
+    - src/Explore.Domain/Services/Registration/RegistrationOrderRules.cs:DescribeLifecycle
+  report: dev/active/event-ticketing-lifecycle/evidence/phase-0/domain/reports/mutation-report.json
+application:
+  test_project: tests/Event.Application.TicketingLifecycle.MutationTests/Event.Application.TicketingLifecycle.MutationTests.csproj
+  linked_canonical_test_project: tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj
+  source_scope:
+    - src/Explore.Application/Services/Registration/RegistrationOrderReadService.cs
+    - src/Explore.Application/Services/Registration/RegistrationOrderTransitionCoordinator.cs
+  report: dev/active/event-ticketing-lifecycle/evidence/phase-0/application/reports/mutation-report.json
+baseline_failures:
+  evidence: dev/active/event-ticketing-lifecycle/evidence/phase-0/application-baseline.yaml
+  skipped_tests: 0
+  copied_tests: 0

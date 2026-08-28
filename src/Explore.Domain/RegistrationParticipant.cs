@@ -132,6 +132,27 @@ public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, I
         Pii = pii;
     }
 
+    public void ClaimBy(
+        Guid linkedUserId,
+        Guid concurrencyStamp)
+    {
+        if (linkedUserId == Guid.Empty
+            || concurrencyStamp == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Participant subject and concurrency are required.");
+        }
+        if (LinkedUserId.HasValue
+            && LinkedUserId != linkedUserId)
+        {
+            throw new InvalidOperationException(
+                "Participant is already linked to another subject.");
+        }
+
+        LinkedUserId = linkedUserId;
+        ConcurrencyStamp = concurrencyStamp;
+    }
+
     public void Update(ParticipantTypeEnum participantType, RegistrationParticipant? guardian, Guid concurrencyStamp)
     {
         if (!Enum.IsDefined(participantType) || concurrencyStamp == Guid.Empty)

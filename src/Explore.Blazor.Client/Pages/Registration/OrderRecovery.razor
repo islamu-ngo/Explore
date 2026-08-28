@@ -37,6 +37,11 @@
             }
         </section>
 
+        <TicketPurchaseGovernancePanel EventId="EventId"
+                                       OrderId="OrderId"
+                                       Links="_order._links"
+                                       IsAuthenticated="true" />
+
         @if (HasPaymentAction)
         {
             <PaymentStatusPanel @key="(EventId, OrderId)"

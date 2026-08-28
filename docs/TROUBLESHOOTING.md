@@ -590,6 +590,15 @@ Checks:
 6. Leave `Unknown` attempts in place. Restore provider connectivity and allow same-idempotency reconciliation; never recreate blindly and never use `/payments/checkout/success` or `/cancel` navigation as payment evidence.
 7. Treat `parked`, `payment_reconciliation_money_mismatch`, duplicate succeeded attempts, or persistent configuration blocking as operator review conditions. Stop new paid sales for the affected scope while preserving webhook intake and reconciliation.
 
+## Fair Return Waitlist Orchestration
+
+- **Queue does not allocate:** confirm paid-sale control is active, the policy is enabled, and supply and entry match all ten commercial-equivalence dimensions. Do not relax one dimension or rewrite snapshots.
+- **Effect remains `processing`:** compare its lease expiry with database UTC. An expired lease is reclaimed by `fair-return-orchestration`; do not clear the fence or operation UUID manually.
+- **Effect repeats `replacement_payment_unknown`:** preserve the stable provider idempotency key and reconcile the referenced `PaymentAttempt`. Never create a second replacement payment or refund intent.
+- **Refund is absent:** verify `ReplacementPaymentSettledAt` exists on `WaitlistPaymentIntent`. The missing refund is correct until that fence is durable.
+- **Dead letters:** inspect fixed failure code and aggregate health counts. Durable rows contain no participant or provider payload; correlate through support-safe operation/effect UUIDs.
+- **Browser action missing:** inspect HAL `_links` and paid-sale stop state. UI role/claim checks are not an authority source.
+
 ## Upgrade Or Restore Regressions
 
 Symptoms:

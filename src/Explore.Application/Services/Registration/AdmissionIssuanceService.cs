@@ -88,11 +88,21 @@ public sealed class AdmissionIssuanceService(
         }
 
         AdmissionAssignmentFact[] assignments = context!.Assignments
-            .Where(assignment => assignment.IsAdmissionLine)
+            .Where(assignment =>
+                assignment.IsAdmissionLine
+                && assignment.Readiness?.IsReady == true)
             .ToArray();
         if (assignments.Length == 0)
         {
-            return new PreparedIssuance(Empty(AdmissionIssuanceOutcome.NoAssignments), [], context);
+            AdmissionIssuanceOutcome outcome =
+                context.Assignments.Any(
+                    assignment => assignment.IsAdmissionLine)
+                    ? AdmissionIssuanceOutcome.ReadinessPending
+                    : AdmissionIssuanceOutcome.NoAssignments;
+            return new PreparedIssuance(
+                Empty(outcome),
+                [],
+                context);
         }
 
         AdmissionOneTimeCredential[] recoverable = RestoreIncompleteCredentials(context).ToArray();

@@ -13,11 +13,18 @@ public sealed class AdmissionTicketConfiguration : IEntityTypeConfiguration<Admi
 {
     public void Configure(EntityTypeBuilder<AdmissionTicket> builder)
     {
-        builder.ToTable("admission_tickets");
+        builder.ToTable("admission_tickets", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_admission_tickets_transfer_hops",
+                "transfer_hop_count >= 0");
+        });
         builder.Property(ticket => ticket.Id).ValueGeneratedNever();
         builder.Property(ticket => ticket.DisplayReference).HasMaxLength(100).IsRequired();
         builder.Property(ticket => ticket.ConcurrencyStamp).IsConcurrencyToken();
         builder.Property(ticket => ticket.CreatedAt).IsRequired();
+        builder.Ignore(ticket => ticket.CredentialGeneration);
+        builder.Ignore(ticket => ticket.IsActive);
         builder.HasAlternateKey(ticket => new { ticket.TenantId, ticket.Id });
         builder.HasIndex(ticket => new { ticket.TenantId, ticket.RegistrationTicketAssignmentId })
             .HasDatabaseName("ux_admission_tickets_assignment").IsUnique();

@@ -201,6 +201,10 @@ Explore.Persistence/
 | Infrastructure | Domain, Application | Presentation |
 | Presentation | All | (Entry point) |
 
+### Aggregate Lifecycle Authority
+
+Lifecycle state changes are semantic aggregate operations. Application coordinators acquire tenant-qualified locks, ask the tracked aggregate to accept an expected-state transition, and then persist it through an entity-first repository. Persistence may provide locking, transaction, query, and storage primitives, but it must not expose status-transition commands, reconstruct Domain transition rules, or update lifecycle status columns directly. API HAL policies consume the same Domain decision surface as commands and workers; transport status strings are representations, never an authorization or lifecycle authority.
+
 ---
 
 ## Design Principles

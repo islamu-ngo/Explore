@@ -49,6 +49,8 @@ After the site is up, inspect the affected page in a browser at the relevant des
 | Scoped CSS | Changes to `*.razor.css` require a full rebuild (not hot-reload) |
 | MudBlazor version | v9 — match existing component API; see [`blazor-ui-conventions`](../.agents/skills/blazor-ui-conventions/SKILL.md) |
 | CSS isolation + BEM | See [`blazor-css-isolation`](../.agents/skills/blazor-css-isolation/SKILL.md) |
+| Purchase contract generation | Build `Explore.API` in Release to refresh `schemas/openapi_islamu-event.json`, then build `Explore.Blazor.Client` to run pinned NSwag and the record transformer |
+| Purchase generated-contract gate | Run `TicketPurchaseGeneratedContractTests`; never edit `EventApiClient.g.cs` directly |
 
 ---
 

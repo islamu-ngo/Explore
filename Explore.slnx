@@ -41,7 +41,9 @@
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
     <Project Path="tests/Event.Application.Phase20.MutationTests/Event.Application.Phase20.MutationTests.csproj" />
+    <Project Path="tests/Event.Application.TicketingLifecycle.MutationTests/Event.Application.TicketingLifecycle.MutationTests.csproj" />
     <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />
+    <Project Path="tests/Event.Domain.TicketingLifecycle.MutationTests/Event.Domain.TicketingLifecycle.MutationTests.csproj" />
     <Project Path="tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj" />
     <Project Path="tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj" />
     <Project Path="tests/Event.Benchmarks/Event.Benchmarks.csproj" />

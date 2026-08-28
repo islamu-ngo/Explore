@@ -25,8 +25,15 @@ public sealed partial class RegistrationOrderLifecycleService(
     IRegistrationPaymentAttemptRepository paymentAttempts,
     IScheduledDeadlineDispatcher deadlines,
     TimeProvider timeProvider,
-    IPaidOrderAcceptanceService paidAcceptance) : IRegistrationOrderLifecycleService
+    IPaidOrderAcceptanceService paidAcceptance,
+    IRegistrationOrderTransitionCoordinator transitions) : IRegistrationOrderLifecycleService
 {
+    private readonly RegistrationOrderReadService reads = new(
+        inventory,
+        contributionSettings,
+        paidAcceptance,
+        timeProvider);
+
     public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
         Guid tenantId,
@@ -163,7 +170,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                 await inventory.SaveChangesAsync(token);
             }
 
-            bool transitioned = await inventory.TryTransitionOrderAsync(
+            bool transitioned = await transitions.PersistAsync(
                 order.Id,
                 tenantId,
                 status,
@@ -247,7 +254,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                     }
 
                     await ReleaseActiveHoldsForWaitlistAsync(order, now, token);
-                    if (!await inventory.TryTransitionOrderAsync(
+                    if (!await transitions.PersistAsync(
                             order.Id,
                             tenantId,
                             RegistrationOrderStatusEnum.AwaitingRequirements,
@@ -258,7 +265,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                         throw new LifecycleRaceException();
                     }
 
-                    if (!await inventory.TryTransitionOrderAsync(
+                    if (!await transitions.PersistAsync(
                             order.Id,
                             tenantId,
                             RegistrationOrderStatusEnum.ReadyForCheckout,
@@ -273,7 +280,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                     return Success(order, RegistrationOrderStatusEnum.Waitlisted, "Registration order is waitlisted while capacity is unavailable.");
                 }
 
-                if (!await inventory.TryTransitionOrderAsync(
+                if (!await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         RegistrationOrderStatusEnum.AwaitingRequirements,
@@ -352,7 +359,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                     }
 
                     await ReleaseActiveHoldsForWaitlistAsync(order, now, token);
-                    if (!await inventory.TryTransitionOrderAsync(
+                    if (!await transitions.PersistAsync(
                             order.Id,
                             tenantId,
                             RegistrationOrderStatusEnum.AwaitingApproval,
@@ -367,7 +374,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                     return Success(order, RegistrationOrderStatusEnum.Waitlisted, "Registration order is waitlisted while capacity is unavailable.");
                 }
 
-                if (!await inventory.TryTransitionOrderAsync(
+                if (!await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         RegistrationOrderStatusEnum.AwaitingApproval,
@@ -514,7 +521,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                 if (paid && payment is PaymentEvidenceState.Mismatch or PaymentEvidenceState.Duplicate)
                 {
                     if (status == RegistrationOrderStatusEnum.AwaitingPayment &&
-                        !await inventory.TryTransitionOrderAsync(
+                        !await transitions.PersistAsync(
                             order.Id,
                             tenantId,
                             RegistrationOrderStatusEnum.AwaitingPayment,
@@ -572,7 +579,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                         token);
                     if (!reservation.Reserved)
                     {
-                        if (!await inventory.TryTransitionOrderAsync(
+                        if (!await transitions.PersistAsync(
                                 order.Id,
                                 tenantId,
                                 expectedStatus,
@@ -594,7 +601,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                         .ToArray();
                 }
 
-                if (!await inventory.TryTransitionOrderAsync(
+                if (!await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         expectedStatus,
@@ -616,7 +623,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                 await participants.AddParticipantsAsync(plan.Placeholders, token);
                 await inventory.AddEventRegistrationsAsync(plan.Admissions, token);
                 await outbox.Create(plan.OutboxMessage);
-                if (!await inventory.TryTransitionOrderAsync(
+                if (!await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         RegistrationOrderStatusEnum.NeedsReconciliation,
@@ -743,7 +750,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                     await ReleaseActiveHoldsForWaitlistAsync(order, now, token, releasePromotion: false);
                 }
 
-                if (!await inventory.TryTransitionOrderAsync(
+                if (!await transitions.PersistAsync(
                         order.Id,
                         tenantId,
                         RegistrationOrderStatusEnum.NeedsReconciliation,
@@ -774,30 +781,15 @@ public sealed partial class RegistrationOrderLifecycleService(
         }
     }
 
-    public async Task<RegistrationOrderDto?> GetAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
-    {
-        RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
-        if (order is null)
-        {
-            return null;
-        }
+    public Task<RegistrationOrderDto?> GetAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => reads.GetAsync(orderId, tenantId, cancellationToken);
 
-        PlatformContributionSetting? contributionSetting = await contributionSettings.GetActiveAsync(cancellationToken);
-        RegistrationOrderDto dto = RegistrationOrderDto.From(order, contributionSetting: contributionSetting);
-        bool paidCheckoutActivationAvailable = RegistrationPaymentPayability.IsCurrentlyPayable(
-                dto.StatusId, dto.TotalDueMinor, dto.ExpiresAt, timeProvider.GetUtcNow().UtcDateTime) &&
-            (await paidAcceptance.DescribeAsync(order, cancellationToken)).Success;
-        return dto with
-        {
-            PaidCheckoutActivationAvailable = paidCheckoutActivationAvailable,
-        };
-    }
-
-    public async Task<IReadOnlyList<RegistrationOrderDto>> GetByEventAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken)
-    {
-        IReadOnlyList<RegistrationOrder> orders = await inventory.GetOrdersByEventAsync(eventId, tenantId, cancellationToken);
-        return orders.Select(order => RegistrationOrderDto.From(order)).ToArray();
-    }
+    public Task<IReadOnlyList<RegistrationOrderDto>> GetByEventAsync(
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => reads.GetByEventAsync(eventId, tenantId, cancellationToken);
 
     private async Task<RegistrationOrderLifecycleResponseDto> EndAsync(
         Guid orderId,
@@ -824,7 +816,7 @@ public sealed partial class RegistrationOrderLifecycleService(
                 return Success(order, status, message);
             }
 
-            if (status != expectedStatus || !await inventory.TryTransitionOrderAsync(order.Id, tenantId, expectedStatus, desiredStatus, now, token))
+            if (status != expectedStatus || !await transitions.PersistAsync(order.Id, tenantId, expectedStatus, desiredStatus, now, token))
             {
                 return await CurrentOrConflictAsync(orderId, tenantId, "Registration order changed before its decision was recorded.", token);
             }
@@ -871,7 +863,7 @@ public sealed partial class RegistrationOrderLifecycleService(
         DateTime now,
         CancellationToken cancellationToken)
     {
-        if (!await inventory.TryTransitionOrderAsync(
+        if (!await transitions.PersistAsync(
                 order.Id,
                 order.TenantId,
                 RegistrationOrderStatusEnum.AwaitingRequirements,
@@ -890,7 +882,7 @@ public sealed partial class RegistrationOrderLifecycleService(
         DateTime now,
         CancellationToken cancellationToken)
     {
-        if (!await inventory.TryTransitionOrderAsync(
+        if (!await transitions.PersistAsync(
                 order.Id,
                 order.TenantId,
                 RegistrationOrderStatusEnum.ReadyForCheckout,
@@ -1284,7 +1276,6 @@ public sealed partial class RegistrationOrderLifecycleService(
         RegistrationOrder? order,
         string error) => RegistrationOrderLifecycleResponseDto.Failure(BaseCommandResponse.Validation(
             [error], "Registration order lifecycle change failed.", orderId));
-
 
     private sealed record FinalizationPlan(
         Guid ConcurrencyStamp,

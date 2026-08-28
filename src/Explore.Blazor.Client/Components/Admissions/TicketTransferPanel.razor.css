@@ -1,0 +1,66 @@
+/* ABOUTME: Styles ticket-transfer state, actions, and one-time values with logical RTL-safe spacing. */
+/* ABOUTME: Keeps private support and accessible outcomes legible without exposing hidden identity details. */
+
+.ticket-transfer {
+    border-inline-start: 0.25rem solid var(--mud-palette-lines-default);
+    margin-block: 1rem;
+    margin-inline: 0;
+    padding-block: 0.75rem;
+    padding-inline: 1rem;
+}
+
+.ticket-transfer__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-block: 0 0.5rem;
+    margin-inline: 0;
+}
+
+.ticket-transfer__state,
+.ticket-transfer__support,
+.ticket-transfer__outcome,
+.ticket-transfer__secret {
+    margin-block: 0.5rem;
+    margin-inline: 0;
+}
+
+.ticket-transfer__state--error,
+.ticket-transfer__action--danger {
+    color: var(--mud-palette-error);
+}
+
+.ticket-transfer__action {
+    background: var(--mud-palette-primary);
+    border: 0;
+    border-radius: var(--mud-default-borderradius);
+    color: var(--mud-palette-primary-text);
+    cursor: pointer;
+    margin-block: 0.5rem 0;
+    margin-inline: 0 0.5rem;
+    min-block-size: 2.75rem;
+    padding-block: 0.5rem;
+    padding-inline: 1rem;
+}
+
+.ticket-transfer__action:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.ticket-transfer__secret {
+    border-inline-start: 0.25rem solid var(--mud-palette-warning);
+    display: grid;
+    gap: 0.25rem;
+    padding-block: 0.5rem;
+    padding-inline: 0.75rem;
+}
+
+.ticket-transfer__secret output {
+    overflow-wrap: anywhere;
+}
+
+.ticket-transfer__action:focus-visible,
+.ticket-transfer__outcome:focus-visible {
+    outline: 0.1875rem solid var(--mud-palette-primary);
+    outline-offset: 0.125rem;
+}

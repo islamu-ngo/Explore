@@ -12,12 +12,26 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class AdmissionCheckInRepository(
     ExploreDbContext dbContext,
-    TimeProvider timeProvider) : IAdmissionCheckInTransaction
+    TimeProvider timeProvider,
+    IParticipantAdmissionReadinessAuthority readiness) :
+    IAdmissionCheckInTransaction
 {
     private const int MaximumDigestCandidates = 8;
 
+    public AdmissionCheckInRepository(
+        ExploreDbContext dbContext,
+        TimeProvider timeProvider) : this(
+        dbContext,
+        timeProvider,
+        new ParticipantAdmissionEligibilityRepository(dbContext))
+    {
+    }
+
     public AdmissionCheckInRepository(ExploreDbContext dbContext)
-        : this(dbContext, TimeProvider.System)
+        : this(
+            dbContext,
+            TimeProvider.System,
+            new ParticipantAdmissionEligibilityRepository(dbContext))
     {
     }
 
@@ -38,6 +52,19 @@ public sealed class AdmissionCheckInRepository(
             request.CredentialDigestCandidates,
             cancellationToken);
         if (resolved is null || resolved.EventId != request.EventId)
+        {
+            return null;
+        }
+
+        ParticipantAdmissionReadinessDecision?
+            readinessDecision =
+            await readiness.EvaluateForUpdateAsync(
+                request.TenantId,
+                resolved.RegistrationTicketAssignmentId,
+                orderConfirmed: true,
+                paymentSatisfied: true,
+                cancellationToken);
+        if (readinessDecision?.IsReady != true)
         {
             return null;
         }

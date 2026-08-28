@@ -4,6 +4,8 @@
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Hateoas;
 using Explore.Application.Services.Registration;
+using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 
@@ -17,25 +19,27 @@ public static class GuestRegistrationOrderHalResourceFactory
         TimeProvider timeProvider)
     {
         var values = new { eventId = order.EventId, orderId = order.Id };
+        RegistrationOrderLifecycleDecision lifecycle = RegistrationOrderRules.DescribeLifecycle(
+            (RegistrationOrderStatusEnum)order.StatusId);
         var resource = new HalResource<GuestRegistrationOrderDto>(order)
             .WithLink(LinkRelations.Self, HalLink.Create(url.Link(RouteNames.GetGuestRegistrationOrder, values)!));
 
         resource.WithLink(LinkRelations.ClaimRegistrationOrder, HalLink.CreateAction(
             url.Link(RouteNames.ClaimGuestRegistrationOrder, values)!, HttpMethods.Post));
 
-        if (order.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
+        if (lifecycle.CanContinue)
         {
             resource.WithLink(LinkRelations.Continue, HalLink.CreateAction(
                 url.Link(RouteNames.ContinueGuestRegistrationOrder, values)!, HttpMethods.Post));
         }
 
-        if (order.StatusCode == "AWAITING_REQUIREMENTS")
+        if (lifecycle.CanViewRequirementProgress)
         {
             resource.WithLink(LinkRelations.RequirementProgress, HalLink.Create(
                 url.Link(RouteNames.GetGuestNativeRegistrationRequirementProgress, values)!));
         }
 
-        if (order.StatusCode == "READY_FOR_CHECKOUT")
+        if (lifecycle.CanManagePromotion)
         {
             string promotionRelation = string.IsNullOrWhiteSpace(order.AppliedPromotionDisplayLabel)
                 ? LinkRelations.ApplyPromotion
@@ -60,13 +64,28 @@ public static class GuestRegistrationOrderHalResourceFactory
                 url.Link(RouteNames.StartGuestRegistrationPayment, values)!, HttpMethods.Post));
         }
 
-        if (order.TotalDueMinor > 0 && order.StatusCode is "AWAITING_PAYMENT" or "NEEDS_RECONCILIATION" or "CONFIRMED")
+        if (RegistrationPaymentPayability.IsCurrentlyPayable(
+                order.StatusId,
+                order.TotalDueMinor,
+                order.ExpiresAt,
+                timeProvider.GetUtcNow().UtcDateTime))
+        {
+            resource.WithLink(
+                LinkRelations.ReservePurchaseAuthority,
+                HalLink.CreateAction(
+                    url.Link(
+                        RouteNames.ReserveGuestPurchaseAuthority,
+                        values)!,
+                    HttpMethods.Post));
+        }
+
+        if (order.TotalDueMinor > 0 && lifecycle.CanViewPaymentStatus)
         {
             resource.WithLink(LinkRelations.PaymentStatus, HalLink.Create(
                 url.Link(RouteNames.GetGuestRegistrationPayment, values)!));
         }
 
-        if (order.StatusCode is "DRAFT" or "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT" or "AWAITING_PAYMENT" or "AWAITING_APPROVAL")
+        if (lifecycle.CanCancel)
         {
             resource.WithLink(LinkRelations.Cancel, HalLink.CreateAction(
                 url.Link(RouteNames.CancelGuestRegistrationOrder, values)!, HttpMethods.Delete));

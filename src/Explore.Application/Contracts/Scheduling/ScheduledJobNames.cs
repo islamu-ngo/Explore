@@ -35,6 +35,7 @@ public static class ScheduledJobNames
     /// <summary>Bounded drain migration: the timer moved to the scheduler, the claim semantics did not.</summary>
     public const string RegistrationFinalizationDrain = "registration-finalization-drain";
     public const string PaymentReconciliationDrain = "payment-reconciliation-drain";
+    public const string FairReturnOrchestration = "fair-return-orchestration";
     public const string RegistrationProviderSubmissionWriteDrain = "registration-provider-submission-write-drain";
     public const string RegistrationProviderSubscriptionLifecycleDrain = "registration-provider-subscription-lifecycle-drain";
     public const string IntegrationSyncDrain = "integration-sync-drain";
@@ -70,6 +71,7 @@ public static class ScheduledJobNames
         InventoryHoldExpiryReconciliation,
         RegistrationFinalizationDrain,
         PaymentReconciliationDrain,
+        FairReturnOrchestration,
         RegistrationProviderSubmissionWriteDrain,
         RegistrationProviderSubscriptionLifecycleDrain,
         IntegrationSyncDrain,

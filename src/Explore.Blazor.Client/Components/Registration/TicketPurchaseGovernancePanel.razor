@@ -1,0 +1,160 @@
+@* ABOUTME: Renders a HAL-gated accessible choice and submission panel for purchase authority. *@
+@* ABOUTME: States the honest name-only scope and submits only through the same-origin BFF service. *@
+@using Explore.Blazor.Client.Contracts.Services
+@implements IDisposable
+@inject ITicketPurchaseGovernanceService PurchaseGovernance
+
+@if (HasPurchaseAction)
+{
+    <section class="ticket-purchase-governance"
+             aria-labelledby="ticket-purchase-governance-title"
+             data-testid="ticket-purchase-governance">
+        <h2 id="ticket-purchase-governance-title">Purchase limits</h2>
+        <fieldset class="ticket-purchase-governance__choices">
+            <legend>How should this purchase be identified?</legend>
+            @if (IsAuthenticated)
+            {
+                <p>Your signed-in account controls the purchase limit, including when acting for a group or organization.</p>
+            }
+            else
+            {
+                <label>
+                    <input type="radio"
+                           name="purchase-access-mode"
+                           value="2"
+                           checked="@(_accessMode == 2)"
+                           @onchange="SetAccessMode" />
+                    Use my verified contact
+                </label>
+                <label>
+                    <input type="radio"
+                           name="purchase-access-mode"
+                           value="3"
+                           checked="@(_accessMode == 3)"
+                           @onchange="SetAccessMode" />
+                    Continue with name-only access
+                </label>
+            }
+        </fieldset>
+
+        @if (!IsAuthenticated && _accessMode == 3)
+        {
+            <p class="ticket-purchase-governance__notice"
+               role="alert"
+               data-enforcement-scope="order">
+                Name-only access is limited within this order. It cannot provide a hard per-person limit across separate orders.
+            </p>
+        }
+
+        <button type="button"
+                class="ticket-purchase-governance__submit"
+                disabled="@_isSubmitting"
+                @onclick="ReserveAsync">
+            @(_isSubmitting ? "Reserving…" : "Reserve purchase limit")
+        </button>
+        <div class="ticket-purchase-governance__status"
+             role="status"
+             aria-live="polite">@_status</div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public Guid OrderId { get; set; }
+
+    [Parameter]
+    public IDictionary<string, HalLink>? Links { get; set; }
+
+    [Parameter]
+    public bool IsAuthenticated { get; set; }
+
+    [Parameter]
+    public string? GuestCapability { get; set; }
+
+    [Parameter]
+    public Guid? RequestedPurchaserActorId { get; set; }
+
+    [Parameter]
+    public EventCallback<TicketPurchaseGovernanceSubmission>
+        Reserved { get; set; }
+
+    private readonly CancellationTokenSource _lifetime = new();
+    private int _accessMode = 3;
+    private bool _isSubmitting;
+    private string _status = string.Empty;
+
+    private bool HasPurchaseAction =>
+        Links?.ContainsKey(
+            "reserve-purchase-authority") == true;
+
+    protected override void OnParametersSet()
+    {
+        if (IsAuthenticated)
+        {
+            _accessMode = 1;
+        }
+    }
+
+    private void SetAccessMode(ChangeEventArgs args)
+    {
+        if (int.TryParse(
+                args.Value?.ToString(),
+                out int accessMode)
+            && accessMode is 2 or 3)
+        {
+            _accessMode = accessMode;
+            _status = string.Empty;
+        }
+    }
+
+    private async Task ReserveAsync()
+    {
+        if (_isSubmitting
+            || EventId == Guid.Empty
+            || OrderId == Guid.Empty)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _status = "Reserving purchase authority.";
+        try
+        {
+            TicketPurchaseGovernanceSubmission result =
+                await PurchaseGovernance.ReserveAsync(
+                    EventId,
+                    OrderId,
+                    _accessMode,
+                    IsAuthenticated
+                        ? RequestedPurchaserActorId
+                        : null,
+                    GuestCapability,
+                    IsAuthenticated,
+                    _lifetime.Token);
+            _status = result.IsSuccess
+                ? "Purchase authority reserved."
+                : "Purchase authority could not be reserved.";
+            if (result.IsSuccess)
+            {
+                await Reserved.InvokeAsync(result);
+            }
+        }
+        catch (OperationCanceledException)
+            when (_lifetime.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
+}

@@ -31,6 +31,36 @@ public static class RouteNames
     public const string StopAdmissionCheckIn = "StopAdmissionCheckIn";
     public const string RestoreAdmissionCheckIn = "RestoreAdmissionCheckIn";
     public const string ReconcileAdmissionCheckIn = "ReconcileAdmissionCheckIn";
+    public const string GetParticipantReadiness =
+        "GetParticipantReadiness";
+    public const string CompleteParticipantReadiness =
+        "CompleteParticipantReadiness";
+    public const string ApproveParticipantReadiness =
+        "ApproveParticipantReadiness";
+    public const string RevokeParticipantReadiness =
+        "RevokeParticipantReadiness";
+    public const string GetTicketTransfer =
+        "GetTicketTransfer";
+    public const string GetFairReturnWaitlist =
+        "GetFairReturnWaitlist";
+    public const string JoinFairReturnWaitlist =
+        "JoinFairReturnWaitlist";
+    public const string LeaveFairReturnWaitlist =
+        "LeaveFairReturnWaitlist";
+    public const string AcceptFairReturnOffer =
+        "AcceptFairReturnOffer";
+    public const string WithdrawFairReturnSupply =
+        "WithdrawFairReturnSupply";
+    public const string OfferTicketTransfer =
+        "OfferTicketTransfer";
+    public const string AcceptTicketTransfer =
+        "AcceptTicketTransfer";
+    public const string CancelTicketTransfer =
+        "CancelTicketTransfer";
+    public const string CorrectTicketTransfer =
+        "CorrectTicketTransfer";
+    public const string ReissueTransferredTicket =
+        "ReissueTransferredTicket";
 
     #region Managed Event Routes
 
@@ -377,6 +407,8 @@ public static class RouteNames
     public const string CancelGuestRegistrationOrder = "CancelGuestRegistrationOrder";
     public const string ClaimGuestRegistrationOrder = "ClaimGuestRegistrationOrder";
     public const string StartAuthenticatedRegistrationOrder = "StartAuthenticatedRegistrationOrder";
+    public const string ReserveAuthenticatedPurchaseAuthority = "ReserveAuthenticatedPurchaseAuthority";
+    public const string ReserveGuestPurchaseAuthority = "ReserveGuestPurchaseAuthority";
     public const string GetCurrentRegistrationOrder = "GetCurrentRegistrationOrder";
     public const string ContinueAuthenticatedRegistrationOrder = "ContinueAuthenticatedRegistrationOrder";
     public const string FinalizeAuthenticatedRegistrationOrder = "FinalizeAuthenticatedRegistrationOrder";

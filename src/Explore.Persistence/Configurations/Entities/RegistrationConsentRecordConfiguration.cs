@@ -15,6 +15,11 @@ public sealed class RegistrationConsentRecordConfiguration : IEntityTypeConfigur
 
     public void Configure(EntityTypeBuilder<RegistrationConsentRecord> builder)
     {
+        builder.HasAlternateKey(record => new
+        {
+            record.TenantId,
+            record.Id,
+        });
         builder.ToTable("registration_consent_records", table =>
             table.HasCheckConstraint("ck_registration_consent_records_subject_shape", SubjectConstraint()));
         builder.Property(record => record.Id).HasDefaultValueSql("uuidv7()");

@@ -82,6 +82,7 @@ public static class LinkRelations
     public const string Payment = "payment";
     public const string PaymentAcceptance = "payment-acceptance";
     public const string StartPayment = "start-payment";
+    public const string ReservePurchaseAuthority = "reserve-purchase-authority";
     public const string PaymentStatus = "payment-status";
     public const string CheckoutRedirect = "checkout-redirect";
     public const string RetryPayment = "retry-payment";
@@ -108,6 +109,30 @@ public static class LinkRelations
     public const string RestoreAdmissionCheckIn = "restore-admission-check-in";
     public const string ReconcileAdmissionCheckIn = "reconcile-admission-check-in";
     public const string AdmissionCheckInResults = "admission-check-in-results";
+    public const string CompleteParticipantReadiness =
+        "complete-participant-readiness";
+    public const string ApproveParticipantReadiness =
+        "approve-participant-readiness";
+    public const string RevokeParticipantReadiness =
+        "revoke-participant-readiness";
+    public const string OfferTicketTransfer =
+        "offer-ticket-transfer";
+    public const string AcceptTicketTransfer =
+        "accept-ticket-transfer";
+    public const string CancelTicketTransfer =
+        "cancel-ticket-transfer";
+    public const string CorrectTicketTransfer =
+        "correct-ticket-transfer";
+    public const string ReissueTransferredTicket =
+        "reissue-transferred-ticket";
+    public const string JoinFairReturnWaitlist =
+        "join-fair-return-waitlist";
+    public const string LeaveFairReturnWaitlist =
+        "leave-fair-return-waitlist";
+    public const string AcceptFairReturnOffer =
+        "accept-fair-return-offer";
+    public const string WithdrawFairReturnSupply =
+        "withdraw-fair-return-supply";
 
     public const string Instantiate = "instantiate";
 

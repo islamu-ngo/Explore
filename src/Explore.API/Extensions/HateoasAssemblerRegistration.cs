@@ -10,6 +10,7 @@ using Explore.API.Hateoas.Resources;
 using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLinkPolicy
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
+using Explore.Application.DTOs.Admissions;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.ControlPlane;
@@ -42,6 +43,7 @@ using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
+using Explore.Application.DTOs.Waitlist;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
@@ -203,6 +205,9 @@ public static class HateoasAssemblerRegistration
         services.AddHalResourceWithAssembler<OrganizationMemberDto, OrganizationMemberDetailLinkPolicy, OrganizationMemberCollectionLinkPolicy, OrganizationMemberResourceAssembler>();
 
         services.AddHalResource<RegistrationOrderDto, RegistrationOrderLinkPolicy, RegistrationOrderCollectionLinkPolicy>();
+        services.AddHalResource<ParticipantReadinessDto, ParticipantReadinessLinkPolicy, ParticipantReadinessCollectionLinkPolicy>();
+        services.AddHalResource<TicketTransferDto, TicketTransferLinkPolicy, TicketTransferCollectionLinkPolicy>();
+        services.AddHalResource<FairReturnWaitlistDto, FairReturnWaitlistLinkPolicy, FairReturnWaitlistCollectionLinkPolicy>();
         services.AddHalResource<RegistrationAnswerFileDto, RegistrationAnswerFileLinkPolicy, RegistrationAnswerFileCollectionLinkPolicy>();
 
         // EventSessionAgendaItem

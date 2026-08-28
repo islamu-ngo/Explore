@@ -11,6 +11,7 @@ public enum AdmissionIssuanceOutcome
     AlreadyIssued,
     NotConfirmed,
     NoAssignments,
+    ReadinessPending,
     InvalidRequest,
     CancelledBeforeCommit
 }
@@ -74,7 +75,8 @@ public sealed record AdmissionAssignmentFact(
     EventTicketType EventTicketType,
     long LineUnitMinor,
     long RelevantLineTotalMinor,
-    bool IsAdmissionLine)
+    bool IsAdmissionLine,
+    ParticipantAdmissionReadinessDecision? Readiness = null)
 {
     public Guid RegistrationTicketAssignmentId => Assignment.Id;
     public Guid RegistrationOrderLineId => OrderLine.Id;

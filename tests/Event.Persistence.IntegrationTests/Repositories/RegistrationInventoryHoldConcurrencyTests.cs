@@ -594,8 +594,9 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         CheckoutDispatchClaim claim = (await paymentRepository.ClaimDueDispatchEffectsAsync(
             "configuration-lifecycle", 1, UtcNow, TimeSpan.FromMinutes(2), timeout.Token)).Single();
         IScheduledDeadlineDispatcher deadlines = Substitute.For<IScheduledDeadlineDispatcher>();
+        var inventory = new RegistrationInventoryRepository(context);
         var lifecycle = new RegistrationOrderLifecycleService(
-            new RegistrationInventoryRepository(context),
+            inventory,
             new PromotionRedemptionRepository(context),
             new RegistrationParticipantRepository(context),
             new EventTicketCatalogRepository(context),
@@ -607,7 +608,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             paymentRepository,
             deadlines,
             new FixedTimeProvider(UtcNow),
-            Substitute.For<IPaidOrderAcceptanceService>());
+            Substitute.For<IPaidOrderAcceptanceService>(),
+            new RegistrationOrderTransitionCoordinator(inventory));
 
         CheckoutDispatchConfigurationDisposition first = await lifecycle.CancelExpiredConfigurationBlockedPaymentAsync(
             claim, UtcNow, timeout.Token);
@@ -1049,8 +1051,9 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         CancellationToken cancellationToken)
     {
         await using ExploreDbContext context = CreateRetryingTenantContext(tenantId);
+        var inventory = new RegistrationInventoryRepository(context);
         var service = new RegistrationOrderLifecycleService(
-            new RegistrationInventoryRepository(context),
+            inventory,
             new PromotionRedemptionRepository(context),
             new RegistrationParticipantRepository(context),
             new EventTicketCatalogRepository(context),
@@ -1062,7 +1065,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             new RegistrationPaymentAttemptRepository(context),
             Substitute.For<IScheduledDeadlineDispatcher>(),
             new FixedTimeProvider(UtcNow),
-            Substitute.For<IPaidOrderAcceptanceService>());
+            Substitute.For<IPaidOrderAcceptanceService>(),
+            new RegistrationOrderTransitionCoordinator(inventory));
         return await service.FinalizePaidAsync(orderId, tenantId, cancellationToken);
     }
 
@@ -1075,8 +1079,9 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         IOutboxRepository outbox = Substitute.For<IOutboxRepository>();
         outbox.Create(Arg.Any<OutboxMessage>())
             .Returns(Task.FromException<OutboxMessage>(new InvalidOperationException("manual_outbox_failure")));
+        var inventory = new RegistrationInventoryRepository(context);
         var service = new RegistrationOrderLifecycleService(
-            new RegistrationInventoryRepository(context),
+            inventory,
             new PromotionRedemptionRepository(context),
             new RegistrationParticipantRepository(context),
             new EventTicketCatalogRepository(context),
@@ -1088,7 +1093,8 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             new RegistrationPaymentAttemptRepository(context),
             Substitute.For<IScheduledDeadlineDispatcher>(),
             new FixedTimeProvider(UtcNow),
-            Substitute.For<IPaidOrderAcceptanceService>());
+            Substitute.For<IPaidOrderAcceptanceService>(),
+            new RegistrationOrderTransitionCoordinator(inventory));
         return await service.FinalizePaidAsync(orderId, tenantId, cancellationToken);
     }
 

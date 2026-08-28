@@ -9,6 +9,7 @@ using Explore.API.Filters;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -56,6 +57,7 @@ public sealed partial class AdmissionTicketApiRedContractTests
             TenantId = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
             AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)RegistrationOrderStatusEnum.ReadyForCheckout,
             StatusCode = "READY_FOR_CHECKOUT"
         };
 

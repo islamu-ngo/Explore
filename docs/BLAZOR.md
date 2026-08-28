@@ -441,6 +441,27 @@ Keep component lifecycle async and cancellation-aware for long-running loads. UI
 
 Personal Settings has a separate in-page information architecture. `/settings/personal` is searchable View all and `/settings/personal/{section}` is the focused deep link; one local metadata registry owns section order, labels, keywords, and render types. `SettingsLayout` places `Personal settings sections` before content in the DOM, projects it as a sticky vertical column below the fixed app bar on desktop, and returns it to normal document flow above content below `59.997em`. `SettingsScopeSelector` remains a distinct `Settings scopes` navigation and renders only when the server returned at least one administrative scope.
 
+## Ticket Purchase Governance Boundary
+
+`BffTicketPurchaseEndpoints` owns the same-origin browser boundary:
+
+- `/bff/ticket-purchases/authenticated` requires cookie authentication and antiforgery;
+- `/bff/ticket-purchases/guest` requires antiforgery and forwards the opaque order capability;
+- both create UUIDv7 idempotency keys server-side, apply a partitioned rate limit, ignore unknown tenant/quantity/policy fields, and return private/no-store responses;
+- OAuth bearer tokens remain in the BFF handler chain and never enter browser code.
+
+`TicketPurchaseGovernancePanel` renders only when the order HAL resource includes `reserve-purchase-authority`. Authenticated purchases show the stable account rule. Guest purchases offer verified-contact and name-only modes in a native `fieldset`; name-only mode displays an assertive, order-scoped limitation. Submission goes through `ITicketPurchaseGovernanceService`, not directly to the API, and status changes use a polite live region.
+
+The panel is mounted on authenticated and guest order-recovery pages. Its scoped CSS uses logical properties and existing MudBlazor/design tokens, preserving RTL layout, native focus behavior, keyboard operation, and theme contrast.
+
+## Participant Readiness Boundary
+
+`BffParticipantReadinessEndpoints` exposes one same-origin exact-resource route. Anonymous guest reads forward the opaque order capability in `X-Registration-Order-Capability`; authenticated reads use the BFF cookie/token pipeline. Completion, approval, and revocation require cookie authorization, antiforgery before the dedicated partitioned rate limit, and independent API authorization. No browser request supplies tenant, user, organizer actor, readiness, or lifecycle state.
+
+`ParticipantReadinessPanel` is mounted for each assigned participant in `RegistrationParticipantEditor`. `IParticipantReadinessService` consumes only the PII-minimal generated HAL resource. The panel maps bounded status/support codes through `ITranslationService`, renders complete/approve/revoke controls only when the matching HAL relation exists, disables all actions until the exact asynchronous operation completes, and renders generic errors without exception or private evidence.
+
+Each panel owns assignment-qualified heading and outcome IDs so multiple participants remain valid in one document. Loading and nonfocused transitions use polite status semantics; mutation errors render an assertive focusable outcome before focus moves to it. Scoped CSS uses logical block/inline spacing and border properties for RTL safety.
+
 ## Styling, Accessibility, Localization, And Analytics
 
 Do not duplicate the specialized docs in this guide.

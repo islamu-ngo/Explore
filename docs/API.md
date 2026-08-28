@@ -1372,6 +1372,29 @@ Before v1.0, intentional breaking API contract changes may be accepted when they
 
 ---
 
+## Ticket Purchase Governance
+
+Purchase authority is exposed as two private, idempotent HAL operations:
+
+| Caller | Route | Authority |
+|---|---|---|
+| Authenticated account | `POST /api/events/{eventId}/registration-orders/{orderId}/purchase-authority` | Current account plus a server-verified personal/group/organization actor |
+| Guest capability | `POST /api/events/{eventId}/registration-orders/guest/{orderId}/purchase-authority` | Opaque order capability plus persisted verified-contact or order-scoped name-only mode |
+
+The JSON request can select access mode and actor context where applicable. It cannot supply tenant, account, normalized-contact hash, enforcement key, quantity, policy version, or idempotency authority. Quantity comes from persisted order lines, current policy lineage is selected inside Application, and the BFF creates the durable operation key.
+
+Both routes use write/public-transactional rate limits, require the HTTP idempotency header, return private/no-store responses, and expose stable `400`/`403`/`404`/`409`/`503` shapes. A successful HAL resource publishes `supportsHardCrossOrderCeiling` and `enforcementScopeCode`; name-only mode reports order scope rather than claiming cross-order person identity.
+
+`RegistrationOrder` HAL resources publish `reserve-purchase-authority` only while the order is currently payable. OpenAPI and `EventApiClient.g.cs` are generated artifacts; the purchase request, result, enum, and flattened `HalResourceOfTicketPurchaseGovernanceResource` schemas are covered by generated-contract tests.
+
+## Fair Return Waitlist API
+
+The private exact resource is `GET|POST|DELETE /api/events/{eventId}/registration-orders/{registrationOrderId}/lines/{registrationOrderLineId}/waitlist`. Offer acceptance and supply withdrawal are subordinate pointer routes. Reads accept the opaque registration-order capability only in `X-Registration-Order-Capability`; writes require authentication, `Idempotency-Key`, rate limiting, replay protection, and private no-store responses.
+
+`FairReturnWaitlistDto` publishes only an opaque resource UUID, bounded position, bounded status/reason codes, and optional offer expiry. A position of zero means unavailable and values above 999 are capped. Server-only `Can*` and stop-control facts are JSON-ignored and drive HAL relations; clients must not infer actions from roles, local claims, status strings, or payment state. Unknown identities, seller conflicts, stale offers, and authority failures use the same private not-found envelope.
+
+The Blazor BFF mirrors these routes under `/bff`, forwards through the generated `IEventApiClient`, retains cookie authority, validates antiforgery before write-rate limiting, and never accepts capabilities in query strings or response bodies.
+
 ## Related Docs
 - `docs/SECURITY-MODEL.md` — auth, JWT, CORS, security headers
 - `docs/ARCHITECTURE.md` — Clean Architecture layers, request flow

@@ -16,6 +16,12 @@ public static class RateLimitingExtensions
     public const string SetupSecretPolicy = "BffSetupSecret";
     public const string AtprotoAuthenticationPolicy = "BffAtprotoAuthentication";
     public const string RegistrationPaymentCheckoutIssuePolicy = "BffRegistrationPaymentCheckoutIssue";
+    public const string TicketPurchaseAuthorityPolicy =
+        "BffTicketPurchaseAuthority";
+    public const string ParticipantReadinessWritePolicy =
+        "BffParticipantReadinessWrite";
+    public const string TicketTransferWritePolicy =
+        "BffTicketTransferWrite";
 
     public static IServiceCollection AddBffRateLimiting(
         this IServiceCollection services,
@@ -33,6 +39,16 @@ public static class RateLimitingExtensions
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(RegistrationPaymentCheckoutIssuePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(TicketPurchaseAuthorityPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(
+                    ParticipantReadinessWritePolicy,
+                    _ => RateLimitPartition
+                        .GetNoLimiter<string>("test"));
+                options.AddPolicy(
+                    TicketTransferWritePolicy,
+                    _ => RateLimitPartition
+                        .GetNoLimiter<string>("test"));
             });
 
             return services;
@@ -47,6 +63,37 @@ public static class RateLimitingExtensions
         var checkoutSection = configuration.GetSection("RateLimiting:RegistrationPaymentCheckoutIssue");
         var checkoutPermitLimit = Math.Clamp(checkoutSection.GetValue("PermitLimit", 10), 1, 100);
         var checkoutWindowSeconds = Math.Clamp(checkoutSection.GetValue("WindowSeconds", 60), 1, 3600);
+        var purchaseSection =
+            configuration.GetSection(
+                "RateLimiting:TicketPurchaseAuthority");
+        var purchasePermitLimit = Math.Clamp(
+            purchaseSection.GetValue("PermitLimit", 10),
+            1,
+            100);
+        var purchaseWindowSeconds = Math.Clamp(
+            purchaseSection.GetValue("WindowSeconds", 60),
+            1,
+            3600);
+        var readinessSection = configuration.GetSection(
+            "RateLimiting:ParticipantReadinessWrite");
+        var readinessPermitLimit = Math.Clamp(
+            readinessSection.GetValue("PermitLimit", 20),
+            1,
+            100);
+        var readinessWindowSeconds = Math.Clamp(
+            readinessSection.GetValue("WindowSeconds", 60),
+            1,
+            3600);
+        var transferSection = configuration.GetSection(
+            "RateLimiting:TicketTransferWrite");
+        var transferPermitLimit = Math.Clamp(
+            transferSection.GetValue("PermitLimit", 10),
+            1,
+            100);
+        var transferWindowSeconds = Math.Clamp(
+            transferSection.GetValue("WindowSeconds", 60),
+            1,
+            3600);
 
         services.AddRateLimiter(options =>
         {
@@ -114,6 +161,63 @@ public static class RateLimitingExtensions
                         QueueLimit = 0,
                         AutoReplenishment = true
                     }));
+            options.AddPolicy(
+                TicketPurchaseAuthorityPolicy,
+                httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        ResolveCheckoutPartitionKey(
+                            httpContext),
+                        _ =>
+                            new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit =
+                                    purchasePermitLimit,
+                                Window = TimeSpan.FromSeconds(
+                                    purchaseWindowSeconds),
+                                QueueProcessingOrder =
+                                    QueueProcessingOrder
+                                        .OldestFirst,
+                                QueueLimit = 0,
+                                AutoReplenishment = true,
+                            }));
+            options.AddPolicy(
+                ParticipantReadinessWritePolicy,
+                httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        ResolveCheckoutPartitionKey(
+                            httpContext),
+                        _ =>
+                            new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit =
+                                    readinessPermitLimit,
+                                Window = TimeSpan.FromSeconds(
+                                    readinessWindowSeconds),
+                                QueueProcessingOrder =
+                                    QueueProcessingOrder
+                                        .OldestFirst,
+                                QueueLimit = 0,
+                                AutoReplenishment = true,
+                            }));
+            options.AddPolicy(
+                TicketTransferWritePolicy,
+                httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        ResolveCheckoutPartitionKey(
+                            httpContext),
+                        _ =>
+                            new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit =
+                                    transferPermitLimit,
+                                Window = TimeSpan.FromSeconds(
+                                    transferWindowSeconds),
+                                QueueProcessingOrder =
+                                    QueueProcessingOrder
+                                        .OldestFirst,
+                                QueueLimit = 0,
+                                AutoReplenishment = true,
+                            }));
         });
 
         return services;

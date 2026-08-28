@@ -72,6 +72,33 @@ public sealed class RegistrationOrderTests
     }
 
     [Test]
+    public async Task TryTransitionFromRequiresExpectedStateAndAggregatePermission()
+    {
+        DateTime timestamp = new(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        RegistrationOrder order = CreateOrder();
+
+        bool staleAttempt = order.TryTransitionFrom(
+            RegistrationOrderStatusEnum.AwaitingIdentity,
+            RegistrationOrderStatusEnum.AwaitingParticipantDetails,
+            timestamp);
+        bool accepted = order.TryTransitionFrom(
+            RegistrationOrderStatusEnum.Draft,
+            RegistrationOrderStatusEnum.AwaitingIdentity,
+            timestamp);
+        bool illegal = order.TryTransitionFrom(
+            RegistrationOrderStatusEnum.AwaitingIdentity,
+            RegistrationOrderStatusEnum.Confirmed,
+            timestamp);
+
+        await Assert.That(staleAttempt).IsFalse();
+        await Assert.That(accepted).IsTrue();
+        await Assert.That(illegal).IsFalse();
+        await Assert.That(order.RegistrationOrderStatusId)
+            .IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingIdentity);
+        await Assert.That(order.CanTransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails)).IsTrue();
+    }
+
+    [Test]
     public async Task TransitionTo_WhenTerminalStatusIsReplayed_PreservesOriginalTimestamp()
     {
         DateTime originalTimestamp = new(2026, 7, 30, 12, 0, 0, DateTimeKind.Utc);

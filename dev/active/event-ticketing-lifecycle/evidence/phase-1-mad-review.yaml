@@ -1,0 +1,50 @@
+# ABOUTME: Structured anonymized MAD review for ticketing lifecycle Phase 1.
+# ABOUTME: Records weighted purchase-authority, concurrency, privacy, and CQRS review closure.
+
+schema_version: 1
+phase: 1
+anonymized: true
+review_mode: weighted_post_hoc
+identity_attribution_count: 0
+proposals:
+  - id: proposal-a
+    lens: persistence_concurrency
+    weight: 0.40
+    vote: pass
+    invariant_breaker: LiteralEffectiveCeilingFourAllowsExactlyOneConcurrentWinner
+  - id: proposal-b
+    lens: identity_tenant_and_privacy
+    weight: 0.35
+    vote: pass
+    invariant_breaker: ResolverKeepsAccountAuthorityAcrossPersonalAndGroupContexts
+  - id: proposal-c
+    lens: cqrs_replay_and_clean_architecture
+    weight: 0.25
+    vote: pass
+    invariant_breaker: DurableReplayConflictsOnFingerprintAndRemainsTenantQualified
+findings:
+  - id: phase1-finding-001
+    severity: critical
+    status: resolved
+    category: serializable_snapshot_order
+    evidence: PostgreSQL session locks are acquired canonically before the serializable snapshot
+  - id: phase1-finding-002
+    severity: critical
+    status: resolved
+    category: caller_controlled_quantity
+    evidence: TicketPurchaseOrderResolver derives checked quantity from persisted order lines
+  - id: phase1-finding-003
+    severity: major
+    status: resolved
+    category: context_switch_authority
+    evidence: Authenticated account enforcement remains stable while authorized actor context is pinned
+  - id: phase1-finding-004
+    severity: major
+    status: resolved
+    category: durable_operation_scope
+    evidence: Machine-consumed fingerprint tests pin tenant event order policy quantity mode authority and actor
+vote_weight_total: 1.00
+pass_weight: 1.00
+fail_weight: 0.00
+unresolved_critical_count: 0
+decision: pass

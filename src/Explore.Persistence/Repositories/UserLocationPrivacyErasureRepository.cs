@@ -509,6 +509,23 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.RegistrationParticipant != null
                 && value.RegistrationParticipant.LinkedUserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ParticipantAdmissionEligibilities
+            .IgnoreAllFilters(reason)
+            .Where(value => value.SubjectUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(
+                    value => value.SubjectUserId,
+                    (Guid?)null)
+                .SetProperty(
+                    value => value.RequirementsCompletedAt,
+                    (DateTime?)null)
+                .SetProperty(
+                    value => value.SubjectConsentRecordId,
+                    (Guid?)null)
+                .SetProperty(
+                    value => value.SubjectConsentGrantedAt,
+                    (DateTime?)null),
+                cancellationToken);
         await dbContext.RegistrationParticipants
             .IgnoreAllFilters(reason)
             .Where(value => value.LinkedUserId == subjectId)

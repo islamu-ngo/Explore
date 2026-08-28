@@ -7,6 +7,12 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IRegistrationParticipantRepository
 {
+    Task<RegistrationParticipant?> GetParticipantAsync(
+        Guid participantId,
+        Guid registrationOrderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<RegistrationParticipant?> GetParticipantForUpdateAsync(
         Guid participantId,
         Guid registrationOrderId,

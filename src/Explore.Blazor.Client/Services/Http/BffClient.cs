@@ -12,6 +12,14 @@ namespace Explore.Blazor.Client.Services.Http;
 public interface IBffClient
 {
     Task<T?> GetAsync<T>(string path, CancellationToken ct = default);
+    Task<T?> GetWithRegistrationOrderCapabilityAsync<T>(
+        string path,
+        string? capability,
+        CancellationToken ct = default);
+    Task<T?> GetWithTicketTransferCapabilityAsync<T>(
+        string path,
+        string? capability,
+        CancellationToken ct = default);
     Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default);
     Task<HttpResponseMessage> PostAsync(string path, CancellationToken ct = default);
     Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default);
@@ -20,6 +28,20 @@ public interface IBffClient
     Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default);
     Task<TResponse?> SendAsync<TBody, TResponse>(HttpMethod method, string path, TBody body, CancellationToken ct = default);
     Task<TResponse?> SendAsync<TResponse>(HttpMethod method, string path, CancellationToken ct = default);
+    Task<TResponse?> SendIdempotentAsync<TResponse>(
+        HttpMethod method,
+        string path,
+        Guid operationId,
+        CancellationToken ct = default);
+    Task<TResponse?>
+        SendWithTicketTransferCapabilityAsync<
+            TBody,
+            TResponse>(
+                HttpMethod method,
+                string path,
+                TBody body,
+                string? capability,
+                CancellationToken ct = default);
     Task<BffRegistrationPaymentCheckoutTicketResponseDto?> IssueRegistrationPaymentCheckoutTicketAsync(
         string path, string? guestCapability, CancellationToken ct = default);
 }
@@ -42,6 +64,55 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
 
     public Task<T?> GetAsync<T>(string path, CancellationToken ct = default) =>
         _http.GetFromJsonAsync<T>(path, ct);
+
+    public async Task<T?>
+        GetWithRegistrationOrderCapabilityAsync<T>(
+            string path,
+            string? capability,
+            CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            path);
+        if (!string.IsNullOrWhiteSpace(capability))
+        {
+            request.Headers.Add(
+                "X-Registration-Order-Capability",
+                capability);
+        }
+        using HttpResponseMessage response =
+            await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>(
+            ct);
+    }
+
+    public async Task<T?>
+        GetWithTicketTransferCapabilityAsync<T>(
+            string path,
+            string? capability,
+            CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            path);
+        AddTicketTransferCapability(
+            request,
+            capability);
+        using HttpResponseMessage response =
+            await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>(
+            ct);
+    }
 
     // ── Mutating verbs ───────────────────────────────────────────────────
 
@@ -92,6 +163,59 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
         }
 
         return await response.Content.ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    public async Task<TResponse?>
+        SendIdempotentAsync<TResponse>(
+            HttpMethod method,
+            string path,
+            Guid operationId,
+            CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            method,
+            path);
+        request.Headers.Add(
+            "Idempotency-Key",
+            operationId.ToString("D"));
+        using HttpResponseMessage response =
+            await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+        return await response.Content
+            .ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    public async Task<TResponse?>
+        SendWithTicketTransferCapabilityAsync<
+            TBody,
+            TResponse>(
+                HttpMethod method,
+                string path,
+                TBody body,
+                string? capability,
+                CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            method,
+            path)
+        {
+            Content = JsonContent.Create(body),
+        };
+        AddTicketTransferCapability(
+            request,
+            capability);
+        using HttpResponseMessage response =
+            await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content
+            .ReadFromJsonAsync<TResponse>(ct);
     }
 
     public async Task<BffRegistrationPaymentCheckoutTicketResponseDto?> IssueRegistrationPaymentCheckoutTicketAsync(
@@ -156,6 +280,18 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
     {
         using var req = new HttpRequestMessage(method, path) { Content = content };
         return await _http.SendAsync(req, ct);
+    }
+
+    private static void AddTicketTransferCapability(
+        HttpRequestMessage request,
+        string? capability)
+    {
+        if (!string.IsNullOrWhiteSpace(capability))
+        {
+            request.Headers.Add(
+                "X-Ticket-Transfer-Capability",
+                capability);
+        }
     }
 
     public async ValueTask DisposeAsync()

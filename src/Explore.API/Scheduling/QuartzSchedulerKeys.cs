@@ -34,6 +34,7 @@ public static class QuartzSchedulerKeys
     /// <summary>Matches the ten-second cadence of the polling worker this job replaced.</summary>
     public const string RegistrationFinalizationDrainCron = "*/10 * * * * ?";
     public const string PaymentReconciliationDrainCron = "*/30 * * * * ?";
+    public const string FairReturnOrchestrationCron = "*/15 * * * * ?";
     public const string RegistrationProviderSubmissionWriteDrainCron = "*/10 * * * * ?";
     public const string RegistrationProviderSubscriptionLifecycleDrainCron = "*/30 * * * * ?";
 
@@ -81,6 +82,8 @@ public static class QuartzSchedulerKeys
 
     public static readonly JobKey PaymentReconciliationDrain =
         new(ScheduledJobNames.PaymentReconciliationDrain, RecurringGroup);
+    public static readonly JobKey FairReturnOrchestration =
+        new(ScheduledJobNames.FairReturnOrchestration, RecurringGroup);
     public static readonly JobKey RegistrationProviderSubmissionWriteDrain =
         new(ScheduledJobNames.RegistrationProviderSubmissionWriteDrain, RecurringGroup);
     public static readonly JobKey RegistrationProviderSubscriptionLifecycleDrain =
@@ -119,6 +122,7 @@ public static class QuartzSchedulerKeys
         InventoryHoldExpiryReconciliation,
         RegistrationFinalizationDrain,
         PaymentReconciliationDrain,
+        FairReturnOrchestration,
         RegistrationProviderSubmissionWriteDrain,
         RegistrationProviderSubscriptionLifecycleDrain,
         IntegrationSyncDrain,

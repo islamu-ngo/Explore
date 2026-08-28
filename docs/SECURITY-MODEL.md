@@ -6,12 +6,20 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-08-09
+> **Last Verified:** 2026-08-27
 > **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/Scheduling/MaintenanceSweepJobs.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
 ## Paid Commerce Trust Boundary
 
 Paid acceptance is tenant-qualified immutable evidence, not a browser claim. Official-instance status and operator identity come only from instance-owned server configuration; merchant/organizer identity remains separate. Every new claim and provider handoff requires a current acceptance revision and the exact persisted provider/policy/composition facts. Missing evidence, policy review requirements, or global/event stop-sale removes HAL sale affordances and blocks direct endpoints. Existing signed webhook intake, reconciliation, support, refund paths, and reads intentionally remain available during stop-sale.
+
+### Purchase Authority Boundary
+
+`ReserveTicketPurchaseCommandHandler` accepts event, order, policy, access-mode, actor-selector, and transport operation-key inputs, but no tenant, account, enforcement-key, verified-contact hash, or quantity authority. It manually validates the request, resolves tenant from `ITenantContext`, derives quantity from persisted order lines, and delegates actor/contact resolution to `TicketPurchaseAuthorityResolver`.
+
+Authenticated personal and group/organization purchases share the acting account as their hard-ceiling key while retaining the independently authorized actor as pinned context. This blocks context switching without collapsing unrelated members of the same group. Verified-contact mode requires the order's persisted `IsEmailVerified` fact and hashes its normalized email immediately. Name-only mode is bound to one order and intentionally has no hard cross-order identity claim.
+
+The persistence boundary stores immutable policy lineage, cumulative authority usage, and a tenant-qualified operation key/fingerprint. Canonically ordered PostgreSQL advisory locks are acquired before the serializable snapshot so a waiter observes the winner. A replay with the exact fingerprint is safe; changed scope returns a stable conflict. No provider API, email, webhook, or other external I/O runs in that transaction, and failure output contains only generic codes plus the non-sentinel order identity.
 
 ## Security Model
 
@@ -66,6 +74,32 @@ Standalone reduces deployment and operational isolation: UI and API availability
 Across the three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`), AppHost defaults to Split and explicit Standalone uses `WithHttpEndpoint(name: "http")` for a dynamic/non-guaranteed internal HTTP endpoint plus explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180`. Returning to Split changes topology only, not data. Standalone does not select SQLite or provide `docker-compose.yml`. The canonical protected surface is `/api/...` with non-URL API versioning, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
 
 Topology rollback is process-level only: `Hosting:Topology` controls how local AppHost composes processes and does not reverse migrations or data commits. For schema/data rollback after topologies are switched, use the migration backup/restore workflow.
+
+## Participant Admission Readiness Boundary
+
+`ParticipantAdmissionEligibility` is the non-PII authority projection for one tenant-qualified ticket assignment and participant. It records subject linkage, completion time, a canonical consent-record reference, approval, and terminal revocation. Typed answers and consent text remain in the existing registration evidence aggregates.
+
+`ParticipantAdmissionReadinessRules` is the sole Domain decision surface. It evaluates confirmed-order authority, payment, subject ownership, mandatory completion, consent, approval, and revocation. `AdmissionIssuanceRepository` and `AdmissionCheckInRepository` receive the same `IParticipantAdmissionReadinessAuthority` and evaluate it inside their existing transaction after acquiring the assignment fence.
+
+Subject completion derives the account from `ICurrentUserService`; organizer decisions derive the tenant-local actor from `IActorRepository`. Public command contracts carry only event, order, assignment, and participant UUIDs. They cannot supply tenant, subject account, operator actor, answers, consent text, payment state, or readiness disposition.
+
+Approval revocation also transitions an existing active `AdmissionTicket` to revoked inside the same unit of work. Scanner callers receive only bounded admission outcomes, not the missing completion, consent, or approval detail.
+
+The private HTTP resource is exact-scoped by event, order, participant, and assignment. It returns only assignment identity, a bounded readiness code, a bounded support code, active-credential availability, and server-authorized HAL actions. Account ownership, linked-subject identity, organizer permission, and guest capability are resolved in the Application layer; absent and invalid capability variants collapse to the same not-found response. Every success and failure is `private, no-store` with `no-referrer`.
+
+The same-origin BFF forwards reads through the generated client and carries a guest order capability only in the dedicated request header. Completion, approval, and revocation require cookie authority, antiforgery before rate limiting, and the API's independent authorization. Incoming browser tenant headers and body authority are ignored because the BFF route contains only resource lineage.
+
+## Ticket Transfer And Credential Rotation Boundary
+
+`TicketTransferPolicy` is catalog-versioned configuration for one tenant and ticket type. `AdmissionTicketTransfer` is the append-only offer/acceptance record; it stores source and recipient subject references, bounded status/timestamps, the offered credential generation, and only a claim-capability digest. The active `AdmissionTicket` remains the holder and credential authority.
+
+Transfer persistence uses the shared admission fence in canonical assignment → eligibility → ticket → transfer order. Under that fence, acceptance validates the current capability, expiry, hop, generation, check-in state, and recipient ownership before atomically changing holder, moving readiness to the recipient, rotating the keyed credential digest, invalidating active recovery capabilities, consuming the claim, and staging pointer-only outbox notification evidence. Cancellation, correction, reissue, revocation, recovery, and check-in use compatible ordering, so a concurrent loser returns a bounded outcome rather than overwriting the winner.
+
+Commerce does not move with the holder. Registration order, purchaser account, order line, amount, currency, payment/refund allocation, and append-only check-in history remain unchanged. The transfer response exposes only transfer/ticket identifiers, a closed status code, a closed support code, hop, expiry, credential generation, and server-computed HAL relations. It contains no tenant, account, participant, purchaser, payment, contact, or capability identity.
+
+Application CQRS handlers derive tenant, account, time, event start, operation identity, capability hash, and credential material server-side. Claim capabilities are high-entropy exact-resource values persisted only as digests and consumed once. Absent, malformed, expired, consumed, stale-generation, wrong-resource, and wrong-tenant attempts collapse to generic private unavailable responses. Replacement admission credentials are likewise stored only as keyed digests; plaintext is returned once in the dedicated redacted response contract.
+
+The same-origin transfer BFF forwards only through `IEventApiClient`. The claim crosses browser and API boundaries exclusively in `X-Ticket-Transfer-Capability`; tenant headers and body authority are ignored. Writes require cookie authorization, antiforgery before partitioned rate limiting, and API reauthorization. The optional startup configuration `RateLimiting:TicketTransferWrite:PermitLimit` / `WindowSeconds` defaults to 10 requests per 60 seconds and is clamped to 1–100 permits and 1–3,600 seconds; it contains no secret and requires process restart to change. All transfer responses, including authentication and antiforgery short-circuits, are `private, no-store` with `no-referrer`. The Blazor client calls only the BFF and renders offer, accept, cancel, correction, and reissue controls solely from HAL relations.
 
 ## Privacy-erasure Authority Boundary
 

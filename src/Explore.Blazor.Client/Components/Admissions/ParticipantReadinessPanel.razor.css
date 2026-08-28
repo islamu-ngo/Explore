@@ -1,0 +1,53 @@
+/* ABOUTME: Styles bounded readiness state and actions with logical RTL-safe spacing. */
+/* ABOUTME: Keeps status, support, and error emphasis legible without exposing hidden details. */
+
+.participant-readiness {
+    border-inline-start: 0.25rem solid var(--mud-palette-lines-default);
+    margin-block: 1rem;
+    margin-inline: 0;
+    padding-block: 0.75rem;
+    padding-inline: 1rem;
+}
+
+.participant-readiness__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-block: 0 0.5rem;
+    margin-inline: 0;
+}
+
+.participant-readiness__state,
+.participant-readiness__support,
+.participant-readiness__outcome {
+    margin-block: 0.5rem;
+    margin-inline: 0;
+}
+
+.participant-readiness__state--error,
+.participant-readiness__action--danger {
+    color: var(--mud-palette-error);
+}
+
+.participant-readiness__action {
+    background: var(--mud-palette-primary);
+    border: 0;
+    border-radius: var(--mud-default-borderradius);
+    color: var(--mud-palette-primary-text);
+    cursor: pointer;
+    margin-block: 0.5rem 0;
+    margin-inline: 0 0.5rem;
+    min-block-size: 2.75rem;
+    padding-block: 0.5rem;
+    padding-inline: 1rem;
+}
+
+.participant-readiness__action:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.participant-readiness__action:focus-visible,
+.participant-readiness__outcome:focus-visible {
+    outline: 0.1875rem solid var(--mud-palette-primary);
+    outline-offset: 0.125rem;
+}

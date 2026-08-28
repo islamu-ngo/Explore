@@ -85,6 +85,15 @@ public sealed class ScheduledJobRegistry : IScheduledJobRegistry
             "Drains durable Checkout dispatch and retrieves authoritative provider payment state.",
             "*/30 * * * * ?"),
         new(
+            ScheduledJobNames.FairReturnOrchestration,
+            "FairReturn",
+            ScheduledJobScheduleKind.Cron,
+            ScheduledJobPayloadKind.PointerOnly,
+            ScheduledJobOperationalStatus.Implemented,
+            "Wakes the durable fair-return payment " +
+            "settlement and refund-intent drain.",
+            "*/15 * * * * ?"),
+        new(
             ScheduledJobNames.RegistrationProviderSubmissionWriteDrain,
             "RegistrationProvider",
             ScheduledJobScheduleKind.Cron,

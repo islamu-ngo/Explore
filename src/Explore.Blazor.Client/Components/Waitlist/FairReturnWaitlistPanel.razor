@@ -1,0 +1,344 @@
+@* ABOUTME: Renders bounded fair-return waitlist state and only server-advertised HAL actions. *@
+@* ABOUTME: Provides localized, deterministic, accessible outcomes without exposing commerce or identities. *@
+@using System.Globalization
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Waitlist
+@inject IFairReturnWaitlistService Waitlist
+@inject ITranslationService Translation
+@inject IAccessibilityFocusService Focus
+@implements IDisposable
+
+<section class="fair-return-waitlist"
+         data-testid="fair-return-waitlist"
+         aria-labelledby="@TitleId"
+         aria-busy="@_isBusy">
+    <h4 id="@TitleId"
+        class="fair-return-waitlist__title">
+        @Text("waitlist_title", "Waitlist")
+    </h4>
+
+    @if (_isLoading)
+    {
+        <div class="fair-return-waitlist__loading"
+             role="status"
+             aria-live="polite">
+            @Text("waitlist_loading", "Loading")
+        </div>
+    }
+    else if (_resource is null)
+    {
+        <div class="fair-return-waitlist__state"
+             role="status"
+             aria-live="polite">
+            @Text("waitlist_unavailable", "Unavailable")
+        </div>
+    }
+    else
+    {
+        <dl class="fair-return-waitlist__facts">
+            <div>
+                <dt>@Text("waitlist_status", "Status")</dt>
+                <dd>@StateText(_resource.StatusCode)</dd>
+            </div>
+            <div>
+                <dt>@Text("waitlist_position", "Position")</dt>
+                <dd>@PositionText(_resource.Position)</dd>
+            </div>
+            <div>
+                <dt>@Text("waitlist_reason", "Reason")</dt>
+                <dd>@StateText(_resource.ReasonCode)</dd>
+            </div>
+        </dl>
+
+        <div class="fair-return-waitlist__actions">
+            @if (HasLink(JoinRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="JoinAsync">
+                    @Text("waitlist_join", "Join")
+                </button>
+            }
+            @if (HasLink(LeaveRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="LeaveAsync">
+                    @Text("waitlist_leave", "Leave")
+                </button>
+            }
+            @if (HasLink(AcceptRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="AcceptAsync">
+                    @Text("waitlist_accept", "Accept")
+                </button>
+            }
+            @if (HasLink(WithdrawRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="WithdrawAsync">
+                    @Text("waitlist_withdraw", "Withdraw")
+                </button>
+            }
+        </div>
+    }
+
+    <p id="@OutcomeId"
+       class="fair-return-waitlist__outcome"
+       role="status"
+       aria-live="polite"
+       tabindex="-1">
+        @_outcome
+    </p>
+</section>
+
+@code {
+    private const int PositionUnavailable = 0;
+    private const string JoinRelation =
+        "join-fair-return-waitlist";
+    private const string LeaveRelation =
+        "leave-fair-return-waitlist";
+    private const string AcceptRelation =
+        "accept-fair-return-offer";
+    private const string WithdrawRelation =
+        "withdraw-fair-return-supply";
+
+    [Parameter, EditorRequired]
+    public Guid EventId { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid RegistrationOrderId { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid RegistrationOrderLineId { get; set; }
+
+    [Parameter]
+    public string? Capability { get; set; }
+
+    private HalResourceOfFairReturnWaitlistDto? _resource;
+    private CancellationTokenSource? _operation;
+    private readonly WaitlistMutationOperationLease
+        _mutationOperation = new();
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private string _outcome = string.Empty;
+    private string TitleId =>
+        $"waitlist-title-{RegistrationOrderLineId:N}";
+    private string OutcomeId =>
+        $"waitlist-outcome-{RegistrationOrderLineId:N}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = new CancellationTokenSource();
+        _isLoading = true;
+        try
+        {
+            _resource = await Waitlist.GetAsync(
+                EventId,
+                RegistrationOrderId,
+                RegistrationOrderLineId,
+                Capability,
+                _operation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private bool HasLink(string relation) =>
+        _resource?._links?.ContainsKey(relation)
+        == true;
+
+    private Task JoinAsync() =>
+        MutateAsync(
+            MutationKey("join"),
+            (operationId, token) =>
+            Waitlist.JoinAsync(
+                EventId,
+                RegistrationOrderId,
+                RegistrationOrderLineId,
+                operationId,
+                token));
+
+    private Task LeaveAsync() =>
+        MutateAsync(
+            MutationKey("leave"),
+            (operationId, token) =>
+            Waitlist.LeaveAsync(
+                EventId,
+                RegistrationOrderId,
+                RegistrationOrderLineId,
+                operationId,
+                token));
+
+    private Task AcceptAsync()
+    {
+        Guid? id = LinkGuid(
+            AcceptRelation,
+            "offers");
+        return id.HasValue
+            ? MutateAsync(
+                MutationKey("accept", id.Value),
+                (operationId, token) =>
+                Waitlist.AcceptOfferAsync(
+                    EventId,
+                    RegistrationOrderId,
+                    RegistrationOrderLineId,
+                    id.Value,
+                    operationId,
+                    token))
+            : Task.CompletedTask;
+    }
+
+    private Task WithdrawAsync()
+    {
+        Guid? id = LinkGuid(
+            WithdrawRelation,
+            "supply");
+        return id.HasValue
+            ? MutateAsync(
+                MutationKey("withdraw", id.Value),
+                (operationId, token) =>
+                Waitlist.WithdrawSupplyAsync(
+                    EventId,
+                    RegistrationOrderId,
+                    RegistrationOrderLineId,
+                    id.Value,
+                    operationId,
+                    token))
+            : Task.CompletedTask;
+    }
+
+    private async Task MutateAsync(
+        string operationKey,
+        Func<Guid, CancellationToken,
+            Task<HalResourceOfFairReturnWaitlistDto?>>
+            mutate)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = new CancellationTokenSource();
+        _isBusy = true;
+        _outcome = string.Empty;
+        try
+        {
+            Guid operationId =
+                _mutationOperation.Acquire(
+                    operationKey);
+            HalResourceOfFairReturnWaitlistDto?
+                updated = await mutate(
+                    operationId,
+                    _operation.Token);
+            _mutationOperation.Complete(
+                operationKey);
+            if (updated is not null)
+            {
+                _resource = updated;
+                _outcome = Text(
+                    "waitlist_action_succeeded",
+                    "Updated");
+            }
+            else
+            {
+                _outcome = Text(
+                    "waitlist_action_unavailable",
+                    "Unavailable");
+            }
+            await Focus.FocusAsync(
+                $"#{OutcomeId}");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private string MutationKey(
+        string action,
+        Guid? targetId = null) =>
+        $"{EventId:N}:{RegistrationOrderId:N}:" +
+        $"{RegistrationOrderLineId:N}:{action}:" +
+        $"{targetId?.ToString("N") ?? string.Empty}";
+
+    private Guid? LinkGuid(
+        string relation,
+        string segment)
+    {
+        if (_resource?._links is not { } links
+            || !links.TryGetValue(
+                relation,
+                out HalLink? link)
+            || !Uri.TryCreate(
+                link.Href,
+                UriKind.RelativeOrAbsolute,
+                out Uri? uri))
+        {
+            return null;
+        }
+        string path = uri.IsAbsoluteUri
+            ? uri.AbsolutePath
+            : uri.OriginalString.Split(
+                '?',
+                StringSplitOptions.RemoveEmptyEntries)[0];
+        string[] parts = path.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries);
+        int index = Array.FindIndex(
+            parts,
+            value => string.Equals(
+                value,
+                segment,
+                StringComparison.OrdinalIgnoreCase));
+        return index >= 0
+            && index + 1 < parts.Length
+            && Guid.TryParse(
+                parts[index + 1],
+                out Guid id)
+                ? id
+                : null;
+    }
+
+    private string PositionText(int position) =>
+        position == PositionUnavailable
+            ? Text(
+                "waitlist_position_unavailable",
+                "Unavailable")
+            : position.ToString(
+                CultureInfo.CurrentCulture);
+
+    private string StateText(string code) =>
+        Text(
+            $"waitlist_state_{code.ToLowerInvariant()}",
+            code.Replace(
+                '_',
+                ' ').ToLowerInvariant());
+
+    private string Text(
+        string key,
+        string fallback) =>
+        Translation.T(key, fallback);
+
+    public void Dispose()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+}

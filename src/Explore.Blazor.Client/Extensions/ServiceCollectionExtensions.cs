@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Services.Admissions;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Admissions;
 using Explore.Blazor.Client.Contracts.Services.Ai;
@@ -20,8 +21,10 @@ using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Contracts.Services.Webhooks;
+using Explore.Blazor.Client.Contracts.Services.Waitlist;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Admissions;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Admissions;
 using Explore.Blazor.Client.Services.Ai;
@@ -36,6 +39,7 @@ using Explore.Blazor.Client.Services.Lookup;
 using Explore.Blazor.Client.Services.Scheduling;
 using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Services.Webhooks;
+using Explore.Blazor.Client.Services.Waitlist;
 using Microsoft.Extensions.DependencyInjection;
 using ExploreControlPlaneApiAdapter = Explore.Blazor.Client.Services.ControlPlane.ControlPlaneApiAdapter;
 
@@ -148,6 +152,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
         services.AddScoped<IEventTeamService, EventTeamService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
+        services.AddScoped<
+            ITicketPurchaseGovernanceService,
+            TicketPurchaseGovernanceService>();
+        services.AddScoped<
+            IParticipantReadinessService,
+            ParticipantReadinessService>();
+        services.AddScoped<
+            ITicketTransferService,
+            TicketTransferService>();
+        services.AddScoped<
+            IFairReturnWaitlistService,
+            FairReturnWaitlistService>();
 
         // Notification services
         services.AddScoped<INotificationService, NotificationService>();

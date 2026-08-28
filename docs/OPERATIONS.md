@@ -635,6 +635,8 @@ For a provider incident:
 
 GitHub Actions deploys use the `staging` and `production` environments. Configure environment rules in GitHub repository settings, not in application runtime configuration. Code scanning is owned by the `CodeQL Advanced` workflow; keep GitHub CodeQL default setup disabled so advanced SARIF uploads are accepted:
 
+Tier 0-2 implementation phases also produce machine-consumed evidence before phase closeout. Store Stryker JSON beneath the active workstream's `evidence/<phase>/<layer>/reports/mutation-report.json` path and require the declared break threshold in the command itself. Scope mutation to the source hunks introduced by the phase; a score diluted by unrelated legacy source is not evidence about the change. TUnit runs on Microsoft.Testing.Platform and does not support VSTest `--filter`; when unrelated baseline failures prevent Stryker's initial run, use a dedicated project that links the canonical focused tests, following `Event.Application.Phase20.MutationTests`, rather than skipping or copying tests. Store anonymized MAD output as structured YAML with specialist proposals, concrete invariant-breaker tests, weighted votes, and no unresolved critical finding. Architecture evidence contracts validate fields and sentinel values rather than prose or prompt wording.
+
 - `production` should require reviewer approval and restrict deployments to `main` and version tags.
 - `staging` should use environment-scoped secrets and can deploy automatically from `develop` unless the release process requires review.
 - Store Coolify webhook URLs and bearer tokens as environment secrets. Do not print webhook URLs or tokens in workflow logs.
@@ -1134,6 +1136,7 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `privacy-erasure-credential-cleanup` | Interval, `PrivacyErasure:ProviderPollingInterval` | None | Expired provider credentials/locators |
 | `organizer-payment-readiness-reconciliation` | Interval, `OrganizerPaymentReadinessReconciliation:PollingIntervalSeconds` | None | Stale organizer payment connections |
 | `payment-reconciliation-drain` | Cron `*/30 * * * * ?` (every 30 seconds) | None | Durable Checkout dispatch and payment-reconciliation effects |
+| `fair-return-orchestration` | Cron `*/15 * * * * ?` (every 15 seconds) | Optional effect UUID only | Durable replacement-settlement and refund-intent effects |
 | `inventory-hold-expiry` | One-off time trigger, per order | Pointer-only IDs | The order's earliest `RegistrationInventoryHold.ExpiresAt` |
 | `inventory-hold-expiry-reconciliation` | Cron `0 */5 * * * ?` (every 5 minutes) | None | Expired active holds and hold-expiry recovery targets |
 | `registration-finalization-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | Durable registration-finalization effect claims |
@@ -1148,6 +1151,8 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 Planned-only jobs are `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. General outbox remains the explicit hosted-service exception and has no Quartz catalog identity.
 
 `payment-reconciliation-drain` performs a dispatch/reconcile/dispatch pass. Missing or invalid `PublicBaseUrl` defers only new Checkout handoff; provider reconciliation still runs. Keep the scheduler enabled after disabling paid sales so retained attempts and late signed evidence can settle.
+
+`fair-return-orchestration` claims at most 10,000 effects per pass using stable cursor order and bounded round-robin tenant selection. Its Quartz payload may contain only `effect_id`; payment, refund, participant, provider payload, and bearer data remain durable and are never scheduled. The health check publishes fixed pending, processing, unknown, dead-letter, and oldest-age fields. Keep this job running after stopping new waitlist allocation so ambiguous replacement payments and refunds can reconcile forward.
 
 For an IntegrationSync row reported as ambiguous by `/health` under `queue-drains`, establish provider evidence before acting. Use the tenant-authenticated `POST /api/integrations/listmonk/queue/{outboxId}/resolve` endpoint with an opaque incident/evidence reference. `ConfirmAccepted` settles without replay; `RetryDefinitelyNotAccepted` schedules a retry only after proof the provider did not accept the POST; `DeadLetter` preserves the terminal refusal. Never select retry from timeout or response-loss evidence alone.
 

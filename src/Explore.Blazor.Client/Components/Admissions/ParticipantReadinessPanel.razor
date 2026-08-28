@@ -1,0 +1,308 @@
+@* ABOUTME: Renders one bounded participant readiness resource and only its HAL-advertised actions. *@
+@* ABOUTME: Provides localized dignified state, deterministic pending behavior, and accessible outcomes. *@
+@using Explore.Blazor.Client.Contracts.Services.Admissions
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject IParticipantReadinessService Readiness
+@inject ITranslationService Translation
+@inject IAccessibilityFocusService Focus
+@implements IDisposable
+
+<section class="participant-readiness"
+         data-testid="participant-readiness"
+         aria-labelledby="@TitleId">
+    <h4 id="@TitleId"
+        class="participant-readiness__title">
+        @Text("participant_readiness_title", "Admission readiness")
+    </h4>
+
+    @if (_isLoading)
+    {
+        <div class="participant-readiness__state"
+             role="status">
+            @Text("participant_readiness_loading", "Checking admission readiness…")
+        </div>
+    }
+    else if (_resource is null)
+    {
+        <div class="participant-readiness__state participant-readiness__state--error"
+             role="alert"
+             data-readiness-state="unavailable">
+            @Text("participant_readiness_unavailable", "Admission readiness is temporarily unavailable.")
+        </div>
+    }
+    else
+    {
+        <div class="participant-readiness__state"
+             role="status"
+             data-readiness-code="@_resource.StatusCode">
+            @StatusText(_resource.StatusCode)
+        </div>
+
+        @if (_resource.SupportCode is not "none")
+        {
+            <div class="participant-readiness__support"
+                 data-support-code="@_resource.SupportCode">
+                @SupportText(_resource.SupportCode)
+            </div>
+        }
+
+        @if (HasRelation(CompleteRelation))
+        {
+            <button type="button"
+                    class="participant-readiness__action"
+                    data-relation="@CompleteRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(CompleteRelation))">
+                @Text("participant_readiness_complete", "Complete readiness")
+            </button>
+        }
+        @if (HasRelation(ApproveRelation))
+        {
+            <button type="button"
+                    class="participant-readiness__action"
+                    data-relation="@ApproveRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(ApproveRelation))">
+                @Text("participant_readiness_approve", "Approve readiness")
+            </button>
+        }
+        @if (HasRelation(RevokeRelation))
+        {
+            <button type="button"
+                    class="participant-readiness__action participant-readiness__action--danger"
+                    data-relation="@RevokeRelation"
+                    aria-describedby="@OutcomeId"
+                    disabled="@_isBusy"
+                    @onclick="@(() => ExecuteAsync(RevokeRelation))">
+                @Text("participant_readiness_revoke", "Revoke admission")
+            </button>
+        }
+
+        @if (_outcome is not null)
+        {
+            <div id="@OutcomeId"
+                 class="participant-readiness__outcome"
+                 role="@(_outcomeIsError ? "alert" : "status")"
+                 aria-live="@(_outcomeIsError ? "assertive" : "polite")"
+                 tabindex="-1">
+                @_outcome
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private const string CompleteRelation =
+        "complete-participant-readiness";
+    private const string ApproveRelation =
+        "approve-participant-readiness";
+    private const string RevokeRelation =
+        "revoke-participant-readiness";
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid OrderId { get; set; }
+    [Parameter] public Guid ParticipantId { get; set; }
+    [Parameter] public Guid AssignmentId { get; set; }
+    [Parameter] public string? GuestCapability { get; set; }
+
+    private HalResourceOfParticipantReadinessDto? _resource;
+    private CancellationTokenSource? _operation;
+    private bool _isLoading;
+    private bool _isBusy;
+    private bool _disposed;
+    private long _generation;
+    private string? _outcome;
+    private bool _outcomeIsError;
+
+    private string TitleId =>
+        $"participant-readiness-title-{AssignmentId:N}";
+    private string OutcomeId =>
+        $"participant-readiness-outcome-{AssignmentId:N}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        CancelOperation();
+        long generation = ++_generation;
+        _resource = null;
+        _outcome = null;
+        _isLoading = true;
+        _operation = new CancellationTokenSource();
+        try
+        {
+            HalResourceOfParticipantReadinessDto? resource =
+                await Readiness.GetAsync(
+                    EventId,
+                    OrderId,
+                    ParticipantId,
+                    AssignmentId,
+                    GuestCapability,
+                    _operation.Token);
+            if (!_disposed && generation == _generation)
+            {
+                _resource = resource;
+            }
+        }
+        catch (OperationCanceledException)
+            when (_operation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (!_disposed && generation == _generation)
+            {
+                _isLoading = false;
+            }
+        }
+    }
+
+    private async Task ExecuteAsync(string relation)
+    {
+        if (_isBusy || !HasRelation(relation))
+        {
+            return;
+        }
+
+        CancelOperation();
+        long generation = ++_generation;
+        _operation = new CancellationTokenSource();
+        _isBusy = true;
+        _outcome = null;
+        try
+        {
+            HalResourceOfParticipantReadinessDto? updated =
+                relation switch
+                {
+                    CompleteRelation =>
+                        await Readiness.CompleteAsync(
+                            EventId,
+                            OrderId,
+                            ParticipantId,
+                            AssignmentId,
+                            _operation.Token),
+                    ApproveRelation =>
+                        await Readiness.ApproveAsync(
+                            EventId,
+                            OrderId,
+                            ParticipantId,
+                            AssignmentId,
+                            _operation.Token),
+                    RevokeRelation =>
+                        await Readiness.RevokeAsync(
+                            EventId,
+                            OrderId,
+                            ParticipantId,
+                            AssignmentId,
+                            _operation.Token),
+                    _ => null,
+                };
+            if (_disposed || generation != _generation)
+            {
+                return;
+            }
+
+            _resource = updated ?? _resource;
+            _outcomeIsError = updated is null;
+            _outcome = updated is null
+                ? Text(
+                    "participant_readiness_action_failed",
+                    "Admission readiness could not be updated.")
+                : Text(
+                    "participant_readiness_action_succeeded",
+                    "Admission readiness updated.");
+            await InvokeAsync(StateHasChanged);
+            if (_outcomeIsError)
+            {
+                await Focus.FocusAsync($"#{OutcomeId}");
+            }
+        }
+        catch (OperationCanceledException)
+            when (_operation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (!_disposed && generation == _generation)
+            {
+                _isBusy = false;
+            }
+        }
+    }
+
+    private bool HasRelation(string relation) =>
+        _resource?._links?.ContainsKey(relation) == true;
+
+    private string StatusText(string? code) =>
+        code switch
+        {
+            "ready" when
+                _resource?.ActiveAdmissionAvailable == true =>
+                Text(
+                    "participant_readiness_ready",
+                    "Ready for admission."),
+            "ready" =>
+                Text(
+                    "participant_readiness_credential_pending",
+                    "Your admission credential is being prepared."),
+            "order_not_confirmed" or "payment_pending" =>
+                Text(
+                    "participant_readiness_registration_pending",
+                    "Registration is still being finalized."),
+            "subject_ownership_pending"
+                or "participant_completion_pending" =>
+                Text(
+                    "participant_readiness_completion_pending",
+                    "Complete the participant steps required for admission."),
+            "subject_consent_pending" =>
+                Text(
+                    "participant_readiness_step_pending",
+                    "A required participant step is incomplete."),
+            "approval_pending" =>
+                Text(
+                    "participant_readiness_approval_pending",
+                    "Waiting for organizer review."),
+            "revoked" =>
+                Text(
+                    "participant_readiness_revoked",
+                    "Admission is unavailable. Contact the organizer for help."),
+            _ =>
+                Text(
+                    "participant_readiness_unknown",
+                    "Admission readiness is temporarily unavailable."),
+        };
+
+    private string SupportText(string? code) =>
+        code switch
+        {
+            "credential_pending" =>
+                Text(
+                    "participant_readiness_support_credential",
+                    "No action is needed while the credential is prepared."),
+            "contact_organizer" =>
+                Text(
+                    "participant_readiness_support_contact",
+                    "Contact the event organizer for private assistance."),
+            _ =>
+                Text(
+                    "participant_readiness_support_action",
+                    "Follow the available action or contact the organizer."),
+        };
+
+    private string Text(string key, string fallback) =>
+        Translation.T(key, fallback);
+
+    private void CancelOperation()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = null;
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ++_generation;
+        CancelOperation();
+    }
+}

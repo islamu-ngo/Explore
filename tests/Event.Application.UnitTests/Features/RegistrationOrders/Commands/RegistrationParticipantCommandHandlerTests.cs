@@ -2,6 +2,7 @@
 // ABOUTME: Covers family assignments, bulk company payloads, and confirmed-order assignment amendments.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
@@ -260,6 +261,8 @@ public sealed class RegistrationParticipantCommandHandlerTests
         private readonly IPlatformContributionSettingRepository _contributions = Substitute.For<IPlatformContributionSettingRepository>();
         private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
         private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        private readonly IRegistrationOrderTransitionCoordinator _transitions =
+            Substitute.For<IRegistrationOrderTransitionCoordinator>();
         private readonly InlineUnitOfWork _unitOfWork = new();
 
         public HandlerFixture(
@@ -305,7 +308,16 @@ public sealed class RegistrationParticipantCommandHandlerTests
             _currentUser.UserId.Returns(Guid.CreateVersion7());
             _currentUser.IsAuthenticated.Returns(true);
             var commandService = new RegistrationParticipantCommandService(
-                _inventory, _participants, _catalogs, _sessions, _currentUser, new TenantContext(TenantId), _unitOfWork, new FixedTimeProvider(UtcNow));
+                _inventory,
+                _participants,
+                _catalogs,
+                _sessions,
+                Substitute.For<
+                    IParticipantAdmissionEligibilityRepository>(),
+                _currentUser,
+                new TenantContext(TenantId),
+                _unitOfWork,
+                new FixedTimeProvider(UtcNow));
             Add = new AddRegistrationParticipantCommandHandler(commandService);
             Update = new UpdateRegistrationParticipantCommandHandler(commandService);
             Assign = new AssignRegistrationTicketCommandHandler(commandService);
@@ -318,7 +330,8 @@ public sealed class RegistrationParticipantCommandHandlerTests
                 Substitute.For<IRegistrationPaymentAttemptRepository>(),
                 new NoOpScheduledDeadlineDispatcher(),
                 new FixedTimeProvider(UtcNow),
-                Substitute.For<IPaidOrderAcceptanceService>());
+                Substitute.For<IPaidOrderAcceptanceService>(),
+                _transitions);
         }
 
         public Guid TenantId { get; }
@@ -362,7 +375,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
             _inventory.GetOrderForUpdateWithLinesAsync(Order.Id, TenantId, Arg.Any<CancellationToken>()).Returns(Order);
             _inventory.GetHoldsByOrderAsync(Order.Id, TenantId, Arg.Any<CancellationToken>()).Returns([]);
             _inventory.TryConsumeActiveHoldsForOrderAsync(Order.Id, TenantId, UtcNow, Arg.Any<CancellationToken>()).Returns(0);
-            _inventory.TryTransitionOrderAsync(Order.Id, TenantId, Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<RegistrationOrderStatusEnum>(), UtcNow, Arg.Any<CancellationToken>())
+            _transitions.PersistAsync(Order.Id, TenantId, Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<RegistrationOrderStatusEnum>(), UtcNow, Arg.Any<CancellationToken>())
                 .Returns(call =>
                 {
                     RegistrationOrderStatusEnum expected = call.ArgAt<RegistrationOrderStatusEnum>(2);

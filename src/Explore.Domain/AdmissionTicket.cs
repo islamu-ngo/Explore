@@ -27,6 +27,7 @@ public sealed class AdmissionTicket : ITenantEntity, IAuditableEntity, IConcurre
         Guid ticketCatalogVersionId,
         Guid eventTicketTypeId,
         string displayReference,
+        Guid? participantSubjectUserId,
         DateTime issuedAtUtc)
     {
         Id = id;
@@ -38,6 +39,7 @@ public sealed class AdmissionTicket : ITenantEntity, IAuditableEntity, IConcurre
         ParticipantId = participantId;
         TicketCatalogVersionId = ticketCatalogVersionId;
         EventTicketTypeId = eventTicketTypeId;
+        HolderSubjectUserId = participantSubjectUserId;
         DisplayReference = displayReference;
         AdmissionTicketStatusId = (int)AdmissionTicketStatusEnum.Active;
         LastTransitionReasonId = (int)AdmissionTicketTransitionReasonEnum.Issued;
@@ -64,6 +66,17 @@ public sealed class AdmissionTicket : ITenantEntity, IAuditableEntity, IConcurre
     public Guid RegistrationOrderLineId { get; private set; }
     public Guid RegistrationTicketAssignmentId { get; private set; }
     public Guid ParticipantId { get; private set; }
+    public Guid? HolderSubjectUserId { get; private set; }
+    public int TransferHopCount { get; private set; }
+    public int CredentialGeneration =>
+        _credentials.Count == 0
+            ? 0
+            : _credentials.Max(
+                credential =>
+                    credential.CredentialVersion);
+    public bool IsActive =>
+        AdmissionTicketStatusId ==
+        (int)AdmissionTicketStatusEnum.Active;
     public Guid TicketCatalogVersionId { get; private set; }
     public Guid EventTicketTypeId { get; private set; }
     public string DisplayReference { get; private set; } = string.Empty;
@@ -121,6 +134,7 @@ public sealed class AdmissionTicket : ITenantEntity, IAuditableEntity, IConcurre
             ticketCatalogVersion.Id,
             eventTicketType.Id,
             normalizedDisplayReference,
+            participant.LinkedUserId,
             issuedAt);
         ticket._credentials.Add(new AdmissionTicketCredential(
             credentialId,
@@ -171,6 +185,41 @@ public sealed class AdmissionTicket : ITenantEntity, IAuditableEntity, IConcurre
         current.Revoke(rotatedAt);
         _credentials.Add(replacement);
         RecordMutation(AdmissionTicketTransitionReasonEnum.CredentialRotated, rotatedAt);
+    }
+
+    public void AcceptTransfer(
+        AdmissionTicketTransfer transfer,
+        RegistrationParticipant recipient,
+        Guid recipientSubjectUserId,
+        Guid credentialId,
+        int credentialGeneration,
+        int lookupKeyVersion,
+        string lookupDigest,
+        DateTime acceptedAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(transfer);
+        ArgumentNullException.ThrowIfNull(recipient);
+        transfer.EnsureCanAccept(
+            this,
+            recipient,
+            recipientSubjectUserId,
+            credentialGeneration,
+            acceptedAtUtc);
+        RotateCredential(
+            credentialId,
+            credentialGeneration,
+            lookupKeyVersion,
+            lookupDigest,
+            acceptedAtUtc);
+        transfer.Accept(
+            this,
+            recipient,
+            recipientSubjectUserId,
+            credentialGeneration,
+            acceptedAtUtc);
+        ParticipantId = recipient.Id;
+        HolderSubjectUserId = recipientSubjectUserId;
+        TransferHopCount = transfer.TransferHop;
     }
 
     public bool ValidatesCredential(int credentialVersion, int lookupKeyVersion, string lookupDigest)

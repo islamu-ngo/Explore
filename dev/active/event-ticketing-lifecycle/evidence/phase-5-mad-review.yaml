@@ -1,0 +1,62 @@
+# ABOUTME: Structured anonymized MAD review for ticketing lifecycle Phase 5.
+# ABOUTME: Records weighted transfer-fence, commerce-integrity, capability, and browser-boundary closure.
+
+schema_version: 1
+phase: 5
+anonymized: true
+review_mode: weighted_post_hoc
+identity_attribution_count: 0
+proposals:
+  - id: proposal-a
+    lens: domain_commerce_and_postgresql_concurrency
+    weight: 0.60
+    vote: pass
+    argument: Canonical assignment-eligibility-ticket-transfer fencing gives one terminal winner while immutable commerce and append-only check-in lineage survive holder changes
+    invariant_breaker: AcceptanceVersusOldCredentialCheckInHasOneTerminalWinner
+  - id: proposal-b
+    lens: security_privacy_and_browser_transport
+    weight: 0.40
+    vote: pass
+    argument: Digest-only exact-resource claims, generic failures, generated-only forwarding, private caching, and HAL-only controls prevent capability and PII disclosure
+    invariant_breaker: AuthenticatedActionsUseGeneratedClientAndHeaderOnlyCapability
+findings:
+  - id: phase5-finding-001
+    severity: critical
+    status: resolved
+    category: transfer_bff_cache_boundary
+    evidence: Sensitive transfer paths now receive private no-store no-referrer headers before endpoint and authorization short-circuits
+  - id: phase5-finding-002
+    severity: major
+    status: resolved
+    category: unrelated_rate_budget_coupling
+    evidence: Transfer writes now own a distinct stable-user-or-effective-IP fixed-window policy
+  - id: phase5-finding-003
+    severity: major
+    status: resolved
+    category: ui_contract_runtime_coverage
+    evidence: Behavioral bUnit contracts now render HAL actions and exact async focus transitions rather than relying only on source inspection
+  - id: phase5-finding-004
+    severity: critical
+    status: resolved
+    category: stale_credential_race
+    evidence: Real PostgreSQL acceptance-check-in and acceptance-recovery races prove one generation winner and no valid old credential
+  - id: phase5-finding-005
+    severity: critical
+    status: resolved
+    category: commerce_mutation
+    evidence: Transfer acceptance changes holder readiness and credential authority while preserving purchaser order line amount currency payment refund and check-in lineage
+  - id: phase5-finding-006
+    severity: critical
+    status: resolved
+    category: expired_capability_read
+    evidence: Capability reads now require both an open transfer and server-time expiry validation before digest matching
+  - id: phase5-finding-007
+    severity: critical
+    status: resolved
+    category: duplicate_offer_claim_mismatch
+    evidence: Offer handlers reveal newly issued claim plaintext only when that exact offer won persistence and never for an existing open winner
+vote_weight_total: 1.00
+pass_weight: 1.00
+fail_weight: 0.00
+unresolved_critical_count: 0
+decision: pass

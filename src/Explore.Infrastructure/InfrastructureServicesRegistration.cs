@@ -60,6 +60,7 @@ using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
 using Explore.Infrastructure.Webhooks;
 using Explore.Infrastructure.WebPush;
+using Explore.Infrastructure.Waitlist;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
@@ -460,6 +461,23 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IMachinePrincipalAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.AddScoped<IMachinePrincipalExecutionAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddOptions<
+                FairReturnOrchestrationDrainSettings>()
+            .Bind(configuration.GetSection(
+                FairReturnOrchestrationDrainSettings
+                    .SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<
+            IValidateOptions<
+                FairReturnOrchestrationDrainSettings>,
+            FairReturnOrchestrationDrainSettingsValidator>();
+        services.AddScoped<
+            FairReturnOrchestrationDrainService>();
+        services.AddHealthChecks()
+            .AddCheck<
+                FairReturnOrchestrationHealthCheck>(
+                "fair-return-orchestration",
+                tags: ["ready"]);
         services.AddSingleton<IIncomingWebhookClaimExecutor, IncomingWebhookTenantExecutor>();
         services.AddSingleton<IIncomingWebhookDrainService, IncomingWebhookDrainService>();
         services.AddScoped<IIncomingWebhookProcessingService, IncomingWebhookProcessingService>();

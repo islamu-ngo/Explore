@@ -1,0 +1,57 @@
+# ABOUTME: Structured anonymized MAD review for ticketing lifecycle Phase 6.
+# ABOUTME: Records weighted waitlist fairness, orchestration, privacy, and browser-replay closure.
+
+schema_version: 1
+phase: 6
+anonymized: true
+review_mode: weighted_post_hoc
+identity_attribution_count: 0
+proposals:
+  - id: proposal-a
+    lens: commerce_integrity_postgresql_concurrency_and_orchestration
+    weight: 0.60
+    vote: pass
+    argument: Canonical supply-entry-offer fences, exact ten-dimension equivalence, durable effect leases, and settlement-before-refund preserve one allocation authority and prevent commerce substitution or dual writes
+    invariant_breaker: ConcurrentAllocationAndLeaveHaveOneAuthorityWithoutDeadlock
+  - id: proposal-b
+    lens: security_privacy_hal_and_browser_replay
+    weight: 0.40
+    vote: pass
+    argument: Private no-store transport, generated-only forwarding, HAL-only controls, bounded queue output, zero-sentinel telemetry, and stable UUIDv7 retry identity prevent authority leakage and duplicate browser mutations
+    invariant_breaker: AmbiguousRetryReusesOperationUntilCompletion
+findings:
+  - id: phase6-finding-001
+    severity: critical
+    status: resolved
+    category: allocation_leave_lock_inversion
+    evidence: Leave is now a queued-entry-only transition and the real PostgreSQL allocation-versus-leave race proves one coherent authority without entry-to-supply lock inversion
+  - id: phase6-finding-002
+    severity: critical
+    status: resolved
+    category: queue_position_commercial_scope
+    evidence: Queue position now filters purchase policy currency commerce digest entitlement digest gross minor units and refund funding mode in addition to tenant event ticket type and catalog
+  - id: phase6-finding-003
+    severity: critical
+    status: resolved
+    category: ambiguous_browser_retry_identity
+    evidence: WaitlistMutationOperationLease retains one UUIDv7 for the same action target through cancellation or transport failure and rotates only after a definitive response or target change
+  - id: phase6-finding-004
+    severity: major
+    status: resolved
+    category: offered_leave_affordance_mismatch
+    evidence: Application mapping now advertises leave only for queued entries so HAL authority matches the repository transition boundary
+  - id: phase6-finding-005
+    severity: critical
+    status: resolved
+    category: settlement_refund_dual_write
+    evidence: RefundIntentAndOutboxWaitForReplacementSettlement proves replacement settlement precedes one atomic refund intent and outbox publication
+  - id: phase6-finding-006
+    severity: major
+    status: resolved
+    category: fixed_cardinality_drain_observability
+    evidence: TenThousandEffectDrainIsBoundedAndCompletes and TelemetryUsesZeroSentinelAndNoPiiDimensions prove bounded progress and fixed-cardinality zero-sentinel output without participant identifiers
+vote_weight_total: 1.00
+pass_weight: 1.00
+fail_weight: 0.00
+unresolved_critical_count: 0
+decision: pass

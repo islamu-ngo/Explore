@@ -20,7 +20,8 @@ public sealed class RegistrationOrderLinkPolicyTests
         {
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
-            AccountUserId = Guid.CreateVersion7()
+            AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.Draft
         };
 
         var links = CreatePolicy().GetLinks(order, null).ToList();
@@ -44,6 +45,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
             AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.ReadyForCheckout,
             StatusCode = "READY_FOR_CHECKOUT"
         };
 
@@ -72,6 +74,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
             AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.ReadyForCheckout,
             StatusCode = "READY_FOR_CHECKOUT",
             AppliedPromotionDisplayLabel = "Launch discount"
         };
@@ -92,6 +95,7 @@ public sealed class RegistrationOrderLinkPolicyTests
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
             AccountUserId = Guid.CreateVersion7(),
+            StatusId = (int)Explore.Domain.Enums.RegistrationOrderStatusEnum.AwaitingRequirements,
             StatusCode = "AWAITING_REQUIREMENTS"
         };
 

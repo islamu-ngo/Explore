@@ -430,6 +430,7 @@ public sealed class RegistrationOrderControllerTests
         {
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
+            StatusId = (int)RegistrationOrderStatusEnum.ReadyForCheckout,
             StatusCode = "READY_FOR_CHECKOUT"
         };
         mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
@@ -452,6 +453,7 @@ public sealed class RegistrationOrderControllerTests
         {
             Id = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
+            StatusId = (int)RegistrationOrderStatusEnum.ReadyForCheckout,
             StatusCode = "READY_FOR_CHECKOUT",
             AppliedPromotionDisplayLabel = "Launch discount"
         };
