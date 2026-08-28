@@ -3,68 +3,84 @@
 
 # Event Ticketing Lifecycle — Context
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-28 Europe/Brussels
 
 ## Review State
 
-- **Plan revision:** SHA-256 `84bcd73f5d603fcd24f1a4cf9aaeef5e7f041a36e8459b83b173582ea25e24fa`
-- **Tasks revision:** SHA-256 `0373aa09e4555fda371e073eee17ab7b0bb8ebfeaa4c9c5591268f7813b5397b`
+- **Reviewed plan revision:** SHA-256 `84bcd73f5d603fcd24f1a4cf9aaeef5e7f041a36e8459b83b173582ea25e24fa`
+- **Reviewed tasks revision:** SHA-256 `0373aa09e4555fda371e073eee17ab7b0bb8ebfeaa4c9c5591268f7813b5397b`
 - **I-VSD report:** [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md)
 - **I-VSD revision:** SHA-256 `8cbacacba7be2268501ed703337534e3659ea0095812ca074524452249b0b128`
 - **I-VSD status / disposition:** current / plan-aligned.
 - **I-VSD reviewed inputs:** plan `84bcd73f...`; tasks `0373aa09...`.
 - **Clean-room evidence revision:** SHA-256 `7c02d45448df2ba332e5684b5bf0de4d60cc7d002937535179ee2b2fec29168c`
 - **CTO review:** [`event-ticketing-lifecycle-cto-review.md`](event-ticketing-lifecycle-cto-review.md), SHA-256 `135cdc439e63727a0299dea81cea61245e66d9aa41afbdc7437ec89013d9d470`, records fresh read-only **Approve**.
-- **User approval:** exact rewritten revision not yet approved.
+- **User approval:** implementation continuation was approved on 2026-08-27; the delivered ticketing scope was merged into `develop` on 2026-08-28.
+- **Status-update effect on I-VSD:** this reconciliation changes execution status and evidence locations only. It does not change provider-controlled behavior, scenarios, mitigations, or authority boundaries, so the existing I-VSD review remains current under its refresh contract.
 
-## SESSION PROGRESS (2026-08-27 Europe/Brussels)
+## SESSION PROGRESS (2026-08-28 Europe/Brussels)
 
 ### COMPLETED
 
-The forms-focused predecessor remains closed at implemented Phase 21. No successor product code has been implemented.
+The ticketing implementation branch was integrated into `develop` and then removed. Ticketing integration merge `1b754c51d` (`merge(ticketing): finalize generated endpoint contracts`) contains ticketing tip `79c36305d`.
 
-The successor planning artifacts have been materially re-baselined:
+Implemented and merged:
 
-- implementation is a mandatory dependency-bound named PR train from `FND` through `REL`, not an omnibus PR;
-- Phase 0 remediates lifecycle authority debt before adding states;
-- purchase ceilings are honest per access mode;
-- durable business idempotency outlives HTTP middleware retention;
-- transfer, waitlist, add-on, and recovery behaviors now include explicit negative/race/crash scenarios;
-- one canonical transaction/lock order owns high-risk transitions;
-- recovery starts fail-closed and rotates pre-restore bearer authority;
-- tests compile before Red/Green evidence and run at the correct seam;
-- mutation, zero-PII, MAD, deterministic performance/recovery contracts, and selected phase evidence have named ownership;
-- code-comment and canonical `docs/` responsibilities are phase-owned; and
-- protected delayed payout remains absent through a machine-readable release ratchet.
+- Phase 0 lifecycle-authority remediation and architecture ratchets;
+- access-mode-aware purchase governance with durable authority/idempotency;
+- participant admission readiness and subject-correct consent/approval;
+- credential-rotating transfer without resale;
+- deterministic fair-return waitlist/allocation and durable orchestration;
+- API/HAL/OpenAPI, BFF, generated-client, and Blazor surfaces for those capabilities;
+- tenant-scoped persistence and regenerated multi-provider migrations;
+- Phase 0, 1, 3, and 5 mutation/PII/MAD evidence manifests; and
+- generated contract inventory corrections plus convention-owned table naming.
 
-The exact-revision governance gates now have independent evidence:
+Verification recorded during integration:
 
-- I-VSD is `current / plan-aligned` for plan `84bcd73f...` and tasks `0373aa09...`;
-- every `IVSD-F001` through `IVSD-F007` mitigation maps to S1-S7/WB-1 and Tasks 1.1-9.4; and
-- a fresh read-only CTO review approved those exact plan/tasks and I-VSD `8cbacacb...` revisions.
+- Release solution build passed with 0 errors;
+- Domain 1,067 passed; Application 4,819 passed; Infrastructure 1,653 passed;
+- generated contracts 16 passed; Blazor integration 495 passed;
+- focused ticketing persistence 24 passed;
+- ticketing application mutation lane 105 passed and domain mutation lane 31 passed;
+- focused purchase, readiness, admission, transfer, fair-return, HAL, BFF, and component contracts passed; and
+- ticketing-specific architecture failures were cleared, while the full architecture project retained 12 inherited non-ticketing failures.
+
+Post-merge task audit:
+
+- implementation and regression-test surfaces are present through Phase 6;
+- 0/51 task checkboxes are claimed complete because the ledger requires exact task-level evidence, not implementation presence alone;
+- historical RED-before-GREEN assertion-failure transcripts are not retained and must not be fabricated retrospectively;
+- Phase 0, 1, 3, and 5 retain partial critical evidence, but some exact mutation-report paths and focused command transcripts are absent;
+- Phase 2 and 4 retain implemented/tested surfaces without phase evidence manifests; and
+- Phase 6 additionally lacks its evidence manifest, three mutation reports, and deterministic scale transcripts.
 
 ### IN PROGRESS
 
-- No implementation task is active.
-- The next gate is explicit user approval of plan `84bcd73f...`, tasks `0373aa09...`, I-VSD `8cbacacb...`, and CTO review `135cdc43...`.
+- No runtime edit is active.
+- Every Phase 0–6 task checkbox remains open under the exact evidence contract even where implementation is merged.
+- Phases 7–9 remain unimplemented.
 
 ### NEXT
 
-1. Complete the scoped build and architecture baseline in the isolated worktree.
-2. Begin `FND` / Task 0.1 RED.
+1. Decide the governance disposition for unrecoverable historical RED transcripts; do not recreate fake RED evidence against merged code.
+2. Retain the missing exact task command/report evidence, beginning with the Phase 6 manifest, mutation reports, and scale results.
+3. Resolve the inherited architecture baseline separately; do not misclassify its 12 failures as ticketing regressions.
+4. Begin Phase 7 / Task 7.1 RED only after the merged Phase 0–6 ledger is honestly reconciled.
 
 ### BLOCKERS
 
-- No implementation blocker remains after isolation; production launch gates remain external.
+- Live API curl QA is blocked by the existing fail-closed privacy-erasure replay gate before the listener opens. Do not bypass or weaken the gate; use the repository integration host until the authority replay environment is healthy.
+- Full API and persistence phase-closeout runs have no retained successful transcript; focused ticketing selectors passed.
+- Historical RED transcripts are not recoverable from repository state alone. Closing those task clauses requires explicit acceptance of substitute evidence or recovery of the original execution record.
 - Production launch still requires provider, legal/tax, qualified scholarly, accessibility, privacy, security, stakeholder, and staffed operator evidence.
 
 ## Quick Resume
 
-Do **not** start Task 0.1 yet.
-
-1. Resume product work in `/home/amir/ISLAMU/Github/Event-ticketing-lifecycle` on branch `work/event-ticketing-lifecycle`, based on approved `develop` HEAD `558a23210...`.
-2. Finish the one-time Release build and architecture baseline.
-3. Begin Phase 0 / `FND` / Task 0.1 RED.
+1. Resume from `develop` at or after `1b754c51d`; all ticketing branches/worktrees were deleted after merge.
+2. Preserve unrelated dirty persistence/projection and migration-test files already present in the main worktree.
+3. Resolve the RED-evidence governance gap and retain exact Phase 0–6 closeout artifacts.
+4. Begin Phase 7 / Task 7.1 RED only after that reconciliation.
 
 ## Key Files And Responsibilities
 
@@ -73,7 +89,7 @@ Do **not** start Task 0.1 yet.
 | [`event-ticketing-lifecycle-plan.md`](event-ticketing-lifecycle-plan.md) | Decision-complete requirements, scenarios, architecture, authoritative PR DAG, phase contracts, rollback, and approval policy. |
 | [`event-ticketing-lifecycle-tasks.md`](event-ticketing-lifecycle-tasks.md) | Hot execution ledger: 51 atomic tasks, exact ownership/effort, Red/Green commands, and selected phase gates. |
 | [`event-ticketing-lifecycle-context.md`](event-ticketing-lifecycle-context.md) | Review state, exact revisions, resume point, validated repository reality, risks, and handoff. |
-| [`event-ticketing-lifecycle-cto-review.md`](event-ticketing-lifecycle-cto-review.md) | Rewrite-mode CTO findings and honest `Defer`; never self-approves the rewritten revision. |
+| [`event-ticketing-lifecycle-cto-review.md`](event-ticketing-lifecycle-cto-review.md) | Revision-bound read-only CTO review and approval evidence; it does not grant user approval. |
 | [`event-ticketing-lifecycle-clean-room-evidence.md`](event-ticketing-lifecycle-clean-room-evidence.md) | Source-free official-documentation constraints and provenance boundary. |
 | [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md) | Independent Islamic value-sensitive findings, mitigations, scenario mappings, and reviewed-input state. |
 | `docs/PAYMENTS.md`, `SECURITY.md`, `docs/SECURITY-MODEL.md`, `docs/PRIVACY_ERASURE.md`, `docs/OPERATIONS.md` | Canonical money, authority/privacy, recovery, observability, and operator behavior. |
@@ -94,8 +110,9 @@ Do **not** start Task 0.1 yet.
 
 - Clean Architecture, CQRS/MediatR, EF Core, tenant filters, `IUnitOfWork`, transactional outbox, Quartz, HAL, BFF, generated clients, payment reconciliation, inventory holds, admission credentials, and real PostgreSQL tests exist.
 - Existing `RegistrationOrderLifecycleService*`, `RegistrationInventoryRepository`, and order-creation seams are already large.
-- Normal lifecycle state authority is not fully consolidated; some persistence conditionals and HAL checks reconstruct decisions.
-- Transfer, waitlist/offer, event add-on, source-rebinding, and successor recovery types do not exist.
+- Touched order/admission lifecycle decisions now flow through semantic aggregate rules and capability-specific coordinators; persistence exposes transaction-bound primitives rather than owning lifecycle policy.
+- Purchase governance, participant readiness, transfer, fair-return waitlist/offer, source rebinding, and durable fair-return orchestration types exist across Domain, Application, Persistence, API/HAL, BFF, generated contracts, and Blazor.
+- Event add-on, successor recovery/operator, deployment capability-matrix, and final convergence types/tests do not exist.
 - Existing PostgreSQL repositories establish ordered `FOR UPDATE` patterns and retry-aware transaction ownership that successor work must reuse.
 - Existing admission operations establish fixed-cardinality telemetry and p95 250 ms / p99 500 ms at 50-concurrent-request targets.
 - Existing Data Protection, payment reconciliation, outbox, Quartz, and authority-recovery behavior makes keys/fences/cursors part of restore correctness.
@@ -139,22 +156,24 @@ Do **not** start Task 0.1 yet.
 
 ### Tool/Evidence Limits
 
-- Project knowledge-graph and Context7 MCP tools were not registered in this session.
-- Configured web-search providers returned no results.
-- Repository evidence was therefore verified through available LSP attempts, bounded source/docs reads, and shell text/location search.
-- External constraints were retrieved directly from official Stripe, Microsoft, PostgreSQL, and OWASP documentation and sanitized in the clean-room packet.
-- No product build/test/runtime was appropriate for this markdown-only planning rewrite.
+- The merge/repair session retained exact focused test totals and final build output, but the long-running full API and persistence sessions expired without retained transcripts.
+- Live development-host startup reached migrations and Quartz initialization, then failed closed at `PrivacyErasureStartupGate`; no curl response could be captured.
+- The integration host remains the verified HTTP surface for ticketing routes until the local privacy-erasure authority replay environment is healthy.
+- This status-only dev-doc update does not rerun product tests; it records already captured implementation evidence.
 
 ## Validation Baseline
 
-- **Planning rewrite baseline:** no product build or .NET test was run, as required for markdown-only work.
-- **Planning validation:** task inventory/uniqueness, Red-before-Green order, phase gates, scenario mappings, test-project existence, local links, ABOUTME headers, whitespace, forbidden verification lanes, and hash/status coherence must all be clean after final hash binding.
-- **Implementation base:** isolated conflict-free worktree `/home/amir/ISLAMU/Github/Event-ticketing-lifecycle`, branch `work/event-ticketing-lifecycle`, HEAD `558a23210522cab125c0d379499dec51a2b0413b`.
+- **Current integration head:** `develop` at `1b754c51de1c01e6999b5df996bcc554f0e113d1`.
+- **Merged ticketing tip:** `79c36305dfaa77e6f2bf8f7f8097f4822964ff6c`, proven an ancestor of `develop`.
+- **Ticketing cleanup:** no local `*ticketing*` branch or ticketing worktree remains.
 - **Implementation approval:** the user's 2026-08-27 continuation instruction approved proceeding after the exact revision gate was presented.
-- **Implementation baseline after approval:** the Release build at `558a23210...` exited 0 with 15,217 pre-existing analyzer warnings and regenerated 666 blank lines in `EventApiClient.g.cs`. `Event.Architecture.Tests` then failed 12 pre-existing contracts, including agent-context routing, repository entity boundaries, controller-size ratchets, authorization inventories, DTO naming/OpenAPI enum registration, and generated-client boundaries. No ticketing product edit preceded these failures.
-- **Baseline recovery:** clean detached baselines at `origin/develop` and the descendant API-hardening commit `a2a4e3026...` are being evaluated to identify the newest conflict-free green implementation base without altering unrelated unmerged work.
-- **Migration-history classification:** every application/provider migration present at isolated HEAD is tracked in committed history. Treat all as applied/merged and immutable; ticketing schema changes must generate new forward corrective migrations for every affected provider. No existing migration or snapshot may be removed, renamed, rewritten, or hand-edited.
-- Do not rerun an unchanged baseline; use focused TUnit selectors during active work and the selected project only at phase closeout.
+- **Merged Release build:** passed with 0 errors.
+- **Project evidence:** Domain 1,067; Application 4,819; Infrastructure 1,653; generated contracts 16; Blazor integration 495.
+- **Focused evidence:** ticketing persistence 24; application mutation lane 105; domain mutation lane 31; focused API/HAL/BFF/component selectors passed.
+- **Known inherited baseline:** full `Event.Architecture.Tests` retains 12 non-ticketing failures; all ticketing-specific architecture failures were cleared.
+- **Task-ledger audit:** implementation surfaces are merged, but no Phase 0–6 task checkbox is treated as evidence-closed because exact RED chronology and/or task command/report artifacts are missing.
+- **Migration-history classification:** generated ticketing migrations are merged for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL and are immutable. Future changes require forward generated migrations; never hand-edit migrations or snapshots.
+- **Planning validation for this update:** markdown whitespace, local links, stale status/worktree references, and triad coherence only. Do not rerun unchanged product evidence.
 
 ## Scope Boundary
 
@@ -175,25 +194,25 @@ Out of scope:
 - attendee resale or peer-to-peer money movement;
 - tax, invoice, accounting, CRM, donor, volunteer, inventory, or kiosk systems;
 - new dependency/framework selection;
-- implementation before exact-revision gates close.
+- protected payout implementation without its separate I-VSD/ADR/workstream.
 
 ## Current Known Risks / Unknowns
 
-- The first implementation agent may bypass Phase 0 and extend existing oversized seams.
+- Phase 6 evidence may be overclaimed if Task 6.8 is checked without the missing mutation-summary/evidence manifest.
 - A provider/payment path may acquire rows outside the canonical lock order and recreate WB-1.
 - Recovery may be tested as object-level serialization rather than a real clean-storage restore.
 - UI/HAL may reconstruct lifecycle decisions rather than consume domain-authoritative facts.
-- Mutation, PII, MAD, docs, or focused verification may be deferred to release instead of owned per PR.
+- Phases 7–9 may accidentally be treated as delivered because the ticketing branch was merged; their planned tests and implementation files are absent.
 - External evidence may be mistaken for technical or production approval.
 
 ## Handoff Notes
 
-### Handoff — 2026-08-27 Europe/Brussels
+### Handoff — 2026-08-28 Europe/Brussels
 
-**Current workstream:** re-baselined planning, no product implementation.
+**Current workstream:** purchase governance, readiness, transfer, and fair-return lifecycle merged into `develop`; Phase 6 closeout and Phases 7–9 remain.
 
-**Next owner:** implementation agent in the isolated worktree.
+**Next owner:** implementation agent continuing from `develop`.
 
-**Do not do next:** baseline/build, Task 0.1, migration generation, endpoint/UI work, or protected payout.
+**Do not do next:** recreate deleted ticketing branches/worktrees, weaken the privacy-erasure startup gate, mark Phase 6 complete without retained evidence, touch unrelated dirty persistence files, or implement protected payout.
 
-**Required first evidence:** finish the one-time baseline, then create the Task 0.1 architecture RED contract before production edits.
+**Required first evidence:** retain the complete Task 6.8 mutation/evidence artifacts and pass the focused evidence contract before starting Task 7.1 RED.

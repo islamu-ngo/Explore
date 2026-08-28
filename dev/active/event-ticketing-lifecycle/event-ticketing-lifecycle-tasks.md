@@ -3,19 +3,19 @@
 
 # Event Ticketing Lifecycle — Task Checklist
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-28 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Re-baselined; I-VSD revalidated, implementation not started and not approved.
-- **Completed:** 0/51 implementation tasks; phase verification is separate.
-- **Current priority:** fresh read-only CTO review, then explicit user approval.
-- **Next implementation slice after approval:** Phase 0 / `FND` / Task 0.1 RED.
+- **Overall status:** Purchase, readiness, transfer, and fair-return implementation surfaces are merged into `develop`, but exact task-closeout evidence is incomplete; ticketing branches/worktrees were removed.
+- **Completed:** 0/51 tasks are claimed complete under the ledger's exact acceptance-evidence contract. Implemented surfaces exist through Phase 6, but their checkboxes remain open until RED chronology and required command/report evidence are retained.
+- **Current priority:** reconcile missing Phase 0–6 task evidence, beginning with Phase 6 Task 6.8, before starting Phase 7.
+- **Next implementation slice:** evidence-only closeout for the merged Phase 6 surface; do not change behavior unless the audit discovers a real defect.
 - **I-VSD report:** [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md)
 - **I-VSD revision:** authoritative exact binding is recorded in the report metadata and current context.
 - **I-VSD status / disposition:** current / plan-aligned.
-- **CTO:** rewrite-mode review cannot approve this revision; fresh read-only review required.
-- **User approval:** exact rewritten revision pending.
+- **CTO:** the revision-bound read-only review approved implementation; status-only reconciliation does not change its design inputs.
+- **User approval:** continuation approved on 2026-08-27; implemented scope merged on 2026-08-28.
 - **Compatibility:** direct replacement; delete superseded behavior/contracts/tests/docs in the owning PR.
 
 ## Execution Rules
@@ -119,7 +119,18 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 | 7 | `dev/active/event-ticketing-lifecycle/evidence/phase-7-evidence.yaml` | `dev/active/event-ticketing-lifecycle/evidence/phase-7/mutation-report.json` | `dev/active/event-ticketing-lifecycle/evidence/phase-7-mad-review.yaml` |
 | 8 | `dev/active/event-ticketing-lifecycle/evidence/phase-8-evidence.yaml` | `dev/active/event-ticketing-lifecycle/evidence/phase-8/domain/mutation-report.json`; `dev/active/event-ticketing-lifecycle/evidence/phase-8/infrastructure/mutation-report.json` | `dev/active/event-ticketing-lifecycle/evidence/phase-8-mad-review.yaml` |
 
-## Phase 0: Lifecycle Authority Remediation — `FND` ⏳ NOT STARTED
+## Evidence Reconciliation — 2026-08-28
+
+The merged repository contains implementation and regression-test surfaces for Phases 0–6, but implementation presence is not equivalent to satisfying this ledger's exact task contract.
+
+- No retained artifact proves the intended pre-GREEN assertion failure for any RED task. Do not manufacture retrospective RED evidence against already merged code.
+- Phase 0, 1, 3, and 5 manifests, PII scans, MAD reviews, and mutation summaries exist, but several exact Stryker report paths and focused command transcripts named by the tasks are not retained.
+- Phase 2 and Phase 4 implementation/tests exist, but no phase evidence manifest is retained and their exact focused command transcripts are absent.
+- Phase 6 implementation, MAD, and PII evidence exist, but `phase-6-evidence.yaml`, the three required mutation reports, and deterministic scale transcripts are absent.
+- The checked phase-verification rows below record commands whose final results were directly observed during merge verification. They do not close the task checkboxes above them.
+- Historical RED chronology needs an explicit governance disposition if its original transcript cannot be recovered; current passing regression tests cannot honestly be relabeled as prior RED evidence.
+
+## Phase 0: Lifecycle Authority Remediation — `FND` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **0.1 RED direct-mutation and duplicated-decision architecture contract**
   - **Acceptance:** prove persistence-level lifecycle authority, repeated command/worker/HAL decisions, and additions to oversized seams remain possible.
@@ -136,10 +147,11 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 0 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+  - Ticketing-specific architecture failures are cleared; the full project retains 12 inherited non-ticketing failures.
 
-## Phase 1: Purchase Governance Core — `PUR-CORE` → `PUR-APP` ⏳ NOT STARTED
+## Phase 1: Purchase Governance Core — `PUR-CORE` → `PUR-APP` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **1.1 RED S1-A/S1-B/S1-C persistence and authority races**
   - **Acceptance:** cover stable authority matrix, honest name-only controls, literal effective ceiling 4, context switching, unrelated members, durable business replay, loser rollback, and cross-tenant negatives.
@@ -160,10 +172,10 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 1 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` — 1,067 passed.
 
-## Phase 2: Purchase Public Surfaces — `PUR-API` → `PUR-UI` ⏳ NOT STARTED
+## Phase 2: Purchase Public Surfaces — `PUR-API` → `PUR-UI` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **2.1 RED S1-A/S1-B/S1-C API/HAL/OpenAPI contract**
   - **Acceptance:** cover auth, tenant spoofing, capability equivalence, private/no-store failures, scoped idempotency/rate limits, HAL actions, honest name-only copy, and schema shape.
@@ -192,10 +204,10 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 2 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
+- [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` — 495 passed.
 
-## Phase 3: Participant Readiness Core — `RDY-CORE` → `RDY-APP` ⏳ NOT STARTED
+## Phase 3: Participant Readiness Core — `RDY-CORE` → `RDY-APP` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **3.1 RED S2-A/S2-B/S2-C persistence and eligibility races**
   - **Acceptance:** cover order/participant scope, provisional purchaser data, adult-owned consent, approval/revocation, payment-before-readiness, issuance/check-in convergence, and tenant negatives.
@@ -216,10 +228,10 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 3 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` — 4,819 passed.
 
-## Phase 4: Participant Readiness Surfaces — `RDY-API` → `RDY-UI` ⏳ NOT STARTED
+## Phase 4: Participant Readiness Surfaces — `RDY-API` → `RDY-UI` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **4.1 RED S2-A/S2-B/S2-C private API/HAL contract**
   - **Acceptance:** cover private/minimal reads, generic capability failures, subject/organizer HAL actions, scanner/support state, ProblemDetails, and sentinel PII absence.
@@ -248,10 +260,11 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 4 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - Focused readiness/admission/purchase/transfer/fair-return API selectors passed; no retained successful full-project transcript is available.
 
-## Phase 5: Transfer And Credential Rotation — `TRN-CORE` → `TRN-API` → `TRN-UI` ⏳ NOT STARTED
+## Phase 5: Transfer And Credential Rotation — `TRN-CORE` → `TRN-API` → `TRN-UI` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **5.1 RED S3-A/S3-B/S3-C transfer PostgreSQL races**
   - **Acceptance:** cover policy/expiry/hops, subject data, no resale/commerce mutation, transfer/check-in, consent/approval/reissue races, stale generation, replay, tenant/resource negatives.
@@ -280,10 +293,11 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 5 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
 - [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - Focused ticketing persistence selectors passed 24 tests; no retained successful full-project transcript is available.
 
-## Phase 6: Fair Return And Waitlist — `WAI-CORE` → `WAI-ORCH` → `WAI-API` → `WAI-UI` ⏳ NOT STARTED
+## Phase 6: Fair Return And Waitlist — `WAI-CORE` → `WAI-ORCH` → `WAI-API` → `WAI-UI` 🟡 IMPLEMENTATION PRESENT / TASK EVIDENCE OPEN
 
 - [ ] **6.1 RED S4-A/S4-B/S4-C/S4-D/S4-E/S4-F/WB-1 persistence races**
   - **Acceptance:** cover literal queue order, commercial equivalence, allocate/withdraw/substitute/expire/finalize interleavings, lock order/deadlock, crash, duplicate/stale provider observations, and loser rollback.
@@ -316,12 +330,13 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 - [ ] **6.8 GREEN waitlist BFF/UI, docs, scale, mutation, and MAD**
   - **Acceptance:** BFF/UI use generated contracts/HAL; deterministic fixture meets 50-way/10,000-effect targets; docs/comments, mutation >85, and MAD close.
   - **Verify:** both Task 6.7 commands pass; the Task 6.1 command passes for the deterministic 50-contender race; the Task 6.3 command passes for the deterministic 10,000-effect/no-starvation drain; `dotnet stryker --project src/Explore.Domain/Explore.Domain.csproj --test-project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --break-at 86 --reporter json --output dev/active/event-ticketing-lifecycle/evidence/phase-6/domain` exits 0; `dotnet stryker --project src/Explore.Application/Explore.Application.csproj --test-project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --break-at 86 --reporter json --output dev/active/event-ticketing-lifecycle/evidence/phase-6/application` exits 0; `dotnet stryker --project src/Explore.Infrastructure/Explore.Infrastructure.csproj --test-project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --break-at 86 --reporter json --output dev/active/event-ticketing-lifecycle/evidence/phase-6/infrastructure` exits 0; the Task 0.3 `TicketingCriticalEvidenceContractTests` command passes for Phase 6; `git diff --check -- docs/PAYMENTS.md docs/OPERATIONS.md` exits 0.
+  - **Current gap:** runtime/BFF/UI behavior and focused tests are merged, and Phase 6 MAD/PII artifacts exist, but the required Phase 6 evidence manifest and mutation summaries are not retained. Keep this task open until that evidence contract passes.
   - **Dependencies:** 6.7.
 
 ### Phase 6 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — final merged Release build passed with 0 errors.
+- [x] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` — 1,653 passed.
 
 ## Phase 7: Event-Bound Add-Ons — `ADD-CORE` → `ADD-API` → `ADD-UI` ⏳ NOT STARTED
 

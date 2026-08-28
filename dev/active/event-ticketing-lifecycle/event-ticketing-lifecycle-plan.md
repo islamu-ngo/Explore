@@ -3,14 +3,15 @@
 
 # Event Ticketing Lifecycle — Implementation Plan
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-28 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** move all unimplemented Registration Data Collection Phase 22+ work into a successor workstream.
 - **Hardening request:** strengthen architecture, conventions, maintainability, technical-debt remediation, code comments, and durable `docs/` ownership without backward-compatibility constraints.
 - **Task directory:** `dev/active/event-ticketing-lifecycle/`
-- **Planning status:** Re-baselined; I-VSD is current and plan-aligned. Implementation remains blocked pending a fresh read-only CTO review and explicit user approval of the exact reviewed revision.
+- **Planning status:** Approved implementation scope partially delivered and merged into `develop`. Phases 0–5 and Phase 6 Tasks 6.1–6.7 are implemented; Phase 6 evidence closeout plus Phases 7–9 remain open.
+- **Execution-ledger status:** implementation presence is recorded separately from task completion. No Phase 0–6 task checkbox is closed without its exact acceptance evidence; historical RED chronology is currently unproven.
 - **Change classification:** Behavioral Delta.
 - **Matched intent:** `registration-data-collection`.
 - **Criticality:** Tier 0 Sovereign for money/orders; Tier 1 Security for tenancy, capabilities, migrations, and authorization; Tier 2 Privacy for participant/contact/consent data.
@@ -18,7 +19,7 @@ Last Updated: 2026-08-27 Europe/Brussels
 - **Primary layers:** Domain, Application, Persistence, Infrastructure, API/HAL, BFF, Blazor Client, generated contracts, operations/docs.
 - **Matched skills/rules:** criticality-guardrail, clean-architecture-rules, CQRS/MediatR, EF Core, outbox, auth/BFF/HAL, Blazor/accessibility, error tracking, payments-commerce, privacy/PII, scheduling, tests, IP clean-room.
 - **Grill-Me decisions:** hard purchaser ceilings require stable authority; name-only limits remain honest; seller withdrawal fails closed without full commercial equivalence; pre-restore bearer authority rotates; protected delayed payout stays absent.
-- **Implementation shape:** one workstream delivered as a mandatory dependency-bound PR train. An omnibus implementation PR is forbidden.
+- **Implementation shape:** the implemented purchase, readiness, transfer, and fair-return slices were integrated through the ticketing branch and follow-up repair commits. Remaining work must preserve the dependency order from Phase 6 closeout through `REL`.
 - **Compatibility posture:** development-mode direct replacement. Do not add compatibility shims, dual authority, obsolete routes, stale DTOs, or tests that preserve superseded behavior.
 - **I-VSD report:** [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md), whose authoritative metadata binds the exact plan/tasks revisions reviewed.
 - **I-VSD status:** `current / plan-aligned`.
@@ -63,17 +64,18 @@ The implementation uses project-native Clean Architecture, CQRS/MediatR, EF Core
 | Authorization | writes authorize server-side; HAL links are UI affordances, not mutation authority |
 | Client boundary | browser tokens remain in the BFF; generated clients are generator-owned |
 | Multi-tenancy | central tenant resolution and named EF filters; bypasses require an explicit reason |
-| Missing successor types | transfer, waitlist/offer, add-on, source-rebinding, and successor recovery types do not yet exist |
+| Implemented successor capabilities | purchase governance, participant admission readiness, credential-rotating transfer, fair-return waitlist/allocation, durable orchestration, API/HAL/BFF/Blazor surfaces, and generated contracts are merged in `develop` |
+| Remaining successor capabilities | event-bound add-ons, lifecycle recovery/operator controls, deployment capability matrix, and final contract/release convergence do not yet exist |
 
-### 2.2 Verified Technical Debt
+### 2.2 Remaining Technical Debt And Open Scope
 
-- Existing order-lifecycle and inventory-repository seams are already oversized and must not absorb another lifecycle.
-- Some normal order transitions still use persistence-level conditional updates instead of semantic aggregate mutation.
-- Commands/workers and HAL can reconstruct the same state decision independently.
-- The original plan distributed tests by phase calendar rather than the changed risk and allowed stale `--no-build` targeted runs.
-- The original I-VSD metadata named an evidence-packet digest, not exact successor plan/tasks revisions.
-- The original restore design could resurrect bearer authority from a point-in-time backup.
-- The original access contract overpromised cross-order purchaser ceilings for name-only users.
+- Phase 0 consolidated touched lifecycle authority behind semantic aggregate rules and capability-specific coordinators; architecture ratchets now protect those seams.
+- Purchase, readiness, transfer, and fair-return behavior is merged with tenant-scoped persistence, HAL/BFF/generated-client boundaries, and critical evidence for Phases 0, 1, 3, and 5.
+- All Phase 0–6 task checkboxes remain evidence-open under the ledger's exact acceptance contract; Task 6.8 additionally lacks the complete Phase 6 mutation/evidence manifest required by this plan.
+- The post-merge task audit found no retained pre-GREEN assertion-failure transcript for the Phase 0–6 RED tasks and incomplete exact command/report artifacts for multiple GREEN/closeout tasks. Current passing regression tests must not be relabeled as historical RED evidence.
+- Full `Event.Architecture.Tests`, `Event.API.IntegrationTests`, and `Event.Persistence.IntegrationTests` phase-closeout evidence is not recorded as green. Ticketing-focused selectors passed, while the architecture project retained 12 inherited non-ticketing failures.
+- Event-bound add-ons, recovery/operator controls, the deployment capability matrix, and final release convergence remain unimplemented.
+- A live API curl walkthrough is not recorded because the existing fail-closed privacy-erasure replay gate blocked local startup before the HTTP listener opened. The gate was not weakened; focused HTTP behavior passed through the repository integration host.
 
 ### 2.3 Externally Verified Functional Constraints
 
@@ -88,10 +90,10 @@ Official documentation was used only for source-free behavioral constraints:
 
 The source register is in the clean-room evidence packet. No third-party code, schema, tests, comments, or expressive design was ingested.
 
-### 2.4 Unknowns That Must Be Resolved Inside Named Tasks
+### 2.4 Remaining Unknowns That Must Be Resolved Inside Named Tasks
 
-- Whether any affected development migration has been applied outside disposable environments determines regeneration versus a generated corrective migration.
-- Exact project-native class/file names require bounded pre-edit discovery, but their owning layer and behavior are fixed here.
+- Phase 6 closeout must determine and retain the missing mutation-summary/evidence artifacts without reopening already merged lifecycle behavior.
+- Add-on, recovery, and deployment-boundary tasks still require their bounded pre-edit discovery; their owning layers and behavioral contracts remain fixed here.
 - Deployment-specific legal, scholarly, provider, accessibility, privacy, security, and operator evidence may disable or narrow release; it cannot widen scope.
 - Protected delayed payout remains outside this workstream regardless of implementation progress.
 
