@@ -139,7 +139,7 @@ public sealed class FairReturnWaitlistApiTests(
                     classification!.Class)
                 .IsEqualTo(
                     EndpointClass
-                        .PublicTransactional);
+                        .Authenticated);
         }
     }
 

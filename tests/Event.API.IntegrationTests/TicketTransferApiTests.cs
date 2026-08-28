@@ -108,7 +108,7 @@ public sealed class TicketTransferApiTests(
             await Assert.That(
                     classification!.Class)
                 .IsEqualTo(
-                    EndpointClass.PublicTransactional);
+                    EndpointClass.Authenticated);
         }
 
         MethodInfo read = RequireMethod(
