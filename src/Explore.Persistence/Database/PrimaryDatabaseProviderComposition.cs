@@ -190,7 +190,6 @@ public static class PrimaryDatabaseProviderComposition
                 throw new InvalidOperationException($"Unsupported primary database provider '{options.Provider}'.");
         }
 
-        optionsBuilder.ReplaceService<IMigrationsModelDiffer, ApplicationMigrationsModelDiffer>();
         optionsBuilder.UseSnakeCaseNamingConvention();
         return database;
     }
