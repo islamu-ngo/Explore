@@ -84,17 +84,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_delivery_intents_tenant_id_id");
 
                     b.HasIndex("TenantId", "AdmissionTicketId")
-                        .HasDatabaseName("ix_ie_admission_delivery_intents_tenant_id_admission_ticket_id");
+                        .HasDatabaseName("ix_admission_delivery_intents_tenant_id_admission_ticket_id");
 
                     b.HasIndex("TenantId", "RegistrationTicketAssignmentId")
-                        .HasDatabaseName("IX_ie_admission_delivery_intents_tenant_id_registration_6251DC31");
+                        .HasDatabaseName("ix_ie_admission_delivery_intents_tenant_id_registration_dc88a010");
 
                     b.HasIndex("HandoffCompletedAt", "RoutedAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_admission_delivery_intents_handoff_completed_at_r_D0860C4C");
+                        .HasDatabaseName("ix_ie_admission_delivery_intents_handoff_completed_at_r_f64f6f95");
 
                     b.HasIndex("TenantId", "FinalizationEffectId", "RegistrationTicketAssignmentId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_delivery_intents_tenant_id_finalization_D2499D4A");
+                        .HasDatabaseName("ix_ie_admission_delivery_intents_tenant_id_finalization_6c95b449");
 
                     b.ToTable("ie_admission_delivery_intents", null, t =>
                         {
@@ -132,7 +132,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_account_authority_kinds_master_code");
+                        .HasDatabaseName("ix_account_authority_kinds_master_code");
 
                     b.ToTable("ie_account_authority_kinds", (string)null);
                 });
@@ -246,31 +246,31 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_actors");
 
                     b.HasIndex("ActorTypeId")
-                        .HasDatabaseName("ix_ie_actors_actor_type_id");
+                        .HasDatabaseName("ix_actors_actor_type_id");
 
                     b.HasIndex("ExternalActorSubjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actors_external_actor_subject_id")
+                        .HasDatabaseName("ix_actors_external_actor_subject_id")
                         .HasFilter("external_actor_subject_id IS NOT NULL");
 
                     b.HasIndex("GroupId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actors_group_id")
+                        .HasDatabaseName("ix_actors_group_id")
                         .HasFilter("group_id IS NOT NULL");
 
                     b.HasIndex("OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actors_organization_id")
+                        .HasDatabaseName("ix_actors_organization_id")
                         .HasFilter("organization_id IS NOT NULL");
 
                     b.HasIndex("ServicePrincipalId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actors_service_principal_id")
+                        .HasDatabaseName("ix_actors_service_principal_id")
                         .HasFilter("service_principal_id IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actors_user_id")
+                        .HasDatabaseName("ix_actors_user_id")
                         .HasFilter("user_id IS NOT NULL");
 
                     b.ToTable("ie_actors", null, t =>
@@ -323,10 +323,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_actor_key_stores");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_actor_key_stores_actor_id");
+                        .HasDatabaseName("ix_actor_key_stores_actor_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_actor_key_stores_tenant_id");
+                        .HasDatabaseName("ix_actor_key_stores_tenant_id");
 
                     b.ToTable("ie_actor_key_stores", (string)null);
                 });
@@ -368,11 +368,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_actor_merges");
 
                     b.HasIndex("CanonicalActorId")
-                        .HasDatabaseName("ix_ie_actor_merges_canonical_actor_id");
+                        .HasDatabaseName("ix_actor_merges_canonical_actor_id");
 
                     b.HasIndex("SourceActorId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_actor_merges_source_actor_id");
+                        .HasDatabaseName("ix_actor_merges_source_actor_id");
 
                     b.ToTable("ie_actor_merges", null, t =>
                         {
@@ -413,7 +413,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_actor_moderation_records");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_actor_moderation_records_actor_id");
+                        .HasDatabaseName("ix_actor_moderation_records_actor_id");
 
                     b.ToTable("ie_actor_moderation_records", (string)null);
                 });
@@ -529,30 +529,30 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_actor_subscriptions");
 
                     b.HasIndex("NotificationLevelId")
-                        .HasDatabaseName("ix_ie_actor_subscriptions_notification_level_id");
+                        .HasDatabaseName("ix_actor_subscriptions_notification_level_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_actor_subscriptions_status_id");
+                        .HasDatabaseName("ix_actor_subscriptions_status_id");
 
                     b.HasIndex("SubscriberUserId")
-                        .HasDatabaseName("ix_ie_actor_subscriptions_subscriber_user_id");
+                        .HasDatabaseName("ix_actor_subscriptions_subscriber_user_id");
 
                     b.HasIndex("TargetActorId")
-                        .HasDatabaseName("ix_ie_actor_subscriptions_target_actor_id");
+                        .HasDatabaseName("ix_actor_subscriptions_target_actor_id");
 
                     b.HasIndex("TargetActorTypeId")
-                        .HasDatabaseName("ix_ie_actor_subscriptions_target_actor_type_id");
+                        .HasDatabaseName("ix_actor_subscriptions_target_actor_type_id");
 
                     b.HasIndex("TenantId", "SubscriberUserId")
-                        .HasDatabaseName("ix_actor_subscriptions_subscriber_user");
+                        .HasDatabaseName("ix_actor_subscriptions_tenant_id_subscriber_user_id");
 
                     b.HasIndex("TenantId", "SubscriberTenantUserId", "TargetActorId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_actor_subscriptions_tenant_id_subscriber_tenant_u_5F756109")
+                        .HasDatabaseName("ix_ie_actor_subscriptions_tenant_id_subscriber_tenant_u_eb0cdd24")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "TargetActorId", "StatusId", "NotificationLevelId")
-                        .HasDatabaseName("IX_ie_actor_subscriptions_tenant_id_target_actor_id_sta_2842351A");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_tenant_id_target_actor_id_sta_98cb7919");
 
                     b.ToTable("ie_actor_subscriptions", null, t =>
                         {
@@ -594,7 +594,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_actor_subscription_notification_levels_master_code");
+                        .HasDatabaseName("ix_actor_subscription_notification_levels_master_code");
 
                     b.ToTable("ie_actor_subscription_notification_levels", (string)null);
                 });
@@ -627,7 +627,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_actor_subscription_statuses_master_code");
+                        .HasDatabaseName("ix_actor_subscription_statuses_master_code");
 
                     b.ToTable("ie_actor_subscription_statuses", (string)null);
                 });
@@ -714,20 +714,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_check_in_events_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
-                        .HasName("AK_ie_admission_check_in_events_tenant_id_admission_tic_DAC22C4B");
+                        .HasName("ak_ie_admission_check_in_events_tenant_id_admission_tic_9ab47a8b");
 
                     b.HasIndex("TenantId", "AdmissionTargetId")
-                        .HasDatabaseName("ix_ie_admission_check_in_events_tenant_id_admission_target_id");
+                        .HasDatabaseName("ix_admission_check_in_events_tenant_id_admission_target_id");
 
                     b.HasIndex("TenantId", "ScannerCapabilityId")
-                        .HasDatabaseName("ix_ie_admission_check_in_events_tenant_id_scanner_capability_id");
+                        .HasDatabaseName("ix_admission_check_in_events_tenant_id_scanner_capability_id");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "CompensatedCheckInEventId")
-                        .HasDatabaseName("IX_ie_admission_check_in_events_tenant_id_admission_tic_DD4EA309");
+                        .HasDatabaseName("ix_ie_admission_check_in_events_tenant_id_admission_tic_bedbd557");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Sequence")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_check_in_events_tenant_id_admission_tic_44BC5D1E");
+                        .HasDatabaseName("ix_ie_admission_check_in_events_tenant_id_admission_tic_2287d5a7");
 
                     b.ToTable("ie_admission_check_in_events", null, t =>
                         {
@@ -780,7 +780,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "AdmissionTargetId")
                         .IsUnique()
-                        .HasDatabaseName("ux_admission_check_in_policies_target");
+                        .HasDatabaseName("ix_admission_check_in_policies_tenant_id_admission_target_id");
 
                     b.ToTable("ie_admission_check_in_policies", null, t =>
                         {
@@ -832,14 +832,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_check_in_states_tenant_id_id");
 
                     b.HasIndex("TenantId", "AdmissionTargetId")
-                        .HasDatabaseName("ix_ie_admission_check_in_states_tenant_id_admission_target_id");
+                        .HasDatabaseName("ix_admission_check_in_states_tenant_id_admission_target_id");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_check_in_states_tenant_id_admission_tic_A2B5C988");
+                        .HasDatabaseName("ix_ie_admission_check_in_states_tenant_id_admission_tic_61b60dc9");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "AdmissionTargetId", "ActiveCheckInEventId")
-                        .HasDatabaseName("IX_ie_admission_check_in_states_tenant_id_admission_tic_F8A3D9F9");
+                        .HasDatabaseName("ix_ie_admission_check_in_states_tenant_id_admission_tic_10c902d4");
 
                     b.ToTable("ie_admission_check_in_states", null, t =>
                         {
@@ -937,26 +937,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_recovery_capabilities_tenant_id_id");
 
                     b.HasIndex("ExpiresAt", "ConsumedAt", "RotatedAt")
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_expires_at_consum_5A1D4199");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_expires_at_consum_d25f6796");
 
                     b.HasIndex("TenantId", "LookupKeyVersion", "LocatorDigest")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_tenant_id_lookup__441FC60D");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_tenant_id_lookup__5c40a6f7");
 
                     b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_tenant_id_lookup__23A06283");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_tenant_id_lookup__b6ce766f");
 
                     b.HasIndex("TenantId", "RecoveryRequestId", "Purpose")
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_tenant_id_recover_714F865F");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_tenant_id_recover_cbc5bb9d");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "Purpose", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_tenant_id_admissi_7CFC9EC5");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_tenant_id_admissi_e6e92fc8");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "Purpose", "CapabilityVersion")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_recovery_capabilities_tenant_id_admissi_B375B532");
+                        .HasDatabaseName("ix_ie_admission_recovery_capabilities_tenant_id_admissi_656eccc5");
 
                     b.ToTable("ie_admission_recovery_capabilities", null, t =>
                         {
@@ -1033,14 +1033,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_recovery_delivery_intents_tenant_id_id");
 
                     b.HasIndex("TenantId", "AdmissionTicketId")
-                        .HasDatabaseName("IX_ie_admission_recovery_delivery_intents_tenant_id_adm_31C40188");
+                        .HasDatabaseName("ix_ie_admission_recovery_delivery_intents_tenant_id_adm_75639116");
 
                     b.HasIndex("HandoffCompletedAt", "RoutedAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_admission_recovery_delivery_intents_handoff_compl_67385637");
+                        .HasDatabaseName("ix_ie_admission_recovery_delivery_intents_handoff_compl_b165452b");
 
                     b.HasIndex("TenantId", "RecoveryRequestId", "AdmissionTicketId", "Purpose", "CapabilityVersion")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_recovery_delivery_intents_tenant_id_rec_8A76BF6F");
+                        .HasDatabaseName("ix_ie_admission_recovery_delivery_intents_tenant_id_rec_d97f6020");
 
                     b.ToTable("ie_admission_recovery_delivery_intents", null, t =>
                         {
@@ -1090,7 +1090,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_recovery_request_intents_tenant_id_id");
 
                     b.HasIndex("ProcessedAt", "CreatedAt")
-                        .HasDatabaseName("ix_admission_recovery_request_intents_pending");
+                        .HasDatabaseName("ix_admission_recovery_request_intents_processed_at_created_at");
 
                     b.ToTable("ie_admission_recovery_request_intents", null, t =>
                         {
@@ -1177,24 +1177,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_scanner_capabilities_tenant_id_id");
 
                     b.HasIndex("IssuedByActorId")
-                        .HasDatabaseName("ix_ie_admission_scanner_capabilities_issued_by_actor_id");
+                        .HasDatabaseName("ix_admission_scanner_capabilities_issued_by_actor_id");
 
                     b.HasIndex("RevokedByActorId")
-                        .HasDatabaseName("ix_ie_admission_scanner_capabilities_revoked_by_actor_id");
+                        .HasDatabaseName("ix_admission_scanner_capabilities_revoked_by_actor_id");
 
                     b.HasIndex("TenantId", "AdmissionTargetId")
-                        .HasDatabaseName("IX_ie_admission_scanner_capabilities_tenant_id_admissio_5B998051");
+                        .HasDatabaseName("ix_ie_admission_scanner_capabilities_tenant_id_admissio_c37bd6b5");
 
                     b.HasIndex("TenantId", "IssueRequestId")
                         .IsUnique()
-                        .HasDatabaseName("ux_admission_scanner_capabilities_issue_request");
+                        .HasDatabaseName("ix_admission_scanner_capabilities_tenant_id_issue_request_id");
 
                     b.HasIndex("TenantId", "EventId", "AdmissionTargetId")
-                        .HasDatabaseName("IX_ie_admission_scanner_capabilities_tenant_id_event_id_7943FB1E");
+                        .HasDatabaseName("ix_ie_admission_scanner_capabilities_tenant_id_event_id_b15ee91c");
 
                     b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_scanner_capabilities_tenant_id_lookup_k_8E44787B");
+                        .HasDatabaseName("ix_ie_admission_scanner_capabilities_tenant_id_lookup_k_d4a86a66");
 
                     b.ToTable("ie_admission_scanner_capabilities", null, t =>
                         {
@@ -1255,14 +1255,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_targets_tenant_id_event_id_id");
 
                     b.HasIndex("TenantId", "EventId", "EventDayId")
-                        .HasDatabaseName("ix_ie_admission_targets_tenant_id_event_id_event_day_id");
+                        .HasDatabaseName("ix_admission_targets_tenant_id_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId")
-                        .HasDatabaseName("ix_ie_admission_targets_tenant_id_event_id_event_session_id");
+                        .HasDatabaseName("ix_admission_targets_tenant_id_event_id_event_session_id");
 
                     b.HasIndex("TenantId", "EventId", "AdmissionTargetTypeId", "ScopeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_targets_tenant_id_event_id_admission_ta_2064A30B");
+                        .HasDatabaseName("ix_ie_admission_targets_tenant_id_event_id_admission_ta_63f50068");
 
                     b.ToTable("ie_admission_targets", null, t =>
                         {
@@ -1356,32 +1356,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_tickets_tenant_id_id");
 
                     b.HasIndex("AdmissionTicketStatusId")
-                        .HasDatabaseName("ix_ie_admission_tickets_admission_ticket_status_id");
+                        .HasDatabaseName("ix_admission_tickets_admission_ticket_status_id");
 
                     b.HasIndex("LastTransitionReasonId")
-                        .HasDatabaseName("ix_ie_admission_tickets_last_transition_reason_id");
+                        .HasDatabaseName("ix_admission_tickets_last_transition_reason_id");
 
                     b.HasIndex("TenantId", "EventTicketTypeId")
-                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_event_ticket_type_id");
+                        .HasDatabaseName("ix_admission_tickets_tenant_id_event_ticket_type_id");
 
                     b.HasIndex("TenantId", "RegistrationTicketAssignmentId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_tickets_tenant_id_registration_ticket_a_3058A578");
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_ticket_a_4cfdaf1d");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
-                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_ticket_catalog_version_id");
+                        .HasDatabaseName("ix_admission_tickets_tenant_id_ticket_catalog_version_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_event_id_registration_order_id");
+                        .HasDatabaseName("ix_admission_tickets_tenant_id_event_id_registration_order_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantId")
-                        .HasDatabaseName("IX_ie_admission_tickets_tenant_id_registration_order_id_759D374A");
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_5e175a83");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
-                        .HasDatabaseName("IX_ie_admission_tickets_tenant_id_registration_order_id_EBD91BD4");
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_4092b370");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationTicketAssignmentId", "RegistrationOrderLineId")
-                        .HasDatabaseName("IX_ie_admission_tickets_tenant_id_registration_order_id_9866698F");
+                        .HasDatabaseName("ix_ie_admission_tickets_tenant_id_registration_order_id_61f46b43");
 
                     b.ToTable("ie_admission_tickets", (string)null);
                 });
@@ -1440,19 +1440,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_admission_ticket_credentials_tenant_id_id");
 
                     b.HasIndex("AdmissionTicketCredentialStatusId")
-                        .HasDatabaseName("IX_ie_admission_ticket_credentials_admission_ticket_cre_038D8738");
+                        .HasDatabaseName("ix_ie_admission_ticket_credentials_admission_ticket_cre_dc020da3");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_ticket_credentials_tenant_id_admission__EE2A0241");
+                        .HasDatabaseName("ix_ie_admission_ticket_credentials_tenant_id_admission__a8bdde47");
 
                     b.HasIndex("TenantId", "AdmissionTicketId", "CredentialVersion")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_ticket_credentials_tenant_id_admission__D693E7C0");
+                        .HasDatabaseName("ix_ie_admission_ticket_credentials_tenant_id_admission__3e7d1b73");
 
                     b.HasIndex("TenantId", "LookupKeyVersion", "LookupDigest")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_admission_ticket_credentials_tenant_id_lookup_key_0C73CCD5");
+                        .HasDatabaseName("ix_ie_admission_ticket_credentials_tenant_id_lookup_key_8912afcf");
 
                     b.ToTable("ie_admission_ticket_credentials", null, t =>
                         {
@@ -1491,7 +1491,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_admission_ticket_credential_statuses_master_code");
+                        .HasDatabaseName("ix_admission_ticket_credential_statuses_master_code");
 
                     b.ToTable("ie_admission_ticket_credential_statuses", (string)null);
                 });
@@ -1527,7 +1527,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_admission_ticket_statuses_master_code");
+                        .HasDatabaseName("ix_admission_ticket_statuses_master_code");
 
                     b.ToTable("ie_admission_ticket_statuses", (string)null);
                 });
@@ -1563,7 +1563,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_admission_ticket_transition_reasons_master_code");
+                        .HasDatabaseName("ix_admission_ticket_transition_reasons_master_code");
 
                     b.ToTable("ie_admission_ticket_transition_reasons", (string)null);
                 });
@@ -1596,7 +1596,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_advance_registration_obligations_master_code");
+                        .HasDatabaseName("ix_advance_registration_obligations_master_code");
 
                     b.ToTable("ie_advance_registration_obligations", (string)null);
                 });
@@ -1687,22 +1687,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_conversations");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_ai_conversations_actor_id");
+                        .HasDatabaseName("ix_ai_conversations_actor_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_ai_conversations_status_id");
+                        .HasDatabaseName("ix_ai_conversations_status_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_ai_conversations_user_id");
+                        .HasDatabaseName("ix_ai_conversations_user_id");
 
                     b.HasIndex("TenantId", "ActorId", "UpdatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_ai_conversations_tenant_actor_updated_at")
+                        .HasDatabaseName("ix_ai_conversations_tenant_id_actor_id_updated_at")
                         .HasFilter("actor_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "UserId", "StatusId", "UpdatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at");
+                        .HasDatabaseName("ix_ai_conversations_tenant_id_user_id_status_id_updated_at");
 
                     b.ToTable("ie_ai_conversations", null, t =>
                         {
@@ -1756,14 +1756,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_conversation_references");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_ie_ai_conversation_references_conversation_id");
+                        .HasDatabaseName("ix_ai_conversation_references_conversation_id");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_ie_ai_conversation_references_kind_id");
+                        .HasDatabaseName("ix_ai_conversation_references_kind_id");
 
                     b.HasIndex("TenantId", "ConversationId", "KindId", "ReferenceId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_ai_conversation_references_tenant_id_conversation_DE033131");
+                        .HasDatabaseName("ix_ie_ai_conversation_references_tenant_id_conversation_f51be9f1");
 
                     b.ToTable("ie_ai_conversation_references", (string)null);
                 });
@@ -1796,7 +1796,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_conversation_statuses_master_code");
+                        .HasDatabaseName("ix_ai_conversation_statuses_master_code");
 
                     b.ToTable("ie_ai_conversation_statuses", (string)null);
                 });
@@ -1846,17 +1846,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_messages");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_ie_ai_messages_conversation_id");
+                        .HasDatabaseName("ix_ai_messages_conversation_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_ai_messages_role_id");
+                        .HasDatabaseName("ix_ai_messages_role_id");
 
                     b.HasIndex("TenantId", "ConversationId", "CreatedAt")
-                        .HasDatabaseName("ix_ai_messages_tenant_conversation_created_at");
+                        .HasDatabaseName("ix_ai_messages_tenant_id_conversation_id_created_at");
 
                     b.HasIndex("TenantId", "ConversationId", "Sequence")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_messages_tenant_conversation_sequence");
+                        .HasDatabaseName("ix_ai_messages_tenant_id_conversation_id_sequence");
 
                     b.ToTable("ie_ai_messages", null, t =>
                         {
@@ -1892,7 +1892,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_message_roles_master_code");
+                        .HasDatabaseName("ix_ai_message_roles_master_code");
 
                     b.ToTable("ie_ai_message_roles", (string)null);
                 });
@@ -1977,30 +1977,30 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_proposed_actions");
 
                     b.HasIndex("ActingActorId")
-                        .HasDatabaseName("ix_ie_ai_proposed_actions_acting_actor_id");
+                        .HasDatabaseName("ix_ai_proposed_actions_acting_actor_id");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_ie_ai_proposed_actions_conversation_id");
+                        .HasDatabaseName("ix_ai_proposed_actions_conversation_id");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_ie_ai_proposed_actions_kind_id");
+                        .HasDatabaseName("ix_ai_proposed_actions_kind_id");
 
                     b.HasIndex("MessageId")
-                        .HasDatabaseName("ix_ie_ai_proposed_actions_message_id");
+                        .HasDatabaseName("ix_ai_proposed_actions_message_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_ai_proposed_actions_status_id");
+                        .HasDatabaseName("ix_ai_proposed_actions_status_id");
 
                     b.HasIndex("TenantId", "ActingActorId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_ai_proposed_actions_tenant_acting_actor_created_at")
+                        .HasDatabaseName("ix_ai_proposed_actions_tenant_id_acting_actor_id_created_at")
                         .HasFilter("acting_actor_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ConversationId", "StatusId", "CreatedAt")
-                        .HasDatabaseName("IX_ie_ai_proposed_actions_tenant_id_conversation_id_sta_7BF96BB3");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_tenant_id_conversation_id_sta_13a8a55f");
 
                     b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
-                        .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
+                        .HasDatabaseName("ix_ai_proposed_actions_tenant_id_status_id_kind_id_created_at");
 
                     b.ToTable("ie_ai_proposed_actions", (string)null);
                 });
@@ -2033,7 +2033,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_proposed_action_kinds_master_code");
+                        .HasDatabaseName("ix_ai_proposed_action_kinds_master_code");
 
                     b.ToTable("ie_ai_proposed_action_kinds", (string)null);
                 });
@@ -2066,7 +2066,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_proposed_action_statuses_master_code");
+                        .HasDatabaseName("ix_ai_proposed_action_statuses_master_code");
 
                     b.ToTable("ie_ai_proposed_action_statuses", (string)null);
                 });
@@ -2099,7 +2099,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_provider_kinds_master_code");
+                        .HasDatabaseName("ix_ai_provider_kinds_master_code");
 
                     b.ToTable("ie_ai_provider_kinds", (string)null);
                 });
@@ -2132,7 +2132,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_reference_kinds_master_code");
+                        .HasDatabaseName("ix_ai_reference_kinds_master_code");
 
                     b.ToTable("ie_ai_reference_kinds", (string)null);
                 });
@@ -2196,16 +2196,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_runs");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_ie_ai_runs_conversation_id");
+                        .HasDatabaseName("ix_ai_runs_conversation_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_ai_runs_status_id");
+                        .HasDatabaseName("ix_ai_runs_status_id");
 
                     b.HasIndex("TenantId", "ConversationId", "QueuedAt")
-                        .HasDatabaseName("ix_ai_runs_tenant_conversation_queued_at");
+                        .HasDatabaseName("ix_ai_runs_tenant_id_conversation_id_queued_at");
 
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
-                        .HasDatabaseName("ix_ai_runs_tenant_status_queued_at");
+                        .HasDatabaseName("ix_ai_runs_tenant_id_status_id_queued_at");
 
                     b.ToTable("ie_ai_runs", (string)null);
                 });
@@ -2238,7 +2238,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_ai_run_statuses_master_code");
+                        .HasDatabaseName("ix_ai_run_statuses_master_code");
 
                     b.ToTable("ie_ai_run_statuses", (string)null);
                 });
@@ -2290,13 +2290,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_tool_executions");
 
                     b.HasIndex("ProposedActionId")
-                        .HasDatabaseName("ix_ie_ai_tool_executions_proposed_action_id");
+                        .HasDatabaseName("ix_ai_tool_executions_proposed_action_id");
 
                     b.HasIndex("TenantId", "ProposedActionId", "StartedAt")
-                        .HasDatabaseName("ix_ai_tool_executions_tenant_action_started_at");
+                        .HasDatabaseName("ix_ai_tool_executions_tenant_id_proposed_action_id_started_at");
 
                     b.HasIndex("TenantId", "ToolName", "StartedAt")
-                        .HasDatabaseName("ix_ai_tool_executions_tenant_tool_started_at");
+                        .HasDatabaseName("ix_ai_tool_executions_tenant_id_tool_name_started_at");
 
                     b.ToTable("ie_ai_tool_executions", (string)null);
                 });
@@ -2390,10 +2390,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_ai_consent_grants");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("IX_AiConsentGrants_TenantId");
+                        .HasDatabaseName("ix_ai_consent_grants_tenant_id");
 
                     b.HasIndex("SubjectUserId", "EntityName", "FieldName", "ProviderTrustTierId")
-                        .HasDatabaseName("IX_ie_ai_consent_grants_subject_user_id_entity_name_fie_EC3A3B01");
+                        .HasDatabaseName("ix_ie_ai_consent_grants_subject_user_id_entity_name_fie_52315fae");
 
                     b.ToTable("ie_ai_consent_grants", (string)null);
                 });
@@ -2499,17 +2499,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_app_settings");
 
                     b.HasIndex("Category")
-                        .HasDatabaseName("ix_ie_app_settings_category");
+                        .HasDatabaseName("ix_app_settings_category");
 
                     b.HasIndex("IsSensitive")
-                        .HasDatabaseName("ix_ie_app_settings_is_sensitive");
+                        .HasDatabaseName("ix_app_settings_is_sensitive");
 
                     b.HasIndex("KeyVersion")
-                        .HasDatabaseName("ix_ie_app_settings_key_version");
+                        .HasDatabaseName("ix_app_settings_key_version");
 
                     b.ToTable("ie_app_settings", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'");
+                            t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'")
+                                .HasName("ck_appsettings_nohighvaluesecrets");
                         });
                 });
 
@@ -2569,7 +2570,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_assignment_statuses_master_code");
+                        .HasDatabaseName("ix_assignment_statuses_master_code");
 
                     b.ToTable("ie_assignment_statuses", (string)null);
                 });
@@ -2680,14 +2681,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_atproto_identities");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_atproto_identities_actor_id");
+                        .HasDatabaseName("ix_atproto_identities_actor_id");
 
                     b.HasIndex("Did")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_atproto_identities_did");
+                        .HasDatabaseName("ix_atproto_identities_did");
 
                     b.HasIndex("DidCustodyTypeId")
-                        .HasDatabaseName("ix_ie_atproto_identities_did_custody_type_id");
+                        .HasDatabaseName("ix_atproto_identities_did_custody_type_id");
 
                     b.ToTable("ie_atproto_identities", (string)null);
                 });
@@ -2725,7 +2726,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_atproto_identity_moderation_records");
 
                     b.HasIndex("AtprotoIdentityId")
-                        .HasDatabaseName("ix_ie_atproto_identity_moderation_records_atproto_identity_id");
+                        .HasDatabaseName("ix_atproto_identity_moderation_records_atproto_identity_id");
 
                     b.ToTable("ie_atproto_identity_moderation_records", (string)null);
                 });
@@ -2823,12 +2824,12 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Uri")
                         .IsUnique()
-                        .HasDatabaseName("ux_atproto_records_uri")
+                        .HasDatabaseName("ix_atproto_records_uri")
                         .HasFilter("uri IS NOT NULL");
 
                     b.HasIndex("Did", "Collection", "RecordKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_atproto_records_identity");
+                        .HasDatabaseName("ix_atproto_records_did_collection_record_key");
 
                     b.ToTable("ie_atproto_records", null, t =>
                         {
@@ -2956,14 +2957,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "Timestamp")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_auditlogs_tenant_time");
+                        .HasDatabaseName("ix_audit_logs_tenant_id_timestamp");
 
                     b.HasIndex("TenantId", "ActorId", "Timestamp")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_auditlogs_tenant_actor_time");
+                        .HasDatabaseName("ix_audit_logs_tenant_id_actor_id_timestamp");
 
                     b.HasIndex("TenantId", "EntityType", "EntityId")
-                        .HasDatabaseName("ix_auditlogs_tenant_entity");
+                        .HasDatabaseName("ix_audit_logs_tenant_id_entity_type_entity_id");
 
                     b.ToTable("ie_audit_logs", (string)null);
                 });
@@ -2996,7 +2997,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_booking_party_types_master_code");
+                        .HasDatabaseName("ix_booking_party_types_master_code");
 
                     b.ToTable("ie_booking_party_types", (string)null);
                 });
@@ -3029,7 +3030,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_capacity_hold_policies_master_code");
+                        .HasDatabaseName("ix_capacity_hold_policies_master_code");
 
                     b.ToTable("ie_capacity_hold_policies", (string)null);
                 });
@@ -3062,7 +3063,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_capacity_oversell_policies_master_code");
+                        .HasDatabaseName("ix_capacity_oversell_policies_master_code");
 
                     b.ToTable("ie_capacity_oversell_policies", (string)null);
                 });
@@ -3107,10 +3108,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_categories_tenant_master_code");
+                        .HasDatabaseName("ix_categories_tenant_id_master_code");
 
                     b.HasIndex("TenantId", "ParentId")
-                        .HasDatabaseName("ix_ie_categories_tenant_id_parent_id");
+                        .HasDatabaseName("ix_categories_tenant_id_parent_id");
 
                     b.ToTable("ie_categories", (string)null);
                 });
@@ -3167,14 +3168,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_category_type_categories");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_ie_category_type_categories_category_id");
+                        .HasDatabaseName("ix_category_type_categories_category_id");
 
                     b.HasIndex("CategoryTypeId")
-                        .HasDatabaseName("ix_ie_category_type_categories_category_type_id");
+                        .HasDatabaseName("ix_category_type_categories_category_type_id");
 
                     b.HasIndex("TenantId", "CategoryId", "CategoryTypeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_category_type_categories_tenant_id_category_id_ca_30F64AED");
+                        .HasDatabaseName("ix_ie_category_type_categories_tenant_id_category_id_ca_2c3ba517");
 
                     b.ToTable("ie_category_type_categories", (string)null);
                 });
@@ -3267,10 +3268,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "PaymentAttemptId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_checkout_dispatch_effects_tenant_id_payment_attempt_id");
+                        .HasDatabaseName("ix_checkout_dispatch_effects_tenant_id_payment_attempt_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_checkout_dispatch_effects_status_next_attempt_at__1D32FEF6");
+                        .HasDatabaseName("ix_ie_checkout_dispatch_effects_status_next_attempt_at__1c28b222");
 
                     b.ToTable("ie_checkout_dispatch_effects", null, t =>
                         {
@@ -3350,16 +3351,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_configuration_change_logs");
 
                     b.HasIndex("SettingKey")
-                        .HasDatabaseName("ix_ie_configuration_change_logs_setting_key");
+                        .HasDatabaseName("ix_configuration_change_logs_setting_key");
 
                     b.HasIndex("Timestamp")
-                        .HasDatabaseName("ix_ie_configuration_change_logs_timestamp");
+                        .HasDatabaseName("ix_configuration_change_logs_timestamp");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_configuration_change_logs_user_id");
+                        .HasDatabaseName("ix_configuration_change_logs_user_id");
 
                     b.HasIndex("SettingScopeId", "ScopeId")
-                        .HasDatabaseName("ix_ie_configuration_change_logs_setting_scope_id_scope_id");
+                        .HasDatabaseName("ix_configuration_change_logs_setting_scope_id_scope_id");
 
                     b.ToTable("ie_configuration_change_logs", (string)null);
                 });
@@ -3468,15 +3469,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Status", "CompletedAt")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_configuration_manifest_operations_status_completed");
+                        .HasDatabaseName("ix_configuration_manifest_operations_status_completed_at");
 
                     b.HasIndex("Digest", "Mode", "CompletedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_configuration_manifest_operations_digest_mode_completed");
+                        .HasDatabaseName("ix_configuration_manifest_operations_digest_mode_completed_at");
 
                     b.HasIndex("Status", "BootstrapGeneration", "CompletedAt")
                         .IsDescending(false, true, true)
-                        .HasDatabaseName("IX_ie_configuration_manifest_operations_status_bootstra_3773C4A7");
+                        .HasDatabaseName("ix_ie_configuration_manifest_operations_status_bootstra_ed152df4");
 
                     b.ToTable("ie_configuration_manifest_operations", null, t =>
                         {
@@ -3536,15 +3537,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_configuration_manifest_tenant_results");
 
                     b.HasIndex("OperationId")
-                        .HasDatabaseName("ix_ie_configuration_manifest_tenant_results_operation_id");
+                        .HasDatabaseName("ix_configuration_manifest_tenant_results_operation_id");
 
                     b.HasIndex("TenantId", "OperationId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_configuration_manifest_tenant_results_tenant_id_o_7FEDB165");
+                        .HasDatabaseName("ix_ie_configuration_manifest_tenant_results_tenant_id_o_293fa482");
 
                     b.HasIndex("TenantId", "Status", "CompletedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("IX_ie_configuration_manifest_tenant_results_tenant_id_s_57D4CF44");
+                        .HasDatabaseName("ix_ie_configuration_manifest_tenant_results_tenant_id_s_9b7c1cd9");
 
                     b.ToTable("ie_configuration_manifest_tenant_results", (string)null);
                 });
@@ -3577,7 +3578,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_contact_share_consent_subject_types_master_code");
+                        .HasDatabaseName("ix_contact_share_consent_subject_types_master_code");
 
                     b.ToTable("ie_contact_share_consent_subject_types", (string)null);
                 });
@@ -3769,17 +3770,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_ie_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_custom_property_definitions_default_option_id");
 
                     b.HasIndex("TenantId", "EntityTypeName", "IsActive")
-                        .HasDatabaseName("IX_ie_custom_property_definitions_tenant_id_entity_type_2ACD3DD0");
+                        .HasDatabaseName("ix_ie_custom_property_definitions_tenant_id_entity_type_b731f352");
 
                     b.HasIndex("TenantId", "EntityTypeName", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("IX_ie_custom_property_definitions_tenant_id_entity_type_F1BF25C2");
+                        .HasDatabaseName("ix_ie_custom_property_definitions_tenant_id_entity_type_6b1d7c90");
 
                     b.HasIndex("TenantId", "EntityTypeName", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_custom_property_definitions_tenant_id_entity_type_B2CBA439");
+                        .HasDatabaseName("ix_ie_custom_property_definitions_tenant_id_entity_type_da9f0f3e");
 
                     b.ToTable("ie_custom_property_definitions", null, t =>
                         {
@@ -3880,14 +3881,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_ie_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_custom_property_options_parent_option_id");
 
                     b.HasIndex("CustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("IX_ie_custom_property_options_custom_property_definitio_CDA7A7F1");
+                        .HasDatabaseName("ix_ie_custom_property_options_custom_property_definitio_40f7393d");
 
                     b.HasIndex("CustomPropertyDefinitionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_custom_property_options_custom_property_definitio_3B08B0FC");
+                        .HasDatabaseName("ix_ie_custom_property_options_custom_property_definitio_f2db0eb1");
 
                     b.ToTable("ie_custom_property_options", (string)null);
                 });
@@ -3945,20 +3946,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_ie_custom_property_projection_dirty_scope");
+                        .HasName("pk_ie_custom_property_projection_dirty_scopes");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_custom_property_projection_dirty_scope_tenant_id");
+                        .HasDatabaseName("ix_custom_property_projection_dirty_scopes_tenant_id");
 
                     b.HasIndex("ProjectionName", "ProjectionVersion", "TenantId")
-                        .HasDatabaseName("IX_ie_custom_property_projection_dirty_scope_projection_08CC136C")
+                        .HasDatabaseName("ix_ie_custom_property_projection_dirty_scopes_projectio_0697e977")
                         .HasFilter("drained_at IS NULL");
 
                     b.HasIndex("ProjectionName", "ProjectionVersion", "TenantId", "ScopeType", "ScopeId", "DefinitionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_custom_property_projection_dirty_scope_projection_5F791C3C");
+                        .HasDatabaseName("ix_ie_custom_property_projection_dirty_scopes_projectio_bdb60545");
 
-                    b.ToTable("ie_custom_property_projection_dirty_scope", (string)null);
+                    b.ToTable("ie_custom_property_projection_dirty_scopes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionStatus", b =>
@@ -4014,12 +4015,12 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("state");
 
                     b.HasKey("ProjectionName", "ProjectionVersion", "TenantId")
-                        .HasName("PK_ie_custom_property_projection_status_projection_name_B3BBCCD6");
+                        .HasName("pk_ie_custom_property_projection_statuses_projection_na_011c1a63");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_custom_property_projection_status_tenant_id");
+                        .HasDatabaseName("ix_custom_property_projection_statuses_tenant_id");
 
-                    b.ToTable("ie_custom_property_projection_status", (string)null);
+                    b.ToTable("ie_custom_property_projection_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyValue", b =>
@@ -4106,17 +4107,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_custom_property_values");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_ie_custom_property_values_option_id");
+                        .HasDatabaseName("ix_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "CustomPropertyDefinitionId")
-                        .HasDatabaseName("IX_ie_custom_property_values_tenant_id_custom_property__762CDFE5");
+                        .HasDatabaseName("ix_ie_custom_property_values_tenant_id_custom_property__6cac1357");
 
                     b.HasIndex("TenantId", "EntityId")
-                        .HasDatabaseName("ix_cpv_tenant_entity");
+                        .HasDatabaseName("ix_custom_property_values_tenant_id_entity_id");
 
                     b.HasIndex("CustomPropertyDefinitionId", "EntityId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_custom_property_values_custom_property_definition_1604D74D");
+                        .HasDatabaseName("ix_ie_custom_property_values_custom_property_definition_b9211374");
 
                     b.ToTable("ie_custom_property_values", (string)null);
                 });
@@ -4233,13 +4234,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("EmailDispatchOutboxId", "AttemptNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_email_dispatch_attempts_email_dispatch_outbox_id__2AF3C516");
+                        .HasDatabaseName("ix_ie_email_dispatch_attempts_email_dispatch_outbox_id__8b6b03d6");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
-                        .HasDatabaseName("ix_ie_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id");
+                        .HasDatabaseName("ix_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id");
 
                     b.HasIndex("TenantId", "StartedAt")
-                        .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
+                        .HasDatabaseName("ix_email_dispatch_attempts_tenant_id_started_at");
 
                     b.ToTable("ie_email_dispatch_attempts", null, t =>
                         {
@@ -4444,51 +4445,51 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_email_dispatch_outbox");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_email_dispatch_outbox_tenant_id");
+                        .HasName("ak_email_dispatch_outbox_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "Id", "NotificationIntentId")
-                        .HasName("ak_email_dispatch_outbox_tenant_id_intent");
+                        .HasName("ak_email_dispatch_outbox_tenant_id_id_notification_intent_id");
 
                     b.HasAlternateKey("TenantId", "Id", "PublishEventId")
-                        .HasName("ak_email_dispatch_outbox_tenant_id_publish_event");
+                        .HasName("ak_email_dispatch_outbox_tenant_id_id_publish_event_id");
 
                     b.HasAlternateKey("TenantId", "Id", "NotificationIntentId", "RecipientAddressSource")
-                        .HasName("AK_ie_email_dispatch_outbox_tenant_id_id_notification_i_7CDD4077");
+                        .HasName("ak_ie_email_dispatch_outbox_tenant_id_id_notification_i_b6874a0f");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_email_dispatch_outbox_event_id");
+                        .HasDatabaseName("ix_email_dispatch_outbox_event_id");
 
                     b.HasIndex("ManagedTenantProvisioningOperationId")
-                        .HasDatabaseName("IX_ie_email_dispatch_outbox_managed_tenant_provisioning_A9415B86");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_managed_tenant_provisioning_592938c1");
 
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_intent");
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_notification_intent_id");
 
                     b.HasIndex("TenantId", "PublishEventId")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event");
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_publish_event_id");
 
                     b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_recipient_user_id");
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_recipient_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
+                        .HasDatabaseName("ix_email_dispatch_outbox_status_next_attempt_at_created_at");
 
                     b.HasIndex("TenantId", "NotificationIntentId", "RecipientUserId")
-                        .HasDatabaseName("IX_ie_email_dispatch_outbox_tenant_id_notification_inte_3EBF0BA8");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_notification_inte_0478e15a");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
-                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_status_last_failure_at");
 
                     b.HasIndex("Status", "NextAttemptAt", "RabbitMqLastPublishAttemptAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_email_dispatch_outbox_status_next_attempt_at_rabb_19A2EFAA");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_status_next_attempt_at_rabb_93dbb152");
 
                     b.HasIndex("TenantId", "ContentRedactedAt", "Status", "SentAt", "LastFailureAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_email_dispatch_outbox_tenant_id_content_redacted__9D6CD5D5");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_content_redacted__44f15358");
 
                     b.ToTable("ie_email_dispatch_outbox", null, t =>
                         {
@@ -4561,7 +4562,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ProcessorCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_processor_states_processor_code");
+                        .HasDatabaseName("ix_email_dispatch_processor_states_processor_code");
 
                     b.ToTable("ie_email_dispatch_processor_states", null, t =>
                         {
@@ -4652,18 +4653,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_email_dispatch_receipts");
 
                     b.HasIndex("EmailDispatchOutboxId", "Status")
-                        .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
+                        .HasDatabaseName("ix_email_dispatch_receipts_email_dispatch_outbox_id_status");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_receipts_tenant_outbox");
+                        .HasDatabaseName("ix_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id");
 
                     b.HasIndex("TenantId", "PublishEventId")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_receipts_tenant_publish_event");
+                        .HasDatabaseName("ix_email_dispatch_receipts_tenant_id_publish_event_id");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "PublishEventId")
-                        .HasDatabaseName("IX_ie_email_dispatch_receipts_tenant_id_email_dispatch__5A6BCBE5");
+                        .HasDatabaseName("ix_ie_email_dispatch_receipts_tenant_id_email_dispatch__ce713efb");
 
                     b.ToTable("ie_email_dispatch_receipts", (string)null);
                 });
@@ -4725,10 +4726,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_tenant_controls_tenant");
+                        .HasDatabaseName("ix_email_dispatch_tenant_controls_tenant_id");
 
                     b.HasIndex("IsPaused", "UpdatedAt")
-                        .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
+                        .HasDatabaseName("ix_email_dispatch_tenant_controls_is_paused_updated_at");
 
                     b.ToTable("ie_email_dispatch_tenant_controls", null, t =>
                         {
@@ -4766,7 +4767,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_entitlement_scope_types_master_code");
+                        .HasDatabaseName("ix_entitlement_scope_types_master_code");
 
                     b.ToTable("ie_entitlement_scope_types", (string)null);
                 });
@@ -4799,7 +4800,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_entitlement_selection_rules_master_code");
+                        .HasDatabaseName("ix_entitlement_selection_rules_master_code");
 
                     b.ToTable("ie_entitlement_selection_rules", (string)null);
                 });
@@ -5040,80 +5041,80 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_events_tenant_id_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_events_actor_id");
+                        .HasDatabaseName("ix_events_actor_id");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_ie_events_atproto_record_id");
+                        .HasDatabaseName("ix_events_atproto_record_id");
 
                     b.HasIndex("AudienceAgeId")
-                        .HasDatabaseName("ix_ie_events_audience_age_id");
+                        .HasDatabaseName("ix_events_audience_age_id");
 
                     b.HasIndex("AudienceGenderId")
-                        .HasDatabaseName("ix_ie_events_audience_gender_id");
+                        .HasDatabaseName("ix_events_audience_gender_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_ie_events_background_image_id");
+                        .HasDatabaseName("ix_events_background_image_id");
 
                     b.HasIndex("EventFormatId")
-                        .HasDatabaseName("ix_ie_events_event_format_id");
+                        .HasDatabaseName("ix_events_event_format_id");
 
                     b.HasIndex("EventProvenanceTypeId")
-                        .HasDatabaseName("ix_ie_events_event_provenance_type_id");
+                        .HasDatabaseName("ix_events_event_provenance_type_id");
 
                     b.HasIndex("EventSeriesId")
-                        .HasDatabaseName("ix_ie_events_event_series_id");
+                        .HasDatabaseName("ix_events_event_series_id");
 
                     b.HasIndex("EventStatusId")
-                        .HasDatabaseName("ix_ie_events_event_status_id");
+                        .HasDatabaseName("ix_events_event_status_id");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_ie_events_event_type_id");
+                        .HasDatabaseName("ix_events_event_type_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_ie_events_featured_image_id");
+                        .HasDatabaseName("ix_events_featured_image_id");
 
                     b.HasIndex("MadhabId")
-                        .HasDatabaseName("ix_ie_events_madhab_id");
+                        .HasDatabaseName("ix_events_madhab_id");
 
                     b.HasIndex("OrganizerActorId")
-                        .HasDatabaseName("ix_ie_events_organizer_actor_id");
+                        .HasDatabaseName("ix_events_organizer_actor_id");
 
                     b.HasIndex("RegistrationPolicyId")
-                        .HasDatabaseName("ix_ie_events_registration_policy_id");
+                        .HasDatabaseName("ix_events_registration_policy_id");
 
                     b.HasIndex("SubmittedByUserId")
-                        .HasDatabaseName("ix_ie_events_submitted_by_user_id");
+                        .HasDatabaseName("ix_events_submitted_by_user_id");
 
                     b.HasIndex("VisibilityTypeId")
-                        .HasDatabaseName("ix_ie_events_visibility_type_id");
+                        .HasDatabaseName("ix_events_visibility_type_id");
 
                     b.HasIndex("TenantId", "EventTypeId")
-                        .HasDatabaseName("ix_events_tenant_eventtype");
+                        .HasDatabaseName("ix_events_tenant_id_event_type_id");
 
                     b.HasIndex("TenantId", "PublicCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_events_tenant_public_code");
+                        .HasDatabaseName("ix_events_tenant_id_public_code");
 
                     b.HasIndex("TenantId", "Slug")
-                        .HasDatabaseName("ix_events_tenant_slug");
+                        .HasDatabaseName("ix_events_tenant_id_slug");
 
                     b.HasIndex("TenantId", "ActorId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_events_tenant_actor_created");
+                        .HasDatabaseName("ix_events_tenant_id_actor_id_created_at");
 
                     b.HasIndex("TenantId", "FirstSessionDate", "LastSessionDate")
-                        .HasDatabaseName("ix_events_tenant_daterange");
+                        .HasDatabaseName("ix_events_tenant_id_first_session_date_last_session_date");
 
                     b.HasIndex("TenantId", "IsDeleted", "EventStatusId")
-                        .HasDatabaseName("ix_events_tenant_active_status");
+                        .HasDatabaseName("ix_events_tenant_id_is_deleted_event_status_id");
 
                     b.ToTable("ie_events", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
+                            t.HasCheckConstraint("ck_event_session_date_range", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
 
-                            t.HasCheckConstraint("CK_Event_SessionStartUtcRange", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
+                            t.HasCheckConstraint("ck_event_session_start_utc_range", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
 
-                            t.HasCheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR trim(event_time_zone_id) <> ''");
+                            t.HasCheckConstraint("ck_event_time_zone_id_not_blank", "event_time_zone_id IS NULL OR trim(event_time_zone_id) <> ''");
                         });
 
                     b.UseTptMappingStrategy();
@@ -5238,36 +5239,36 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_agenda_items");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_ie_event_agenda_items_kind_id");
+                        .HasDatabaseName("ix_event_agenda_items_kind_id");
 
                     b.HasIndex("TenantId", "EventId", "EventDayId")
-                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_event_id_event_day_id");
+                        .HasDatabaseName("ix_event_agenda_items_tenant_id_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "EventId", "SortOrder")
-                        .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
+                        .HasDatabaseName("ix_event_agenda_items_tenant_id_event_id_sort_order");
 
                     b.HasIndex("TenantId", "LocationId", "RoomId")
-                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_location_id_room_id");
+                        .HasDatabaseName("ix_event_agenda_items_tenant_id_location_id_room_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
-                        .HasDatabaseName("IX_ie_event_agenda_items_tenant_id_event_id_event_locat_FF4217BB");
+                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_event_id_event_locat_2c16b916");
 
                     b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
-                        .HasDatabaseName("IX_ie_event_agenda_items_tenant_id_event_id_local_start_FC9ABE02");
+                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_event_id_local_start_64423c82");
 
                     b.ToTable("ie_event_agenda_items", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
+                            t.HasCheckConstraint("ck_event_agenda_item_end_after_start", "end_time > start_time");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_LocalDateRange", "local_end_date >= local_start_date");
+                            t.HasCheckConstraint("ck_event_agenda_item_local_date_range", "local_end_date >= local_start_date");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
+                            t.HasCheckConstraint("ck_event_agenda_item_local_end_minute_range", "local_end_minute_of_day BETWEEN 0 AND 1439");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
+                            t.HasCheckConstraint("ck_event_agenda_item_local_start_minute_range", "local_start_minute_of_day BETWEEN 0 AND 1439");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_agenda_item_physical_location_requires_event_location", "location_id IS NULL OR event_location_id IS NOT NULL");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_agenda_item_room_requires_location", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_agenda_items:tenant_id,event_id,event_location_id,location_id,room_id");
@@ -5355,14 +5356,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_capacity_pools_tenant_id_id");
 
                     b.HasIndex("CapacityHoldPolicyId")
-                        .HasDatabaseName("ix_ie_event_capacity_pools_capacity_hold_policy_id");
+                        .HasDatabaseName("ix_event_capacity_pools_capacity_hold_policy_id");
 
                     b.HasIndex("CapacityOversellPolicyId")
-                        .HasDatabaseName("ix_ie_event_capacity_pools_capacity_oversell_policy_id");
+                        .HasDatabaseName("ix_event_capacity_pools_capacity_oversell_policy_id");
 
                     b.HasIndex("TenantId", "EventId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_capacity_pools_tenant_id_event_id_name")
+                        .HasDatabaseName("ix_event_capacity_pools_tenant_id_event_id_name")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_event_capacity_pools", (string)null);
@@ -5412,11 +5413,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_categories");
 
                     b.HasIndex("TenantId", "CategoryId")
-                        .HasDatabaseName("ix_ie_event_categories_tenant_id_category_id");
+                        .HasDatabaseName("ix_event_categories_tenant_id_category_id");
 
                     b.HasIndex("TenantId", "EventId", "CategoryId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_categories_tenant_event_category");
+                        .HasDatabaseName("ix_event_categories_tenant_id_event_id_category_id");
 
                     b.ToTable("ie_event_categories", (string)null);
                 });
@@ -5529,32 +5530,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_contact_share_consents_tenant_id_id");
 
                     b.HasIndex("RecipientActorId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consents_recipient_actor_id");
+                        .HasDatabaseName("ix_event_contact_share_consents_recipient_actor_id");
 
                     b.HasIndex("SubjectTypeId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consents_subject_type_id");
+                        .HasDatabaseName("ix_event_contact_share_consents_subject_type_id");
 
                     b.HasIndex("UserSubjectId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consents_user_subject_id");
+                        .HasDatabaseName("ix_event_contact_share_consents_user_subject_id");
 
                     b.HasIndex("TenantId", "GuestContactOrderId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_guest_cont_FAEC890D");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_guest_cont_7a6314fa");
 
                     b.HasIndex("TenantId", "RegistrationParticipantId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_registrati_73103DFB");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_registrati_5307467f");
 
                     b.HasIndex("TenantId", "RegistrationPurchaserOrderId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_registrati_DF0EB375");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_registrati_0d2657b1");
 
                     b.HasIndex("TenantId", "RecipientActorId", "Status")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_recipient__4E305A77");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_recipient__99852202");
 
                     b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "Status")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_subject_ty_B2643791");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_subject_ty_9f11d836");
 
                     b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "RecipientActorId", "PurposeCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_subject_ty_C9677AB4");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_subject_ty_1e094460");
 
                     b.ToTable("ie_event_contact_share_consents", null, t =>
                         {
@@ -5666,19 +5667,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_contact_share_consent_history");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_actor_id");
+                        .HasDatabaseName("ix_event_contact_share_consent_history_actor_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_user_id");
+                        .HasDatabaseName("ix_event_contact_share_consent_history_user_id");
 
                     b.HasIndex("TenantId", "SourceEventId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_sou_6A129E59");
+                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_tenant_id_sou_c58b98d8");
 
                     b.HasIndex("TenantId", "SourceRegistrationOrderId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_sou_6F192E93");
+                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_tenant_id_sou_ea02bf21");
 
                     b.HasIndex("TenantId", "ConsentId", "OccurredAt")
-                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_con_C29CC8BA");
+                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_tenant_id_con_e09978b4");
 
                     b.ToTable("ie_event_contact_share_consent_history", (string)null);
                 });
@@ -5780,16 +5781,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_contact_share_exports");
 
                     b.HasIndex("ExportedByUserId")
-                        .HasDatabaseName("ix_ie_event_contact_share_exports_exported_by_user_id");
+                        .HasDatabaseName("ix_event_contact_share_exports_exported_by_user_id");
 
                     b.HasIndex("RecipientActorId")
-                        .HasDatabaseName("ix_ie_event_contact_share_exports_recipient_actor_id");
+                        .HasDatabaseName("ix_event_contact_share_exports_recipient_actor_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_event_contact_share_exports_tenant_id_event_id");
+                        .HasDatabaseName("ix_event_contact_share_exports_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "RecipientActorId", "CreatedAt")
-                        .HasDatabaseName("IX_ie_event_contact_share_exports_tenant_id_recipient_a_D945B037");
+                        .HasDatabaseName("ix_ie_event_contact_share_exports_tenant_id_recipient_a_d6253117");
 
                     b.ToTable("ie_event_contact_share_exports", (string)null);
                 });
@@ -5814,7 +5815,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_contact_share_export_items");
 
                     b.HasIndex("ConsentId")
-                        .HasDatabaseName("ix_ie_event_contact_share_export_items_consent_id");
+                        .HasDatabaseName("ix_event_contact_share_export_items_consent_id");
 
                     b.ToTable("ie_event_contact_share_export_items", (string)null);
                 });
@@ -6029,17 +6030,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_ie_event_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_event_custom_property_definitions_default_option_id");
 
                     b.HasIndex("SourceTemplateId")
-                        .HasDatabaseName("ix_ie_event_custom_property_definitions_source_template_id");
+                        .HasDatabaseName("ix_event_custom_property_definitions_source_template_id");
 
                     b.HasIndex("EventId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_ecpd_event_namespace_key");
+                        .HasDatabaseName("ix_event_custom_property_definitions_event_id_namespace_key");
 
                     b.HasIndex("TenantId", "EventId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("IX_ie_event_custom_property_definitions_tenant_id_event_E6B3CBF5");
+                        .HasDatabaseName("ix_ie_event_custom_property_definitions_tenant_id_event_9039e8eb");
 
                     b.ToTable("ie_event_custom_property_definitions", (string)null);
                 });
@@ -6145,14 +6146,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_ie_event_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_event_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("IX_ie_event_custom_property_options_event_custom_proper_4D7FFCBE");
+                        .HasDatabaseName("ix_ie_event_custom_property_options_event_custom_proper_9f345ed1");
 
                     b.HasIndex("EventCustomPropertyDefinitionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_custom_property_options_event_custom_proper_43A1CECD");
+                        .HasDatabaseName("ix_ie_event_custom_property_options_event_custom_proper_ebe16fc6");
 
                     b.ToTable("ie_event_custom_property_options", (string)null);
                 });
@@ -6265,27 +6266,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_custom_property_projections");
 
                     b.HasIndex("EventCustomPropertyDefinitionId")
-                        .HasDatabaseName("IX_ie_event_custom_property_projections_event_custom_pr_89246C66");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_event_custom_pr_cd0cc2c4");
 
                     b.HasIndex("EventCustomPropertyValueId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_custom_property_projections_event_custom_pr_F53BB10B");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_event_custom_pr_b48345e5");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_event_custom_property_projections_event_id");
+                        .HasDatabaseName("ix_event_custom_property_projections_event_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_ie_event_custom_property_projections_option_id");
+                        .HasDatabaseName("ix_event_custom_property_projections_option_id");
 
                     b.HasIndex("TenantId", "ExposureLevel")
-                        .HasDatabaseName("ix_ecpp_tenant_exposure");
+                        .HasDatabaseName("ix_event_custom_property_projections_tenant_id_exposure_level");
 
                     b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
-                        .HasDatabaseName("IX_ie_event_custom_property_projections_tenant_id_names_307EB403")
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_tenant_id_names_8724e490")
                         .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key", "Ordinal")
-                        .HasDatabaseName("IX_ie_event_custom_property_projections_tenant_id_event_07B1A334");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_tenant_id_event_b0d78eaf");
 
                     b.ToTable("ie_event_custom_property_projections", (string)null);
                 });
@@ -6374,17 +6375,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_custom_property_values");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_event_custom_property_values_event_id");
+                        .HasDatabaseName("ix_event_custom_property_values_event_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_ie_event_custom_property_values_option_id");
+                        .HasDatabaseName("ix_event_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ecpv_tenant_event");
+                        .HasDatabaseName("ix_event_custom_property_values_tenant_id_event_id");
 
                     b.HasIndex("EventCustomPropertyDefinitionId", "EventId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_custom_property_values_event_custom_propert_F9DDEA4F");
+                        .HasDatabaseName("ix_ie_event_custom_property_values_event_custom_propert_127102aa");
 
                     b.ToTable("ie_event_custom_property_values", (string)null);
                 });
@@ -6482,17 +6483,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_days_tenant_id_event_id_id");
 
                     b.HasIndex("BannerImageId")
-                        .HasDatabaseName("ix_ie_event_days_banner_image_id");
+                        .HasDatabaseName("ix_event_days_banner_image_id");
 
                     b.HasIndex("TenantId", "EventId", "IsPublished")
-                        .HasDatabaseName("ix_event_days_tenant_event_published");
+                        .HasDatabaseName("ix_event_days_tenant_id_event_id_is_published");
 
                     b.HasIndex("TenantId", "EventId", "LocalDate")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_days_tenant_event_local_date");
+                        .HasDatabaseName("ix_event_days_tenant_id_event_id_local_date");
 
                     b.HasIndex("TenantId", "EventId", "SortOrder")
-                        .HasDatabaseName("ix_event_days_tenant_event_sort");
+                        .HasDatabaseName("ix_event_days_tenant_id_event_id_sort_order");
 
                     b.ToTable("ie_event_days", (string)null);
                 });
@@ -6564,10 +6565,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_islamic_aspects");
 
                     b.HasIndex("MadhabId")
-                        .HasDatabaseName("ix_ie_event_islamic_aspects_madhab_id");
+                        .HasDatabaseName("ix_event_islamic_aspects_madhab_id");
 
                     b.HasIndex("PrimaryLanguageId")
-                        .HasDatabaseName("ix_ie_event_islamic_aspects_primary_language_id");
+                        .HasDatabaseName("ix_event_islamic_aspects_primary_language_id");
 
                     b.ToTable("ie_event_islamic_aspects", (string)null);
                 });
@@ -6690,22 +6691,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_locations_tenant_id_event_id_id");
 
                     b.HasIndex("FullDetailsAudienceId")
-                        .HasDatabaseName("ix_ie_event_locations_full_details_audience_id");
+                        .HasDatabaseName("ix_event_locations_full_details_audience_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
-                        .HasDatabaseName("ux_event_locations_active_tba")
+                        .HasDatabaseName("ix_event_locations_tenant_id_event_id")
                         .HasFilter("is_deleted = false AND is_to_be_announced = true");
 
                     b.HasIndex("TenantId", "LocationId")
-                        .HasDatabaseName("ix_ie_event_locations_tenant_id_location_id");
+                        .HasDatabaseName("ix_event_locations_tenant_id_location_id");
 
                     b.HasIndex("TenantId", "EventId", "IsDeleted")
-                        .HasDatabaseName("ix_event_locations_tenant_event_active");
+                        .HasDatabaseName("ix_event_locations_tenant_id_event_id_is_deleted");
 
                     b.HasIndex("TenantId", "EventId", "LocationId")
                         .IsUnique()
-                        .HasDatabaseName("ux_event_locations_active_physical")
+                        .HasDatabaseName("ix_event_locations_tenant_id_event_id_location_id")
                         .HasFilter("is_deleted = false AND is_to_be_announced = false AND location_id IS NOT NULL");
 
                     b.ToTable("ie_event_locations", null, t =>
@@ -6781,17 +6782,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_location_disclosure_audits");
 
                     b.HasIndex("NewAudienceId")
-                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_new_audience_id");
+                        .HasDatabaseName("ix_event_location_disclosure_audits_new_audience_id");
 
                     b.HasIndex("PreviousAudienceId")
-                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_previous_audience_id");
+                        .HasDatabaseName("ix_event_location_disclosure_audits_previous_audience_id");
 
                     b.HasIndex("TenantId", "EventLocationId", "NewPolicyVersion")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_location_disclosure_audits_tenant_id_event__190D6F4A");
+                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_tenant_id_event__ed21edb1");
 
                     b.HasIndex("TenantId", "EventLocationId", "OccurredAtUtc")
-                        .HasDatabaseName("IX_ie_event_location_disclosure_audits_tenant_id_event__984460F3");
+                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_tenant_id_event__31d3588a");
 
                     b.ToTable("ie_event_location_disclosure_audits", null, t =>
                         {
@@ -6846,10 +6847,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_location_exact_read_audits");
 
                     b.HasIndex("TenantId", "EventLocationId", "OccurredAtUtc")
-                        .HasDatabaseName("IX_ie_event_location_exact_read_audits_tenant_id_event__CE759FF3");
+                        .HasDatabaseName("ix_ie_event_location_exact_read_audits_tenant_id_event__fde54e5c");
 
                     b.HasIndex("TenantId", "RequesterUserId", "OccurredAtUtc")
-                        .HasDatabaseName("IX_ie_event_location_exact_read_audits_tenant_id_reques_63F7FBB3");
+                        .HasDatabaseName("ix_ie_event_location_exact_read_audits_tenant_id_reques_dcc7f5a0");
 
                     b.ToTable("ie_event_location_exact_read_audits", null, t =>
                         {
@@ -6928,37 +6929,37 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_moderation_records_tenant_id_id");
 
                     b.HasIndex("SourceModerationRecordId")
-                        .HasDatabaseName("ix_ie_event_moderation_records_source_moderation_record_id");
+                        .HasDatabaseName("ix_event_moderation_records_source_moderation_record_id");
 
                     b.HasIndex("TenantId", "CorrelationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_moderation_records_tenant_correlation")
+                        .HasDatabaseName("ix_event_moderation_records_tenant_id_correlation_id")
                         .HasFilter("correlation_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "SourceReportDecisionId")
-                        .HasDatabaseName("IX_ie_event_moderation_records_tenant_id_source_report__B247B12D")
+                        .HasDatabaseName("ix_ie_event_moderation_records_tenant_id_source_report__8a8d0c83")
                         .HasFilter("source_report_decision_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "SourceReportId")
-                        .HasDatabaseName("ix_event_moderation_records_tenant_source_report")
+                        .HasDatabaseName("ix_event_moderation_records_tenant_id_source_report_id")
                         .HasFilter("source_report_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ActionKind", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_moderation_records_tenant_action_created");
+                        .HasDatabaseName("ix_event_moderation_records_tenant_id_action_kind_created_at");
 
                     b.HasIndex("TenantId", "EventId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_moderation_records_tenant_event_created");
+                        .HasDatabaseName("ix_event_moderation_records_tenant_id_event_id_created_at");
 
                     b.HasIndex("TenantId", "SourceReportId", "SourceReportDecisionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_moderation_records_tenant_id_source_report__636B375F")
+                        .HasDatabaseName("ix_ie_event_moderation_records_tenant_id_source_report__cc08acf8")
                         .HasFilter("source_report_id IS NOT NULL AND source_report_decision_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "SourceReportId", "SourceReportDecisionId", "Id")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_moderation_records_tenant_id_source_report__3A55A2B1");
+                        .HasDatabaseName("ix_ie_event_moderation_records_tenant_id_source_report__de073192");
 
                     b.ToTable("ie_event_moderation_records", null, t =>
                         {
@@ -7062,16 +7063,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_organizer_claims_tenant_id_id");
 
                     b.HasIndex("ClaimantActorId")
-                        .HasDatabaseName("ix_ie_event_organizer_claims_claimant_actor_id");
+                        .HasDatabaseName("ix_event_organizer_claims_claimant_actor_id");
 
                     b.HasIndex("ReviewerUserId")
-                        .HasDatabaseName("ix_ie_event_organizer_claims_reviewer_user_id");
+                        .HasDatabaseName("ix_event_organizer_claims_reviewer_user_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_event_organizer_claims_status_id");
+                        .HasDatabaseName("ix_event_organizer_claims_status_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_event_organizer_claims_tenant_id_event_id");
+                        .HasDatabaseName("ix_event_organizer_claims_tenant_id_event_id");
 
                     b.ToTable("ie_event_organizer_claims", (string)null);
                 });
@@ -7104,7 +7105,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_organizer_claim_statuses_master_code");
+                        .HasDatabaseName("ix_event_organizer_claim_statuses_master_code");
 
                     b.ToTable("ie_event_organizer_claim_statuses", (string)null);
                 });
@@ -7177,13 +7178,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_participation_configurations_tenant_id_id");
 
                     b.HasIndex("AdvanceRegistrationObligationId")
-                        .HasDatabaseName("IX_ie_event_participation_configurations_advance_regist_DC980D96");
+                        .HasDatabaseName("ix_ie_event_participation_configurations_advance_regist_f918e272");
 
                     b.HasIndex("IdentityAccessModeId")
-                        .HasDatabaseName("ix_ie_event_participation_configurations_identity_access_mode_id");
+                        .HasDatabaseName("ix_event_participation_configurations_identity_access_mode_id");
 
                     b.HasIndex("ParticipationHandlingModeId")
-                        .HasDatabaseName("IX_ie_event_participation_configurations_participation__B8AE49CC");
+                        .HasDatabaseName("ix_ie_event_participation_configurations_participation__d063699d");
 
                     b.ToTable("ie_event_participation_configurations", (string)null);
                 });
@@ -7216,7 +7217,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_provenance_types_master_code");
+                        .HasDatabaseName("ix_event_provenance_types_master_code");
 
                     b.ToTable("ie_event_provenance_types", (string)null);
                 });
@@ -7311,13 +7312,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_public_actions_tenant_id_id");
 
                     b.HasIndex("EventPublicActionKindId")
-                        .HasDatabaseName("ix_ie_event_public_actions_event_public_action_kind_id");
+                        .HasDatabaseName("ix_event_public_actions_event_public_action_kind_id");
 
                     b.HasIndex("HealthStateId")
-                        .HasDatabaseName("ix_ie_event_public_actions_health_state_id");
+                        .HasDatabaseName("ix_event_public_actions_health_state_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_event_public_actions_tenant_event");
+                        .HasDatabaseName("ix_event_public_actions_tenant_id_event_id");
 
                     b.ToTable("ie_event_public_actions", (string)null);
                 });
@@ -7350,7 +7351,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_public_action_health_states_master_code");
+                        .HasDatabaseName("ix_event_public_action_health_states_master_code");
 
                     b.ToTable("ie_event_public_action_health_states", (string)null);
                 });
@@ -7383,7 +7384,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_public_action_kinds_master_code");
+                        .HasDatabaseName("ix_event_public_action_kinds_master_code");
 
                     b.ToTable("ie_event_public_action_kinds", (string)null);
                 });
@@ -7482,32 +7483,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_registrations");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_ie_event_registrations_approval_status_id");
+                        .HasDatabaseName("ix_event_registrations_approval_status_id");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_ie_event_registrations_atproto_record_id");
+                        .HasDatabaseName("ix_event_registrations_atproto_record_id");
 
                     b.HasIndex("LinkedUserId")
-                        .HasDatabaseName("ix_eventregistrations_user");
+                        .HasDatabaseName("ix_event_registrations_linked_user_id");
 
                     b.HasIndex("TenantId", "TicketTypeEntitlementId")
-                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_ticket_type_entitlement_id");
+                        .HasDatabaseName("ix_event_registrations_tenant_id_ticket_type_entitlement_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "RegistrationParticipantId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_registrations_tenant_id_event_session_id_re_096335ED")
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_event_session_id_re_9a1b6461")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationParticipantId")
-                        .HasDatabaseName("IX_ie_event_registrations_tenant_id_registration_order__9FB2F599");
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_registration_order__613b313b");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "LinkedUserId")
-                        .HasDatabaseName("IX_ie_event_registrations_tenant_id_event_id_event_sess_2B237744")
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_event_id_event_sess_ac10a61f")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "RegistrationOrderLineId", "TicketTypeEntitlementId", "EventSessionId", "EntitlementOrdinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_registrations_tenant_id_registration_order__3C11E3A5")
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_registration_order__3dcd040b")
                         .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
 
                     b.ToTable("ie_event_registrations", (string)null);
@@ -7676,26 +7677,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_reports_tenant_id_event_id_id");
 
                     b.HasIndex("ReporterActorId")
-                        .HasDatabaseName("ix_ie_event_reports_reporter_actor_id");
+                        .HasDatabaseName("ix_event_reports_reporter_actor_id");
 
                     b.HasIndex("ReporterUserId")
-                        .HasDatabaseName("ix_ie_event_reports_reporter_user_id");
+                        .HasDatabaseName("ix_event_reports_reporter_user_id");
 
                     b.HasIndex("TenantId", "DuplicateGroupId")
-                        .HasDatabaseName("ix_event_reports_tenant_duplicate_group")
+                        .HasDatabaseName("ix_event_reports_tenant_id_duplicate_group_id")
                         .HasFilter("duplicate_group_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "Status", "CreatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("ix_event_reports_tenant_event_status_created");
+                        .HasDatabaseName("ix_event_reports_tenant_id_event_id_status_created_at");
 
                     b.HasIndex("TenantId", "Priority", "Status", "CreatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("ix_event_reports_tenant_priority_status_created");
+                        .HasDatabaseName("ix_event_reports_tenant_id_priority_status_created_at");
 
                     b.HasIndex("TenantId", "ReporterUserId", "EventId", "ReasonCode", "CreatedAt")
                         .IsDescending(false, false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_reports_tenant_id_reporter_user_id_event_id_244DBBE7")
+                        .HasDatabaseName("ix_ie_event_reports_tenant_id_reporter_user_id_event_id_1cdc5eaf")
                         .HasFilter("reporter_user_id IS NOT NULL");
 
                     b.ToTable("ie_event_reports", null, t =>
@@ -7795,24 +7796,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_report_cases_tenant_id_report_id_id");
 
                     b.HasIndex("AssignedModeratorUserId")
-                        .HasDatabaseName("ix_ie_event_report_cases_assigned_moderator_user_id");
+                        .HasDatabaseName("ix_event_report_cases_assigned_moderator_user_id");
 
                     b.HasIndex("TenantId", "SlaDueAt")
-                        .HasDatabaseName("ix_event_report_cases_tenant_sla_due_at")
+                        .HasDatabaseName("ix_event_report_cases_tenant_id_sla_due_at")
                         .HasFilter("sla_due_at IS NOT NULL");
 
                     b.HasIndex("TenantId", "AssignedModeratorUserId", "Status", "UpdatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_cases_tenant_id_assigned_moderator_u_29F55016")
+                        .HasDatabaseName("ix_ie_event_report_cases_tenant_id_assigned_moderator_u_7db3c313")
                         .HasFilter("assigned_moderator_user_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ReportId", "Id", "CurrentDecisionId")
-                        .HasDatabaseName("IX_ie_event_report_cases_tenant_id_report_id_id_current_FCF65701")
+                        .HasDatabaseName("ix_ie_event_report_cases_tenant_id_report_id_id_current_9e20941a")
                         .HasFilter("current_decision_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "QueueCode", "Status", "Priority", "CreatedAt")
                         .IsDescending(false, false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_cases_tenant_id_queue_code_status_pr_DA4D9D7B");
+                        .HasDatabaseName("ix_ie_event_report_cases_tenant_id_queue_code_status_pr_b5c157f1");
 
                     b.ToTable("ie_event_report_cases", null, t =>
                         {
@@ -7911,19 +7912,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_report_decisions_tenant_report_case_id");
 
                     b.HasIndex("ModeratorUserId")
-                        .HasDatabaseName("ix_ie_event_report_decisions_moderator_user_id");
+                        .HasDatabaseName("ix_event_report_decisions_moderator_user_id");
 
                     b.HasIndex("TenantId", "CaseId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_report_decisions_tenant_case_created");
+                        .HasDatabaseName("ix_event_report_decisions_tenant_id_case_id_created_at");
 
                     b.HasIndex("TenantId", "ReportId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_event_report_decisions_tenant_report_created");
+                        .HasDatabaseName("ix_event_report_decisions_tenant_id_report_id_created_at");
 
                     b.HasIndex("TenantId", "DecisionSource", "ProviderTargetScope", "ProviderTargetId", "ExternalDecisionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_decisions_tenant_id_decision_source__341A1B56")
+                        .HasDatabaseName("ix_ie_event_report_decisions_tenant_id_decision_source__4fc68856")
                         .HasFilter("external_decision_id IS NOT NULL");
 
                     b.ToTable("ie_event_report_decisions", null, t =>
@@ -8033,17 +8034,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "DecisionId")
                         .IsUnique()
-                        .HasDatabaseName("ux_event_report_decision_executions_tenant_decision");
+                        .HasDatabaseName("ix_event_report_decision_executions_tenant_id_decision_id");
 
                     b.HasIndex("TenantId", "ModerationRecordId")
-                        .HasDatabaseName("IX_ie_event_report_decision_executions_tenant_id_modera_7778FA07");
+                        .HasDatabaseName("ix_ie_event_report_decision_executions_tenant_id_modera_a050226a");
 
                     b.HasIndex("State", "ProcessingLeaseExpiresAtUtc", "CreatedAt")
-                        .HasDatabaseName("IX_ie_event_report_decision_executions_state_processing_49377A0F");
+                        .HasDatabaseName("ix_ie_event_report_decision_executions_state_processing_71ee5836");
 
                     b.HasIndex("TenantId", "ReportId", "DecisionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_decision_executions_tenant_id_report_2388D544");
+                        .HasDatabaseName("ix_ie_event_report_decision_executions_tenant_id_report_19445888");
 
                     b.ToTable("ie_event_report_decision_executions", null, t =>
                         {
@@ -8124,27 +8125,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_ie_event_report_evidence");
+                        .HasName("pk_ie_event_report_evidence_items");
 
                     b.HasIndex("CreatedByUserId")
-                        .HasDatabaseName("ix_ie_event_report_evidence_created_by_user_id");
+                        .HasDatabaseName("ix_event_report_evidence_items_created_by_user_id");
 
                     b.HasIndex("TenantId", "ContentHash")
-                        .HasDatabaseName("ix_event_report_evidence_tenant_content_hash")
+                        .HasDatabaseName("ix_event_report_evidence_items_tenant_id_content_hash")
                         .HasFilter("content_hash IS NOT NULL");
 
                     b.HasIndex("TenantId", "RetentionUntil")
-                        .HasDatabaseName("ix_event_report_evidence_tenant_retention_until")
+                        .HasDatabaseName("ix_event_report_evidence_items_tenant_id_retention_until")
                         .HasFilter("retention_until IS NOT NULL");
 
                     b.HasIndex("TenantId", "StorageObjectId")
-                        .HasDatabaseName("ix_ie_event_report_evidence_tenant_id_storage_object_id");
+                        .HasDatabaseName("ix_event_report_evidence_items_tenant_id_storage_object_id");
 
                     b.HasIndex("TenantId", "ReportId", "EvidenceKind", "CreatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_evidence_tenant_id_report_id_evidenc_4E8F64D3");
+                        .HasDatabaseName("ix_ie_event_report_evidence_items_tenant_id_report_id_e_10cb3fd2");
 
-                    b.ToTable("ie_event_report_evidence", null, t =>
+                    b.ToTable("ie_event_report_evidence_items", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
 
@@ -8247,25 +8248,25 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_report_external_links");
 
                     b.HasIndex("TenantId", "ReportId", "CaseId")
-                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_report_id_case_id");
+                        .HasDatabaseName("ix_event_report_external_links_tenant_id_report_id_case_id");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CorrelationId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_external_links_tenant_id_provider_pr_16918196");
+                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_provider_pr_4c545cec");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "ProviderCaseId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_external_links_tenant_id_provider_pr_41164294")
+                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_provider_pr_ca456c33")
                         .HasFilter("provider_case_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "ProviderSignalId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_external_links_tenant_id_provider_pr_3C5A8C80")
+                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_provider_pr_123889ab")
                         .HasFilter("provider_signal_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "SyncState", "CreatedAt")
                         .IsDescending(false, false, false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_external_links_tenant_id_provider_pr_CD5AAEB8");
+                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_provider_pr_29db0918");
 
                     b.ToTable("ie_event_report_external_links", null, t =>
                         {
@@ -8385,24 +8386,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_report_signals");
 
                     b.HasIndex("TenantId", "EventId", "ReportId")
-                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_event_id_report_id");
+                        .HasDatabaseName("ix_event_report_signals_tenant_id_event_id_report_id");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CorrelationId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_signals_tenant_id_provider_provider__F085B6B8");
+                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_provider_provider__8d2fa8b8");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "ExternalSignalId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_report_signals_tenant_id_provider_provider__45531A08")
+                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_provider_provider__9034510f")
                         .HasFilter("external_signal_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CreatedAt")
                         .IsDescending(false, false, false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_signals_tenant_id_event_id_provider__21911B35");
+                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_event_id_provider__8d634ee3");
 
                     b.HasIndex("TenantId", "ReportId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CreatedAt")
                         .IsDescending(false, false, false, false, false, true)
-                        .HasDatabaseName("IX_ie_event_report_signals_tenant_id_report_id_provider_C645FB27")
+                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_report_id_provider_af5d770a")
                         .HasFilter("report_id IS NOT NULL");
 
                     b.ToTable("ie_event_report_signals", null, t =>
@@ -8467,13 +8468,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_report_targets");
 
                     b.HasIndex("TenantId", "StorageObjectId")
-                        .HasDatabaseName("ix_ie_event_report_targets_tenant_id_storage_object_id");
+                        .HasDatabaseName("ix_event_report_targets_tenant_id_storage_object_id");
 
                     b.HasIndex("TenantId", "TargetKind", "TargetId")
-                        .HasDatabaseName("ix_event_report_targets_tenant_target");
+                        .HasDatabaseName("ix_event_report_targets_tenant_id_target_kind_target_id");
 
                     b.HasIndex("TenantId", "ReportId", "TargetKind", "TargetId")
-                        .HasDatabaseName("IX_ie_event_report_targets_tenant_id_report_id_target_k_78CF7725");
+                        .HasDatabaseName("ix_ie_event_report_targets_tenant_id_report_id_target_k_32937637");
 
                     b.ToTable("ie_event_report_targets", null, t =>
                         {
@@ -8551,24 +8552,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_role_assignments");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_event_role_assignments_role_id");
+                        .HasDatabaseName("ix_event_role_assignments_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_event_role_assignments_user_id");
+                        .HasDatabaseName("ix_event_role_assignments_user_id");
 
                     b.HasIndex("TenantId", "EventId", "RoleId", "Status")
-                        .HasDatabaseName("ix_event_role_assignments_tenant_event_role_status");
+                        .HasDatabaseName("ix_event_role_assignments_tenant_id_event_id_role_id_status");
 
                     b.HasIndex("TenantId", "EventId", "UserId", "RoleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_role_assignments_unique_pending_active")
+                        .HasDatabaseName("ix_event_role_assignments_tenant_id_event_id_user_id_role_id")
                         .HasFilter("status IN (1, 2)");
 
                     b.HasIndex("TenantId", "EventId", "UserId", "Status")
-                        .HasDatabaseName("ix_event_role_assignments_tenant_event_user_status");
+                        .HasDatabaseName("ix_event_role_assignments_tenant_id_event_id_user_id_status");
 
                     b.HasIndex("TenantId", "UserId", "EventId", "Status")
-                        .HasDatabaseName("ix_event_role_assignments_tenant_user_event_status");
+                        .HasDatabaseName("ix_event_role_assignments_tenant_id_user_id_event_id_status");
 
                     b.ToTable("ie_event_role_assignments", null, t =>
                         {
@@ -8668,23 +8669,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_series");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_event_series_actor_id");
+                        .HasDatabaseName("ix_event_series_actor_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_ie_event_series_featured_image_id");
+                        .HasDatabaseName("ix_event_series_featured_image_id");
 
                     b.HasIndex("VisibilityTypeId")
-                        .HasDatabaseName("ix_ie_event_series_visibility_type_id");
+                        .HasDatabaseName("ix_event_series_visibility_type_id");
 
                     b.HasIndex("TenantId", "IsPublished")
-                        .HasDatabaseName("ix_ie_event_series_tenant_id_is_published");
+                        .HasDatabaseName("ix_event_series_tenant_id_is_published");
 
                     b.HasIndex("TenantId", "Slug")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_series_tenant_id_slug");
+                        .HasDatabaseName("ix_event_series_tenant_id_slug");
 
                     b.HasIndex("TenantId", "TotalViews")
-                        .HasDatabaseName("ix_ie_event_series_tenant_id_total_views");
+                        .HasDatabaseName("ix_event_series_tenant_id_total_views");
 
                     b.ToTable("ie_event_series", (string)null);
                 });
@@ -8870,41 +8871,41 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("ix_event_sessions_event_session_status_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_ie_event_sessions_featured_image_id");
+                        .HasDatabaseName("ix_event_sessions_featured_image_id");
 
                     b.HasIndex("RegistrationModeId")
-                        .HasDatabaseName("ix_ie_event_sessions_registration_mode_id");
+                        .HasDatabaseName("ix_event_sessions_registration_mode_id");
 
                     b.HasIndex("TenantId", "EventDayId", "SortOrder")
-                        .HasDatabaseName("ix_event_sessions_tenant_day_sort");
+                        .HasDatabaseName("ix_event_sessions_tenant_id_event_day_id_sort_order");
 
                     b.HasIndex("TenantId", "EventId", "EventDayId")
-                        .HasDatabaseName("ix_ie_event_sessions_tenant_id_event_id_event_day_id");
+                        .HasDatabaseName("ix_event_sessions_tenant_id_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
-                        .HasDatabaseName("IX_ie_event_sessions_tenant_id_event_id_event_location__09A40576");
+                        .HasDatabaseName("ix_ie_event_sessions_tenant_id_event_id_event_location__a6456fd3");
 
                     b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
-                        .HasDatabaseName("IX_ie_event_sessions_tenant_id_event_id_local_start_dat_3D281D5E");
+                        .HasDatabaseName("ix_ie_event_sessions_tenant_id_event_id_local_start_dat_24fcd891");
 
                     b.HasIndex("TenantId", "LocationId", "RoomId", "StartTime", "EndTime")
-                        .HasDatabaseName("IX_ie_event_sessions_tenant_id_location_id_room_id_star_BD78BA8F");
+                        .HasDatabaseName("ix_ie_event_sessions_tenant_id_location_id_room_id_star_b1fe6f14");
 
                     b.ToTable("ie_event_sessions", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
+                            t.HasCheckConstraint("ck_event_session_end_after_start", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
 
-                            t.HasCheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
+                            t.HasCheckConstraint("ck_event_session_end_time_type_state", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
 
-                            t.HasCheckConstraint("CK_EventSession_LocalDateRange", "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date");
+                            t.HasCheckConstraint("ck_event_session_local_date_range", "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date");
 
-                            t.HasCheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
+                            t.HasCheckConstraint("ck_event_session_local_end_minute_range", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
 
-                            t.HasCheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
+                            t.HasCheckConstraint("ck_event_session_local_start_minute_range", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
 
-                            t.HasCheckConstraint("CK_EventSession_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_session_physical_location_requires_event_location", "location_id IS NULL OR event_location_id IS NOT NULL");
 
-                            t.HasCheckConstraint("CK_EventSession_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_session_room_requires_location", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_sessions:tenant_id,event_id,event_location_id,location_id,room_id");
@@ -8956,17 +8957,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_agenda_items");
 
                     b.HasIndex("TenantId", "EventLocationId")
-                        .HasDatabaseName("ix_ie_event_session_agenda_items_tenant_id_event_location_id");
+                        .HasDatabaseName("ix_event_session_agenda_items_tenant_id_event_location_id");
 
                     b.HasIndex("TenantId", "LocationId")
-                        .HasDatabaseName("ix_ie_event_session_agenda_items_tenant_id_location_id");
+                        .HasDatabaseName("ix_event_session_agenda_items_tenant_id_location_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "EventLocationId", "LocationId")
-                        .HasDatabaseName("IX_ie_event_session_agenda_items_tenant_id_event_sessio_F511B6FA");
+                        .HasDatabaseName("ix_ie_event_session_agenda_items_tenant_id_event_sessio_ede37cc7");
 
                     b.ToTable("ie_event_session_agenda_items", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventSessionAgendaItem_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_session_agenda_item_physical_location_requires_event_location", "location_id IS NULL OR event_location_id IS NOT NULL")
+                                .HasName("ck_event_session_agenda_item_physical_location_requ_5f3382b974de");
                         });
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_session_agenda_items:tenant_id,event_session_id,event_location_id,location_id");
@@ -9011,11 +9013,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_categories");
 
                     b.HasIndex("TenantId", "CategoryId")
-                        .HasDatabaseName("ix_ie_event_session_categories_tenant_id_category_id");
+                        .HasDatabaseName("ix_event_session_categories_tenant_id_category_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "CategoryId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_categories_tenant_id_event_session__92D64F27");
+                        .HasDatabaseName("ix_ie_event_session_categories_tenant_id_event_session__3633b3a7");
 
                     b.ToTable("ie_event_session_categories", (string)null);
                 });
@@ -9230,17 +9232,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_definitions_default_7ED79158");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_default_ad6331a3");
 
                     b.HasIndex("SourceTemplateId")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_definitions_source__93BA0E50");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_source__55239ca8");
 
                     b.HasIndex("EventSessionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_custom_property_definitions_event_s_5CE997E4");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_event_s_4ed8aa87");
 
                     b.HasIndex("TenantId", "EventSessionId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_definitions_tenant__D1EC1A15");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_tenant__15f81991");
 
                     b.ToTable("ie_event_session_custom_property_definitions", (string)null);
                 });
@@ -9346,14 +9348,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_ie_event_session_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_event_session_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_options_event_sessi_E2835A92");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_options_event_sessi_11964e59");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_custom_property_options_event_sessi_2821CCDE");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_options_event_sessi_1491d5e8");
 
                     b.ToTable("ie_event_session_custom_property_options", (string)null);
                 });
@@ -9466,27 +9468,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_custom_property_projections");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_event_s_C185A479");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_event_s_6d5ce549");
 
                     b.HasIndex("EventSessionCustomPropertyValueId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_event_s_BA05FEA7");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_event_s_f93945d5");
 
                     b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_event_session_id");
+                        .HasDatabaseName("ix_event_session_custom_property_projections_event_session_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_option_id");
+                        .HasDatabaseName("ix_event_session_custom_property_projections_option_id");
 
                     b.HasIndex("TenantId", "ExposureLevel")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__A9713E26");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_tenant__0961e66c");
 
                     b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__A07852C2")
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_tenant__37867f1f")
                         .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
                     b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__E39CDD21");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_tenant__0f047dd9");
 
                     b.ToTable("ie_event_session_custom_property_projections", (string)null);
                 });
@@ -9575,17 +9577,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_custom_property_values");
 
                     b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_ie_event_session_custom_property_values_event_session_id");
+                        .HasDatabaseName("ix_event_session_custom_property_values_event_session_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_ie_event_session_custom_property_values_option_id");
+                        .HasDatabaseName("ix_event_session_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "EventSessionId")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_values_tenant_id_ev_51DCE1BA");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_values_tenant_id_ev_85fbca6b");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId", "EventSessionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_custom_property_values_event_sessio_745C758B");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_values_event_sessio_36748244");
 
                     b.ToTable("ie_event_session_custom_property_values", (string)null);
                 });
@@ -9690,23 +9692,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "EventId", "Slug")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_session_groups_tenant_event_slug")
+                        .HasDatabaseName("ix_event_session_groups_tenant_id_event_id_slug")
                         .HasFilter("is_deleted = false AND slug IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "SortOrder")
-                        .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
+                        .HasDatabaseName("ix_event_session_groups_tenant_id_event_id_sort_order");
 
                     b.HasIndex("TenantId", "LocationId", "RoomId")
-                        .HasDatabaseName("ix_ie_event_session_groups_tenant_id_location_id_room_id");
+                        .HasDatabaseName("ix_event_session_groups_tenant_id_location_id_room_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
-                        .HasDatabaseName("IX_ie_event_session_groups_tenant_id_event_id_event_loc_A212126D");
+                        .HasDatabaseName("ix_ie_event_session_groups_tenant_id_event_id_event_loc_2da70760");
 
                     b.ToTable("ie_event_session_groups", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventSessionGroup_PhysicalLocationRequiresEventLocation", "location_id IS NULL OR event_location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_session_group_physical_location_requires_event_location", "location_id IS NULL OR event_location_id IS NOT NULL");
 
-                            t.HasCheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_event_session_group_room_requires_location", "room_id IS NULL OR location_id IS NOT NULL");
                         });
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_session_groups:tenant_id,event_id,event_location_id,location_id,room_id");
@@ -9777,16 +9779,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_group_sessions");
 
                     b.HasIndex("TenantId", "EventSessionGroupId", "SortOrder")
-                        .HasDatabaseName("IX_ie_event_session_group_sessions_tenant_id_event_sess_B2089317");
+                        .HasDatabaseName("ix_ie_event_session_group_sessions_tenant_id_event_sess_5df90589");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionGroupId", "EventSessionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_group_sessions_tenant_id_event_id_e_CB0DB857")
+                        .HasDatabaseName("ix_ie_event_session_group_sessions_tenant_id_event_id_e_97f818ac")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "IsPrimary")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_group_sessions_tenant_id_event_id_e_6B0EC1F7")
+                        .HasDatabaseName("ix_ie_event_session_group_sessions_tenant_id_event_id_e_26c49891")
                         .HasFilter("is_primary = true AND is_deleted = false");
 
                     b.ToTable("ie_event_session_group_sessions", (string)null);
@@ -9833,17 +9835,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.ToTable("ie_event_session_islamic_aspects", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_EndOffsetRange", "end_offset_minutes IS NULL OR end_offset_minutes BETWEEN -180 AND 180");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_end_offset_range", "end_offset_minutes IS NULL OR end_offset_minutes BETWEEN -180 AND 180");
 
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_EndReferencePrayerRange", "end_reference_prayer IS NULL OR end_reference_prayer BETWEEN 1 AND 6");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_end_reference_prayer_range", "end_reference_prayer IS NULL OR end_reference_prayer BETWEEN 1 AND 6");
 
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_EndTimeState", "((end_reference_prayer IS NULL AND end_offset_minutes IS NULL) OR (end_reference_prayer IS NOT NULL AND end_offset_minutes IS NOT NULL))");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_end_time_state", "((end_reference_prayer IS NULL AND end_offset_minutes IS NULL) OR (end_reference_prayer IS NOT NULL AND end_offset_minutes IS NOT NULL))");
 
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_OffsetRange", "offset_minutes IS NULL OR offset_minutes BETWEEN -180 AND 180");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_offset_range", "offset_minutes IS NULL OR offset_minutes BETWEEN -180 AND 180");
 
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_ReferencePrayerRange", "reference_prayer IS NULL OR reference_prayer BETWEEN 1 AND 6");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_reference_prayer_range", "reference_prayer IS NULL OR reference_prayer BETWEEN 1 AND 6");
 
-                            t.HasCheckConstraint("CK_EventSessionIslamicAspect_StartTimeState", "((start_time_type = 0 AND reference_prayer IS NULL AND offset_minutes IS NULL) OR (start_time_type = 1 AND reference_prayer IS NOT NULL AND offset_minutes IS NOT NULL))");
+                            t.HasCheckConstraint("ck_event_session_islamic_aspect_start_time_state", "((start_time_type = 0 AND reference_prayer IS NULL AND offset_minutes IS NULL) OR (start_time_type = 1 AND reference_prayer IS NOT NULL AND offset_minutes IS NOT NULL))");
                         });
                 });
 
@@ -9910,11 +9912,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_languages");
 
                     b.HasIndex("LanguageId")
-                        .HasDatabaseName("ix_ie_event_session_languages_language_id");
+                        .HasDatabaseName("ix_event_session_languages_language_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "LanguageId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_languages_tenant_id_event_session_i_B70A5374");
+                        .HasDatabaseName("ix_ie_event_session_languages_tenant_id_event_session_i_6490ba71");
 
                     b.ToTable("ie_event_session_languages", (string)null);
                 });
@@ -9947,11 +9949,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_speakers");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_event_session_speakers_actor_id");
+                        .HasDatabaseName("ix_event_session_speakers_actor_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "ActorId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_session_speakers_tenant_session_actor");
+                        .HasDatabaseName("ix_event_session_speakers_tenant_id_event_session_id_actor_id");
 
                     b.ToTable("ie_event_session_speakers", (string)null);
                 });
@@ -10024,11 +10026,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_tags");
 
                     b.HasIndex("TenantId", "TagId")
-                        .HasDatabaseName("ix_ie_event_session_tags_tenant_id_tag_id");
+                        .HasDatabaseName("ix_event_session_tags_tenant_id_tag_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "TagId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_session_tags_tenant_session_tag");
+                        .HasDatabaseName("ix_event_session_tags_tenant_id_event_session_id_tag_id");
 
                     b.ToTable("ie_event_session_tags", (string)null);
                 });
@@ -10119,10 +10121,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("EventTemplateId", "SessionTemplateKey", "Version")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_templates_event_template_id_session_C17D10FE");
+                        .HasDatabaseName("ix_ie_event_session_templates_event_template_id_session_e236fff5");
 
                     b.HasIndex("TenantId", "IsPublished", "IsActive")
-                        .HasDatabaseName("ix_est_tenant_published_active");
+                        .HasDatabaseName("ix_event_session_templates_tenant_id_is_published_is_active");
 
                     b.ToTable("ie_event_session_templates", (string)null);
                 });
@@ -10312,14 +10314,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_template_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_definition_1A26D0D3");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_definition_758ee424");
 
                     b.HasIndex("EventSessionTemplateId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_definition_9E3DFF8E");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_definition_f486be16");
 
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_definition_1503E70D");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_definition_8df0ade8");
 
                     b.ToTable("ie_event_session_template_custom_property_definitions", (string)null);
                 });
@@ -10417,14 +10419,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_session_template_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_options_pa_674CC493");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_options_pa_50538576");
 
                     b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_options_ev_A94DD305");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_options_ev_29279a69");
 
                     b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_session_template_custom_property_options_ev_9314E310");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_options_ev_581b03d8");
 
                     b.ToTable("ie_event_session_template_custom_property_options", (string)null);
                 });
@@ -10502,11 +10504,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_tags");
 
                     b.HasIndex("TenantId", "TagId")
-                        .HasDatabaseName("ix_ie_event_tags_tenant_id_tag_id");
+                        .HasDatabaseName("ix_event_tags_tenant_id_tag_id");
 
                     b.HasIndex("TenantId", "EventId", "TagId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_tags_tenant_event_tag");
+                        .HasDatabaseName("ix_event_tags_tenant_id_event_id_tag_id");
 
                     b.ToTable("ie_event_tags", (string)null);
                 });
@@ -10655,14 +10657,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_templates");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_ie_event_templates_event_type_id");
+                        .HasDatabaseName("ix_event_templates_event_type_id");
 
                     b.HasIndex("TenantId", "IsPublished", "IsActive")
-                        .HasDatabaseName("ix_event_templates_tenant_published_active");
+                        .HasDatabaseName("ix_event_templates_tenant_id_is_published_is_active");
 
                     b.HasIndex("TenantId", "TemplateKey", "Version")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_templates_tenant_key_version");
+                        .HasDatabaseName("ix_event_templates_tenant_id_template_key_version");
 
                     b.ToTable("ie_event_templates", (string)null);
                 });
@@ -10852,14 +10854,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_template_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("IX_ie_event_template_custom_property_definitions_defaul_565E9F2F");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_definitions_defaul_9b1de7b1");
 
                     b.HasIndex("EventTemplateId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_template_custom_property_definitions_event__FE4E1228");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_definitions_event__3de000d3");
 
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("IX_ie_event_template_custom_property_definitions_tenant_1D3DB222");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_definitions_tenant_e4ac891d");
 
                     b.ToTable("ie_event_template_custom_property_definitions", (string)null);
                 });
@@ -10957,14 +10959,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_event_template_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_ie_event_template_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_event_template_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventTemplateCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("IX_ie_event_template_custom_property_options_event_temp_03C6A69B");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_options_event_temp_6dd67f95");
 
                     b.HasIndex("EventTemplateCustomPropertyDefinitionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_template_custom_property_options_event_temp_3EB2CEB1");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_options_event_temp_2d14a793");
 
                     b.ToTable("ie_event_template_custom_property_options", (string)null);
                 });
@@ -11054,16 +11056,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_ticket_catalog_versions_tenant_id_id");
 
                     b.HasIndex("TicketCatalogStatusId")
-                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_ticket_catalog_status_id");
+                        .HasDatabaseName("ix_event_ticket_catalog_versions_ticket_catalog_status_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_tenant_id_event_id")
+                        .HasDatabaseName("ix_event_ticket_catalog_versions_tenant_id_event_id")
                         .HasFilter("ticket_catalog_status_id = 2 AND is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_ticket_catalog_versions_tenant_id_event_id__5E680747")
+                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_tenant_id_event_id__df5801f3")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_event_ticket_catalog_versions", (string)null);
@@ -11193,20 +11195,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_event_ticket_types_tenant_id_id");
 
                     b.HasIndex("ParticipantDataCollectionModeId")
-                        .HasDatabaseName("ix_ie_event_ticket_types_participant_data_collection_mode_id");
+                        .HasDatabaseName("ix_event_ticket_types_participant_data_collection_mode_id");
 
                     b.HasIndex("TicketPricingModeId")
-                        .HasDatabaseName("ix_ie_event_ticket_types_ticket_pricing_mode_id");
+                        .HasDatabaseName("ix_event_ticket_types_ticket_pricing_mode_id");
 
                     b.HasIndex("TenantId", "CapacityPoolId")
-                        .HasDatabaseName("ix_ie_event_ticket_types_tenant_id_capacity_pool_id");
+                        .HasDatabaseName("ix_event_ticket_types_tenant_id_capacity_pool_id");
 
                     b.HasIndex("TenantId", "CatalogId")
-                        .HasDatabaseName("ix_ie_event_ticket_types_tenant_id_catalog_id");
+                        .HasDatabaseName("ix_event_ticket_types_tenant_id_catalog_id");
 
                     b.ToTable("ie_event_ticket_types", null, t =>
                         {
-                            t.HasCheckConstraint("CK_EventTicketType_MoneyNonnegative", "(fixed_price_minor IS NULL OR fixed_price_minor >= 0)\nAND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)\nAND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)");
+                            t.HasCheckConstraint("ck_event_ticket_type_money_nonnegative", "(fixed_price_minor IS NULL OR fixed_price_minor >= 0)\nAND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)\nAND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)");
                         });
                 });
 
@@ -11245,12 +11247,12 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_types_global_master_code")
+                        .HasDatabaseName("ix_event_types_master_code")
                         .HasFilter("tenant_id IS NULL");
 
                     b.HasIndex("TenantId", "MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_types_tenant_master_code")
+                        .HasDatabaseName("ix_event_types_tenant_id_master_code")
                         .HasFilter("tenant_id IS NOT NULL");
 
                     b.ToTable("ie_event_types", (string)null);
@@ -11411,23 +11413,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_external_api_keys");
 
                     b.HasIndex("ExternalApiKeyCreditPeriodId")
-                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_credit_period_id");
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_credit_period_id");
 
                     b.HasIndex("ExternalApiKeyOwnerTypeId")
-                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_owner_type_id");
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_owner_type_id");
 
                     b.HasIndex("ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_status_id");
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_status_id");
 
                     b.HasIndex("KeyId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_external_api_keys_key_id");
+                        .HasDatabaseName("ix_external_api_keys_key_id");
 
                     b.HasIndex("TenantId", "ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_ie_external_api_keys_tenant_id_external_api_key_status_id");
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_status_id");
 
                     b.HasIndex("TenantId", "ExternalApiKeyOwnerTypeId", "OwnerId")
-                        .HasDatabaseName("IX_ie_external_api_keys_tenant_id_external_api_key_owne_D03919AC");
+                        .HasDatabaseName("ix_ie_external_api_keys_tenant_id_external_api_key_owne_24fa2c50");
 
                     b.ToTable("ie_external_api_keys", (string)null);
                 });
@@ -11489,7 +11491,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_external_api_key_owner_types_master_code");
+                        .HasDatabaseName("ix_external_api_key_owner_types_master_code");
 
                     b.ToTable("ie_external_api_key_owner_types", (string)null);
                 });
@@ -11550,7 +11552,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ExternalApiKeyId", "PeriodStart")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_external_api_key_quotas_external_api_key_id_period_start");
+                        .HasDatabaseName("ix_external_api_key_quotas_external_api_key_id_period_start");
 
                     b.ToTable("ie_external_api_key_quotas", (string)null);
                 });
@@ -11686,19 +11688,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ExternalGlobalUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_external_bindings_external_global_hash");
+                        .HasDatabaseName("ix_external_bindings_external_global_uniqueness_hash");
 
                     b.HasIndex("ExternalTenantUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_external_bindings_external_tenant_hash");
+                        .HasDatabaseName("ix_external_bindings_external_tenant_uniqueness_hash");
 
                     b.HasIndex("InternalGlobalUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_external_bindings_internal_global_hash");
+                        .HasDatabaseName("ix_external_bindings_internal_global_uniqueness_hash");
 
                     b.HasIndex("InternalTenantUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_external_bindings_internal_tenant_hash");
+                        .HasDatabaseName("ix_external_bindings_internal_tenant_uniqueness_hash");
 
                     b.HasIndex("ScopeTenantId")
                         .HasDatabaseName("ix_external_bindings_scope_tenant_id");
@@ -11741,7 +11743,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_external_workflow_provider_kinds_master_code");
+                        .HasDatabaseName("ix_external_workflow_provider_kinds_master_code");
 
                     b.ToTable("ie_external_workflow_provider_kinds", (string)null);
                 });
@@ -11811,13 +11813,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_atproto_event_projections");
 
                     b.HasIndex("CreatedAt", "AtprotoRecordId")
-                        .HasDatabaseName("ix_atproto_event_projections_created_at");
+                        .HasDatabaseName("ix_atproto_event_projections_created_at_atproto_record_id");
 
                     b.HasIndex("Name", "AtprotoRecordId")
-                        .HasDatabaseName("ix_atproto_event_projections_name");
+                        .HasDatabaseName("ix_atproto_event_projections_name_atproto_record_id");
 
                     b.HasIndex("StartsAt", "AtprotoRecordId")
-                        .HasDatabaseName("ix_atproto_event_projections_starts_at");
+                        .HasDatabaseName("ix_atproto_event_projections_starts_at_atproto_record_id");
 
                     b.ToTable("ie_atproto_event_projections", null, t =>
                         {
@@ -11875,7 +11877,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Service")
                         .IsUnique()
-                        .HasDatabaseName("ux_atproto_jetstream_consumer_service");
+                        .HasDatabaseName("ix_atproto_jetstream_consumer_states_service");
 
                     b.ToTable("ie_atproto_jetstream_consumer_states", null, t =>
                         {
@@ -11932,10 +11934,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ConsumerStateId", "Cursor")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_atproto_jetstream_quarantines_consumer_state_id_j_A2CEB2EC");
+                        .HasDatabaseName("ix_ie_atproto_jetstream_quarantines_consumer_state_id_j_164d1f4b");
 
                     b.HasIndex("ReasonCode", "QuarantinedAt")
-                        .HasDatabaseName("ix_atproto_jetstream_quarantine_reason");
+                        .HasDatabaseName("ix_atproto_jetstream_quarantines_reason_code_quarantined_at");
 
                     b.ToTable("ie_atproto_jetstream_quarantines", null, t =>
                         {
@@ -11983,14 +11985,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_atproto_outbound_record_ownerships");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_atproto_outbound_record_ownerships_user_id");
+                        .HasDatabaseName("ix_atproto_outbound_record_ownerships_user_id");
 
                     b.HasIndex("TenantId", "UserId")
-                        .HasDatabaseName("ix_atproto_outbound_ownership_user");
+                        .HasDatabaseName("ix_atproto_outbound_record_ownerships_tenant_id_user_id");
 
                     b.HasIndex("TenantId", "SourceEntityType", "SourceEntityId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_atproto_outbound_record_ownerships_tenant_id_sour_C1E528D2");
+                        .HasDatabaseName("ix_ie_atproto_outbound_record_ownerships_tenant_id_sour_58b653a5");
 
                     b.ToTable("ie_atproto_outbound_record_ownerships", (string)null);
                 });
@@ -12018,13 +12020,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("source_version");
 
                     b.HasKey("TenantId", "AtprotoRecordId")
-                        .HasName("PK_ie_atproto_record_tenant_presentations_tenant_id_atp_AC7636A5");
+                        .HasName("pk_ie_atproto_record_tenant_presentations_tenant_id_atp_0af475c6");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_ie_atproto_record_tenant_presentations_atproto_record_id");
+                        .HasDatabaseName("ix_atproto_record_tenant_presentations_atproto_record_id");
 
                     b.HasIndex("TenantId", "IsVisible", "EvaluatedAt")
-                        .HasDatabaseName("IX_ie_atproto_record_tenant_presentations_tenant_id_is__E390B5A5");
+                        .HasDatabaseName("ix_ie_atproto_record_tenant_presentations_tenant_id_is__97dc55dd");
 
                     b.ToTable("ie_atproto_record_tenant_presentations", null, t =>
                         {
@@ -12198,34 +12200,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_pds_sync_outbox");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_ie_pds_sync_outbox_atproto_record_id");
+                        .HasDatabaseName("ix_pds_sync_outbox_atproto_record_id");
 
                     b.HasIndex("DependsOnAtprotoRecordId")
-                        .HasDatabaseName("ix_pds_sync_outbox_dependency")
+                        .HasDatabaseName("ix_pds_sync_outbox_depends_on_atproto_record_id")
                         .HasFilter("depends_on_atproto_record_id IS NOT NULL");
 
                     b.HasIndex("SupersededById")
-                        .HasDatabaseName("ix_ie_pds_sync_outbox_superseded_by_id");
+                        .HasDatabaseName("ix_pds_sync_outbox_superseded_by_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_pds_sync_outbox_user_id");
+                        .HasDatabaseName("ix_pds_sync_outbox_user_id");
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_pds_sync_outbox_idempotency");
+                        .HasDatabaseName("ix_pds_sync_outbox_tenant_id_idempotency_key");
 
                     b.HasIndex("Did", "Collection", "RecordKey")
-                        .HasDatabaseName("ix_pds_sync_outbox_record_identity");
+                        .HasDatabaseName("ix_pds_sync_outbox_did_collection_record_key");
 
                     b.HasIndex("TenantId", "UserId", "Status")
-                        .HasDatabaseName("ix_pds_sync_outbox_owner");
+                        .HasDatabaseName("ix_pds_sync_outbox_tenant_id_user_id_status");
 
                     b.HasIndex("Status", "NextRetryAt", "LeaseExpiresAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_pds_sync_outbox_status_next_retry_at_lease_expire_FEFF87E9");
+                        .HasDatabaseName("ix_ie_pds_sync_outbox_status_next_retry_at_lease_expire_46ea1ce1");
 
                     b.HasIndex("TenantId", "SourceEntityType", "SourceEntityId", "SourceVersion", "Operation", "PayloadHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_pds_sync_outbox_tenant_id_source_entity_type_sour_0FA10630")
+                        .HasDatabaseName("ix_ie_pds_sync_outbox_tenant_id_source_entity_type_sour_1ad3be34")
                         .HasFilter("status IN (1, 2) AND superseded_at IS NULL");
 
                     b.ToTable("ie_pds_sync_outbox", null, t =>
@@ -12397,23 +12399,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_group_members");
 
                     b.HasIndex("GroupPositionId")
-                        .HasDatabaseName("ix_ie_group_members_group_position_id");
+                        .HasDatabaseName("ix_group_members_group_position_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_group_members_role_id");
+                        .HasDatabaseName("ix_group_members_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_group_members_user_id");
+                        .HasDatabaseName("ix_group_members_user_id");
 
                     b.HasIndex("GroupTenantId", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_group_members_group_user");
+                        .HasDatabaseName("ix_group_members_group_tenant_id_user_id");
 
                     b.HasIndex("TenantId", "GroupTenantId")
-                        .HasDatabaseName("ix_ie_group_members_tenant_id_group_tenant_id");
+                        .HasDatabaseName("ix_group_members_tenant_id_group_tenant_id");
 
                     b.HasIndex("TenantId", "UserId")
-                        .HasDatabaseName("ix_group_members_tenant_user");
+                        .HasDatabaseName("ix_group_members_tenant_id_user_id");
 
                     b.ToTable("ie_group_members", (string)null);
                 });
@@ -12496,10 +12498,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("GroupTenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_group_setting_overrides_group_tenant_id_setting_key");
+                        .HasDatabaseName("ix_group_setting_overrides_group_tenant_id_setting_key");
 
                     b.HasIndex("TenantId", "GroupTenantId")
-                        .HasDatabaseName("ix_ie_group_setting_overrides_tenant_id_group_tenant_id");
+                        .HasDatabaseName("ix_group_setting_overrides_tenant_id_group_tenant_id");
 
                     b.ToTable("ie_group_setting_overrides", (string)null);
                 });
@@ -12650,33 +12652,33 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_group_tenants_tenant_id_id");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_ie_group_tenants_approval_status_id");
+                        .HasDatabaseName("ix_group_tenants_approval_status_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_ie_group_tenants_background_image_id");
+                        .HasDatabaseName("ix_group_tenants_background_image_id");
 
                     b.HasIndex("BannerPictureId")
-                        .HasDatabaseName("ix_ie_group_tenants_banner_picture_id");
+                        .HasDatabaseName("ix_group_tenants_banner_picture_id");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_ie_group_tenants_group_id");
+                        .HasDatabaseName("ix_group_tenants_group_id");
 
                     b.HasIndex("ProfilePictureId")
-                        .HasDatabaseName("ix_ie_group_tenants_profile_picture_id");
+                        .HasDatabaseName("ix_group_tenants_profile_picture_id");
 
                     b.HasIndex("TenantId", "GroupId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_group_id")
+                        .HasDatabaseName("ix_group_tenants_tenant_id_group_id")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "ParentGroupTenantId")
-                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_parent_group_tenant_id");
+                        .HasDatabaseName("ix_group_tenants_tenant_id_parent_group_tenant_id");
 
                     b.HasIndex("TenantId", "ParentOrganizationTenantId")
-                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_parent_organization_tenant_id");
+                        .HasDatabaseName("ix_group_tenants_tenant_id_parent_organization_tenant_id");
 
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
-                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_is_deleted_approval_status_id");
+                        .HasDatabaseName("ix_group_tenants_tenant_id_is_deleted_approval_status_id");
 
                     b.ToTable("ie_group_tenants", null, t =>
                         {
@@ -12762,11 +12764,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_idempotency_records");
 
                     b.HasIndex("ExpiresAt")
-                        .HasDatabaseName("IX_IdempotencyRecords_ExpiresAt");
+                        .HasDatabaseName("ix_idempotency_records_expires_at");
 
                     b.HasIndex("Key", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("IX_IdempotencyRecords_Key_TenantId");
+                        .HasDatabaseName("ix_idempotency_records_key_tenant_id");
 
                     b.ToTable("ie_idempotency_records", (string)null);
                 });
@@ -12799,7 +12801,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_identity_access_modes_master_code");
+                        .HasDatabaseName("ix_identity_access_modes_master_code");
 
                     b.ToTable("ie_identity_access_modes", (string)null);
                 });
@@ -12917,23 +12919,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_ie_incoming_webhook_effect_outbox");
+                        .HasName("pk_ie_incoming_webhook_effect_outboxes");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_incoming_webhook_effect_outbox_tenant_id");
+                        .HasName("ak_incoming_webhook_effect_outboxes_tenant_id_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_incoming_webhook_effect_outbox_status_next_attemp_A5F37E95");
+                        .HasDatabaseName("ix_ie_incoming_webhook_effect_outboxes_status_next_atte_c214d79d");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "EffectKind")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_effect_outbox_tenant_id_incoming_535988CE");
+                        .HasDatabaseName("ix_ie_incoming_webhook_effect_outboxes_tenant_id_incomi_bfa9bc5c");
 
                     b.HasIndex("TenantId", "Provider", "ProviderDecisionId", "EffectKind")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_effect_outbox_tenant_id_provider_6C4C75D4");
+                        .HasDatabaseName("ix_ie_incoming_webhook_effect_outboxes_tenant_id_provid_9dd8ba8e");
 
-                    b.ToTable("ie_incoming_webhook_effect_outbox", null, t =>
+                    b.ToTable("ie_incoming_webhook_effect_outboxes", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
 
@@ -13003,14 +13005,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_incoming_webhook_effect_receipts");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_incoming_webhook_effect_receipts_tenant_id");
+                        .HasName("ak_incoming_webhook_effect_receipts_tenant_id_id");
 
                     b.HasIndex("TenantId", "AppliedAt")
-                        .HasDatabaseName("ix_incoming_webhook_effect_receipts_tenant_applied");
+                        .HasDatabaseName("ix_incoming_webhook_effect_receipts_tenant_id_applied_at");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "EffectKind")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_effect_receipts_tenant_id_incomi_53624FC0");
+                        .HasDatabaseName("ix_ie_incoming_webhook_effect_receipts_tenant_id_incomi_9a75e2a6");
 
                     b.ToTable("ie_incoming_webhook_effect_receipts", null, t =>
                         {
@@ -13238,51 +13240,51 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_incoming_webhook_messages");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_incoming_webhook_messages_tenant_id");
+                        .HasName("ak_incoming_webhook_messages_tenant_id_id");
 
                     b.HasIndex("PayloadProvenanceId")
-                        .HasDatabaseName("ix_ie_incoming_webhook_messages_payload_provenance_id");
+                        .HasDatabaseName("ix_incoming_webhook_messages_payload_provenance_id");
 
                     b.HasIndex("SettlementSourceId")
-                        .HasDatabaseName("ix_ie_incoming_webhook_messages_settlement_source_id");
+                        .HasDatabaseName("ix_incoming_webhook_messages_settlement_source_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_incoming_webhook_messages_status_id");
+                        .HasDatabaseName("ix_incoming_webhook_messages_status_id");
 
                     b.HasIndex("WebhookConsumerProviderBindingId")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_webhook_consumer_provid_79105B1A");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_webhook_consumer_provid_2cffd2f9");
 
                     b.HasIndex("TenantId", "DeadLetterEvidenceRetentionUntil")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_dead_letter_e_48350870");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_dead_letter_e_957941bd");
 
                     b.HasIndex("TenantId", "ProcessingAttemptRetentionUntil")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_processing_at_DED2ABEB");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_processing_at_19ee3676");
 
                     b.HasIndex("TenantId", "SettledByEffectReceiptId")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_settled_by_ef_6C43C1A8");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_settled_by_ef_648965cd");
 
                     b.HasIndex("TenantId", "PayloadRetentionUntil", "ReplayWindowUntil")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_payload_reten_0B785B6B")
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_payload_reten_900e4b50")
                         .HasFilter("payload_bytes IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "IdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_provider_idem_236751E3")
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_provider_idem_b6f6f3a5")
                         .HasFilter("idempotency_key IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "ProviderMessageId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_provider_prov_47324566");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_provider_prov_80d56bad");
 
                     b.HasIndex("TenantId", "StatusId", "ReceivedAt")
-                        .HasDatabaseName("ix_incoming_webhook_messages_tenant_status_received");
+                        .HasDatabaseName("ix_incoming_webhook_messages_tenant_id_status_id_received_at");
 
                     b.HasIndex("TenantId", "WebhookConsumerProviderBindingId", "ReceivedAt")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_webhook_consu_3BEC9A0A")
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_webhook_consu_6df9dd26")
                         .HasFilter("webhook_consumer_provider_binding_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "StatusId", "NextAttemptAt", "ProcessingLeaseExpiresAt")
-                        .HasDatabaseName("IX_ie_incoming_webhook_messages_tenant_id_status_id_nex_1A88D1E3");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_status_id_nex_902cf7ea");
 
                     b.ToTable("ie_incoming_webhook_messages", null, t =>
                         {
@@ -13322,7 +13324,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_incoming_webhook_message_statuses_master_code");
+                        .HasDatabaseName("ix_incoming_webhook_message_statuses_master_code");
 
                     b.ToTable("ie_incoming_webhook_message_statuses", (string)null);
                 });
@@ -13399,14 +13401,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_incoming_webhook_processing_attempts_tenant_id_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_ie_incoming_webhook_processing_attempts_outcome_id");
+                        .HasDatabaseName("ix_incoming_webhook_processing_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "RecordedAt")
-                        .HasDatabaseName("ix_incoming_webhook_processing_attempts_tenant_recorded");
+                        .HasDatabaseName("ix_incoming_webhook_processing_attempts_tenant_id_recorded_at");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "ProcessingGeneration", "ProcessingFence", "OutcomeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_processing_attempts_tenant_id_in_C71775E0");
+                        .HasDatabaseName("ix_ie_incoming_webhook_processing_attempts_tenant_id_in_4c670136");
 
                     b.ToTable("ie_incoming_webhook_processing_attempts", null, t =>
                         {
@@ -13446,7 +13448,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_incoming_webhook_processing_attempt_outcomes_master_code");
+                        .HasDatabaseName("ix_incoming_webhook_processing_attempt_outcomes_master_code");
 
                     b.ToTable("ie_incoming_webhook_processing_attempt_outcomes", (string)null);
                 });
@@ -13517,11 +13519,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_incoming_webhook_redrive_records_tenant_id_id");
 
                     b.HasIndex("ResultId")
-                        .HasDatabaseName("ix_ie_incoming_webhook_redrive_records_result_id");
+                        .HasDatabaseName("ix_incoming_webhook_redrive_records_result_id");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "TargetProcessingGeneration")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_incoming_webhook_redrive_records_tenant_id_incomi_2CFAF791");
+                        .HasDatabaseName("ix_ie_incoming_webhook_redrive_records_tenant_id_incomi_354f0140");
 
                     b.ToTable("ie_incoming_webhook_redrive_records", null, t =>
                         {
@@ -13557,7 +13559,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_incoming_webhook_redrive_results_master_code");
+                        .HasDatabaseName("ix_incoming_webhook_redrive_results_master_code");
 
                     b.ToTable("ie_incoming_webhook_redrive_results", (string)null);
                 });
@@ -13590,7 +13592,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_incoming_webhook_settlement_sources_master_code");
+                        .HasDatabaseName("ix_incoming_webhook_settlement_sources_master_code");
 
                     b.ToTable("ie_incoming_webhook_settlement_sources", (string)null);
                 });
@@ -13632,7 +13634,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("IsCompleted")
                         .IsUnique()
-                        .HasDatabaseName("ix_instance_bootstrap_state_completed_unique")
+                        .HasDatabaseName("ix_instance_bootstrap_states_is_completed")
                         .HasFilter("\"is_completed\" = true");
 
                     b.ToTable("ie_instance_bootstrap_states", (string)null);
@@ -13779,23 +13781,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_integration_sync_outbox");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_integration_sync_outbox_event_id");
+                        .HasDatabaseName("ix_integration_sync_outbox_event_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_integration_sync_outbox_user_id");
+                        .HasDatabaseName("ix_integration_sync_outbox_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_integration_sync_outbox_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_integration_sync_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("ix_integration_sync_outbox_worker_poll");
+                        .HasDatabaseName("ix_integration_sync_outbox_status_next_attempt_at_created_at");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
-                        .HasDatabaseName("ix_integration_sync_outbox_tenant_status");
+                        .HasDatabaseName("ix_integration_sync_outbox_tenant_id_status_last_failure_at");
 
                     b.HasIndex("TenantId", "SourceType", "SourceId", "Kind")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_integration_sync_outbox_tenant_id_source_type_sou_66ED5F2A")
+                        .HasDatabaseName("ix_ie_integration_sync_outbox_tenant_id_source_type_sou_f31a653e")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_integration_sync_outbox", (string)null);
@@ -13950,34 +13952,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_locations_tenant_id_id");
 
                     b.HasIndex("AddressSourceId")
-                        .HasDatabaseName("ix_ie_locations_address_source_id");
+                        .HasDatabaseName("ix_locations_address_source_id");
 
                     b.HasIndex("AddressVisibilityId")
-                        .HasDatabaseName("ix_ie_locations_address_visibility_id");
+                        .HasDatabaseName("ix_locations_address_visibility_id");
 
                     b.HasIndex("LocationKindId")
-                        .HasDatabaseName("ix_ie_locations_location_kind_id");
+                        .HasDatabaseName("ix_locations_location_kind_id");
 
                     b.HasIndex("LocationPrivacyStateId")
-                        .HasDatabaseName("ix_ie_locations_location_privacy_state_id");
+                        .HasDatabaseName("ix_locations_location_privacy_state_id");
 
                     b.HasIndex("OwnerUserId")
-                        .HasDatabaseName("ix_ie_locations_owner_user_id");
+                        .HasDatabaseName("ix_locations_owner_user_id");
 
                     b.HasIndex("TenantId", "AddressOrganizationId")
-                        .HasDatabaseName("ix_ie_locations_tenant_id_address_organization_id");
+                        .HasDatabaseName("ix_locations_tenant_id_address_organization_id");
 
                     b.HasIndex("TenantId", "City")
-                        .HasDatabaseName("ix_locations_tenant_city");
+                        .HasDatabaseName("ix_locations_tenant_id_city");
 
                     b.HasIndex("TenantId", "Country")
-                        .HasDatabaseName("ix_locations_tenant_country");
+                        .HasDatabaseName("ix_locations_tenant_id_country");
 
                     b.HasIndex("TenantId", "AddressVisibilityId", "AddressOrganizationId")
-                        .HasDatabaseName("IX_ie_locations_tenant_id_address_visibility_id_address_C9D3EF35");
+                        .HasDatabaseName("ix_ie_locations_tenant_id_address_visibility_id_address_67694387");
 
                     b.HasIndex("TenantId", "AddressVisibilityId", "CreatedBy")
-                        .HasDatabaseName("ix_locations_tenant_address_visibility_created_by");
+                        .HasDatabaseName("ix_locations_tenant_id_address_visibility_id_created_by");
 
                     b.ToTable("ie_locations", null, t =>
                         {
@@ -14025,7 +14027,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_location_address_sources_master_code");
+                        .HasDatabaseName("ix_location_address_sources_master_code");
 
                     b.ToTable("ie_location_address_sources", (string)null);
                 });
@@ -14058,7 +14060,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_location_address_visibilities_master_code");
+                        .HasDatabaseName("ix_location_address_visibilities_master_code");
 
                     b.ToTable("ie_location_address_visibilities", (string)null);
                 });
@@ -14091,7 +14093,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_location_disclosure_audiences_master_code");
+                        .HasDatabaseName("ix_location_disclosure_audiences_master_code");
 
                     b.ToTable("ie_location_disclosure_audiences", (string)null);
                 });
@@ -14124,7 +14126,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_location_kinds_master_code");
+                        .HasDatabaseName("ix_location_kinds_master_code");
 
                     b.ToTable("ie_location_kinds", (string)null);
                 });
@@ -14178,9 +14180,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.ToTable("ie_location_pii", null, t =>
                         {
-                            t.HasCheckConstraint("CK_LocationPii_CoordinateShape", "(latitude IS NULL AND longitude IS NULL)\nOR (latitude IS NOT NULL AND longitude IS NOT NULL\n    AND latitude BETWEEN -90 AND 90\n    AND longitude BETWEEN -180 AND 180)");
-
                             t.HasCheckConstraint("ck_location_pii_address_substring_key_version", "(address_substring_key_version = 0 AND address_substring_key = '') OR (address_substring_key_version = 1 AND address_substring_key <> '' AND length(address_substring_key) % 7 = 0)");
+
+                            t.HasCheckConstraint("ck_location_pii_coordinate_shape", "(latitude IS NULL AND longitude IS NULL)\nOR (latitude IS NOT NULL AND longitude IS NOT NULL\n    AND latitude BETWEEN -90 AND 90\n    AND longitude BETWEEN -180 AND 180)");
                         });
                 });
 
@@ -14212,7 +14214,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_location_privacy_states_master_code");
+                        .HasDatabaseName("ix_location_privacy_states_master_code");
 
                     b.ToTable("ie_location_privacy_states", (string)null);
                 });
@@ -14299,18 +14301,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_location_rooms_tenant_id_location_id_id");
 
                     b.HasIndex("LocationId")
-                        .HasDatabaseName("ix_ie_location_rooms_location_id");
+                        .HasDatabaseName("ix_location_rooms_location_id");
 
                     b.HasIndex("TenantId", "LocationId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_location_rooms_tenant_location_name");
+                        .HasDatabaseName("ix_location_rooms_tenant_id_location_id_name");
 
                     b.HasIndex("TenantId", "LocationId", "SortOrder")
-                        .HasDatabaseName("ix_location_rooms_tenant_location_sort");
+                        .HasDatabaseName("ix_location_rooms_tenant_id_location_id_sort_order");
 
                     b.ToTable("ie_location_rooms", null, t =>
                         {
-                            t.HasCheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
+                            t.HasCheckConstraint("ck_location_room_non_negative_capacity", "capacity IS NULL OR capacity >= 0");
                         });
                 });
 
@@ -14475,22 +14477,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ControlPlaneToEventKeyId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_managed_control_plane_registrations_control_plane_53B8C058");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_control_plane_98e4b8c5");
 
                     b.HasIndex("CredentialSecretBindingId")
-                        .HasDatabaseName("IX_ie_managed_control_plane_registrations_credential_se_99FF72C6");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_credential_se_926fa98d");
 
                     b.HasIndex("EventInstanceId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_event_instance_id");
+                        .HasDatabaseName("ix_managed_control_plane_registrations_event_instance_id");
 
                     b.HasIndex("EventToControlPlaneKeyId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_managed_control_plane_registrations_event_to_cont_D1BF2CCA");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_event_to_cont_8bde69af");
 
                     b.HasIndex("ManagedInstanceId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_managed_instance_id");
+                        .HasDatabaseName("ix_managed_control_plane_registrations_managed_instance_id");
 
                     b.ToTable("ie_managed_control_plane_registrations", null, t =>
                         {
@@ -14612,22 +14614,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_managed_tenant_provisioning_operations");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_tenant_id");
+                        .HasDatabaseName("ix_managed_tenant_provisioning_operations_tenant_id");
 
                     b.HasIndex("ManagedInstanceId", "ExternalCustomerReference")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_managed_tenant_provisioning_operations_managed_in_041D8C32");
+                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_managed_in_2fc5e679");
 
                     b.HasIndex("ManagedInstanceId", "ExternalRequestId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_managed_tenant_provisioning_operations_managed_in_4B750285");
+                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_managed_in_235f5c6f");
 
                     b.HasIndex("Status", "CreatedAt")
-                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_status_created_at");
+                        .HasDatabaseName("ix_managed_tenant_provisioning_operations_status_created_at");
 
                     b.HasIndex("TenantId", "Id")
                         .IsUnique()
-                        .HasDatabaseName("ux_managed_tenant_provisioning_operations_tenant_id");
+                        .HasDatabaseName("ix_managed_tenant_provisioning_operations_tenant_id_id");
 
                     b.ToTable("ie_managed_tenant_provisioning_operations", null, t =>
                         {
@@ -14700,11 +14702,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_module_definitions");
 
                     b.HasIndex("DisplayOrder")
-                        .HasDatabaseName("ix_ie_module_definitions_display_order");
+                        .HasDatabaseName("ix_module_definitions_display_order");
 
                     b.HasIndex("ModuleKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_module_definitions_module_key");
+                        .HasDatabaseName("ix_module_definitions_module_key");
 
                     b.ToTable("ie_module_definitions", (string)null);
                 });
@@ -14760,11 +14762,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_capabilities");
 
                     b.HasIndex("ModuleId")
-                        .HasDatabaseName("ix_ie_tenant_capabilities_module_id");
+                        .HasDatabaseName("ix_tenant_capabilities_module_id");
 
                     b.HasIndex("TenantId", "ModuleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_capabilities_tenant_id_module_id");
+                        .HasDatabaseName("ix_tenant_capabilities_tenant_id_module_id");
 
                     b.ToTable("ie_tenant_capabilities", (string)null);
                 });
@@ -14888,60 +14890,60 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notifications");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notifications_tenant_id");
+                        .HasName("ak_notifications_tenant_id_id");
 
                     b.HasIndex("NotificationEntityTypeId")
-                        .HasDatabaseName("ix_ie_notifications_notification_entity_type_id");
+                        .HasDatabaseName("ix_notifications_notification_entity_type_id");
 
                     b.HasIndex("NotificationReasonId")
-                        .HasDatabaseName("ix_ie_notifications_notification_reason_id");
+                        .HasDatabaseName("ix_notifications_notification_reason_id");
 
                     b.HasIndex("NotificationScopeId")
-                        .HasDatabaseName("ix_ie_notifications_notification_scope_id");
+                        .HasDatabaseName("ix_notifications_notification_scope_id");
 
                     b.HasIndex("NotificationTypeId")
-                        .HasDatabaseName("ix_ie_notifications_notification_type_id");
+                        .HasDatabaseName("ix_notifications_notification_type_id");
 
                     b.HasIndex("RecipientContextActorId")
-                        .HasDatabaseName("ix_ie_notifications_recipient_context_actor_id");
+                        .HasDatabaseName("ix_notifications_recipient_context_actor_id");
 
                     b.HasIndex("SourceActorId")
-                        .HasDatabaseName("ix_ie_notifications_source_actor_id");
+                        .HasDatabaseName("ix_notifications_source_actor_id");
 
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notifications_tenant_notification_intent")
+                        .HasDatabaseName("ix_notifications_tenant_id_notification_intent_id")
                         .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false");
 
                     b.HasIndex("TenantId", "NotificationTypeId")
-                        .HasDatabaseName("ix_notifications_tenant_type");
+                        .HasDatabaseName("ix_notifications_tenant_id_notification_type_id");
 
                     b.HasIndex("TenantId", "Id", "NotificationIntentId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notifications_tenant_id_intent_link");
+                        .HasDatabaseName("ix_notifications_tenant_id_id_notification_intent_id");
 
                     b.HasIndex("TenantId", "NotificationIntentId", "UserId")
-                        .HasDatabaseName("ix_ie_notifications_tenant_id_notification_intent_id_user_id");
+                        .HasDatabaseName("ix_notifications_tenant_id_notification_intent_id_user_id");
 
                     b.HasIndex("TenantId", "UserId", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_notifications_unread_by_user")
+                        .HasDatabaseName("ix_notifications_tenant_id_user_id_created_at")
                         .HasFilter("is_read = false AND is_deleted = false");
 
                     b.HasIndex("TenantId", "UserId", "DeduplicationKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_notifications_tenant_user_deduplication_key");
+                        .HasDatabaseName("ix_notifications_tenant_id_user_id_deduplication_key");
 
                     b.HasIndex("UserId", "IsArchived", "CreatedAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("ix_notifications_user_archived");
+                        .HasDatabaseName("ix_notifications_user_id_is_archived_created_at");
 
                     b.HasIndex("UserId", "NotificationScopeId", "IsRead")
-                        .HasDatabaseName("ix_notifications_user_scope");
+                        .HasDatabaseName("ix_notifications_user_id_notification_scope_id_is_read");
 
                     b.HasIndex("TenantId", "UserId", "IsRead", "CreatedAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("ix_notifications_tenant_user_unread");
+                        .HasDatabaseName("ix_notifications_tenant_id_user_id_is_read_created_at");
 
                     b.ToTable("ie_notifications", (string)null);
                 });
@@ -14974,7 +14976,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_categories_master_code");
+                        .HasDatabaseName("ix_notification_categories_master_code");
 
                     b.ToTable("ie_notification_categories", (string)null);
                 });
@@ -15063,44 +15065,44 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_channel_preferences");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_category_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_category_id");
 
                     b.HasIndex("ChannelId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_channel_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_channel_id");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_group_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_group_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_organization_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_organization_id");
 
                     b.HasIndex("ScopeId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_scope_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_scope_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_notification_channel_preferences_user_id");
+                        .HasDatabaseName("ix_notification_channel_preferences_user_id");
 
                     b.HasIndex("TenantId", "CategoryId", "ChannelId", "ScopeId")
-                        .HasDatabaseName("IX_ie_notification_channel_preferences_tenant_id_catego_10C9984A");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_tenant_id_catego_64fbd5d5");
 
                     b.HasIndex("TenantId", "ScopeId", "CategoryId", "ChannelId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_channel_preferences_tenant_id_scope__D9734009")
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_tenant_id_scope__77d07d1f")
                         .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "GroupId", "CategoryId", "ChannelId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_channel_preferences_tenant_id_scope__7A8414B8")
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_tenant_id_scope__c9c38b01")
                         .HasFilter("is_deleted = false AND group_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "OrganizationId", "CategoryId", "ChannelId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_channel_preferences_tenant_id_scope__096BCEAE")
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_tenant_id_scope__293026d9")
                         .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "UserId", "CategoryId", "ChannelId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_channel_preferences_tenant_id_scope__479EC4E3")
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_tenant_id_scope__cdeee57c")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
                     b.ToTable("ie_notification_channel_preferences", null, t =>
@@ -15237,36 +15239,36 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_deliveries");
 
                     b.HasAlternateKey("TenantId", "Id", "NotificationIntentId", "ChannelId")
-                        .HasName("AK_ie_notification_deliveries_tenant_id_id_notification_DDD303DE");
+                        .HasName("ak_ie_notification_deliveries_tenant_id_id_notification_f70121c1");
 
                     b.HasIndex("ChannelId")
-                        .HasDatabaseName("ix_ie_notification_deliveries_channel_id");
+                        .HasDatabaseName("ix_notification_deliveries_channel_id");
 
                     b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_ie_notification_deliveries_delivery_policy_id");
+                        .HasDatabaseName("ix_notification_deliveries_delivery_policy_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_notification_deliveries_status_id");
+                        .HasDatabaseName("ix_notification_deliveries_status_id");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_deliveries_tenant_email_dispatch_outbox")
+                        .HasDatabaseName("ix_notification_deliveries_tenant_id_email_dispatch_outbox_id")
                         .HasFilter("email_dispatch_outbox_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "NotificationId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_deliveries_tenant_notification")
+                        .HasDatabaseName("ix_notification_deliveries_tenant_id_notification_id")
                         .HasFilter("notification_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "NotificationIntentId", "ChannelId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_deliveries_tenant_id_notification_in_DDBCAE07");
+                        .HasDatabaseName("ix_ie_notification_deliveries_tenant_id_notification_in_d1e0a55b");
 
                     b.HasIndex("TenantId", "StatusId", "CreatedAt")
-                        .HasDatabaseName("ix_notification_deliveries_tenant_status_created");
+                        .HasDatabaseName("ix_notification_deliveries_tenant_id_status_id_created_at");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
-                        .HasDatabaseName("IX_ie_notification_deliveries_tenant_id_email_dispatch__EBE621B4");
+                        .HasDatabaseName("ix_ie_notification_deliveries_tenant_id_email_dispatch__29e6d58a");
 
                     b.ToTable("ie_notification_deliveries", null, t =>
                         {
@@ -15298,13 +15300,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_ie_notification_delivery_policies");
+                        .HasName("pk_ie_notification_delivery_policy");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_delivery_policies_master_code");
+                        .HasDatabaseName("ix_notification_delivery_policy_master_code");
 
-                    b.ToTable("ie_notification_delivery_policies", (string)null);
+                    b.ToTable("ie_notification_delivery_policy", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationDeliveryStatus", b =>
@@ -15335,7 +15337,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_delivery_statuses_master_code");
+                        .HasDatabaseName("ix_notification_delivery_statuses_master_code");
 
                     b.ToTable("ie_notification_delivery_statuses", (string)null);
                 });
@@ -15467,34 +15469,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_external_delegations");
 
                     b.HasIndex("AccountAuthorityKindId")
-                        .HasDatabaseName("IX_ie_notification_external_delegations_account_authori_13306B67");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_account_authori_20b9801b");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_ie_notification_external_delegations_provider_kind_id");
+                        .HasDatabaseName("ix_notification_external_delegations_provider_kind_id");
 
                     b.HasIndex("RecipientKindId")
-                        .HasDatabaseName("ix_ie_notification_external_delegations_recipient_kind_id");
+                        .HasDatabaseName("ix_notification_external_delegations_recipient_kind_id");
 
                     b.HasIndex("ReportDecisionId")
-                        .HasDatabaseName("ix_ie_notification_external_delegations_report_decision_id");
+                        .HasDatabaseName("ix_notification_external_delegations_report_decision_id");
 
                     b.HasIndex("ReportId")
-                        .HasDatabaseName("ix_ie_notification_external_delegations_report_id");
+                        .HasDatabaseName("ix_notification_external_delegations_report_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_notification_external_delegations_status_id");
+                        .HasDatabaseName("ix_notification_external_delegations_status_id");
 
                     b.HasIndex("TenantId", "ExternalCorrelationId")
-                        .HasDatabaseName("IX_ie_notification_external_delegations_tenant_id_exter_0C8B3267");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_tenant_id_exter_3ade0518");
 
                     b.HasIndex("TenantId", "NotificationIntentId")
-                        .HasDatabaseName("IX_ie_notification_external_delegations_tenant_id_notif_9F3A90CD");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_tenant_id_notif_5981497a");
 
                     b.HasIndex("TenantId", "AccountAuthorityKindId", "StatusId", "CreatedAt")
-                        .HasDatabaseName("IX_ie_notification_external_delegations_tenant_id_accou_03DA9BBA");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_tenant_id_accou_5d37cbbb");
 
                     b.HasIndex("TenantId", "ProviderKindId", "StatusId", "CreatedAt")
-                        .HasDatabaseName("IX_ie_notification_external_delegations_tenant_id_provi_1DEBC908");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_tenant_id_provi_32b718bb");
 
                     b.ToTable("ie_notification_external_delegations", (string)null);
                 });
@@ -15527,7 +15529,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_external_delegation_statuses_master_code");
+                        .HasDatabaseName("ix_notification_external_delegation_statuses_master_code");
 
                     b.ToTable("ie_notification_external_delegation_statuses", (string)null);
                 });
@@ -15644,32 +15646,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_fanout_occurrences");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notification_fanout_occurrences_tenant_id");
+                        .HasName("ak_notification_fanout_occurrences_tenant_id_id");
 
                     b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_delivery_policy_id");
+                        .HasDatabaseName("ix_notification_fanout_occurrences_delivery_policy_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_event_id");
+                        .HasDatabaseName("ix_notification_fanout_occurrences_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "SessionId")
-                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_session_id");
+                        .HasDatabaseName("ix_notification_fanout_occurrences_tenant_id_session_id");
 
                     b.HasIndex("TenantId", "SupersededByOccurrenceId")
-                        .HasDatabaseName("IX_ie_notification_fanout_occurrences_tenant_id_superse_31E71FF5");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_superse_c98225b9");
 
                     b.HasIndex("TenantId", "CoalescingKey", "State", "OccurredAt")
-                        .HasDatabaseName("IX_ie_notification_fanout_occurrences_tenant_id_coalesc_87ACCC42");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_coalesc_8fec7ad6");
 
                     b.HasIndex("TenantId", "SourceType", "SourceId", "AggregateVersion")
-                        .HasDatabaseName("IX_ie_notification_fanout_occurrences_tenant_id_source__5981E323");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_source__65b0dd64");
 
                     b.HasIndex("TenantId", "State", "NotBefore", "OccurredAt")
-                        .HasDatabaseName("IX_ie_notification_fanout_occurrences_tenant_id_state_n_53C33F7A");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_state_n_d94b72d9");
 
                     b.HasIndex("NotBefore", "TenantId", "Priority", "OccurredAt", "Id")
                         .IsDescending(false, false, true, false, false)
-                        .HasDatabaseName("IX_ie_notification_fanout_occurrences_not_before_tenant_3CABC689")
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_not_before_tenant_04f6189f")
                         .HasFilter("state = 1");
 
                     b.ToTable("ie_notification_fanout_occurrences", null, t =>
@@ -15708,7 +15710,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ProcessorCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_processor_states_processor_code");
+                        .HasDatabaseName("ix_notification_fanout_processor_states_processor_code");
 
                     b.ToTable("ie_notification_fanout_processor_states", (string)null);
                 });
@@ -15843,21 +15845,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_fanout_runs");
 
                     b.HasIndex("NotificationEntityTypeId")
-                        .HasDatabaseName("ix_ie_notification_fanout_runs_notification_entity_type_id");
+                        .HasDatabaseName("ix_notification_fanout_runs_notification_entity_type_id");
 
                     b.HasIndex("SourceActorId")
-                        .HasDatabaseName("ix_ie_notification_fanout_runs_source_actor_id");
+                        .HasDatabaseName("ix_notification_fanout_runs_source_actor_id");
 
                     b.HasIndex("TenantId", "FanoutOccurrenceId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_runs_occurrence");
+                        .HasDatabaseName("ix_notification_fanout_runs_tenant_id_fanout_occurrence_id");
 
                     b.HasIndex("Status", "ProcessingLeaseExpiresAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_notification_fanout_runs_status_processing_lease__89D99F71");
+                        .HasDatabaseName("ix_ie_notification_fanout_runs_status_processing_lease__7fc5053c");
 
                     b.HasIndex("TenantId", "FanoutKind", "NotificationEntityTypeId", "EntityId", "SourceActorId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_fanout_runs_tenant_id_fanout_kind_no_83AC6BF8")
+                        .HasDatabaseName("ix_ie_notification_fanout_runs_tenant_id_fanout_kind_no_da4a2ea0")
                         .HasFilter("fanout_occurrence_id IS NULL");
 
                     b.ToTable("ie_notification_fanout_runs", null, t =>
@@ -15982,52 +15984,52 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_intents");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notification_intents_tenant_id");
+                        .HasName("ak_notification_intents_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "Id", "RecipientUserId")
-                        .HasName("ak_notification_intents_tenant_id_recipient");
+                        .HasName("ak_notification_intents_tenant_id_id_recipient_user_id");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_ie_notification_intents_category_id");
+                        .HasDatabaseName("ix_notification_intents_category_id");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_notification_intents_event_id");
+                        .HasDatabaseName("ix_notification_intents_event_id");
 
                     b.HasIndex("OwnershipTypeId")
-                        .HasDatabaseName("ix_ie_notification_intents_ownership_type_id");
+                        .HasDatabaseName("ix_notification_intents_ownership_type_id");
 
                     b.HasIndex("RecipientKindId")
-                        .HasDatabaseName("ix_ie_notification_intents_recipient_kind_id");
+                        .HasDatabaseName("ix_notification_intents_recipient_kind_id");
 
                     b.HasIndex("ReportDecisionId")
-                        .HasDatabaseName("ix_ie_notification_intents_report_decision_id");
+                        .HasDatabaseName("ix_notification_intents_report_decision_id");
 
                     b.HasIndex("ReportId")
-                        .HasDatabaseName("ix_ie_notification_intents_report_id");
+                        .HasDatabaseName("ix_notification_intents_report_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_notification_intents_status_id");
+                        .HasDatabaseName("ix_notification_intents_status_id");
 
                     b.HasIndex("TenantId", "DeduplicationKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_intents_tenant_deduplication_key")
+                        .HasDatabaseName("ix_notification_intents_tenant_id_deduplication_key")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_ie_notification_intents_tenant_id_recipient_user_id");
+                        .HasDatabaseName("ix_notification_intents_tenant_id_recipient_user_id");
 
                     b.HasIndex("TenantId", "CategoryId", "CreatedAt")
-                        .HasDatabaseName("ix_notification_intents_tenant_category_created");
+                        .HasDatabaseName("ix_notification_intents_tenant_id_category_id_created_at");
 
                     b.HasIndex("TenantId", "FanoutOccurrenceId", "RecipientUserId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_intents_tenant_id_fanout_occurrence__DD963AB2");
+                        .HasDatabaseName("ix_ie_notification_intents_tenant_id_fanout_occurrence__ee3a98da");
 
                     b.HasIndex("TenantId", "OwnershipTypeId", "CreatedAt")
-                        .HasDatabaseName("IX_ie_notification_intents_tenant_id_ownership_type_id__9496DF8D");
+                        .HasDatabaseName("ix_ie_notification_intents_tenant_id_ownership_type_id__5aa49627");
 
                     b.HasIndex("TenantId", "StatusId", "CreatedAt")
-                        .HasDatabaseName("ix_notification_intents_tenant_status_created");
+                        .HasDatabaseName("ix_notification_intents_tenant_id_status_id_created_at");
 
                     b.ToTable("ie_notification_intents", (string)null);
                 });
@@ -16060,7 +16062,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_intent_statuses_master_code");
+                        .HasDatabaseName("ix_notification_intent_statuses_master_code");
 
                     b.ToTable("ie_notification_intent_statuses", (string)null);
                 });
@@ -16093,7 +16095,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_ownership_types_master_code");
+                        .HasDatabaseName("ix_notification_ownership_types_master_code");
 
                     b.ToTable("ie_notification_ownership_types", (string)null);
                 });
@@ -16148,7 +16150,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_preference_categories_master_code");
+                        .HasDatabaseName("ix_notification_preference_categories_master_code");
 
                     b.ToTable("ie_notification_preference_categories", (string)null);
                 });
@@ -16185,7 +16187,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_preference_channels_master_code");
+                        .HasDatabaseName("ix_notification_preference_channels_master_code");
 
                     b.ToTable("ie_notification_preference_channels", (string)null);
                 });
@@ -16266,35 +16268,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_notification_preference_profiles");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_ie_notification_preference_profiles_group_id");
+                        .HasDatabaseName("ix_notification_preference_profiles_group_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_ie_notification_preference_profiles_organization_id");
+                        .HasDatabaseName("ix_notification_preference_profiles_organization_id");
 
                     b.HasIndex("ScopeId")
-                        .HasDatabaseName("ix_ie_notification_preference_profiles_scope_id");
+                        .HasDatabaseName("ix_notification_preference_profiles_scope_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_notification_preference_profiles_user_id");
+                        .HasDatabaseName("ix_notification_preference_profiles_user_id");
 
                     b.HasIndex("TenantId", "ScopeId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_preference_profiles_scope_default")
+                        .HasDatabaseName("ix_notification_preference_profiles_tenant_id_scope_id")
                         .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "GroupId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_preference_profiles_tenant_id_scope__44A07C3E")
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_tenant_id_scope__0ae7312c")
                         .HasFilter("is_deleted = false AND group_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_preference_profiles_tenant_id_scope__FEC94E0B")
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_tenant_id_scope__372f7d7e")
                         .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_notification_preference_profiles_tenant_id_scope__3FF0CF53")
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_tenant_id_scope__76cfd2db")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
                     b.ToTable("ie_notification_preference_profiles", null, t =>
@@ -16360,7 +16362,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_recipient_kinds_master_code");
+                        .HasDatabaseName("ix_notification_recipient_kinds_master_code");
 
                     b.ToTable("ie_notification_recipient_kinds", (string)null);
                 });
@@ -16393,7 +16395,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_notification_scope_types_master_code");
+                        .HasDatabaseName("ix_notification_scope_types_master_code");
 
                     b.ToTable("ie_notification_scope_types", (string)null);
                 });
@@ -16539,20 +16541,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_organization_members");
 
                     b.HasIndex("OrganizationPositionId")
-                        .HasDatabaseName("ix_ie_organization_members_organization_position_id");
+                        .HasDatabaseName("ix_organization_members_organization_position_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_organization_members_role_id");
+                        .HasDatabaseName("ix_organization_members_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_orgmembers_user");
+                        .HasDatabaseName("ix_organization_members_user_id");
 
                     b.HasIndex("OrganizationTenantId", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_orgmembers_org_user");
+                        .HasDatabaseName("ix_organization_members_organization_tenant_id_user_id");
 
                     b.HasIndex("TenantId", "OrganizationTenantId")
-                        .HasDatabaseName("ix_ie_organization_members_tenant_id_organization_tenant_id");
+                        .HasDatabaseName("ix_organization_members_tenant_id_organization_tenant_id");
 
                     b.ToTable("ie_organization_members", (string)null);
                 });
@@ -16598,7 +16600,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_organization_pii");
 
                     b.HasIndex("FullName")
-                        .HasDatabaseName("ix_organization_pii_name");
+                        .HasDatabaseName("ix_organization_pii_full_name");
 
                     b.ToTable("ie_organization_pii", (string)null);
                 });
@@ -16702,16 +16704,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_organization_reviews");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_ie_organization_reviews_event_id");
+                        .HasDatabaseName("ix_organization_reviews_event_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_ie_organization_reviews_organization_id");
+                        .HasDatabaseName("ix_organization_reviews_organization_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_organization_reviews_tenant_id");
+                        .HasDatabaseName("ix_organization_reviews_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_organization_reviews_user_id");
+                        .HasDatabaseName("ix_organization_reviews_user_id");
 
                     b.ToTable("ie_organization_reviews", (string)null);
                 });
@@ -16765,10 +16767,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("OrganizationTenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organization_setting_overrides_organization_tenan_2CB3CCB3");
+                        .HasDatabaseName("ix_ie_organization_setting_overrides_organization_tenan_4f879fbc");
 
                     b.HasIndex("TenantId", "OrganizationTenantId")
-                        .HasDatabaseName("IX_ie_organization_setting_overrides_tenant_id_organiza_02E47E2C");
+                        .HasDatabaseName("ix_ie_organization_setting_overrides_tenant_id_organiza_11b2ad8f");
 
                     b.ToTable("ie_organization_setting_overrides", (string)null);
                 });
@@ -16921,27 +16923,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_organization_tenants_tenant_id_organization_id");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_ie_organization_tenants_approval_status_id");
+                        .HasDatabaseName("ix_organization_tenants_approval_status_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_ie_organization_tenants_background_image_id");
+                        .HasDatabaseName("ix_organization_tenants_background_image_id");
 
                     b.HasIndex("BannerPictureId")
-                        .HasDatabaseName("ix_ie_organization_tenants_banner_picture_id");
+                        .HasDatabaseName("ix_organization_tenants_banner_picture_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_ie_organization_tenants_organization_id");
+                        .HasDatabaseName("ix_organization_tenants_organization_id");
 
                     b.HasIndex("ProfilePictureId")
-                        .HasDatabaseName("ix_ie_organization_tenants_profile_picture_id");
+                        .HasDatabaseName("ix_organization_tenants_profile_picture_id");
 
                     b.HasIndex("TenantId", "OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_organization_tenants_tenant_id_organization_id")
+                        .HasDatabaseName("ix_organization_tenants_tenant_id_organization_id")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
-                        .HasDatabaseName("IX_ie_organization_tenants_tenant_id_is_deleted_approva_33E05630");
+                        .HasDatabaseName("ix_ie_organization_tenants_tenant_id_is_deleted_approva_0449a2fe");
 
                     b.ToTable("ie_organization_tenants", (string)null);
                 });
@@ -17012,20 +17014,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_organization_tenant_evidence_tenant_id_id");
 
                     b.HasIndex("ReviewStatusId")
-                        .HasDatabaseName("ix_ie_organization_tenant_evidence_review_status_id");
+                        .HasDatabaseName("ix_organization_tenant_evidence_review_status_id");
 
                     b.HasIndex("ReviewedByUserId")
-                        .HasDatabaseName("ix_ie_organization_tenant_evidence_reviewed_by_user_id");
+                        .HasDatabaseName("ix_organization_tenant_evidence_reviewed_by_user_id");
 
                     b.HasIndex("TenantId", "DocumentStorageObjectId")
-                        .HasDatabaseName("IX_ie_organization_tenant_evidence_tenant_id_document_s_61A9A369");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_document_s_9aeda0e1");
 
                     b.HasIndex("TenantId", "OrganizationTenantId", "DocumentStorageObjectId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organization_tenant_evidence_tenant_id_organizati_0817E702");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_organizati_213220da");
 
                     b.HasIndex("TenantId", "OrganizationTenantId", "ReviewStatusId")
-                        .HasDatabaseName("IX_ie_organization_tenant_evidence_tenant_id_organizati_54B15CDC");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_organizati_71406b1f");
 
                     b.ToTable("ie_organization_tenant_evidence", (string)null);
                 });
@@ -17150,21 +17152,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_organizer_payment_provider_account_operations_tenant_id_id");
 
                     b.HasIndex("OrganizerActorId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_account_operations_org_431FA825");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_account_operations_org_109e2e44");
 
                     b.HasIndex("ProviderIdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_account_operations_pro_17248AA8");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_account_operations_pro_a7faaa75");
 
                     b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_account_operations_act_DBE94CEF");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_account_operations_act_72aaf40f");
 
                     b.HasIndex("TenantId", "ConnectionId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_account_operations_ten_9A43E3F1");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_account_operations_ten_7d9d8248");
 
                     b.HasIndex("TenantId", "OrganizerActorId", "ProviderCode", "ConnectPlatformId", "StatusId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_account_operations_ten_BC1E553B");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_account_operations_ten_3e36fde5");
 
                     b.ToTable("ie_organizer_payment_provider_account_operations", null, t =>
                         {
@@ -17305,24 +17307,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_organizer_payment_provider_connections_tenant_id_id");
 
                     b.HasIndex("OrganizerActorId")
-                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_organizer_actor_id");
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_organizer_actor_id");
 
                     b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connections_active_sco_FC47D6BC");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_active_sco_bd27cb80");
 
                     b.HasIndex("TenantId", "ReplacedByConnectionId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connections_tenant_id__DAFAB243");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_tenant_id__885aa5d3");
 
                     b.HasIndex("TenantId", "ReplacesConnectionId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connections_tenant_id__A176AF4F");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_tenant_id__1e4b3bdd");
 
                     b.HasIndex("ProviderCode", "ConnectPlatformId", "ExternalAccountId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connections_provider_c_666696AF");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_provider_c_d4ee7a89");
 
                     b.HasIndex("TenantId", "OrganizerActorId", "ProviderCode", "ConnectPlatformId", "StatusId")
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connections_tenant_id__354BD75C");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connections_tenant_id__93e6c938");
 
                     b.ToTable("ie_organizer_payment_provider_connections", null, t =>
                         {
@@ -17355,11 +17357,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("currency_code");
 
                     b.HasKey("TenantId", "OrganizerPaymentProviderConnectionId", "Ordinal")
-                        .HasName("PK_ie_organizer_payment_provider_connection_supported_c_EA427E2B");
+                        .HasName("pk_ie_organizer_payment_provider_connection_supported_c_9b357853");
 
                     b.HasIndex("TenantId", "OrganizerPaymentProviderConnectionId", "CurrencyCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_organizer_payment_provider_connection_supported_c_281D0FF0");
+                        .HasDatabaseName("ix_ie_organizer_payment_provider_connection_supported_c_d09549f4");
 
                     b.ToTable("ie_organizer_payment_provider_connection_supported_currencies", (string)null);
                 });
@@ -17430,13 +17432,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_outbox_messages");
 
                     b.HasIndex("AggregateType", "AggregateId")
-                        .HasDatabaseName("IX_OutboxMessages_Aggregate");
+                        .HasDatabaseName("ix_outbox_messages_aggregate_type_aggregate_id");
 
                     b.HasIndex("Status", "NextRetryAt", "CreatedAt")
-                        .HasDatabaseName("IX_OutboxMessages_WorkerPoll");
+                        .HasDatabaseName("ix_outbox_messages_status_next_retry_at_created_at");
 
                     b.HasIndex("AggregateType", "AggregateId", "EventType", "CreatedAt")
-                        .HasDatabaseName("IX_ie_outbox_messages_aggregate_type_aggregate_id_event_DBC44C68");
+                        .HasDatabaseName("ix_ie_outbox_messages_aggregate_type_aggregate_id_event_e6bb7a61");
 
                     b.ToTable("ie_outbox_messages", (string)null);
                 });
@@ -17562,7 +17564,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_paid_checkout_review_approvals_tenant_id_id");
 
                     b.HasIndex("TenantId", "EventId", "OrganizerActorId", "PaidEventPolicyVersionId", "CurrencyCode", "TriggerId", "StatusCode")
-                        .HasDatabaseName("IX_ie_paid_checkout_review_approvals_tenant_id_event_id_C1CD28B8");
+                        .HasDatabaseName("ix_ie_paid_checkout_review_approvals_tenant_id_event_id_3d8db145");
 
                     b.ToTable("ie_paid_checkout_review_approvals", null, t =>
                         {
@@ -17644,11 +17646,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_paid_checkout_sale_controls_tenant_id_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_paid_checkout_sale_controls_tenant_id_event_id");
+                        .HasDatabaseName("ix_paid_checkout_sale_controls_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "ScopeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_paid_checkout_sale_controls_tenant_id_scope_key");
+                        .HasDatabaseName("ix_paid_checkout_sale_controls_tenant_id_scope_key");
 
                     b.ToTable("ie_paid_checkout_sale_controls", null, t =>
                         {
@@ -17699,10 +17701,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("subject_user_id");
 
                     b.HasKey("TenantId", "PaidCheckoutSaleControlId", "Sequence")
-                        .HasName("PK_ie_paid_checkout_sale_control_audits_tenant_id_paid__E95351BF");
+                        .HasName("pk_ie_paid_checkout_sale_control_audits_tenant_id_paid__d7c7dea3");
 
                     b.HasIndex("TenantId", "EventId", "OccurredAt")
-                        .HasDatabaseName("IX_ie_paid_checkout_sale_control_audits_tenant_id_event_99E39CA3");
+                        .HasDatabaseName("ix_ie_paid_checkout_sale_control_audits_tenant_id_event_13223cd0");
 
                     b.ToTable("ie_paid_checkout_sale_control_audits", null, t =>
                         {
@@ -17736,11 +17738,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
-                        .HasName("PK_ie_paid_event_policy_allowed_currencies_policy_scope_157B3265");
+                        .HasName("pk_ie_paid_event_policy_allowed_currencies_policy_scope_c1ff1cb7");
 
                     b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "CurrencyCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_event_policy_allowed_currencies_policy_scope_0D333DA9");
+                        .HasDatabaseName("ix_ie_paid_event_policy_allowed_currencies_policy_scope_4392f560");
 
                     b.ToTable("ie_paid_event_policy_allowed_currencies", (string)null);
                 });
@@ -17769,11 +17771,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
-                        .HasName("PK_ie_paid_event_policy_allowed_organizer_kinds_policy__C0ECB89C");
+                        .HasName("pk_ie_paid_event_policy_allowed_organizer_kinds_policy__468d3793");
 
                     b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "ActorTypeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_event_policy_allowed_organizer_kinds_policy__44AC0DC2");
+                        .HasDatabaseName("ix_ie_paid_event_policy_allowed_organizer_kinds_policy__7ecca9d5");
 
                     b.ToTable("ie_paid_event_policy_allowed_organizer_kinds", (string)null);
                 });
@@ -17828,11 +17830,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
-                        .HasName("PK_ie_paid_event_policy_currency_risk_limits_policy_sco_49C5B414");
+                        .HasName("pk_ie_paid_event_policy_currency_risk_limits_policy_sco_83df8f92");
 
                     b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "CurrencyCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_event_policy_currency_risk_limits_policy_sco_E6AEDB5C");
+                        .HasDatabaseName("ix_ie_paid_event_policy_currency_risk_limits_policy_sco_04da5991");
 
                     b.ToTable("ie_paid_event_policy_currency_risk_limits", (string)null);
                 });
@@ -17861,11 +17863,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
-                        .HasName("PK_ie_paid_event_policy_refund_protections_policy_scope_E975D842");
+                        .HasName("pk_ie_paid_event_policy_refund_protections_policy_scope_44bb51c7");
 
                     b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "RefundProtectionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_event_policy_refund_protections_policy_scope_65CD5877");
+                        .HasDatabaseName("ix_ie_paid_event_policy_refund_protections_policy_scope_32da35bd");
 
                     b.ToTable("ie_paid_event_policy_refund_protections", (string)null);
                 });
@@ -17942,15 +17944,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_paid_event_policy_versions_policy_scope_key_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_paid_event_policy_versions_tenant_id");
+                        .HasDatabaseName("ix_paid_event_policy_versions_tenant_id");
 
                     b.HasIndex("PolicyScopeKey", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_event_policy_versions_policy_scope_key_activ_2B8F83EC");
+                        .HasDatabaseName("ix_ie_paid_event_policy_versions_policy_scope_key_activ_e248fe26");
 
                     b.HasIndex("PolicyScopeKey", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_paid_event_policy_versions_policy_scope_key_version_number");
+                        .HasDatabaseName("ix_paid_event_policy_versions_policy_scope_key_version_number");
 
                     b.ToTable("ie_paid_event_policy_versions", (string)null);
                 });
@@ -17996,14 +17998,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("unit_amount_minor");
 
                     b.HasKey("TenantId", "PaidOrderAcceptanceSnapshotId", "Ordinal")
-                        .HasName("PK_ie_paid_order_acceptance_lines_tenant_id_paid_order__6D2D14AC");
+                        .HasName("pk_ie_paid_order_acceptance_lines_tenant_id_paid_order__fc436cb3");
 
                     b.HasAlternateKey("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
-                        .HasName("AK_ie_paid_order_acceptance_lines_tenant_id_paid_order__044A7C81");
+                        .HasName("ak_ie_paid_order_acceptance_lines_tenant_id_paid_order__aef4a6e5");
 
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_order_acceptance_lines_tenant_id_paid_order__953B0C90");
+                        .HasDatabaseName("ix_ie_paid_order_acceptance_lines_tenant_id_paid_order__e9234ef7");
 
                     b.ToTable("ie_paid_order_acceptance_lines", null, t =>
                         {
@@ -18262,11 +18264,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_paid_order_acceptance_snapshots_tenant_id_id");
 
                     b.HasIndex("TenantId", "EventId", "AcceptedAt")
-                        .HasDatabaseName("IX_ie_paid_order_acceptance_snapshots_tenant_id_event_i_7920B1D6");
+                        .HasDatabaseName("ix_ie_paid_order_acceptance_snapshots_tenant_id_event_i_a15a5bfd");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "DisclosureRevision")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_paid_order_acceptance_snapshots_tenant_id_registr_7FC12C43");
+                        .HasDatabaseName("ix_ie_paid_order_acceptance_snapshots_tenant_id_registr_78212dc7");
 
                     b.ToTable("ie_paid_order_acceptance_snapshots", null, t =>
                         {
@@ -18306,7 +18308,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_participant_data_collection_modes_master_code");
+                        .HasDatabaseName("ix_participant_data_collection_modes_master_code");
 
                     b.ToTable("ie_participant_data_collection_modes", (string)null);
                 });
@@ -18338,7 +18340,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_participant_types_master_code");
+                        .HasDatabaseName("ix_participant_types_master_code");
 
                     b.ToTable("ie_participant_types", (string)null);
                 });
@@ -18371,7 +18373,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_participation_handling_modes_master_code");
+                        .HasDatabaseName("ix_participation_handling_modes_master_code");
 
                     b.ToTable("ie_participation_handling_modes", (string)null);
                 });
@@ -18454,25 +18456,25 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ParticipationConfigurationId", "IsStandaloneQuestionnaire")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_participation_requirement_attachments_participati_DD291674")
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_participati_8e6bebf0")
                         .HasFilter("is_deleted = false AND is_standalone_questionnaire = true");
 
                     b.HasIndex("ParticipationConfigurationId", "RegistrationRequirementId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_participation_requirement_attachments_participati_7EA0F6E5")
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_participati_a50b02ac")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_event_id");
+                        .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "ParticipationConfigurationId")
-                        .HasDatabaseName("IX_ie_participation_requirement_attachments_tenant_id_p_1688EFD9");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_p_9a2664bb");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
-                        .HasDatabaseName("IX_ie_participation_requirement_attachments_tenant_id_e_D37F6441");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_e_a1a4f9df");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
-                        .HasDatabaseName("IX_ie_participation_requirement_attachments_tenant_id_e_E7A48A16");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_e_a35acb57");
 
                     b.ToTable("ie_participation_requirement_attachments", null, t =>
                         {
@@ -18655,27 +18657,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_payment_attempts_tenant_id_id");
 
                     b.HasIndex("AuthoritativeStatusFloorId")
-                        .HasDatabaseName("ix_ie_payment_attempts_authoritative_status_floor_id");
+                        .HasDatabaseName("ix_payment_attempts_authoritative_status_floor_id");
 
                     b.HasIndex("PaymentAttemptStatusId")
-                        .HasDatabaseName("ix_ie_payment_attempts_payment_attempt_status_id");
+                        .HasDatabaseName("ix_payment_attempts_payment_attempt_status_id");
 
                     b.HasIndex("ProviderIdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_payment_attempts_provider_idempotency_key");
+                        .HasDatabaseName("ix_payment_attempts_provider_idempotency_key");
 
                     b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_payment_attempts_active_scope_key_active_uniqueness_slot");
+                        .HasDatabaseName("ix_payment_attempts_active_scope_key_active_uniqueness_slot");
 
                     b.HasIndex("TenantId", "CampaignCursor")
-                        .HasDatabaseName("ix_ie_payment_attempts_tenant_id_campaign_cursor");
+                        .HasDatabaseName("ix_payment_attempts_tenant_id_campaign_cursor");
 
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
-                        .HasDatabaseName("IX_ie_payment_attempts_tenant_id_paid_order_acceptance__71D65AAB");
+                        .HasDatabaseName("ix_ie_payment_attempts_tenant_id_paid_order_acceptance__985c3de0");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "PaymentAttemptStatusId")
-                        .HasDatabaseName("IX_ie_payment_attempts_tenant_id_registration_order_id__A4ABFDE9");
+                        .HasDatabaseName("ix_ie_payment_attempts_tenant_id_registration_order_id__c4531fd9");
 
                     b.ToTable("ie_payment_attempts", null, t =>
                         {
@@ -18719,7 +18721,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_payment_attempt_statuses_master_code");
+                        .HasDatabaseName("ix_payment_attempt_statuses_master_code");
 
                     b.ToTable("ie_payment_attempt_statuses", (string)null);
                 });
@@ -18799,10 +18801,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "ProviderDisputeId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_payment_disputes_tenant_id_provider_dispute_id");
+                        .HasDatabaseName("ix_payment_disputes_tenant_id_provider_dispute_id");
 
                     b.HasIndex("TenantId", "PaymentAttemptId", "Status")
-                        .HasDatabaseName("ix_ie_payment_disputes_tenant_id_payment_attempt_id_status");
+                        .HasDatabaseName("ix_payment_disputes_tenant_id_payment_attempt_id_status");
 
                     b.ToTable("ie_payment_disputes", null, t =>
                         {
@@ -18922,20 +18924,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_payment_reconciliation_effects_tenant_id_id");
 
                     b.HasIndex("TenantId", "CheckoutDispatchEffectId")
-                        .HasDatabaseName("IX_ie_payment_reconciliation_effects_tenant_id_checkout_9493ADB7");
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_checkout_eb49826a");
 
                     b.HasIndex("TenantId", "PaymentAttemptId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_payment_reconciliation_effects_tenant_id_payment__6F62667E");
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_payment__ff1bb93d");
 
                     b.HasIndex("TenantId", "SourceIncomingWebhookMessageId")
-                        .HasDatabaseName("IX_ie_payment_reconciliation_effects_tenant_id_source_i_E8AF45A4");
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_tenant_id_source_i_01521e92");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt", "Id")
-                        .HasDatabaseName("IX_ie_payment_reconciliation_effects_status_next_attemp_E73E03AD");
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_status_next_attemp_d3a46ffa");
 
                     b.HasIndex("Status", "ProcessingLeaseExpiresAt", "CreatedAt", "Id")
-                        .HasDatabaseName("IX_ie_payment_reconciliation_effects_status_processing__801F2D1D");
+                        .HasDatabaseName("ix_ie_payment_reconciliation_effects_status_processing__a7b076f3");
 
                     b.ToTable("ie_payment_reconciliation_effects", null, t =>
                         {
@@ -19014,10 +19016,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "PaymentAttemptId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_payment_succeeded_observations_tenant_id_payment__B777CFAE");
+                        .HasDatabaseName("ix_ie_payment_succeeded_observations_tenant_id_payment__08021cea");
 
                     b.HasIndex("TenantId", "SourceIncomingWebhookMessageId")
-                        .HasDatabaseName("IX_ie_payment_succeeded_observations_tenant_id_source_i_B4CDDCC8");
+                        .HasDatabaseName("ix_ie_payment_succeeded_observations_tenant_id_source_i_511520ff");
 
                     b.ToTable("ie_payment_succeeded_observations", (string)null);
                 });
@@ -19116,13 +19118,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_permissions_mastercode");
+                        .HasDatabaseName("ix_permissions_master_code");
 
                     b.HasIndex("RoleScopeId")
                         .HasDatabaseName("ix_permissions_role_scope_id");
 
                     b.HasIndex("ResourceKind", "Action")
-                        .HasDatabaseName("ix_permissions_resource_action");
+                        .HasDatabaseName("ix_permissions_resource_kind_action");
 
                     b.ToTable("ie_permissions", (string)null);
                 });
@@ -19154,11 +19156,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("PlatformContributionSettingId", "ContributionBasisPoints")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_platform_contribution_options_platform_contributi_82E8B746");
+                        .HasDatabaseName("ix_ie_platform_contribution_options_platform_contributi_fc4e728e");
 
                     b.HasIndex("PlatformContributionSettingId", "SortOrder")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_platform_contribution_options_platform_contributi_B2574C71");
+                        .HasDatabaseName("ix_ie_platform_contribution_options_platform_contributi_0cbeb3ac");
 
                     b.ToTable("ie_platform_contribution_options", (string)null);
                 });
@@ -19214,12 +19216,12 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("IsActive")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_platform_contribution_settings_is_active")
+                        .HasDatabaseName("ix_platform_contribution_settings_is_active")
                         .HasFilter("is_active = true");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_platform_contribution_settings_version_number");
+                        .HasDatabaseName("ix_platform_contribution_settings_version_number");
 
                     b.ToTable("ie_platform_contribution_settings", (string)null);
                 });
@@ -19249,7 +19251,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("PlatformFeePolicyId", "CurrencyCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_platform_fee_fixed_charges_platform_fee_policy_id_9ABC6EEB");
+                        .HasDatabaseName("ix_ie_platform_fee_fixed_charges_platform_fee_policy_id_d7b9745b");
 
                     b.ToTable("ie_platform_fee_fixed_charges", (string)null);
                 });
@@ -19297,12 +19299,12 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("IsActive")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_platform_fee_policies_is_active")
+                        .HasDatabaseName("ix_platform_fee_policies_is_active")
                         .HasFilter("is_active = true");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_platform_fee_policies_version_number");
+                        .HasDatabaseName("ix_platform_fee_policies_version_number");
 
                     b.ToTable("ie_platform_fee_policies", (string)null);
                 });
@@ -19336,14 +19338,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_platform_user_roles");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_platform_user_roles_role_id");
+                        .HasDatabaseName("ix_platform_user_roles_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_platform_user_roles_user_id");
+                        .HasDatabaseName("ix_platform_user_roles_user_id");
 
                     b.HasIndex("UserId", "RoleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_platform_user_roles_user_id_role_id");
+                        .HasDatabaseName("ix_platform_user_roles_user_id_role_id");
 
                     b.ToTable("ie_platform_user_roles", (string)null);
                 });
@@ -19425,7 +19427,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_organization_policy_sets_organization_id");
+                        .HasDatabaseName("ix_organization_policy_sets_organization_id");
 
                     b.ToTable("ie_organization_policy_sets", (string)null);
                 });
@@ -19483,7 +19485,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_policy_change_outbox");
 
                     b.HasIndex("Status", "NextRetryAt")
-                        .HasDatabaseName("ix_policy_change_outbox_status_retry");
+                        .HasDatabaseName("ix_policy_change_outbox_status_next_retry_at");
 
                     b.ToTable("ie_policy_change_outbox", (string)null);
                 });
@@ -19526,7 +19528,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_policy_sets_tenant_id");
+                        .HasDatabaseName("ix_tenant_policy_sets_tenant_id");
 
                     b.ToTable("ie_tenant_policy_sets", (string)null);
                 });
@@ -19550,7 +19552,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("covered_at_utc");
 
                     b.HasKey("IntentId", "SubjectKind", "PolicyVersion")
-                        .HasName("PK_ie_privacy_erasure_policy_coverage_intent_id_subject_70F541DB");
+                        .HasName("pk_ie_privacy_erasure_policy_coverage_intent_id_subject_a625a9b9");
 
                     b.ToTable("ie_privacy_erasure_policy_coverage", null, t =>
                         {
@@ -19670,11 +19672,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_privacy_erasure_provider_work");
 
                     b.HasIndex("Status", "NextAttemptAtUtc", "LeaseExpiresAtUtc")
-                        .HasDatabaseName("IX_ie_privacy_erasure_provider_work_status_next_attempt_EFE9FD69");
+                        .HasDatabaseName("ix_ie_privacy_erasure_provider_work_status_next_attempt_9f93bbc2");
 
                     b.HasIndex("IntentId", "ProviderKind", "Action", "TenantId", "TargetId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_privacy_erasure_provider_work_intent_id_provider__B42CF93A");
+                        .HasDatabaseName("ix_ie_privacy_erasure_provider_work_intent_id_provider__d16d757f");
 
                     b.ToTable("ie_privacy_erasure_provider_work", null, t =>
                         {
@@ -19738,15 +19740,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("AuthoritySequence")
                         .IsUnique()
-                        .HasDatabaseName("ux_privacy_erasure_checkpoints_sequence");
+                        .HasDatabaseName("ix_privacy_erasure_replay_checkpoints_authority_sequence");
 
                     b.HasIndex("IntentId")
                         .IsUnique()
-                        .HasDatabaseName("ux_privacy_erasure_checkpoints_intent");
+                        .HasDatabaseName("ix_privacy_erasure_replay_checkpoints_intent_id");
 
                     b.HasIndex("PreviousCheckpointId")
                         .IsUnique()
-                        .HasDatabaseName("ux_privacy_erasure_checkpoints_previous");
+                        .HasDatabaseName("ix_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
 
                     b.ToTable("ie_privacy_erasure_replay_checkpoints", null, t =>
                         {
@@ -19827,15 +19829,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ReceiptHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_receipt_hash");
+                        .HasDatabaseName("ix_privacy_erasure_sagas_receipt_hash");
 
                     b.HasIndex("SubjectKind", "SubjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_subject_kind_subject_id");
+                        .HasDatabaseName("ix_privacy_erasure_sagas_subject_kind_subject_id");
 
                     b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_privacy_erasure_sagas_intent_id_subject_kind_poli_DA28C18E");
+                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_intent_id_subject_kind_poli_e4cbafbf");
 
                     b.ToTable("ie_privacy_erasure_sagas", null, t =>
                         {
@@ -19939,14 +19941,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_promotion_codes_tenant_id_id");
 
                     b.HasIndex("TenantId", "PromotionDefinitionVersionId", "IsActive")
-                        .HasDatabaseName("IX_ie_promotion_codes_tenant_id_promotion_definition_ve_41FF9215");
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_promotion_definition_ve_37c8407b");
 
                     b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "LookupKeyVersion")
-                        .HasDatabaseName("IX_ie_promotion_codes_tenant_id_scope_event_id_scope_ti_D872FBD4");
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_scope_event_id_scope_ti_e53e8ee0");
 
                     b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "LookupKeyVersion", "LookupDigest")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_promotion_codes_tenant_id_scope_event_id_scope_ti_78AC93A6");
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_scope_event_id_scope_ti_0353899d");
 
                     b.ToTable("ie_promotion_codes", (string)null);
                 });
@@ -20059,14 +20061,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_promotion_definitions_tenant_id_id");
 
                     b.HasIndex("PromotionDefinitionStatusId")
-                        .HasDatabaseName("ix_ie_promotion_definitions_promotion_definition_status_id");
+                        .HasDatabaseName("ix_promotion_definitions_promotion_definition_status_id");
 
                     b.HasIndex("TenantId", "DefinitionGroupId", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_promotion_definitions_tenant_id_definition_group__62F85AAD");
+                        .HasDatabaseName("ix_ie_promotion_definitions_tenant_id_definition_group__7c383e60");
 
                     b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "PromotionDefinitionStatusId")
-                        .HasDatabaseName("IX_ie_promotion_definitions_tenant_id_scope_event_id_sc_CB1458DD");
+                        .HasDatabaseName("ix_ie_promotion_definitions_tenant_id_scope_event_id_sc_f230d488");
 
                     b.ToTable("ie_promotion_definitions", (string)null);
                 });
@@ -20099,7 +20101,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_promotion_definition_statuses_master_code");
+                        .HasDatabaseName("ix_promotion_definition_statuses_master_code");
 
                     b.ToTable("ie_promotion_definition_statuses", (string)null);
                 });
@@ -20178,20 +20180,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_promotion_reservations_tenant_id_id");
 
                     b.HasIndex("PromotionReservationStatusId")
-                        .HasDatabaseName("ix_ie_promotion_reservations_promotion_reservation_status_id");
+                        .HasDatabaseName("ix_promotion_reservations_promotion_reservation_status_id");
 
                     b.HasIndex("RegistrationOrderId", "OrderReservationSlot")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_promotion_reservations_registration_order_id_orde_460CBDBF");
+                        .HasDatabaseName("ix_ie_promotion_reservations_registration_order_id_orde_c1020079");
 
                     b.HasIndex("TenantId", "PromotionCodeId")
-                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_promotion_code_id");
+                        .HasDatabaseName("ix_promotion_reservations_tenant_id_promotion_code_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_promotion_reservations_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "PromotionDefinitionVersionId", "PromotionReservationStatusId")
-                        .HasDatabaseName("IX_ie_promotion_reservations_tenant_id_promotion_defini_D6D130AD");
+                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_promotion_defini_6fdfeaec");
 
                     b.ToTable("ie_promotion_reservations", null, t =>
                         {
@@ -20229,7 +20231,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_promotion_reservation_statuses_master_code");
+                        .HasDatabaseName("ix_promotion_reservation_statuses_master_code");
 
                     b.ToTable("ie_promotion_reservation_statuses", (string)null);
                 });
@@ -20387,27 +20389,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_refund_attempts_tenant_id_id");
 
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
-                        .HasDatabaseName("IX_ie_refund_attempts_tenant_id_paid_order_acceptance_s_E347DFAD");
+                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_paid_order_acceptance_s_74a562c8");
 
                     b.HasIndex("TenantId", "ProviderIdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_provider_idempotency_key");
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_provider_idempotency_key");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "PaymentAttemptId", "Status")
-                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_payment_attempt_id_status");
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_payment_attempt_id_status");
 
                     b.HasIndex("TenantId", "SourceCampaignId", "Status")
-                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_source_campaign_id_status");
+                        .HasDatabaseName("ix_refund_attempts_tenant_id_source_campaign_id_status");
 
                     b.HasIndex("TenantId", "ProviderCode", "ExternalAccountId", "ProviderRefundId")
-                        .HasDatabaseName("IX_ie_refund_attempts_tenant_id_provider_code_external__6EA071AD");
+                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_provider_code_external__21046c40");
 
                     b.HasIndex("TenantId", "ReservationSourceKey", "PaymentAttemptId", "PaidOrderAcceptanceSnapshotId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_refund_attempts_tenant_id_reservation_source_key__C1911B17");
+                        .HasDatabaseName("ix_ie_refund_attempts_tenant_id_reservation_source_key__efb300bf");
 
                     b.ToTable("ie_refund_attempts", null, t =>
                         {
@@ -20531,11 +20533,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_refund_campaigns_tenant_id_id");
 
                     b.HasIndex("Status", "ProcessingLeaseExpiresAt", "DecisionAt", "Id")
-                        .HasDatabaseName("IX_ie_refund_campaigns_status_processing_lease_expires__4F06110A");
+                        .HasDatabaseName("ix_ie_refund_campaigns_status_processing_lease_expires__e7d1586c");
 
                     b.HasIndex("TenantId", "EventId", "Kind", "DecisionAt")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_refund_campaigns_tenant_id_event_id_kind_decision_at");
+                        .HasDatabaseName("ix_refund_campaigns_tenant_id_event_id_kind_decision_at");
 
                     b.ToTable("ie_refund_campaigns", null, t =>
                         {
@@ -20588,14 +20590,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("total_minor");
 
                     b.HasKey("TenantId", "RefundAttemptId", "OrderLineId")
-                        .HasName("PK_ie_refund_line_allocations_tenant_id_refund_attempt__9CD7AFB6");
+                        .HasName("pk_ie_refund_line_allocations_tenant_id_refund_attempt__97697007");
 
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
-                        .HasDatabaseName("IX_ie_refund_line_allocations_tenant_id_paid_order_acce_DEBA17F3");
+                        .HasDatabaseName("ix_ie_refund_line_allocations_tenant_id_paid_order_acce_448eb1b6");
 
                     b.HasIndex("TenantId", "RefundAttemptId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_refund_line_allocations_tenant_id_refund_attempt__9B95FD00");
+                        .HasDatabaseName("ix_ie_refund_line_allocations_tenant_id_refund_attempt__8f1a076f");
 
                     b.ToTable("ie_refund_line_allocations", null, t =>
                         {
@@ -20700,14 +20702,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_amendments_tenant_id_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderLineId", "Ordinal")
-                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_registration_or_03271B3B");
+                        .HasDatabaseName("ix_ie_registration_amendments_tenant_id_registration_or_3fa734c5");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "Source", "LineageKey")
-                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_registration_or_F1F61E8F");
+                        .HasDatabaseName("ix_ie_registration_amendments_tenant_id_registration_or_6e7232d9");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "Source", "LineageKey", "RegistrationOrderLineId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_event_id_regist_54C72C8E");
+                        .HasDatabaseName("ix_ie_registration_amendments_tenant_id_event_id_regist_7c3ef368");
 
                     b.ToTable("ie_registration_amendments", (string)null);
                 });
@@ -20892,39 +20894,39 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_answers");
 
                     b.HasIndex("AnswerSubjectTypeId")
-                        .HasDatabaseName("ix_ie_registration_answers_answer_subject_type_id");
+                        .HasDatabaseName("ix_registration_answers_answer_subject_type_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_registration_answers_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "SensitiveAnswerValueId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_sensitive_answer_value_id");
+                        .HasDatabaseName("ix_registration_answers_tenant_id_sensitive_answer_value_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_registration_order_311E1FF9");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_3e7e4f10");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_registration_order_4E66747F");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_432ee0fb");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_registration_order_699654C4");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_5465b3e2");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_event_id_registrat_2D545C01");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registrat_21cef7e4");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_registration_submi_6BB4C082");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_submi_a25fa29b");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_event_id_registrat_8012C3CC");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registrat_a2f9afad");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "SelectedOptionId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_event_id_registrat_3BAA1E49");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registrat_4510f82c");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_answers_tenant_id_event_id_registrat_337005C1");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registrat_22a9b681");
 
                     b.ToTable("ie_registration_answers", null, t =>
                         {
@@ -21074,20 +21076,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "StorageObjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_storage_object_id");
+                        .HasDatabaseName("ix_registration_answer_files_tenant_id_storage_object_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_answer_files_tenant_id_event_id_regi_337B2692");
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_event_id_regi_a5649e01");
 
                     b.HasIndex("TenantId", "StorageObjectId", "QuarantineState")
-                        .HasDatabaseName("IX_ie_registration_answer_files_tenant_id_storage_objec_4519335D");
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_storage_objec_0170f63b");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "StorageObjectId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_answer_files_tenant_id_registration__970FCFD6");
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_registration__46c2e5e4");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
-                        .HasDatabaseName("IX_ie_registration_answer_files_tenant_id_event_id_regi_AB7FB9BD");
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_event_id_regi_21f62775");
 
                     b.ToTable("ie_registration_answer_files", null, t =>
                         {
@@ -21148,7 +21150,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "RegistrationAnswerFileId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_answer_file_releases_tenant_id_regis_84491815");
+                        .HasDatabaseName("ix_ie_registration_answer_file_releases_tenant_id_regis_108dc123");
 
                     b.ToTable("ie_registration_answer_file_releases", null, t =>
                         {
@@ -21213,7 +21215,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_answer_sync_modes_master_code");
+                        .HasDatabaseName("ix_registration_answer_sync_modes_master_code");
 
                     b.ToTable("ie_registration_answer_sync_modes", (string)null);
                 });
@@ -21354,35 +21356,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_attempts_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
-                        .HasName("AK_ie_registration_attempts_tenant_id_event_id_registra_6204DEE0");
+                        .HasName("ak_ie_registration_attempts_tenant_id_event_id_registra_60fc8c00");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
-                        .HasName("AK_ie_registration_attempts_tenant_id_event_id_registra_B2C42B3B");
+                        .HasName("ak_ie_registration_attempts_tenant_id_event_id_registra_7e9e40e6");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_registration_attempts_status_id");
+                        .HasDatabaseName("ix_registration_attempts_status_id");
 
                     b.HasIndex("TenantId", "CapabilityTokenHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_capability_token_hash");
+                        .HasDatabaseName("ix_registration_attempts_tenant_id_capability_token_hash");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderMappingRevisionHashKey")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_registration_prov_4D94CF18");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_registration_prov_6b094d4f");
 
                     b.HasIndex("TenantId", "StatusId", "ExpiresAt")
-                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_status_id_expires_at");
+                        .HasDatabaseName("ix_registration_attempts_tenant_id_status_id_expires_at");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_DB527E55");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registra_d897c166");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_EB2E7BB5");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registra_4d4ba96f");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_645AF02E");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registra_a19b715c");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_2F95627C");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registra_e8799046");
 
                     b.ToTable("ie_registration_attempts", null, t =>
                         {
@@ -21426,7 +21428,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_attempt_statuses_master_code");
+                        .HasDatabaseName("ix_registration_attempt_statuses_master_code");
 
                     b.ToTable("ie_registration_attempt_statuses", (string)null);
                 });
@@ -21509,23 +21511,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_channels");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
-                        .HasName("AK_ie_registration_channels_tenant_id_event_id_registra_987AD432");
+                        .HasName("ak_ie_registration_channels_tenant_id_event_id_registra_22565d51");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id", "RegistrationProviderBindingKey")
-                        .HasName("AK_ie_registration_channels_tenant_id_event_id_registra_2537FB94");
+                        .HasName("ak_ie_registration_channels_tenant_id_event_id_registra_580506bc");
 
                     b.HasIndex("RegistrationProviderBindingId")
-                        .HasDatabaseName("ix_ie_registration_channels_registration_provider_binding_id");
+                        .HasDatabaseName("ix_registration_channels_registration_provider_binding_id");
 
                     b.HasIndex("RegistrationRequirementId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_channels_registration_requirement_id_ordinal");
+                        .HasDatabaseName("ix_registration_channels_registration_requirement_id_ordinal");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_registration_channels_tenant_id_event_id");
+                        .HasDatabaseName("ix_registration_channels_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId")
-                        .HasDatabaseName("IX_ie_registration_channels_tenant_id_registration_prov_95E575AE");
+                        .HasDatabaseName("ix_ie_registration_channels_tenant_id_registration_prov_4363af2c");
 
                     b.ToTable("ie_registration_channels", null, t =>
                         {
@@ -21690,32 +21692,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_consent_records");
 
                     b.HasIndex("AnswerSubjectTypeId")
-                        .HasDatabaseName("ix_ie_registration_consent_records_answer_subject_type_id");
+                        .HasDatabaseName("ix_registration_consent_records_answer_subject_type_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_registrati_F3C1F6E9");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registrati_c355c9d2");
 
                     b.HasIndex("TenantId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity", "WithdrawnAt")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_answer_sub_54004C2F");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_answer_sub_6aad3a44");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_registrati_7882735C");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registrati_26f69720");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_registrati_13329285");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registrati_ec67829b");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_registrati_1BFE3E20");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registrati_cac8d577");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_event_id_r_777B7E53");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_r_b56ca1eb");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_event_id_r_12A9644E");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_r_d49347a0");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_consent_records_tenant_id_event_id_r_88D36542");
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_r_dba2e88c");
 
                     b.ToTable("ie_registration_consent_records", (string)null);
                 });
@@ -21748,7 +21750,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_field_types_master_code");
+                        .HasDatabaseName("ix_registration_field_types_master_code");
 
                     b.ToTable("ie_registration_field_types", (string)null);
                 });
@@ -21828,13 +21830,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_finalization_effects_tenant_id_regis_92ED2F95");
+                        .HasDatabaseName("ix_ie_registration_finalization_effects_tenant_id_regis_a0986741");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_registration_finalization_effects_status_next_att_EBDF6CA4");
+                        .HasDatabaseName("ix_ie_registration_finalization_effects_status_next_att_9de9b985");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_finalization_effects_tenant_id_event_50073AE7");
+                        .HasDatabaseName("ix_ie_registration_finalization_effects_tenant_id_event_d5b3cf96");
 
                     b.ToTable("ie_registration_finalization_effects", null, t =>
                         {
@@ -21921,7 +21923,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_forms_tenant_id_event_id_namespace_key")
+                        .HasDatabaseName("ix_registration_forms_tenant_id_event_id_namespace_key")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_registration_forms", (string)null);
@@ -22112,28 +22114,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_fields");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
-                        .HasName("AK_ie_registration_form_fields_tenant_id_event_id_regis_944A54D3");
+                        .HasName("ak_ie_registration_form_fields_tenant_id_event_id_regis_f962d0df");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
-                        .HasName("AK_ie_registration_form_fields_tenant_id_event_id_regis_737E8091");
+                        .HasName("ak_ie_registration_form_fields_tenant_id_event_id_regis_5ebea32f");
 
                     b.HasIndex("FieldTypeId")
-                        .HasDatabaseName("ix_ie_registration_form_fields_field_type_id");
+                        .HasDatabaseName("ix_registration_form_fields_field_type_id");
 
                     b.HasIndex("OrganizerVisibilityId")
-                        .HasDatabaseName("ix_ie_registration_form_fields_organizer_visibility_id");
+                        .HasDatabaseName("ix_registration_form_fields_organizer_visibility_id");
 
                     b.HasIndex("RetentionPolicyId")
-                        .HasDatabaseName("ix_ie_registration_form_fields_retention_policy_id");
+                        .HasDatabaseName("ix_registration_form_fields_retention_policy_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_fields_tenant_id_event_id_regis_73823BBF")
+                        .HasDatabaseName("ix_ie_registration_form_fields_tenant_id_event_id_regis_582cf27b")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_fields_tenant_id_event_id_regis_168647E1")
+                        .HasDatabaseName("ix_ie_registration_form_fields_tenant_id_event_id_regis_e5dc0b91")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_registration_form_fields", null, t =>
@@ -22231,16 +22233,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_field_options");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "Id")
-                        .HasName("AK_ie_registration_form_field_options_tenant_id_event_i_4685020A");
+                        .HasName("ak_ie_registration_form_field_options_tenant_id_event_i_260d0011");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Key")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_field_options_tenant_id_event_i_0CAE3418")
+                        .HasDatabaseName("ix_ie_registration_form_field_options_tenant_id_event_i_a40b273a")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_field_options_tenant_id_event_i_4A2600C7")
+                        .HasDatabaseName("ix_ie_registration_form_field_options_tenant_id_event_i_499d8ab6")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_registration_form_field_options", (string)null);
@@ -22332,15 +22334,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_rules");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
-                        .HasName("AK_ie_registration_form_rules_tenant_id_event_id_regist_EB971BC5");
+                        .HasName("ak_ie_registration_form_rules_tenant_id_event_id_regist_ee7a2783");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_rules_tenant_id_event_id_regist_18AA7406")
+                        .HasDatabaseName("ix_ie_registration_form_rules_tenant_id_event_id_regist_9d6eef00")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "TargetNamespace", "TargetKey")
-                        .HasDatabaseName("IX_ie_registration_form_rules_tenant_id_event_id_regist_05671FDC");
+                        .HasDatabaseName("ix_ie_registration_form_rules_tenant_id_event_id_regist_08ed22f2");
 
                     b.ToTable("ie_registration_form_rules", null, t =>
                         {
@@ -22421,11 +22423,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_sections");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
-                        .HasName("AK_ie_registration_form_sections_tenant_id_event_id_reg_42D236CF");
+                        .HasName("ak_ie_registration_form_sections_tenant_id_event_id_reg_222cc84e");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_sections_tenant_id_event_id_reg_7BE48A55")
+                        .HasDatabaseName("ix_ie_registration_form_sections_tenant_id_event_id_reg_7c5a21c9")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("ie_registration_form_sections", (string)null);
@@ -22459,7 +22461,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_form_statuses_master_code");
+                        .HasDatabaseName("ix_registration_form_statuses_master_code");
 
                     b.ToTable("ie_registration_form_statuses", (string)null);
                 });
@@ -22548,10 +22550,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_templates");
 
                     b.HasIndex("SourceRegistrationFormId", "SourceRegistrationFormVersionId")
-                        .HasDatabaseName("IX_ie_registration_form_templates_source_registration_f_A7F4723F");
+                        .HasDatabaseName("ix_ie_registration_form_templates_source_registration_f_6529a237");
 
                     b.HasIndex("TenantId", "Category", "Name")
-                        .HasDatabaseName("ix_ie_registration_form_templates_tenant_id_category_name");
+                        .HasDatabaseName("ix_registration_form_templates_tenant_id_category_name");
 
                     b.ToTable("ie_registration_form_templates", (string)null);
                 });
@@ -22693,30 +22695,30 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_form_versions");
 
                     b.HasAlternateKey("TenantId", "RegistrationFormId", "Id")
-                        .HasName("AK_ie_registration_form_versions_tenant_id_registration_22B82C0B");
+                        .HasName("ak_ie_registration_form_versions_tenant_id_registration_f8cd9b60");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "Id")
-                        .HasName("AK_ie_registration_form_versions_tenant_id_event_id_reg_4E4BEDFA");
+                        .HasName("ak_ie_registration_form_versions_tenant_id_event_id_reg_917a3424");
 
                     b.HasIndex("ExternalRegistrationProviderConnectionId")
-                        .HasDatabaseName("IX_ie_registration_form_versions_external_registration__84C0A657");
+                        .HasDatabaseName("ix_ie_registration_form_versions_external_registration__70a46103");
 
                     b.HasIndex("ExternalRegistrationProviderSchemaRevisionId")
-                        .HasDatabaseName("IX_ie_registration_form_versions_external_registration__77CC7B2D");
+                        .HasDatabaseName("ix_ie_registration_form_versions_external_registration__3c1b0753");
 
                     b.HasIndex("SourceKindId")
-                        .HasDatabaseName("ix_ie_registration_form_versions_source_kind_id");
+                        .HasDatabaseName("ix_registration_form_versions_source_kind_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_registration_form_versions_status_id");
+                        .HasDatabaseName("ix_registration_form_versions_status_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "Version")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_form_versions_tenant_id_event_id_reg_4BE9D491")
+                        .HasDatabaseName("ix_ie_registration_form_versions_tenant_id_event_id_reg_3477fffb")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "StatusId", "LanguageTag")
-                        .HasDatabaseName("IX_ie_registration_form_versions_tenant_id_event_id_reg_DD4B29C1");
+                        .HasDatabaseName("ix_ie_registration_form_versions_tenant_id_event_id_reg_14647819");
 
                     b.ToTable("ie_registration_form_versions", null, t =>
                         {
@@ -22752,7 +22754,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_form_version_source_kinds_master_code");
+                        .HasDatabaseName("ix_registration_form_version_source_kinds_master_code");
 
                     b.ToTable("ie_registration_form_version_source_kinds", (string)null);
                 });
@@ -22841,19 +22843,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_inventory_holds_tenant_id_id");
 
                     b.HasIndex("RegistrationInventoryHoldStatusId")
-                        .HasDatabaseName("IX_ie_registration_inventory_holds_registration_invento_EA97D2DA");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_registration_invento_5b430014");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_inventory_holds_tenant_id_registrati_28A60226");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_registrati_d9828f82");
 
                     b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_ticket_type_id");
+                        .HasDatabaseName("ix_registration_inventory_holds_tenant_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "CapacityPoolId", "RegistrationInventoryHoldStatusId")
-                        .HasDatabaseName("IX_ie_registration_inventory_holds_tenant_id_capacity_p_533DD4F5");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_capacity_p_a280a727");
 
                     b.HasIndex("TenantId", "RegistrationInventoryHoldStatusId", "ExpiresAt")
-                        .HasDatabaseName("IX_ie_registration_inventory_holds_tenant_id_registrati_5C115461");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_registrati_bcfa6807");
 
                     b.ToTable("ie_registration_inventory_holds", (string)null);
                 });
@@ -22886,7 +22888,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_inventory_hold_statuses_master_code");
+                        .HasDatabaseName("ix_registration_inventory_hold_statuses_master_code");
 
                     b.ToTable("ie_registration_inventory_hold_statuses", (string)null);
                 });
@@ -22954,17 +22956,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_material_change_choices_tenant_id_id");
 
                     b.HasIndex("TenantId", "PaidOrderAcceptanceSnapshotId")
-                        .HasDatabaseName("IX_ie_registration_material_change_choices_tenant_id_pa_EE515C89");
+                        .HasDatabaseName("ix_ie_registration_material_change_choices_tenant_id_pa_358d4501");
 
                     b.HasIndex("TenantId", "PaymentAttemptId")
-                        .HasDatabaseName("IX_ie_registration_material_change_choices_tenant_id_pa_8D392565");
+                        .HasDatabaseName("ix_ie_registration_material_change_choices_tenant_id_pa_be494d6b");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "Status")
-                        .HasDatabaseName("IX_ie_registration_material_change_choices_tenant_id_re_638BC2EB");
+                        .HasDatabaseName("ix_ie_registration_material_change_choices_tenant_id_re_24909ee0");
 
                     b.HasIndex("TenantId", "RefundCampaignId", "PaymentAttemptId", "PaidOrderAcceptanceSnapshotId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_material_change_choices_tenant_id_re_26376CBB");
+                        .HasDatabaseName("ix_ie_registration_material_change_choices_tenant_id_re_701b0026");
 
                     b.ToTable("ie_registration_material_change_choices", (string)null);
                 });
@@ -23170,28 +23172,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_orders_tenant_id_event_id_id");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowVersionKey", "Id")
-                        .HasName("AK_ie_registration_orders_tenant_id_event_id_registrati_520F3BF2");
+                        .HasName("ak_ie_registration_orders_tenant_id_event_id_registrati_57148c53");
 
                     b.HasIndex("BookingPartyTypeId")
-                        .HasDatabaseName("ix_ie_registration_orders_booking_party_type_id");
+                        .HasDatabaseName("ix_registration_orders_booking_party_type_id");
 
                     b.HasIndex("RegistrationOrderStatusId")
-                        .HasDatabaseName("ix_ie_registration_orders_registration_order_status_id");
+                        .HasDatabaseName("ix_registration_orders_registration_order_status_id");
 
                     b.HasIndex("TenantId", "AppliedPromotionCodeIdSnapshot")
-                        .HasDatabaseName("IX_ie_registration_orders_tenant_id_applied_promotion_c_BA3F5999");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_applied_promotion_c_8c60c843");
 
                     b.HasIndex("TenantId", "AppliedPromotionDefinitionVersionIdSnapshot")
-                        .HasDatabaseName("IX_ie_registration_orders_tenant_id_applied_promotion_d_FE845939");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_applied_promotion_d_3c2f2a96");
 
                     b.HasIndex("TenantId", "ExpiresAt")
-                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_expires_at");
+                        .HasDatabaseName("ix_registration_orders_tenant_id_expires_at");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
-                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_ticket_catalog_version_id");
+                        .HasDatabaseName("ix_registration_orders_tenant_id_ticket_catalog_version_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
-                        .HasDatabaseName("IX_ie_registration_orders_tenant_id_event_id_registrati_F3AF947D");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_event_id_registrati_aa359ec8");
 
                     b.ToTable("ie_registration_orders", null, t =>
                         {
@@ -23308,20 +23310,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_order_lines_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id")
-                        .HasName("AK_ie_registration_order_lines_tenant_id_registration_o_D597E8E5");
+                        .HasName("ak_ie_registration_order_lines_tenant_id_registration_o_3b42e71a");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
-                        .HasName("AK_ie_registration_order_lines_tenant_id_registration_o_03E0DDC2");
+                        .HasName("ak_ie_registration_order_lines_tenant_id_registration_o_0a6e00a5");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
-                        .HasDatabaseName("IX_ie_registration_order_lines_tenant_id_ticket_catalog_07559C40");
+                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_ticket_catalog_cbcb31ab");
 
                     b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_ticket_type_id");
+                        .HasDatabaseName("ix_registration_order_lines_tenant_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketTypeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_order_lines_tenant_id_registration_o_AB5F45EF");
+                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_registration_o_9a1fbd3f");
 
                     b.ToTable("ie_registration_order_lines", (string)null);
                 });
@@ -23394,7 +23396,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_order_pii_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "NormalizedEmail")
-                        .HasDatabaseName("ix_ie_registration_order_pii_tenant_id_normalized_email");
+                        .HasDatabaseName("ix_registration_order_pii_tenant_id_normalized_email");
 
                     b.ToTable("ie_registration_order_pii", (string)null);
                 });
@@ -23459,7 +23461,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_order_platform_contributions_tenant__7A7B7DB3");
+                        .HasDatabaseName("ix_ie_registration_order_platform_contributions_tenant__968d3400");
 
                     b.ToTable("ie_registration_order_platform_contributions", (string)null);
                 });
@@ -23492,7 +23494,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_order_statuses_master_code");
+                        .HasDatabaseName("ix_registration_order_statuses_master_code");
 
                     b.ToTable("ie_registration_order_statuses", (string)null);
                 });
@@ -23525,7 +23527,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_organizer_visibilities_master_code");
+                        .HasDatabaseName("ix_registration_organizer_visibilities_master_code");
 
                     b.ToTable("ie_registration_organizer_visibilities", (string)null);
                 });
@@ -23598,25 +23600,25 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_participants_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id")
-                        .HasName("AK_ie_registration_participants_tenant_id_registration__9DD9E0B2");
+                        .HasName("ak_ie_registration_participants_tenant_id_registration__1f10b512");
 
                     b.HasIndex("LinkedUserId")
-                        .HasDatabaseName("ix_ie_registration_participants_linked_user_id");
+                        .HasDatabaseName("ix_registration_participants_linked_user_id");
 
                     b.HasIndex("ParticipantTypeId")
-                        .HasDatabaseName("ix_ie_registration_participants_participant_type_id");
+                        .HasDatabaseName("ix_registration_participants_participant_type_id");
 
                     b.HasIndex("TenantId", "GuardianParticipantId")
-                        .HasDatabaseName("IX_ie_registration_participants_tenant_id_guardian_part_6012F21A");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_guardian_part_78b67014");
 
                     b.HasIndex("TenantId", "LinkedUserId")
-                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_linked_user_id");
+                        .HasDatabaseName("ix_registration_participants_tenant_id_linked_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_registration_participants_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "GuardianParticipantId")
-                        .HasDatabaseName("IX_ie_registration_participants_tenant_id_registration__371FEBE7");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_registration__62ea9ff3");
 
                     b.ToTable("ie_registration_participants", (string)null);
                 });
@@ -23675,10 +23677,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_participant_pii");
 
                     b.HasAlternateKey("TenantId", "RegistrationParticipantId")
-                        .HasName("AK_ie_registration_participant_pii_tenant_id_registrati_E1C4DE76");
+                        .HasName("ak_ie_registration_participant_pii_tenant_id_registrati_101d6139");
 
                     b.HasIndex("TenantId", "NormalizedEmail")
-                        .HasDatabaseName("ix_ie_registration_participant_pii_tenant_id_normalized_email");
+                        .HasDatabaseName("ix_registration_participant_pii_tenant_id_normalized_email");
 
                     b.ToTable("ie_registration_participant_pii", (string)null);
                 });
@@ -23737,11 +23739,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_provider_approved_origins");
 
                     b.HasAlternateKey("TenantId", "RegistrationProviderConnectionId", "Id")
-                        .HasName("AK_ie_registration_provider_approved_origins_tenant_id__1925406D");
+                        .HasName("ak_ie_registration_provider_approved_origins_tenant_id__0444361c");
 
                     b.HasIndex("TenantId", "RegistrationProviderConnectionId", "Origin")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_approved_origins_tenant_id__EE63FD8E");
+                        .HasDatabaseName("ix_ie_registration_provider_approved_origins_tenant_id__99fecf52");
 
                     b.ToTable("ie_registration_provider_approved_origins", (string)null);
                 });
@@ -23870,35 +23872,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_provider_bindings_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "Id", "PublishedMappingRevisionHashKey")
-                        .HasName("AK_ie_registration_provider_bindings_tenant_id_id_publi_FA340CBD");
+                        .HasName("ak_ie_registration_provider_bindings_tenant_id_id_publi_1e608e3d");
 
                     b.HasIndex("CollectionModeId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_collection_mode_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_collection_mode_id");
 
                     b.HasIndex("CompletionModeId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_completion_mode_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_completion_mode_id");
 
                     b.HasIndex("DriftClassId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_drift_class_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_drift_class_id");
 
                     b.HasIndex("PresentationModeId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_presentation_mode_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_presentation_mode_id");
 
                     b.HasIndex("StateId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_state_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_state_id");
 
                     b.HasIndex("TrustLevelId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_trust_level_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_trust_level_id");
 
                     b.HasIndex("WebhookSecretBindingId")
-                        .HasDatabaseName("ix_ie_registration_provider_bindings_webhook_secret_binding_id");
+                        .HasDatabaseName("ix_registration_provider_bindings_webhook_secret_binding_id");
 
                     b.HasIndex("TenantId", "RegistrationFormId", "RegistrationFormVersionId")
-                        .HasDatabaseName("IX_ie_registration_provider_bindings_tenant_id_registra_98EEE1D3");
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_tenant_id_registra_6f08b354");
 
                     b.HasIndex("TenantId", "RegistrationProviderConnectionId", "RegistrationFormVersionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_bindings_tenant_id_registra_A696AB5D");
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_tenant_id_registra_95d060cc");
 
                     b.ToTable("ie_registration_provider_bindings", null, t =>
                         {
@@ -23934,7 +23936,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_binding_states_master_code");
+                        .HasDatabaseName("ix_registration_provider_binding_states_master_code");
 
                     b.ToTable("ie_registration_provider_binding_states", (string)null);
                 });
@@ -23999,11 +24001,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_provider_capabilities");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId")
-                        .HasDatabaseName("IX_ie_registration_provider_capabilities_tenant_id_regi_F0D74932");
+                        .HasDatabaseName("ix_ie_registration_provider_capabilities_tenant_id_regi_7ad69190");
 
                     b.HasIndex("RegistrationProviderBindingId", "ProviderCode", "DeploymentKind", "ApiVersion", "AdapterPolicyVersion", "ConformanceEvidenceRevision", "CapabilityCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_capabilities_registration_p_5FD691CF");
+                        .HasDatabaseName("ix_ie_registration_provider_capabilities_registration_p_a35cf7b0");
 
                     b.ToTable("ie_registration_provider_capabilities", (string)null);
                 });
@@ -24036,7 +24038,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_collection_modes_master_code");
+                        .HasDatabaseName("ix_registration_provider_collection_modes_master_code");
 
                     b.ToTable("ie_registration_provider_collection_modes", (string)null);
                 });
@@ -24069,7 +24071,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_completion_modes_master_code");
+                        .HasDatabaseName("ix_registration_provider_completion_modes_master_code");
 
                     b.ToTable("ie_registration_provider_completion_modes", (string)null);
                 });
@@ -24228,24 +24230,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_provider_connections_tenant_id_id");
 
                     b.HasIndex("ApiTokenSecretBindingId")
-                        .HasDatabaseName("IX_ie_registration_provider_connections_api_token_secre_089F7099");
+                        .HasDatabaseName("ix_ie_registration_provider_connections_api_token_secre_4064a842");
 
                     b.HasIndex("DeploymentKindId")
-                        .HasDatabaseName("ix_ie_registration_provider_connections_deployment_kind_id");
+                        .HasDatabaseName("ix_registration_provider_connections_deployment_kind_id");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_ie_registration_provider_connections_provider_kind_id");
+                        .HasDatabaseName("ix_registration_provider_connections_provider_kind_id");
 
                     b.HasIndex("WebhookSecretBindingId")
-                        .HasDatabaseName("IX_ie_registration_provider_connections_webhook_secret__3770094C");
+                        .HasDatabaseName("ix_ie_registration_provider_connections_webhook_secret__a0f3cb2c");
 
                     b.HasIndex("TenantId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_name");
+                        .HasDatabaseName("ix_registration_provider_connections_tenant_id_name");
 
                     b.HasIndex("TenantId", "ProviderCode", "ProviderDeploymentCode", "ApiVersion", "AdapterPolicyVersion", "ConformanceEvidenceRevision", "ProviderWorkspaceId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_connections_tenant_id_provi_3F56F9F2");
+                        .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_provi_41cfef36");
 
                     b.ToTable("ie_registration_provider_connections", (string)null);
                 });
@@ -24278,7 +24280,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_deployment_kinds_master_code");
+                        .HasDatabaseName("ix_registration_provider_deployment_kinds_master_code");
 
                     b.ToTable("ie_registration_provider_deployment_kinds", (string)null);
                 });
@@ -24311,7 +24313,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_drift_classes_master_code");
+                        .HasDatabaseName("ix_registration_provider_drift_classes_master_code");
 
                     b.ToTable("ie_registration_provider_drift_classes", (string)null);
                 });
@@ -24356,15 +24358,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_provider_field_mappings");
 
                     b.HasAlternateKey("TenantId", "RegistrationProviderBindingId", "Id")
-                        .HasName("AK_ie_registration_provider_field_mappings_tenant_id_re_BB184D77");
+                        .HasName("ak_ie_registration_provider_field_mappings_tenant_id_re_00199061");
 
                     b.HasIndex("RegistrationProviderBindingId", "PlatformFieldKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_field_mappings_registration_3F236B3F");
+                        .HasDatabaseName("ix_ie_registration_provider_field_mappings_registration_275a52da");
 
                     b.HasIndex("RegistrationProviderBindingId", "ProviderFieldKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_field_mappings_registration_1D548A90");
+                        .HasDatabaseName("ix_ie_registration_provider_field_mappings_registration_ba1207be");
 
                     b.ToTable("ie_registration_provider_field_mappings", (string)null);
                 });
@@ -24397,7 +24399,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_kinds_master_code");
+                        .HasDatabaseName("ix_registration_provider_kinds_master_code");
 
                     b.ToTable("ie_registration_provider_kinds", (string)null);
                 });
@@ -24443,10 +24445,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("RegistrationProviderFieldMappingId", "PlatformOptionKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_option_mappings_registratio_84503DAC");
+                        .HasDatabaseName("ix_ie_registration_provider_option_mappings_registratio_6dfa293f");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "RegistrationProviderFieldMappingId")
-                        .HasDatabaseName("IX_ie_registration_provider_option_mappings_tenant_id_r_1FDD46AC");
+                        .HasDatabaseName("ix_ie_registration_provider_option_mappings_tenant_id_r_d115a51b");
 
                     b.ToTable("ie_registration_provider_option_mappings", (string)null);
                 });
@@ -24479,7 +24481,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_presentation_modes_master_code");
+                        .HasDatabaseName("ix_registration_provider_presentation_modes_master_code");
 
                     b.ToTable("ie_registration_provider_presentation_modes", (string)null);
                 });
@@ -24512,7 +24514,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_schema_authorities_master_code");
+                        .HasDatabaseName("ix_registration_provider_schema_authorities_master_code");
 
                     b.ToTable("ie_registration_provider_schema_authorities", (string)null);
                 });
@@ -24600,14 +24602,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_provider_schema_revisions_tenant_id_id");
 
                     b.HasIndex("DriftClassId")
-                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_drift_class_id");
+                        .HasDatabaseName("ix_registration_provider_schema_revisions_drift_class_id");
 
                     b.HasIndex("SchemaAuthorityId")
-                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_schema_authority_id");
+                        .HasDatabaseName("ix_registration_provider_schema_revisions_schema_authority_id");
 
                     b.HasIndex("TenantId", "RegistrationProviderConnectionId", "ProviderSurveyId", "RevisionHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_schema_revisions_tenant_id__2E61ADF5");
+                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_tenant_id__8e0a2318");
 
                     b.ToTable("ie_registration_provider_schema_revisions", (string)null);
                 });
@@ -24708,23 +24710,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_provider_submission_write_effects");
 
                     b.HasAlternateKey("TenantId", "Id")
-                        .HasName("AK_ie_registration_provider_submission_write_effects_te_7C158B14");
+                        .HasName("ak_ie_registration_provider_submission_write_effects_te_ada1d3ae");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_te_A5922E85");
+                        .HasDatabaseName("ix_ie_registration_provider_submission_write_effects_te_a0fa9f9e");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_st_74CB1F27");
+                        .HasDatabaseName("ix_ie_registration_provider_submission_write_effects_st_14ffaccd");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_te_103C1B32");
+                        .HasDatabaseName("ix_ie_registration_provider_submission_write_effects_te_4772c2df");
 
                     b.ToTable("ie_registration_provider_submission_write_effects", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_provider_submission_write_effects_attempt_count", "attempt_count >= 0");
 
-                            t.HasCheckConstraint("ck_registration_provider_submission_write_effects_processing_fence", "processing_fence >= 0");
+                            t.HasCheckConstraint("ck_registration_provider_submission_write_effects_processing_fence", "processing_fence >= 0")
+                                .HasName("ck_registration_provider_submission_write_effects_p_6b513a6e48c4");
                         });
                 });
 
@@ -24858,14 +24861,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_provider_subscription_states_tenant_id_id");
 
                     b.HasIndex("WatchExpiresAt", "LeaseExpiresAt")
-                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_watch_e_9B3AC270");
+                        .HasDatabaseName("ix_ie_registration_provider_subscription_states_watch_e_f03b28d1");
 
                     b.HasIndex("PendingNotificationAt", "NextSweepAttemptAt", "LeaseExpiresAt")
-                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_pending_021E53D6");
+                        .HasDatabaseName("ix_ie_registration_provider_subscription_states_pending_4007a16e");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderEventType")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_tenant__CA01FABE");
+                        .HasDatabaseName("ix_ie_registration_provider_subscription_states_tenant__b23043ba");
 
                     b.ToTable("ie_registration_provider_subscription_states", null, t =>
                         {
@@ -24905,7 +24908,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_provider_trust_levels_master_code");
+                        .HasDatabaseName("ix_registration_provider_trust_levels_master_code");
 
                     b.ToTable("ie_registration_provider_trust_levels", (string)null);
                 });
@@ -25000,29 +25003,29 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_requirements");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
-                        .HasName("AK_ie_registration_requirements_tenant_id_event_id_regi_F5EB93AE");
+                        .HasName("ak_ie_registration_requirements_tenant_id_event_id_regi_81c097de");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "Id", "AppliesToSubjectTypeId", "AppliesToSubjectKey")
-                        .HasName("AK_ie_registration_requirements_tenant_id_event_id_regi_2DB1FFB5");
+                        .HasName("ak_ie_registration_requirements_tenant_id_event_id_regi_74cc31ff");
 
                     b.HasIndex("AnswerSyncModeId")
-                        .HasDatabaseName("ix_ie_registration_requirements_answer_sync_mode_id");
+                        .HasDatabaseName("ix_registration_requirements_answer_sync_mode_id");
 
                     b.HasIndex("AppliesToSubjectTypeId")
-                        .HasDatabaseName("ix_ie_registration_requirements_applies_to_subject_type_id");
+                        .HasDatabaseName("ix_registration_requirements_applies_to_subject_type_id");
 
                     b.HasIndex("CompletionEffectId")
-                        .HasDatabaseName("ix_ie_registration_requirements_completion_effect_id");
+                        .HasDatabaseName("ix_registration_requirements_completion_effect_id");
 
                     b.HasIndex("CriticalityId")
-                        .HasDatabaseName("ix_ie_registration_requirements_criticality_id");
+                        .HasDatabaseName("ix_registration_requirements_criticality_id");
 
                     b.HasIndex("RegistrationWorkflowId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_requirements_registration_workflow_id_ordinal");
+                        .HasDatabaseName("ix_registration_requirements_registration_workflow_id_ordinal");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_ie_registration_requirements_tenant_id_event_id");
+                        .HasDatabaseName("ix_registration_requirements_tenant_id_event_id");
 
                     b.ToTable("ie_registration_requirements", (string)null);
                 });
@@ -25055,7 +25058,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_requirement_completion_effects_master_code");
+                        .HasDatabaseName("ix_registration_requirement_completion_effects_master_code");
 
                     b.ToTable("ie_registration_requirement_completion_effects", (string)null);
                 });
@@ -25088,7 +25091,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_requirement_criticalities_master_code");
+                        .HasDatabaseName("ix_registration_requirement_criticalities_master_code");
 
                     b.ToTable("ie_registration_requirement_criticalities", (string)null);
                 });
@@ -25162,20 +25165,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_requirement_fulfillments_tenant_id_id");
 
                     b.HasIndex("SubjectTypeId")
-                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_subject_type_id");
+                        .HasDatabaseName("ix_registration_requirement_fulfillments_subject_type_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_requirement_fulfillments_tenant_id_e_A36192EC");
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_e_2ff6c396");
 
                     b.HasIndex("TenantId", "EventId", "SourceRegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_requirement_fulfillments_tenant_id_e_B8EB5E1F");
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_e_c1eda0d4");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
-                        .HasDatabaseName("IX_ie_registration_requirement_fulfillments_tenant_id_e_8C855D96");
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_e_27e5985e");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationRequirementId", "SubjectTypeId", "SubjectId", "IsSkipped")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_requirement_fulfillments_tenant_id_r_AA59394E");
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_r_76671b55");
 
                     b.ToTable("ie_registration_requirement_fulfillments", null, t =>
                         {
@@ -25211,7 +25214,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_requirement_subject_types_master_code");
+                        .HasDatabaseName("ix_registration_requirement_subject_types_master_code");
 
                     b.ToTable("ie_registration_requirement_subject_types", (string)null);
                 });
@@ -25254,7 +25257,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_retention_policies_master_code");
+                        .HasDatabaseName("ix_registration_retention_policies_master_code");
 
                     b.ToTable("ie_registration_retention_policies", (string)null);
                 });
@@ -25353,7 +25356,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_sensitive_answer_values_tenant_id_id");
 
                     b.HasIndex("TenantId", "KeyVersion")
-                        .HasDatabaseName("ix_ie_registration_sensitive_answer_values_tenant_id_key_version");
+                        .HasDatabaseName("ix_registration_sensitive_answer_values_tenant_id_key_version");
 
                     b.ToTable("ie_registration_sensitive_answer_values", null, t =>
                         {
@@ -25515,32 +25518,32 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_submissions_tenant_id_event_id_id");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "Id")
-                        .HasName("AK_ie_registration_submissions_tenant_id_event_id_regis_0A80A0EE");
+                        .HasName("ak_ie_registration_submissions_tenant_id_event_id_regis_1c54738d");
 
                     b.HasIndex("AttemptStatusAtReceiptId")
-                        .HasDatabaseName("ix_ie_registration_submissions_attempt_status_at_receipt_id");
+                        .HasDatabaseName("ix_registration_submissions_attempt_status_at_receipt_id");
 
                     b.HasIndex("HttpIdempotencyKeyHash")
-                        .HasDatabaseName("ix_ie_registration_submissions_http_idempotency_key_hash");
+                        .HasDatabaseName("ix_registration_submissions_http_idempotency_key_hash");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_registration_submissions_status_id");
+                        .HasDatabaseName("ix_registration_submissions_status_id");
 
                     b.HasIndex("TenantId", "RegistrationAttemptId", "BusinessDeduplicationKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_a_C78E61A1")
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_registration_a_4248d0bf")
                         .HasFilter("provider_submission_id IS NULL");
 
                     b.HasIndex("TenantId", "RegistrationAttemptId", "ReceivedAt")
-                        .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_a_15D35C7F");
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_registration_a_5a3251a4");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderSubmissionId", "ProviderResponseRevision")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_p_A92B966C")
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_registration_p_3aacb953")
                         .HasFilter("provider_submission_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId")
-                        .HasDatabaseName("IX_ie_registration_submissions_tenant_id_event_id_regis_6A344AA5");
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_event_id_regis_5e16be7f");
 
                     b.ToTable("ie_registration_submissions", null, t =>
                         {
@@ -25606,10 +25609,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_submission_issues");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_submission_issues_tenant_id_registra_61BEEA30");
+                        .HasDatabaseName("ix_ie_registration_submission_issues_tenant_id_registra_8953739b");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_submission_issues_tenant_id_event_id_9CAA665A");
+                        .HasDatabaseName("ix_ie_registration_submission_issues_tenant_id_event_id_cc814554");
 
                     b.ToTable("ie_registration_submission_issues", (string)null);
                 });
@@ -25690,11 +25693,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_registration_submission_revisions");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
-                        .HasDatabaseName("IX_ie_registration_submission_revisions_tenant_id_event_B52FBFF0");
+                        .HasDatabaseName("ix_ie_registration_submission_revisions_tenant_id_event_aaf553ad");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RevisionNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_submission_revisions_tenant_id_regis_6E37E933");
+                        .HasDatabaseName("ix_ie_registration_submission_revisions_tenant_id_regis_f6ea99d0");
 
                     b.ToTable("ie_registration_submission_revisions", null, t =>
                         {
@@ -25730,7 +25733,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_submission_statuses_master_code");
+                        .HasDatabaseName("ix_registration_submission_statuses_master_code");
 
                     b.ToTable("ie_registration_submission_statuses", (string)null);
                 });
@@ -25803,29 +25806,29 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_registration_ticket_assignments_tenant_id_id");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id")
-                        .HasName("AK_ie_registration_ticket_assignments_tenant_id_registr_1C074EED");
+                        .HasName("ak_ie_registration_ticket_assignments_tenant_id_registr_04432203");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
-                        .HasName("AK_ie_registration_ticket_assignments_tenant_id_registr_BD8F7BDA");
+                        .HasName("ak_ie_registration_ticket_assignments_tenant_id_registr_5fecbc05");
 
                     b.HasIndex("AssignmentStatusId")
-                        .HasDatabaseName("ix_ie_registration_ticket_assignments_assignment_status_id");
+                        .HasDatabaseName("ix_registration_ticket_assignments_assignment_status_id");
 
                     b.HasIndex("TenantId", "ParticipantId")
-                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_participant_id");
+                        .HasDatabaseName("ix_registration_ticket_assignments_tenant_id_participant_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("IX_ie_registration_ticket_assignments_tenant_id_registr_1DB26689");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registr_482c4cbe");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantId")
-                        .HasDatabaseName("IX_ie_registration_ticket_assignments_tenant_id_registr_FAADE425");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registr_dd2f5b0b");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
-                        .HasDatabaseName("IX_ie_registration_ticket_assignments_tenant_id_registr_741C553F");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registr_63faeb64");
 
                     b.HasIndex("TenantId", "RegistrationOrderLineId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_ticket_assignments_tenant_id_registr_74804E8C");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registr_0a10e849");
 
                     b.ToTable("ie_registration_ticket_assignments", (string)null);
                 });
@@ -25893,7 +25896,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "EventId", "Purpose")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_registration_workflows_tenant_id_event_id_purpose");
+                        .HasDatabaseName("ix_registration_workflows_tenant_id_event_id_purpose");
 
                     b.ToTable("ie_registration_workflows", (string)null);
                 });
@@ -25939,7 +25942,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_roles_mastercode");
+                        .HasDatabaseName("ix_roles_master_code");
 
                     b.HasIndex("RoleScopeId")
                         .HasDatabaseName("ix_roles_role_scope_id");
@@ -25971,10 +25974,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_role_permissions");
 
                     b.HasIndex("PermissionId")
-                        .HasDatabaseName("ix_rolepermissions_permission");
+                        .HasDatabaseName("ix_role_permissions_permission_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_rolepermissions_role");
+                        .HasDatabaseName("ix_role_permissions_role_id");
 
                     b.ToTable("ie_role_permissions", (string)null);
                 });
@@ -26007,7 +26010,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_role_scopes_master_code");
+                        .HasDatabaseName("ix_role_scopes_master_code");
 
                     b.ToTable("ie_role_scopes", (string)null);
                 });
@@ -26073,7 +26076,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_secret_source_types_master_code");
+                        .HasDatabaseName("ix_secret_source_types_master_code");
 
                     b.ToTable("ie_secret_source_types", (string)null);
                 });
@@ -26106,7 +26109,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_secret_validation_statuses_master_code");
+                        .HasDatabaseName("ix_secret_validation_statuses_master_code");
 
                     b.ToTable("ie_secret_validation_statuses", (string)null);
                 });
@@ -26219,14 +26222,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_secret_bindings");
 
                     b.HasIndex("SecretSourceTypeId")
-                        .HasDatabaseName("ix_ie_secret_bindings_secret_source_type_id");
+                        .HasDatabaseName("ix_secret_bindings_secret_source_type_id");
 
                     b.HasIndex("SecretValidationStatusId")
-                        .HasDatabaseName("ix_ie_secret_bindings_secret_validation_status_id");
+                        .HasDatabaseName("ix_secret_bindings_secret_validation_status_id");
 
                     b.HasIndex("SettingKey", "Qualifier")
                         .IsUnique()
-                        .HasDatabaseName("ix_secret_bindings_setting_key_instance_unique")
+                        .HasDatabaseName("ix_secret_bindings_setting_key_qualifier")
                         .HasFilter("scope_id IS NULL");
 
                     b.HasIndex("SettingScopeId", "ScopeId")
@@ -26234,7 +26237,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("SettingKey", "ScopeId", "Qualifier")
                         .IsUnique()
-                        .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique")
+                        .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_qualifier")
                         .HasFilter("scope_id IS NOT NULL");
 
                     b.ToTable("ie_secret_bindings", null, t =>
@@ -26302,7 +26305,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_service_principals_code");
+                        .HasDatabaseName("ix_service_principals_code");
 
                     b.ToTable("ie_service_principals", (string)null);
                 });
@@ -26335,7 +26338,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_setting_scopes_master_code");
+                        .HasDatabaseName("ix_setting_scopes_master_code");
 
                     b.ToTable("ie_setting_scopes", (string)null);
                 });
@@ -26368,7 +26371,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_setting_value_types_master_code");
+                        .HasDatabaseName("ix_setting_value_types_master_code");
 
                     b.ToTable("ie_setting_value_types", (string)null);
                 });
@@ -26432,11 +26435,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_settings_documents");
 
                     b.HasIndex("DocumentKey")
-                        .HasDatabaseName("ix_ie_tenant_settings_documents_document_key");
+                        .HasDatabaseName("ix_tenant_settings_documents_document_key");
 
                     b.HasIndex("TenantId", "DocumentKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_settings_documents_tenant_id_document_key");
+                        .HasDatabaseName("ix_tenant_settings_documents_tenant_id_document_key");
 
                     b.ToTable("ie_tenant_settings_documents", null, t =>
                         {
@@ -26598,24 +26601,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_storage_objects_tenant_id_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_storage_objects_actor_id");
+                        .HasDatabaseName("ix_storage_objects_actor_id");
 
                     b.HasIndex("FileTypeId")
-                        .HasDatabaseName("ix_ie_storage_objects_file_type_id");
+                        .HasDatabaseName("ix_storage_objects_file_type_id");
 
                     b.HasIndex("ProviderObjectKeyUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_storage_objects_provider_object_key_hash");
+                        .HasDatabaseName("ix_storage_objects_provider_object_key_uniqueness_hash");
 
                     b.HasIndex("TenantId", "OwningResourceKind", "OwningResourceId")
-                        .HasDatabaseName("IX_ie_storage_objects_tenant_id_owning_resource_kind_ow_D5288125")
+                        .HasDatabaseName("ix_ie_storage_objects_tenant_id_owning_resource_kind_ow_fcd295ef")
                         .HasFilter("owning_resource_kind IS NOT NULL AND owning_resource_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "Provider", "LifecycleState")
-                        .HasDatabaseName("ix_storage_objects_tenant_provider_lifecycle_state");
+                        .HasDatabaseName("ix_storage_objects_tenant_id_provider_lifecycle_state");
 
                     b.HasIndex("TenantId", "Visibility", "Purpose")
-                        .HasDatabaseName("ix_storage_objects_tenant_visibility_purpose");
+                        .HasDatabaseName("ix_storage_objects_tenant_id_visibility_purpose");
 
                     b.ToTable("ie_storage_objects", null, t =>
                         {
@@ -26798,10 +26801,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_storage_upload_sessions");
 
                     b.HasIndex("StorageObjectId")
-                        .HasDatabaseName("ix_ie_storage_upload_sessions_storage_object_id");
+                        .HasDatabaseName("ix_storage_upload_sessions_storage_object_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_storage_upload_sessions_user_id");
+                        .HasDatabaseName("ix_storage_upload_sessions_user_id");
 
                     b.HasIndex("Provider", "ObjectKey")
                         .HasDatabaseName("ix_storage_upload_sessions_provider_object_key")
@@ -26810,15 +26813,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_storage_upload_sessions_tenant_idempotency_key")
+                        .HasDatabaseName("ix_storage_upload_sessions_tenant_id_idempotency_key")
                         .HasFilter("idempotency_key IS NOT NULL");
 
                     b.HasIndex("TenantId", "OwningResourceKind", "OwningResourceId")
-                        .HasDatabaseName("IX_ie_storage_upload_sessions_tenant_id_owning_resource_9A870E62")
+                        .HasDatabaseName("ix_ie_storage_upload_sessions_tenant_id_owning_resource_a6a3308f")
                         .HasFilter("owning_resource_kind IS NOT NULL AND owning_resource_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "Status", "ExpiresAt")
-                        .HasDatabaseName("ix_storage_upload_sessions_tenant_status_expires_at");
+                        .HasDatabaseName("ix_storage_upload_sessions_tenant_id_status_expires_at");
 
                     b.ToTable("ie_storage_upload_sessions", null, t =>
                         {
@@ -26903,7 +26906,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "Provider")
                         .IsUnique()
-                        .HasDatabaseName("ux_storage_usage_counters_tenant_provider");
+                        .HasDatabaseName("ix_storage_usage_counters_tenant_id_provider");
 
                     b.ToTable("ie_storage_usage_counters", null, t =>
                         {
@@ -27003,22 +27006,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_support_access_audit_events");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_ie_support_access_audit_events_event_type_id");
+                        .HasDatabaseName("ix_support_access_audit_events_event_type_id");
 
                     b.HasIndex("TargetTenantUserId")
-                        .HasDatabaseName("ix_ie_support_access_audit_events_target_tenant_user_id");
+                        .HasDatabaseName("ix_support_access_audit_events_target_tenant_user_id");
 
                     b.HasIndex("ActorUserId", "OccurredAtUtc")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_support_access_audit_events_actor_occurred");
+                        .HasDatabaseName("ix_support_access_audit_events_actor_user_id_occurred_at_utc");
 
                     b.HasIndex("SupportAccessSessionId", "OccurredAtUtc")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_ie_support_access_audit_events_support_access_sessio_BE72FECE");
+                        .HasDatabaseName("ix_ie_support_access_audit_events_support_access_sessio_f62bc5a8");
 
                     b.HasIndex("TargetTenantId", "OccurredAtUtc")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_ie_support_access_audit_events_target_tenant_id_occu_E418E5D4");
+                        .HasDatabaseName("ix_ie_support_access_audit_events_target_tenant_id_occu_9aa4196e");
 
                     b.ToTable("ie_support_access_audit_events", (string)null);
                 });
@@ -27055,7 +27058,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_support_access_audit_event_types_master_code");
+                        .HasDatabaseName("ix_support_access_audit_event_types_master_code");
 
                     b.ToTable("ie_support_access_audit_event_types", (string)null);
                 });
@@ -27088,7 +27091,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_support_access_end_reasons_master_code");
+                        .HasDatabaseName("ix_support_access_end_reasons_master_code");
 
                     b.ToTable("ie_support_access_end_reasons", (string)null);
                 });
@@ -27125,7 +27128,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_support_access_modes_master_code");
+                        .HasDatabaseName("ix_support_access_modes_master_code");
 
                     b.ToTable("ie_support_access_modes", (string)null);
                 });
@@ -27226,34 +27229,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ActorUserId")
                         .IsUnique()
-                        .HasDatabaseName("ux_support_access_sessions_active_actor")
+                        .HasDatabaseName("ix_support_access_sessions_actor_user_id")
                         .HasFilter("status_id = 2 AND ended_at_utc IS NULL");
 
                     b.HasIndex("ApprovedByUserId")
-                        .HasDatabaseName("ix_ie_support_access_sessions_approved_by_user_id");
+                        .HasDatabaseName("ix_support_access_sessions_approved_by_user_id");
 
                     b.HasIndex("EndReasonId")
-                        .HasDatabaseName("ix_ie_support_access_sessions_end_reason_id");
+                        .HasDatabaseName("ix_support_access_sessions_end_reason_id");
 
                     b.HasIndex("ModeId")
-                        .HasDatabaseName("ix_ie_support_access_sessions_mode_id");
+                        .HasDatabaseName("ix_support_access_sessions_mode_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_support_access_sessions_status_id");
+                        .HasDatabaseName("ix_support_access_sessions_status_id");
 
                     b.HasIndex("TargetTenantUserId")
-                        .HasDatabaseName("ix_ie_support_access_sessions_target_tenant_user_id");
+                        .HasDatabaseName("ix_support_access_sessions_target_tenant_user_id");
 
                     b.HasIndex("TargetTenantId", "StartedAtUtc")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_support_access_sessions_target_tenant_started");
+                        .HasDatabaseName("ix_support_access_sessions_target_tenant_id_started_at_utc");
 
                     b.HasIndex("ActorUserId", "StatusId", "ExpiresAtUtc")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("IX_ie_support_access_sessions_actor_user_id_status_id_e_64658C58");
+                        .HasDatabaseName("ix_ie_support_access_sessions_actor_user_id_status_id_e_84185ba6");
 
                     b.HasIndex("Id", "ActorUserId", "StatusId")
-                        .HasDatabaseName("ix_support_access_sessions_id_actor_status");
+                        .HasDatabaseName("ix_support_access_sessions_id_actor_user_id_status_id");
 
                     b.ToTable("ie_support_access_sessions", null, t =>
                         {
@@ -27297,7 +27300,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_support_access_session_statuses_master_code");
+                        .HasDatabaseName("ix_support_access_session_statuses_master_code");
 
                     b.ToTable("ie_support_access_session_statuses", (string)null);
                 });
@@ -27334,7 +27337,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Service")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_sync_states_service");
+                        .HasDatabaseName("ix_sync_states_service");
 
                     b.ToTable("ie_sync_states", (string)null);
                 });
@@ -27410,10 +27413,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_system_settings_setting_key");
+                        .HasDatabaseName("ix_system_settings_setting_key");
 
                     b.HasIndex("SettingValueTypeId")
-                        .HasDatabaseName("ix_ie_system_settings_setting_value_type_id");
+                        .HasDatabaseName("ix_system_settings_setting_value_type_id");
 
                     b.ToTable("ie_system_settings", (string)null);
                 });
@@ -27449,7 +27452,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_tags_tenant_master_code");
+                        .HasDatabaseName("ix_tags_tenant_id_master_code");
 
                     b.ToTable("ie_tags", (string)null);
                 });
@@ -27506,14 +27509,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tag_type_tags");
 
                     b.HasIndex("TagId")
-                        .HasDatabaseName("ix_ie_tag_type_tags_tag_id");
+                        .HasDatabaseName("ix_tag_type_tags_tag_id");
 
                     b.HasIndex("TagTypeId")
-                        .HasDatabaseName("ix_ie_tag_type_tags_tag_type_id");
+                        .HasDatabaseName("ix_tag_type_tags_tag_type_id");
 
                     b.HasIndex("TenantId", "TagId", "TagTypeId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tag_type_tags_tenant_id_tag_id_tag_type_id");
+                        .HasDatabaseName("ix_tag_type_tags_tenant_id_tag_id_tag_type_id");
 
                     b.ToTable("ie_tag_type_tags", (string)null);
                 });
@@ -27567,10 +27570,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Slug")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenants_slug");
+                        .HasDatabaseName("ix_tenants_slug");
 
                     b.HasIndex("TenantStatusId")
-                        .HasDatabaseName("ix_ie_tenants_tenant_status_id");
+                        .HasDatabaseName("ix_tenants_tenant_status_id");
 
                     b.ToTable("ie_tenants", (string)null);
                 });
@@ -27636,7 +27639,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_footer_links");
 
                     b.HasIndex("FooterLinkGroupId", "Order")
-                        .HasDatabaseName("ix_ie_tenant_footer_links_footer_link_group_id_order");
+                        .HasDatabaseName("ix_tenant_footer_links_footer_link_group_id_order");
 
                     b.ToTable("ie_tenant_footer_links", (string)null);
                 });
@@ -27690,10 +27693,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_footer_link_groups");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_tenant_footer_link_groups_tenant_id");
+                        .HasDatabaseName("ix_tenant_footer_link_groups_tenant_id");
 
                     b.HasIndex("TenantId", "Order")
-                        .HasDatabaseName("ix_ie_tenant_footer_link_groups_tenant_id_order");
+                        .HasDatabaseName("ix_tenant_footer_link_groups_tenant_id_order");
 
                     b.ToTable("ie_tenant_footer_link_groups", (string)null);
                 });
@@ -27774,14 +27777,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_invitations");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_ie_tenant_invitations_role_id");
+                        .HasDatabaseName("ix_tenant_invitations_role_id");
 
                     b.HasIndex("Token")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_invitations_token");
+                        .HasDatabaseName("ix_tenant_invitations_token");
 
                     b.HasIndex("TenantId", "Email")
-                        .HasDatabaseName("ix_ie_tenant_invitations_tenant_id_email");
+                        .HasDatabaseName("ix_tenant_invitations_tenant_id_email");
 
                     b.ToTable("ie_tenant_invitations", (string)null);
                 });
@@ -27842,16 +27845,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_lifecycle_logs");
 
                     b.HasIndex("NewStatusId")
-                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_new_status_id");
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_new_status_id");
 
                     b.HasIndex("OldStatusId")
-                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_old_status_id");
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_old_status_id");
 
                     b.HasIndex("TransitionedByUserId")
-                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_transitioned_by_user_id");
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_transitioned_by_user_id");
 
                     b.HasIndex("TenantId", "TransitionedAt")
-                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_tenant_id_transitioned_at");
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_tenant_id_transitioned_at");
 
                     b.ToTable("ie_tenant_lifecycle_logs", (string)null);
                 });
@@ -27934,10 +27937,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_navigation_links");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_tenant_navigation_links_tenant_id");
+                        .HasDatabaseName("ix_tenant_navigation_links_tenant_id");
 
                     b.HasIndex("TenantId", "Order")
-                        .HasDatabaseName("ix_ie_tenant_navigation_links_tenant_id_order");
+                        .HasDatabaseName("ix_tenant_navigation_links_tenant_id_order");
 
                     b.ToTable("ie_tenant_navigation_links", (string)null);
                 });
@@ -27994,7 +27997,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_onboarding_states_tenant_id");
+                        .HasDatabaseName("ix_tenant_onboarding_states_tenant_id");
 
                     b.ToTable("ie_tenant_onboarding_states", (string)null);
                 });
@@ -28044,7 +28047,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_plans_key");
+                        .HasDatabaseName("ix_tenant_plans_key");
 
                     b.ToTable("ie_tenant_plans", (string)null);
                 });
@@ -28123,26 +28126,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_plan_application_logs");
 
                     b.HasIndex("AppliedByUserId")
-                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_applied_by_user_id");
+                        .HasDatabaseName("ix_tenant_plan_application_logs_applied_by_user_id");
 
                     b.HasIndex("PreviousTenantPlanVersionId")
-                        .HasDatabaseName("IX_ie_tenant_plan_application_logs_previous_tenant_plan_A759E616");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_previous_tenant_plan_7c68eb86");
 
                     b.HasIndex("TenantPlanApplicationStatusId")
-                        .HasDatabaseName("IX_ie_tenant_plan_application_logs_tenant_plan_applicat_2AFF746F");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_applicat_4da8e3d9");
 
                     b.HasIndex("TenantPlanAssignmentId")
-                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_assignment_id");
+                        .HasDatabaseName("ix_tenant_plan_application_logs_tenant_plan_assignment_id");
 
                     b.HasIndex("TenantPlanId")
-                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_id");
+                        .HasDatabaseName("ix_tenant_plan_application_logs_tenant_plan_id");
 
                     b.HasIndex("TenantPlanVersionId")
-                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_version_id");
+                        .HasDatabaseName("ix_tenant_plan_application_logs_tenant_plan_version_id");
 
                     b.HasIndex("TenantId", "AppliedAt")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_id_applied_at");
+                        .HasDatabaseName("ix_tenant_plan_application_logs_tenant_id_applied_at");
 
                     b.ToTable("ie_tenant_plan_application_logs", (string)null);
                 });
@@ -28179,7 +28182,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_plan_application_statuses_master_code");
+                        .HasDatabaseName("ix_tenant_plan_application_statuses_master_code");
 
                     b.ToTable("ie_tenant_plan_application_statuses", (string)null);
                 });
@@ -28240,17 +28243,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ux_tenant_plan_assignments_active_tenant")
+                        .HasDatabaseName("ix_tenant_plan_assignments_tenant_id")
                         .HasFilter("tenant_plan_assignment_status_id = 1");
 
                     b.HasIndex("TenantPlanAssignmentStatusId")
-                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_assignment_status_id");
+                        .HasDatabaseName("ix_tenant_plan_assignments_tenant_plan_assignment_status_id");
 
                     b.HasIndex("TenantPlanId")
-                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_id");
+                        .HasDatabaseName("ix_tenant_plan_assignments_tenant_plan_id");
 
                     b.HasIndex("TenantPlanVersionId", "TenantPlanAssignmentStatusId")
-                        .HasDatabaseName("IX_ie_tenant_plan_assignments_tenant_plan_version_id_te_90B6368D");
+                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_version_id_te_f09929e0");
 
                     b.ToTable("ie_tenant_plan_assignments", (string)null);
                 });
@@ -28287,7 +28290,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_plan_assignment_statuses_master_code");
+                        .HasDatabaseName("ix_tenant_plan_assignment_statuses_master_code");
 
                     b.ToTable("ie_tenant_plan_assignment_statuses", (string)null);
                 });
@@ -28324,7 +28327,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_plan_statuses_master_code");
+                        .HasDatabaseName("ix_tenant_plan_statuses_master_code");
 
                     b.ToTable("ie_tenant_plan_statuses", (string)null);
                 });
@@ -28390,10 +28393,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantPlanId", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_plan_versions_tenant_plan_id_version_number");
+                        .HasDatabaseName("ix_tenant_plan_versions_tenant_plan_id_version_number");
 
                     b.HasIndex("TenantPlanStatusId", "IsActiveForProvisioning")
-                        .HasDatabaseName("IX_ie_tenant_plan_versions_tenant_plan_status_id_is_act_E9FC90D8");
+                        .HasDatabaseName("ix_ie_tenant_plan_versions_tenant_plan_status_id_is_act_eb0c9206");
 
                     b.ToTable("ie_tenant_plan_versions", (string)null);
                 });
@@ -28440,7 +28443,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantPlanVersionId", "QuotaKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_tenant_plan_version_quotas_tenant_plan_version_id_AF5713DB");
+                        .HasDatabaseName("ix_ie_tenant_plan_version_quotas_tenant_plan_version_id_ff06c78f");
 
                     b.ToTable("ie_tenant_plan_version_quotas", (string)null);
                 });
@@ -28492,7 +28495,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantPlanVersionId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_tenant_plan_version_settings_tenant_plan_version__D035052D");
+                        .HasDatabaseName("ix_ie_tenant_plan_version_settings_tenant_plan_version__db608cd0");
 
                     b.ToTable("ie_tenant_plan_version_settings", (string)null);
                 });
@@ -28548,7 +28551,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_tenant_setting_overrides_tenant_id_setting_key");
+                        .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_setting_key");
 
                     b.ToTable("ie_tenant_setting_overrides", (string)null);
                 });
@@ -28680,14 +28683,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_tenant_users_tenant_id_user_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_ie_tenant_users_actor_id");
+                        .HasDatabaseName("ix_tenant_users_actor_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_tenant_users_user_id");
+                        .HasDatabaseName("ix_tenant_users_user_id");
 
                     b.HasIndex("TenantId", "ActorId")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenantusers_tenant_actor")
+                        .HasDatabaseName("ix_tenant_users_tenant_id_actor_id")
                         .HasFilter("actor_id IS NOT NULL");
 
                     b.ToTable("ie_tenant_users", null, t =>
@@ -28767,10 +28770,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantUserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenantuserprofiles_tenant_user");
+                        .HasDatabaseName("ix_tenant_user_profiles_tenant_user_id");
 
                     b.HasIndex("TenantId", "ContactEmailOverride")
-                        .HasDatabaseName("ix_tenantuserprofiles_tenant_contact_email")
+                        .HasDatabaseName("ix_tenant_user_profiles_tenant_id_contact_email_override")
                         .HasFilter("contact_email_override IS NOT NULL");
 
                     b.ToTable("ie_tenant_user_profiles", (string)null);
@@ -28846,14 +28849,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_tenant_user_role_grants");
 
                     b.HasIndex("RoleId", "RoleScopeId")
-                        .HasDatabaseName("ix_ie_tenant_user_role_grants_role_id_role_scope_id");
+                        .HasDatabaseName("ix_tenant_user_role_grants_role_id_role_scope_id");
 
                     b.HasIndex("TenantId", "RoleId")
-                        .HasDatabaseName("ix_tenant_user_role_grants_tenant_role");
+                        .HasDatabaseName("ix_tenant_user_role_grants_tenant_id_role_id");
 
                     b.HasIndex("TenantId", "TenantUserId", "RoleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenant_user_role_grants_active_tenant_user_role")
+                        .HasDatabaseName("ix_tenant_user_role_grants_tenant_id_tenant_user_id_role_id")
                         .HasFilter("revoked_at IS NULL");
 
                     b.ToTable("ie_tenant_user_role_grants", null, t =>
@@ -28890,7 +28893,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ticket_catalog_statuses_master_code");
+                        .HasDatabaseName("ix_ticket_catalog_statuses_master_code");
 
                     b.ToTable("ie_ticket_catalog_statuses", (string)null);
                 });
@@ -28923,7 +28926,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ticket_pricing_modes_master_code");
+                        .HasDatabaseName("ix_ticket_pricing_modes_master_code");
 
                     b.ToTable("ie_ticket_pricing_modes", (string)null);
                 });
@@ -28978,20 +28981,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_ticket_type_entitlements_tenant_id_id");
 
                     b.HasIndex("EntitlementScopeTypeId")
-                        .HasDatabaseName("ix_ie_ticket_type_entitlements_entitlement_scope_type_id");
+                        .HasDatabaseName("ix_ticket_type_entitlements_entitlement_scope_type_id");
 
                     b.HasIndex("EntitlementSelectionRuleId")
-                        .HasDatabaseName("ix_ie_ticket_type_entitlements_entitlement_selection_rule_id");
+                        .HasDatabaseName("ix_ticket_type_entitlements_entitlement_selection_rule_id");
 
                     b.HasIndex("TenantId", "TargetEventId", "EventDayId")
-                        .HasDatabaseName("IX_ie_ticket_type_entitlements_tenant_id_target_event_i_FB62DC61");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_target_event_i_f01f79a0");
 
                     b.HasIndex("TenantId", "TargetEventId", "EventSessionId")
-                        .HasDatabaseName("IX_ie_ticket_type_entitlements_tenant_id_target_event_i_7AAA0C97");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_target_event_i_42ce2de7");
 
                     b.HasIndex("TenantId", "TicketTypeId", "TargetEventId", "EntitlementScopeTypeId", "ScopeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_ticket_type_entitlements_tenant_id_ticket_type_id_47B23051");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_ticket_type_id_79a47340");
 
                     b.ToTable("ie_ticket_type_entitlements", (string)null);
                 });
@@ -29071,22 +29074,22 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_themes_is_default")
+                        .HasDatabaseName("ix_ui_themes_is_default")
                         .HasFilter("tenant_id IS NULL AND is_default = true");
 
                     b.HasIndex("ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_themes_theme_key")
+                        .HasDatabaseName("ix_ui_themes_theme_key")
                         .HasFilter("tenant_id IS NULL");
 
                     b.HasIndex("TenantId", "IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_themes_tenant_id_is_default")
+                        .HasDatabaseName("ix_ui_themes_tenant_id_is_default")
                         .HasFilter("tenant_id IS NOT NULL AND is_default = true");
 
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_themes_tenant_id_theme_key")
+                        .HasDatabaseName("ix_ui_themes_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL");
 
                     b.ToTable("ie_ui_themes", (string)null);
@@ -29185,15 +29188,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_theme_presets_theme_key")
+                        .HasDatabaseName("ix_ui_theme_presets_theme_key")
                         .HasFilter("tenant_id IS NULL AND is_deleted = false");
 
                     b.HasIndex("TenantId", "IsActive")
-                        .HasDatabaseName("ix_ie_ui_theme_presets_tenant_id_is_active");
+                        .HasDatabaseName("ix_ui_theme_presets_tenant_id_is_active");
 
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_ui_theme_presets_tenant_id_theme_key")
+                        .HasDatabaseName("ix_ui_theme_presets_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL AND is_deleted = false");
 
                     b.ToTable("ie_ui_theme_presets", (string)null);
@@ -29310,11 +29313,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_user_appearance_preferences");
 
                     b.HasIndex("ActiveProfileId")
-                        .HasDatabaseName("ix_ie_user_appearance_preferences_active_profile_id");
+                        .HasDatabaseName("ix_user_appearance_preferences_active_profile_id");
 
                     b.HasIndex("UserId", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_user_appearance_preferences_user_id_tenant_id");
+                        .HasDatabaseName("ix_user_appearance_preferences_user_id_tenant_id");
 
                     b.ToTable("ie_user_appearance_preferences", (string)null);
                 });
@@ -29403,18 +29406,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_user_appearance_profiles");
 
                     b.HasIndex("UserId", "SourcePresetId")
-                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_source_preset_id");
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_source_preset_id");
 
                     b.HasIndex("UserId", "TenantId", "IsArchived")
-                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_is_archived");
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_is_archived");
 
                     b.HasIndex("UserId", "TenantId", "IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_is_default")
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_is_default")
                         .HasFilter("is_default = true");
 
                     b.HasIndex("UserId", "TenantId", "Name")
-                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_name");
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_name");
 
                     b.ToTable("ie_user_appearance_profiles", (string)null);
                 });
@@ -29509,11 +29512,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_user_authentication_tokens");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_user_authentication_tokens_user_id");
+                        .HasDatabaseName("ix_user_authentication_tokens_user_id");
 
                     b.HasIndex("TenantId", "Provider", "SubjectDid")
                         .IsUnique()
-                        .HasDatabaseName("ux_user_authentication_tokens_tenant_provider_subject_did");
+                        .HasDatabaseName("ix_user_authentication_tokens_tenant_id_provider_subject_did");
 
                     b.ToTable("ie_user_authentication_tokens", null, t =>
                         {
@@ -29578,13 +29581,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ProviderKeyUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_user_external_logins_provider_key_hash");
+                        .HasDatabaseName("ix_user_external_logins_provider_key_uniqueness_hash");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_user_external_logins_tenant_id");
+                        .HasDatabaseName("ix_user_external_logins_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_user_external_logins_user_id");
+                        .HasDatabaseName("ix_user_external_logins_user_id");
 
                     b.ToTable("ie_user_external_logins", (string)null);
                 });
@@ -29640,11 +29643,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_user_notification_preferences");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_user_notification_preferences_user_id");
+                        .HasDatabaseName("ix_user_notification_preferences_user_id");
 
                     b.HasIndex("TenantId", "UserId", "Category")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_user_notification_preferences_tenant_id_user_id_category");
+                        .HasDatabaseName("ix_user_notification_preferences_tenant_id_user_id_category");
 
                     b.ToTable("ie_user_notification_preferences", (string)null);
                 });
@@ -29678,7 +29681,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_user_pii_email");
+                        .HasDatabaseName("ix_user_pii_email");
 
                     b.ToTable("ie_user_pii", (string)null);
                 });
@@ -29732,7 +29735,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("TenantId", "UserId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_ie_user_preferences_tenant_id_user_id_setting_key");
+                        .HasDatabaseName("ix_user_preferences_tenant_id_user_id_setting_key");
 
                     b.ToTable("ie_user_preferences", (string)null);
                 });
@@ -30011,24 +30014,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_web_push_dispatch_outbox");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_category_id");
+                        .HasDatabaseName("ix_web_push_dispatch_outbox_category_id");
 
                     b.HasIndex("SubscriptionId")
-                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_subscription_id");
+                        .HasDatabaseName("ix_web_push_dispatch_outbox_subscription_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_user_id");
+                        .HasDatabaseName("ix_web_push_dispatch_outbox_user_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
-                        .HasDatabaseName("ix_web_push_dispatch_outbox_worker_poll");
+                        .HasDatabaseName("ix_web_push_dispatch_outbox_status_next_attempt_at_created_at");
 
                     b.HasIndex("TenantId", "NotificationId", "SubscriptionId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_web_push_dispatch_outbox_tenant_id_notification_i_AE1DF271")
+                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_tenant_id_notification_i_ed8b17a2")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
-                        .HasDatabaseName("ix_web_push_dispatch_outbox_tenant_status");
+                        .HasDatabaseName("ix_web_push_dispatch_outbox_tenant_id_status_last_failure_at");
 
                     b.ToTable("ie_web_push_dispatch_outbox", (string)null);
                 });
@@ -30147,17 +30150,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ActiveEndpointUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_web_push_subscriptions_active_endpoint_hash");
+                        .HasDatabaseName("ix_web_push_subscriptions_active_endpoint_uniqueness_hash");
 
                     b.HasIndex("ActiveUserDeviceUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_web_push_subscriptions_active_user_device_hash");
+                        .HasDatabaseName("ix_web_push_subscriptions_active_user_device_uniqueness_hash");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_web_push_subscriptions_user_id");
+                        .HasDatabaseName("ix_web_push_subscriptions_user_id");
 
                     b.HasIndex("TenantId", "UserId", "IsActive")
-                        .HasDatabaseName("ix_web_push_subscriptions_tenant_user_active");
+                        .HasDatabaseName("ix_web_push_subscriptions_tenant_id_user_id_is_active");
 
                     b.ToTable("ie_web_push_subscriptions", (string)null);
                 });
@@ -30190,7 +30193,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_audit_actions_master_code");
+                        .HasDatabaseName("ix_webhook_audit_actions_master_code");
 
                     b.ToTable("ie_webhook_audit_actions", (string)null);
                 });
@@ -30288,34 +30291,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_webhook_audit_events");
 
                     b.HasIndex("ActionId")
-                        .HasDatabaseName("ix_ie_webhook_audit_events_action_id");
+                        .HasDatabaseName("ix_webhook_audit_events_action_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_ie_webhook_audit_events_outcome_id");
+                        .HasDatabaseName("ix_webhook_audit_events_outcome_id");
 
                     b.HasIndex("PrincipalKindId")
-                        .HasDatabaseName("ix_ie_webhook_audit_events_principal_kind_id");
+                        .HasDatabaseName("ix_webhook_audit_events_principal_kind_id");
 
                     b.HasIndex("TargetKindId")
-                        .HasDatabaseName("ix_ie_webhook_audit_events_target_kind_id");
+                        .HasDatabaseName("ix_webhook_audit_events_target_kind_id");
 
                     b.HasIndex("TenantId", "CorrelationId")
-                        .HasDatabaseName("ix_webhook_audit_events_tenant_correlation");
+                        .HasDatabaseName("ix_webhook_audit_events_tenant_id_correlation_id");
 
                     b.HasIndex("TenantId", "OccurredAt")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_webhook_audit_events_tenant_occurred");
+                        .HasDatabaseName("ix_webhook_audit_events_tenant_id_occurred_at");
 
                     b.HasIndex("TenantId", "RetentionUntil")
-                        .HasDatabaseName("ix_webhook_audit_events_tenant_retention");
+                        .HasDatabaseName("ix_webhook_audit_events_tenant_id_retention_until");
 
                     b.HasIndex("EffectiveScopeKindId", "EffectiveScopeId", "OccurredAt")
                         .IsDescending(false, false, true)
-                        .HasDatabaseName("IX_ie_webhook_audit_events_effective_scope_kind_id_effe_F0FE30BE");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_effective_scope_kind_id_effe_1f5bc5b8");
 
                     b.HasIndex("TenantId", "TargetKindId", "TargetId", "OccurredAt")
                         .IsDescending(false, false, false, true)
-                        .HasDatabaseName("IX_ie_webhook_audit_events_tenant_id_target_kind_id_tar_E0264EE4");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_tenant_id_target_kind_id_tar_e2eba78a");
 
                     b.ToTable("ie_webhook_audit_events", null, t =>
                         {
@@ -30353,7 +30356,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_audit_outcomes_master_code");
+                        .HasDatabaseName("ix_webhook_audit_outcomes_master_code");
 
                     b.ToTable("ie_webhook_audit_outcomes", (string)null);
                 });
@@ -30386,7 +30389,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_audit_principal_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_audit_principal_kinds_master_code");
 
                     b.ToTable("ie_webhook_audit_principal_kinds", (string)null);
                 });
@@ -30419,7 +30422,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_audit_scope_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_audit_scope_kinds_master_code");
 
                     b.ToTable("ie_webhook_audit_scope_kinds", (string)null);
                 });
@@ -30452,7 +30455,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_audit_target_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_audit_target_kinds_master_code");
 
                     b.ToTable("ie_webhook_audit_target_kinds", (string)null);
                 });
@@ -30615,23 +30618,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_bulk_replay_operations_tenant_id_id");
 
                     b.HasIndex("WebhookConsumerId")
-                        .HasDatabaseName("ix_ie_webhook_bulk_replay_operations_webhook_consumer_id");
+                        .HasDatabaseName("ix_webhook_bulk_replay_operations_webhook_consumer_id");
 
                     b.HasIndex("WebhookEndpointId")
-                        .HasDatabaseName("ix_ie_webhook_bulk_replay_operations_webhook_endpoint_id");
+                        .HasDatabaseName("ix_webhook_bulk_replay_operations_webhook_endpoint_id");
 
                     b.HasIndex("TenantId", "OperationKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_bulk_replay_operations_tenant_operation_key");
+                        .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_id_operation_key");
 
                     b.HasIndex("StatusId", "QueuedAt", "Id")
-                        .HasDatabaseName("ix_webhook_bulk_replay_operations_status_queue");
+                        .HasDatabaseName("ix_webhook_bulk_replay_operations_status_id_queued_at_id");
 
                     b.HasIndex("TenantId", "FromUtc", "ToUtc")
-                        .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_window");
+                        .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_id_from_utc_to_utc");
 
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
-                        .HasDatabaseName("IX_ie_webhook_bulk_replay_operations_tenant_id_status_i_0A7A0B58");
+                        .HasDatabaseName("ix_ie_webhook_bulk_replay_operations_tenant_id_status_i_87684693");
 
                     b.ToTable("ie_webhook_bulk_replay_operations", null, t =>
                         {
@@ -30677,7 +30680,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_bulk_replay_statuses_master_code");
+                        .HasDatabaseName("ix_webhook_bulk_replay_statuses_master_code");
 
                     b.ToTable("ie_webhook_bulk_replay_statuses", (string)null);
                 });
@@ -30764,53 +30767,53 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_webhook_consumers");
 
                     b.HasAlternateKey("ConfigurationScopeId", "Id")
-                        .HasName("ak_webhook_consumers_configuration_scope_id");
+                        .HasName("ak_webhook_consumers_configuration_scope_id_id");
 
                     b.HasIndex("ConsumerKindId")
-                        .HasDatabaseName("ix_ie_webhook_consumers_consumer_kind_id");
+                        .HasDatabaseName("ix_webhook_consumers_consumer_kind_id");
 
                     b.HasIndex("ExternalProviderAppId")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_external_app")
+                        .HasDatabaseName("ix_webhook_consumers_external_provider_app_id")
                         .HasFilter("external_provider_app_id IS NOT NULL");
 
                     b.HasIndex("ProviderModeId")
-                        .HasDatabaseName("ix_ie_webhook_consumers_provider_mode_id");
+                        .HasDatabaseName("ix_webhook_consumers_provider_mode_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_webhook_consumers_status_id");
+                        .HasDatabaseName("ix_webhook_consumers_status_id");
 
                     b.HasIndex("InstanceId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_instance_name")
+                        .HasDatabaseName("ix_webhook_consumers_instance_id_name")
                         .HasFilter("consumer_kind_id = 5");
 
                     b.HasIndex("TenantId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_tenant_name")
+                        .HasDatabaseName("ix_webhook_consumers_tenant_id_name")
                         .HasFilter("consumer_kind_id = 1");
 
                     b.HasIndex("InstanceId", "StatusId", "ProviderModeId")
-                        .HasDatabaseName("ix_webhook_consumers_instance_status_provider")
+                        .HasDatabaseName("ix_webhook_consumers_instance_id_status_id_provider_mode_id")
                         .HasFilter("instance_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "GroupId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_group_name")
+                        .HasDatabaseName("ix_webhook_consumers_tenant_id_group_id_name")
                         .HasFilter("consumer_kind_id = 3");
 
                     b.HasIndex("TenantId", "OrganizationId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_organization_name")
+                        .HasDatabaseName("ix_webhook_consumers_tenant_id_organization_id_name")
                         .HasFilter("consumer_kind_id = 2");
 
                     b.HasIndex("TenantId", "OwnerUserId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumers_user_name")
+                        .HasDatabaseName("ix_webhook_consumers_tenant_id_owner_user_id_name")
                         .HasFilter("consumer_kind_id = 4");
 
                     b.HasIndex("TenantId", "StatusId", "ProviderModeId")
-                        .HasDatabaseName("ix_webhook_consumers_tenant_status_provider");
+                        .HasDatabaseName("ix_webhook_consumers_tenant_id_status_id_provider_mode_id");
 
                     b.ToTable("ie_webhook_consumers", null, t =>
                         {
@@ -30850,7 +30853,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumer_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_consumer_kinds_master_code");
 
                     b.ToTable("ie_webhook_consumer_kinds", (string)null);
                 });
@@ -31003,43 +31006,46 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("ProviderApplicationIdentityHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_appli_924C0733");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_provider_appli_64bdcd8b");
 
                     b.HasIndex("ProviderEnvironmentApplicationUidHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_envir_BD4CA762");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_provider_envir_e119722a");
 
                     b.HasIndex("ProviderEnvironmentExternalAppHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_envir_9EEB276B");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_provider_envir_9d2808ad");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_provider_kind_id");
+                        .HasDatabaseName("ix_webhook_consumer_provider_bindings_provider_kind_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_tenant_id");
+                        .HasDatabaseName("ix_webhook_consumer_provider_bindings_tenant_id");
 
                     b.HasIndex("VerificationStateId")
-                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_verification_state_id");
+                        .HasDatabaseName("ix_webhook_consumer_provider_bindings_verification_state_id");
 
                     b.HasIndex("ConfigurationScopeId", "WebhookConsumerId")
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_configuration__1F6E448C");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_configuration__f5deb7ea");
 
                     b.HasIndex("WebhookConsumerId", "ProviderKindId", "NormalizedEnvironment")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_webhook_consum_5F6157EF");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_webhook_consum_9f84138c");
 
                     b.ToTable("ie_webhook_consumer_provider_bindings", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_capabilities_known", "capabilities >= 0 AND capabilities <= 4095");
 
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_concurrency_version_positive", "concurrency_version > 0");
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_concurrency_version_positive", "concurrency_version > 0")
+                                .HasName("ck_webhook_consumer_provider_bindings_concurrency_v_60aaa7656176");
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
 
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_governance_capabilities_known", "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_governance_capabilities_known", "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095")
+                                .HasName("ck_webhook_consumer_provider_bindings_governance_ca_9ef95a406027");
 
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positive", "verification_fence > 0");
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positive", "verification_fence > 0")
+                                .HasName("ck_webhook_consumer_provider_bindings_verification__cde8a05579e3");
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id <=> tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
                         });
@@ -31073,7 +31079,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_consumer_statuses_master_code");
+                        .HasDatabaseName("ix_webhook_consumer_statuses_master_code");
 
                     b.ToTable("ie_webhook_consumer_statuses", (string)null);
                 });
@@ -31174,23 +31180,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_delivery_attempts_tenant_id_id");
 
                     b.HasIndex("EndpointId")
-                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_endpoint_id");
+                        .HasDatabaseName("ix_webhook_delivery_attempts_endpoint_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_outcome_id");
+                        .HasDatabaseName("ix_webhook_delivery_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "EndpointId", "OutcomeId", "ScheduledAt")
-                        .HasDatabaseName("IX_ie_webhook_delivery_attempts_tenant_id_endpoint_id_o_59F32175");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_tenant_id_endpoint_id_o_0eaf9db3");
 
                     b.HasIndex("TenantId", "MessageId", "EndpointId", "AttemptNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_delivery_attempts_tenant_id_message_id_en_D3D0534E");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_tenant_id_message_id_en_ea8302a4");
 
                     b.HasIndex("TenantId", "OutcomeId", "ProcessingLeaseExpiresAt", "EndpointId")
-                        .HasDatabaseName("IX_ie_webhook_delivery_attempts_tenant_id_outcome_id_pr_C84BE3CB");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_tenant_id_outcome_id_pr_824d4784");
 
                     b.HasIndex("TenantId", "OutcomeId", "ScheduledAt", "CreatedAt")
-                        .HasDatabaseName("IX_ie_webhook_delivery_attempts_tenant_id_outcome_id_sc_BE737CA2");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_tenant_id_outcome_id_sc_83ce525f");
 
                     b.ToTable("ie_webhook_delivery_attempts", (string)null);
                 });
@@ -31223,7 +31229,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_delivery_attempt_outcomes_master_code");
+                        .HasDatabaseName("ix_webhook_delivery_attempt_outcomes_master_code");
 
                     b.ToTable("ie_webhook_delivery_attempt_outcomes", (string)null);
                 });
@@ -31330,29 +31336,29 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_delivery_plan_snapshots_tenant_id_id");
 
                     b.HasIndex("ProviderModeId")
-                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_provider_mode_id");
+                        .HasDatabaseName("ix_webhook_delivery_plan_snapshots_provider_mode_id");
 
                     b.HasIndex("WebhookConsumerId")
-                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_webhook_consumer_id");
+                        .HasDatabaseName("ix_webhook_delivery_plan_snapshots_webhook_consumer_id");
 
                     b.HasIndex("TenantId", "AttemptRetentionUntilUtc")
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_attempt_A2039628");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_attempt_5864d8cd");
 
                     b.HasIndex("TenantId", "DeadLetterEvidenceRetentionUntilUtc")
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_dead_le_FCEAA0E6");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_dead_le_f05cf36e");
 
                     b.HasIndex("TenantId", "PayloadRetentionUntilUtc")
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_payload_AD929205");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_payload_2443d31b");
 
                     b.HasIndex("TenantId", "PublicationRetentionUntilUtc")
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_publica_A5FD11E5");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_publica_560c57f7");
 
                     b.HasIndex("TenantId", "WebhookMessageId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_webhook_B14D795C");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_webhook_7b4a8bfd");
 
                     b.HasIndex("TenantId", "WebhookConsumerId", "MaterializedAtUtc")
-                        .HasDatabaseName("IX_ie_webhook_delivery_plan_snapshots_tenant_id_webhook_5756461B");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_tenant_id_webhook_bddc0b39");
 
                     b.ToTable("ie_webhook_delivery_plan_snapshots", (string)null);
                 });
@@ -31513,33 +31519,33 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_webhook_endpoints");
 
                     b.HasAlternateKey("ConfigurationScopeId", "Id")
-                        .HasName("ak_webhook_endpoints_configuration_scope_id");
+                        .HasName("ak_webhook_endpoints_configuration_scope_id_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_webhook_endpoints_status_id");
+                        .HasDatabaseName("ix_webhook_endpoints_status_id");
 
                     b.HasIndex("ConfigurationScopeId", "ConsumerId")
-                        .HasDatabaseName("ix_ie_webhook_endpoints_configuration_scope_id_consumer_id");
+                        .HasDatabaseName("ix_webhook_endpoints_configuration_scope_id_consumer_id");
 
                     b.HasIndex("InstanceId", "ProviderEndpointId")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_endpoints_instance_provider_endpoint")
+                        .HasDatabaseName("ix_webhook_endpoints_instance_id_provider_endpoint_id")
                         .HasFilter("instance_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ProviderEndpointId")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_endpoints_tenant_provider_endpoint")
+                        .HasDatabaseName("ix_webhook_endpoints_tenant_id_provider_endpoint_id")
                         .HasFilter("tenant_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
 
                     b.HasIndex("InstanceId", "ConsumerId", "StatusId")
-                        .HasDatabaseName("ix_webhook_endpoints_instance_consumer_status")
+                        .HasDatabaseName("ix_webhook_endpoints_instance_id_consumer_id_status_id")
                         .HasFilter("instance_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ConsumerId", "StatusId")
-                        .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
+                        .HasDatabaseName("ix_webhook_endpoints_tenant_id_consumer_id_status_id");
 
                     b.HasIndex("TenantId", "StatusId", "Id")
-                        .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
+                        .HasDatabaseName("ix_webhook_endpoints_tenant_id_status_id_id");
 
                     b.ToTable("ie_webhook_endpoints", null, t =>
                         {
@@ -31579,7 +31585,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_endpoint_statuses_master_code");
+                        .HasDatabaseName("ix_webhook_endpoint_statuses_master_code");
 
                     b.ToTable("ie_webhook_endpoint_statuses", (string)null);
                 });
@@ -31638,27 +31644,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("pk_ie_webhook_endpoint_subscriptions");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_event_type_id");
+                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_event_type_id");
 
                     b.HasIndex("ConfigurationScopeId", "EndpointId")
-                        .HasDatabaseName("IX_ie_webhook_endpoint_subscriptions_configuration_scop_E6BD4908");
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_configuration_scop_d3bd28d2");
 
                     b.HasIndex("InstanceId", "EndpointId", "EventTypeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_endpoint_subscriptions_instance_id_endpoi_FECF200C")
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_instance_id_endpoi_5032d532")
                         .HasFilter("instance_id IS NOT NULL");
 
                     b.HasIndex("InstanceId", "EventTypeId", "IsEnabled")
-                        .HasDatabaseName("IX_ie_webhook_endpoint_subscriptions_instance_id_event__0D61D0F1")
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_instance_id_event__dfa34cbf")
                         .HasFilter("instance_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EndpointId", "EventTypeId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_endpoint_subscriptions_tenant_id_endpoint_1A1BEEE9")
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_tenant_id_endpoint_4380e42d")
                         .HasFilter("tenant_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventTypeId", "IsEnabled")
-                        .HasDatabaseName("IX_ie_webhook_endpoint_subscriptions_tenant_id_event_ty_F6BB7AC3");
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_tenant_id_event_ty_64538487");
 
                     b.ToTable("ie_webhook_endpoint_subscriptions", null, t =>
                         {
@@ -31737,10 +31743,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Name")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_event_types_name");
+                        .HasDatabaseName("ix_webhook_event_types_name");
 
                     b.HasIndex("GroupName", "IsEnabled", "IsPublic")
-                        .HasDatabaseName("ix_webhook_event_types_group_enabled_public");
+                        .HasDatabaseName("ix_webhook_event_types_group_name_is_enabled_is_public");
 
                     b.ToTable("ie_webhook_event_types", (string)null);
                 });
@@ -31773,7 +31779,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_local_delivery_statuses_master_code");
+                        .HasDatabaseName("ix_webhook_local_delivery_statuses_master_code");
 
                     b.ToTable("ie_webhook_local_delivery_statuses", (string)null);
                 });
@@ -31898,20 +31904,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_local_target_snapshots_tenant_id_id");
 
                     b.HasIndex("DeliveryStatusId")
-                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_delivery_status_id");
+                        .HasDatabaseName("ix_webhook_local_target_snapshots_delivery_status_id");
 
                     b.HasIndex("WebhookEndpointId")
-                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_webhook_endpoint_id");
+                        .HasDatabaseName("ix_webhook_local_target_snapshots_webhook_endpoint_id");
 
                     b.HasIndex("TenantId", "WebhookMessageId")
-                        .HasDatabaseName("IX_ie_webhook_local_target_snapshots_tenant_id_webhook__C58E9F3D");
+                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_tenant_id_webhook__0f1afe82");
 
                     b.HasIndex("TenantId", "DeliveryPlanSnapshotId", "WebhookEndpointId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_local_target_snapshots_tenant_id_delivery_5BB4DD81");
+                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_tenant_id_delivery_4c706417");
 
                     b.HasIndex("TenantId", "DeliveryStatusId", "NextActionAtUtc", "ProcessingLeaseExpiresAtUtc")
-                        .HasDatabaseName("IX_ie_webhook_local_target_snapshots_tenant_id_delivery_0A3230A8");
+                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_tenant_id_delivery_a7ccb9a1");
 
                     b.ToTable("ie_webhook_local_target_snapshots", null, t =>
                         {
@@ -32035,24 +32041,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_messages_tenant_id_id");
 
                     b.HasIndex("ConsumerId")
-                        .HasDatabaseName("ix_ie_webhook_messages_consumer_id");
+                        .HasDatabaseName("ix_webhook_messages_consumer_id");
 
                     b.HasIndex("PayloadProvenanceId")
-                        .HasDatabaseName("ix_ie_webhook_messages_payload_provenance_id");
+                        .HasDatabaseName("ix_webhook_messages_payload_provenance_id");
 
                     b.HasIndex("TenantId", "PayloadRetentionUntil")
-                        .HasDatabaseName("ix_webhook_messages_tenant_payload_retention")
+                        .HasDatabaseName("ix_webhook_messages_tenant_id_payload_retention_until")
                         .HasFilter("payload_bytes IS NOT NULL");
 
                     b.HasIndex("TenantId", "AggregateKind", "AggregateId")
-                        .HasDatabaseName("ix_webhook_messages_tenant_aggregate");
+                        .HasDatabaseName("ix_webhook_messages_tenant_id_aggregate_kind_aggregate_id");
 
                     b.HasIndex("TenantId", "CreatedAt", "Id")
-                        .HasDatabaseName("ix_webhook_messages_tenant_created");
+                        .HasDatabaseName("ix_webhook_messages_tenant_id_created_at_id");
 
                     b.HasIndex("TenantId", "EventType", "EventId")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_messages_tenant_event");
+                        .HasDatabaseName("ix_webhook_messages_tenant_id_event_type_event_id");
 
                     b.ToTable("ie_webhook_messages", null, t =>
                         {
@@ -32090,7 +32096,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_payload_provenances_master_code");
+                        .HasDatabaseName("ix_webhook_payload_provenances_master_code");
 
                     b.ToTable("ie_webhook_payload_provenances", (string)null);
                 });
@@ -32123,7 +32129,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_pending_work_decisions_master_code");
+                        .HasDatabaseName("ix_webhook_pending_work_decisions_master_code");
 
                     b.ToTable("ie_webhook_pending_work_decisions", (string)null);
                 });
@@ -32156,7 +32162,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code");
+                        .HasDatabaseName("ix_webhook_provider_binding_verification_states_master_code");
 
                     b.ToTable("ie_webhook_provider_binding_verification_states", (string)null);
                 });
@@ -32189,7 +32195,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_capabilities_master_code");
+                        .HasDatabaseName("ix_webhook_provider_capabilities_master_code");
 
                     b.ToTable("ie_webhook_provider_capabilities", (string)null);
                 });
@@ -32222,7 +32228,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_provider_kinds_master_code");
 
                     b.ToTable("ie_webhook_provider_kinds", (string)null);
                 });
@@ -32255,7 +32261,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_modes_master_code");
+                        .HasDatabaseName("ix_webhook_provider_modes_master_code");
 
                     b.ToTable("ie_webhook_provider_modes", (string)null);
                 });
@@ -32484,33 +32490,33 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_provider_publications_tenant_id_id");
 
                     b.HasIndex("ModeSnapshotId")
-                        .HasDatabaseName("ix_ie_webhook_provider_publications_mode_snapshot_id");
+                        .HasDatabaseName("ix_webhook_provider_publications_mode_snapshot_id");
 
                     b.HasIndex("ProviderBindingId")
-                        .HasDatabaseName("ix_ie_webhook_provider_publications_provider_binding_id");
+                        .HasDatabaseName("ix_webhook_provider_publications_provider_binding_id");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_ie_webhook_provider_publications_provider_kind_id");
+                        .HasDatabaseName("ix_webhook_provider_publications_provider_kind_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_ie_webhook_provider_publications_status_id");
+                        .HasDatabaseName("ix_webhook_provider_publications_status_id");
 
                     b.HasIndex("TenantId", "PublicationRetentionUntil")
-                        .HasDatabaseName("IX_ie_webhook_provider_publications_tenant_id_publicati_D9A56A22");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_publicati_767a144c");
 
                     b.HasIndex("TenantId", "WebhookDeliveryPlanSnapshotId")
-                        .HasDatabaseName("IX_ie_webhook_provider_publications_tenant_id_webhook_d_CDA327FF");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_webhook_d_29a945b2");
 
                     b.HasIndex("TenantId", "ProviderKindId", "ProviderEventId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_provider_publications_tenant_id_provider__A0D652A8");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_provider__05c20548");
 
                     b.HasIndex("TenantId", "StatusId", "NextActionAt", "ProcessingLeaseExpiresAt")
-                        .HasDatabaseName("IX_ie_webhook_provider_publications_tenant_id_status_id_29B18202");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_status_id_0305ee7a");
 
                     b.HasIndex("TenantId", "WebhookMessageId", "ProviderKindId", "ProviderBindingId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_provider_publications_tenant_id_webhook_m_E38E7CB8");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_webhook_m_3454d8d9");
 
                     b.ToTable("ie_webhook_provider_publications", null, t =>
                         {
@@ -32593,17 +32599,17 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_provider_publication_attempts_tenant_id_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_ie_webhook_provider_publication_attempts_outcome_id");
+                        .HasDatabaseName("ix_webhook_provider_publication_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "OutcomeId", "RecordedAt")
-                        .HasDatabaseName("IX_ie_webhook_provider_publication_attempts_tenant_id_o_EF1386E1");
+                        .HasDatabaseName("ix_ie_webhook_provider_publication_attempts_tenant_id_o_01c143dc");
 
                     b.HasIndex("TenantId", "RecordedAt", "Id")
-                        .HasDatabaseName("IX_ie_webhook_provider_publication_attempts_tenant_id_r_66F559CD");
+                        .HasDatabaseName("ix_ie_webhook_provider_publication_attempts_tenant_id_r_d57b6335");
 
                     b.HasIndex("TenantId", "WebhookProviderPublicationId", "AttemptNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_provider_publication_attempts_tenant_id_w_DF48DF71");
+                        .HasDatabaseName("ix_ie_webhook_provider_publication_attempts_tenant_id_w_f99a5bcc");
 
                     b.ToTable("ie_webhook_provider_publication_attempts", (string)null);
                 });
@@ -32636,7 +32642,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_publication_attempt_outcomes_master_code");
+                        .HasDatabaseName("ix_webhook_provider_publication_attempt_outcomes_master_code");
 
                     b.ToTable("ie_webhook_provider_publication_attempt_outcomes", (string)null);
                 });
@@ -32669,7 +32675,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_publication_statuses_master_code");
+                        .HasDatabaseName("ix_webhook_provider_publication_statuses_master_code");
 
                     b.ToTable("ie_webhook_provider_publication_statuses", (string)null);
                 });
@@ -32734,10 +32740,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasName("ak_webhook_retention_holds_tenant_id_id");
 
                     b.HasIndex("SubjectKindId")
-                        .HasDatabaseName("ix_ie_webhook_retention_holds_subject_kind_id");
+                        .HasDatabaseName("ix_webhook_retention_holds_subject_kind_id");
 
                     b.HasIndex("TenantId", "SubjectKindId", "SubjectId", "ReleasedAt", "ExpiresAt")
-                        .HasDatabaseName("IX_ie_webhook_retention_holds_tenant_id_subject_kind_id_B4AF1516");
+                        .HasDatabaseName("ix_ie_webhook_retention_holds_tenant_id_subject_kind_id_c3f799eb");
 
                     b.ToTable("ie_webhook_retention_holds", null, t =>
                         {
@@ -32775,7 +32781,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ux_webhook_retention_subject_kinds_master_code");
+                        .HasDatabaseName("ix_webhook_retention_subject_kinds_master_code");
 
                     b.ToTable("ie_webhook_retention_subject_kinds", (string)null);
                 });
@@ -32787,7 +32793,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_delivery_intents_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_delivery_intents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany()
@@ -32795,7 +32801,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_delivery_intents_ie_admission_tickets_t_7C8C30B9");
+                        .HasConstraintName("fk_ie_admission_delivery_intents_ie_admission_tickets_t_1d69a9c5");
 
                     b.HasOne("Explore.Domain.RegistrationFinalizationEffect", null)
                         .WithMany()
@@ -32803,7 +32809,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_delivery_intents_ie_registration_finali_3EC344FD");
+                        .HasConstraintName("fk_ie_admission_delivery_intents_ie_registration_finali_28b74891");
 
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
@@ -32811,7 +32817,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_delivery_intents_ie_registration_ticket_3FEC6E73");
+                        .HasConstraintName("fk_ie_admission_delivery_intents_ie_registration_ticket_797e27d3");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -32821,37 +32827,37 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actors_actor_types_actor_type_id");
+                        .HasConstraintName("fk_actors_actor_types_actor_type_id");
 
                     b.HasOne("Explore.Domain.ExternalActorSubject", "ExternalActorSubject")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "ExternalActorSubjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_actors_ie_external_actor_subjects_external_actor__3E9C152D");
+                        .HasConstraintName("fk_ie_actors_ie_external_actor_subjects_external_actor__45510454");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_actors_groups_group_id");
+                        .HasConstraintName("fk_actors_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_actors_organizations_organization_id");
+                        .HasConstraintName("fk_actors_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.ServicePrincipal", "ServicePrincipal")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "ServicePrincipalId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_actors_service_principals_service_principal_id");
+                        .HasConstraintName("fk_actors_service_principals_service_principal_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_actors_users_user_id");
+                        .HasConstraintName("fk_actors_users_user_id");
 
                     b.Navigation("ActorType");
 
@@ -32873,14 +32879,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_key_stores_ie_actors_actor_id");
+                        .HasConstraintName("fk_actor_key_stores_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_key_stores_tenants_tenant_id");
+                        .HasConstraintName("fk_actor_key_stores_tenants_tenant_id");
 
                     b.Navigation("Actor");
 
@@ -32894,14 +32900,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CanonicalActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_merges_ie_actors_canonical_actor_id");
+                        .HasConstraintName("fk_actor_merges_actors_canonical_actor_id");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany("MergesFrom")
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_merges_ie_actors_source_actor_id");
+                        .HasConstraintName("fk_actor_merges_actors_source_actor_id");
 
                     b.Navigation("CanonicalActor");
 
@@ -32915,7 +32921,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_moderation_records_ie_actors_actor_id");
+                        .HasConstraintName("fk_actor_moderation_records_actors_actor_id");
 
                     b.Navigation("Actor");
                 });
@@ -32927,7 +32933,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.ActorPii", "ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_pii_ie_actors_actor_id");
+                        .HasConstraintName("fk_actor_pii_actors_actor_id");
 
                     b.Navigation("Actor");
                 });
@@ -32939,42 +32945,42 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("NotificationLevelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_actor_subscriptions_ie_actor_subscription_notific_B2F5791F");
+                        .HasConstraintName("fk_ie_actor_subscriptions_ie_actor_subscription_notific_7c6f6927");
 
                     b.HasOne("Explore.Domain.ActorSubscriptionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_actor_subscriptions_ie_actor_subscription_statuse_1F0DD03B");
+                        .HasConstraintName("fk_ie_actor_subscriptions_ie_actor_subscription_statuse_4db70229");
 
                     b.HasOne("Explore.Domain.User", "SubscriberUser")
                         .WithMany()
                         .HasForeignKey("SubscriberUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_subscriptions_users_subscriber_user_id");
+                        .HasConstraintName("fk_actor_subscriptions_users_subscriber_user_id");
 
                     b.HasOne("Explore.Domain.Actor", "TargetActor")
                         .WithMany()
                         .HasForeignKey("TargetActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_subscriptions_ie_actors_target_actor_id");
+                        .HasConstraintName("fk_actor_subscriptions_actors_target_actor_id");
 
                     b.HasOne("Explore.Domain.ActorType", "TargetActorType")
                         .WithMany()
                         .HasForeignKey("TargetActorTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_subscriptions_actor_types_target_actor_type_id");
+                        .HasConstraintName("fk_actor_subscriptions_actor_types_target_actor_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_actor_subscriptions_tenants_tenant_id");
+                        .HasConstraintName("fk_actor_subscriptions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "SubscriberTenantUser")
                         .WithMany()
@@ -32982,7 +32988,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_actor_subscriptions_ie_tenant_users_tenant_id_sub_928984E3");
+                        .HasConstraintName("fk_ie_actor_subscriptions_ie_tenant_users_tenant_id_sub_9ca273f1");
 
                     b.Navigation("NotificationLevel");
 
@@ -33006,7 +33012,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_check_in_events_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_check_in_events_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.AdmissionTarget", null)
                         .WithMany()
@@ -33014,7 +33020,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_check_in_events_ie_admission_targets_te_75494AA9");
+                        .HasConstraintName("fk_ie_admission_check_in_events_ie_admission_targets_te_b82eddaf");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany()
@@ -33022,21 +33028,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_check_in_events_ie_admission_tickets_te_68A74BE2");
+                        .HasConstraintName("fk_ie_admission_check_in_events_ie_admission_tickets_te_c1a86643");
 
                     b.HasOne("Explore.Domain.AdmissionScannerCapability", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ScannerCapabilityId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_check_in_events_ie_admission_scanner_ca_95CD3CBB");
+                        .HasConstraintName("fk_ie_admission_check_in_events_ie_admission_scanner_ca_66018784");
 
                     b.HasOne("Explore.Domain.AdmissionCheckInEvent", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "CompensatedCheckInEventId")
                         .HasPrincipalKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_check_in_events_ie_admission_check_in_e_98F36173");
+                        .HasConstraintName("fk_ie_admission_check_in_events_ie_admission_check_in_e_3650a14f");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionCheckInPolicy", b =>
@@ -33047,7 +33053,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_check_in_policies_ie_admission_targets__763D314E");
+                        .HasConstraintName("fk_ie_admission_check_in_policies_ie_admission_targets__5602bab2");
 
                     b.Navigation("Target");
                 });
@@ -33059,7 +33065,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_check_in_states_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_check_in_states_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.AdmissionTarget", null)
                         .WithMany()
@@ -33067,7 +33073,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_check_in_states_ie_admission_targets_te_980E1E5A");
+                        .HasConstraintName("fk_ie_admission_check_in_states_ie_admission_targets_te_069418ab");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany()
@@ -33075,14 +33081,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_check_in_states_ie_admission_tickets_te_6EC11450");
+                        .HasConstraintName("fk_ie_admission_check_in_states_ie_admission_tickets_te_58b078ed");
 
                     b.HasOne("Explore.Domain.AdmissionCheckInEvent", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "ActiveCheckInEventId")
                         .HasPrincipalKey("TenantId", "AdmissionTicketId", "AdmissionTargetId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_check_in_states_ie_admission_check_in_e_BD981186");
+                        .HasConstraintName("fk_ie_admission_check_in_states_ie_admission_check_in_e_06c45b0c");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionRecoveryCapability", b =>
@@ -33092,7 +33098,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_recovery_capabilities_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_recovery_capabilities_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany()
@@ -33100,7 +33106,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_recovery_capabilities_ie_admission_tick_04518CFA");
+                        .HasConstraintName("fk_ie_admission_recovery_capabilities_ie_admission_tick_7b526311");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionRecoveryDeliveryIntent", b =>
@@ -33110,7 +33116,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_recovery_delivery_intents_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_recovery_delivery_intents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany()
@@ -33118,7 +33124,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_recovery_delivery_intents_ie_admission__A04C4535");
+                        .HasConstraintName("fk_ie_admission_recovery_delivery_intents_ie_admission__f1abade7");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionRecoveryRequestIntent", b =>
@@ -33128,7 +33134,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_recovery_request_intents_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_recovery_request_intents_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionScannerCapability", b =>
@@ -33138,20 +33144,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("IssuedByActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_scanner_capabilities_ie_actors_issued_b_D491BA1B");
+                        .HasConstraintName("fk_ie_admission_scanner_capabilities_ie_actors_issued_b_cfb81b40");
 
                     b.HasOne("Explore.Domain.Actor", null)
                         .WithMany()
                         .HasForeignKey("RevokedByActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_scanner_capabilities_ie_actors_revoked__0FDC9CAE");
+                        .HasConstraintName("fk_ie_admission_scanner_capabilities_ie_actors_revoked__0ac449f9");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_scanner_capabilities_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_scanner_capabilities_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33159,7 +33165,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_scanner_capabilities_ie_events_tenant_i_92531AE1");
+                        .HasConstraintName("fk_ie_admission_scanner_capabilities_ie_events_tenant_i_241630ef");
 
                     b.HasOne("Explore.Domain.AdmissionTarget", null)
                         .WithMany()
@@ -33167,7 +33173,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_scanner_capabilities_ie_admission_targe_7139C180");
+                        .HasConstraintName("fk_ie_admission_scanner_capabilities_ie_admission_targe_87cf6f04");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionTarget", b =>
@@ -33177,7 +33183,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_targets_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_targets_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33185,21 +33191,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_targets_events_tenant_id_event_id");
+                        .HasConstraintName("fk_admission_targets_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventDay", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_targets_ie_event_days_tenant_id_event_i_2DBFC04B");
+                        .HasConstraintName("fk_ie_admission_targets_ie_event_days_tenant_id_event_i_e34cd61b");
 
                     b.HasOne("Explore.Domain.EventSession", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventSessionId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_admission_targets_ie_event_sessions_tenant_id_eve_980BD39B");
+                        .HasConstraintName("fk_ie_admission_targets_ie_event_sessions_tenant_id_eve_64232306");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdmissionTicket", b =>
@@ -33209,21 +33215,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AdmissionTicketStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_admission_ticket_statuses_ad_A6BCCD5A");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_admission_ticket_statuses_ad_25004bae");
 
                     b.HasOne("Explore.Domain.AdmissionTicketTransitionReason", "LastTransitionReason")
                         .WithMany()
                         .HasForeignKey("LastTransitionReasonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_admission_ticket_transition__38739B6B");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_admission_ticket_transition__75373241");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_admission_tickets_tenants_tenant_id");
+                        .HasConstraintName("fk_admission_tickets_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany()
@@ -33231,7 +33237,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_event_ticket_types_tenant_id_13AB1D4A");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_event_ticket_types_tenant_id_f3a8556c");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany()
@@ -33239,7 +33245,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_event_ticket_catalog_version_DB4B0BC1");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_event_ticket_catalog_version_68e53b25");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -33247,7 +33253,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_registration_orders_tenant_i_5786EE08");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_registration_orders_tenant_i_48e419f6");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", null)
                         .WithMany()
@@ -33255,7 +33261,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_registration_participants_te_ED140969");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_registration_participants_te_0dee4084");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", null)
                         .WithMany()
@@ -33263,7 +33269,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_registration_order_lines_ten_9F2C5786");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_registration_order_lines_ten_c9ebbae1");
 
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
@@ -33271,7 +33277,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_tickets_ie_registration_ticket_assignme_1704F1DE");
+                        .HasConstraintName("fk_ie_admission_tickets_ie_registration_ticket_assignme_5d258f2c");
 
                     b.Navigation("AdmissionTicketStatus");
 
@@ -33285,7 +33291,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AdmissionTicketCredentialStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_ticket_credentials_ie_admission_ticket__5584FA56");
+                        .HasConstraintName("fk_ie_admission_ticket_credentials_ie_admission_ticket__cce03fd4");
 
                     b.HasOne("Explore.Domain.AdmissionTicket", null)
                         .WithMany("Credentials")
@@ -33293,7 +33299,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_admission_ticket_credentials_ie_admission_tickets_C87CCEE8");
+                        .HasConstraintName("fk_ie_admission_ticket_credentials_ie_admission_tickets_bbb0a864");
 
                     b.Navigation("AdmissionTicketCredentialStatus");
                 });
@@ -33304,28 +33310,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_ai_conversations_ie_actors_actor_id");
+                        .HasConstraintName("fk_ai_conversations_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Ai.AiConversationStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_conversations_ai_conversation_statuses_status_id");
+                        .HasConstraintName("fk_ai_conversations_ai_conversation_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_conversations_tenants_tenant_id");
+                        .HasConstraintName("fk_ai_conversations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_conversations_users_user_id");
+                        .HasConstraintName("fk_ai_conversations_users_user_id");
 
                     b.Navigation("Actor");
 
@@ -33343,14 +33349,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ai_conversation_references_ie_ai_conversations_co_B9F495CD");
+                        .HasConstraintName("fk_ie_ai_conversation_references_ie_ai_conversations_co_bf847187");
 
                     b.HasOne("Explore.Domain.Ai.AiReferenceKindLookup", "KindLookup")
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_conversation_references_ai_reference_kinds_kind_id");
+                        .HasConstraintName("fk_ai_conversation_references_ai_reference_kinds_kind_id");
 
                     b.Navigation("Conversation");
 
@@ -33364,14 +33370,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_messages_ie_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ai_messages_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiMessageRoleLookup", "RoleLookup")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_messages_ai_message_roles_role_id");
+                        .HasConstraintName("fk_ai_messages_ai_message_roles_role_id");
 
                     b.Navigation("Conversation");
 
@@ -33384,34 +33390,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActingActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_actors_acting_actor_id");
+                        .HasConstraintName("fk_ai_proposed_actions_actors_acting_actor_id");
 
                     b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
                         .WithMany("ProposedActions")
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ai_proposed_actions_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiProposedActionKindLookup", "KindLookup")
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
+                        .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
 
                     b.HasOne("Explore.Domain.Ai.AiMessage", "Message")
                         .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_ai_messages_message_id");
+                        .HasConstraintName("fk_ai_proposed_actions_ai_messages_message_id");
 
                     b.HasOne("Explore.Domain.Ai.AiProposedActionStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ai_proposed_actions_ie_ai_proposed_action_statuse_2757EF03");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_ai_proposed_action_statuse_d02e23c6");
 
                     b.Navigation("ActingActor");
 
@@ -33431,14 +33437,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_runs_ie_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ai_runs_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiRunStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_runs_ai_run_statuses_status_id");
+                        .HasConstraintName("fk_ai_runs_ai_run_statuses_status_id");
 
                     b.Navigation("Conversation");
 
@@ -33452,7 +33458,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ProposedActionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ai_tool_executions_ie_ai_proposed_actions_propose_2CDD73B8");
+                        .HasConstraintName("fk_ie_ai_tool_executions_ie_ai_proposed_actions_propose_46b6e7ae");
 
                     b.Navigation("ProposedAction");
                 });
@@ -33464,21 +33470,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_consent_grants_ie_ai_consent_grants_id");
+                        .HasConstraintName("fk_ai_consent_grants_ai_consent_grants_id");
 
                     b.HasOne("Explore.Domain.User", "SubjectUser")
                         .WithMany()
                         .HasForeignKey("SubjectUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_consent_grants_users_subject_user_id");
+                        .HasConstraintName("fk_ai_consent_grants_users_subject_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_ai_consent_grants_tenants_tenant_id");
+                        .HasConstraintName("fk_ai_consent_grants_tenants_tenant_id");
 
                     b.Navigation("Self");
 
@@ -33494,13 +33500,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_atproto_identities_ie_actors_actor_id");
+                        .HasConstraintName("fk_atproto_identities_actors_actor_id");
 
                     b.HasOne("Explore.Domain.DidCustodyType", "DidCustodyType")
                         .WithMany()
                         .HasForeignKey("DidCustodyTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_atproto_identities_ie_did_custody_types_did_custo_30E349D1");
+                        .HasConstraintName("fk_ie_atproto_identities_ie_did_custody_types_did_custo_9529ee6d");
 
                     b.Navigation("Actor");
 
@@ -33514,7 +33520,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AtprotoIdentityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_identity_moderation_records_ie_atproto_id_3AFBEBDF");
+                        .HasConstraintName("fk_ie_atproto_identity_moderation_records_ie_atproto_id_0b8b1132");
 
                     b.Navigation("AtprotoIdentity");
                 });
@@ -33526,7 +33532,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_audit_logs_tenants_tenant_id");
+                        .HasConstraintName("fk_audit_logs_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33538,14 +33544,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Parent")
                         .WithMany()
                         .HasForeignKey("TenantId", "ParentId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_categories_ie_categories_tenant_id_parent_id");
+                        .HasConstraintName("fk_categories_categories_tenant_id_parent_id");
 
                     b.Navigation("Parent");
 
@@ -33559,21 +33565,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_category_type_categories_ie_categories_category_id");
+                        .HasConstraintName("fk_category_type_categories_categories_category_id");
 
                     b.HasOne("Explore.Domain.CategoryType", "CategoryType")
                         .WithMany()
                         .HasForeignKey("CategoryTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_category_type_categories_ie_category_types_catego_2C344133");
+                        .HasConstraintName("fk_ie_category_type_categories_ie_category_types_catego_a462c5ae");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_category_type_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_category_type_categories_tenants_tenant_id");
 
                     b.Navigation("Category");
 
@@ -33589,7 +33595,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_checkout_dispatch_effects_tenants_tenant_id");
+                        .HasConstraintName("fk_checkout_dispatch_effects_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -33597,7 +33603,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_checkout_dispatch_effects_ie_payment_attempts_ten_CC3192CC");
+                        .HasConstraintName("fk_ie_checkout_dispatch_effects_ie_payment_attempts_ten_aa89e648");
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
@@ -33607,7 +33613,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("SettingScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_configuration_change_logs_ie_setting_scopes_setti_CEF2F753");
+                        .HasConstraintName("fk_ie_configuration_change_logs_ie_setting_scopes_setti_3be658f4");
 
                     b.Navigation("SettingScope");
                 });
@@ -33619,14 +33625,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("OperationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_configuration_manifest_tenant_results_ie_configur_6FBD2055");
+                        .HasConstraintName("fk_ie_configuration_manifest_tenant_results_ie_configur_635e09c2");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_configuration_manifest_tenant_results_tenants_tenant_id");
+                        .HasConstraintName("fk_configuration_manifest_tenant_results_tenants_tenant_id");
 
                     b.Navigation("Operation");
 
@@ -33639,14 +33645,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_custom_property_definitions_ie_custom_property_op_E6543E6C");
+                        .HasConstraintName("fk_ie_custom_property_definitions_ie_custom_property_op_fd1328b4");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -33660,13 +33666,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_custom_property_options_ie_custom_property_defini_7E7C346B");
+                        .HasConstraintName("fk_ie_custom_property_options_ie_custom_property_defini_4777e004");
 
                     b.HasOne("Explore.Domain.CustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_custom_property_options_ie_custom_property_option_71FC3216");
+                        .HasConstraintName("fk_ie_custom_property_options_ie_custom_property_option_caff6988");
 
                     b.Navigation("Definition");
 
@@ -33680,7 +33686,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_custom_property_projection_dirty_scope_ie_tenants_8550A843");
+                        .HasConstraintName("fk_ie_custom_property_projection_dirty_scopes_ie_tenant_51a385b2");
 
                     b.Navigation("Tenant");
                 });
@@ -33692,7 +33698,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_custom_property_projection_status_tenants_tenant_id");
+                        .HasConstraintName("fk_custom_property_projection_statuses_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33704,20 +33710,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_custom_property_values_ie_custom_property_definit_6C422346");
+                        .HasConstraintName("fk_ie_custom_property_values_ie_custom_property_definit_51eca95a");
 
                     b.HasOne("Explore.Domain.CustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_custom_property_values_ie_custom_property_options_E71F2ADE");
+                        .HasConstraintName("fk_ie_custom_property_values_ie_custom_property_options_96ed4b72");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -33733,7 +33739,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_email_dispatch_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_email_dispatch_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
@@ -33741,7 +33747,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_email_dispatch_attempts_ie_email_dispatch_outbox__5705CF8D");
+                        .HasConstraintName("fk_ie_email_dispatch_attempts_ie_email_dispatch_outbox__4182044c");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -33754,20 +33760,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_email_dispatch_outbox_events_event_id");
+                        .HasConstraintName("fk_email_dispatch_outbox_events_event_id");
 
                     b.HasOne("Explore.Domain.ManagedTenantProvisioningOperation", "ManagedTenantProvisioningOperation")
                         .WithMany()
                         .HasForeignKey("ManagedTenantProvisioningOperationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_email_dispatch_outbox_ie_managed_tenant_provision_58905597");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_ie_managed_tenant_provision_1e31eb4b");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_email_dispatch_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_email_dispatch_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "RecipientTenantUser")
                         .WithMany()
@@ -33775,14 +33781,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_email_dispatch_outbox_ie_tenant_users_tenant_id_r_3C36E500");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_ie_tenant_users_tenant_id_r_7886c442");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_email_dispatch_outbox_ie_registration_orders_tena_9EEB1D0C");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_ie_registration_orders_tena_4472129f");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany()
@@ -33790,7 +33796,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id", "RecipientUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_email_dispatch_outbox_ie_notification_intents_ten_018BF2B8");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_ie_notification_intents_ten_2a602c9d");
 
                     b.Navigation("Event");
 
@@ -33812,7 +33818,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_email_dispatch_receipts_tenants_tenant_id");
+                        .HasConstraintName("fk_email_dispatch_receipts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
@@ -33820,7 +33826,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id", "PublishEventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_email_dispatch_receipts_ie_email_dispatch_outbox__078514CF");
+                        .HasConstraintName("fk_ie_email_dispatch_receipts_ie_email_dispatch_outbox__9c4b2a43");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -33834,7 +33840,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_email_dispatch_tenant_controls_tenants_tenant_id");
+                        .HasConstraintName("fk_email_dispatch_tenant_controls_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33846,107 +33852,107 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_ie_actors_actor_id");
+                        .HasConstraintName("fk_events_actors_actor_id");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_events_ie_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_events_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.AudienceAge", "AudienceAge")
                         .WithMany()
                         .HasForeignKey("AudienceAgeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_ie_audience_ages_audience_age_id");
+                        .HasConstraintName("fk_events_audience_ages_audience_age_id");
 
                     b.HasOne("Explore.Domain.AudienceGender", "AudienceGender")
                         .WithMany()
                         .HasForeignKey("AudienceGenderId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_ie_audience_genders_audience_gender_id");
+                        .HasConstraintName("fk_events_audience_genders_audience_gender_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_events_storage_objects_background_image_id");
+                        .HasConstraintName("fk_events_storage_objects_background_image_id");
 
                     b.HasOne("Explore.Domain.EventFormat", "EventFormat")
                         .WithMany()
                         .HasForeignKey("EventFormatId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_event_formats_event_format_id");
+                        .HasConstraintName("fk_events_event_formats_event_format_id");
 
                     b.HasOne("Explore.Domain.EventProvenanceType", "EventProvenanceType")
                         .WithMany()
                         .HasForeignKey("EventProvenanceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_event_provenance_types_event_provenance_type_id");
+                        .HasConstraintName("fk_events_event_provenance_types_event_provenance_type_id");
 
                     b.HasOne("Explore.Domain.EventSeries", "EventSeries")
                         .WithMany("Events")
                         .HasForeignKey("EventSeriesId")
-                        .HasConstraintName("fk_ie_events_event_series_event_series_id");
+                        .HasConstraintName("fk_events_event_series_event_series_id");
 
                     b.HasOne("Explore.Domain.EventStatus", "EventStatus")
                         .WithMany()
                         .HasForeignKey("EventStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_event_statuses_event_status_id");
+                        .HasConstraintName("fk_events_event_statuses_event_status_id");
 
                     b.HasOne("Explore.Domain.EventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_event_types_event_type_id");
+                        .HasConstraintName("fk_events_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_events_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.Madhab", "Madhab")
                         .WithMany()
                         .HasForeignKey("MadhabId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_madhabs_madhab_id");
+                        .HasConstraintName("fk_events_madhabs_madhab_id");
 
                     b.HasOne("Explore.Domain.Actor", "OrganizerActor")
                         .WithMany()
                         .HasForeignKey("OrganizerActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_ie_actors_organizer_actor_id");
+                        .HasConstraintName("fk_events_actors_organizer_actor_id");
 
                     b.HasOne("Explore.Domain.EventRegistrationPolicy", "RegistrationPolicy")
                         .WithMany()
                         .HasForeignKey("RegistrationPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_events_ie_event_registration_policies_registratio_B39E708A");
+                        .HasConstraintName("fk_ie_events_ie_event_registration_policies_registratio_da510cf2");
 
                     b.HasOne("Explore.Domain.User", "SubmittedByUser")
                         .WithMany()
                         .HasForeignKey("SubmittedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_events_users_submitted_by_user_id");
+                        .HasConstraintName("fk_events_users_submitted_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_tenants_tenant_id");
+                        .HasConstraintName("fk_events_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
                         .WithMany()
                         .HasForeignKey("VisibilityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_events_visibility_types_visibility_type_id");
+                        .HasConstraintName("fk_events_visibility_types_visibility_type_id");
 
                     b.Navigation("Actor");
 
@@ -33989,14 +33995,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_agenda_items_schedule_item_kinds_kind_id");
+                        .HasConstraintName("fk_event_agenda_items_schedule_item_kinds_kind_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_agenda_items_tenants_tenant_id");
+                        .HasConstraintName("fk_event_agenda_items_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("AgendaItems")
@@ -34004,35 +34010,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_agenda_items_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_agenda_items_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_agenda_items_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_event_agenda_items_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventDay", "EventDay")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_agenda_items_ie_event_days_tenant_id_event__BD5488A2");
+                        .HasConstraintName("fk_ie_event_agenda_items_ie_event_days_tenant_id_event__a15c30ea");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_agenda_items_ie_event_locations_tenant_id_e_80F033BE");
+                        .HasConstraintName("fk_ie_event_agenda_items_ie_event_locations_tenant_id_e_f8cdabca");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_agenda_items_ie_location_rooms_tenant_id_lo_9F75609D");
+                        .HasConstraintName("fk_ie_event_agenda_items_ie_location_rooms_tenant_id_lo_97e90070");
 
                     b.Navigation("Event");
 
@@ -34056,21 +34062,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CapacityHoldPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_capacity_pools_ie_capacity_hold_policies_ca_FFE4F981");
+                        .HasConstraintName("fk_ie_event_capacity_pools_ie_capacity_hold_policies_ca_36020b51");
 
                     b.HasOne("Explore.Domain.CapacityOversellPolicy", "CapacityOversellPolicy")
                         .WithMany()
                         .HasForeignKey("CapacityOversellPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_capacity_pools_ie_capacity_oversell_policie_1964C46F");
+                        .HasConstraintName("fk_ie_event_capacity_pools_ie_capacity_oversell_policie_3804a7a0");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_capacity_pools_tenants_tenant_id");
+                        .HasConstraintName("fk_event_capacity_pools_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany("CapacityPools")
@@ -34078,7 +34084,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_capacity_pools_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_capacity_pools_events_tenant_id_event_id");
 
                     b.Navigation("CapacityHoldPolicy");
 
@@ -34092,7 +34098,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_event_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Category")
                         .WithMany()
@@ -34100,7 +34106,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_categories_ie_categories_tenant_id_category_id");
+                        .HasConstraintName("fk_event_categories_categories_tenant_id_category_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -34108,7 +34114,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_categories_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_categories_events_tenant_id_event_id");
 
                     b.Navigation("Category");
 
@@ -34124,48 +34130,48 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RecipientActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_actors_recipient_actor_id");
+                        .HasConstraintName("fk_event_contact_share_consents_actors_recipient_actor_id");
 
                     b.HasOne("Explore.Domain.ContactShareConsentSubjectType", "SubjectType")
                         .WithMany()
                         .HasForeignKey("SubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_contact_share_con_7D67DB77");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_contact_share_con_ab41c7da");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_consents_tenants_tenant_id");
+                        .HasConstraintName("fk_event_contact_share_consents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "UserSubject")
                         .WithMany()
                         .HasForeignKey("UserSubjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_contact_share_consents_users_user_subject_id");
+                        .HasConstraintName("fk_event_contact_share_consents_users_user_subject_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "GuestContactOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "GuestContactOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_orde_3B19615A");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_registration_orde_3172960b");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationParticipantId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_part_81B2237D");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_registration_part_515792f3");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationPurchaserOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationPurchaserOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_orde_401190BF");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_registration_orde_5ae44423");
 
                     b.Navigation("GuestContactOrder");
 
@@ -34186,20 +34192,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_contact_share_consent_history_ie_actors_actor_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_consent_history_tenants_tenant_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_contact_share_consent_history_users_user_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_users_user_id");
 
                     b.HasOne("Explore.Domain.EventContactShareConsent", "Consent")
                         .WithMany()
@@ -34207,21 +34213,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_event_cont_0F3065C1");
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_ie_event_cont_869e1510");
 
                     b.HasOne("Explore.Domain.Event", "SourceEvent")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceEventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_events_ten_0ED20075");
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_ie_events_ten_b7e45e81");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "SourceRegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceRegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_registrati_121148CD");
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_ie_registrati_9992d857");
 
                     b.Navigation("Actor");
 
@@ -34240,28 +34246,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ExportedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_contact_share_exports_users_exported_by_user_id");
+                        .HasConstraintName("fk_event_contact_share_exports_users_exported_by_user_id");
 
                     b.HasOne("Explore.Domain.Actor", "RecipientActor")
                         .WithMany()
                         .HasForeignKey("RecipientActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_exports_ie_actors_recipient_actor_id");
+                        .HasConstraintName("fk_event_contact_share_exports_actors_recipient_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_exports_tenants_tenant_id");
+                        .HasConstraintName("fk_event_contact_share_exports_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_contact_share_exports_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_contact_share_exports_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -34279,14 +34285,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConsentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_contact_share_export_items_ie_event_contact_9F636300");
+                        .HasConstraintName("fk_ie_event_contact_share_export_items_ie_event_contact_0b2cb43f");
 
                     b.HasOne("Explore.Domain.EventContactShareExport", "Export")
                         .WithMany("Items")
                         .HasForeignKey("ExportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_contact_share_export_items_ie_event_contact_9FB02650");
+                        .HasConstraintName("fk_ie_event_contact_share_export_items_ie_event_contact_7b2ddcb6");
 
                     b.Navigation("Consent");
 
@@ -34299,27 +34305,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_custom_property_definitions_ie_event_custom_2034C9B3");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_ie_event_custom_d1aeb096");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_definitions_ie_events_event_id");
+                        .HasConstraintName("fk_event_custom_property_definitions_events_event_id");
 
                     b.HasOne("Explore.Domain.EventTemplate", "SourceTemplate")
                         .WithMany()
                         .HasForeignKey("SourceTemplateId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_custom_property_definitions_ie_event_templa_EB07E084");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_ie_event_templa_541dbe79");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -34337,13 +34343,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_custom_property_options_ie_event_custom_pro_E2BB2181");
+                        .HasConstraintName("fk_ie_event_custom_property_options_ie_event_custom_pro_23c6f1a6");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_custom_property_options_ie_event_custom_pro_2EC159D0");
+                        .HasConstraintName("fk_ie_event_custom_property_options_ie_event_custom_pro_74c06b03");
 
                     b.Navigation("Definition");
 
@@ -34357,34 +34363,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_custom_property_projections_ie_event_custom_C5E1624C");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_event_custom_00e13575");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyValue", "Value")
                         .WithMany()
                         .HasForeignKey("EventCustomPropertyValueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_custom_property_projections_ie_event_custom_BD16BC24");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_event_custom_2ea04c38");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_events_event_id");
+                        .HasConstraintName("fk_event_custom_property_projections_events_event_id");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_custom_property_projections_ie_event_custom_C62E92F0");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_event_custom_7a9a2568");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_projections_tenants_tenant_id");
+                        .HasConstraintName("fk_event_custom_property_projections_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -34404,27 +34410,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_custom_property_values_ie_event_custom_prop_A658759D");
+                        .HasConstraintName("fk_ie_event_custom_property_values_ie_event_custom_prop_9e905fcf");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_values_ie_events_event_id");
+                        .HasConstraintName("fk_event_custom_property_values_events_event_id");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_custom_property_values_ie_event_custom_prop_237D1F77");
+                        .HasConstraintName("fk_ie_event_custom_property_values_ie_event_custom_prop_62f8d3be");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_event_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -34441,14 +34447,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("BannerImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_event_days_storage_objects_banner_image_id");
+                        .HasConstraintName("fk_event_days_storage_objects_banner_image_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_days_tenants_tenant_id");
+                        .HasConstraintName("fk_event_days_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("Days")
@@ -34456,7 +34462,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_days_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_days_events_tenant_id_event_id");
 
                     b.Navigation("BannerImage");
 
@@ -34472,19 +34478,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.EventIslamicAspect", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_islamic_aspects_ie_events_id");
+                        .HasConstraintName("fk_event_islamic_aspects_events_id");
 
                     b.HasOne("Explore.Domain.Madhab", "Madhab")
                         .WithMany()
                         .HasForeignKey("MadhabId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_event_islamic_aspects_madhabs_madhab_id");
+                        .HasConstraintName("fk_event_islamic_aspects_madhabs_madhab_id");
 
                     b.HasOne("Explore.Domain.Language", "PrimaryLanguage")
                         .WithMany()
                         .HasForeignKey("PrimaryLanguageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_event_islamic_aspects_languages_primary_language_id");
+                        .HasConstraintName("fk_event_islamic_aspects_languages_primary_language_id");
 
                     b.Navigation("Event");
 
@@ -34500,14 +34506,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("FullDetailsAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_locations_ie_location_disclosure_audiences__6B7152B2");
+                        .HasConstraintName("fk_ie_event_locations_ie_location_disclosure_audiences__4ef69a93");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_locations_tenants_tenant_id");
+                        .HasConstraintName("fk_event_locations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -34515,14 +34521,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_locations_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_locations_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_locations_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_event_locations_locations_tenant_id_location_id");
 
                     b.Navigation("Event");
 
@@ -34540,21 +34546,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("NewAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_location_disclosure_audits_ie_location_disc_B5E521D4");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_ie_location_disc_c7852383");
 
                     b.HasOne("Explore.Domain.LocationDisclosureAudience", null)
                         .WithMany()
                         .HasForeignKey("PreviousAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_location_disclosure_audits_ie_location_disc_9730B651");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_ie_location_disc_2bf9a5e0");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_location_disclosure_audits_tenants_tenant_id");
+                        .HasConstraintName("fk_event_location_disclosure_audits_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", null)
                         .WithMany()
@@ -34562,7 +34568,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_location_disclosure_audits_ie_event_locatio_5D327105");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_ie_event_locatio_bf804a97");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventLocationExactReadAudit", b =>
@@ -34572,7 +34578,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_location_exact_read_audits_tenants_tenant_id");
+                        .HasConstraintName("fk_event_location_exact_read_audits_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", null)
                         .WithMany()
@@ -34580,7 +34586,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_location_exact_read_audits_ie_event_locatio_0DE8047A");
+                        .HasConstraintName("fk_ie_event_location_exact_read_audits_ie_event_locatio_a3f6c5e8");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventModerationRecord", b =>
@@ -34589,14 +34595,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("SourceModerationRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_moderation_records_ie_event_moderation_reco_07BBD481");
+                        .HasConstraintName("fk_ie_event_moderation_records_ie_event_moderation_reco_126dee08");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_moderation_records_tenants_tenant_id");
+                        .HasConstraintName("fk_event_moderation_records_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("ModerationRecords")
@@ -34604,21 +34610,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_moderation_records_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_moderation_records_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventReport", "SourceReport")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceReportId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_moderation_records_ie_event_reports_tenant__E82F7E44");
+                        .HasConstraintName("fk_ie_event_moderation_records_ie_event_reports_tenant__0205c4fe");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "SourceReportDecision")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceReportId", "SourceReportDecisionId")
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_moderation_records_ie_event_report_decision_83A19791");
+                        .HasConstraintName("fk_ie_event_moderation_records_ie_event_report_decision_de7bc517");
 
                     b.Navigation("Event");
 
@@ -34638,27 +34644,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ClaimantActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_organizer_claims_ie_actors_claimant_actor_id");
+                        .HasConstraintName("fk_event_organizer_claims_actors_claimant_actor_id");
 
                     b.HasOne("Explore.Domain.User", "ReviewerUser")
                         .WithMany()
                         .HasForeignKey("ReviewerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_organizer_claims_users_reviewer_user_id");
+                        .HasConstraintName("fk_event_organizer_claims_users_reviewer_user_id");
 
                     b.HasOne("Explore.Domain.EventOrganizerClaimStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_organizer_claims_ie_event_organizer_claim_s_D7D13EDB");
+                        .HasConstraintName("fk_ie_event_organizer_claims_ie_event_organizer_claim_s_2b07e0a8");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_organizer_claims_tenants_tenant_id");
+                        .HasConstraintName("fk_event_organizer_claims_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("OrganizerClaims")
@@ -34666,7 +34672,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_organizer_claims_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_organizer_claims_events_tenant_id_event_id");
 
                     b.Navigation("ClaimantActor");
 
@@ -34686,27 +34692,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AdvanceRegistrationObligationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_participation_configurations_ie_advance_reg_79733CA4");
+                        .HasConstraintName("fk_ie_event_participation_configurations_ie_advance_reg_fa282271");
 
                     b.HasOne("Explore.Domain.IdentityAccessMode", "IdentityAccessMode")
                         .WithMany()
                         .HasForeignKey("IdentityAccessModeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_participation_configurations_ie_identity_ac_60301C51");
+                        .HasConstraintName("fk_ie_event_participation_configurations_ie_identity_ac_a699099f");
 
                     b.HasOne("Explore.Domain.ParticipationHandlingMode", "ParticipationHandlingMode")
                         .WithMany()
                         .HasForeignKey("ParticipationHandlingModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_participation_configurations_ie_participati_92AE8DCB");
+                        .HasConstraintName("fk_ie_event_participation_configurations_ie_participati_2941b95f");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_participation_configurations_tenants_tenant_id");
+                        .HasConstraintName("fk_event_participation_configurations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithOne("ParticipationConfiguration")
@@ -34714,7 +34720,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.Event", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_participation_configurations_ie_events_tenant_id_id");
+                        .HasConstraintName("fk_event_participation_configurations_events_tenant_id_id");
 
                     b.Navigation("AdvanceRegistrationObligation");
 
@@ -34734,21 +34740,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventPublicActionKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_public_actions_ie_event_public_action_kinds_3CF4DE43");
+                        .HasConstraintName("fk_ie_event_public_actions_ie_event_public_action_kinds_5debea00");
 
                     b.HasOne("Explore.Domain.EventPublicActionHealthState", "HealthState")
                         .WithMany()
                         .HasForeignKey("HealthStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_public_actions_ie_event_public_action_healt_E8A9A875");
+                        .HasConstraintName("fk_ie_event_public_actions_ie_event_public_action_healt_10d2b3dc");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_public_actions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_public_actions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("PublicActions")
@@ -34756,7 +34762,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_public_actions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_public_actions_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -34773,26 +34779,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_registrations_ie_approval_statuses_approval_C8154522");
+                        .HasConstraintName("fk_ie_event_registrations_ie_approval_statuses_approval_0f57f0c8");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_event_registrations_ie_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_event_registrations_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.User", "LinkedUser")
                         .WithMany()
                         .HasForeignKey("LinkedUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_registrations_users_linked_user_id");
+                        .HasConstraintName("fk_event_registrations_users_linked_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_registrations_tenants_tenant_id");
+                        .HasConstraintName("fk_event_registrations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -34800,28 +34806,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_registrations_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_registrations_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_registrations_ie_registration_orders_tenant_C64AEC34");
+                        .HasConstraintName("fk_ie_event_registrations_ie_registration_orders_tenant_d9088005");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderLineId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_registrations_ie_registration_order_lines_t_6E3857C8");
+                        .HasConstraintName("fk_ie_event_registrations_ie_registration_order_lines_t_b012ea76");
 
                     b.HasOne("Explore.Domain.TicketTypeEntitlement", "TicketTypeEntitlement")
                         .WithMany()
                         .HasForeignKey("TenantId", "TicketTypeEntitlementId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_registrations_ie_ticket_type_entitlements_t_0FCBEBD6");
+                        .HasConstraintName("fk_ie_event_registrations_ie_ticket_type_entitlements_t_f389aff1");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -34829,14 +34835,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_registrations_ie_event_sessions_tenant_id_e_3BE029FB");
+                        .HasConstraintName("fk_ie_event_registrations_ie_event_sessions_tenant_id_e_b9b9bb32");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_registrations_ie_registration_participants__CE461031");
+                        .HasConstraintName("fk_ie_event_registrations_ie_registration_participants__218b7fca");
 
                     b.Navigation("ApprovalStatus");
 
@@ -34865,20 +34871,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ReporterActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_reports_ie_actors_reporter_actor_id");
+                        .HasConstraintName("fk_event_reports_actors_reporter_actor_id");
 
                     b.HasOne("Explore.Domain.User", "ReporterUser")
                         .WithMany()
                         .HasForeignKey("ReporterUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_reports_users_reporter_user_id");
+                        .HasConstraintName("fk_event_reports_users_reporter_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_reports_tenants_tenant_id");
+                        .HasConstraintName("fk_event_reports_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -34886,7 +34892,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_reports_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_reports_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -34903,14 +34909,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedModeratorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_report_cases_users_assigned_moderator_user_id");
+                        .HasConstraintName("fk_event_report_cases_users_assigned_moderator_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_cases_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_cases_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Cases")
@@ -34918,14 +34924,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_cases_ie_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_event_report_cases_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "CurrentDecision")
                         .WithMany()
                         .HasForeignKey("TenantId", "ReportId", "Id", "CurrentDecisionId")
                         .HasPrincipalKey("TenantId", "ReportId", "CaseId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_report_cases_ie_event_report_decisions_tena_05041589");
+                        .HasConstraintName("fk_ie_event_report_cases_ie_event_report_decisions_tena_94814146");
 
                     b.Navigation("AssignedModeratorUser");
 
@@ -34942,14 +34948,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ModeratorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_report_decisions_users_moderator_user_id");
+                        .HasConstraintName("fk_event_report_decisions_users_moderator_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_decisions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_decisions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Decisions")
@@ -34957,7 +34963,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_report_decisions_ie_event_reports_tenant_id_0A8F91DA");
+                        .HasConstraintName("fk_ie_event_report_decisions_ie_event_reports_tenant_id_be67fbf7");
 
                     b.HasOne("Explore.Domain.EventReportCase", "Case")
                         .WithMany()
@@ -34965,7 +34971,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_report_decisions_ie_event_report_cases_tena_42121B85");
+                        .HasConstraintName("fk_ie_event_report_decisions_ie_event_report_cases_tena_15020c63");
 
                     b.Navigation("Case");
 
@@ -34983,14 +34989,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_decision_executions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_decision_executions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventModerationRecord", "ModerationRecord")
                         .WithMany()
                         .HasForeignKey("TenantId", "ModerationRecordId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_report_decision_executions_ie_event_moderat_B2C785D4");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_moderat_6c11ee88");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
@@ -34998,7 +35004,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_report_decision_executions_ie_event_reports_4EC2B6E2");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_reports_97d93c73");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "Decision")
                         .WithOne("Execution")
@@ -35006,7 +35012,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.EventReportDecision", "TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_report_decision_executions_ie_event_report__77671C8B");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_report__06f0932c");
 
                     b.Navigation("Decision");
 
@@ -35023,14 +35029,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_report_evidence_users_created_by_user_id");
+                        .HasConstraintName("fk_event_report_evidence_items_users_created_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_evidence_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_evidence_items_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("EvidenceItems")
@@ -35038,14 +35044,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_evidence_ie_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_evidence_items_ie_event_reports_tena_d73cbdaa");
 
                     b.HasOne("Explore.Domain.StorageObject", "StorageObject")
                         .WithMany()
                         .HasForeignKey("TenantId", "StorageObjectId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_report_evidence_ie_storage_objects_tenant_i_B9199D4E");
+                        .HasConstraintName("fk_ie_event_report_evidence_items_ie_storage_objects_te_0dfc8e58");
 
                     b.Navigation("CreatedByUser");
 
@@ -35063,7 +35069,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_external_links_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_external_links_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("ExternalLinks")
@@ -35071,14 +35077,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_report_external_links_ie_event_reports_tena_032505D9");
+                        .HasConstraintName("fk_ie_event_report_external_links_ie_event_reports_tena_836693ee");
 
                     b.HasOne("Explore.Domain.EventReportCase", "Case")
                         .WithMany()
                         .HasForeignKey("TenantId", "ReportId", "CaseId")
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
-                        .HasConstraintName("FK_ie_event_report_external_links_ie_event_report_cases_E42B33F3");
+                        .HasConstraintName("fk_ie_event_report_external_links_ie_event_report_cases_f82054c4");
 
                     b.Navigation("Case");
 
@@ -35094,7 +35100,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_signals_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_signals_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -35102,14 +35108,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_signals_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_report_signals_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Signals")
                         .HasForeignKey("TenantId", "EventId", "ReportId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
-                        .HasConstraintName("FK_ie_event_report_signals_ie_event_reports_tenant_id_e_166481EE");
+                        .HasConstraintName("fk_ie_event_report_signals_ie_event_reports_tenant_id_e_ac4d7890");
 
                     b.Navigation("Event");
 
@@ -35125,7 +35131,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_targets_tenants_tenant_id");
+                        .HasConstraintName("fk_event_report_targets_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Targets")
@@ -35133,14 +35139,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_report_targets_ie_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_event_report_targets_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "StorageObject")
                         .WithMany()
                         .HasForeignKey("TenantId", "StorageObjectId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_report_targets_ie_storage_objects_tenant_id_1288BC39");
+                        .HasConstraintName("fk_ie_event_report_targets_ie_storage_objects_tenant_id_c8230ec4");
 
                     b.Navigation("Report");
 
@@ -35156,21 +35162,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_role_assignments_roles_role_id");
+                        .HasConstraintName("fk_event_role_assignments_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_role_assignments_tenants_tenant_id");
+                        .HasConstraintName("fk_event_role_assignments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_role_assignments_users_user_id");
+                        .HasConstraintName("fk_event_role_assignments_users_user_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -35178,7 +35184,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_role_assignments_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_role_assignments_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -35196,26 +35202,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_series_ie_actors_actor_id");
+                        .HasConstraintName("fk_event_series_actors_actor_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
-                        .HasConstraintName("fk_ie_event_series_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_event_series_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_series_tenants_tenant_id");
+                        .HasConstraintName("fk_event_series_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
                         .WithMany()
                         .HasForeignKey("VisibilityTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_series_visibility_types_visibility_type_id");
+                        .HasConstraintName("fk_event_series_visibility_types_visibility_type_id");
 
                     b.Navigation("Actor");
 
@@ -35232,31 +35238,31 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("EventSessionKindId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_sessions_ie_event_session_kinds_event_sessi_3937DEC6");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_session_kinds_event_sessi_2aaceb76");
 
                     b.HasOne("Explore.Domain.EventSessionStatus", "EventSessionStatus")
                         .WithMany()
                         .HasForeignKey("EventSessionStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_sessions_ie_event_session_statuses_event_se_CB8BCAC9");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_session_statuses_event_se_bd58eca1");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
-                        .HasConstraintName("fk_ie_event_sessions_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_event_sessions_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.RegistrationMode", "RegistrationMode")
                         .WithMany()
                         .HasForeignKey("RegistrationModeId")
-                        .HasConstraintName("fk_ie_event_sessions_registration_modes_registration_mode_id");
+                        .HasConstraintName("fk_event_sessions_registration_modes_registration_mode_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("Sessions")
@@ -35264,35 +35270,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_sessions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_sessions_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_sessions_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_event_sessions_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventDay", "EventDay")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_sessions_ie_event_days_tenant_id_event_id_e_81C70335");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_days_tenant_id_event_id_e_e0c60272");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_sessions_ie_event_locations_tenant_id_event_160019F5");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_locations_tenant_id_event_320b48d3");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_sessions_ie_location_rooms_tenant_id_locati_833677DB");
+                        .HasConstraintName("fk_ie_event_sessions_ie_location_rooms_tenant_id_locati_61682d41");
 
                     b.Navigation("Event");
 
@@ -35322,14 +35328,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_agenda_items_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_agenda_items_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_agenda_items_ie_event_locations_ten_9C248F63");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_ie_event_locations_ten_0bbfc524");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -35337,14 +35343,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_agenda_items_ie_event_sessions_tena_32DD5B70");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_ie_event_sessions_tena_d6bf6a38");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_agenda_items_ie_locations_tenant_id_81D9CE59");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_ie_locations_tenant_id_cc976d67");
 
                     b.Navigation("EventLocation");
 
@@ -35362,7 +35368,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Category")
                         .WithMany()
@@ -35370,7 +35376,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_categories_ie_categories_tenant_id__8A213CE3");
+                        .HasConstraintName("fk_ie_event_session_categories_ie_categories_tenant_id__e705e8c7");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -35378,7 +35384,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_categories_ie_event_sessions_tenant_F836F453");
+                        .HasConstraintName("fk_ie_event_session_categories_ie_event_sessions_tenant_4b9ac936");
 
                     b.Navigation("Category");
 
@@ -35393,27 +35399,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_custom_property_definitions_ie_even_231518D2");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_ie_even_b7f331fd");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_definitions_ie_even_88C6AD0C");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_ie_even_3dddcc46");
 
                     b.HasOne("Explore.Domain.EventSessionTemplate", "SourceTemplate")
                         .WithMany()
                         .HasForeignKey("SourceTemplateId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_custom_property_definitions_ie_even_F840B3A0");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_ie_even_9464cfe8");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_definitions_ie_tena_89E15756");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_ie_tena_bbe02c51");
 
                     b.Navigation("DefaultOption");
 
@@ -35431,13 +35437,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventSessionCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_options_ie_event_se_9FE5D6EF");
+                        .HasConstraintName("fk_ie_event_session_custom_property_options_ie_event_se_055da3ed");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_session_custom_property_options_ie_event_se_7B4833F8");
+                        .HasConstraintName("fk_ie_event_session_custom_property_options_ie_event_se_4bb419aa");
 
                     b.Navigation("Definition");
 
@@ -35451,34 +35457,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventSessionCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_projections_ie_even_61F15BE7");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_even_2c6f294b");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyValue", "Value")
                         .WithMany()
                         .HasForeignKey("EventSessionCustomPropertyValueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_projections_ie_even_C3198465");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_even_20290b64");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_projections_ie_even_FB9E8F29");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_even_09de91f9");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_session_custom_property_projections_ie_even_F1ED65B7");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_even_d435cb7a");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_projections_ie_tena_41BD7E76");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_tena_8c8e763b");
 
                     b.Navigation("Definition");
 
@@ -35498,27 +35504,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventSessionCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_values_ie_event_ses_41CBA1ED");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_ses_842bebdd");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_custom_property_values_ie_event_ses_B04A4A54");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_ses_181862db");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_session_custom_property_values_ie_event_ses_E2EDB21B");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_ses_dbf62d87");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -35536,7 +35542,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_groups_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_groups_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("SessionGroups")
@@ -35544,28 +35550,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_groups_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_session_groups_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_session_groups_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_event_session_groups_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_groups_ie_event_locations_tenant_id_3804C1B6");
+                        .HasConstraintName("fk_ie_event_session_groups_ie_event_locations_tenant_id_89eef936");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_groups_ie_location_rooms_tenant_id__8E558EF1");
+                        .HasConstraintName("fk_ie_event_session_groups_ie_location_rooms_tenant_id__727a5535");
 
                     b.Navigation("Event");
 
@@ -35585,7 +35591,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_group_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_group_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -35593,7 +35599,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_session_group_sessions_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventSessionGroup", "EventSessionGroup")
                         .WithMany("Sessions")
@@ -35601,7 +35607,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_group_sessions_ie_event_session_gro_263C349D");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_event_session_gro_3cd0679e");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany("SessionGroups")
@@ -35609,7 +35615,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_group_sessions_ie_event_sessions_te_8CE87DCC");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_event_sessions_te_d8f78717");
 
                     b.Navigation("Event");
 
@@ -35627,7 +35633,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.EventSessionIslamicAspect", "EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_islamic_aspects_ie_event_sessions_e_B8AA9E36");
+                        .HasConstraintName("fk_ie_event_session_islamic_aspects_ie_event_sessions_e_e6336144");
 
                     b.Navigation("EventSession");
                 });
@@ -35639,14 +35645,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("LanguageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_languages_languages_language_id");
+                        .HasConstraintName("fk_event_session_languages_languages_language_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_languages_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_languages_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -35654,7 +35660,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_languages_ie_event_sessions_tenant__3ACB5309");
+                        .HasConstraintName("fk_ie_event_session_languages_ie_event_sessions_tenant__a5de611f");
 
                     b.Navigation("EventSession");
 
@@ -35670,14 +35676,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_speakers_ie_actors_actor_id");
+                        .HasConstraintName("fk_event_session_speakers_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_speakers_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_speakers_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -35685,7 +35691,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_speakers_ie_event_sessions_tenant_i_6F23BBA9");
+                        .HasConstraintName("fk_ie_event_session_speakers_ie_event_sessions_tenant_i_7fe4ad7a");
 
                     b.Navigation("Actor");
 
@@ -35701,7 +35707,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_tags_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -35709,7 +35715,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_tags_ie_event_sessions_tenant_id_ev_E2AEABA2");
+                        .HasConstraintName("fk_ie_event_session_tags_ie_event_sessions_tenant_id_ev_0ddef6e5");
 
                     b.HasOne("Explore.Domain.Tag", "Tag")
                         .WithMany()
@@ -35717,7 +35723,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_tags_tags_tenant_id_tag_id");
+                        .HasConstraintName("fk_event_session_tags_tags_tenant_id_tag_id");
 
                     b.Navigation("EventSession");
 
@@ -35733,14 +35739,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_templates_ie_event_templates_event__8EF43EB7");
+                        .HasConstraintName("fk_ie_event_session_templates_ie_event_templates_event__e66c698a");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_session_templates_tenants_tenant_id");
+                        .HasConstraintName("fk_event_session_templates_tenants_tenant_id");
 
                     b.Navigation("EventTemplate");
 
@@ -35753,21 +35759,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_session_template_custom_property_definition_518DEC0D");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definition_cc482817");
 
                     b.HasOne("Explore.Domain.EventSessionTemplate", "EventSessionTemplate")
                         .WithMany("Definitions")
                         .HasForeignKey("EventSessionTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_template_custom_property_definition_A3911841");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definition_64bba8f9");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_template_custom_property_definition_857ED3DD");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definition_4d2e494f");
 
                     b.Navigation("DefaultOption");
 
@@ -35783,13 +35789,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventSessionTemplateCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_session_template_custom_property_options_ie_5B3B0BFE");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_options_ie_17a945ea");
 
                     b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_session_template_custom_property_options_ie_2B0DFA69");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_options_ie_c907c379");
 
                     b.Navigation("Definition");
 
@@ -35803,7 +35809,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_event_tags_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -35811,7 +35817,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_tags_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_tags_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Tag", "Tag")
                         .WithMany()
@@ -35819,7 +35825,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_tags_tags_tenant_id_tag_id");
+                        .HasConstraintName("fk_event_tags_tags_tenant_id_tag_id");
 
                     b.Navigation("Event");
 
@@ -35835,7 +35841,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.EventTechAspect", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_tech_aspects_ie_events_id");
+                        .HasConstraintName("fk_event_tech_aspects_events_id");
 
                     b.Navigation("Event");
                 });
@@ -35846,14 +35852,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_templates_event_types_event_type_id");
+                        .HasConstraintName("fk_event_templates_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_templates_tenants_tenant_id");
+                        .HasConstraintName("fk_event_templates_tenants_tenant_id");
 
                     b.Navigation("EventType");
 
@@ -35866,21 +35872,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_template_custom_property_definitions_ie_eve_6DD25BB2");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_ie_eve_0218c238");
 
                     b.HasOne("Explore.Domain.EventTemplate", "EventTemplate")
                         .WithMany("Definitions")
                         .HasForeignKey("EventTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_template_custom_property_definitions_ie_eve_B4DCC2F0");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_ie_eve_ad31cd14");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_template_custom_property_definitions_ie_ten_963901D1");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_ie_ten_91309301");
 
                     b.Navigation("DefaultOption");
 
@@ -35896,13 +35902,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventTemplateCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_template_custom_property_options_ie_event_t_3AF012C1");
+                        .HasConstraintName("fk_ie_event_template_custom_property_options_ie_event_t_46bf7475");
 
                     b.HasOne("Explore.Domain.EventTemplateCustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_event_template_custom_property_options_ie_event_t_B69949B4");
+                        .HasConstraintName("fk_ie_event_template_custom_property_options_ie_event_t_ce5aab64");
 
                     b.Navigation("Definition");
 
@@ -35916,14 +35922,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_tenants_tenant_id");
+                        .HasConstraintName("fk_event_ticket_catalog_versions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TicketCatalogStatus", "TicketCatalogStatus")
                         .WithMany()
                         .HasForeignKey("TicketCatalogStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_ticket_catalog_versions_ie_ticket_catalog_s_7F598AE0");
+                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_ie_ticket_catalog_s_24cf3147");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany("TicketCatalogVersions")
@@ -35931,7 +35937,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_event_ticket_catalog_versions_events_tenant_id_event_id");
 
                     b.Navigation("TicketCatalogStatus");
                 });
@@ -35943,21 +35949,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ParticipantDataCollectionModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_ticket_types_ie_participant_data_collection_F2E399DF");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_participant_data_collection_9e729ce2");
 
                     b.HasOne("Explore.Domain.TicketPricingMode", "TicketPricingMode")
                         .WithMany()
                         .HasForeignKey("TicketPricingModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_ticket_types_ie_ticket_pricing_modes_ticket_79C91F7E");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_ticket_pricing_modes_ticket_a3e7ffeb");
 
                     b.HasOne("Explore.Domain.EventCapacityPool", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CapacityPoolId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_ticket_types_ie_event_capacity_pools_tenant_D4E1F270");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_event_capacity_pools_tenant_c1503784");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany("TicketTypes")
@@ -35965,7 +35971,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_event_ticket_types_ie_event_ticket_catalog_versio_94A81A46");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_event_ticket_catalog_versio_e6a5b1f9");
 
                     b.Navigation("ParticipantDataCollectionMode");
 
@@ -35978,7 +35984,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_event_types_tenants_tenant_id");
+                        .HasConstraintName("fk_event_types_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -35990,27 +35996,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ExternalApiKeyCreditPeriodId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_external_api_keys_ie_external_api_key_credit_peri_499BD4B7");
+                        .HasConstraintName("fk_ie_external_api_keys_ie_external_api_key_credit_peri_1bc70c99");
 
                     b.HasOne("Explore.Domain.ExternalApiKeyOwnerTypeLookup", "ExternalApiKeyOwnerType")
                         .WithMany()
                         .HasForeignKey("ExternalApiKeyOwnerTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_external_api_keys_ie_external_api_key_owner_types_F6C7D074");
+                        .HasConstraintName("fk_ie_external_api_keys_ie_external_api_key_owner_types_12ce00b8");
 
                     b.HasOne("Explore.Domain.ExternalApiKeyStatus", "ExternalApiKeyStatus")
                         .WithMany()
                         .HasForeignKey("ExternalApiKeyStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_external_api_keys_ie_external_api_key_statuses_ex_7C5D0FF1");
+                        .HasConstraintName("fk_ie_external_api_keys_ie_external_api_key_statuses_ex_b118a3de");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_external_api_keys_tenants_tenant_id");
+                        .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
                     b.Navigation("ExternalApiKeyCreditPeriod");
 
@@ -36028,7 +36034,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ExternalApiKeyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_external_api_key_quotas_ie_external_api_keys_exte_B9847556");
+                        .HasConstraintName("fk_ie_external_api_key_quotas_ie_external_api_keys_exte_24431d8a");
 
                     b.Navigation("ExternalApiKey");
                 });
@@ -36039,7 +36045,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ScopeTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_external_bindings_tenants_scope_tenant_id");
+                        .HasConstraintName("fk_external_bindings_tenants_scope_tenant_id");
 
                     b.Navigation("ScopeTenant");
                 });
@@ -36051,7 +36057,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.Federation.AtprotoEventProjection", "AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_event_projections_ie_atproto_records_atpr_976C5F82");
+                        .HasConstraintName("fk_ie_atproto_event_projections_ie_atproto_records_atpr_75f6e73b");
 
                     b.Navigation("AtprotoRecord");
                 });
@@ -36063,7 +36069,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConsumerStateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_jetstream_quarantines_ie_atproto_jetstrea_382536C4");
+                        .HasConstraintName("fk_ie_atproto_jetstream_quarantines_ie_atproto_jetstrea_bb543f72");
 
                     b.Navigation("ConsumerState");
                 });
@@ -36075,21 +36081,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.Federation.AtprotoOutboundRecordOwnership", "AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_outbound_record_ownerships_ie_atproto_rec_8F919127");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_ie_atproto_rec_0684e039");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_tenants_tenant_id");
+                        .HasConstraintName("fk_atproto_outbound_record_ownerships_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_users_user_id");
+                        .HasConstraintName("fk_atproto_outbound_record_ownerships_users_user_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany()
@@ -36097,7 +36103,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_outbound_record_ownerships_ie_tenant_user_9FBD2C4D");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_ie_tenant_user_01a8e9e1");
 
                     b.Navigation("AtprotoRecord");
 
@@ -36115,14 +36121,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_atproto_record_tenant_presentations_ie_atproto_re_A34D0746");
+                        .HasConstraintName("fk_ie_atproto_record_tenant_presentations_ie_atproto_re_7eb7e916");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_atproto_record_tenant_presentations_tenants_tenant_id");
+                        .HasConstraintName("fk_atproto_record_tenant_presentations_tenants_tenant_id");
 
                     b.Navigation("AtprotoRecord");
 
@@ -36135,33 +36141,33 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_pds_sync_outbox_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "DependsOnAtprotoRecord")
                         .WithMany()
                         .HasForeignKey("DependsOnAtprotoRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_pds_sync_outbox_ie_atproto_records_depends_on_atp_32E244F7");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_atproto_records_depends_on_atp_8b204b7a");
 
                     b.HasOne("Explore.Domain.Federation.PdsSyncOutbox", "SupersededBy")
                         .WithMany()
                         .HasForeignKey("SupersededById")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_pds_sync_outbox_superseded_by_id");
+                        .HasConstraintName("fk_pds_sync_outbox_pds_sync_outbox_superseded_by_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_pds_sync_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_pds_sync_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_pds_sync_outbox_users_user_id");
+                        .HasConstraintName("fk_pds_sync_outbox_users_user_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany()
@@ -36169,7 +36175,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_pds_sync_outbox_tenant_users_tenant_id_user_id");
+                        .HasConstraintName("fk_pds_sync_outbox_tenant_users_tenant_id_user_id");
 
                     b.Navigation("AtprotoRecord");
 
@@ -36190,28 +36196,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("GroupPositionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_group_members_group_positions_group_position_id");
+                        .HasConstraintName("fk_group_members_group_positions_group_position_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_members_roles_role_id");
+                        .HasConstraintName("fk_group_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_members_tenants_tenant_id");
+                        .HasConstraintName("fk_group_members_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_members_users_user_id");
+                        .HasConstraintName("fk_group_members_users_user_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "GroupTenant")
                         .WithMany("Members")
@@ -36219,7 +36225,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_members_group_tenants_tenant_id_group_tenant_id");
+                        .HasConstraintName("fk_group_members_group_tenants_tenant_id_group_tenant_id");
 
                     b.Navigation("GroupPosition");
 
@@ -36239,7 +36245,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_setting_overrides_tenants_tenant_id");
+                        .HasConstraintName("fk_group_setting_overrides_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "GroupTenant")
                         .WithMany("Settings")
@@ -36247,7 +36253,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_group_setting_overrides_ie_group_tenants_tenant_i_DE637076");
+                        .HasConstraintName("fk_ie_group_setting_overrides_ie_group_tenants_tenant_i_b3107a36");
 
                     b.Navigation("GroupTenant");
 
@@ -36261,53 +36267,53 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_tenants_ie_approval_statuses_approval_status_id");
+                        .HasConstraintName("fk_group_tenants_approval_statuses_approval_status_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_group_tenants_storage_objects_background_image_id");
+                        .HasConstraintName("fk_group_tenants_storage_objects_background_image_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_group_tenants_storage_objects_banner_picture_id");
+                        .HasConstraintName("fk_group_tenants_storage_objects_banner_picture_id");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithMany("TenantParticipations")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_tenants_ie_groups_group_id");
+                        .HasConstraintName("fk_group_tenants_groups_group_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "ProfilePicture")
                         .WithMany()
                         .HasForeignKey("ProfilePictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_group_tenants_storage_objects_profile_picture_id");
+                        .HasConstraintName("fk_group_tenants_storage_objects_profile_picture_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_group_tenants_tenants_tenant_id");
+                        .HasConstraintName("fk_group_tenants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "ParentGroupTenant")
                         .WithMany("ChildGroups")
                         .HasForeignKey("TenantId", "ParentGroupTenantId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_group_tenants_ie_group_tenants_tenant_id_parent_g_EBBA5881");
+                        .HasConstraintName("fk_ie_group_tenants_ie_group_tenants_tenant_id_parent_g_7b3d4040");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "ParentOrganizationTenant")
                         .WithMany("ChildGroups")
                         .HasForeignKey("TenantId", "ParentOrganizationTenantId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_group_tenants_ie_organization_tenants_tenant_id_p_A4C84AA7");
+                        .HasConstraintName("fk_ie_group_tenants_ie_organization_tenants_tenant_id_p_5981efc3");
 
                     b.Navigation("ApprovalStatus");
 
@@ -36333,7 +36339,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_incoming_webhook_effect_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_incoming_webhook_effect_outboxes_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany()
@@ -36341,7 +36347,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_effect_outbox_ie_incoming_webhoo_E8A5A5FE");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_outboxes_ie_incoming_webh_aefe8657");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -36355,7 +36361,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_incoming_webhook_effect_receipts_tenants_tenant_id");
+                        .HasConstraintName("fk_incoming_webhook_effect_receipts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany()
@@ -36363,7 +36369,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_effect_receipts_ie_incoming_webh_1C452B09");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_receipts_ie_incoming_webh_a6abd412");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -36377,40 +36383,40 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("PayloadProvenanceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_messages_ie_webhook_payload_prov_34669BA5");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_webhook_payload_prov_374a29e7");
 
                     b.HasOne("Explore.Domain.IncomingWebhookSettlementSourceLookup", "SettlementSourceLookup")
                         .WithMany()
                         .HasForeignKey("SettlementSourceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_incoming_webhook_messages_ie_incoming_webhook_set_9D13A60F");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_incoming_webhook_set_4e051e5c");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessageStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_messages_ie_incoming_webhook_mes_6BB73670");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_incoming_webhook_mes_6311edf2");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_incoming_webhook_messages_tenants_tenant_id");
+                        .HasConstraintName("fk_incoming_webhook_messages_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumerProviderBinding", "WebhookConsumerProviderBinding")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerProviderBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_incoming_webhook_messages_ie_webhook_consumer_pro_1A0EC823");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_webhook_consumer_pro_e32ce2ad");
 
                     b.HasOne("Explore.Domain.IncomingWebhookEffectReceipt", "SettledByEffectReceipt")
                         .WithMany()
                         .HasForeignKey("TenantId", "SettledByEffectReceiptId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_incoming_webhook_messages_ie_incoming_webhook_eff_3DE9BCC7");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_incoming_webhook_eff_999ee7b3");
 
                     b.Navigation("PayloadProvenanceLookup");
 
@@ -36432,14 +36438,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_processing_attempts_ie_incoming__1960E9DA");
+                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_ie_incoming__027879c8");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_incoming_webhook_processing_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany("ProcessingAttempts")
@@ -36447,7 +36453,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_processing_attempts_ie_incoming__DB495A29");
+                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_ie_incoming__405ae3a9");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -36463,14 +36469,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ResultId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_redrive_records_ie_incoming_webh_F56710A1");
+                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_ie_incoming_webh_1fc8d7cf");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_tenants_tenant_id");
+                        .HasConstraintName("fk_incoming_webhook_redrive_records_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany("RedriveRecords")
@@ -36478,7 +36484,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_incoming_webhook_redrive_records_ie_incoming_webh_7A4B68EA");
+                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_ie_incoming_webh_b01eadbd");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -36493,27 +36499,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_integration_sync_outbox_ie_events_event_id");
+                        .HasConstraintName("fk_integration_sync_outbox_events_event_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_integration_sync_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_integration_sync_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_integration_sync_outbox_users_user_id");
+                        .HasConstraintName("fk_integration_sync_outbox_users_user_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_integration_sync_outbox_ie_registration_orders_te_C78C9FC5");
+                        .HasConstraintName("fk_ie_integration_sync_outbox_ie_registration_orders_te_2dae049f");
 
                     b.Navigation("Event");
 
@@ -36531,48 +36537,48 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AddressSourceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_locations_location_address_sources_address_source_id");
+                        .HasConstraintName("fk_locations_location_address_sources_address_source_id");
 
                     b.HasOne("Explore.Domain.LocationAddressVisibility", "AddressVisibilityLookup")
                         .WithMany()
                         .HasForeignKey("AddressVisibilityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_locations_ie_location_address_visibilities_addres_3DEFA244");
+                        .HasConstraintName("fk_ie_locations_ie_location_address_visibilities_addres_794ab160");
 
                     b.HasOne("Explore.Domain.LocationKind", "LocationKind")
                         .WithMany()
                         .HasForeignKey("LocationKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_locations_location_kinds_location_kind_id");
+                        .HasConstraintName("fk_locations_location_kinds_location_kind_id");
 
                     b.HasOne("Explore.Domain.LocationPrivacyState", "LocationPrivacyState")
                         .WithMany()
                         .HasForeignKey("LocationPrivacyStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_locations_ie_location_privacy_states_location_pri_594D8C7D");
+                        .HasConstraintName("fk_ie_locations_ie_location_privacy_states_location_pri_32a9c13e");
 
                     b.HasOne("Explore.Domain.User", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_locations_users_owner_user_id");
+                        .HasConstraintName("fk_locations_users_owner_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_locations_tenants_tenant_id");
+                        .HasConstraintName("fk_locations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "AddressOrganizationTenant")
                         .WithMany()
                         .HasForeignKey("TenantId", "AddressOrganizationId")
                         .HasPrincipalKey("TenantId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_locations_ie_organization_tenants_tenant_id_addre_1E7DC95C");
+                        .HasConstraintName("fk_ie_locations_ie_organization_tenants_tenant_id_addre_40433066");
 
                     b.Navigation("AddressOrganizationTenant");
 
@@ -36596,7 +36602,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.LocationPii", "LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_location_pii_ie_locations_location_id");
+                        .HasConstraintName("fk_location_pii_locations_location_id");
 
                     b.Navigation("Location");
                 });
@@ -36608,14 +36614,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_location_rooms_ie_locations_location_id");
+                        .HasConstraintName("fk_location_rooms_locations_location_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_location_rooms_tenants_tenant_id");
+                        .HasConstraintName("fk_location_rooms_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
@@ -36623,7 +36629,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_location_rooms_ie_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_location_rooms_locations_tenant_id_location_id");
 
                     b.Navigation("Location");
 
@@ -36637,7 +36643,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CredentialSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_managed_control_plane_registrations_ie_secret_bin_3F6C4CC8");
+                        .HasConstraintName("fk_ie_managed_control_plane_registrations_ie_secret_bin_0bd23da0");
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -36647,14 +36653,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_capabilities_ie_module_definitions_module_id");
+                        .HasConstraintName("fk_tenant_capabilities_module_definitions_module_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_capabilities_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_capabilities_tenants_tenant_id");
 
                     b.Navigation("Module");
 
@@ -36667,60 +36673,60 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("NotificationEntityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notifications_ie_notification_entity_types_notifi_3442C94D");
+                        .HasConstraintName("fk_ie_notifications_ie_notification_entity_types_notifi_7099e3fc");
 
                     b.HasOne("Explore.Domain.NotificationReason", "NotificationReason")
                         .WithMany()
                         .HasForeignKey("NotificationReasonId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notifications_ie_notification_reasons_notificatio_7657A62F");
+                        .HasConstraintName("fk_ie_notifications_ie_notification_reasons_notificatio_5aaae60d");
 
                     b.HasOne("Explore.Domain.NotificationScopeType", "NotificationScope")
                         .WithMany()
                         .HasForeignKey("NotificationScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notifications_ie_notification_scope_types_notific_5C8040AE");
+                        .HasConstraintName("fk_ie_notifications_ie_notification_scope_types_notific_cda77b32");
 
                     b.HasOne("Explore.Domain.NotificationType", "NotificationType")
                         .WithMany()
                         .HasForeignKey("NotificationTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notifications_notification_types_notification_type_id");
+                        .HasConstraintName("fk_notifications_notification_types_notification_type_id");
 
                     b.HasOne("Explore.Domain.Actor", "RecipientContextActor")
                         .WithMany()
                         .HasForeignKey("RecipientContextActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_notifications_ie_actors_recipient_context_actor_id");
+                        .HasConstraintName("fk_notifications_actors_recipient_context_actor_id");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_notifications_ie_actors_source_actor_id");
+                        .HasConstraintName("fk_notifications_actors_source_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notifications_tenants_tenant_id");
+                        .HasConstraintName("fk_notifications_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notifications_users_user_id");
+                        .HasConstraintName("fk_notifications_users_user_id");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany()
                         .HasForeignKey("TenantId", "NotificationIntentId", "UserId")
                         .HasPrincipalKey("TenantId", "Id", "RecipientUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notifications_ie_notification_intents_tenant_id_n_0155AF5A");
+                        .HasConstraintName("fk_ie_notifications_ie_notification_intents_tenant_id_n_b1a2a9e0");
 
                     b.Navigation("NotificationEntityType");
 
@@ -36748,46 +36754,46 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_channel_preferences_ie_notification__83319C57");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_notification__5a9ee009");
 
                     b.HasOne("Explore.Domain.NotificationPreferenceChannel", "Channel")
                         .WithMany()
                         .HasForeignKey("ChannelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_channel_preferences_ie_notification__9F24B235");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_notification__445f9ba2");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithMany()
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_groups_group_id");
+                        .HasConstraintName("fk_notification_channel_preferences_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_channel_preferences_ie_organizations_F6CE1BAC");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_organizations_5621ebec");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "Scope")
                         .WithMany()
                         .HasForeignKey("ScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_channel_preferences_ie_setting_scope_5DF91F42");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_setting_scope_0990bafd");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_channel_preferences_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_channel_preferences_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_channel_preferences_users_user_id");
+                        .HasConstraintName("fk_notification_channel_preferences_users_user_id");
 
                     b.Navigation("Category");
 
@@ -36811,35 +36817,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ChannelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_notification_preferenc_5F00D111");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_notification_preferenc_04c843aa");
 
                     b.HasOne("Explore.Domain.NotificationDeliveryPolicy", "DeliveryPolicy")
                         .WithMany()
                         .HasForeignKey("DeliveryPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_notification_delivery__9F34C943");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_notification_delivery__d819f6a3");
 
                     b.HasOne("Explore.Domain.NotificationDeliveryStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_notification_delivery__8701A50A");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_notification_delivery__afb66a92");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_deliveries_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_deliveries_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Notification", "Notification")
                         .WithMany()
                         .HasForeignKey("TenantId", "NotificationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_notifications_tenant_i_51A33AE8");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_notifications_tenant_i_7153e309");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany("Deliveries")
@@ -36847,14 +36853,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_notification_intents_t_C39F40C1");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_notification_intents_t_a1cafc02");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
                         .HasForeignKey("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
                         .HasPrincipalKey("TenantId", "Id", "NotificationIntentId", "RecipientAddressSource")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_deliveries_ie_email_dispatch_outbox__0E846ECA");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_email_dispatch_outbox__95694214");
 
                     b.Navigation("Channel");
 
@@ -36877,47 +36883,47 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("AccountAuthorityKindId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_account_auth_5EA779CB");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_account_auth_dbdb9110");
 
                     b.HasOne("Explore.Domain.ExternalWorkflowProviderKindLookup", "ProviderKind")
                         .WithMany()
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_external_wor_75354867");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_external_wor_219c6740");
 
                     b.HasOne("Explore.Domain.NotificationRecipientKind", "RecipientKind")
                         .WithMany()
                         .HasForeignKey("RecipientKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_notification_A616B987");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_notification_c187f5c5");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "ReportDecision")
                         .WithMany()
                         .HasForeignKey("ReportDecisionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_event_report_28301F05");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_event_report_e6f3eb45");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_event_report_275E4941");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_event_report_f4838814");
 
                     b.HasOne("Explore.Domain.NotificationExternalDelegationStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_notification_4FF72B7C");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_notification_9c9f9d2f");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_external_delegations_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_external_delegations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany("ExternalDelegations")
@@ -36925,7 +36931,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_external_delegations_ie_notification_AA76AAE9");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_notification_149ad316");
 
                     b.Navigation("AccountAuthorityKind");
 
@@ -36951,14 +36957,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("DeliveryPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_fanout_occurrences_ie_notification_d_4DE6E01B");
+                        .HasConstraintName("fk_ie_notification_fanout_occurrences_ie_notification_d_e4797ec4");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_fanout_occurrences_tenant");
+                        .HasConstraintName("fk_notification_fanout_occurrences_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -36966,21 +36972,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_fanout_occurrences_ie_events_tenant__90A7E333");
+                        .HasConstraintName("fk_ie_notification_fanout_occurrences_ie_events_tenant__70e3a899");
 
                     b.HasOne("Explore.Domain.EventSession", "Session")
                         .WithMany()
                         .HasForeignKey("TenantId", "SessionId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_fanout_occurrences_ie_event_sessions_245A2CB0");
+                        .HasConstraintName("fk_ie_notification_fanout_occurrences_ie_event_sessions_f9e90005");
 
                     b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "SupersededByOccurrence")
                         .WithMany()
                         .HasForeignKey("TenantId", "SupersededByOccurrenceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_fanout_occurrences_ie_notification_f_94792D2F");
+                        .HasConstraintName("fk_ie_notification_fanout_occurrences_ie_notification_f_c0c5bfae");
 
                     b.Navigation("DeliveryPolicy");
 
@@ -37000,28 +37006,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("NotificationEntityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_fanout_runs_ie_notification_entity_t_B0F81E42");
+                        .HasConstraintName("fk_ie_notification_fanout_runs_ie_notification_entity_t_4df6c3bd");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_fanout_runs_ie_actors_source_actor_id");
+                        .HasConstraintName("fk_notification_fanout_runs_actors_source_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_fanout_runs_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_fanout_runs_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
                         .WithMany()
                         .HasForeignKey("TenantId", "FanoutOccurrenceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_fanout_runs_ie_notification_fanout_o_41C9EB89");
+                        .HasConstraintName("fk_ie_notification_fanout_runs_ie_notification_fanout_o_e5d1b9e8");
 
                     b.Navigation("FanoutOccurrence");
 
@@ -37039,60 +37045,60 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_intents_ie_notification_categories_c_D5E37FF7");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_categories_c_18d795ea");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_intents_ie_events_event_id");
+                        .HasConstraintName("fk_notification_intents_events_event_id");
 
                     b.HasOne("Explore.Domain.NotificationOwnershipType", "OwnershipType")
                         .WithMany()
                         .HasForeignKey("OwnershipTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_intents_ie_notification_ownership_ty_FF764F2E");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_ownership_ty_bbd5bbf0");
 
                     b.HasOne("Explore.Domain.NotificationRecipientKind", "RecipientKind")
                         .WithMany()
                         .HasForeignKey("RecipientKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_intents_ie_notification_recipient_ki_0D051D9C");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_recipient_ki_41dfedbe");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "ReportDecision")
                         .WithMany()
                         .HasForeignKey("ReportDecisionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_intents_ie_event_report_decisions_re_8EDD5FB3");
+                        .HasConstraintName("fk_ie_notification_intents_ie_event_report_decisions_re_e583e2c9");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_intents_ie_event_reports_report_id");
+                        .HasConstraintName("fk_notification_intents_event_reports_report_id");
 
                     b.HasOne("Explore.Domain.NotificationIntentStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_intents_ie_notification_intent_statu_C8B36A5B");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_intent_statu_e1699d1c");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_intents_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_intents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
                         .WithMany()
                         .HasForeignKey("TenantId", "FanoutOccurrenceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_intents_ie_notification_fanout_occur_88568C7A");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_fanout_occur_302b0e1f");
 
                     b.HasOne("Explore.Domain.TenantUser", "RecipientTenantUser")
                         .WithMany()
@@ -37100,7 +37106,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_intents_ie_tenant_users_tenant_id_re_FEB31347");
+                        .HasConstraintName("fk_ie_notification_intents_ie_tenant_users_tenant_id_re_eaaa3f9d");
 
                     b.Navigation("Category");
 
@@ -37129,33 +37135,33 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_preference_profiles_ie_groups_group_id");
+                        .HasConstraintName("fk_notification_preference_profiles_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_notification_preference_profiles_ie_organizations_D2EC1AC1");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_ie_organizations_19feae15");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "Scope")
                         .WithMany()
                         .HasForeignKey("ScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_notification_preference_profiles_ie_setting_scope_481A3C50");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_ie_setting_scope_9c6d1bb8");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_notification_preference_profiles_tenants_tenant_id");
+                        .HasConstraintName("fk_notification_preference_profiles_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_notification_preference_profiles_users_user_id");
+                        .HasConstraintName("fk_notification_preference_profiles_users_user_id");
 
                     b.Navigation("Group");
 
@@ -37174,28 +37180,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("OrganizationPositionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_organization_members_ie_organization_positions_or_74505D2A");
+                        .HasConstraintName("fk_ie_organization_members_ie_organization_positions_or_268c04cd");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_members_roles_role_id");
+                        .HasConstraintName("fk_organization_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_members_tenants_tenant_id");
+                        .HasConstraintName("fk_organization_members_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_members_users_user_id");
+                        .HasConstraintName("fk_organization_members_users_user_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("Members")
@@ -37203,7 +37209,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_members_ie_organization_tenants_tena_67CABE85");
+                        .HasConstraintName("fk_ie_organization_members_ie_organization_tenants_tena_c047a683");
 
                     b.Navigation("OrganizationPosition");
 
@@ -37223,7 +37229,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.OrganizationPii", "OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_pii_ie_organizations_organization_id");
+                        .HasConstraintName("fk_organization_pii_organizations_organization_id");
 
                     b.Navigation("Organization");
                 });
@@ -37235,27 +37241,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_reviews_ie_events_event_id");
+                        .HasConstraintName("fk_organization_reviews_events_event_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_reviews_ie_organizations_organization_id");
+                        .HasConstraintName("fk_organization_reviews_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_reviews_tenants_tenant_id");
+                        .HasConstraintName("fk_organization_reviews_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_organization_reviews_users_user_id");
+                        .HasConstraintName("fk_organization_reviews_users_user_id");
 
                     b.Navigation("Event");
 
@@ -37273,7 +37279,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_setting_overrides_tenants_tenant_id");
+                        .HasConstraintName("fk_organization_setting_overrides_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("Settings")
@@ -37281,7 +37287,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_setting_overrides_ie_organization_te_25F5FA43");
+                        .HasConstraintName("fk_ie_organization_setting_overrides_ie_organization_te_ca9de5a8");
 
                     b.Navigation("OrganizationTenant");
 
@@ -37295,39 +37301,39 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_tenants_ie_approval_statuses_approva_F2448033");
+                        .HasConstraintName("fk_ie_organization_tenants_ie_approval_statuses_approva_f390d4c5");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_ie_organization_tenants_ie_storage_objects_backgroun_5ACEF257");
+                        .HasConstraintName("fk_ie_organization_tenants_ie_storage_objects_backgroun_d1a37d49");
 
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_organization_tenants_storage_objects_banner_picture_id");
+                        .HasConstraintName("fk_organization_tenants_storage_objects_banner_picture_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany("TenantParticipations")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_tenants_ie_organizations_organization_id");
+                        .HasConstraintName("fk_organization_tenants_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "ProfilePicture")
                         .WithMany()
                         .HasForeignKey("ProfilePictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_organization_tenants_storage_objects_profile_picture_id");
+                        .HasConstraintName("fk_organization_tenants_storage_objects_profile_picture_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_tenants_tenants_tenant_id");
+                        .HasConstraintName("fk_organization_tenants_tenants_tenant_id");
 
                     b.Navigation("ApprovalStatus");
 
@@ -37349,20 +37355,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ReviewStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_tenant_evidence_ie_approval_statuses_082CA1A2");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_ie_approval_statuses_c6006887");
 
                     b.HasOne("Explore.Domain.User", "ReviewedByUser")
                         .WithMany()
                         .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_organization_tenant_evidence_users_reviewed_by_user_id");
+                        .HasConstraintName("fk_organization_tenant_evidence_users_reviewed_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_organization_tenant_evidence_tenants_tenant_id");
+                        .HasConstraintName("fk_organization_tenant_evidence_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "DocumentStorageObject")
                         .WithMany()
@@ -37370,7 +37376,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_tenant_evidence_ie_storage_objects_t_CCCA6A31");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_ie_storage_objects_t_f02285c1");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("LegitimacyEvidence")
@@ -37378,7 +37384,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organization_tenant_evidence_ie_organization_tena_89102AC2");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_ie_organization_tena_567fd369");
 
                     b.Navigation("DocumentStorageObject");
 
@@ -37398,21 +37404,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("OrganizerActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organizer_payment_provider_account_operations_ie__C0111C4C");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_account_operations_ie__98f659fc");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organizer_payment_provider_account_operations_ie__FE88438F");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_account_operations_ie__fd1fcaa9");
 
                     b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ConnectionId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_organizer_payment_provider_account_operations_ie__4164CD46");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_account_operations_ie__0f659cab");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnection", b =>
@@ -37422,28 +37428,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("OrganizerActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organizer_payment_provider_connections_ie_actors__0F3CD107");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_connections_ie_actors__17ed8d84");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organizer_payment_provider_connections_ie_tenants_192CD8BA");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_connections_ie_tenants_85b16202");
 
                     b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ReplacedByConnectionId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_organizer_payment_provider_connections_ie_organiz_A196D414");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_connections_ie_organiz_829e9ce9");
 
                     b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ReplacesConnectionId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_organizer_payment_provider_connections_ie_organiz_46A5BA55");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_connections_ie_organiz_cb7aac46");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnectionSupportedCurrency", b =>
@@ -37454,7 +37460,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_organizer_payment_provider_connection_supported_c_52F01A27");
+                        .HasConstraintName("fk_ie_organizer_payment_provider_connection_supported_c_2e7816c7");
 
                     b.Navigation("Connection");
                 });
@@ -37466,7 +37472,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_paid_checkout_review_approvals_tenants_tenant_id");
+                        .HasConstraintName("fk_paid_checkout_review_approvals_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -37474,7 +37480,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_checkout_review_approvals_ie_events_tenant_i_7E9DCA26");
+                        .HasConstraintName("fk_ie_paid_checkout_review_approvals_ie_events_tenant_i_8641e5fe");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControl", b =>
@@ -37484,14 +37490,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_paid_checkout_sale_controls_tenants_tenant_id");
+                        .HasConstraintName("fk_paid_checkout_sale_controls_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_paid_checkout_sale_controls_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_paid_checkout_sale_controls_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidCheckoutSaleControlAudit", b =>
@@ -37502,7 +37508,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_checkout_sale_control_audits_ie_paid_checkou_CCB2AC63");
+                        .HasConstraintName("fk_ie_paid_checkout_sale_control_audits_ie_paid_checkou_f3b50d22");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedCurrency", b =>
@@ -37513,7 +37519,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("PolicyScopeKey", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_event_policy_allowed_currencies_ie_paid_even_6500671A");
+                        .HasConstraintName("fk_ie_paid_event_policy_allowed_currencies_ie_paid_even_11fd8481");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedOrganizerKind", b =>
@@ -37524,7 +37530,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("PolicyScopeKey", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_event_policy_allowed_organizer_kinds_ie_paid_5CCAAC96");
+                        .HasConstraintName("fk_ie_paid_event_policy_allowed_organizer_kinds_ie_paid_42d89d8a");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyCurrencyRiskLimitRow", b =>
@@ -37535,7 +37541,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("PolicyScopeKey", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_event_policy_currency_risk_limits_ie_paid_ev_FEA4DB72");
+                        .HasConstraintName("fk_ie_paid_event_policy_currency_risk_limits_ie_paid_ev_9b4911f3");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyRefundProtection", b =>
@@ -37546,7 +37552,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("PolicyScopeKey", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_event_policy_refund_protections_ie_paid_even_C4E3D6C2");
+                        .HasConstraintName("fk_ie_paid_event_policy_refund_protections_ie_paid_even_a39bc36d");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidEventPolicyVersion", b =>
@@ -37555,7 +37561,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_paid_event_policy_versions_tenants_tenant_id");
+                        .HasConstraintName("fk_paid_event_policy_versions_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceLine", b =>
@@ -37566,7 +37572,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_order_acceptance_lines_ie_paid_order_accepta_2A9B114F");
+                        .HasConstraintName("fk_ie_paid_order_acceptance_lines_ie_paid_order_accepta_3b17a0c3");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaidOrderAcceptanceSnapshot", b =>
@@ -37576,7 +37582,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_paid_order_acceptance_snapshots_tenants_tenant_id");
+                        .HasConstraintName("fk_paid_order_acceptance_snapshots_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -37584,7 +37590,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_order_acceptance_snapshots_ie_events_tenant__E7920657");
+                        .HasConstraintName("fk_ie_paid_order_acceptance_snapshots_ie_events_tenant__459fc366");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -37592,7 +37598,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_paid_order_acceptance_snapshots_ie_registration_o_4FE3C00B");
+                        .HasConstraintName("fk_ie_paid_order_acceptance_snapshots_ie_registration_o_4a82aad7");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
@@ -37603,7 +37609,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_participation_requirement_attachments_ie_event_pa_DA41BA3E");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_ie_event_pa_4a3d745f");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany()
@@ -37611,14 +37617,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_participation_requirement_attachments_ie_registra_472EDAB6");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_ie_registra_aa5bb4a2");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", "RegistrationFormVersion")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_participation_requirement_attachments_ie_registra_9710FC5C");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_ie_registra_2193d171");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", "RegistrationRequirement")
                         .WithMany()
@@ -37626,7 +37632,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_participation_requirement_attachments_ie_registra_73C2DD4D");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_ie_registra_d06f8270");
 
                     b.Navigation("RegistrationFormVersion");
 
@@ -37640,28 +37646,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AuthoritativeStatusFloorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_attempts_ie_payment_attempt_statuses_auth_149D7CFD");
+                        .HasConstraintName("fk_ie_payment_attempts_ie_payment_attempt_statuses_auth_143e5ac1");
 
                     b.HasOne("Explore.Domain.PaymentAttemptStatus", "PaymentAttemptStatus")
                         .WithMany()
                         .HasForeignKey("PaymentAttemptStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_attempts_ie_payment_attempt_statuses_paym_D1D12C99");
+                        .HasConstraintName("fk_ie_payment_attempts_ie_payment_attempt_statuses_paym_38cc3390");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_payment_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_payment_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", "AcceptanceSnapshot")
                         .WithMany()
                         .HasForeignKey("TenantId", "PaidOrderAcceptanceSnapshotId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_payment_attempts_ie_paid_order_acceptance_snapsho_54440CA3");
+                        .HasConstraintName("fk_ie_payment_attempts_ie_paid_order_acceptance_snapsho_b92a7407");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -37669,7 +37675,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_attempts_ie_registration_orders_tenant_id_94EC9F76");
+                        .HasConstraintName("fk_ie_payment_attempts_ie_registration_orders_tenant_id_57f98f3f");
 
                     b.OwnsOne("Explore.Domain.OrganizerPaymentRecipientSnapshot", "RecipientSnapshot", b1 =>
                         {
@@ -37744,7 +37750,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentAttemptId")
-                                .HasConstraintName("fk_ie_payment_attempts_payment_attempts_id");
+                                .HasConstraintName("fk_payment_attempts_payment_attempts_id");
                         });
 
                     b.Navigation("AcceptanceSnapshot");
@@ -37762,7 +37768,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_payment_disputes_tenants_tenant_id");
+                        .HasConstraintName("fk_payment_disputes_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -37770,7 +37776,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_disputes_ie_payment_attempts_tenant_id_pa_31371848");
+                        .HasConstraintName("fk_ie_payment_disputes_ie_payment_attempts_tenant_id_pa_4180871c");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaymentReconciliationEffect", b =>
@@ -37780,14 +37786,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_payment_reconciliation_effects_tenants_tenant_id");
+                        .HasConstraintName("fk_payment_reconciliation_effects_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.CheckoutDispatchEffect", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CheckoutDispatchEffectId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_payment_reconciliation_effects_ie_checkout_dispat_E51D25FA");
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_checkout_dispat_8e378992");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -37795,14 +37801,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_reconciliation_effects_ie_payment_attempt_77B9F9D9");
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_payment_attempt_c80b5d0f");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceIncomingWebhookMessageId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_payment_reconciliation_effects_ie_incoming_webhoo_741CBE4A");
+                        .HasConstraintName("fk_ie_payment_reconciliation_effects_ie_incoming_webhoo_90f100c2");
                 });
 
             modelBuilder.Entity("Explore.Domain.PaymentSucceededObservation", b =>
@@ -37812,7 +37818,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_payment_succeeded_observations_tenants_tenant_id");
+                        .HasConstraintName("fk_payment_succeeded_observations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -37820,14 +37826,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_payment_succeeded_observations_ie_payment_attempt_877FD891");
+                        .HasConstraintName("fk_ie_payment_succeeded_observations_ie_payment_attempt_981ba031");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceIncomingWebhookMessageId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_payment_succeeded_observations_ie_incoming_webhoo_DEFD6894");
+                        .HasConstraintName("fk_ie_payment_succeeded_observations_ie_incoming_webhoo_67f37918");
                 });
 
             modelBuilder.Entity("Explore.Domain.Permission", b =>
@@ -37837,7 +37843,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_permissions_role_scopes_role_scope_id");
+                        .HasConstraintName("fk_permissions_role_scopes_role_scope_id");
 
                     b.Navigation("RoleScope");
                 });
@@ -37848,7 +37854,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany("Options")
                         .HasForeignKey("PlatformContributionSettingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_platform_contribution_options_ie_platform_contrib_98A691C0");
+                        .HasConstraintName("fk_ie_platform_contribution_options_ie_platform_contrib_3b04ba21");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeeFixedCharge", b =>
@@ -37857,7 +37863,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany("FixedCharges")
                         .HasForeignKey("PlatformFeePolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_platform_fee_fixed_charges_ie_platform_fee_polici_0ABF8B33");
+                        .HasConstraintName("fk_ie_platform_fee_fixed_charges_ie_platform_fee_polici_b7eb6606");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -37867,14 +37873,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_platform_user_roles_roles_role_id");
+                        .HasConstraintName("fk_platform_user_roles_roles_role_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_platform_user_roles_users_user_id");
+                        .HasConstraintName("fk_platform_user_roles_users_user_id");
 
                     b.Navigation("Role");
 
@@ -37896,7 +37902,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_ie_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
                                 {
@@ -40116,7 +40122,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("IntentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_privacy_erasure_provider_work_ie_privacy_erasure__BC71B0AF");
+                        .HasConstraintName("fk_ie_privacy_erasure_provider_work_ie_privacy_erasure__c16f5722");
                 });
 
             modelBuilder.Entity("Explore.Domain.PrivacyErasureReplayCheckpoint", b =>
@@ -40125,7 +40131,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("PreviousCheckpointId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_privacy_erasure_replay_checkpoints_ie_privacy_era_4FEFB3F0");
+                        .HasConstraintName("fk_ie_privacy_erasure_replay_checkpoints_ie_privacy_era_1921f598");
                 });
 
             modelBuilder.Entity("Explore.Domain.PromotionCode", b =>
@@ -40135,7 +40141,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_promotion_codes_tenants_tenant_id");
+                        .HasConstraintName("fk_promotion_codes_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PromotionDefinition", null)
                         .WithMany()
@@ -40143,7 +40149,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_codes_ie_promotion_definitions_tenant_i_F60F1EC8");
+                        .HasConstraintName("fk_ie_promotion_codes_ie_promotion_definitions_tenant_i_9c6bc927");
                 });
 
             modelBuilder.Entity("Explore.Domain.PromotionDefinition", b =>
@@ -40153,14 +40159,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("PromotionDefinitionStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_definitions_ie_promotion_definition_sta_698101A5");
+                        .HasConstraintName("fk_ie_promotion_definitions_ie_promotion_definition_sta_e2e57f7b");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_promotion_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_promotion_definitions_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PromotionReservation", b =>
@@ -40170,14 +40176,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("PromotionReservationStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_reservations_ie_promotion_reservation_s_B2F0A166");
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_promotion_reservation_s_8051d4dc");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_promotion_reservations_tenants_tenant_id");
+                        .HasConstraintName("fk_promotion_reservations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PromotionCode", null)
                         .WithMany()
@@ -40185,7 +40191,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_reservations_ie_promotion_codes_tenant__05C256D0");
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_promotion_codes_tenant__09abdbf3");
 
                     b.HasOne("Explore.Domain.PromotionDefinition", null)
                         .WithMany()
@@ -40193,7 +40199,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_reservations_ie_promotion_definitions_t_1E4BA3FF");
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_promotion_definitions_t_bd234014");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -40201,7 +40207,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_promotion_reservations_ie_registration_orders_ten_60FE2EC4");
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_registration_orders_ten_72ad183f");
                 });
 
             modelBuilder.Entity("Explore.Domain.RefundAttempt", b =>
@@ -40211,7 +40217,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_refund_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_refund_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PaidOrderAcceptanceSnapshot", null)
                         .WithMany()
@@ -40219,7 +40225,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_refund_attempts_ie_paid_order_acceptance_snapshot_F4910048");
+                        .HasConstraintName("fk_ie_refund_attempts_ie_paid_order_acceptance_snapshot_2b9a7e54");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -40227,7 +40233,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_refund_attempts_ie_payment_attempts_tenant_id_pay_9DAC73DD");
+                        .HasConstraintName("fk_ie_refund_attempts_ie_payment_attempts_tenant_id_pay_8d0c7ef9");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -40235,14 +40241,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_refund_attempts_ie_registration_orders_tenant_id__981CB49D");
+                        .HasConstraintName("fk_ie_refund_attempts_ie_registration_orders_tenant_id__3ca1c674");
 
                     b.HasOne("Explore.Domain.RefundCampaign", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceCampaignId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_refund_attempts_ie_refund_campaigns_tenant_id_sou_6C56D7C0");
+                        .HasConstraintName("fk_ie_refund_attempts_ie_refund_campaigns_tenant_id_sou_e009d8c9");
 
                     b.OwnsOne("Explore.Domain.RefundAllocation", "Allocation", b1 =>
                         {
@@ -40273,7 +40279,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("RefundAttemptId")
-                                .HasConstraintName("fk_ie_refund_attempts_refund_attempts_id");
+                                .HasConstraintName("fk_refund_attempts_refund_attempts_id");
                         });
 
                     b.Navigation("Allocation")
@@ -40287,7 +40293,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_refund_campaigns_tenants_tenant_id");
+                        .HasConstraintName("fk_refund_campaigns_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40295,7 +40301,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_refund_campaigns_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_refund_campaigns_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RefundLineAllocation", b =>
@@ -40306,7 +40312,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_refund_line_allocations_ie_refund_attempts_tenant_F000C1F3");
+                        .HasConstraintName("fk_ie_refund_line_allocations_ie_refund_attempts_tenant_33769f4c");
 
                     b.HasOne("Explore.Domain.PaidOrderAcceptanceLine", null)
                         .WithMany()
@@ -40314,7 +40320,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "PaidOrderAcceptanceSnapshotId", "OrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_refund_line_allocations_ie_paid_order_acceptance__C07FDE01");
+                        .HasConstraintName("fk_ie_refund_line_allocations_ie_paid_order_acceptance__14968885");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
@@ -40324,7 +40330,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_amendments_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_amendments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -40332,7 +40338,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_amendments_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_amendments_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
@@ -40340,7 +40346,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_amendments_ie_registration_orders_te_7BCC491D");
+                        .HasConstraintName("fk_ie_registration_amendments_ie_registration_orders_te_7e454abc");
 
                     b.Navigation("Event");
 
@@ -40354,14 +40360,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AnswerSubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_answer_subje_D37F8188");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_answer_subje_2fc8af8b");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_answers_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_answers_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40369,35 +40375,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_answers_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_answers_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationSensitiveAnswerValue", "SensitiveAnswerValue")
                         .WithOne()
                         .HasForeignKey("Explore.Domain.RegistrationAnswer", "TenantId", "SensitiveAnswerValueId")
                         .HasPrincipalKey("Explore.Domain.RegistrationSensitiveAnswerValue", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_sensitive_an_35CF3C62");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_sensitive_an_dcb29fb7");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_participants_39322C70");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_participants_ddcf6b92");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_order_lines__7B70A6E2");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_order_lines__9758614f");
 
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_ticket_assig_FE40D039");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_ticket_assig_2529a1b4");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -40405,7 +40411,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id", "AppliesToSubjectTypeId", "AppliesToSubjectKey")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_requirements_8080127B");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_requirements_41dc27ec");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany()
@@ -40413,14 +40419,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_form_fields__2DC19FC4");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_form_fields__334099f1");
 
                     b.HasOne("Explore.Domain.RegistrationFormFieldOption", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "SelectedOptionId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_form_field_o_34CAF5BA");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_form_field_o_15f4c327");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
@@ -40428,7 +40434,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answers_ie_registration_submissions__3F69378F");
+                        .HasConstraintName("fk_ie_registration_answers_ie_registration_submissions__2ffafd44");
 
                     b.Navigation("AnswerSubjectType");
 
@@ -40442,7 +40448,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_answer_files_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_answer_files_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.StorageObject", null)
                         .WithMany()
@@ -40450,7 +40456,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answer_files_ie_storage_objects_tena_26B235F0");
+                        .HasConstraintName("fk_ie_registration_answer_files_ie_storage_objects_tena_d5e1d4e9");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
@@ -40458,7 +40464,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answer_files_ie_registration_submiss_22FC757E");
+                        .HasConstraintName("fk_ie_registration_answer_files_ie_registration_submiss_06d401e1");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany()
@@ -40466,7 +40472,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answer_files_ie_registration_form_fi_CE6E82BD");
+                        .HasConstraintName("fk_ie_registration_answer_files_ie_registration_form_fi_d30ceeb2");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswerFileRelease", b =>
@@ -40476,7 +40482,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_answer_file_releases_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_answer_file_releases_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationAnswerFile", null)
                         .WithOne()
@@ -40484,7 +40490,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationAnswerFile", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_answer_file_releases_ie_registration_862CB076");
+                        .HasConstraintName("fk_ie_registration_answer_file_releases_ie_registration_da1aec85");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAttempt", b =>
@@ -40494,14 +40500,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_attempt_sta_42A827B5");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_attempt_sta_86622e2c");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40509,7 +40515,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_attempts_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_attempts_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationForm", null)
                         .WithMany()
@@ -40517,7 +40523,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_forms_tenan_9E200B4F");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_forms_tenan_f2a680ec");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany()
@@ -40525,14 +40531,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_workflows_t_E5F7C5DB");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_workflows_t_03c5dcbc");
 
                     b.HasOne("Explore.Domain.RegistrationProviderBinding", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationProviderBindingId", "ProviderMappingRevisionHashKey")
                         .HasPrincipalKey("TenantId", "Id", "PublishedMappingRevisionHashKey")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_provider_bi_CFA30586");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_provider_bi_8d371343");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany()
@@ -40540,7 +40546,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_form_versio_BC954FD9");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_form_versio_c19919ba");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -40548,7 +40554,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowVersionKey", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_orders_tena_03A9FB02");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_orders_tena_e5ad63b0");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -40556,14 +40562,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_requirement_FE81F248");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_requirement_da022487");
 
                     b.HasOne("Explore.Domain.RegistrationAttempt", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_attempts_te_D463DCF8");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_attempts_te_bd22c4c4");
 
                     b.HasOne("Explore.Domain.RegistrationChannel", null)
                         .WithMany()
@@ -40571,7 +40577,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id", "RegistrationProviderBindingKey")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_channels_te_E4B9BB9A");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_channels_te_faa0dc4f");
 
                     b.Navigation("Status");
                 });
@@ -40583,7 +40589,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_channels_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_channels_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40591,14 +40597,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_channels_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_channels_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationProviderBinding", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationProviderBindingId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_channels_ie_registration_provider_bi_37A0E1B5");
+                        .HasConstraintName("fk_ie_registration_channels_ie_registration_provider_bi_d6fe4453");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany("Channels")
@@ -40606,7 +40612,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_channels_ie_registration_requirement_6ABB69F1");
+                        .HasConstraintName("fk_ie_registration_channels_ie_registration_requirement_88e3c977");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationConsentRecord", b =>
@@ -40616,14 +40622,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AnswerSubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_answ_457E0898");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_answ_34bebbc0");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_consent_records_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_consent_records_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40631,28 +40637,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_consent_records_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_consent_records_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_part_C70D72BE");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_part_0de27224");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_orde_EF1FA7AD");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_orde_e13977c4");
 
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_tick_04431C64");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_tick_3925c660");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -40660,7 +40666,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id", "AppliesToSubjectTypeId", "AppliesToSubjectKey")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_requ_21350ECF");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_requ_ffa8510b");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany()
@@ -40668,7 +40674,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_form_516664FA");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_form_3d5e1932");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
@@ -40676,7 +40682,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_consent_records_ie_registration_subm_29161C06");
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_subm_556fe6bd");
 
                     b.Navigation("AnswerSubjectType");
                 });
@@ -40688,7 +40694,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_finalization_effects_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_finalization_effects_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -40696,7 +40702,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_finalization_effects_ie_registration_335C0AF3");
+                        .HasConstraintName("fk_ie_registration_finalization_effects_ie_registration_5293a729");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
@@ -40706,7 +40712,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_forms_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_forms_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40714,7 +40720,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_forms_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_forms_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
@@ -40724,28 +40730,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_fields_ie_registration_field_ty_23B12FDC");
+                        .HasConstraintName("fk_ie_registration_form_fields_ie_registration_field_ty_3da47d0c");
 
                     b.HasOne("Explore.Domain.RegistrationOrganizerVisibility", "OrganizerVisibility")
                         .WithMany()
                         .HasForeignKey("OrganizerVisibilityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_fields_ie_registration_organize_6A9AB0FC");
+                        .HasConstraintName("fk_ie_registration_form_fields_ie_registration_organize_b07ce5a9");
 
                     b.HasOne("Explore.Domain.RegistrationRetentionPolicy", "RetentionPolicy")
                         .WithMany()
                         .HasForeignKey("RetentionPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_fields_ie_registration_retentio_53D70441");
+                        .HasConstraintName("fk_ie_registration_form_fields_ie_registration_retentio_6c39725e");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_fields_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_fields_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormSection", null)
                         .WithMany("Fields")
@@ -40753,7 +40759,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_fields_ie_registration_form_sec_622DBADF");
+                        .HasConstraintName("fk_ie_registration_form_fields_ie_registration_form_sec_43157df1");
 
                     b.Navigation("FieldType");
 
@@ -40769,7 +40775,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_field_options_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_field_options_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany("Options")
@@ -40777,7 +40783,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_field_options_ie_registration_f_71674CD8");
+                        .HasConstraintName("fk_ie_registration_form_field_options_ie_registration_f_f444c8ef");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
@@ -40787,7 +40793,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_rules_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_rules_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany("Rules")
@@ -40795,7 +40801,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_rules_ie_registration_form_vers_EE453C4E");
+                        .HasConstraintName("fk_ie_registration_form_rules_ie_registration_form_vers_631a1bcf");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormSection", b =>
@@ -40805,7 +40811,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_sections_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_sections_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany("Sections")
@@ -40813,7 +40819,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_sections_ie_registration_form_v_6DD10FE6");
+                        .HasConstraintName("fk_ie_registration_form_sections_ie_registration_form_v_878e4fad");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormTemplate", b =>
@@ -40822,7 +40828,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_registration_form_templates_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_templates_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -40831,34 +40837,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ExternalRegistrationProviderConnectionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_provid_1F791302");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_provid_257eb8a9");
 
                     b.HasOne("Explore.Domain.RegistrationProviderSchemaRevision", null)
                         .WithMany()
                         .HasForeignKey("ExternalRegistrationProviderSchemaRevisionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_provid_3BF4EB0C");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_provid_84aa66ef");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersionSourceKind", "SourceKind")
                         .WithMany()
                         .HasForeignKey("SourceKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_form_v_7E648D0B");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_form_v_19e962ab");
 
                     b.HasOne("Explore.Domain.RegistrationFormStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_form_s_0255F433");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_form_s_7344732b");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_versions_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_form_versions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40866,7 +40872,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_form_versions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_form_versions_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationForm", null)
                         .WithMany("Versions")
@@ -40874,7 +40880,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_forms__73242A83");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_forms__698c2aa1");
 
                     b.Navigation("SourceKind");
 
@@ -40888,14 +40894,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RegistrationInventoryHoldStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_inventory_holds_ie_registration_inve_06315446");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_registration_inve_822b462f");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_inventory_holds_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_inventory_holds_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventCapacityPool", null)
                         .WithMany()
@@ -40903,7 +40909,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_inventory_holds_ie_event_capacity_po_B4899DCB");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_event_capacity_po_46997c8a");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -40911,7 +40917,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_inventory_holds_ie_registration_orde_1EBC7047");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_registration_orde_ac6145b6");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany()
@@ -40919,7 +40925,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_inventory_holds_ie_event_ticket_type_7F423CD7");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_event_ticket_type_481c815f");
 
                     b.Navigation("RegistrationInventoryHoldStatus");
                 });
@@ -40932,7 +40938,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_material_change_choices_ie_paid_orde_E3CB71EF");
+                        .HasConstraintName("fk_ie_registration_material_change_choices_ie_paid_orde_c5f2201d");
 
                     b.HasOne("Explore.Domain.PaymentAttempt", null)
                         .WithMany()
@@ -40940,7 +40946,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_material_change_choices_ie_payment_a_BC9D44B9");
+                        .HasConstraintName("fk_ie_registration_material_change_choices_ie_payment_a_60163478");
 
                     b.HasOne("Explore.Domain.RefundCampaign", null)
                         .WithMany()
@@ -40948,7 +40954,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_material_change_choices_ie_refund_ca_296752E9");
+                        .HasConstraintName("fk_ie_registration_material_change_choices_ie_refund_ca_01cd1a45");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
@@ -40958,35 +40964,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("BookingPartyTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_orders_ie_booking_party_types_bookin_F233428A");
+                        .HasConstraintName("fk_ie_registration_orders_ie_booking_party_types_bookin_94e1ce1e");
 
                     b.HasOne("Explore.Domain.RegistrationOrderStatus", "RegistrationOrderStatus")
                         .WithMany()
                         .HasForeignKey("RegistrationOrderStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_orders_ie_registration_order_statuse_317A4D83");
+                        .HasConstraintName("fk_ie_registration_orders_ie_registration_order_statuse_ab7e0233");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_orders_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_orders_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.PromotionCode", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "AppliedPromotionCodeIdSnapshot")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_orders_ie_promotion_codes_tenant_id__9A0F2576");
+                        .HasConstraintName("fk_ie_registration_orders_ie_promotion_codes_tenant_id__b4f69480");
 
                     b.HasOne("Explore.Domain.PromotionDefinition", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "AppliedPromotionDefinitionVersionIdSnapshot")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_orders_ie_promotion_definitions_tena_9D9AB163");
+                        .HasConstraintName("fk_ie_registration_orders_ie_promotion_definitions_tena_d6ab22c0");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -40994,7 +41000,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_orders_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_orders_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany()
@@ -41002,7 +41008,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_orders_ie_event_ticket_catalog_versi_4220D27E");
+                        .HasConstraintName("fk_ie_registration_orders_ie_event_ticket_catalog_versi_195bbd1c");
 
                     b.OwnsOne("Explore.Domain.RegistrationParticipationSnapshot", "ParticipationSnapshot", b1 =>
                         {
@@ -41055,7 +41061,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_order_lines_ie_registration_orders_t_6E68F8A3");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_registration_orders_t_bb17b687");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany()
@@ -41063,7 +41069,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_order_lines_ie_event_ticket_catalog__F5A3FE3B");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_event_ticket_catalog__685ac90b");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany()
@@ -41071,7 +41077,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_order_lines_ie_event_ticket_types_te_6F6FD674");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_event_ticket_types_te_5db9663b");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
@@ -41081,7 +41087,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_order_pii_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_order_pii_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithOne("Pii")
@@ -41089,7 +41095,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_order_pii_ie_registration_orders_ten_F3130AE5");
+                        .HasConstraintName("fk_ie_registration_order_pii_ie_registration_orders_ten_3f89c644");
 
                     b.Navigation("RegistrationOrder");
                 });
@@ -41102,7 +41108,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_order_platform_contributions_ie_regi_4AB32F6C");
+                        .HasConstraintName("fk_ie_registration_order_platform_contributions_ie_regi_47d62ea7");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
@@ -41111,21 +41117,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("LinkedUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_registration_participants_users_linked_user_id");
+                        .HasConstraintName("fk_registration_participants_users_linked_user_id");
 
                     b.HasOne("Explore.Domain.ParticipantType", "ParticipantType")
                         .WithMany()
                         .HasForeignKey("ParticipantTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_participants_ie_participant_types_pa_20DC9282");
+                        .HasConstraintName("fk_ie_registration_participants_ie_participant_types_pa_056bc823");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_participants_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_participants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany("Participants")
@@ -41133,14 +41139,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_participants_ie_registration_orders__AEC424C3");
+                        .HasConstraintName("fk_ie_registration_participants_ie_registration_orders__73162387");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "GuardianParticipant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "GuardianParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_participants_ie_registration_partici_FE7AB3EB");
+                        .HasConstraintName("fk_ie_registration_participants_ie_registration_partici_d9221e9a");
 
                     b.Navigation("GuardianParticipant");
 
@@ -41158,7 +41164,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_participant_pii_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_participant_pii_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
                         .WithOne("Pii")
@@ -41166,7 +41172,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationParticipant", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_participant_pii_ie_registration_part_01A7699E");
+                        .HasConstraintName("fk_ie_registration_participant_pii_ie_registration_part_00c2117c");
 
                     b.Navigation("RegistrationParticipant");
                 });
@@ -41179,7 +41185,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_approved_origins_ie_registr_9C3026EF");
+                        .HasConstraintName("fk_ie_registration_provider_approved_origins_ie_registr_6103d447");
 
                     b.Navigation("Connection");
                 });
@@ -41191,55 +41197,55 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CollectionModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_3D027EEA");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_462f7e91");
 
                     b.HasOne("Explore.Domain.RegistrationProviderCompletionMode", null)
                         .WithMany()
                         .HasForeignKey("CompletionModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_8D4A5F2A");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_103fbb21");
 
                     b.HasOne("Explore.Domain.RegistrationProviderDriftClass", null)
                         .WithMany()
                         .HasForeignKey("DriftClassId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_1A355904");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_a4dad8ed");
 
                     b.HasOne("Explore.Domain.RegistrationProviderPresentationMode", null)
                         .WithMany()
                         .HasForeignKey("PresentationModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_6582F3BE");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_1cd5c951");
 
                     b.HasOne("Explore.Domain.RegistrationProviderBindingState", null)
                         .WithMany()
                         .HasForeignKey("StateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_2D3F7518");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_6f772401");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_provider_bindings_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_provider_bindings_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationProviderTrustLevel", null)
                         .WithMany()
                         .HasForeignKey("TrustLevelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_C125C3CF");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_6bbdea78");
 
                     b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
                         .WithMany()
                         .HasForeignKey("WebhookSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_secret_bindings_69A51153");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_secret_bindings_16c266a4");
 
                     b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
                         .WithMany()
@@ -41247,7 +41253,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_973FCAAC");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_pr_3027edbf");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany()
@@ -41255,7 +41261,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_fo_0C9FEE71");
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_fo_37ec6f8d");
 
                     b.Navigation("Connection");
                 });
@@ -41268,7 +41274,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_capabilities_ie_registratio_6B47607C");
+                        .HasConstraintName("fk_ie_registration_provider_capabilities_ie_registratio_43d1ff75");
 
                     b.Navigation("Binding");
                 });
@@ -41279,34 +41285,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ApiTokenSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_5B68AC56");
+                        .HasConstraintName("fk_ie_registration_provider_connections_ie_secret_bindi_7fde6fb4");
 
                     b.HasOne("Explore.Domain.RegistrationProviderDeploymentKind", null)
                         .WithMany()
                         .HasForeignKey("DeploymentKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_registration_FF06FDF9");
+                        .HasConstraintName("fk_ie_registration_provider_connections_ie_registration_c5f1875f");
 
                     b.HasOne("Explore.Domain.RegistrationProviderKind", null)
                         .WithMany()
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_registration_F9731B6E");
+                        .HasConstraintName("fk_ie_registration_provider_connections_ie_registration_e58c519f");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_provider_connections_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_provider_connections_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
                         .WithMany()
                         .HasForeignKey("WebhookSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_C65A77CA");
+                        .HasConstraintName("fk_ie_registration_provider_connections_ie_secret_bindi_cccbf1c9");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderFieldMapping", b =>
@@ -41317,7 +41323,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_field_mappings_ie_registrat_0039E2D2");
+                        .HasConstraintName("fk_ie_registration_provider_field_mappings_ie_registrat_79eacab4");
 
                     b.Navigation("Binding");
                 });
@@ -41330,7 +41336,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_option_mappings_ie_registra_E472D848");
+                        .HasConstraintName("fk_ie_registration_provider_option_mappings_ie_registra_06810c48");
 
                     b.HasOne("Explore.Domain.RegistrationProviderFieldMapping", null)
                         .WithMany()
@@ -41338,7 +41344,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationProviderBindingId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_option_mappings_ie_registra_DEEA384C");
+                        .HasConstraintName("fk_ie_registration_provider_option_mappings_ie_registra_78c79b55");
 
                     b.Navigation("Binding");
                 });
@@ -41350,14 +41356,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("DriftClassId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_schema_revisions_ie_registr_A02373BB");
+                        .HasConstraintName("fk_ie_registration_provider_schema_revisions_ie_registr_bdab5ff7");
 
                     b.HasOne("Explore.Domain.RegistrationProviderSchemaAuthority", null)
                         .WithMany()
                         .HasForeignKey("SchemaAuthorityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_schema_revisions_ie_registr_575716B8");
+                        .HasConstraintName("fk_ie_registration_provider_schema_revisions_ie_registr_d1c5e772");
 
                     b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
                         .WithMany()
@@ -41365,7 +41371,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_schema_revisions_ie_registr_FC3CC04F");
+                        .HasConstraintName("fk_ie_registration_provider_schema_revisions_ie_registr_bf0b5114");
 
                     b.Navigation("Connection");
                 });
@@ -41377,7 +41383,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_submission_write_effects_ie_9FAA9258");
+                        .HasConstraintName("fk_ie_registration_provider_submission_write_effects_ie_25412f43");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -41385,7 +41391,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_submission_write_effects_ie_3967A088");
+                        .HasConstraintName("fk_ie_registration_provider_submission_write_effects_ie_25645e09");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderSubscriptionState", b =>
@@ -41395,7 +41401,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_subscription_states_ie_tena_9A6DB097");
+                        .HasConstraintName("fk_ie_registration_provider_subscription_states_ie_tena_15bb53a7");
 
                     b.HasOne("Explore.Domain.RegistrationProviderBinding", "Binding")
                         .WithMany()
@@ -41403,7 +41409,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_provider_subscription_states_ie_regi_343A1C29");
+                        .HasConstraintName("fk_ie_registration_provider_subscription_states_ie_regi_05531be4");
 
                     b.Navigation("Binding");
                 });
@@ -41415,35 +41421,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AnswerSyncModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirements_ie_registration_answer__F1CDA2A5");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_answer__f4263715");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementSubjectType", null)
                         .WithMany()
                         .HasForeignKey("AppliesToSubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirements_ie_registration_require_1CFA450C");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_require_cd17199e");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementCompletionEffect", null)
                         .WithMany()
                         .HasForeignKey("CompletionEffectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirements_ie_registration_require_13F4E912");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_require_b2f4c4b0");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementCriticality", null)
                         .WithMany()
                         .HasForeignKey("CriticalityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirements_ie_registration_require_C02E608C");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_require_9ef65412");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_requirements_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_requirements_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -41451,7 +41457,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_requirements_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_requirements_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany("Requirements")
@@ -41459,7 +41465,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirements_ie_registration_workflo_B681533F");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_workflo_850e8d4b");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementFulfillment", b =>
@@ -41469,14 +41475,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("SubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirement_fulfillments_ie_registra_2B7B97E3");
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registra_02776b91");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_requirement_fulfillments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -41484,14 +41490,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirement_fulfillments_ie_registra_0AB8982D");
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registra_dd311b47");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "SourceRegistrationSubmissionId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_requirement_fulfillments_ie_registra_F35CDE16");
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registra_4e950ac1");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -41499,7 +41505,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_requirement_fulfillments_ie_registra_6D94FE11");
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registra_7b02fff2");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSensitiveAnswerValue", b =>
@@ -41509,7 +41515,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_sensitive_answer_values_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_sensitive_answer_values_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSubmission", b =>
@@ -41519,21 +41525,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AttemptStatusAtReceiptId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_submissions_ie_registration_attempt__06E9D0A7");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_registration_attempt__c23e1fbe");
 
                     b.HasOne("Explore.Domain.RegistrationSubmissionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_submissions_ie_registration_submissi_519D7FF3");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_registration_submissi_be7be637");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_submissions_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_submissions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -41541,7 +41547,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_submissions_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_submissions_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationAttempt", null)
                         .WithMany()
@@ -41549,7 +41555,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_submissions_ie_registration_attempts_1522EC07");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_registration_attempts_38315823");
 
                     b.Navigation("Status");
                 });
@@ -41561,7 +41567,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_submission_issues_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_submission_issues_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
@@ -41569,7 +41575,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_submission_issues_ie_registration_su_76C090DA");
+                        .HasConstraintName("fk_ie_registration_submission_issues_ie_registration_su_6d601f54");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSubmissionRevision", b =>
@@ -41579,7 +41585,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_submission_revisions_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_submission_revisions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany("Revisions")
@@ -41587,7 +41593,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_submission_revisions_ie_registration_BAA79E3E");
+                        .HasConstraintName("fk_ie_registration_submission_revisions_ie_registration_960e8772");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationTicketAssignment", b =>
@@ -41597,14 +41603,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("AssignmentStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_ticket_assignments_ie_assignment_sta_4DD45561");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_assignment_sta_f4e7eda4");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_ticket_assignments_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_ticket_assignments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
@@ -41612,14 +41618,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_ticket_assignments_ie_registration_o_13562479");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_o_363bc0b0");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "Participant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_ticket_assignments_ie_registration_p_820E36D6");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_p_ca976e62");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
                         .WithMany("Assignments")
@@ -41627,7 +41633,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_registration_ticket_assignments_ie_registration_o_A404820E");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_o_106ac6f4");
 
                     b.Navigation("AssignmentStatus");
 
@@ -41645,7 +41651,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_workflows_tenants_tenant_id");
+                        .HasConstraintName("fk_registration_workflows_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -41653,7 +41659,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_registration_workflows_ie_events_tenant_id_event_id");
+                        .HasConstraintName("fk_registration_workflows_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Role", b =>
@@ -41663,7 +41669,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_roles_role_scopes_role_scope_id");
+                        .HasConstraintName("fk_roles_role_scopes_role_scope_id");
 
                     b.Navigation("RoleScope");
                 });
@@ -41675,14 +41681,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("PermissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_role_permissions_ie_permissions_permission_id");
+                        .HasConstraintName("fk_role_permissions_permissions_permission_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_role_permissions_ie_roles_role_id");
+                        .HasConstraintName("fk_role_permissions_roles_role_id");
 
                     b.Navigation("Permission");
 
@@ -41696,21 +41702,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("SecretSourceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_secret_bindings_ie_secret_source_types_secret_sou_86E8FB07");
+                        .HasConstraintName("fk_ie_secret_bindings_ie_secret_source_types_secret_sou_b52ecbe7");
 
                     b.HasOne("Explore.Domain.SecretValidationStatus", "SecretValidationStatus")
                         .WithMany()
                         .HasForeignKey("SecretValidationStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_secret_bindings_ie_secret_validation_statuses_sec_F3D3D638");
+                        .HasConstraintName("fk_ie_secret_bindings_ie_secret_validation_statuses_sec_0b9a69bf");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "SettingScope")
                         .WithMany()
                         .HasForeignKey("SettingScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_secret_bindings_setting_scopes_setting_scope_id");
+                        .HasConstraintName("fk_secret_bindings_setting_scopes_setting_scope_id");
 
                     b.Navigation("SecretSourceType");
 
@@ -41726,7 +41732,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_settings_documents_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_settings_documents_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -41737,21 +41743,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_storage_objects_ie_actors_actor_id");
+                        .HasConstraintName("fk_storage_objects_actors_actor_id");
 
                     b.HasOne("Explore.Domain.FileType", "FileType")
                         .WithMany()
                         .HasForeignKey("FileTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_storage_objects_ie_file_types_file_type_id");
+                        .HasConstraintName("fk_storage_objects_file_types_file_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_storage_objects_tenants_tenant_id");
+                        .HasConstraintName("fk_storage_objects_tenants_tenant_id");
 
                     b.Navigation("Actor");
 
@@ -41766,20 +41772,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("StorageObjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_storage_upload_sessions_ie_storage_objects_storag_4A9349BD");
+                        .HasConstraintName("fk_ie_storage_upload_sessions_ie_storage_objects_storag_bd352737");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_storage_upload_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_storage_upload_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_storage_upload_sessions_users_user_id");
+                        .HasConstraintName("fk_storage_upload_sessions_users_user_id");
 
                     b.Navigation("StorageObject");
 
@@ -41795,7 +41801,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_storage_usage_counters_tenants_tenant_id");
+                        .HasConstraintName("fk_storage_usage_counters_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -41806,34 +41812,34 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_support_access_audit_events_users_actor_user_id");
+                        .HasConstraintName("fk_support_access_audit_events_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.SupportAccessAuditEventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_support_access_audit_events_ie_support_access_aud_A917BA6E");
+                        .HasConstraintName("fk_ie_support_access_audit_events_ie_support_access_aud_66789a2c");
 
                     b.HasOne("Explore.Domain.SupportAccessSession", "SupportAccessSession")
                         .WithMany()
                         .HasForeignKey("SupportAccessSessionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_support_access_audit_events_ie_support_access_ses_1613B50B");
+                        .HasConstraintName("fk_ie_support_access_audit_events_ie_support_access_ses_0554aae0");
 
                     b.HasOne("Explore.Domain.Tenant", "TargetTenant")
                         .WithMany()
                         .HasForeignKey("TargetTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_support_access_audit_events_tenants_target_tenant_id");
+                        .HasConstraintName("fk_support_access_audit_events_tenants_target_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
                         .WithMany()
                         .HasForeignKey("TargetTenantUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_support_access_audit_events_ie_tenant_users_targe_FCC8DE32");
+                        .HasConstraintName("fk_ie_support_access_audit_events_ie_tenant_users_targe_19af6f26");
 
                     b.Navigation("ActorUser");
 
@@ -41852,46 +41858,46 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_support_access_sessions_users_actor_user_id");
+                        .HasConstraintName("fk_support_access_sessions_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.User", "ApprovedByUser")
                         .WithMany()
                         .HasForeignKey("ApprovedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_support_access_sessions_users_approved_by_user_id");
+                        .HasConstraintName("fk_support_access_sessions_users_approved_by_user_id");
 
                     b.HasOne("Explore.Domain.SupportAccessEndReason", "EndReason")
                         .WithMany()
                         .HasForeignKey("EndReasonId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_support_access_sessions_ie_support_access_end_rea_58AD5A89");
+                        .HasConstraintName("fk_ie_support_access_sessions_ie_support_access_end_rea_30c86b73");
 
                     b.HasOne("Explore.Domain.SupportAccessMode", "Mode")
                         .WithMany()
                         .HasForeignKey("ModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_support_access_sessions_ie_support_access_modes_mode_id");
+                        .HasConstraintName("fk_support_access_sessions_support_access_modes_mode_id");
 
                     b.HasOne("Explore.Domain.SupportAccessSessionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_support_access_sessions_ie_support_access_session_CF561044");
+                        .HasConstraintName("fk_ie_support_access_sessions_ie_support_access_session_77052311");
 
                     b.HasOne("Explore.Domain.Tenant", "TargetTenant")
                         .WithMany()
                         .HasForeignKey("TargetTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_support_access_sessions_tenants_target_tenant_id");
+                        .HasConstraintName("fk_support_access_sessions_tenants_target_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
                         .WithMany()
                         .HasForeignKey("TargetTenantUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_support_access_sessions_ie_tenant_users_target_te_1796FA4B");
+                        .HasConstraintName("fk_ie_support_access_sessions_ie_tenant_users_target_te_52c9d8ca");
 
                     b.Navigation("ActorUser");
 
@@ -41915,7 +41921,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("SettingValueTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_system_settings_ie_setting_value_types_setting_va_74CFB29C");
+                        .HasConstraintName("fk_ie_system_settings_ie_setting_value_types_setting_va_e82929ba");
 
                     b.Navigation("SettingValueTypeLookup");
                 });
@@ -41927,7 +41933,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_tags_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -41939,21 +41945,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tag_type_tags_ie_tags_tag_id");
+                        .HasConstraintName("fk_tag_type_tags_tags_tag_id");
 
                     b.HasOne("Explore.Domain.TagType", "TagType")
                         .WithMany()
                         .HasForeignKey("TagTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tag_type_tags_ie_tag_types_tag_type_id");
+                        .HasConstraintName("fk_tag_type_tags_tag_types_tag_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tag_type_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_tag_type_tags_tenants_tenant_id");
 
                     b.Navigation("Tag");
 
@@ -41969,7 +41975,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenants_tenant_statuses_tenant_status_id");
+                        .HasConstraintName("fk_tenants_tenant_statuses_tenant_status_id");
 
                     b.Navigation("TenantStatus");
                 });
@@ -41981,7 +41987,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("FooterLinkGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_footer_links_ie_tenant_footer_link_groups__847270B8");
+                        .HasConstraintName("fk_ie_tenant_footer_links_ie_tenant_footer_link_groups__5a475219");
 
                     b.Navigation("Group");
                 });
@@ -41992,7 +41998,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_ie_tenant_footer_link_groups_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_footer_link_groups_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -42004,14 +42010,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_invitations_ie_roles_role_id");
+                        .HasConstraintName("fk_tenant_invitations_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_invitations_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_invitations_tenants_tenant_id");
 
                     b.Navigation("Role");
 
@@ -42025,20 +42031,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("NewStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_tenant_statuses_new_status_id");
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenant_statuses_new_status_id");
 
                     b.HasOne("Explore.Domain.TenantStatus", "OldStatus")
                         .WithMany()
                         .HasForeignKey("OldStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_tenant_statuses_old_status_id");
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenant_statuses_old_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenants_tenant_id");
 
                     b.Navigation("NewStatus");
 
@@ -42054,7 +42060,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_navigation_links_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_navigation_links_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -42066,7 +42072,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_onboarding_states_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_onboarding_states_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -42077,41 +42083,41 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("PreviousTenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_tenant_plan_application_logs_ie_tenant_plan_versi_F4BC9C2C");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plan_versi_8bb9fb44");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_plan_application_logs_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantPlanApplicationStatus", "TenantPlanApplicationStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanApplicationStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_application_logs_ie_tenant_plan_appli_3E01EC4F");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plan_appli_9a64c14d");
 
                     b.HasOne("Explore.Domain.TenantPlanAssignment", "TenantPlanAssignment")
                         .WithMany("ApplicationLogs")
                         .HasForeignKey("TenantPlanAssignmentId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_tenant_plan_application_logs_ie_tenant_plan_assig_7F191DE3");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plan_assig_8424c827");
 
                     b.HasOne("Explore.Domain.TenantPlan", "TenantPlan")
                         .WithMany()
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_application_logs_ie_tenant_plans_tena_EFC55552");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plans_tena_3364016b");
 
                     b.HasOne("Explore.Domain.TenantPlanVersion", "TenantPlanVersion")
                         .WithMany()
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_application_logs_ie_tenant_plan_versi_6B42315D");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plan_versi_cc13dbc3");
 
                     b.Navigation("PreviousTenantPlanVersion");
 
@@ -42133,28 +42139,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_plan_assignments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantPlanAssignmentStatus", "TenantPlanAssignmentStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanAssignmentStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_assignments_ie_tenant_plan_assignment_575B2948");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenant_plan_assignment_270727eb");
 
                     b.HasOne("Explore.Domain.TenantPlan", "TenantPlan")
                         .WithMany("Assignments")
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenant_plans_tenant_plan_id");
+                        .HasConstraintName("fk_tenant_plan_assignments_tenant_plans_tenant_plan_id");
 
                     b.HasOne("Explore.Domain.TenantPlanVersion", "TenantPlanVersion")
                         .WithMany("Assignments")
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_assignments_ie_tenant_plan_versions_t_D45648C8");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenant_plan_versions_t_f9f8aeba");
 
                     b.Navigation("Tenant");
 
@@ -42172,14 +42178,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_plan_versions_ie_tenant_plans_tenant_plan_id");
+                        .HasConstraintName("fk_tenant_plan_versions_tenant_plans_tenant_plan_id");
 
                     b.HasOne("Explore.Domain.TenantPlanStatus", "TenantPlanStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_versions_ie_tenant_plan_statuses_tena_401A46B6");
+                        .HasConstraintName("fk_ie_tenant_plan_versions_ie_tenant_plan_statuses_tena_6a86a08d");
 
                     b.Navigation("TenantPlan");
 
@@ -42193,7 +42199,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_version_quotas_ie_tenant_plan_version_FC101B0E");
+                        .HasConstraintName("fk_ie_tenant_plan_version_quotas_ie_tenant_plan_version_b69cff3b");
 
                     b.Navigation("TenantPlanVersion");
                 });
@@ -42205,7 +42211,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_plan_version_settings_ie_tenant_plan_versi_E28C05D8");
+                        .HasConstraintName("fk_ie_tenant_plan_version_settings_ie_tenant_plan_versi_7ac3187b");
 
                     b.Navigation("TenantPlanVersion");
                 });
@@ -42217,7 +42223,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_setting_overrides_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_setting_overrides_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -42228,21 +42234,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_ie_tenant_users_ie_actors_actor_id");
+                        .HasConstraintName("fk_tenant_users_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_users_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_users_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_users_users_user_id");
+                        .HasConstraintName("fk_tenant_users_users_user_id");
 
                     b.Navigation("Actor");
 
@@ -42258,14 +42264,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_user_profiles_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_user_profiles_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithOne("Profile")
                         .HasForeignKey("Explore.Domain.TenantUserProfile", "TenantUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_user_profiles_ie_tenant_users_tenant_user_id");
+                        .HasConstraintName("fk_tenant_user_profiles_tenant_users_tenant_user_id");
 
                     b.Navigation("Tenant");
 
@@ -42279,7 +42285,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_user_role_grants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
@@ -42287,7 +42293,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("Id", "RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_roles_role_id_role_scope_id");
+                        .HasConstraintName("fk_tenant_user_role_grants_roles_role_id_role_scope_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany("RoleGrants")
@@ -42295,7 +42301,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_tenant_user_role_grants_ie_tenant_users_tenant_id_CFC40DA7");
+                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_tenant_users_tenant_id_cdb78939");
 
                     b.Navigation("Role");
 
@@ -42311,14 +42317,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EntitlementScopeTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_entitlement_scope_typ_465B5409");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_entitlement_scope_typ_5299a049");
 
                     b.HasOne("Explore.Domain.EntitlementSelectionRule", "EntitlementSelectionRule")
                         .WithMany()
                         .HasForeignKey("EntitlementSelectionRuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_entitlement_selection_EEBB336C");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_entitlement_selection_0d783072");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -42326,7 +42332,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_events_tenant_id_targ_7CBB47F0");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_events_tenant_id_targ_b948ea3e");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany("Entitlements")
@@ -42334,21 +42340,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_event_ticket_types_te_AEDC7C90");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_ticket_types_te_72501c2d");
 
                     b.HasOne("Explore.Domain.EventDay", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "TargetEventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_event_days_tenant_id__02D00C25");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_days_tenant_id__83b5d545");
 
                     b.HasOne("Explore.Domain.EventSession", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "TargetEventId", "EventSessionId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_ticket_type_entitlements_ie_event_sessions_tenant_037F24BE");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_sessions_tenant_4773bcef");
 
                     b.Navigation("EntitlementScopeType");
 
@@ -42361,7 +42367,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_ie_ui_themes_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_ui_themes_tenants_tenant_id");
 
                     b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
                         {
@@ -42638,7 +42644,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_ie_ui_theme_presets_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_ui_theme_presets_tenants_tenant_id");
 
                     b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
                         {
@@ -42916,7 +42922,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActiveProfileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_user_appearance_preferences_ie_user_appearance_pr_EB7409E6");
+                        .HasConstraintName("fk_ie_user_appearance_preferences_ie_user_appearance_pr_2b332ea0");
 
                     b.Navigation("ActiveProfile");
                 });
@@ -43197,14 +43203,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_authentication_tokens_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_user_authentication_tokens_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_authentication_tokens_ie_users_user_id");
+                        .HasConstraintName("fk_user_authentication_tokens_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -43218,14 +43224,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_external_logins_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_user_external_logins_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_external_logins_ie_users_user_id");
+                        .HasConstraintName("fk_user_external_logins_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -43239,14 +43245,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_notification_preferences_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_user_notification_preferences_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_notification_preferences_ie_users_user_id");
+                        .HasConstraintName("fk_user_notification_preferences_users_user_id");
 
                     b.Navigation("Tenant");
                 });
@@ -43258,7 +43264,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("Explore.Domain.UserPii", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_pii_ie_users_user_id");
+                        .HasConstraintName("fk_user_pii_users_user_id");
 
                     b.Navigation("User");
                 });
@@ -43270,7 +43276,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_user_preferences_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_user_preferences_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -43282,28 +43288,28 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_web_push_dispatch_outbox_ie_notification_preferen_C111CC92");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_notification_preferen_1b2ff9f9");
 
                     b.HasOne("Explore.Domain.WebPushSubscription", "Subscription")
                         .WithMany()
                         .HasForeignKey("SubscriptionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_web_push_dispatch_outbox_ie_web_push_subscription_E04004CF");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_web_push_subscription_64a5a74c");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_web_push_dispatch_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_users_user_id");
+                        .HasConstraintName("fk_web_push_dispatch_outbox_users_user_id");
 
                     b.Navigation("Category");
 
@@ -43321,14 +43327,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_web_push_subscriptions_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_web_push_subscriptions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_web_push_subscriptions_ie_users_user_id");
+                        .HasConstraintName("fk_web_push_subscriptions_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -43342,41 +43348,41 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ActionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_audit_events_ie_webhook_audit_actions_action_id");
+                        .HasConstraintName("fk_webhook_audit_events_webhook_audit_actions_action_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditScopeKindLookup", "EffectiveScopeKindLookup")
                         .WithMany()
                         .HasForeignKey("EffectiveScopeKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_audit_events_ie_webhook_audit_scope_kinds_23F25CCE");
+                        .HasConstraintName("fk_ie_webhook_audit_events_ie_webhook_audit_scope_kinds_a1668e1e");
 
                     b.HasOne("Explore.Domain.WebhookAuditOutcomeLookup", "OutcomeLookup")
                         .WithMany()
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_audit_events_webhook_audit_outcomes_outcome_id");
+                        .HasConstraintName("fk_webhook_audit_events_webhook_audit_outcomes_outcome_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditPrincipalKindLookup", "PrincipalKindLookup")
                         .WithMany()
                         .HasForeignKey("PrincipalKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_audit_events_ie_webhook_audit_principal_k_B89CC0D0");
+                        .HasConstraintName("fk_ie_webhook_audit_events_ie_webhook_audit_principal_k_e1fecedc");
 
                     b.HasOne("Explore.Domain.WebhookAuditTargetKindLookup", "TargetKindLookup")
                         .WithMany()
                         .HasForeignKey("TargetKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_audit_events_ie_webhook_audit_target_kind_C1993F14");
+                        .HasConstraintName("fk_ie_webhook_audit_events_ie_webhook_audit_target_kind_0d555c06");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_audit_events_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_audit_events_tenants_tenant_id");
 
                     b.Navigation("ActionLookup");
 
@@ -43398,26 +43404,26 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_bulk_replay_operations_ie_webhook_bulk_re_602E0724");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_ie_webhook_bulk_re_f926aa59");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_bulk_replay_operations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_webhook_bulk_replay_operations_ie_webhook_consume_BA4F605C");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_ie_webhook_consume_7e89a9e4");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "WebhookEndpoint")
                         .WithMany()
                         .HasForeignKey("WebhookEndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_webhook_bulk_replay_operations_ie_webhook_endpoin_2A85CF2C");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_ie_webhook_endpoin_17711ee1");
 
                     b.Navigation("StatusLookup");
 
@@ -43435,54 +43441,54 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ConsumerKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_consumers_ie_webhook_consumer_kinds_consu_160B6F6F");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_webhook_consumer_kinds_consu_6193428e");
 
                     b.HasOne("Explore.Domain.InstanceBootstrapState", "Instance")
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_consumers_ie_instance_bootstrap_states_instance_id");
+                        .HasConstraintName("fk_webhook_consumers_instance_bootstrap_states_instance_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderModeLookup", "ProviderModeLookup")
                         .WithMany()
                         .HasForeignKey("ProviderModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_consumers_ie_webhook_provider_modes_provi_EDD4D266");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_webhook_provider_modes_provi_55762981");
 
                     b.HasOne("Explore.Domain.WebhookConsumerStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_consumers_webhook_consumer_statuses_status_id");
+                        .HasConstraintName("fk_webhook_consumers_webhook_consumer_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_consumers_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_consumers_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "GroupId")
                         .HasPrincipalKey("TenantId", "GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_consumers_ie_group_tenants_tenant_id_group_id");
+                        .HasConstraintName("fk_webhook_consumers_group_tenants_tenant_id_group_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "OrganizationId")
                         .HasPrincipalKey("TenantId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_webhook_consumers_ie_organization_tenants_tenant__63CEEC42");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_organization_tenants_tenant__5308052b");
 
                     b.HasOne("Explore.Domain.TenantUser", "OwnerTenantUser")
                         .WithMany()
                         .HasForeignKey("TenantId", "OwnerUserId")
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_consumers_ie_tenant_users_tenant_id_owner_user_id");
+                        .HasConstraintName("fk_webhook_consumers_tenant_users_tenant_id_owner_user_id");
 
                     b.Navigation("ConsumerKindLookup");
 
@@ -43504,20 +43510,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_consumer_provider_bindings_ie_webhook_pro_8E78084E");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_webhook_pro_acdbd7b2");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_consumer_provider_bindings_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderBindingVerificationStateLookup", "VerificationStateLookup")
                         .WithMany()
                         .HasForeignKey("VerificationStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_consumer_provider_bindings_ie_webhook_pro_DE8991D8");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_webhook_pro_d1b0b871");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany("ProviderBindings")
@@ -43525,7 +43531,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_consumer_provider_bindings_ie_webhook_con_F83D77A4");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_webhook_con_b756dd30");
 
                     b.Navigation("ProviderKindLookup");
 
@@ -43543,21 +43549,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_delivery_attempts_webhook_endpoints_endpoint_id");
+                        .HasConstraintName("fk_webhook_delivery_attempts_webhook_endpoints_endpoint_id");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryAttemptOutcomeLookup", "OutcomeLookup")
                         .WithMany()
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_delivery_attempts_ie_webhook_delivery_att_CBF94360");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_ie_webhook_delivery_att_917aad52");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_delivery_attempts_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_delivery_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "Message")
                         .WithMany()
@@ -43565,7 +43571,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_delivery_attempts_ie_webhook_messages_ten_D60C39DA");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_ie_webhook_messages_ten_8cbbab71");
 
                     b.Navigation("Endpoint");
 
@@ -43583,21 +43589,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ProviderModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_delivery_plan_snapshots_ie_webhook_provid_ADA51FAB");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_webhook_provid_9cc24ae0");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_delivery_plan_snapshots_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_delivery_plan_snapshots_ie_webhook_consum_92A3CA82");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_webhook_consum_1a8b088b");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -43605,7 +43611,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_delivery_plan_snapshots_ie_webhook_messag_A4646732");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_webhook_messag_03ebfcba");
 
                     b.Navigation("ProviderModeLookup");
 
@@ -43622,20 +43628,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_endpoints_ie_instance_bootstrap_states_instance_id");
+                        .HasConstraintName("fk_webhook_endpoints_instance_bootstrap_states_instance_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpointStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_endpoints_webhook_endpoint_statuses_status_id");
+                        .HasConstraintName("fk_webhook_endpoints_webhook_endpoint_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_endpoints_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_endpoints_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
                         .WithMany()
@@ -43643,7 +43649,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_endpoints_ie_webhook_consumers_configurat_53DA33C0");
+                        .HasConstraintName("fk_ie_webhook_endpoints_ie_webhook_consumers_configurat_187c6cca");
 
                     b.Navigation("Consumer");
 
@@ -43661,19 +43667,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_endpoint_subscriptions_ie_webhook_event_t_CDB28452");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_webhook_event_t_deb42a14");
 
                     b.HasOne("Explore.Domain.InstanceBootstrapState", "Instance")
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_webhook_endpoint_subscriptions_ie_instance_bootst_0ADE1E7A");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_instance_bootst_fcb9f751");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_endpoint_subscriptions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
                         .WithMany("Subscriptions")
@@ -43681,7 +43687,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_endpoint_subscriptions_ie_webhook_endpoin_9F9B12F8");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_webhook_endpoin_a188d8c8");
 
                     b.Navigation("Endpoint");
 
@@ -43699,21 +43705,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("DeliveryStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_local_target_snapshots_ie_webhook_local_d_BF6FE64D");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_local_d_f9ebf7b4");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_local_target_snapshots_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "WebhookEndpoint")
                         .WithMany()
                         .HasForeignKey("WebhookEndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_local_target_snapshots_ie_webhook_endpoin_4BDC92B2");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_endpoin_53a64b23");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryPlanSnapshot", "DeliveryPlanSnapshot")
                         .WithMany()
@@ -43721,7 +43727,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_local_target_snapshots_ie_webhook_deliver_36111097");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_deliver_908b606d");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -43729,7 +43735,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_local_target_snapshots_ie_webhook_message_70F99071");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_message_649bf55c");
 
                     b.Navigation("DeliveryPlanSnapshot");
 
@@ -43748,21 +43754,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .WithMany()
                         .HasForeignKey("ConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_webhook_messages_ie_webhook_consumers_consumer_id");
+                        .HasConstraintName("fk_webhook_messages_webhook_consumers_consumer_id");
 
                     b.HasOne("Explore.Domain.WebhookPayloadProvenanceLookup", "PayloadProvenanceLookup")
                         .WithMany()
                         .HasForeignKey("PayloadProvenanceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_messages_ie_webhook_payload_provenances_p_01982226");
+                        .HasConstraintName("fk_ie_webhook_messages_ie_webhook_payload_provenances_p_0915aa6d");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_messages_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_messages_tenants_tenant_id");
 
                     b.Navigation("Consumer");
 
@@ -43778,35 +43784,35 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("ModeSnapshotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_provider_6035E829");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_provider_2d4943f9");
 
                     b.HasOne("Explore.Domain.WebhookConsumerProviderBinding", "ProviderBinding")
                         .WithMany()
                         .HasForeignKey("ProviderBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_consumer_B5D2B7A5");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_consumer_9d947105");
 
                     b.HasOne("Explore.Domain.WebhookProviderKindLookup", "ProviderKindLookup")
                         .WithMany()
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_provider_FC40976B");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_provider_11b1182a");
 
                     b.HasOne("Explore.Domain.WebhookProviderPublicationStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_provider_EAADEB7F");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_provider_fb64890a");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_provider_publications_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryPlanSnapshot", "WebhookDeliveryPlanSnapshot")
                         .WithMany()
@@ -43814,7 +43820,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_delivery_BF983AEB");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_delivery_3c961ec6");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -43822,7 +43828,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publications_ie_webhook_messages_C386857A");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_messages_c6c7297f");
 
                     b.Navigation("ModeSnapshotLookup");
 
@@ -43846,14 +43852,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publication_attempts_ie_webhook__43D7B4C5");
+                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_ie_webhook__9b804fac");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_provider_publication_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderPublication", "WebhookProviderPublication")
                         .WithMany("Attempts")
@@ -43861,7 +43867,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_provider_publication_attempts_ie_webhook__AEFE1BB4");
+                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_ie_webhook__b91a82cb");
 
                     b.Navigation("OutcomeLookup");
 
@@ -43877,14 +43883,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasForeignKey("SubjectKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_ie_webhook_retention_holds_ie_webhook_retention_subj_90E6F71E");
+                        .HasConstraintName("fk_ie_webhook_retention_holds_ie_webhook_retention_subj_f0260368");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_webhook_retention_holds_ie_tenants_tenant_id");
+                        .HasConstraintName("fk_webhook_retention_holds_tenants_tenant_id");
 
                     b.Navigation("SubjectKindLookup");
 
