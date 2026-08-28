@@ -157,25 +157,11 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
                     facts: Facts(dto));
         }
 
-        if (RegistrationPaymentPayability.IsCurrentlyPayable(
-                dto.StatusId,
-                dto.TotalDueMinor,
-                dto.ExpiresAt,
-                timeProvider.GetUtcNow().UtcDateTime))
+        if (RegistrationOrderPurchaseAuthorityLink.TryCreate(
+            dto,
+            timeProvider.GetUtcNow().UtcDateTime) is { } purchaseAuthority)
         {
-            yield return new LinkDefinition(
-                    LinkRelations.ReservePurchaseAuthority,
-                    RouteNames.ReserveAuthenticatedPurchaseAuthority,
-                    new { eventId = dto.EventId, orderId = dto.Id },
-                    HttpMethods.Post,
-                    "Reserve purchase authority",
-                    RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.RegistrationOrders.Continue,
-                    resourceKind:
-                    ResourceKinds.RegistrationOrder,
-                    resourceId: dto.Id.ToString("D"),
-                    facts: Facts(dto));
+            yield return purchaseAuthority;
         }
 
         if (dto.TotalDueMinor > 0 && lifecycle.CanViewPaymentStatus)
@@ -224,12 +210,5 @@ public sealed class RegistrationOrderLinkPolicy(TimeProvider timeProvider) : ILi
         }
     }
 
-    private static IAuthorizationFacts Facts(RegistrationOrderDto dto) =>
-        new RegistrationOrderAuthorizationFacts(dto.TenantId, dto.EventId, dto.AccountUserId);
+    private static IAuthorizationFacts Facts(RegistrationOrderDto dto) => new RegistrationOrderAuthorizationFacts(dto.TenantId, dto.EventId, dto.AccountUserId);
 }
-
-/// <summary>
-/// Order affordances are published on the detail policy, which has the order state needed to authorize
-/// them. The collection shape deliberately adds none.
-/// </summary>
-public sealed class RegistrationOrderCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationOrderDto>;

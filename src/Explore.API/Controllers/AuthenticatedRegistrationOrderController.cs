@@ -18,7 +18,6 @@ using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
-using Explore.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,18 +40,6 @@ public sealed class AuthenticatedRegistrationOrderController(
     IMediator mediator,
     IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : RegistrationOrderControllerBase(mediator, assembler)
 {
-    private const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";
-    private const string IdempotencyKeyHeader = "Idempotency-Key";
-    private static readonly ApiValidationProblemDescriptor RegistrationOrderValidationProblem = new(
-        "registrationOrder",
-        "Registration order request failed",
-        "Registration order request failed.");
-    private static readonly ApiNotFoundProblemDescriptor RegistrationOrderNotFoundProblem = new(
-        "Registration order not found",
-        "Registration order was not found.");
-    private static readonly CommandFailurePolicy AuthenticatedStartFailures = OrderLifecycleFailures
-        .AuthenticationRequired("registration_order_authentication_required");
-
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
@@ -86,70 +73,6 @@ public sealed class AuthenticatedRegistrationOrderController(
         return response.IsSuccess
             ? CreatedAtRoute(RouteNames.GetCurrentRegistrationOrder, new { eventId, orderId = response.Id }, response)
             : AuthenticatedStartFailures.Map(this, response);
-    }
-
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [PrivateNoStore]
-    [RequireIdempotencyKey]
-    [ProtectIdempotencyReplay("Cache-Control")]
-    [HttpPost(
-        "{orderId:guid}/purchase-authority",
-        Name = RouteNames.ReserveAuthenticatedPurchaseAuthority)]
-    [EndpointSummary("Reserve authenticated ticket purchase authority")]
-    [EndpointDescription(
-        "Reserves the server-derived order quantity against the authenticated account ceiling. Actor context is verified server-side.")]
-    [Consumes(HateoasConstants.JsonMediaType)]
-    [ProducesResponseType(
-        typeof(HalResource<TicketPurchaseGovernanceResource>),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(
-        typeof(ValidationProblemDetails),
-        StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status404NotFound)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<
-        HalResource<TicketPurchaseGovernanceResource>>>
-        ReserveAuthenticatedPurchaseAuthority(
-            Guid eventId,
-            Guid orderId,
-            [FromBody] ReserveTicketPurchaseRequest? request,
-            [FromHeader(Name = IdempotencyKeyHeader)]
-            string operationKey,
-            CancellationToken cancellationToken = default)
-    {
-        if (request is null)
-        {
-            return this.ToValidationProblem(
-                RegistrationOrderValidationProblem,
-                "A ticket-purchase payload is required.");
-        }
-
-        BaseCommandResponse<Guid> response =
-            await mediator.Send(
-                new ReserveAuthenticatedTicketPurchaseCommand(
-                    eventId,
-                    orderId,
-                    request.RequestedPurchaserActorId,
-                    operationKey),
-                cancellationToken);
-        return MapPurchaseAuthority(
-            response,
-            eventId,
-            orderId,
-            TicketPurchaseAccessMode.AuthenticatedAccount,
-            RouteNames.ReserveAuthenticatedPurchaseAuthority);
     }
 
     [Authorize]

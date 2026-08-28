@@ -9,7 +9,7 @@ pii_scan:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-1-pii-scan.json
 mutation_reports:
   - project: Explore.Application
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-1/application/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-1-mutation-summary.json
     minimum_score_exclusive: 85
 mad_review:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-1-mad-review.yaml
@@ -34,18 +34,18 @@ evidence_artifacts:
   - dev/active/event-ticketing-lifecycle/evidence/phase-1-mutation-scope.yaml
   - dev/active/event-ticketing-lifecycle/evidence/phase-1-stryker-config.json
 generated_artifacts:
-  - src/Explore.Persistence/Migrations/20260827224228_AddTicketPurchaseGovernance.cs
-  - src/Explore.Persistence/Migrations/20260827224228_AddTicketPurchaseGovernance.Designer.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.Designer.cs
   - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260827224316_AddTicketPurchaseGovernance.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260827224316_AddTicketPurchaseGovernance.Designer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.Designer.cs
   - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260827224354_AddTicketPurchaseGovernance.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260827224354_AddTicketPurchaseGovernance.Designer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.Designer.cs
   - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260827224407_AddTicketPurchaseGovernance.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260827224407_AddTicketPurchaseGovernance.Designer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260827224420_AddTicketPurchaseGovernance.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260827224420_AddTicketPurchaseGovernance.Designer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs

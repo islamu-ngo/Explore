@@ -10,7 +10,8 @@ using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Admissions;
-using Explore.Application.Features.Admissions.Requests;
+using Explore.Application.Features.Admissions.Requests.Commands;
+using Explore.Application.Features.Admissions.Requests.Queries;
 using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -24,7 +25,6 @@ namespace Explore.API.Controllers;
     "api/events/{eventId:guid}/admission-tickets/" +
     "{admissionTicketId:guid}/transfers")]
 [ApiController]
-[EndpointClassification(EndpointClass.Public)]
 public sealed class TicketTransferController(
     IMediator mediator,
     IResourceAssembler<
@@ -44,8 +44,8 @@ public sealed class TicketTransferController(
         "{transferId:guid}",
         Name = RouteNames.GetTicketTransfer)]
     [AllowAnonymous]
-    [PrivateNoStore]
     [EndpointClassification(EndpointClass.Public)]
+    [PrivateNoStore]
     [ProducesResponseType(
         typeof(HalResource<TicketTransferDto>),
         StatusCodes.Status200OK)]
@@ -85,7 +85,7 @@ public sealed class TicketTransferController(
     [PrivateNoStore]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(TicketTransferOfferResponse),
         StatusCodes.Status201Created)]
@@ -136,7 +136,7 @@ public sealed class TicketTransferController(
     [PrivateNoStore]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(TicketTransferCredentialResponse),
         StatusCodes.Status200OK)]
@@ -172,7 +172,7 @@ public sealed class TicketTransferController(
     [PrivateNoStore]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(HalResource<TicketTransferDto>),
         StatusCodes.Status200OK)]
@@ -211,7 +211,7 @@ public sealed class TicketTransferController(
     [PrivateNoStore]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(TicketTransferCredentialResponse),
         StatusCodes.Status200OK)]
@@ -239,7 +239,7 @@ public sealed class TicketTransferController(
     [PrivateNoStore]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(TicketTransferCredentialResponse),
         StatusCodes.Status200OK)]

@@ -9,7 +9,8 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Waitlist;
-using Explore.Application.Features.Waitlist;
+using Explore.Application.Features.Waitlist.Requests.Commands;
+using Explore.Application.Features.Waitlist.Requests.Queries;
 using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +26,6 @@ namespace Explore.API.Controllers;
     "{registrationOrderId:guid}/lines/" +
     "{registrationOrderLineId:guid}/waitlist")]
 [ApiController]
-[EndpointClassification(EndpointClass.Public)]
 public sealed class FairReturnWaitlistController(
     IMediator mediator,
     IResourceAssembler<
@@ -44,6 +44,7 @@ public sealed class FairReturnWaitlistController(
 
     [HttpGet("", Name = RouteNames.GetFairReturnWaitlist)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [PrivateNoStore]
     [ProducesResponseType(
         typeof(HalResource<FairReturnWaitlistDto>),
@@ -75,7 +76,7 @@ public sealed class FairReturnWaitlistController(
     [RequireIdempotencyKey]
     [ProtectIdempotencyReplay]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(HalResource<FairReturnWaitlistDto>),
         StatusCodes.Status200OK)]
@@ -108,7 +109,7 @@ public sealed class FairReturnWaitlistController(
     [RequireIdempotencyKey]
     [ProtectIdempotencyReplay]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(HalResource<FairReturnWaitlistDto>),
         StatusCodes.Status200OK)]
@@ -143,7 +144,7 @@ public sealed class FairReturnWaitlistController(
     [RequireIdempotencyKey]
     [ProtectIdempotencyReplay]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(HalResource<FairReturnWaitlistDto>),
         StatusCodes.Status200OK)]
@@ -181,7 +182,7 @@ public sealed class FairReturnWaitlistController(
     [RequireIdempotencyKey]
     [ProtectIdempotencyReplay]
     [EndpointClassification(
-        EndpointClass.PublicTransactional)]
+        EndpointClass.Authenticated)]
     [ProducesResponseType(
         typeof(HalResource<FairReturnWaitlistDto>),
         StatusCodes.Status200OK)]

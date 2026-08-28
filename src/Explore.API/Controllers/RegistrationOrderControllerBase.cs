@@ -68,59 +68,6 @@ public abstract class RegistrationOrderControllerBase(
     private protected static readonly CommandFailurePolicy AuthenticatedStartFailures = OrderLifecycleFailures
         .AuthenticationRequired("registration_order_authentication_required");
 
-    private protected static readonly CommandFailurePolicy PurchaseAuthorityFailures =
-        OrderLifecycleFailures
-            .NotFound(
-                RegistrationOrderNotFoundProblem,
-                "ticket_purchase_order_unavailable",
-                "ticket_purchase_policy_unavailable")
-            .Conflict(
-                "Ticket purchase conflict",
-                "Ticket purchase authority could not be reserved.",
-                "ticket_purchase_ceiling_exceeded",
-                "ticket_purchase_operation_conflict")
-            .Forbidden(
-                "Purchase authority denied",
-                "Purchase authority could not be established.",
-                "ticket_purchase_authority_unavailable")
-            .Unavailable(
-                "Ticket purchase unavailable",
-                "Ticket purchase authority is temporarily unavailable.",
-                "ticket_purchase_unavailable");
-
-    protected ActionResult<HalResource<TicketPurchaseGovernanceResource>>
-        MapPurchaseAuthority(
-            BaseCommandResponse<Guid> response,
-            Guid eventId,
-            Guid orderId,
-            TicketPurchaseAccessMode accessMode,
-            string routeName)
-    {
-        Response.Headers.CacheControl = "private, no-store";
-        if (!response.IsSuccess)
-        {
-            return PurchaseAuthorityFailures.Map(this, response);
-        }
-
-        bool hardCrossOrderCeiling =
-            accessMode != TicketPurchaseAccessMode.NameOnly;
-        var resource = new TicketPurchaseGovernanceResource
-        {
-            OrderId = orderId,
-            AccessMode = accessMode,
-            SupportsHardCrossOrderCeiling =
-                hardCrossOrderCeiling,
-            EnforcementScopeCode = hardCrossOrderCeiling
-                ? "stable-authority"
-                : "order",
-        };
-        return Ok(new HalResource<TicketPurchaseGovernanceResource>(
-            resource)
-            .WithSelfLink(Url.Link(
-                routeName,
-                new { eventId, orderId })!));
-    }
-
     protected Task<ActionResult<HalResource<NativeRegistrationAttemptDto>>> LaunchNativeAttempt(
         NativeRegistrationAttemptResult response,
         Guid eventId,

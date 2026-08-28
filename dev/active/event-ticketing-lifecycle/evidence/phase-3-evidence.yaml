@@ -9,7 +9,7 @@ pii_scan:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-3-pii-scan.json
 mutation_reports:
   - project: Explore.Application
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-3/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-3-mutation-summary.json
     minimum_score_exclusive: 85
 mad_review:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-3-mad-review.yaml
@@ -36,18 +36,18 @@ evidence_artifacts:
   - dev/active/event-ticketing-lifecycle/evidence/phase-3-mutation-scope.yaml
   - dev/active/event-ticketing-lifecycle/evidence/phase-3-stryker-config.json
 generated_artifacts:
-  - src/Explore.Persistence/Migrations/20260828000739_AddParticipantAdmissionEligibility.cs
-  - src/Explore.Persistence/Migrations/20260828000739_AddParticipantAdmissionEligibility.Designer.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.Designer.cs
   - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828000554_AddParticipantAdmissionEligibility.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828000554_AddParticipantAdmissionEligibility.Designer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.Designer.cs
   - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828000616_AddParticipantAdmissionEligibility.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828000616_AddParticipantAdmissionEligibility.Designer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.Designer.cs
   - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828000638_AddParticipantAdmissionEligibility.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828000638_AddParticipantAdmissionEligibility.Designer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828000700_AddParticipantAdmissionEligibility.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828000700_AddParticipantAdmissionEligibility.Designer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs

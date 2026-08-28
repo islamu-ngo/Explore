@@ -1,17 +1,10 @@
-// ABOUTME: Defines immutable CQRS requests for line-scoped fair-return waitlist reads and writes.
-// ABOUTME: Carries route identities and opaque capability only; tenant, user, priority, and policy remain server-owned.
+// ABOUTME: Defines immutable CQRS commands for line-scoped fair-return waitlist writes.
+// ABOUTME: Carries route identities only; tenant, user, priority, and policy remain server-owned.
 
 using Explore.Application.DTOs.Waitlist;
 using MediatR;
 
-namespace Explore.Application.Features.Waitlist;
-
-public sealed record GetFairReturnWaitlistQuery(
-    Guid EventId,
-    Guid RegistrationOrderId,
-    Guid RegistrationOrderLineId,
-    string? CapabilityToken) :
-    IRequest<FairReturnWaitlistDto?>;
+namespace Explore.Application.Features.Waitlist.Requests.Commands;
 
 public sealed record JoinFairReturnWaitlistCommand(
     Guid EventId,

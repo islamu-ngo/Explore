@@ -1,11 +1,10 @@
 // ABOUTME: Persists tenant-qualified ticket purchase policy, authority usage, and durable operation identity.
 // ABOUTME: Serializes operation, policy, and authority locks so ceiling consumption has one deterministic winner.
 
-using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
 
@@ -62,25 +61,12 @@ public sealed class TicketPurchaseGovernanceRepository(
         ArgumentNullException.ThrowIfNull(request);
         ValidateScope(policy, request);
 
-        IExecutionStrategy executionStrategy =
-            dbContext.Database.CreateExecutionStrategy();
-        return await executionStrategy.ExecuteAsync(async () =>
-        {
-            IReadOnlyList<string> lockScopes =
-                CreateCanonicalLockScopes(request);
-            var acquiredLockScopes = new List<string>(
-                lockScopes.Count);
-            try
+        return await TicketPurchaseProviderOperations
+            .ExecuteSerializableAsync(
+                dbContext,
+                CreateCanonicalLockScopes(request),
+                async operationCancellationToken =>
             {
-                await AcquireCanonicalLocksAsync(
-                    lockScopes,
-                    acquiredLockScopes,
-                    cancellationToken);
-                await using IDbContextTransaction transaction =
-                    await dbContext.Database.BeginTransactionAsync(
-                        IsolationLevel.Serializable,
-                        cancellationToken);
-
                 TicketPurchaseOperation? existing =
                     await dbContext.TicketPurchaseOperations
                         .SingleOrDefaultAsync(
@@ -88,7 +74,7 @@ public sealed class TicketPurchaseGovernanceRepository(
                                 operation.TenantId == request.TenantId
                                 && operation.KeyHash ==
                                 request.Operation.KeyHash,
-                            cancellationToken);
+                            operationCancellationToken);
                 if (existing is not null)
                 {
                     TicketPurchaseReservationResult replay =
@@ -102,12 +88,13 @@ public sealed class TicketPurchaseGovernanceRepository(
                                 null,
                                 existing.EffectiveCeiling,
                                 existing.ConsumedQuantity);
-                    await transaction.CommitAsync(cancellationToken);
                     return replay;
                 }
 
                 TicketPurchasePolicyVersion persistedPolicy =
-                    await LockPolicyAsync(policy, cancellationToken);
+                    await LockPolicyAsync(
+                        policy,
+                        operationCancellationToken);
 
                 TicketPurchaseAuthorityUsage? usage =
                     await dbContext.TicketPurchaseAuthorityUsages
@@ -117,7 +104,7 @@ public sealed class TicketPurchaseGovernanceRepository(
                                 && candidate.EventId == request.EventId
                                 && candidate.EnforcementKey ==
                                 request.Authority.EnforcementKey,
-                            cancellationToken);
+                            operationCancellationToken);
                 DateTime timestamp =
                     _timeProvider.GetUtcNow().UtcDateTime;
                 if (usage is null)
@@ -151,16 +138,11 @@ public sealed class TicketPurchaseGovernanceRepository(
                         usage.ConsumedQuantity,
                         timestamp);
                 dbContext.TicketPurchaseOperations.Add(operation);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
+                await dbContext.SaveChangesAsync(
+                    operationCancellationToken);
                 return operation.ToInitialResult();
-            }
-            finally
-            {
-                await ReleaseCanonicalLocksAsync(
-                    acquiredLockScopes);
-            }
-        });
+            },
+            cancellationToken);
     }
 
     private static void ValidateScope(
@@ -187,19 +169,13 @@ public sealed class TicketPurchaseGovernanceRepository(
         TicketPurchasePolicyVersion policy,
         CancellationToken cancellationToken)
     {
-        if (IsPostgreSql())
-        {
-            await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                 SELECT 1
-                 FROM ticket_purchase_policy_versions
-                 WHERE id = {policy.Id}
-                   AND tenant_id = {policy.TenantId}
-                   AND event_id = {policy.EventId}
-                 FOR KEY SHARE
-                 """,
+        await RelationalEntityRowFence
+            .AcquireAsync<TicketPurchasePolicyVersion>(
+                dbContext,
+                policy.TenantId,
+                candidate => candidate.Id,
+                policy.Id,
                 cancellationToken);
-        }
 
         return await dbContext.TicketPurchasePolicyVersions
             .SingleAsync(
@@ -220,53 +196,4 @@ public sealed class TicketPurchaseGovernanceRepository(
         .Distinct(StringComparer.Ordinal)
         .Order(StringComparer.Ordinal)
         .ToArray();
-
-    private async Task AcquireCanonicalLocksAsync(
-        IReadOnlyList<string> scopes,
-        ICollection<string> acquiredScopes,
-        CancellationToken cancellationToken)
-    {
-        if (!IsPostgreSql())
-        {
-            return;
-        }
-
-        await dbContext.Database.OpenConnectionAsync(
-            cancellationToken);
-        foreach (string scope in scopes)
-        {
-            await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT pg_advisory_lock(hashtextextended({scope}, 0))",
-                cancellationToken);
-            acquiredScopes.Add(scope);
-        }
-    }
-
-    private async Task ReleaseCanonicalLocksAsync(
-        IReadOnlyList<string> scopes)
-    {
-        if (!IsPostgreSql())
-        {
-            return;
-        }
-
-        try
-        {
-            foreach (string scope in scopes.Reverse())
-            {
-                await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"SELECT pg_advisory_unlock(hashtextextended({scope}, 0))",
-                    CancellationToken.None);
-            }
-        }
-        finally
-        {
-            await dbContext.Database.CloseConnectionAsync();
-        }
-    }
-
-    private bool IsPostgreSql() =>
-        dbContext.Database.ProviderName?.Contains(
-            "Npgsql",
-            StringComparison.Ordinal) == true;
 }

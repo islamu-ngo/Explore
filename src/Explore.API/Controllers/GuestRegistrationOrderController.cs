@@ -18,7 +18,6 @@ using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
-using Explore.Domain;
 using Explore.Application.Services.Registration;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -43,27 +42,6 @@ public sealed class GuestRegistrationOrderController(
     IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler,
     TimeProvider timeProvider) : RegistrationOrderControllerBase(mediator, assembler)
 {
-    private const string CapabilityHeader = "X-Registration-Order-Capability";
-    private const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";
-    private const string IdempotencyKeyHeader = "Idempotency-Key";
-    private static readonly ApiValidationProblemDescriptor RegistrationOrderValidationProblem = new(
-        "registrationOrder",
-        "Registration order request failed",
-        "Registration order request failed.");
-    private static readonly ApiNotFoundProblemDescriptor RegistrationOrderNotFoundProblem = new(
-        "Registration order not found",
-        "Registration order was not found.");
-    /// <summary>Shared base: every registration-order command reports a missing order the same way.</summary>
-    private static readonly CommandFailurePolicy OrderLifecycleFailures = CommandFailurePolicy
-        .ValidatedBy(RegistrationOrderValidationProblem)
-        .NotFound(RegistrationOrderNotFoundProblem, "registration_order_not_found");
-    /// <summary>Guest checkout additionally rejects flows that turn out to need a real account.</summary>
-    private static readonly CommandFailurePolicy GuestStartFailures = OrderLifecycleFailures
-        .AuthenticationRequired(
-            "Authentication required",
-            "An authenticated account is required to start this registration.",
-            "registration_order_identity_required");
-
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.PublicTransactional)]
     [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
@@ -110,68 +88,6 @@ public sealed class GuestRegistrationOrderController(
             RouteNames.GetGuestRegistrationOrder,
             new { eventId, orderId = response.Id },
             response);
-    }
-
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.PublicTransactional)]
-    [EnableRateLimiting(
-        RateLimitingExtensions.PublicTransactionalPolicy)]
-    [PrivateNoStore]
-    [RequireIdempotencyKey]
-    [ProtectIdempotencyReplay("Cache-Control")]
-    [HttpPost(
-        "guest/{orderId:guid}/purchase-authority",
-        Name = RouteNames.ReserveGuestPurchaseAuthority)]
-    [EndpointSummary("Reserve guest ticket purchase authority")]
-    [EndpointDescription(
-        "Uses the opaque order capability and either persisted verified-contact authority or honest order-scoped name-only controls. Name-only access has no hard cross-order per-person guarantee.")]
-    [Consumes(HateoasConstants.JsonMediaType)]
-    [ProducesResponseType(
-        typeof(HalResource<TicketPurchaseGovernanceResource>),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(
-        typeof(ValidationProblemDetails),
-        StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status404NotFound)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<
-        HalResource<TicketPurchaseGovernanceResource>>>
-        ReserveGuestPurchaseAuthority(
-            Guid eventId,
-            Guid orderId,
-            [FromHeader(Name = CapabilityHeader)]
-            string? capability,
-            [FromBody] ReserveTicketPurchaseRequest? request,
-            [FromHeader(Name = IdempotencyKeyHeader)]
-            string operationKey,
-            CancellationToken cancellationToken = default)
-    {
-        if (request is null)
-        {
-            return this.ToValidationProblem(
-                RegistrationOrderValidationProblem,
-                "A ticket-purchase payload is required.");
-        }
-
-        BaseCommandResponse<Guid> response =
-            await mediator.Send(
-                new ReserveGuestTicketPurchaseCommand(
-                    eventId,
-                    orderId,
-                    request.AccessMode,
-                    capability,
-                    operationKey),
-                cancellationToken);
-        return MapPurchaseAuthority(
-            response,
-            eventId,
-            orderId,
-            request.AccessMode,
-            RouteNames.ReserveGuestPurchaseAuthority);
     }
 
     [AllowAnonymous]

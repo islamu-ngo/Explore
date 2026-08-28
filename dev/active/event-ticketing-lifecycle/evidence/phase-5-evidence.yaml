@@ -9,7 +9,7 @@ pii_scan:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-5-pii-scan.json
 mutation_reports:
   - project: Explore.Domain
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-5/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-5-mutation-summary.json
     minimum_score_exclusive: 85
 mad_review:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-5-mad-review.yaml
@@ -21,8 +21,10 @@ documentation:
 source_evidence:
   - src/Explore.Domain/AdmissionTicketTransfer.cs
   - src/Explore.Domain/AdmissionTicket.cs
-  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
-  - src/Explore.Application/Features/Admissions/Requests/TicketTransferRequests.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Commands/TicketTransferCommandHandlers.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Queries/GetTicketTransferQueryHandler.cs
+  - src/Explore.Application/Features/Admissions/Requests/Commands/TicketTransferCommands.cs
+  - src/Explore.Application/Features/Admissions/Requests/Queries/GetTicketTransferQuery.cs
   - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
   - src/Explore.Persistence/Configurations/Entities/AdmissionTicketTransferConfiguration.cs
   - src/Explore.API/Controllers/TicketTransferController.cs
@@ -36,7 +38,7 @@ source_evidence:
   - tests/Explore.Blazor.Client.Tests/TicketTransferComponentTests.cs
 comments:
   - src/Explore.Domain/AdmissionTicketTransfer.cs
-  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Commands/TicketTransferCommandHandlers.cs
   - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
   - src/Explore.Blazor/Extensions/BffTicketTransferEndpoints.cs
   - src/Explore.Blazor.Client/Components/Admissions/TicketTransferPanel.razor
@@ -48,18 +50,18 @@ evidence_artifacts:
 generated_artifacts:
   - schemas/openapi_islamu-event.json
   - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs
-  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.Designer.cs
   - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.Designer.cs
   - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.Designer.cs
   - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs

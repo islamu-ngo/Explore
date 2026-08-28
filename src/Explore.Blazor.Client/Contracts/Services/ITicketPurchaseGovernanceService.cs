@@ -14,8 +14,3 @@ public interface ITicketPurchaseGovernanceService
         bool authenticated,
         CancellationToken cancellationToken);
 }
-
-public sealed record TicketPurchaseGovernanceSubmission(
-    bool IsSuccess,
-    bool SupportsHardCrossOrderCeiling,
-    string EnforcementScopeCode);
