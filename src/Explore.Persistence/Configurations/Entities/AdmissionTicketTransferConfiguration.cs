@@ -13,7 +13,7 @@ public sealed class TicketTransferPolicyConfiguration :
     public void Configure(
         EntityTypeBuilder<TicketTransferPolicy> builder)
     {
-        builder.ToTable("ticket_transfer_policies", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_ticket_transfer_policies_bounds",
@@ -77,7 +77,7 @@ public sealed class AdmissionTicketTransferConfiguration :
     public void Configure(
         EntityTypeBuilder<AdmissionTicketTransfer> builder)
     {
-        builder.ToTable("admission_ticket_transfers", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_ticket_transfers_positive",

@@ -399,7 +399,6 @@ public sealed class WaitlistRefundIntentConfiguration :
     public void Configure(
         EntityTypeBuilder<WaitlistRefundIntent> builder)
     {
-        builder.ToTable("waitlist_refund_intents");
         FairReturnSupplyPolicyConfiguration
             .ConfigureTenantEntity(builder);
         builder.Property(value =>
