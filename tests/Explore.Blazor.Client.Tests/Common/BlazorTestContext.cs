@@ -76,6 +76,8 @@ public class BlazorTestContext : BunitContext
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         Services.AddSingleton(Substitute.For<IBffAuthApi>());
         Services.AddSingleton(Substitute.For<IEventApiClient>());
+        Services.AddSingleton(Substitute.For<
+            Explore.Blazor.Client.Contracts.Services.ITicketPurchaseGovernanceService>());
         Services.AddSingleton(Substitute.For<IAtprotoFederationSettingsService>());
         Services.AddSingleton(Substitute.For<ITenantReportingIntakePolicyService>());
         Services.AddSingleton(Substitute.For<IBrowserActionInterop>());

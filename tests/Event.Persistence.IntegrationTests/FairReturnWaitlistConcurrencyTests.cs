@@ -242,7 +242,7 @@ public sealed class FairReturnWaitlistConcurrencyTests(
         await Assert.That(source).Contains(
             "RelationalEntityRowFence");
         string rowFence = await ReadSourceAsync(
-            "src/Explore.Persistence/Database/" +
+            "src/Explore.Persistence/Database/ProviderPrimitives/" +
             "RelationalEntityRowFence.cs");
         await Assert.That(rowFence).Contains(
             "FOR UPDATE");
