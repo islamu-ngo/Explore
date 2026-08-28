@@ -11,7 +11,6 @@ public sealed class EventPublicActionKindConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<EventPublicActionKind> builder)
     {
-        builder.ToTable("event_public_action_kinds");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

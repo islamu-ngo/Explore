@@ -71,30 +71,24 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.LocalStartDate, e.LocalStartMinuteOfDay })
-            .HasDatabaseName("ix_event_sessions_tenant_event_local_start");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.LocalStartDate, e.LocalStartMinuteOfDay });
 
-        builder.HasIndex(e => new { e.TenantId, e.LocationId, e.RoomId, e.StartTime, e.EndTime })
-            .HasDatabaseName("ix_event_sessions_tenant_location_room_time");
+        builder.HasIndex(e => new { e.TenantId, e.LocationId, e.RoomId, e.StartTime, e.EndTime });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
-            .HasDatabaseName("ix_event_sessions_elp_consistency");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId });
 
         builder.HasAnnotation(
             "EventLocationPrivacy:ConsistencyTrigger",
             "event_sessions:tenant_id,event_id,event_location_id,location_id,room_id");
 
-        builder.HasIndex(e => new { e.TenantId, e.EventDayId, e.SortOrder })
-            .HasDatabaseName("ix_event_sessions_tenant_day_sort");
+        builder.HasIndex(e => new { e.TenantId, e.EventDayId, e.SortOrder });
 
-        builder.HasIndex(e => e.EventSessionKindId)
-            .HasDatabaseName("ix_event_sessions_event_session_kind_id");
+        builder.HasIndex(e => e.EventSessionKindId);
 
-        builder.HasIndex(e => e.EventSessionStatusId)
-            .HasDatabaseName("ix_event_sessions_event_session_status_id");
+        builder.HasIndex(e => e.EventSessionStatusId);
 
         builder.HasPostgresExclusionConstraint(
-            name: "EX_EventSession_RoomNoOverlap",
+            name: "ex_event_session_room_no_overlap",
             usingMethod: "gist",
             elementsSql: """
                 tenant_id WITH =,
@@ -126,34 +120,34 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
         builder.ToTable(t =>
         {
             t.HasCheckConstraint(
-                "CK_EventSession_EndAfterStart",
+                "ck_event_session_end_after_start",
                 "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
             t.HasCheckConstraint(
-                "CK_EventSession_LocalDateRange",
+                "ck_event_session_local_date_range",
                 "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date");
             t.HasCheckConstraint(
-                "CK_EventSession_EndTimeTypeState",
+                "ck_event_session_end_time_type_state",
                 "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
             t.HasCheckConstraint(
-                "CK_EventSession_LocalStartMinuteRange",
+                "ck_event_session_local_start_minute_range",
                 "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
-                "CK_EventSession_LocalEndMinuteRange",
+                "ck_event_session_local_end_minute_range",
                 "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
-                "CK_EventSession_LocalStartMinuteMatchesTime",
+                "ck_event_session_local_start_minute_matches_time",
                 "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
             t.HasCheckConstraint(
-                "CK_EventSession_LocalEndMinuteMatchesTime",
+                "ck_event_session_local_end_minute_matches_time",
                 "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
             t.HasCheckConstraint(
-                "CK_EventSession_RoomRequiresLocation",
+                "ck_event_session_room_requires_location",
                 "room_id IS NULL OR location_id IS NOT NULL");
             // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
             // event-scoped EventLocation. This closes the legacy write path that could attach a raw
             // Location without a per-event disclosure policy.
             t.HasCheckConstraint(
-                "CK_EventSession_PhysicalLocationRequiresEventLocation",
+                "ck_event_session_physical_location_requires_event_location",
                 "location_id IS NULL OR event_location_id IS NOT NULL");
         });
 

@@ -11,7 +11,7 @@ public sealed class RefundCampaignConfiguration : IEntityTypeConfiguration<Refun
 {
     public void Configure(EntityTypeBuilder<RefundCampaign> builder)
     {
-        builder.ToTable("refund_campaigns", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_refund_campaigns_kind", "kind BETWEEN 1 AND 2");
             table.HasCheckConstraint("ck_refund_campaigns_status", "status BETWEEN 1 AND 4");

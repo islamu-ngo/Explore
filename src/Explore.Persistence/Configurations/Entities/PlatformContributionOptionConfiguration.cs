@@ -11,7 +11,6 @@ public sealed class PlatformContributionOptionConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<PlatformContributionOption> builder)
     {
-        builder.ToTable("platform_contribution_options");
         builder.Property(option => option.Id).ValueGeneratedNever();
         builder.Property(option => option.ContributionBasisPoints).HasColumnType("integer");
         builder.HasIndex("PlatformContributionSettingId", nameof(PlatformContributionOption.SortOrder)).IsUnique();

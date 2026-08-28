@@ -12,7 +12,7 @@ public sealed class PaymentAttemptConfiguration : IEntityTypeConfiguration<Payme
 {
     public void Configure(EntityTypeBuilder<PaymentAttempt> builder)
     {
-        builder.ToTable("payment_attempts", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_payment_attempts_status", "payment_attempt_status_id BETWEEN 1 AND 8");
             table.HasCheckConstraint("ck_payment_attempts_authoritative_status_floor", "authoritative_status_floor_id BETWEEN 1 AND 8");
@@ -75,7 +75,6 @@ public sealed class PaymentAttemptStatusConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<PaymentAttemptStatus> builder)
     {
-        builder.ToTable("payment_attempt_statuses");
         builder.HasKey(value => value.Id);
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.MasterCode).IsRequired().HasMaxLength(100);
@@ -89,7 +88,7 @@ public sealed class CheckoutDispatchEffectConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<CheckoutDispatchEffect> builder)
     {
-        builder.ToTable("checkout_dispatch_effects", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_checkout_dispatch_effects_attempt_count", "attempt_count >= 0");
             table.HasCheckConstraint("ck_checkout_dispatch_effects_processing_fence", "processing_fence >= 0");
@@ -113,8 +112,7 @@ public sealed class CheckoutDispatchEffectConfiguration : IEntityTypeConfigurati
             .HasPrincipalKey(value => new { value.TenantId, value.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.PaymentAttemptId }).IsUnique();
-        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt })
-            .HasDatabaseName("ix_checkout_dispatch_effects_worker_poll");
+        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt });
     }
 }
 
@@ -122,7 +120,7 @@ public sealed class PaymentReconciliationEffectConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<PaymentReconciliationEffect> builder)
     {
-        builder.ToTable("payment_reconciliation_effects", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_payment_reconciliation_effects_attempt_count", "attempt_count >= 0");
             table.HasCheckConstraint("ck_payment_reconciliation_effects_processing_fence", "processing_fence >= 0");
@@ -152,10 +150,8 @@ public sealed class PaymentReconciliationEffectConfiguration : IEntityTypeConfig
             .HasPrincipalKey(value => new { value.TenantId, value.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.PaymentAttemptId }).IsUnique();
-        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt, value.Id })
-            .HasDatabaseName("ix_payment_reconciliation_effects_worker_poll");
-        builder.HasIndex(value => new { value.Status, value.ProcessingLeaseExpiresAt, value.CreatedAt, value.Id })
-            .HasDatabaseName("ix_payment_reconciliation_effects_expired_lease_poll");
+        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt, value.Id });
+        builder.HasIndex(value => new { value.Status, value.ProcessingLeaseExpiresAt, value.CreatedAt, value.Id });
     }
 }
 
@@ -163,7 +159,6 @@ public sealed class PaymentSucceededObservationConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<PaymentSucceededObservation> builder)
     {
-        builder.ToTable("payment_succeeded_observations");
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.ProviderCheckoutSessionId).HasMaxLength(200).IsRequired();
         builder.Property(value => value.ProviderPaymentId).HasMaxLength(200).IsRequired();

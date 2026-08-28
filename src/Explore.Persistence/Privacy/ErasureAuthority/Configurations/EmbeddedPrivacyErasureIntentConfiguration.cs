@@ -30,7 +30,6 @@ public sealed class EmbeddedPrivacyErasureIntentConfiguration
 
         builder.HasKey(item => item.AuthoritySequence);
         builder.Property(item => item.AuthoritySequence).ValueGeneratedNever();
-        builder.HasAlternateKey(item => item.IntentId);
         builder.HasIndex(item => new { item.IntentId, item.SubjectKind, item.PolicyVersion }).IsUnique();
         builder.Property(item => item.SubjectKind).HasConversion<short>();
         builder.Property(item => item.ReasonCode).HasConversion<short>();

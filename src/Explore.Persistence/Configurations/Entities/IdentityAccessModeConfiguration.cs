@@ -11,7 +11,6 @@ public sealed class IdentityAccessModeConfiguration : IEntityTypeConfiguration<I
 {
     public void Configure(EntityTypeBuilder<IdentityAccessMode> builder)
     {
-        builder.ToTable("identity_access_modes");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

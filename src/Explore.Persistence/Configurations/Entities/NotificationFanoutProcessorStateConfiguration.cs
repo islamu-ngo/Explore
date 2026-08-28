@@ -12,12 +12,10 @@ public sealed class NotificationFanoutProcessorStateConfiguration
 {
     public void Configure(EntityTypeBuilder<NotificationFanoutProcessorState> builder)
     {
-        builder.ToTable("notification_fanout_processor_states");
         builder.HasKey(state => state.Id);
         builder.Property(state => state.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(state => state.ProcessorCode).HasMaxLength(32).IsRequired();
         builder.HasIndex(state => state.ProcessorCode)
-            .IsUnique()
-            .HasDatabaseName("ux_notification_fanout_processor_states_processor_code");
+            .IsUnique();
     }
 }

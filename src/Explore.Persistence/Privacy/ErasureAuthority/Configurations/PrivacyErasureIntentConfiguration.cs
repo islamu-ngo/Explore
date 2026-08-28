@@ -12,7 +12,7 @@ public sealed class PrivacyErasureIntentConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureIntent> builder)
     {
-        builder.ToTable("erasure_intents", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
             table.HasCheckConstraint(
@@ -29,7 +29,6 @@ public sealed class PrivacyErasureIntentConfiguration
 
         builder.HasKey(item => item.AuthoritySequence);
         builder.Property(item => item.AuthoritySequence).ValueGeneratedNever();
-        builder.HasAlternateKey(item => item.IntentId);
         builder.HasIndex(item => new { item.IntentId, item.SubjectKind, item.PolicyVersion })
             .IsUnique();
         builder.Property(item => item.SubjectKind).HasConversion<short>();

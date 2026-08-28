@@ -15,7 +15,7 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
 
     public void Configure(EntityTypeBuilder<RegistrationAnswer> builder)
     {
-        builder.ToTable("registration_answers", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_answers_exactly_one_value",
                 "(CASE WHEN text_value IS NULL THEN 0 ELSE 1 END + " +
@@ -188,7 +188,7 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
             answer.EffectiveSubjectIdentity,
             answer.Ordinal
         })
-            .HasDatabaseName("ux_registration_answers_durable_identity").IsUnique();
+            .IsUnique();
         builder.HasIndex(answer => new { answer.TenantId, answer.RegistrationOrderId });
     }
 

@@ -11,7 +11,6 @@ public sealed class PaidEventPolicyVersionConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<PaidEventPolicyVersion> builder)
     {
-        builder.ToTable("paid_event_policy_versions");
         builder.Property(policy => policy.Id).ValueGeneratedNever();
         builder.Property(policy => policy.PolicyScopeKey).IsRequired().HasMaxLength(48);
         builder.Property(policy => policy.ActiveUniquenessSlot).IsRequired();
@@ -71,7 +70,6 @@ public sealed class PaidEventPolicyAllowedOrganizerKindConfiguration : IEntityTy
 {
     public void Configure(EntityTypeBuilder<PaidEventPolicyAllowedOrganizerKind> builder)
     {
-        builder.ToTable("paid_event_policy_allowed_organizer_kinds");
         builder.HasKey(row => new { row.PolicyScopeKey, row.PaidEventPolicyVersionId, row.Ordinal });
         builder.Property(row => row.TenantId);
         builder.Property(row => row.PolicyScopeKey).IsRequired().HasMaxLength(48);
@@ -85,7 +83,6 @@ public sealed class PaidEventPolicyAllowedCurrencyConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<PaidEventPolicyAllowedCurrency> builder)
     {
-        builder.ToTable("paid_event_policy_allowed_currencies");
         builder.HasKey(row => new { row.PolicyScopeKey, row.PaidEventPolicyVersionId, row.Ordinal });
         builder.Property(row => row.TenantId);
         builder.Property(row => row.PolicyScopeKey).IsRequired().HasMaxLength(48);
@@ -98,7 +95,6 @@ public sealed class PaidEventPolicyRefundProtectionConfiguration : IEntityTypeCo
 {
     public void Configure(EntityTypeBuilder<PaidEventPolicyRefundProtection> builder)
     {
-        builder.ToTable("paid_event_policy_refund_protections");
         builder.HasKey(row => new { row.PolicyScopeKey, row.PaidEventPolicyVersionId, row.Ordinal });
         builder.Property(row => row.TenantId);
         builder.Property(row => row.PolicyScopeKey).IsRequired().HasMaxLength(48);
@@ -112,7 +108,6 @@ public sealed class PaidEventPolicyCurrencyRiskLimitRowConfiguration : IEntityTy
 {
     public void Configure(EntityTypeBuilder<PaidEventPolicyCurrencyRiskLimitRow> builder)
     {
-        builder.ToTable("paid_event_policy_currency_risk_limits");
         builder.HasKey(row => new { row.PolicyScopeKey, row.PaidEventPolicyVersionId, row.Ordinal });
         builder.Property(row => row.TenantId);
         builder.Property(row => row.PolicyScopeKey).IsRequired().HasMaxLength(48);

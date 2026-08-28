@@ -11,7 +11,7 @@ public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyn
 {
     public void Configure(EntityTypeBuilder<PdsSyncOutbox> builder)
     {
-        builder.ToTable("pds_sync_outbox", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_pds_sync_outbox_operation", "operation BETWEEN 1 AND 3");
             table.HasCheckConstraint("ck_pds_sync_outbox_status", "status BETWEEN 1 AND 6");
@@ -79,8 +79,7 @@ public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyn
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(value => new { value.TenantId, value.IdempotencyKey })
-            .IsUnique()
-            .HasDatabaseName("ux_pds_sync_outbox_idempotency");
+            .IsUnique();
         builder.HasIndex(value => new
         {
             value.TenantId,
@@ -91,16 +90,11 @@ public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyn
             value.PayloadHash
         })
             .IsUnique()
-            .HasFilter("status IN (1, 2) AND superseded_at IS NULL")
-            .HasDatabaseName("ux_pds_sync_outbox_source_version");
-        builder.HasIndex(value => new { value.Status, value.NextRetryAt, value.LeaseExpiresAt, value.CreatedAt })
-            .HasDatabaseName("ix_pds_sync_outbox_worker_poll");
-        builder.HasIndex(value => new { value.TenantId, value.UserId, value.Status })
-            .HasDatabaseName("ix_pds_sync_outbox_owner");
-        builder.HasIndex(value => new { value.Did, value.Collection, value.RecordKey })
-            .HasDatabaseName("ix_pds_sync_outbox_record_identity");
+            .HasFilter("status IN (1, 2) AND superseded_at IS NULL");
+        builder.HasIndex(value => new { value.Status, value.NextRetryAt, value.LeaseExpiresAt, value.CreatedAt });
+        builder.HasIndex(value => new { value.TenantId, value.UserId, value.Status });
+        builder.HasIndex(value => new { value.Did, value.Collection, value.RecordKey });
         builder.HasIndex(value => value.DependsOnAtprotoRecordId)
-            .HasFilter("depends_on_atproto_record_id IS NOT NULL")
-            .HasDatabaseName("ix_pds_sync_outbox_dependency");
+            .HasFilter("depends_on_atproto_record_id IS NOT NULL");
     }
 }

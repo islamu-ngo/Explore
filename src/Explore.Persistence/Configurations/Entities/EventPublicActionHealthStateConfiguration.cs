@@ -11,7 +11,6 @@ public sealed class EventPublicActionHealthStateConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<EventPublicActionHealthState> builder)
     {
-        builder.ToTable("event_public_action_health_states");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

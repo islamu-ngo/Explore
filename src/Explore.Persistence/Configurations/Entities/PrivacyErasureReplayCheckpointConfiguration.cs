@@ -13,7 +13,7 @@ public sealed class PrivacyErasureReplayCheckpointConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureReplayCheckpoint> builder)
     {
-        builder.ToTable("privacy_erasure_replay_checkpoints", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_privacy_erasure_replay_checkpoints_sequence",

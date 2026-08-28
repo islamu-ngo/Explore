@@ -11,7 +11,7 @@ public sealed class EmailDispatchProcessorStateConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<EmailDispatchProcessorState> builder)
     {
-        builder.ToTable("email_dispatch_processor_states", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_email_dispatch_processor_states_smtp_rate_pair",
@@ -30,7 +30,6 @@ public sealed class EmailDispatchProcessorStateConfiguration : IEntityTypeConfig
         builder.Property(state => state.PauseReason).HasMaxLength(500);
 
         builder.HasIndex(state => state.ProcessorCode)
-            .IsUnique()
-            .HasDatabaseName("ux_email_dispatch_processor_states_processor_code");
+            .IsUnique();
     }
 }

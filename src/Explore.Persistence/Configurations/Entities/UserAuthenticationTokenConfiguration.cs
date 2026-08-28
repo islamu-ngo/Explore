@@ -37,8 +37,7 @@ public class UserAuthenticationTokenConfiguration : IEntityTypeConfiguration<Use
         builder.Property(e => e.PdsHost).HasMaxLength(2048);
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.SubjectDid })
-            .IsUnique()
-            .HasDatabaseName("ux_user_authentication_tokens_tenant_provider_subject_did");
+            .IsUnique();
 
         builder.HasOne(e => e.User)
             .WithMany()

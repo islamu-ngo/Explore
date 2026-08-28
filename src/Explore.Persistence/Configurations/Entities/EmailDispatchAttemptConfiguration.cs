@@ -32,11 +32,9 @@ public class EmailDispatchAttemptConfiguration : IEntityTypeConfiguration<EmailD
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.EmailDispatchOutboxId, e.AttemptNumber })
-            .HasDatabaseName("ux_email_dispatch_attempts_outbox_attempt")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.StartedAt })
-            .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
+        builder.HasIndex(e => new { e.TenantId, e.StartedAt });
 
         builder.ToTable(table => table.HasCheckConstraint(
             "ck_email_dispatch_attempts_provider_handoff_fence",

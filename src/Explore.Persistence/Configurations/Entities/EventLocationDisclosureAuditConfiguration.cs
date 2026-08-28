@@ -13,7 +13,7 @@ public sealed class EventLocationDisclosureAuditConfiguration
 {
     public void Configure(EntityTypeBuilder<EventLocationDisclosureAudit> builder)
     {
-        builder.ToTable("event_location_disclosure_audits", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_event_location_disclosure_audits_policy_step",
@@ -53,9 +53,7 @@ public sealed class EventLocationDisclosureAuditConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(item => new { item.TenantId, item.EventLocationId, item.NewPolicyVersion })
-            .HasDatabaseName("ux_event_location_disclosure_audits_policy_version")
             .IsUnique();
-        builder.HasIndex(item => new { item.TenantId, item.EventLocationId, item.OccurredAtUtc })
-            .HasDatabaseName("ix_event_location_disclosure_audits_history");
+        builder.HasIndex(item => new { item.TenantId, item.EventLocationId, item.OccurredAtUtc });
     }
 }

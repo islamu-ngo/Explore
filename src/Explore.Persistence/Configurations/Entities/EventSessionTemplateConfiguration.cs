@@ -12,8 +12,6 @@ public class EventSessionTemplateConfiguration : IEntityTypeConfiguration<EventS
 {
     public void Configure(EntityTypeBuilder<EventSessionTemplate> builder)
     {
-        builder.ToTable("event_session_templates");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -47,10 +45,8 @@ public class EventSessionTemplateConfiguration : IEntityTypeConfiguration<EventS
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.EventTemplateId, e.SessionTemplateKey, e.Version })
-            .HasDatabaseName("ix_est_template_key_version")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.IsPublished, e.IsActive })
-            .HasDatabaseName("ix_est_tenant_published_active");
+        builder.HasIndex(e => new { e.TenantId, e.IsPublished, e.IsActive });
     }
 }

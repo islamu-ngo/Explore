@@ -11,7 +11,7 @@ public sealed class RefundAttemptConfiguration : IEntityTypeConfiguration<Refund
 {
     public void Configure(EntityTypeBuilder<RefundAttempt> builder)
     {
-        builder.ToTable("refund_attempts", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_refund_attempts_status", "status BETWEEN 1 AND 8");
             table.HasCheckConstraint(
@@ -91,7 +91,7 @@ public sealed class RefundLineAllocationConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<RefundLineAllocation> builder)
     {
-        builder.ToTable("refund_line_allocations", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_refund_line_allocations_money",
             "ordinal >= 0 AND organizer_amount_minor >= 0 AND platform_fee_minor >= 0 AND platform_contribution_minor >= 0 AND total_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND total_minor = organizer_amount_minor + platform_contribution_minor"));
         builder.HasKey(value => new { value.TenantId, value.RefundAttemptId, value.OrderLineId });

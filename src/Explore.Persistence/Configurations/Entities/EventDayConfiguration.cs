@@ -37,14 +37,11 @@ public class EventDayConfiguration : IEntityTypeConfiguration<EventDay>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.LocalDate })
-            .HasDatabaseName("ix_event_days_tenant_event_local_date")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
-            .HasDatabaseName("ix_event_days_tenant_event_sort");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.IsPublished })
-            .HasDatabaseName("ix_event_days_tenant_event_published");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.IsPublished });
 
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
     }

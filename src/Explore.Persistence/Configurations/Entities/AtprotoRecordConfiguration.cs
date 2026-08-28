@@ -11,7 +11,7 @@ public class AtprotoRecordConfiguration : IEntityTypeConfiguration<AtprotoRecord
 {
     public void Configure(EntityTypeBuilder<AtprotoRecord> builder)
     {
-        builder.ToTable("atproto_records", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_atproto_records_direction", "direction BETWEEN 1 AND 3");
             table.HasCheckConstraint("ck_atproto_records_provenance", "provenance BETWEEN 1 AND 3");
@@ -37,14 +37,11 @@ public class AtprotoRecordConfiguration : IEntityTypeConfiguration<AtprotoRecord
         builder.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").IsRequired();
 
         builder.HasIndex(e => new { e.Did, e.Collection, e.RecordKey })
-            .IsUnique()
-            .HasDatabaseName("ux_atproto_records_identity");
+            .IsUnique();
         builder.HasIndex(e => e.Uri)
             .IsUnique()
-            .HasFilter("uri IS NOT NULL")
-            .HasDatabaseName("ux_atproto_records_uri");
+            .HasFilter("uri IS NOT NULL");
         builder.HasIndex(e => e.SubjectUri)
-            .HasFilter("subject_uri IS NOT NULL")
-            .HasDatabaseName("ix_atproto_records_subject_uri");
+            .HasFilter("subject_uri IS NOT NULL");
     }
 }

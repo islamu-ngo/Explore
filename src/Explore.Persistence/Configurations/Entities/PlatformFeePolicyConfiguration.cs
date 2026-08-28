@@ -11,7 +11,6 @@ public sealed class PlatformFeePolicyConfiguration : IEntityTypeConfiguration<Pl
 {
     public void Configure(EntityTypeBuilder<PlatformFeePolicy> builder)
     {
-        builder.ToTable("platform_fee_policies");
         builder.Property(policy => policy.Id).ValueGeneratedNever();
         builder.Property(policy => policy.CreatedAt).IsRequired();
         builder.Property(policy => policy.FeeBasisPoints).HasColumnType("integer");

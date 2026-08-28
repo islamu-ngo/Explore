@@ -38,17 +38,14 @@ public class EventSessionGroupSessionConfiguration : IEntityTypeConfiguration<Ev
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionGroupId, e.EventSessionId })
-            .HasDatabaseName("ix_event_session_group_sessions_tenant_event_group_session")
             .IsUnique()
             .HasFilter("is_deleted = false");
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionId, e.IsPrimary })
-            .HasDatabaseName("ix_event_session_group_sessions_tenant_event_session_primary")
             .IsUnique()
             .HasFilter("is_primary = true AND is_deleted = false");
 
-        builder.HasIndex(e => new { e.TenantId, e.EventSessionGroupId, e.SortOrder })
-            .HasDatabaseName("ix_event_session_group_sessions_tenant_group_sort");
+        builder.HasIndex(e => new { e.TenantId, e.EventSessionGroupId, e.SortOrder });
 
         builder.Property(e => e.IsDeleted).HasDefaultValue(false);
     }

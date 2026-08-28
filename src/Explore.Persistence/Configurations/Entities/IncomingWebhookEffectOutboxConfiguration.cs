@@ -11,7 +11,7 @@ public sealed class IncomingWebhookEffectOutboxConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<IncomingWebhookEffectOutbox> builder)
     {
-        builder.ToTable("incoming_webhook_effect_outbox", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_incoming_webhook_effect_outbox_payload_sha256",
@@ -50,8 +50,7 @@ public sealed class IncomingWebhookEffectOutboxConfiguration : IEntityTypeConfig
         builder.Property(pointer => pointer.SafeDetail)
             .HasMaxLength(IncomingWebhookEffectOutbox.MaxSafeDetailLength);
 
-        builder.HasAlternateKey(pointer => new { pointer.TenantId, pointer.Id })
-            .HasName("ak_incoming_webhook_effect_outbox_tenant_id");
+        builder.HasAlternateKey(pointer => new { pointer.TenantId, pointer.Id });
 
         builder.HasOne(pointer => pointer.Tenant)
             .WithMany()
@@ -70,20 +69,15 @@ public sealed class IncomingWebhookEffectOutboxConfiguration : IEntityTypeConfig
             pointer.Provider,
             pointer.ProviderDecisionId,
             pointer.EffectKind
-        })
-            .HasDatabaseName("ux_incoming_webhook_effect_outbox_provider_decision")
-            .IsUnique();
+        }).IsUnique();
 
         builder.HasIndex(pointer => new
         {
             pointer.TenantId,
             pointer.IncomingWebhookMessageId,
             pointer.EffectKind
-        })
-            .HasDatabaseName("ux_incoming_webhook_effect_outbox_message_effect")
-            .IsUnique();
+        }).IsUnique();
 
-        builder.HasIndex(pointer => new { pointer.Status, pointer.NextAttemptAt, pointer.CreatedAt })
-            .HasDatabaseName("ix_incoming_webhook_effect_outbox_worker_poll");
+        builder.HasIndex(pointer => new { pointer.Status, pointer.NextAttemptAt, pointer.CreatedAt });
     }
 }

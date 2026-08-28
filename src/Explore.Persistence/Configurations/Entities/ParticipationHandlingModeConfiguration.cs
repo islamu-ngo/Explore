@@ -11,7 +11,6 @@ public sealed class ParticipationHandlingModeConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<ParticipationHandlingMode> builder)
     {
-        builder.ToTable("participation_handling_modes");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

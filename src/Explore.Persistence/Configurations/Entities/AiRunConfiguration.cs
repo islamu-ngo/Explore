@@ -31,6 +31,5 @@ public class AiRunConfiguration : IEntityTypeConfiguration<AiRun>
         builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.QueuedAt })
             .HasDatabaseName("ix_ai_runs_tenant_conversation_queued_at");
 
-        builder.ToTable("ai_runs");
     }
 }

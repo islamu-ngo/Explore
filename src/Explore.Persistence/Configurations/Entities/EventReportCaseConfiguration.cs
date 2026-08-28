@@ -69,7 +69,7 @@ public sealed class EventReportCaseConfiguration : IEntityTypeConfiguration<Even
             .HasFilter("current_decision_id IS NOT NULL")
             .HasDatabaseName("ix_event_report_cases_current_decision");
 
-        builder.ToTable("event_report_cases", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_cases_queue_code_not_blank", "length(btrim(queue_code)) > 0");
             t.HasCheckConstraint("ck_event_report_cases_status", "status BETWEEN 1 AND 6");

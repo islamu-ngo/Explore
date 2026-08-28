@@ -11,7 +11,7 @@ public class IncomingWebhookEffectReceiptConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<IncomingWebhookEffectReceipt> builder)
     {
-        builder.ToTable("incoming_webhook_effect_receipts", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_incoming_webhook_effect_receipts_payload_hash",
@@ -28,8 +28,7 @@ public class IncomingWebhookEffectReceiptConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.SafeResultReference)
             .HasMaxLength(IncomingWebhookEffectReceipt.MaxSafeResultReferenceLength);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_incoming_webhook_effect_receipts_tenant_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -43,10 +42,8 @@ public class IncomingWebhookEffectReceiptConfiguration : IEntityTypeConfiguratio
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.IncomingWebhookMessageId, e.EffectKind })
-            .HasDatabaseName("ux_incoming_webhook_effect_receipts_identity")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.AppliedAt })
-            .HasDatabaseName("ix_incoming_webhook_effect_receipts_tenant_applied");
+        builder.HasIndex(e => new { e.TenantId, e.AppliedAt });
     }
 }

@@ -11,7 +11,6 @@ public sealed class RegistrationAmendmentConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<RegistrationAmendment> builder)
     {
-        builder.ToTable("registration_amendments");
         builder.Property(amendment => amendment.Id).ValueGeneratedNever();
         builder.Property(amendment => amendment.Reason).HasMaxLength(500).IsRequired();
         builder.Property(amendment => amendment.ChangeKind).HasMaxLength(64).IsRequired();

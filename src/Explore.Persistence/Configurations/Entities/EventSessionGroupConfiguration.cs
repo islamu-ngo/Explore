@@ -51,15 +51,12 @@ public class EventSessionGroupConfiguration : IEntityTypeConfiguration<EventSess
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.Slug })
-            .HasDatabaseName("ix_event_session_groups_tenant_event_slug")
             .IsUnique()
             .HasFilter("is_deleted = false AND slug IS NOT NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
-            .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
-            .HasDatabaseName("ix_event_session_groups_elp_consistency");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId });
 
         builder.HasAnnotation(
             "EventLocationPrivacy:ConsistencyTrigger",
@@ -68,13 +65,13 @@ public class EventSessionGroupConfiguration : IEntityTypeConfiguration<EventSess
         builder.ToTable(t =>
         {
             t.HasCheckConstraint(
-                "CK_EventSessionGroup_RoomRequiresLocation",
+                "ck_event_session_group_room_requires_location",
                 "room_id IS NULL OR location_id IS NOT NULL");
             // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
             // event-scoped EventLocation. This closes the legacy write path that could attach a raw
             // Location without a per-event disclosure policy.
             t.HasCheckConstraint(
-                "CK_EventSessionGroup_PhysicalLocationRequiresEventLocation",
+                "ck_event_session_group_physical_location_requires_event_location",
                 "location_id IS NULL OR event_location_id IS NOT NULL");
         });
 

@@ -11,7 +11,6 @@ public sealed class LocationAddressSourceConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<LocationAddressSource> builder)
     {
-        builder.ToTable("location_address_sources");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

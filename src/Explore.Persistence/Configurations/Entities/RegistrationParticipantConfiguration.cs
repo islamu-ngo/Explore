@@ -11,7 +11,6 @@ public sealed class RegistrationParticipantConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<RegistrationParticipant> builder)
     {
-        builder.ToTable("registration_participants");
         builder.Property(participant => participant.Id).ValueGeneratedNever();
         builder.Property(participant => participant.CreatedAt).IsRequired();
         builder.Property(participant => participant.IsDeleted).HasDefaultValue(false);

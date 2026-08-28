@@ -11,7 +11,6 @@ public sealed class EventCapacityPoolConfiguration : IEntityTypeConfiguration<Ev
 {
     public void Configure(EntityTypeBuilder<EventCapacityPool> builder)
     {
-        builder.ToTable("event_capacity_pools");
         builder.Property(pool => pool.Id).ValueGeneratedNever();
         builder.Property(pool => pool.Name).IsRequired().HasMaxLength(200);
         builder.Property(pool => pool.CreatedAt).IsRequired();

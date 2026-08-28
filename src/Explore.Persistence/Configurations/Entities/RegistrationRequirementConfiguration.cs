@@ -12,7 +12,6 @@ public sealed class RegistrationRequirementConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<RegistrationRequirement> builder)
     {
-        builder.ToTable("registration_requirements");
         builder.Property(requirement => requirement.Id).ValueGeneratedNever();
         builder.Property(requirement => requirement.CreatedAt).IsRequired();
         builder.Property(requirement => requirement.IsDeleted).HasDefaultValue(false);

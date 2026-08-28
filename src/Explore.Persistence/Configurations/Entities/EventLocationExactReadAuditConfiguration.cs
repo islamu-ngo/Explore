@@ -13,7 +13,7 @@ public sealed class EventLocationExactReadAuditConfiguration
 {
     public void Configure(EntityTypeBuilder<EventLocationExactReadAudit> builder)
     {
-        builder.ToTable("event_location_exact_read_audits", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_event_location_exact_read_audits_purpose",
@@ -39,9 +39,7 @@ public sealed class EventLocationExactReadAuditConfiguration
             .HasPrincipalKey(item => new { item.TenantId, item.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(item => new { item.TenantId, item.EventLocationId, item.OccurredAtUtc })
-            .HasDatabaseName("ix_event_location_exact_read_audits_history");
-        builder.HasIndex(item => new { item.TenantId, item.RequesterUserId, item.OccurredAtUtc })
-            .HasDatabaseName("ix_event_location_exact_read_audits_requester");
+        builder.HasIndex(item => new { item.TenantId, item.EventLocationId, item.OccurredAtUtc });
+        builder.HasIndex(item => new { item.TenantId, item.RequesterUserId, item.OccurredAtUtc });
     }
 }

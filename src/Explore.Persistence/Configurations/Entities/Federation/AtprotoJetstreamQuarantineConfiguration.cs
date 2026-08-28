@@ -12,7 +12,7 @@ public sealed class AtprotoJetstreamQuarantineConfiguration
 {
     public void Configure(EntityTypeBuilder<AtprotoJetstreamQuarantine> builder)
     {
-        builder.ToTable("atproto_jetstream_quarantines", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_atproto_jetstream_quarantine_cursor", "jetstream_cursor >= 0");
             table.HasCheckConstraint(
@@ -32,9 +32,7 @@ public sealed class AtprotoJetstreamQuarantineConfiguration
             .HasForeignKey(value => value.ConsumerStateId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(value => new { value.ConsumerStateId, value.Cursor })
-            .IsUnique()
-            .HasDatabaseName("ux_atproto_jetstream_quarantine_cursor");
-        builder.HasIndex(value => new { value.ReasonCode, value.QuarantinedAt })
-            .HasDatabaseName("ix_atproto_jetstream_quarantine_reason");
+            .IsUnique();
+        builder.HasIndex(value => new { value.ReasonCode, value.QuarantinedAt });
     }
 }

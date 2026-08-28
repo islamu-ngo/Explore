@@ -11,7 +11,7 @@ public sealed class AtprotoEventProjectionConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<AtprotoEventProjection> builder)
     {
-        builder.ToTable("atproto_event_projections", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_atproto_event_projections_source_version", "source_version >= 0");
             table.HasCheckConstraint(
@@ -30,11 +30,8 @@ public sealed class AtprotoEventProjectionConfiguration : IEntityTypeConfigurati
             .WithOne()
             .HasForeignKey<AtprotoEventProjection>(value => value.AtprotoRecordId)
             .OnDelete(DeleteBehavior.Cascade);
-        builder.HasIndex(value => new { value.StartsAt, value.AtprotoRecordId })
-            .HasDatabaseName("ix_atproto_event_projections_starts_at");
-        builder.HasIndex(value => new { value.CreatedAt, value.AtprotoRecordId })
-            .HasDatabaseName("ix_atproto_event_projections_created_at");
-        builder.HasIndex(value => new { value.Name, value.AtprotoRecordId })
-            .HasDatabaseName("ix_atproto_event_projections_name");
+        builder.HasIndex(value => new { value.StartsAt, value.AtprotoRecordId });
+        builder.HasIndex(value => new { value.CreatedAt, value.AtprotoRecordId });
+        builder.HasIndex(value => new { value.Name, value.AtprotoRecordId });
     }
 }

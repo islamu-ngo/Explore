@@ -11,7 +11,7 @@ public sealed class RegistrationAnswerFileReleaseConfiguration : IEntityTypeConf
 {
     public void Configure(EntityTypeBuilder<RegistrationAnswerFileRelease> builder)
     {
-        builder.ToTable("registration_answer_file_releases", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_answer_file_releases_transition",
             "previous_quarantine_state = 'quarantined' AND new_quarantine_state = 'released'"));
         builder.Property(release => release.Id).ValueGeneratedNever();

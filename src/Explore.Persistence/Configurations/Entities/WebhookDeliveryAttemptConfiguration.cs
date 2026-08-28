@@ -11,8 +11,6 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
 {
     public void Configure(EntityTypeBuilder<WebhookDeliveryAttempt> builder)
     {
-        builder.ToTable("webhook_delivery_attempts");
-
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.OutcomeId).IsRequired();
         builder.Ignore(e => e.Outcome);
@@ -21,8 +19,7 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
         builder.Property(e => e.ProcessingLeaseExpiresAt);
         builder.Property(e => e.FailureCategory).HasMaxLength(100);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_webhook_delivery_attempts_tenant_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -46,16 +43,12 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.MessageId, e.EndpointId, e.AttemptNumber })
-            .HasDatabaseName("ux_webhook_delivery_attempts_message_endpoint_attempt")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ScheduledAt, e.CreatedAt })
-            .HasDatabaseName("ix_webhook_delivery_attempts_worker_poll");
+        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ScheduledAt, e.CreatedAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.OutcomeId, e.ScheduledAt })
-            .HasDatabaseName("ix_webhook_delivery_attempts_tenant_endpoint_status");
+        builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.OutcomeId, e.ScheduledAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ProcessingLeaseExpiresAt, e.EndpointId })
-            .HasDatabaseName("ix_webhook_delivery_attempts_active_lease_caps");
+        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ProcessingLeaseExpiresAt, e.EndpointId });
     }
 }

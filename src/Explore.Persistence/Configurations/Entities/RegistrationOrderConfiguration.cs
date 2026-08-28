@@ -13,7 +13,7 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
 {
     public void Configure(EntityTypeBuilder<RegistrationOrder> builder)
     {
-        builder.ToTable("registration_orders", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_orders_workflow_key",
             "(registration_workflow_version_id IS NULL AND registration_workflow_version_key = '00000000-0000-0000-0000-000000000000') OR " +
             "registration_workflow_version_key = registration_workflow_version_id"));

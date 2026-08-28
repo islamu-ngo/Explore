@@ -12,8 +12,6 @@ public class EventSessionCustomPropertyValueConfiguration : IEntityTypeConfigura
 {
     public void Configure(EntityTypeBuilder<EventSessionCustomPropertyValue> builder)
     {
-        builder.ToTable("event_session_custom_property_values");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -44,11 +42,9 @@ public class EventSessionCustomPropertyValueConfiguration : IEntityTypeConfigura
             .HasForeignKey(e => e.OptionId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(e => new { e.TenantId, e.EventSessionId })
-            .HasDatabaseName("ix_escpv_tenant_session");
+        builder.HasIndex(e => new { e.TenantId, e.EventSessionId });
 
         builder.HasIndex(e => new { e.EventSessionCustomPropertyDefinitionId, e.EventSessionId, e.Ordinal })
-            .HasDatabaseName("ix_escpv_definition_session_ordinal")
             .IsUnique();
     }
 }

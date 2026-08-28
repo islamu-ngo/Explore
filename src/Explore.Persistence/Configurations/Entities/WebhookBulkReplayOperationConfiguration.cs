@@ -12,7 +12,7 @@ public sealed class WebhookBulkReplayOperationConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookBulkReplayOperation> builder)
     {
-        builder.ToTable("webhook_bulk_replay_operations", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_bulk_replay_operations_filter_window",
@@ -68,8 +68,7 @@ public sealed class WebhookBulkReplayOperationConfiguration
         builder.Ignore(operation => operation.Status);
         builder.Ignore(operation => operation.EstimatedExcludedCount);
 
-        builder.HasAlternateKey(operation => new { operation.TenantId, operation.Id })
-            .HasName("ak_webhook_bulk_replay_operations_tenant_id_id");
+        builder.HasAlternateKey(operation => new { operation.TenantId, operation.Id });
         builder.HasOne(operation => operation.Tenant)
             .WithMany()
             .HasForeignKey(operation => operation.TenantId)
@@ -88,13 +87,9 @@ public sealed class WebhookBulkReplayOperationConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(operation => new { operation.TenantId, operation.OperationKey })
-            .HasDatabaseName("ux_webhook_bulk_replay_operations_tenant_operation_key")
             .IsUnique();
-        builder.HasIndex(operation => new { operation.StatusId, operation.QueuedAt, operation.Id })
-            .HasDatabaseName("ix_webhook_bulk_replay_operations_status_queue");
-        builder.HasIndex(operation => new { operation.TenantId, operation.StatusId, operation.QueuedAt })
-            .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_status_queue");
-        builder.HasIndex(operation => new { operation.TenantId, operation.FromUtc, operation.ToUtc })
-            .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_window");
+        builder.HasIndex(operation => new { operation.StatusId, operation.QueuedAt, operation.Id });
+        builder.HasIndex(operation => new { operation.TenantId, operation.StatusId, operation.QueuedAt });
+        builder.HasIndex(operation => new { operation.TenantId, operation.FromUtc, operation.ToUtc });
     }
 }

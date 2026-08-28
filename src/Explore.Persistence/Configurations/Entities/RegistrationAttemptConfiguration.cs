@@ -14,7 +14,7 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<RegistrationAttempt> builder)
     {
-        builder.ToTable("registration_attempts", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_attempts_provider_pair",
                 "(registration_provider_binding_id IS NULL) = (provider_mapping_revision_hash IS NULL)");

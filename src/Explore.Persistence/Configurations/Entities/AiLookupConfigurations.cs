@@ -30,7 +30,6 @@ public sealed class AiMessageRoleLookupConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<AiMessageRoleLookup> builder)
     {
-        builder.ToTable("ai_message_roles");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
@@ -43,7 +42,6 @@ public sealed class AiRunStatusLookupConfiguration : IEntityTypeConfiguration<Ai
 {
     public void Configure(EntityTypeBuilder<AiRunStatusLookup> builder)
     {
-        builder.ToTable("ai_run_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
@@ -56,7 +54,6 @@ public sealed class AiReferenceKindLookupConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<AiReferenceKindLookup> builder)
     {
-        builder.ToTable("ai_reference_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
@@ -69,7 +66,6 @@ public sealed class AiProposedActionKindLookupConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<AiProposedActionKindLookup> builder)
     {
-        builder.ToTable("ai_proposed_action_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
@@ -82,7 +78,6 @@ public sealed class AiProposedActionStatusLookupConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<AiProposedActionStatusLookup> builder)
     {
-        builder.ToTable("ai_proposed_action_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
@@ -95,7 +90,6 @@ public sealed class AiProviderKindLookupConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<AiProviderKindLookup> builder)
     {
-        builder.ToTable("ai_provider_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);

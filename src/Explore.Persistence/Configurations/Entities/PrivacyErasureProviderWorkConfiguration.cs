@@ -12,7 +12,7 @@ public sealed class PrivacyErasureProviderWorkConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureProviderWork> builder)
     {
-        builder.ToTable("privacy_erasure_provider_work", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
             table.HasCheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");

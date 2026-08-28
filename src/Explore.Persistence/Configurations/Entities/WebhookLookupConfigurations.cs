@@ -7,132 +7,85 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
 
-public abstract class WebhookLookupConfiguration<TLookup>(string tableName, string indexName)
+public abstract class WebhookLookupConfiguration<TLookup>
     : IEntityTypeConfiguration<TLookup>
     where TLookup : class
 {
     public void Configure(EntityTypeBuilder<TLookup> builder)
     {
-        builder.ToTable(tableName);
         builder.Property<int>("Id").ValueGeneratedNever();
         builder.Property<string>("MasterCode").HasMaxLength(100).IsRequired();
         builder.Property<string>("FullName").HasMaxLength(200).IsRequired();
         builder.Property<string?>("Description").HasMaxLength(500);
-        builder.HasIndex("MasterCode").HasDatabaseName(indexName).IsUnique();
+        builder.HasIndex("MasterCode").IsUnique();
     }
 }
 
-public sealed class WebhookConsumerKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookConsumerKindLookup>(
-        "webhook_consumer_kinds",
-        "ux_webhook_consumer_kinds_master_code");
+public sealed class WebhookConsumerKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookConsumerKindLookup>;
 
-public sealed class WebhookConsumerStatusLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookConsumerStatusLookup>(
-        "webhook_consumer_statuses",
-        "ux_webhook_consumer_statuses_master_code");
+public sealed class WebhookConsumerStatusLookupConfiguration
+    : WebhookLookupConfiguration<WebhookConsumerStatusLookup>;
 
-public sealed class WebhookProviderModeLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookProviderModeLookup>(
-        "webhook_provider_modes",
-        "ux_webhook_provider_modes_master_code");
+public sealed class WebhookProviderModeLookupConfiguration
+    : WebhookLookupConfiguration<WebhookProviderModeLookup>;
 
-public sealed class WebhookProviderKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookProviderKindLookup>(
-        "webhook_provider_kinds",
-        "ux_webhook_provider_kinds_master_code");
+public sealed class WebhookProviderKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookProviderKindLookup>;
 
-public sealed class WebhookProviderCapabilityLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookProviderCapabilityLookup>(
-        "webhook_provider_capabilities",
-        "ux_webhook_provider_capabilities_master_code");
+public sealed class WebhookProviderCapabilityLookupConfiguration
+    : WebhookLookupConfiguration<WebhookProviderCapabilityLookup>;
 
-public sealed class WebhookEndpointStatusLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookEndpointStatusLookup>(
-        "webhook_endpoint_statuses",
-        "ux_webhook_endpoint_statuses_master_code");
+public sealed class WebhookEndpointStatusLookupConfiguration
+    : WebhookLookupConfiguration<WebhookEndpointStatusLookup>;
 
-public sealed class WebhookLocalDeliveryStatusLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookLocalDeliveryStatusLookup>(
-        "webhook_local_delivery_statuses",
-        "ux_webhook_local_delivery_statuses_master_code");
+public sealed class WebhookLocalDeliveryStatusLookupConfiguration
+    : WebhookLookupConfiguration<WebhookLocalDeliveryStatusLookup>;
 
-public sealed class WebhookBulkReplayStatusLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookBulkReplayStatusLookup>(
-        "webhook_bulk_replay_statuses",
-        "ux_webhook_bulk_replay_statuses_master_code");
+public sealed class WebhookBulkReplayStatusLookupConfiguration
+    : WebhookLookupConfiguration<WebhookBulkReplayStatusLookup>;
 
-public sealed class WebhookPendingWorkDecisionLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookPendingWorkDecisionLookup>(
-        "webhook_pending_work_decisions",
-        "ux_webhook_pending_work_decisions_master_code");
+public sealed class WebhookPendingWorkDecisionLookupConfiguration
+    : WebhookLookupConfiguration<WebhookPendingWorkDecisionLookup>;
 
-public sealed class WebhookRetentionSubjectKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookRetentionSubjectKindLookup>(
-        "webhook_retention_subject_kinds",
-        "ux_webhook_retention_subject_kinds_master_code");
+public sealed class WebhookRetentionSubjectKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookRetentionSubjectKindLookup>;
 
-public sealed class WebhookAuditActionLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookAuditActionLookup>(
-        "webhook_audit_actions",
-        "ux_webhook_audit_actions_master_code");
+public sealed class WebhookAuditActionLookupConfiguration
+    : WebhookLookupConfiguration<WebhookAuditActionLookup>;
 
-public sealed class WebhookAuditOutcomeLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookAuditOutcomeLookup>(
-        "webhook_audit_outcomes",
-        "ux_webhook_audit_outcomes_master_code");
+public sealed class WebhookAuditOutcomeLookupConfiguration
+    : WebhookLookupConfiguration<WebhookAuditOutcomeLookup>;
 
-public sealed class WebhookAuditPrincipalKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookAuditPrincipalKindLookup>(
-        "webhook_audit_principal_kinds",
-        "ux_webhook_audit_principal_kinds_master_code");
+public sealed class WebhookAuditPrincipalKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookAuditPrincipalKindLookup>;
 
-public sealed class WebhookAuditScopeKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookAuditScopeKindLookup>(
-        "webhook_audit_scope_kinds",
-        "ux_webhook_audit_scope_kinds_master_code");
+public sealed class WebhookAuditScopeKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookAuditScopeKindLookup>;
 
-public sealed class WebhookAuditTargetKindLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookAuditTargetKindLookup>(
-        "webhook_audit_target_kinds",
-        "ux_webhook_audit_target_kinds_master_code");
+public sealed class WebhookAuditTargetKindLookupConfiguration
+    : WebhookLookupConfiguration<WebhookAuditTargetKindLookup>;
 
-public sealed class WebhookDeliveryAttemptOutcomeLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookDeliveryAttemptOutcomeLookup>(
-        "webhook_delivery_attempt_outcomes",
-        "ux_webhook_delivery_attempt_outcomes_master_code");
+public sealed class WebhookDeliveryAttemptOutcomeLookupConfiguration
+    : WebhookLookupConfiguration<WebhookDeliveryAttemptOutcomeLookup>;
 
-public sealed class IncomingWebhookMessageStatusLookupConfiguration()
-    : WebhookLookupConfiguration<IncomingWebhookMessageStatusLookup>(
-        "incoming_webhook_message_statuses",
-        "ux_incoming_webhook_message_statuses_master_code");
+public sealed class IncomingWebhookMessageStatusLookupConfiguration
+    : WebhookLookupConfiguration<IncomingWebhookMessageStatusLookup>;
 
-public sealed class IncomingWebhookProcessingAttemptOutcomeLookupConfiguration()
-    : WebhookLookupConfiguration<IncomingWebhookProcessingAttemptOutcomeLookup>(
-        "incoming_webhook_processing_attempt_outcomes",
-        "ux_incoming_webhook_processing_attempt_outcomes_master_code");
+public sealed class IncomingWebhookProcessingAttemptOutcomeLookupConfiguration
+    : WebhookLookupConfiguration<IncomingWebhookProcessingAttemptOutcomeLookup>;
 
-public sealed class IncomingWebhookSettlementSourceLookupConfiguration()
-    : WebhookLookupConfiguration<IncomingWebhookSettlementSourceLookup>(
-        "incoming_webhook_settlement_sources",
-        "ux_incoming_webhook_settlement_sources_master_code");
+public sealed class IncomingWebhookSettlementSourceLookupConfiguration
+    : WebhookLookupConfiguration<IncomingWebhookSettlementSourceLookup>;
 
-public sealed class IncomingWebhookRedriveResultLookupConfiguration()
-    : WebhookLookupConfiguration<IncomingWebhookRedriveResultLookup>(
-        "incoming_webhook_redrive_results",
-        "ux_incoming_webhook_redrive_results_master_code");
+public sealed class IncomingWebhookRedriveResultLookupConfiguration
+    : WebhookLookupConfiguration<IncomingWebhookRedriveResultLookup>;
 
-public sealed class WebhookProviderPublicationStatusLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookProviderPublicationStatusLookup>(
-        "webhook_provider_publication_statuses",
-        "ux_webhook_provider_publication_statuses_master_code");
+public sealed class WebhookProviderPublicationStatusLookupConfiguration
+    : WebhookLookupConfiguration<WebhookProviderPublicationStatusLookup>;
 
-public sealed class WebhookProviderPublicationAttemptOutcomeLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookProviderPublicationAttemptOutcomeLookup>(
-        "webhook_provider_publication_attempt_outcomes",
-        "ux_webhook_provider_publication_attempt_outcomes_master_code");
+public sealed class WebhookProviderPublicationAttemptOutcomeLookupConfiguration
+    : WebhookLookupConfiguration<WebhookProviderPublicationAttemptOutcomeLookup>;
 
-public sealed class WebhookPayloadProvenanceLookupConfiguration()
-    : WebhookLookupConfiguration<WebhookPayloadProvenanceLookup>(
-        "webhook_payload_provenances",
-        "ux_webhook_payload_provenances_master_code");
+public sealed class WebhookPayloadProvenanceLookupConfiguration
+    : WebhookLookupConfiguration<WebhookPayloadProvenanceLookup>;

@@ -12,7 +12,6 @@ public sealed class EventParticipationConfigurationConfiguration
 {
     public void Configure(EntityTypeBuilder<EventParticipationConfiguration> builder)
     {
-        builder.ToTable("event_participation_configurations");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.CreatedAt).IsRequired();
         builder.Property(row => row.IsDeleted).HasDefaultValue(false);

@@ -13,7 +13,9 @@ public sealed class EmbeddedPrivacyErasureCounterConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureCounter> builder)
     {
-        builder.ToTable(RelationalModelNamespace.Prefix + "authority_counter", table =>
+        builder.ToTable(
+            RelationalModelNamespace.Prefix + PrivacyErasureAuthorityDatabaseContract.CounterTable,
+            table =>
         {
             table.HasCheckConstraint("ck_authority_counter_singleton", "singleton = 1");
             table.HasCheckConstraint("ck_authority_counter_nonnegative", "last_sequence >= 0");

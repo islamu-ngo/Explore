@@ -11,7 +11,7 @@ public sealed class PrivacyErasureSagaConfiguration : IEntityTypeConfiguration<P
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureSaga> builder)
     {
-        builder.ToTable("privacy_erasure_sagas", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
             table.HasCheckConstraint(

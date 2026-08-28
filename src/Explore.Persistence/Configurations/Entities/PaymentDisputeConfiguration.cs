@@ -11,7 +11,7 @@ public sealed class PaymentDisputeConfiguration : IEntityTypeConfiguration<Payme
 {
     public void Configure(EntityTypeBuilder<PaymentDispute> builder)
     {
-        builder.ToTable("payment_disputes", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_payment_disputes_stage", "stage BETWEEN 1 AND 2");
             table.HasCheckConstraint("ck_payment_disputes_status", "status BETWEEN 1 AND 5");

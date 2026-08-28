@@ -12,7 +12,7 @@ public sealed class RegistrationSubmissionConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<RegistrationSubmission> builder)
     {
-        builder.ToTable("registration_submissions", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_submissions_provider_tuple",
                 "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR " +
@@ -91,11 +91,9 @@ public sealed class RegistrationSubmissionConfiguration : IEntityTypeConfigurati
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(submission => new
         { submission.TenantId, submission.RegistrationAttemptId, submission.BusinessDeduplicationKey })
-            .HasDatabaseName("ux_registration_submissions_native_identity")
             .IsUnique().HasFilter("provider_submission_id IS NULL");
         builder.HasIndex(submission => new
         { submission.TenantId, submission.RegistrationProviderBindingId, submission.ProviderSubmissionId, submission.ProviderResponseRevision })
-            .HasDatabaseName("ux_registration_submissions_provider_identity")
             .IsUnique().HasFilter("provider_submission_id IS NOT NULL");
         builder.HasIndex(submission => new { submission.TenantId, submission.RegistrationAttemptId, submission.ReceivedAt });
         builder.HasIndex(submission => submission.HttpIdempotencyKeyHash);

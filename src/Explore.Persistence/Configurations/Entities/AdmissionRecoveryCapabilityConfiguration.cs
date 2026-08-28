@@ -12,7 +12,7 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
 {
     public void Configure(EntityTypeBuilder<AdmissionRecoveryCapability> builder)
     {
-        builder.ToTable("admission_recovery_capabilities", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_recovery_capabilities_versions",
@@ -50,7 +50,6 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
                 value.Purpose,
                 value.CapabilityVersion
             })
-            .HasDatabaseName("ux_admission_recovery_capabilities_generation")
             .IsUnique();
         builder.HasIndex(value => new
             {
@@ -58,7 +57,6 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
                 value.LookupKeyVersion,
                 value.LookupDigest
             })
-            .HasDatabaseName("ux_admission_recovery_capabilities_digest")
             .IsUnique();
         builder.HasIndex(value => new
             {
@@ -66,7 +64,6 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
                 value.LookupKeyVersion,
                 value.LocatorDigest
             })
-            .HasDatabaseName("ux_admission_recovery_capabilities_locator")
             .IsUnique();
         builder.HasIndex(value => new
             {
@@ -75,12 +72,9 @@ public sealed class AdmissionRecoveryCapabilityConfiguration :
                 value.Purpose,
                 value.ActiveUniquenessSlot
             })
-            .HasDatabaseName("ux_admission_recovery_capabilities_active")
             .IsUnique();
-        builder.HasIndex(value => new { value.TenantId, value.RecoveryRequestId, value.Purpose })
-            .HasDatabaseName("ix_admission_recovery_capabilities_request");
-        builder.HasIndex(value => new { value.ExpiresAt, value.ConsumedAt, value.RotatedAt })
-            .HasDatabaseName("ix_admission_recovery_capabilities_expiry");
+        builder.HasIndex(value => new { value.TenantId, value.RecoveryRequestId, value.Purpose });
+        builder.HasIndex(value => new { value.ExpiresAt, value.ConsumedAt, value.RotatedAt });
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(value => value.TenantId)
             .OnDelete(DeleteBehavior.Restrict);

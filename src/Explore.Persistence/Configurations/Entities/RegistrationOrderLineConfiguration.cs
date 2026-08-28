@@ -11,7 +11,6 @@ public sealed class RegistrationOrderLineConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<RegistrationOrderLine> builder)
     {
-        builder.ToTable("registration_order_lines");
         builder.Property(line => line.Id).ValueGeneratedNever();
         builder.Property(line => line.CurrencyCodeSnapshot).IsRequired().HasMaxLength(3);
         builder.Property(line => line.TicketTypeNameSnapshot).IsRequired().HasMaxLength(200);

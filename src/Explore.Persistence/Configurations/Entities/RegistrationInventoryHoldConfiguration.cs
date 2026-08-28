@@ -11,7 +11,6 @@ public sealed class RegistrationInventoryHoldConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<RegistrationInventoryHold> builder)
     {
-        builder.ToTable("registration_inventory_holds");
         builder.Property(hold => hold.Id).ValueGeneratedNever();
         builder.Property(hold => hold.CreatedAt).IsRequired();
         builder.Property(hold => hold.IsDeleted).HasDefaultValue(false);

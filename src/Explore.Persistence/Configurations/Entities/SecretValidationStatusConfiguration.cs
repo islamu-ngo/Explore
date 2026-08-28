@@ -11,7 +11,6 @@ public class SecretValidationStatusConfiguration : IEntityTypeConfiguration<Secr
 {
     public void Configure(EntityTypeBuilder<SecretValidationStatus> builder)
     {
-        builder.ToTable("secret_validation_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(100);

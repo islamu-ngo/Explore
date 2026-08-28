@@ -12,7 +12,6 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
 {
     public void Configure(EntityTypeBuilder<TenantUser> builder)
     {
-        builder.ToTable("tenant_users");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
@@ -35,16 +34,13 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
             .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.UserId })
-            .HasName("ak_tenant_users_tenant_id_user_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.UserId });
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_tenant_users_tenant_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasIndex(e => new { e.TenantId, e.ActorId })
             .IsUnique()
-            .HasFilter("actor_id IS NOT NULL")
-            .HasDatabaseName("ix_tenantusers_tenant_actor");
+            .HasFilter("actor_id IS NOT NULL");
 
         builder.HasCheckConstraint(
             "ck_tenant_users_status",

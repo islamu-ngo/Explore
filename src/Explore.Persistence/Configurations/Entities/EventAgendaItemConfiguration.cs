@@ -57,14 +57,11 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.LocalStartDate, e.LocalStartMinuteOfDay })
-            .HasDatabaseName("ix_event_agenda_items_tenant_event_local_start");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.LocalStartDate, e.LocalStartMinuteOfDay });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
-            .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
-            .HasDatabaseName("ix_event_agenda_items_elp_consistency");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId });
 
         builder.HasAnnotation(
             "EventLocationPrivacy:ConsistencyTrigger",
@@ -73,31 +70,31 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
         builder.ToTable(t =>
         {
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_EndAfterStart",
+                "ck_event_agenda_item_end_after_start",
                 "end_time > start_time");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_LocalDateRange",
+                "ck_event_agenda_item_local_date_range",
                 "local_end_date >= local_start_date");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_LocalStartMinuteRange",
+                "ck_event_agenda_item_local_start_minute_range",
                 "local_start_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_LocalEndMinuteRange",
+                "ck_event_agenda_item_local_end_minute_range",
                 "local_end_minute_of_day BETWEEN 0 AND 1439");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_LocalStartMinuteMatchesTime",
+                "ck_event_agenda_item_local_start_minute_matches_time",
                 "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_LocalEndMinuteMatchesTime",
+                "ck_event_agenda_item_local_end_minute_matches_time",
                 "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_RoomRequiresLocation",
+                "ck_event_agenda_item_room_requires_location",
                 "room_id IS NULL OR location_id IS NOT NULL");
             // ELP-230C contraction: a physical venue reference is only legal when it is mediated by an
             // event-scoped EventLocation. This closes the legacy write path that could attach a raw
             // Location without a per-event disclosure policy.
             t.HasCheckConstraint(
-                "CK_EventAgendaItem_PhysicalLocationRequiresEventLocation",
+                "ck_event_agenda_item_physical_location_requires_event_location",
                 "location_id IS NULL OR event_location_id IS NOT NULL");
         });
 

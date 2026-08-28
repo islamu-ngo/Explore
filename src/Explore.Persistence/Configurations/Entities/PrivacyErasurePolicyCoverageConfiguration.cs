@@ -12,7 +12,7 @@ public sealed class PrivacyErasurePolicyCoverageConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasurePolicyCoverage> builder)
     {
-        builder.ToTable("privacy_erasure_policy_coverage", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_privacy_erasure_policy_coverage_subject_kind",

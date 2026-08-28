@@ -37,9 +37,7 @@ public sealed class AtprotoOutboundRecordOwnershipConfiguration
             value.SourceEntityType,
             value.SourceEntityId
         })
-            .IsUnique()
-            .HasDatabaseName("ux_atproto_outbound_ownership_source");
-        builder.HasIndex(value => new { value.TenantId, value.UserId })
-            .HasDatabaseName("ix_atproto_outbound_ownership_user");
+            .IsUnique();
+        builder.HasIndex(value => new { value.TenantId, value.UserId });
     }
 }

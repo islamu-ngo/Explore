@@ -11,7 +11,7 @@ public sealed class WebhookAuditEventConfiguration : IEntityTypeConfiguration<We
 {
     public void Configure(EntityTypeBuilder<WebhookAuditEvent> builder)
     {
-        builder.ToTable("webhook_audit_events", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_audit_events_tenant_scope",
@@ -65,17 +65,12 @@ public sealed class WebhookAuditEventConfiguration : IEntityTypeConfiguration<We
         builder.HasOne(e => e.OutcomeLookup).WithMany().HasForeignKey(e => e.OutcomeId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.OccurredAt })
-            .HasDatabaseName("ix_webhook_audit_events_tenant_occurred")
             .IsDescending(false, true);
         builder.HasIndex(e => new { e.TenantId, e.TargetKindId, e.TargetId, e.OccurredAt })
-            .HasDatabaseName("ix_webhook_audit_events_tenant_target_occurred")
             .IsDescending(false, false, false, true);
-        builder.HasIndex(e => new { e.TenantId, e.CorrelationId })
-            .HasDatabaseName("ix_webhook_audit_events_tenant_correlation");
-        builder.HasIndex(e => new { e.TenantId, e.RetentionUntil })
-            .HasDatabaseName("ix_webhook_audit_events_tenant_retention");
+        builder.HasIndex(e => new { e.TenantId, e.CorrelationId });
+        builder.HasIndex(e => new { e.TenantId, e.RetentionUntil });
         builder.HasIndex(e => new { e.EffectiveScopeKindId, e.EffectiveScopeId, e.OccurredAt })
-            .HasDatabaseName("ix_webhook_audit_events_scope_occurred")
             .IsDescending(false, false, true);
     }
 }

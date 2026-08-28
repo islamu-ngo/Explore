@@ -11,7 +11,7 @@ public sealed class NotificationFanoutOccurrenceConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<NotificationFanoutOccurrence> builder)
     {
-        builder.ToTable("notification_fanout_occurrences", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_notification_fanout_occurrences_versions", "template_version > 0 AND policy_version > 0");
             table.HasCheckConstraint("ck_notification_fanout_occurrences_state", "state IN (1, 2)");
@@ -31,20 +31,17 @@ public sealed class NotificationFanoutOccurrenceConfiguration : IEntityTypeConfi
         builder.Property(e => e.SuppressionReason).HasMaxLength(100);
         builder.Property(e => e.State).IsRequired();
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_notification_fanout_occurrences_tenant_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
-            .HasConstraintName("fk_fanout_occurrences_tenant")
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Event)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .HasConstraintName("fk_fanout_occurrences_event_tenant")
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Session)
@@ -67,15 +64,11 @@ public sealed class NotificationFanoutOccurrenceConfiguration : IEntityTypeConfi
             .HasConstraintName("fk_fanout_occurrences_superseded_tenant")
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.State, e.NotBefore, e.OccurredAt })
-            .HasDatabaseName("ix_notification_fanout_occurrences_runnable");
+        builder.HasIndex(e => new { e.TenantId, e.State, e.NotBefore, e.OccurredAt });
         builder.HasIndex(e => new { e.NotBefore, e.TenantId, e.Priority, e.OccurredAt, e.Id })
             .IsDescending(false, false, true, false, false)
-            .HasFilter("state = 1")
-            .HasDatabaseName("ix_notification_fanout_occurrences_global_runnable");
-        builder.HasIndex(e => new { e.TenantId, e.SourceType, e.SourceId, e.AggregateVersion })
-            .HasDatabaseName("ix_notification_fanout_occurrences_source");
-        builder.HasIndex(e => new { e.TenantId, e.CoalescingKey, e.State, e.OccurredAt })
-            .HasDatabaseName("ix_notification_fanout_occurrences_coalescing");
+            .HasFilter("state = 1");
+        builder.HasIndex(e => new { e.TenantId, e.SourceType, e.SourceId, e.AggregateVersion });
+        builder.HasIndex(e => new { e.TenantId, e.CoalescingKey, e.State, e.OccurredAt });
     }
 }

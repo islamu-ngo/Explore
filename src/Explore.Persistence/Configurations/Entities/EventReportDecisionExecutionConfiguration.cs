@@ -13,7 +13,7 @@ public sealed class EventReportDecisionExecutionConfiguration
 {
     public void Configure(EntityTypeBuilder<EventReportDecisionExecution> builder)
     {
-        builder.ToTable("event_report_decision_executions", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_event_report_decision_executions_state",

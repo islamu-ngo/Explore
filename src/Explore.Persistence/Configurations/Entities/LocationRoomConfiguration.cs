@@ -32,14 +32,12 @@ public class LocationRoomConfiguration : IEntityTypeConfiguration<LocationRoom>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.LocationId, e.Name })
-            .HasDatabaseName("ix_location_rooms_tenant_location_name")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.LocationId, e.SortOrder })
-            .HasDatabaseName("ix_location_rooms_tenant_location_sort");
+        builder.HasIndex(e => new { e.TenantId, e.LocationId, e.SortOrder });
 
         builder.ToTable(t => t.HasCheckConstraint(
-            "CK_LocationRoom_NonNegativeCapacity",
+            "ck_location_room_non_negative_capacity",
             "capacity IS NULL OR capacity >= 0"));
 
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();

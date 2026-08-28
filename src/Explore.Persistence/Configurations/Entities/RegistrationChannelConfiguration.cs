@@ -12,7 +12,7 @@ public sealed class RegistrationChannelConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<RegistrationChannel> builder)
     {
-        builder.ToTable("registration_channels", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_channels_provider_shape",
             "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR " +
             "(is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)"));

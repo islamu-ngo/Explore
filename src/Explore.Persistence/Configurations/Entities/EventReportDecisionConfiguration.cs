@@ -62,7 +62,7 @@ public sealed class EventReportDecisionConfiguration : IEntityTypeConfiguration<
             .HasFilter("external_decision_id IS NOT NULL")
             .HasDatabaseName("ux_event_report_decisions_tenant_source_target_external");
 
-        builder.ToTable("event_report_decisions", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
             t.HasCheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");

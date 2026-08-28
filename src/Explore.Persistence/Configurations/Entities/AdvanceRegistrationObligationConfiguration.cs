@@ -12,7 +12,6 @@ public sealed class AdvanceRegistrationObligationConfiguration
 {
     public void Configure(EntityTypeBuilder<AdvanceRegistrationObligation> builder)
     {
-        builder.ToTable("advance_registration_obligations");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

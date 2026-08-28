@@ -12,7 +12,6 @@ public class UserAppearanceProfileConfiguration : IEntityTypeConfiguration<UserA
 {
     public void Configure(EntityTypeBuilder<UserAppearanceProfile> builder)
     {
-        builder.ToTable("user_appearance_profiles");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

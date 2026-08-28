@@ -12,7 +12,7 @@ public sealed class WebhookProviderPublicationConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookProviderPublication> builder)
     {
-        builder.ToTable("webhook_provider_publications", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_webhook_provider_publications_fence", "publication_fence >= 0");
             table.HasCheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
@@ -44,8 +44,7 @@ public sealed class WebhookProviderPublicationConfiguration
         builder.Ignore(publication => publication.ModeSnapshot);
         builder.Ignore(publication => publication.Status);
 
-        builder.HasAlternateKey(publication => new { publication.TenantId, publication.Id })
-            .HasName("ak_webhook_provider_publications_tenant_id_id");
+        builder.HasAlternateKey(publication => new { publication.TenantId, publication.Id });
         builder.HasOne(publication => publication.Tenant)
             .WithMany()
             .HasForeignKey(publication => publication.TenantId)
@@ -83,15 +82,11 @@ public sealed class WebhookProviderPublicationConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(publication => new { publication.TenantId, publication.WebhookMessageId, publication.ProviderKindId, publication.ProviderBindingId })
-            .HasDatabaseName("ux_webhook_provider_publications_tenant_message_provider_binding")
             .IsUnique();
         builder.HasIndex(publication => new { publication.TenantId, publication.ProviderKindId, publication.ProviderEventId })
-            .HasDatabaseName("ux_webhook_provider_publications_tenant_provider_event")
             .IsUnique();
-        builder.HasIndex(publication => new { publication.TenantId, publication.StatusId, publication.NextActionAt, publication.ProcessingLeaseExpiresAt })
-            .HasDatabaseName("ix_webhook_provider_publications_tenant_claim_due");
-        builder.HasIndex(publication => new { publication.TenantId, publication.PublicationRetentionUntil })
-            .HasDatabaseName("ix_webhook_provider_publications_tenant_retention");
+        builder.HasIndex(publication => new { publication.TenantId, publication.StatusId, publication.NextActionAt, publication.ProcessingLeaseExpiresAt });
+        builder.HasIndex(publication => new { publication.TenantId, publication.PublicationRetentionUntil });
     }
 }
 
@@ -100,7 +95,6 @@ public sealed class WebhookProviderPublicationAttemptConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookProviderPublicationAttempt> builder)
     {
-        builder.ToTable("webhook_provider_publication_attempts");
         builder.Property(attempt => attempt.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(attempt => attempt.ExternalProviderMessageId).HasMaxLength(WebhookProviderPublication.MaxExternalProviderMessageIdLength);
         builder.Property(attempt => attempt.FailureCategory).HasMaxLength(WebhookProviderPublication.MaxFailureCategoryLength);
@@ -109,18 +103,14 @@ public sealed class WebhookProviderPublicationAttemptConfiguration
             .WithMany()
             .HasForeignKey(attempt => attempt.OutcomeId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasAlternateKey(attempt => new { attempt.TenantId, attempt.Id })
-            .HasName("ak_webhook_provider_publication_attempts_tenant_id_id");
+        builder.HasAlternateKey(attempt => new { attempt.TenantId, attempt.Id });
         builder.HasOne(attempt => attempt.Tenant)
             .WithMany()
             .HasForeignKey(attempt => attempt.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(attempt => new { attempt.TenantId, attempt.WebhookProviderPublicationId, attempt.AttemptNumber })
-            .HasDatabaseName("ux_webhook_provider_publication_attempts_tenant_publication_attempt")
             .IsUnique();
-        builder.HasIndex(attempt => new { attempt.TenantId, attempt.RecordedAt, attempt.Id })
-            .HasDatabaseName("ix_webhook_provider_publication_attempts_tenant_recorded");
-        builder.HasIndex(attempt => new { attempt.TenantId, attempt.OutcomeId, attempt.RecordedAt })
-            .HasDatabaseName("ix_webhook_provider_publication_attempts_tenant_outcome_recorded");
+        builder.HasIndex(attempt => new { attempt.TenantId, attempt.RecordedAt, attempt.Id });
+        builder.HasIndex(attempt => new { attempt.TenantId, attempt.OutcomeId, attempt.RecordedAt });
     }
 }

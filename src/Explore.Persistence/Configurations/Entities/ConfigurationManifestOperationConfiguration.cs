@@ -12,7 +12,7 @@ public sealed class ConfigurationManifestOperationConfiguration
 {
     public void Configure(EntityTypeBuilder<ConfigurationManifestOperation> builder)
     {
-        builder.ToTable("configuration_manifest_operations", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_configuration_manifest_operations_counts",

@@ -12,13 +12,11 @@ public sealed class WebhookProviderBindingVerificationStateLookupConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookProviderBindingVerificationStateLookup> builder)
     {
-        builder.ToTable("webhook_provider_binding_verification_states");
         builder.Property(state => state.Id).ValueGeneratedNever();
         builder.Property(state => state.MasterCode).HasMaxLength(100).IsRequired();
         builder.Property(state => state.FullName).HasMaxLength(200).IsRequired();
         builder.Property(state => state.Description).HasMaxLength(500);
         builder.HasIndex(state => state.MasterCode)
-            .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code")
             .IsUnique();
     }
 }

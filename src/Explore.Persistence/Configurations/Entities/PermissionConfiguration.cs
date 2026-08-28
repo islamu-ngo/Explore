@@ -67,15 +67,12 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
 
         // Unique MasterCode (e.g., "event:update:description")
         builder.HasIndex(e => e.MasterCode)
-            .IsUnique()
-            .HasDatabaseName("ix_permissions_mastercode");
+            .IsUnique();
 
         // Fast lookup by resource kind (e.g., all "event" permissions)
-        builder.HasIndex(e => new { e.ResourceKind, e.Action })
-            .HasDatabaseName("ix_permissions_resource_action");
+        builder.HasIndex(e => new { e.ResourceKind, e.Action });
 
         // Filter by scope for capability ceiling queries
-        builder.HasIndex(e => e.RoleScopeId)
-            .HasDatabaseName("ix_permissions_role_scope_id");
+        builder.HasIndex(e => e.RoleScopeId);
     }
 }

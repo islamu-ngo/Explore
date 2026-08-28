@@ -12,7 +12,6 @@ public sealed class ConfigurationManifestTenantResultConfiguration
 {
     public void Configure(EntityTypeBuilder<ConfigurationManifestTenantResult> builder)
     {
-        builder.ToTable("configuration_manifest_tenant_results");
         builder.Property(result => result.Id).ValueGeneratedNever();
         builder.Property(result => result.Status).HasConversion<string>().HasMaxLength(24).IsRequired();
         builder.Property(result => result.ReasonCode)

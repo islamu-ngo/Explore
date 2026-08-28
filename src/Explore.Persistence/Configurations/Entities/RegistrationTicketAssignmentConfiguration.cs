@@ -11,11 +11,10 @@ public sealed class RegistrationTicketAssignmentConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<RegistrationTicketAssignment> builder)
     {
-        builder.ToTable("registration_ticket_assignments");
         builder.Property(assignment => assignment.Id).ValueGeneratedNever();
         builder.Property(assignment => assignment.CreatedAt).IsRequired();
         builder.Property(assignment => assignment.ConcurrencyStamp).IsConcurrencyToken();
-        builder.Property<bool>("IsDeleted").HasColumnName("is_deleted").HasDefaultValue(false);
+        builder.Property<bool>("IsDeleted").HasDefaultValue(false);
         builder.HasAlternateKey(assignment => new { assignment.TenantId, assignment.Id });
         builder.HasAlternateKey(assignment => new { assignment.TenantId, assignment.RegistrationOrderId, assignment.Id });
         builder.HasAlternateKey(assignment => new

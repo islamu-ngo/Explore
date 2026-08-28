@@ -11,7 +11,6 @@ public sealed class LocationPrivacyStateConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<LocationPrivacyState> builder)
     {
-        builder.ToTable("location_privacy_states");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

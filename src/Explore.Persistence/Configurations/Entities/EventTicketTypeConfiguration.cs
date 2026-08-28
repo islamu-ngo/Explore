@@ -11,8 +11,8 @@ public sealed class EventTicketTypeConfiguration : IEntityTypeConfiguration<Even
 {
     public void Configure(EntityTypeBuilder<EventTicketType> builder)
     {
-        builder.ToTable("event_ticket_types", table => table.HasCheckConstraint(
-            "CK_EventTicketType_MoneyNonnegative",
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_event_ticket_type_money_nonnegative",
             """
             (fixed_price_minor IS NULL OR fixed_price_minor >= 0)
             AND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)

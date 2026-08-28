@@ -18,7 +18,6 @@ public class EventSessionKindConfiguration : IEntityTypeConfiguration<EventSessi
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasIndex(e => e.MasterCode)
-            .HasDatabaseName("ix_event_session_kinds_master_code")
             .IsUnique();
     }
 }

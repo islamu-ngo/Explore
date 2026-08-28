@@ -11,18 +11,17 @@ public sealed class NotificationCategoryConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<NotificationCategory> builder)
     {
-        ConfigureLookup(builder, "notification_categories", "ux_notification_categories_master_code");
+        ConfigureLookup(builder);
     }
 
-    private static void ConfigureLookup<TLookup>(EntityTypeBuilder<TLookup> builder, string tableName, string masterCodeIndexName)
+    private static void ConfigureLookup<TLookup>(EntityTypeBuilder<TLookup> builder)
         where TLookup : class
     {
-        builder.ToTable(tableName);
         builder.Property<int>("Id").ValueGeneratedNever();
         builder.Property<string>("MasterCode").IsRequired().HasMaxLength(100);
         builder.Property<string>("FullName").IsRequired().HasMaxLength(200);
         builder.Property<string?>("Description").HasMaxLength(500);
-        builder.HasIndex("MasterCode").IsUnique().HasDatabaseName(masterCodeIndexName);
+        builder.HasIndex("MasterCode").IsUnique();
     }
 }
 
@@ -30,12 +29,11 @@ public sealed class NotificationOwnershipTypeConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<NotificationOwnershipType> builder)
     {
-        builder.ToTable("notification_ownership_types");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_ownership_types_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -43,12 +41,11 @@ public sealed class NotificationIntentStatusConfiguration : IEntityTypeConfigura
 {
     public void Configure(EntityTypeBuilder<NotificationIntentStatus> builder)
     {
-        builder.ToTable("notification_intent_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_intent_statuses_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -56,12 +53,11 @@ public sealed class NotificationRecipientKindConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<NotificationRecipientKind> builder)
     {
-        builder.ToTable("notification_recipient_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_recipient_kinds_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -69,12 +65,11 @@ public sealed class NotificationDeliveryStatusConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<NotificationDeliveryStatus> builder)
     {
-        builder.ToTable("notification_delivery_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_delivery_statuses_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -82,12 +77,11 @@ public sealed class NotificationDeliveryPolicyConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<NotificationDeliveryPolicy> builder)
     {
-        builder.ToTable("notification_delivery_policies");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_delivery_policies_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -95,12 +89,11 @@ public sealed class NotificationExternalDelegationStatusConfiguration : IEntityT
 {
     public void Configure(EntityTypeBuilder<NotificationExternalDelegationStatus> builder)
     {
-        builder.ToTable("notification_external_delegation_statuses");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_external_delegation_statuses_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -108,12 +101,11 @@ public sealed class ExternalWorkflowProviderKindLookupConfiguration : IEntityTyp
 {
     public void Configure(EntityTypeBuilder<ExternalWorkflowProviderKindLookup> builder)
     {
-        builder.ToTable("external_workflow_provider_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_external_workflow_provider_kinds_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -121,11 +113,10 @@ public sealed class AccountAuthorityKindLookupConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<AccountAuthorityKindLookup> builder)
     {
-        builder.ToTable("account_authority_kinds");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_account_authority_kinds_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }

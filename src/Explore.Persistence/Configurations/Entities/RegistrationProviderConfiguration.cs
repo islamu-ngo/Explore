@@ -13,7 +13,6 @@ public sealed class RegistrationProviderConnectionConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderConnection> builder)
     {
-        builder.ToTable("registration_provider_connections");
         builder.Property(connection => connection.Id).ValueGeneratedNever();
         builder.Property(connection => connection.Name).IsRequired().HasMaxLength(120);
         builder.Property(connection => connection.ProviderCode).IsRequired().HasMaxLength(100);
@@ -46,7 +45,6 @@ public sealed class RegistrationProviderApprovedOriginConfiguration : IEntityTyp
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderApprovedOrigin> builder)
     {
-        builder.ToTable("registration_provider_approved_origins");
         builder.Property(origin => origin.Id).ValueGeneratedNever();
         builder.Property(origin => origin.Origin).IsRequired().HasMaxLength(300);
         builder.Property(origin => origin.CreatedAt).IsRequired();
@@ -60,7 +58,7 @@ public sealed class RegistrationProviderBindingConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderBinding> builder)
     {
-        builder.ToTable("registration_provider_bindings", table => table.HasCheckConstraint("ck_registration_provider_bindings_publication", $"(state_id = {(int)RegistrationProviderBindingStateEnum.Published} AND published_mapping_revision_hash IS NOT NULL AND published_at IS NOT NULL) OR (state_id <> {(int)RegistrationProviderBindingStateEnum.Published})"));
+        builder.ToTable(table => table.HasCheckConstraint("ck_registration_provider_bindings_publication", $"(state_id = {(int)RegistrationProviderBindingStateEnum.Published} AND published_mapping_revision_hash IS NOT NULL AND published_at IS NOT NULL) OR (state_id <> {(int)RegistrationProviderBindingStateEnum.Published})"));
         builder.Property(binding => binding.Id).ValueGeneratedNever();
         builder.Property(binding => binding.PublishedMappingRevisionHash).HasConversion(hash => hash == null ? null : hash.Value, value => value == null ? null : RegistrationEvidenceHash.Create(value)).HasMaxLength(44);
         builder.Property(binding => binding.PublishedMappingRevisionHashKey).IsRequired().HasMaxLength(44).HasDefaultValue(string.Empty);
@@ -93,7 +91,6 @@ public sealed class RegistrationProviderCapabilityConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderCapability> builder)
     {
-        builder.ToTable("registration_provider_capabilities");
         builder.Property(capability => capability.Id).ValueGeneratedNever();
         builder.Property(capability => capability.ProviderCode).IsRequired().HasMaxLength(100);
         builder.Property(capability => capability.DeploymentKind).IsRequired().HasMaxLength(100);
@@ -111,7 +108,6 @@ public sealed class RegistrationProviderFieldMappingConfiguration : IEntityTypeC
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderFieldMapping> builder)
     {
-        builder.ToTable("registration_provider_field_mappings");
         builder.Property(mapping => mapping.Id).ValueGeneratedNever();
         builder.Property(mapping => mapping.PlatformFieldKey).IsRequired().HasMaxLength(200);
         builder.Property(mapping => mapping.ProviderFieldKey).IsRequired().HasMaxLength(200);
@@ -126,7 +122,6 @@ public sealed class RegistrationProviderOptionMappingConfiguration : IEntityType
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderOptionMapping> builder)
     {
-        builder.ToTable("registration_provider_option_mappings");
         builder.Property(mapping => mapping.Id).ValueGeneratedNever();
         builder.Property(mapping => mapping.PlatformOptionKey).IsRequired().HasMaxLength(200);
         builder.Property(mapping => mapping.ProviderOptionKey).IsRequired().HasMaxLength(200);
@@ -140,7 +135,6 @@ public sealed class RegistrationProviderSchemaRevisionConfiguration : IEntityTyp
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderSchemaRevision> builder)
     {
-        builder.ToTable("registration_provider_schema_revisions");
         builder.Property(revision => revision.Id).ValueGeneratedNever();
         builder.Property(revision => revision.RevisionHash).HasConversion(hash => hash.Value, value => RegistrationEvidenceHash.Create(value)).HasMaxLength(44).IsRequired();
         builder.Property(revision => revision.ProviderSurveyId).IsRequired().HasMaxLength(200);

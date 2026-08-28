@@ -11,7 +11,7 @@ public sealed class PaidOrderAcceptanceSnapshotConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<PaidOrderAcceptanceSnapshot> builder)
     {
-        builder.ToTable("paid_order_acceptance_snapshots", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_paid_order_acceptance_amounts", "organizer_amount_minor > 0 AND platform_fee_minor >= 0 AND platform_fee_minor <= organizer_amount_minor AND platform_contribution_minor >= 0 AND total_minor = organizer_amount_minor + platform_contribution_minor");
             table.HasCheckConstraint("ck_paid_order_acceptance_refund_version", "refund_policy_version > 0");
@@ -77,7 +77,7 @@ public sealed class PaidOrderAcceptanceLineConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<PaidOrderAcceptanceLine> builder)
     {
-        builder.ToTable("paid_order_acceptance_lines", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_paid_order_acceptance_lines_shape",
             "ordinal >= 0 AND quantity > 0 AND unit_amount_minor >= 0 AND discount_amount_minor >= 0 AND line_total_minor >= 0 AND discount_amount_minor <= unit_amount_minor * quantity AND line_total_minor = unit_amount_minor * quantity - discount_amount_minor"));
         builder.HasKey(value => new { value.TenantId, value.PaidOrderAcceptanceSnapshotId, value.Ordinal });

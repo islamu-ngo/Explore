@@ -12,7 +12,7 @@ public sealed class AtprotoJetstreamConsumerStateConfiguration
 {
     public void Configure(EntityTypeBuilder<AtprotoJetstreamConsumerState> builder)
     {
-        builder.ToTable("atproto_jetstream_consumer_states", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_atproto_jetstream_cursor", "jetstream_cursor >= 0");
             table.HasCheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
@@ -27,7 +27,6 @@ public sealed class AtprotoJetstreamConsumerStateConfiguration
         builder.Property(value => value.LeaseOwner).HasMaxLength(200);
         builder.Property(value => value.LeaseFence).IsConcurrencyToken();
         builder.HasIndex(value => value.Service)
-            .IsUnique()
-            .HasDatabaseName("ux_atproto_jetstream_consumer_service");
+            .IsUnique();
     }
 }

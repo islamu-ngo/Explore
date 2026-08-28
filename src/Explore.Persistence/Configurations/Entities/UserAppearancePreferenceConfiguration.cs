@@ -12,7 +12,6 @@ public class UserAppearancePreferenceConfiguration : IEntityTypeConfiguration<Us
 {
     public void Configure(EntityTypeBuilder<UserAppearancePreference> builder)
     {
-        builder.ToTable("user_appearance_preferences");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

@@ -12,7 +12,7 @@ public sealed class AdmissionRecoveryRequestIntentConfiguration :
 {
     public void Configure(EntityTypeBuilder<AdmissionRecoveryRequestIntent> builder)
     {
-        builder.ToTable("admission_recovery_request_intents", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_recovery_request_intents_version",
@@ -23,8 +23,7 @@ public sealed class AdmissionRecoveryRequestIntentConfiguration :
         builder.Property(value => value.CreatedAt).IsRequired();
         builder.Property(value => value.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(value => new { value.TenantId, value.Id });
-        builder.HasIndex(value => new { value.ProcessedAt, value.CreatedAt })
-            .HasDatabaseName("ix_admission_recovery_request_intents_pending");
+        builder.HasIndex(value => new { value.ProcessedAt, value.CreatedAt });
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(value => value.TenantId)
             .OnDelete(DeleteBehavior.Restrict);

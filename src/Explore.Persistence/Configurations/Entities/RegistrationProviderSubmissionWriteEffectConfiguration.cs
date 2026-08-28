@@ -11,7 +11,7 @@ public sealed class RegistrationProviderSubmissionWriteEffectConfiguration : IEn
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderSubmissionWriteEffect> builder)
     {
-        builder.ToTable("registration_provider_submission_write_effects", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_provider_submission_write_effects_attempt_count", "attempt_count >= 0");
             table.HasCheckConstraint("ck_registration_provider_submission_write_effects_processing_fence", "processing_fence >= 0");
@@ -28,8 +28,7 @@ public sealed class RegistrationProviderSubmissionWriteEffectConfiguration : IEn
             .HasPrincipalKey(order => new { order.TenantId, order.EventId, order.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.RegistrationSubmissionId })
-            .HasDatabaseName("ux_registration_provider_submission_write_effects_submission").IsUnique();
-        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt })
-            .HasDatabaseName("ix_registration_provider_submission_write_effects_worker_poll");
+            .IsUnique();
+        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt });
     }
 }

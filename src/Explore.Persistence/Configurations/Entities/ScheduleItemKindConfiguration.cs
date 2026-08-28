@@ -18,7 +18,6 @@ public class ScheduleItemKindConfiguration : IEntityTypeConfiguration<ScheduleIt
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasIndex(e => e.MasterCode)
-            .HasDatabaseName("ix_schedule_item_kinds_master_code")
             .IsUnique();
     }
 }

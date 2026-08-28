@@ -11,7 +11,7 @@ public sealed class RegistrationRequirementFulfillmentConfiguration : IEntityTyp
 {
     public void Configure(EntityTypeBuilder<RegistrationRequirementFulfillment> builder)
     {
-        builder.ToTable("registration_requirement_fulfillments", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_requirement_fulfillments_outcome",
             "(is_skipped = true AND source_registration_submission_id IS NULL) OR " +
             "(is_skipped = false AND source_registration_submission_id IS NOT NULL)"));
@@ -54,6 +54,6 @@ public sealed class RegistrationRequirementFulfillmentConfiguration : IEntityTyp
             value.SubjectTypeId,
             value.SubjectId,
             value.IsSkipped
-        }).HasDatabaseName("ux_registration_requirement_fulfillments_identity").IsUnique();
+        }).IsUnique();
     }
 }

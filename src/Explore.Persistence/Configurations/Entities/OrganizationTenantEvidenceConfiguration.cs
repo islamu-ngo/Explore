@@ -14,7 +14,6 @@ public sealed class OrganizationTenantEvidenceConfiguration
 {
     public void Configure(EntityTypeBuilder<OrganizationTenantEvidence> builder)
     {
-        builder.ToTable("organization_tenant_evidence");
         builder.Property(row => row.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(row => new { row.TenantId, row.Id });
         builder.Property(row => row.ReviewStatusId).HasDefaultValue((int)ApprovalStatusEnum.Pending);

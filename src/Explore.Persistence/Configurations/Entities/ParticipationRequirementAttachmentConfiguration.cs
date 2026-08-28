@@ -12,7 +12,7 @@ public sealed class ParticipationRequirementAttachmentConfiguration
 {
     public void Configure(EntityTypeBuilder<ParticipationRequirementAttachment> builder)
     {
-        builder.ToTable("participation_requirement_attachments", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_participation_requirement_attachments_configuration_event",

@@ -1,3 +1,6 @@
+// ABOUTME: Configures tenant-safe group membership relationships and uniqueness.
+// ABOUTME: Preserves group, user, role, position, and tenant ownership boundaries.
+
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
@@ -43,10 +46,8 @@ public class GroupMemberConfiguration : IEntityTypeConfiguration<GroupMember>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.GroupTenantId, e.UserId })
-            .IsUnique()
-            .HasDatabaseName("ix_group_members_group_user");
+            .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.UserId })
-            .HasDatabaseName("ix_group_members_tenant_user");
+        builder.HasIndex(e => new { e.TenantId, e.UserId });
     }
 }

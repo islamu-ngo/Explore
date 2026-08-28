@@ -11,7 +11,7 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<IncomingWebhookProcessingAttempt> builder)
     {
-        builder.ToTable("incoming_webhook_processing_attempts", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_incoming_webhook_processing_attempts_generation",
@@ -30,8 +30,7 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
         builder.Property(e => e.FailureCategory).HasMaxLength(IncomingWebhookMessage.MaxFailureCodeLength);
         builder.Property(e => e.SafeDetail).HasMaxLength(IncomingWebhookMessage.MaxSafeDetailLength);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_incoming_webhook_processing_attempts_tenant_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -50,11 +49,8 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
             e.ProcessingGeneration,
             e.ProcessingFence,
             e.OutcomeId
-        })
-            .HasDatabaseName("ux_incoming_webhook_processing_attempts_evidence")
-            .IsUnique();
+        }).IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.RecordedAt })
-            .HasDatabaseName("ix_incoming_webhook_processing_attempts_tenant_recorded");
+        builder.HasIndex(e => new { e.TenantId, e.RecordedAt });
     }
 }

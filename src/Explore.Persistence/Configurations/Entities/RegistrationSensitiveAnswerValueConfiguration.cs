@@ -11,7 +11,7 @@ public sealed class RegistrationSensitiveAnswerValueConfiguration : IEntityTypeC
 {
     public void Configure(EntityTypeBuilder<RegistrationSensitiveAnswerValue> builder)
     {
-        builder.ToTable("registration_sensitive_answer_values", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_sensitive_answer_values_shape",
             "key_version > 0 AND length(btrim(ciphertext)) > 0"));
         builder.Property(value => value.Id).ValueGeneratedNever();

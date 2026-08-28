@@ -11,7 +11,7 @@ public class NotificationFanoutRunConfiguration : IEntityTypeConfiguration<Notif
 {
     public void Configure(EntityTypeBuilder<NotificationFanoutRun> builder)
     {
-        builder.ToTable("notification_fanout_runs", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
             t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
@@ -59,14 +59,11 @@ public class NotificationFanoutRunConfiguration : IEntityTypeConfiguration<Notif
 
         builder.HasIndex(e => new { e.TenantId, e.FanoutKind, e.NotificationEntityTypeId, e.EntityId, e.SourceActorId })
             .IsUnique()
-            .HasFilter("fanout_occurrence_id IS NULL")
-            .HasDatabaseName("ux_notification_fanout_runs_source");
+            .HasFilter("fanout_occurrence_id IS NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.FanoutOccurrenceId })
-            .IsUnique()
-            .HasDatabaseName("ux_notification_fanout_runs_occurrence");
+            .IsUnique();
 
-        builder.HasIndex(e => new { e.Status, e.ProcessingLeaseExpiresAt, e.CreatedAt })
-            .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
+        builder.HasIndex(e => new { e.Status, e.ProcessingLeaseExpiresAt, e.CreatedAt });
     }
 }

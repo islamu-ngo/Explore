@@ -79,17 +79,14 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         // ===== Performance Indexes =====
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionId, e.LinkedUserId })
-            .HasFilter("is_deleted = false")
-            .HasDatabaseName("ix_eventregistrations_session_user");
+            .HasFilter("is_deleted = false");
 
         // Registrations by user (my registrations)
-        builder.HasIndex(e => e.LinkedUserId)
-            .HasDatabaseName("ix_eventregistrations_user");
+        builder.HasIndex(e => e.LinkedUserId);
 
         builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.RegistrationParticipantId })
             .IsUnique()
-            .HasFilter("is_deleted = false")
-            .HasDatabaseName("ix_eventregistrations_session_participant");
+            .HasFilter("is_deleted = false");
 
         builder.HasIndex(e => new
         {
@@ -100,7 +97,6 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
             e.EntitlementOrdinal
         })
             .IsUnique()
-            .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false")
-            .HasDatabaseName("ix_eventregistrations_order_admission");
+            .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
     }
 }

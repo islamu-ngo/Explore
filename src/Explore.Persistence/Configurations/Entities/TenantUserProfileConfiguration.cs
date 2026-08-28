@@ -11,7 +11,6 @@ public class TenantUserProfileConfiguration : IEntityTypeConfiguration<TenantUse
 {
     public void Configure(EntityTypeBuilder<TenantUserProfile> builder)
     {
-        builder.ToTable("tenant_user_profiles");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
@@ -35,11 +34,9 @@ public class TenantUserProfileConfiguration : IEntityTypeConfiguration<TenantUse
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => e.TenantUserId)
-            .IsUnique()
-            .HasDatabaseName("ix_tenantuserprofiles_tenant_user");
+            .IsUnique();
 
         builder.HasIndex(e => new { e.TenantId, e.ContactEmailOverride })
-            .HasFilter("contact_email_override IS NOT NULL")
-            .HasDatabaseName("ix_tenantuserprofiles_tenant_contact_email");
+            .HasFilter("contact_email_override IS NOT NULL");
     }
 }

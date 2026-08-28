@@ -11,7 +11,6 @@ public sealed class RegistrationOrderPiiConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<RegistrationOrderPii> builder)
     {
-        builder.ToTable("registration_order_pii");
         builder.HasKey(pii => pii.RegistrationOrderId);
         builder.Property(pii => pii.ContactName).HasMaxLength(200);
         builder.Property(pii => pii.Email).HasMaxLength(320);
@@ -35,7 +34,6 @@ public sealed class RegistrationOrderPlatformContributionConfiguration : IEntity
 {
     public void Configure(EntityTypeBuilder<RegistrationOrderPlatformContribution> builder)
     {
-        builder.ToTable("registration_order_platform_contributions");
         builder.Property(contribution => contribution.Id).ValueGeneratedNever();
         builder.Property(contribution => contribution.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.Property(contribution => contribution.AmountMinor).HasColumnType("bigint");
