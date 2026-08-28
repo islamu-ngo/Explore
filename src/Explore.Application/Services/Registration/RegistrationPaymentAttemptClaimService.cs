@@ -56,7 +56,10 @@ public sealed class RegistrationPaymentAttemptClaimService(
             return RegistrationPaymentAttemptClaimResult.Failure("validation_failed", validationFailure);
         }
 
-        return await unitOfWork.ExecuteSerializableAsync(async token =>
+        // The order-scoped database lock is the serialization boundary. A
+        // waiting transaction must take a fresh read after acquiring it so it
+        // can reuse the winner instead of acting on a pre-lock snapshot.
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             RegistrationOrder? order = await orders.GetOrderForUpdateWithLinesAsync(request.RegistrationOrderId, request.TenantId, token);
             if (order is null)
@@ -161,7 +164,23 @@ public sealed class RegistrationPaymentAttemptClaimService(
                     return RegistrationPaymentAttemptClaimResult.Failure("payment_retry_not_available", "Payment retry is not available.");
                 }
 
-                if (!await attempts.ReleaseActiveSlotAsync(latest.Value.Attempt, request.RequestedAt, token))
+                if (latest.Value.Attempt.HasImmutableAcceptance &&
+                    string.Equals(
+                        latest.Value.Attempt.AcceptanceSnapshot!.CompositionRevision,
+                        lockedCompositionRevision,
+                        StringComparison.Ordinal) &&
+                    await acceptanceFreshness.IsCurrentAsync(
+                        latest.Value.Attempt,
+                        token))
+                {
+                    acceptance = latest.Value.Attempt.AcceptanceSnapshot!;
+                }
+
+                if (latest.Value.Attempt.ActiveUniquenessSlot == PaymentAttempt.ActiveUniquenessSlotValue &&
+                    !await attempts.ReleaseActiveSlotAsync(
+                        latest.Value.Attempt,
+                        request.RequestedAt,
+                        token))
                 {
                     return RegistrationPaymentAttemptClaimResult.Failure("payment_retry_not_available", "Payment retry is not available.");
                 }
