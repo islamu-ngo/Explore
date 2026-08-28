@@ -9,7 +9,13 @@
     <Deterministic>true</Deterministic>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Authors>Amir Akrari, ISLAMU Team, and Contributors</Authors>
+    <Company>ISLAMU (ASBL en formation)</Company>
+    <Copyright>Copyright (c) 2026 ISLAMU (ASBL en formation). Licensed under AGPL-3.0-or-later.</Copyright>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/islamu-ngo/Event</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/islamu-ngo/Event</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <!-- Commercial Lucky Penny build: define C# preprocessor symbol for #if guards -->
