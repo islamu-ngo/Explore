@@ -12,7 +12,7 @@ There are many ways to help:
 - Help improve and translate documentation, or contribute translations via Weblate
 - Refine UI accessibility (WCAG 2.2 AA) and localization
 
-ISLAMU Event is a self-hostable, purpose-agnostic, white-label event discovery and management platform. It is currently built and maintained by **Amir Akrari** on personal free time and funds, with **ISLAMU ASBL** (a Belgian non-profit association) being established as the legal and operational steward. Contributions are welcome — but **alignment matters more than quantity**.
+ISLAMU Event is a self-hostable, purpose-agnostic, white-label event discovery and management platform. It is currently built and maintained by **Amir Akrari** on personal free time and funds, with **ISLAMU (ASBL en formation)** (a Belgian non-profit association in formation) being established as the operational and legal steward. Contributions are welcome — but **alignment matters more than quantity**.
 
 This guide explains **what kind of contributions are likely to be accepted** and how to submit them properly. Following it saves time for both you and the maintainers.
 
@@ -98,7 +98,7 @@ To set clear expectations:
 - We do not provide beginner-focused handholding issues.
 - Large unsolicited changes and PRs touching broad surfaces are unlikely to be accepted.
 - Uncoordinated refactors or style rewrites are not helpful.
-- Low-effort or unverified AI-generated pull requests will be closed immediately.
+- We do not accept AI-generated spam PRs or unsolicited dependency additions.
 
 AI usage is permitted as an assistant. However, contributors must fully understand what their changes do and why.
 
@@ -106,7 +106,7 @@ AI usage is permitted as an assistant. However, contributors must fully understa
 
 ## AI Contribution Policy
 
-We welcome AI as a productivity assistant, but **we require a real person behind every issue and pull request**.
+AI-assisted contributions (using GitHub Copilot, ChatGPT, Claude, Gemini, Cursor, etc.) are **permitted and welcomed**, provided they follow strict engineering standards.
 
 ### The Rules for AI-Assisted Submissions:
 1. **Mandatory Disclosure:** You must explicitly disclose if AI tools were used in the pull request template, naming the tool(s) and describing how they were used.
@@ -114,7 +114,7 @@ We welcome AI as a productivity assistant, but **we require a real person behind
 3. **Human-Authored Summary:** The "Changes" section and PR discussion must be written by a human in your own words, not blindly copied from an LLM prompt.
 4. **Automated Submissions & Labeling:** Any pull request or issue that appears entirely automated, generated without contextual understanding, or disconnected from project patterns will be labeled as automated and **closed after *x* days** unless a human genuinely responds and demonstrates comprehension.
    > [!NOTE]
-   > The exact duration of *x* days has not been formalized yet. Because the project is in its early stages and until **ISLAMU ASBL** is officially registered, maintainer capacity is limited and review windows may take an **indefinite amount of time**.
+   > The exact duration of *x* days has not been formalized yet. Because the project is in its early stages and until **ISLAMU (ASBL en formation)** is officially registered with legal personality, maintainer capacity is limited and review windows may take an **indefinite amount of time**.
 
 ---
 
@@ -134,7 +134,7 @@ I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, an
 To re-run the CLA check after signing, post a comment with `recheck`.
 
 ### Why a CLA Alongside AGPL-3.0-or-later?
-ISLAMU Event is distributed publicly under the **GNU AGPL-3.0-or-later** license. The CLA does not take ownership away from you; you retain copyright in your contributions. It provides the ISLAMU project steward (currently Amir Akrari as interim trustee, transferring to ISLAMU ASBL upon incorporation) with the inbound licensing rights needed to offer ISLAMU Event under alternative terms for enterprise internal-use on-premises/VPC compliance (where corporate compliance policies ban AGPL copyleft on internal systems), public-sector procurement, or humanitarian missions.
+ISLAMU Event is distributed publicly under the **GNU AGPL-3.0-or-later** license. The CLA does not take ownership away from you; you retain copyright in your contributions. It provides the ISLAMU project steward (currently Amir Akrari as interim trustee, transferring to ISLAMU ASBL upon incorporation and ratification) with the inbound licensing rights needed to offer ISLAMU Event under alternative terms for enterprise internal-use on-premises/VPC compliance (where corporate compliance policies ban AGPL copyleft on internal systems), public-sector procurement, or humanitarian missions.
 
 **Anti-SaaS Community Protection:** The Project Steward is bound by a strict governance commitment **never to grant an alternative license permitting a third party to operate a closed-source, proprietary SaaS or cloud service**. Any entity offering ISLAMU Event as a SaaS must use `AGPL-3.0-or-later`, guaranteeing that all SaaS improvements remain open source. Your contributions will never be enclosed behind a proprietary vendor wall. See [`legal/CLA.md`](legal/CLA.md) and [`islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md`](islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md).
 

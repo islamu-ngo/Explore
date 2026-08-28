@@ -5,9 +5,9 @@
 
 > **Version:** 1.0
 > **Status:** Operational draft pending legal review
-> **Owner:** ISLAMU nonprofit | Platform/Ops
+> **Owner:** ISLAMU (ASBL en formation) | Platform/Ops
 > **Maintainer of record:** Amir Akrari
-> **Purpose:** Preserve the ISLAMU nonprofit's ability to keep ISLAMU Event public under AGPL-3.0-or-later while also offering alternative terms for legitimate sustainability, enterprise internal-use compliance, nonprofit, humanitarian, public-sector, and procurement-restricted on-premises deployments—with an explicit Project Steward governance commitment against closed-source proprietary SaaS commercialization.
+> **Purpose:** Preserve the ISLAMU (ASBL en formation) organization's ability to keep ISLAMU Event public under AGPL-3.0-or-later while also offering alternative terms for legitimate sustainability, enterprise internal-use compliance, nonprofit, humanitarian, public-sector, and procurement-restricted on-premises deployments—with an explicit Project Steward governance commitment against closed-source proprietary SaaS commercialization.
 
 A new CLA version is published by bumping the `Version` line above and updating the `path-to-signatures` version segment in `.github/workflows/cla.yml` (e.g. `signatures/v1.0/cla.json`). Earlier signatures remain valid only for the CLA version under which they were recorded; a contributor must re-sign when the version changes.
 
@@ -19,7 +19,7 @@ This document is not personal legal advice. Contributors should only sign if the
 
 ISLAMU Event is publicly distributed under AGPL-3.0-or-later. That public license remains in place for the open-source project and for anyone who receives ISLAMU Event under AGPL-3.0-or-later.
 
-This CLA is an additional inbound license from contributors to the ISLAMU project steward. It allows the ISLAMU nonprofit, once incorporated, to also offer ISLAMU Event and contributed material under alternative terms when needed for legitimate deployments, such as enterprise internal-use on-premises/VPC compliance (where corporate policies ban AGPL network copyleft contagion for private intranet tools), humanitarian missions, public-sector procurement, or commercial sustainability.
+This CLA is an additional inbound license from contributors to the ISLAMU project steward. It allows the ISLAMU non-profit organization (ISLAMU ASBL en formation), once formally incorporated with legal personality, to also offer ISLAMU Event and contributed material under alternative terms when needed for legitimate deployments, such as enterprise internal-use on-premises/VPC compliance (where corporate policies ban AGPL network copyleft contagion for private intranet tools), humanitarian missions, public-sector procurement, or commercial sustainability.
 
 The CLA does not take ownership away from contributors. Contributors keep ownership of their own Contributions. The CLA gives the Project Steward the rights needed to maintain, distribute, sublicense, relicense, commercialize, and protect ISLAMU Event sustainably.
 
@@ -34,9 +34,9 @@ The Project Steward is bound by a strict community stewardship principle: **No e
 
 By posting the CLA signature comment on a pull request, You and the Project Steward agree to the terms below.
 
-Until the ISLAMU nonprofit is formally incorporated, Amir Akrari acts solely as interim trustee and project steward for ISLAMU Event. The Trustee may exercise the rights granted under this Agreement only for the purpose of maintaining, operating, licensing, protecting, and transferring ISLAMU Event on behalf of the future ISLAMU nonprofit.
+Until the ISLAMU nonprofit is formally incorporated with legal personality, Amir Akrari acts solely as interim trustee and project steward for ISLAMU Event on behalf of ISLAMU (ASBL en formation). The Trustee may exercise the rights granted under this Agreement only for the purpose of maintaining, operating, licensing, protecting, and transferring ISLAMU Event on behalf of the future ISLAMU nonprofit.
 
-Upon incorporation and acceptance by the ISLAMU nonprofit, the Trustee may assign this Agreement and all rights received under it to the ISLAMU nonprofit. After assignment, the Trustee will not independently exercise the rights granted under this Agreement except as authorized by the Organization or as necessary to complete the transition.
+Upon incorporation, the Organization (ISLAMU ASBL) shall formally ratify this Agreement in accordance with applicable law (including Article 2:2 of the Belgian Companies and Associations Code / Code des sociétés et des associations / Wetboek van vennootschappen en verenigingen) and accept the transfer of all rights and duties from the Trustee. After assignment and ratification, the Trustee will not independently exercise the rights granted under this Agreement except as authorized by the Organization or as necessary to complete the transition.
 
 ## Definitions
 
@@ -48,9 +48,9 @@ A communication is not a Contribution if You conspicuously mark it in writing as
 
 **You** means the individual contributor and, if applicable, the organization on whose behalf the Contribution is submitted.
 
-**Organization** means the ISLAMU nonprofit organization, once formally incorporated, and its successors and assigns.
+**Organization** means the ISLAMU non-profit association (currently ISLAMU ASBL en formation, becoming ISLAMU ASBL upon registration with legal personality), and its successors and assigns.
 
-**Trustee** means Amir Akrari, acting as the interim legal representative and custodian of all rights granted under this Agreement on behalf of the future ISLAMU nonprofit. Upon formal registration of the ISLAMU nonprofit, all rights and responsibilities granted to the Trustee under this Agreement shall be assigned and transferred to the Organization.
+**Trustee** means Amir Akrari, acting as the interim legal representative and custodian of all rights granted under this Agreement on behalf of the future ISLAMU nonprofit (ISLAMU ASBL en formation). Upon formal registration of the ISLAMU nonprofit, all rights and responsibilities granted to the Trustee under this Agreement shall be assigned and transferred to the Organization free of charge and without encumbrances.
 
 **Project Steward** means the Organization after incorporation and acceptance of this Agreement. Until then, Project Steward means the Trustee acting solely in the interim custodial capacity described above.
 
@@ -59,6 +59,10 @@ A communication is not a Contribution if You conspicuously mark it in writing as
 ## Copyright License Grant
 
 Subject to this Agreement, You grant to the Project Steward and to recipients of software, services, or materials distributed or provided by or on behalf of the Project Steward a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable, transferable, and sublicensable copyright license to reproduce, use, execute, host, operate, modify, prepare derivative works of, publicly display, publicly perform, publish, distribute, make available, sublicense, relicense, sell, offer for sale, and otherwise exploit Your Contributions and derivative works thereof, as part of ISLAMU Event or related offerings, under any license or commercial terms selected by the Project Steward.
+
+## Trademarks
+
+This Agreement does not grant You, the Project Steward, or Downstream Recipients any rights to use any trade names, trademarks, service marks, or logos of the Project Steward, the Organization, or any contributor, except as required for reasonable and customary use in describing the origin of the software or as explicitly granted in a separate written agreement (such as through the Official Partner Program).
 
 ## Third-Party Materials And Outbound Licensing
 

@@ -86,7 +86,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, built-in local authorization, environment-first secrets, and HATEOAS REST API; Cerbos, Keycloak, and Infisical integrations remain optional
 - **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
-- **🎛️ ISLAMU Event Control Plane *(optional, commercial)* (Coming Soon):** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. (Coming Soon)
+- **🎛️ Multi-Instance & Fleet Orchestration Ready:** Complete programmatic management support via configuration manifests and built-in management APIs (`/api/management/*`). For operators and Official Partners running fleets of instances at scale, a separate standalone fleet-orchestrator—**ISLAMU Event Control Plane**—is in development to glue multiple instances with PaaS engines (such as Coolify) for automated provisioning, SLA monitoring, and cross-instance backups.
 
 ## Deployment & Hosting Options
 
@@ -302,7 +302,7 @@ Our codebase is enriched by dozens of community-crafted .NET libraries. For the 
 
 ISLAMU is built by one person — **Amir Akrari** — entirely on personal free time and personal funds.
 
-**ISLAMU ASBL** (Association Sans But Lucratif — a non-profit association) is being established in Belgium. Once registered, ISLAMU ASBL will become the legal steward of all ISLAMU open-source projects and charitable activities.
+**ISLAMU (ASBL en formation)** (Association Sans But Lucratif — a non-profit association in formation in Belgium) is being established as the operational and legal steward of all ISLAMU open-source projects and charitable activities. Once formally registered with legal personality, ISLAMU ASBL will assume full legal stewardship.
 
 ### How ISLAMU sustains itself
 
@@ -310,8 +310,7 @@ ISLAMU will not offer its open-source software as a hosted SaaS. Instead, sustai
 
 - **Fundraising & Grants:** Crowdfunding campaigns, foundation grants, and public-interest funding for open-source digital infrastructure
 - **Sponsorships:** Ranked sponsorship tiers — sponsors receive recognition and visibility; every euro goes back into the non-profit
-- **Official Partnerships:** Organizations that want to offer ISLAMU software as a hosted service can become **Official ISLAMU Partners**. Partners are vetted, listed on the ISLAMU website, and actively recommended and marketed by ISLAMU. ISLAMU does not compete with its partners; we redirect and endorse them
-- **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators still in development (see above)
+- **Official Partnerships & Fleet Tooling:** Organizations that want to offer ISLAMU software as a hosted service can become **Official ISLAMU Partners**. Partners are vetted, listed on the ISLAMU website, and actively recommended and marketed by ISLAMU. Official Partners receive access to **ISLAMU Event Control Plane** (our standalone fleet orchestrator that bridges multiple ISLAMU Event instances with PaaS engines like Coolify for automated provisioning, SLA management, and backups). ISLAMU does not compete with its partners by running a commercial SaaS; we empower our partners with tooling and referrals
 - **Consultation & Support** — professional consulting around ISLAMU software deployment, customization, and integration
 
 If you are a company or institution that wants to support this work, reach out at [contact@openislamu.org][contact-email] or start a conversation in our [Discord][discord-link].
