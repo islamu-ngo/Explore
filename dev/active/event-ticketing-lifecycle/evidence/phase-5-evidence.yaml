@@ -48,18 +48,18 @@ evidence_artifacts:
 generated_artifacts:
   - schemas/openapi_islamu-event.json
   - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs
-  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence/Migrations/20260828023911_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.cs
+  - src/Explore.Persistence/Migrations/20260828151542_Init.Designer.cs
   - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828023832_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260828150101_Init.Designer.cs
   - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828023940_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260828150652_Init.Designer.cs
   - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828023956_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260828150932_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.cs
-  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828024014_AddAdmissionTicketTransfer.Designer.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260828151228_Init.Designer.cs
   - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs
