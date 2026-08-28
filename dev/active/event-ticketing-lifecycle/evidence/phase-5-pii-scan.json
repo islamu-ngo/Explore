@@ -14,7 +14,8 @@
   },
   "scannedPaths": [
     "src/Explore.Domain/AdmissionTicketTransfer.cs",
-    "src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs",
+    "src/Explore.Application/Features/Admissions/Handlers/Commands/TicketTransferCommandHandlers.cs",
+    "src/Explore.Application/Features/Admissions/Handlers/Queries/GetTicketTransferQueryHandler.cs",
     "src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs",
     "src/Explore.API/Controllers/TicketTransferController.cs",
     "src/Explore.Blazor/Extensions/BffTicketTransferEndpoints.cs",

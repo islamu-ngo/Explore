@@ -1,7 +1,6 @@
 // ABOUTME: Submits HAL-gated purchase-governance requests through same-origin BFF endpoints.
 // ABOUTME: Never accepts tenant, quantity, policy lineage, or browser-created idempotency authority.
 
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Services.Http;
@@ -30,22 +29,13 @@ public sealed class TicketPurchaseGovernanceService(
             accessMode,
             requestedPurchaserActorId,
             authenticated ? null : guestCapability);
-        using HttpResponseMessage response =
-            await bff.PostAsync(
+        HalResourceOfTicketPurchaseGovernanceResource? resource =
+            await bff.SendAsync<
+                TicketPurchaseBffRequest,
+                HalResourceOfTicketPurchaseGovernanceResource>(
+                HttpMethod.Post,
                 path,
                 request,
-                cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            return new TicketPurchaseGovernanceSubmission(
-                false,
-                false,
-                "unavailable");
-        }
-
-        HalResourceOfTicketPurchaseGovernanceResource? resource =
-            await response.Content.ReadFromJsonAsync<
-                HalResourceOfTicketPurchaseGovernanceResource>(
                 cancellationToken);
         return resource is null
             ? new TicketPurchaseGovernanceSubmission(

@@ -5,7 +5,6 @@ using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using Explore.Domain.Services.Registration;
 using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -352,7 +351,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
 
         if (dbContext.Database.CurrentTransaction is not null)
         {
@@ -461,7 +460,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
 
     public async Task<bool> TryConsumeActiveHoldAsync(Guid holdId, DateTime utcNow, CancellationToken cancellationToken)
     {
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
         int affected = await dbContext.RegistrationInventoryHolds
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(hold => hold.Id == holdId
@@ -484,7 +483,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
         return await dbContext.RegistrationInventoryHolds
             .Where(hold => hold.RegistrationOrderId == orderId
                 && hold.TenantId == tenantId
@@ -508,7 +507,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             throw new ArgumentOutOfRangeException(nameof(outcome));
         }
 
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
         int affected = await dbContext.RegistrationInventoryHolds
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(hold => hold.Id == holdId
@@ -534,7 +533,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             throw new ArgumentOutOfRangeException(nameof(outcome));
         }
 
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
         return await dbContext.RegistrationInventoryHolds
             .Where(hold => hold.RegistrationOrderId == orderId
                 && hold.TenantId == tenantId
@@ -545,65 +544,6 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
                 .SetProperty(hold => hold.UpdatedAt, utcNow)
                 .SetProperty(hold => hold.ConcurrencyStamp, Guid.CreateVersion7()), cancellationToken);
     }
-
-    public async Task<bool> TryTransitionOrderAsync(
-        Guid orderId,
-        Guid tenantId,
-        RegistrationOrderStatusEnum expectedStatus,
-        RegistrationOrderStatusEnum desiredStatus,
-        DateTime utcNow,
-        CancellationToken cancellationToken)
-    {
-        EnsureUtc(utcNow);
-        if (!RegistrationOrderRules.CanTransition(expectedStatus, desiredStatus))
-        {
-            throw new InvalidOperationException($"Registration order cannot transition from {expectedStatus} to {desiredStatus}.");
-        }
-
-        int affected = await dbContext.RegistrationOrders
-            .Where(order => order.Id == orderId
-                && order.TenantId == tenantId
-                && order.RegistrationOrderStatusId == (int)expectedStatus)
-            .ExecuteUpdateAsync(setters =>
-            {
-                setters.SetProperty(order => order.RegistrationOrderStatusId, (int)desiredStatus);
-                setters.SetProperty(order => order.UpdatedAt, utcNow);
-                setters.SetProperty(order => order.ConcurrencyStamp, Guid.CreateVersion7());
-
-                if (desiredStatus is RegistrationOrderStatusEnum.AwaitingPayment or RegistrationOrderStatusEnum.AwaitingApproval or RegistrationOrderStatusEnum.Confirmed)
-                {
-                    setters.SetProperty(order => order.SubmittedAt, order => order.SubmittedAt ?? utcNow);
-                }
-
-                if (desiredStatus == RegistrationOrderStatusEnum.Confirmed)
-                {
-                    setters.SetProperty(order => order.ConfirmedAt, utcNow);
-                }
-                else if (desiredStatus == RegistrationOrderStatusEnum.Rejected)
-                {
-                    setters.SetProperty(order => order.RejectedAt, utcNow);
-                }
-                else if (desiredStatus == RegistrationOrderStatusEnum.Cancelled)
-                {
-                    setters.SetProperty(order => order.CancelledAt, utcNow);
-                }
-            }, cancellationToken);
-        if (affected == 1)
-        {
-            var trackedOrder =
-                dbContext.ChangeTracker.Entries<RegistrationOrder>()
-                    .SingleOrDefault(entry =>
-                        entry.Entity.Id == orderId &&
-                        entry.Entity.TenantId == tenantId);
-            if (trackedOrder is not null)
-            {
-                await trackedOrder.ReloadAsync(cancellationToken);
-            }
-        }
-
-        return affected == 1;
-    }
-
     public async Task AddEventRegistrationsAsync(
         IReadOnlyCollection<EventRegistration> registrations,
         CancellationToken cancellationToken)
@@ -665,7 +605,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        EnsureUtc(utcNow);
+        RegistrationInventoryTime.RequireUtc(utcNow);
         ArgumentNullException.ThrowIfNull(reservations);
         if (eventId == Guid.Empty || tenantId == Guid.Empty || reservations.Any(reservation =>
                 reservation.HoldId == Guid.Empty ||
@@ -737,13 +677,5 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         await dbContext.RegistrationInventoryHolds.AddRangeAsync(holds, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return new RegistrationInventoryReservationResult(Reserved: true, RequiresApproval: false, ShouldWaitlist: false);
-    }
-
-    private static void EnsureUtc(DateTime utcNow)
-    {
-        if (utcNow.Kind != DateTimeKind.Utc)
-        {
-            throw new ArgumentException("Expiry time must be UTC.", nameof(utcNow));
-        }
     }
 }

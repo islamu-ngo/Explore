@@ -1,0 +1,13 @@
+{
+  "aboutme": [
+    "Compact score evidence derived from the Phase 1 Application Stryker report.",
+    "Preserves exact outcome counts and the SHA-256 digest of the full local report."
+  ],
+  "schema_version": 1,
+  "source_report_sha256": "df1fab4901eac928e4d74dcaf81b3f26f3ce713fd2f67a87caead1f05270354d",
+  "status_counts": {
+    "Ignored": 268,
+    "CompileError": 1,
+    "Killed": 16
+  }
+}

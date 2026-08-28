@@ -131,6 +131,13 @@ public sealed class TicketingCriticalEvidenceContractTests
 
     private static double? ReadMutationScore(string path)
     {
+        if (path.EndsWith(
+            "-mutation-summary.json",
+            StringComparison.Ordinal))
+        {
+            return ReadMutationSummaryScore(path);
+        }
+
         int detected = 0;
         int undetected = 0;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(1024 * 1024);
@@ -220,6 +227,37 @@ public sealed class TicketingCriticalEvidenceContractTests
             ? null
             : detected * 100d / scoreable;
     }
+
+    private static double? ReadMutationSummaryScore(string path)
+    {
+        using JsonDocument document = JsonDocument.Parse(
+            File.ReadAllText(path));
+        JsonElement root = document.RootElement;
+        if (root.GetProperty("schema_version").GetInt32() != 1
+            || root.GetProperty("source_report_sha256")
+                .GetString()?.Length != 64)
+        {
+            throw new JsonException(
+                "Mutation summaries require schema version 1 and a SHA-256 source digest.");
+        }
+
+        JsonElement counts = root.GetProperty("status_counts");
+        int detected = Count(counts, "Killed")
+            + Count(counts, "Timeout");
+        int undetected = Count(counts, "Survived")
+            + Count(counts, "NoCoverage");
+        int scoreable = detected + undetected;
+        return scoreable == 0
+            ? null
+            : detected * 100d / scoreable;
+    }
+
+    private static int Count(
+        JsonElement counts,
+        string status) =>
+        counts.TryGetProperty(status, out JsonElement value)
+            ? value.GetInt32()
+            : 0;
 
     private static void ValidatePiiScan(
         string relativePath,

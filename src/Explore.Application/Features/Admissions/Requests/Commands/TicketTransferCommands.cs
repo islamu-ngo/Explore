@@ -1,17 +1,10 @@
-// ABOUTME: Defines immutable CQRS requests for private ticket-transfer reads and lifecycle writes.
-// ABOUTME: Carries resource IDs and opaque capabilities while tenant, user, policy, and credential state stay server-owned.
+// ABOUTME: Defines immutable CQRS commands for private ticket-transfer lifecycle writes.
+// ABOUTME: Carries resource IDs while tenant, user, policy, and credential state stay server-owned.
 
 using Explore.Application.DTOs.Admissions;
 using MediatR;
 
-namespace Explore.Application.Features.Admissions.Requests;
-
-public sealed record GetTicketTransferQuery(
-    Guid EventId,
-    Guid AdmissionTicketId,
-    Guid AdmissionTicketTransferId,
-    string? CapabilityToken) :
-    IRequest<TicketTransferDto?>;
+namespace Explore.Application.Features.Admissions.Requests.Commands;
 
 public sealed record OfferTicketTransferCommand(
     Guid EventId,

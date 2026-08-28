@@ -7175,211 +7175,6 @@
         "x-rate-limit-policy": "Authenticated"
       }
     },
-    "/api/events/{eventId}/registration-orders/{orderId}/purchase-authority": {
-      "post": {
-        "tags": [
-          "AuthenticatedRegistrationOrder"
-        ],
-        "summary": "Reserve authenticated ticket purchase authority",
-        "description": "Reserves the server-derived order quantity against the authenticated account ceiling. Actor context is verified server-side.",
-        "operationId": "ReserveAuthenticatedPurchaseAuthority",
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "orderId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
-                  }
-                ]
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated",
-        "x-rate-limit-policy": "Write",
-        "x-idempotency-key-required": true
-      }
-    },
     "/api/events/{eventId}/registration-orders/{orderId}/attempts": {
       "post": {
         "tags": [
@@ -43038,7 +42833,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write",
         "x-idempotency-key-required": true
       },
@@ -43168,7 +42963,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write",
         "x-idempotency-key-required": true
       }
@@ -43309,7 +43104,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write",
         "x-idempotency-key-required": true
       }
@@ -43450,7 +43245,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write",
         "x-idempotency-key-required": true
       }
@@ -46477,178 +46272,6 @@
           },
           "503": {
             "description": "Service Unavailable",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "PublicTransactional",
-        "x-rate-limit-policy": "public_transactional",
-        "x-idempotency-key-required": true
-      }
-    },
-    "/api/events/{eventId}/registration-orders/guest/{orderId}/purchase-authority": {
-      "post": {
-        "tags": [
-          "GuestRegistrationOrder"
-        ],
-        "summary": "Reserve guest ticket purchase authority",
-        "description": "Uses the opaque order capability and either persisted verified-contact authority or honest order-scoped name-only controls. Name-only access has no hard cross-order per-person guarantee.",
-        "operationId": "ReserveGuestPurchaseAuthority",
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "orderId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Registration-Order-Capability",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
-                  }
-                ]
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
@@ -87450,6 +87073,383 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/events/{eventId}/registration-orders/{orderId}/purchase-authority": {
+      "post": {
+        "tags": [
+          "TicketPurchase"
+        ],
+        "summary": "Reserve authenticated ticket purchase authority",
+        "description": "Reserves the server-derived order quantity against the authenticated account ceiling. Actor context is verified server-side.",
+        "operationId": "ReserveAuthenticatedPurchaseAuthority",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
+                  }
+                ]
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/purchase-authority": {
+      "post": {
+        "tags": [
+          "TicketPurchase"
+        ],
+        "summary": "Reserve guest ticket purchase authority",
+        "description": "Uses the opaque order capability and either persisted verified-contact authority or honest order-scoped name-only controls. Name-only access has no hard cross-order per-person guarantee.",
+        "operationId": "ReserveGuestPurchaseAuthority",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
+                  }
+                ]
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReserveTicketPurchaseRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTicketPurchaseGovernanceResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
     "/api/events/{eventId}/admission-tickets/{admissionTicketId}/transfers/{transferId}": {
       "get": {
         "tags": [
@@ -87640,7 +87640,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
       }
     },
@@ -87726,7 +87726,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
       }
     },
@@ -87848,7 +87848,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
       }
     },
@@ -87943,7 +87943,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
       }
     },
@@ -88038,7 +88038,7 @@
             }
           }
         },
-        "x-endpoint-class": "PublicTransactional",
+        "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Write"
       }
     },
@@ -161802,6 +161802,9 @@
     },
     {
       "name": "TenantUserRoleGrant"
+    },
+    {
+      "name": "TicketPurchase"
     },
     {
       "name": "TicketTransfer"

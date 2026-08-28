@@ -7,7 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Waitlist;
 using Explore.Application.DTOs.Waitlist;
-using Explore.Application.Features.Waitlist;
+using Explore.Application.Features.Waitlist.Handlers.Commands;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;

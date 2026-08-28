@@ -9,7 +9,7 @@ pii_scan:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-5-pii-scan.json
 mutation_reports:
   - project: Explore.Domain
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-5/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-5-mutation-summary.json
     minimum_score_exclusive: 85
 mad_review:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-5-mad-review.yaml
@@ -21,8 +21,10 @@ documentation:
 source_evidence:
   - src/Explore.Domain/AdmissionTicketTransfer.cs
   - src/Explore.Domain/AdmissionTicket.cs
-  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
-  - src/Explore.Application/Features/Admissions/Requests/TicketTransferRequests.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Commands/TicketTransferCommandHandlers.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Queries/GetTicketTransferQueryHandler.cs
+  - src/Explore.Application/Features/Admissions/Requests/Commands/TicketTransferCommands.cs
+  - src/Explore.Application/Features/Admissions/Requests/Queries/GetTicketTransferQuery.cs
   - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
   - src/Explore.Persistence/Configurations/Entities/AdmissionTicketTransferConfiguration.cs
   - src/Explore.API/Controllers/TicketTransferController.cs
@@ -36,7 +38,7 @@ source_evidence:
   - tests/Explore.Blazor.Client.Tests/TicketTransferComponentTests.cs
 comments:
   - src/Explore.Domain/AdmissionTicketTransfer.cs
-  - src/Explore.Application/Features/Admissions/Handlers/TicketTransferHandlers.cs
+  - src/Explore.Application/Features/Admissions/Handlers/Commands/TicketTransferCommandHandlers.cs
   - src/Explore.Persistence/Repositories/AdmissionTicketTransferRepository.cs
   - src/Explore.Blazor/Extensions/BffTicketTransferEndpoints.cs
   - src/Explore.Blazor.Client/Components/Admissions/TicketTransferPanel.razor

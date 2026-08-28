@@ -9,10 +9,10 @@ pii_scan:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-0-pii-scan.json
 mutation_reports:
   - project: Explore.Domain
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-0/domain/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-0-domain-mutation-summary.json
     minimum_score_exclusive: 85
   - project: Explore.Application
-    path: dev/active/event-ticketing-lifecycle/evidence/phase-0/application/reports/mutation-report.json
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-0-application-mutation-summary.json
     minimum_score_exclusive: 85
 mad_review:
   path: dev/active/event-ticketing-lifecycle/evidence/phase-0-mad-review.yaml
