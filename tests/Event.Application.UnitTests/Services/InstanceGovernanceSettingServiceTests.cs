@@ -28,6 +28,7 @@ public class InstanceGovernanceSettingServiceTests
     private readonly IModuleCapabilityService _moduleCapabilityService;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IMediator _mediator;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyBoundary;
     private readonly InstanceGovernanceSettingService _service;
 
     public InstanceGovernanceSettingServiceTests()
@@ -35,7 +36,15 @@ public class InstanceGovernanceSettingServiceTests
         _resolver = Substitute.For<IHierarchicalSettingsResolver>();
         _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
         _mediator = Substitute.For<IMediator>();
-        _upsertService = new SettingUpsertService(_systemSettingRepository, _mediator);
+        _publicationPolicyBoundary = Substitute.For<IPublicationPolicyMutationBoundary>();
+        _publicationPolicyBoundary.ApplyInstanceAsync(
+                Arg.Any<PublicationPolicyInstanceMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PublicationPolicyMutationResult(true, null, string.Empty, [])));
+        _upsertService = new SettingUpsertService(
+            _systemSettingRepository,
+            _mediator,
+            _publicationPolicyBoundary);
         _moduleCapabilityService = Substitute.For<IModuleCapabilityService>();
         var logger = Substitute.For<ILogger<InstanceGovernanceSettingService>>();
 
@@ -220,7 +229,10 @@ public class InstanceGovernanceSettingServiceTests
 
         await Assert.That(publishedLocationChanges).IsEqualTo(0);
         await Assert.That(result.DeferredNotifications.Select(notification => notification.Key))
-            .IsEquivalentTo(locationPrivacyKeys);
+            .IsEquivalentTo([
+                .. locationPrivacyKeys,
+                GovernanceSettingKeys.Events.CardClickOpensDetailPage
+            ]);
     }
 
     [Test]
@@ -418,11 +430,24 @@ public class InstanceGovernanceSettingServiceTests
     }
 
     [Test]
-    public async Task ApplyEventPolicyPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    public async Task ApplyEventPolicyPatchAsync_WhenOneLeafIsSupplied_BatchesOnlyThatKey()
     {
         var writes = CaptureWrites();
+        var actorId = Guid.NewGuid();
+        var notification = new SettingChangedNotification(
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            "true",
+            "false",
+            SettingSource.SystemDefault,
+            null,
+            actorId,
+            DateTime.UtcNow);
+        _publicationPolicyBoundary.ApplyInstanceAsync(
+                Arg.Any<PublicationPolicyInstanceMutationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PublicationPolicyMutationResult(true, null, string.Empty, [notification])));
 
-        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyEventPolicyPatchAsync(
+        PublicationPolicyMutationResult result = await _service.ApplyEventPolicyPatchAsync(
             new PatchEventPolicyDto
             {
                 AllowUserSubmittedEvents = OptionalUpdate<bool>.Set(false)
@@ -434,14 +459,17 @@ public class InstanceGovernanceSettingServiceTests
                 AllowGroupSubmittedEvents = true,
                 EventCardClickOpensDetailPage = true
             },
-            Guid.NewGuid());
+            actorId);
 
-        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+        await Assert.That(writes).IsEmpty();
+        await Assert.That(result.DeferredNotifications.Select(item => item.Key).SequenceEqual([
             GovernanceSettingKeys.Events.UserSubmissionEnabled
-        ]);
-        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
-            GovernanceSettingKeys.Events.UserSubmissionEnabled
-        ]);
+        ])).IsTrue();
+        string[] expectedMutationKeys = [GovernanceSettingKeys.Events.UserSubmissionEnabled];
+        await _publicationPolicyBoundary.Received(1).ApplyInstanceAsync(
+            Arg.Is<PublicationPolicyInstanceMutationRequest>(request => request != null
+                && request.Mutations.Select(mutation => mutation.Key).SequenceEqual(expectedMutationKeys)),
+            Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Publish(
             Arg.Any<SettingChangedNotification>(),
             Arg.Any<CancellationToken>());
@@ -524,6 +552,13 @@ public class InstanceGovernanceSettingServiceTests
         var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         deploymentModeProvider.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(true);
         var provisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
+        var mutationLock = Substitute.For<ISettingMutationLock>();
+        mutationLock.ExecuteManyAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<Func<CancellationToken, Task<bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<bool>>>()(
+                call.Arg<CancellationToken>()));
         provisioningService.EnsureTenantBrandingDocumentAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<string?>(),
@@ -535,7 +570,7 @@ public class InstanceGovernanceSettingServiceTests
             _service,
             deploymentModeProvider,
             provisioningService,
-            unitOfWork,
+            mutationLock,
             _mediator);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(

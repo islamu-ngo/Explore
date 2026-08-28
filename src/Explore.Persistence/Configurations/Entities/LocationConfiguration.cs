@@ -117,18 +117,14 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         // ===== Performance Indexes =====
 
         // Location lookup by city (most common filter)
-        builder.HasIndex(e => new { e.TenantId, e.City })
-            .HasDatabaseName("ix_locations_tenant_city");
+        builder.HasIndex(e => new { e.TenantId, e.City });
 
         // Location lookup by country
-        builder.HasIndex(e => new { e.TenantId, e.Country })
-            .HasDatabaseName("ix_locations_tenant_country");
+        builder.HasIndex(e => new { e.TenantId, e.Country });
 
-        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.CreatedBy })
-            .HasDatabaseName("ix_locations_tenant_address_visibility_created_by");
+        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.CreatedBy });
 
-        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.AddressOrganizationId })
-            .HasDatabaseName("ix_locations_tenant_address_visibility_organization");
+        builder.HasIndex(e => new { e.TenantId, e.AddressVisibilityId, e.AddressOrganizationId });
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

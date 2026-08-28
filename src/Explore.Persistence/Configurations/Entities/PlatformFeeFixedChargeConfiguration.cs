@@ -11,7 +11,6 @@ public sealed class PlatformFeeFixedChargeConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<PlatformFeeFixedCharge> builder)
     {
-        builder.ToTable("platform_fee_fixed_charges");
         builder.Property(charge => charge.Id).ValueGeneratedNever();
         builder.Property(charge => charge.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.Property(charge => charge.AmountMinor).HasColumnType("bigint");

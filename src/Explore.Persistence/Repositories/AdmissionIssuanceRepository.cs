@@ -36,7 +36,7 @@ public sealed class AdmissionIssuanceRepository(
             await RelationalEntityRowFence.AcquireAsync<RegistrationFinalizationEffect>(
                 dbContext,
                 request.TenantId,
-                "id",
+                effect => effect.Id,
                 request.FinalizationEffectId,
                 cancellationToken);
         }
@@ -57,7 +57,7 @@ public sealed class AdmissionIssuanceRepository(
             await RelationalEntityRowFence.AcquireAsync<RegistrationOrder>(
                 dbContext,
                 request.TenantId,
-                "id",
+                order => order.Id,
                 request.RegistrationOrderId,
                 cancellationToken);
         }
@@ -79,7 +79,7 @@ public sealed class AdmissionIssuanceRepository(
             await RelationalEntityRowFence.AcquireAsync<Event>(
                 dbContext,
                 request.TenantId,
-                "id",
+                eventEntity => eventEntity.Id,
                 order.EventId,
                 cancellationToken);
         }

@@ -13,8 +13,8 @@ public class LocationPiiConfiguration : IEntityTypeConfiguration<LocationPii>
 {
     public void Configure(EntityTypeBuilder<LocationPii> builder)
     {
-        builder.ToTable("location_pii", table => table.HasCheckConstraint(
-            "CK_LocationPii_CoordinateShape",
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_location_pii_coordinate_shape",
             """
             (latitude IS NULL AND longitude IS NULL)
             OR (latitude IS NOT NULL AND longitude IS NOT NULL

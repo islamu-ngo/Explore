@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
 
-[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("ContractEventVisibility")]
 public class EventVisibilityContractTests(ContractApiFixture fixture)
 {

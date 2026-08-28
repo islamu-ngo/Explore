@@ -11,7 +11,6 @@ public class CustomPropertyProjectionDirtyScopeConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<CustomPropertyProjectionDirtyScope> builder)
     {
-        builder.ToTable("custom_property_projection_dirty_scope");
 
         builder.HasKey(e => e.Id);
 

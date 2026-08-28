@@ -87,4 +87,11 @@ public interface ITenantSettingRepository
         IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
         Guid actorId,
         CancellationToken cancellationToken = default);
+
+    Task CreateManyForTenantAsync(
+        Guid tenantId,
+        IReadOnlyCollection<TenantSettingOverrideUpsert> overrides,
+        Guid? actorId,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken = default);
 }

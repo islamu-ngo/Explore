@@ -24,7 +24,7 @@ public sealed class RegistrationFormRuleConfiguration : IEntityTypeConfiguration
             condition => FormConditionJson.Serialize(condition).GetHashCode(StringComparison.Ordinal),
             condition => FormConditionJson.Deserialize(FormConditionJson.Serialize(condition)));
 
-        builder.ToTable("registration_form_rules", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_form_rules_ordinal_positive", "ordinal > 0");
             table.HasCheckConstraint("ck_registration_form_rules_effect", "effect BETWEEN 1 AND 4");

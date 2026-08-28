@@ -78,6 +78,7 @@ public static class AuthorizationActions
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
         public const string Publish = "publish";
+        public const string ApprovePublish = "approve-publish";
         public const string ModerateLight = "moderate-light";
         public const string ModerateHeavy = "moderate-heavy";
         public const string Unmoderate = "unmoderate";

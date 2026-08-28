@@ -1,5 +1,5 @@
 // ABOUTME: Configures the organization_pii extension table with strict 1:1 PK/FK to organizations.
-// Stores removable organization-identifying fields separately from core organization lifecycle data.
+// ABOUTME: Stores removable organization-identifying fields separately from core organization lifecycle data.
 
 namespace Explore.Persistence.Configurations.Entities;
 
@@ -11,8 +11,6 @@ public class OrganizationPiiConfiguration : IEntityTypeConfiguration<Organizatio
 {
     public void Configure(EntityTypeBuilder<OrganizationPii> builder)
     {
-        builder.ToTable("organization_pii");
-
         builder.HasKey(e => e.OrganizationId);
 
         builder.Property(e => e.FullName)
@@ -34,7 +32,6 @@ public class OrganizationPiiConfiguration : IEntityTypeConfiguration<Organizatio
         builder.Property(e => e.Postcode)
             .HasMaxLength(50);
 
-        builder.HasIndex(e => e.FullName)
-            .HasDatabaseName("ix_organization_pii_name");
+        builder.HasIndex(e => e.FullName);
     }
 }

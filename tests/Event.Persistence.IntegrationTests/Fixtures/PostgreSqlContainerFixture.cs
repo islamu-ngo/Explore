@@ -66,7 +66,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         {
             DbAdapter = DbAdapter.Postgres,
             SchemasToInclude = [ApplicationSchema],
-            TablesToIgnore = CreateLookupTables(ApplicationSchema)
+        TablesToIgnore = CreateLookupTables()
         });
     }
 
@@ -90,9 +90,11 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// <summary>
     /// Creates a DbContext with tenant filters enforced. Use for tenant-isolation tests.
     /// </summary>
-    public ExploreDbContext CreateTenantFilteredDbContext(ITenantContext? tenantContext = null)
+    public ExploreDbContext CreateTenantFilteredDbContext(
+        ITenantContext? tenantContext = null,
+        params IInterceptor[] interceptors)
     {
-        var context = CreateDbContextInternal();
+        var context = CreateDbContextInternal(PrimaryDatabaseRole.Runtime, interceptors);
         context.TenantContext = tenantContext;
         return context;
     }
@@ -122,6 +124,8 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         PrimaryDatabaseConnectionResult database = PrimaryDatabaseProviderComposition.ConfigureApplication(
             optionsBuilder,
             CreateDatabaseOptions(role));
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         if (interceptors is { Count: > 0 })
         {
             optionsBuilder.AddInterceptors(interceptors);
@@ -162,8 +166,8 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
             .FirstOrDefault()
         ?? RelationalModelNamespace.DefaultSchema;
 
-    private static Table[] CreateLookupTables(string schema) => UnqualifiedLookupTables
-        .Select(table => new Table(table.Name, schema))
+    private static Table[] CreateLookupTables() => UnqualifiedLookupTables
+        .Select(table => new Table(table.Name))
         .ToArray();
 
     private static readonly Table[] UnqualifiedLookupTables =

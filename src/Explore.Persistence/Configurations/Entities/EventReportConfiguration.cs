@@ -70,7 +70,7 @@ public sealed class EventReportConfiguration : IEntityTypeConfiguration<EventRep
             .HasDatabaseName("ix_event_reports_tenant_priority_status_created")
             .IsDescending(false, false, false, true);
 
-        builder.ToTable("event_reports", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_reports_reason_code_not_blank", "length(btrim(reason_code)) > 0");
             t.HasCheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR length(btrim(subcategory_code)) > 0");

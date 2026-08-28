@@ -11,7 +11,6 @@ public class SecretSourceTypeLookupConfiguration : IEntityTypeConfiguration<Secr
 {
     public void Configure(EntityTypeBuilder<SecretSourceTypeLookup> builder)
     {
-        builder.ToTable("secret_source_types");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(100);

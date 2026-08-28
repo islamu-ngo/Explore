@@ -578,6 +578,9 @@ intents:
       - "configure existing Keycloak"
       - "setup-time infrastructure onboarding"
       - "external provider bootstrap"
+      - "configuration manifest"
+      - "whole-instance configuration bootstrap"
+      - "configuration manifest export"
     must_read_docs:
       - docs/QUICK_REFERENCE.md
       - docs/GOVERNANCE.md
@@ -591,12 +594,16 @@ intents:
       - auth-patterns
       - blazor-bff-patterns
       - clean-architecture-rules
+      - dotnet-efcore-guidelines
       - ip-clean-room
     load_rules:
       - .agents/rules/api-controllers.md
       - .agents/rules/application-layer.md
       - .agents/rules/blazor-server.md
       - .agents/rules/blazor-client.md
+      - .agents/rules/domain.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
       - .agents/rules/tests.md
       - .agents/rules/ip-clean-room.md
     paths_in_scope:
@@ -605,8 +612,32 @@ intents:
       - "src/Explore.Application/Contracts/Services/**/*.cs"
       - "src/Explore.Application/DTOs/Onboarding/**/*.cs"
       - "src/Explore.Application/Features/InstanceOnboarding/**/*.cs"
+      - "src/Explore.Application/Features/ConfigurationManifest/**/*.cs"
       - "src/Explore.Infrastructure/Services/**/*.cs"
       - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/**/ConfigurationManifest/**/*.cs"
+      - "src/**/*ConfigurationManifest*.cs"
+      - "src/Explore.API/Hosting/**"
+      - "src/Explore.AppHost/**"
+      - "src/Event.Standalone/**"
+      - "src/Event.MigrationService/**"
+      - "src/Explore.Persistence/Configurations/Entities/*ConfigurationManifest*.cs"
+      - "src/Explore.Persistence/Repositories/*ConfigurationManifest*.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.Sqlite/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.SqlServer/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MariaDb/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MySql/Migrations/**/*.cs"
+      - "eng/configuration-manifest-schema/**"
+      - "schemas/configuration-manifest-v1alpha1.schema.json"
+      - "schemas/islamu-event.md"
+      - "tests/Event.Architecture.Tests/ConfigurationManifestSchema*Tests.cs"
+      - "tests/**/ConfigurationManifest/**/*.cs"
+      - "tests/**/*ConfigurationManifest*.cs"
+      - "tests/Event.Standalone.IntegrationTests/**/*.cs"
+      - ".github/workflows/test.yml"
       - "src/Explore.API/Controllers/**/*Settings*.cs"
       - "src/Explore.API/Controllers/**/*Onboarding*.cs"
       - "src/Explore.API/Hateoas/RouteNames.cs"
@@ -616,11 +647,15 @@ intents:
       - "Event.*Tests/**/*.cs"
       - "Explore.*Tests/**/*.cs"
       - "docs/CONFIGURATION.md"
+      - "docs/CI_CD_GOVERNANCE.md"
+      - "docs/RELEASE_CHECKLIST.md"
       - "docs/SECRETS.md"
       - "docs/SELF_HOSTING.md"
       - "docs/TROUBLESHOOTING.md"
       - "dev/active/**"
     minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Persistence.IntegrationTests
       - Event.Application.UnitTests
       - Event.API.IntegrationTests
       - Explore.Blazor.IntegrationTests

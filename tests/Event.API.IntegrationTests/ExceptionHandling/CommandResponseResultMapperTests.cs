@@ -79,6 +79,27 @@ public sealed class CommandResponseResultMapperTests
         await AssertProblem(result, StatusCodes.Status409Conflict);
     }
 
+    [Test]
+    public async Task ToEventReportProblem_WhenIntakeIsDisabled_ReturnsCanonicalConflictProblemDetails()
+    {
+        var controller = CreateController();
+        var response = BaseCommandResponse.Failure<Guid>(
+            "event_reporting_intake_disabled",
+            "Event report intake is disabled for this tenant.");
+
+        var result = controller.ToEventReportProblem(response);
+
+        var objectResult = result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        var problem = objectResult.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Type).IsEqualTo(ApiProblemTypes.Conflict);
+        await Assert.That(problem.Title).IsEqualTo("Event report conflict");
+        await Assert.That(problem.Detail).IsEqualTo("Event report intake is disabled for this tenant.");
+        await Assert.That(problem.Extensions["code"]).IsEqualTo("event_reporting_intake_disabled");
+    }
+
     /// <summary>
     /// An unrecognized, blank, or absent failure code falls through to a validation problem rather than being
     /// collapsed into an untyped 400 body, so a client can still read why the command failed.

@@ -97,13 +97,93 @@ public sealed class EventReportsController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Submit(
+    public Task<ActionResult<BaseCommandResponse<Guid>>> Submit(
         [FromBody] SubmitEventReportDto request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        SubmitCore(
+            request,
+            EventReportSubmissionChannel.General,
+            cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("corrections", Name = RouteNames.SubmitEventCorrection)]
+    [EndpointSummary("Submit Event Correction")]
+    [EndpointDescription("Submits a local correction request independently of general event-report intake and optional external reporting providers.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> SubmitCorrection(
+        [FromBody] SubmitEventReportDto request,
+        CancellationToken cancellationToken = default) =>
+        SubmitCore(
+            request,
+            EventReportSubmissionChannel.Correction,
+            cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost(
+        "unsafe-external-links",
+        Name = RouteNames.SubmitUnsafeExternalLinkReport)]
+    [EndpointSummary("Submit Unsafe External Link Report")]
+    [EndpointDescription("Submits a local unsafe-link report independently of general event-report intake and optional external reporting providers.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> SubmitUnsafeExternalLink(
+        [FromBody] SubmitEventReportDto request,
+        CancellationToken cancellationToken = default) =>
+        SubmitCore(
+            request,
+            EventReportSubmissionChannel.UnsafeExternalLink,
+            cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost(
+        "legal-or-copyright-complaints",
+        Name = RouteNames.SubmitLegalOrCopyrightComplaint)]
+    [EndpointSummary("Submit Event Legal Or Copyright Complaint")]
+    [EndpointDescription("Submits a local legal or copyright complaint independently of general event-report intake and optional external reporting providers.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> SubmitLegalOrCopyrightComplaint(
+        [FromBody] SubmitEventReportDto request,
+        CancellationToken cancellationToken = default) =>
+        SubmitCore(
+            request,
+            EventReportSubmissionChannel.LegalOrCopyright,
+            cancellationToken);
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> SubmitCore(
+        SubmitEventReportDto request,
+        EventReportSubmissionChannel submissionChannel,
+        CancellationToken cancellationToken)
     {
         var command = new SubmitEventReportCommand
         {
             Request = request,
+            SubmissionChannel = submissionChannel,
             ReporterIpHash = ComputeReporterFingerprintHash(
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
                 "ip"),
@@ -115,9 +195,10 @@ public sealed class EventReportsController : ExploreControllerBase
 
         var response = await _mediator.Send(command, cancellationToken);
         _logger.LogInformation(
-            "Event report submission completed for event {EventId} report {ReportId} outcome {Outcome} failure {FailureCategory}",
+            "Event report submission completed for event {EventId} report {ReportId} channel {SubmissionChannel} outcome {Outcome} failure {FailureCategory}",
             request.EventId,
             response.Id,
+            submissionChannel,
             response.IsSuccess ? "succeeded" : "failed",
             response.FailureCode ?? "none");
 

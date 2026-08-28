@@ -84,7 +84,7 @@ public sealed class WebhookLookupParityTests
         var seeder = await File.ReadAllTextAsync(
             Path.Combine(root, "src/Explore.Persistence/Seed/LookupTableSeeder.cs"));
         var migrationSource = await File.ReadAllTextAsync(Directory
-            .EnumerateFiles(Path.Combine(root, "src/Explore.Persistence/Migrations"), "*_init.cs")
+            .EnumerateFiles(Path.Combine(root, "src/Explore.Persistence/Migrations"), "*_Init.cs")
             .Single());
 
         foreach (var lookupCase in LookupCases)

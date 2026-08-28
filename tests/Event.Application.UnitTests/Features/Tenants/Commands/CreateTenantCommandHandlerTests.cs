@@ -2,6 +2,7 @@
 // ABOUTME: Verifies idempotent admin assignment and graceful handling of missing roles.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.Management;
@@ -25,9 +26,9 @@ public class CreateTenantCommandHandlerTests
     private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
     private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
-    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
+    private readonly ITenantCreationService _tenantCreationService;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly CreateTenantCommandHandler _handler;
 
     public CreateTenantCommandHandlerTests()
@@ -36,23 +37,18 @@ public class CreateTenantCommandHandlerTests
         _tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
         _tenantUserRepository = Substitute.For<ITenantUserRepository>();
         _roleRepository = Substitute.For<IRoleRepository>();
-        _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
-        _tenantBrandingProvisioningService
-            .EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(TenantBrandingSettingsDocumentDefaults.Create(call.ArgAt<Guid>(0), call.ArgAt<string?>(1))));
-        _logger = Substitute.For<ILogger<CreateTenantCommandHandler>>();
-        _unitOfWork = Substitute.For<IUnitOfWork>();
-
-        // Execute lambdas inline — InMemory provider path
-        _unitOfWork
-            .ExecuteInTransactionAsync(
-                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+        _tenantCreationService = Substitute.For<ITenantCreationService>();
+        _tenantCreationService
+            .CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+            .Returns(call =>
             {
-                var op = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
-                return op(CancellationToken.None);
+                TenantCreationRequest request = call.Arg<TenantCreationRequest>();
+                return CreationOutcome(request.TenantId, request.FullName, request.Slug);
             });
+        _typedSettingsDocumentResolver = Substitute.For<ITypedSettingsDocumentResolver>();
+        _logger = Substitute.For<ILogger<CreateTenantCommandHandler>>();
         _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
         {
             var tenantUser = callInfo.Arg<TenantUser>();
@@ -65,10 +61,10 @@ public class CreateTenantCommandHandlerTests
             _tenantUserRoleGrantRepository,
             _tenantUserRepository,
             _roleRepository,
-            _tenantBrandingProvisioningService,
+            _tenantCreationService,
+            _typedSettingsDocumentResolver,
             _logger,
-            _unitOfWork,
-            Substitute.For<ISettingMutationLock>(),
+            new PassThroughSettingMutationLock(),
             new TenantActivationCapacityPolicy(
                 Substitute.For<IInstanceBootstrapStateRepository>(),
                 _tenantRepository,
@@ -80,16 +76,21 @@ public class CreateTenantCommandHandlerTests
     public async Task Handle_WithValidDto_CreatesTenantAndReturnsSuccess()
     {
         var dto = CreateValidDto();
-        var createdTenant = new Tenant { Id = Guid.NewGuid(), FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null!, TenantStatusId = (int)TenantStatusEnum.Provisioning };
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
-        _tenantRepository.Create(Arg.Any<Tenant>()).Returns(createdTenant);
 
         var result = await _handler.Handle(new CreateTenantCommand { TenantDto = dto }, CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsTrue();
-        await Assert.That(result.Id).IsEqualTo(createdTenant.Id);
-        await _tenantRepository.Received(1).Create(Arg.Any<Tenant>());
-        await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(createdTenant.Id, dto.FullName, Arg.Any<CancellationToken>());
+        await Assert.That(result.Id.Version).IsEqualTo(7);
+        await _tenantCreationService.Received(1).CreateInCurrentTransactionAsync(
+            Arg.Is<TenantCreationRequest>(request =>
+                request.FullName == dto.FullName
+                && request.Slug == dto.Slug
+                && request.TenantStatusId == (int)TenantStatusEnum.Provisioning),
+            Arg.Any<CancellationToken>());
+        _typedSettingsDocumentResolver.Received(1).InvalidateTenantDocumentCache(
+            Arg.Any<Guid>(),
+            SettingsDocumentKeys.Tenant.Branding);
         await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 
@@ -104,7 +105,8 @@ public class CreateTenantCommandHandlerTests
         await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("slug already exists");
         await _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
-        await _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _tenantCreationService.DidNotReceiveWithAnyArgs()
+            .CreateInCurrentTransactionAsync(default!, default);
     }
 
     [Test]
@@ -113,7 +115,10 @@ public class CreateTenantCommandHandlerTests
         var dto = CreateValidDto(assignAdmin: true);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
-        _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
+        _tenantCreationService.CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreationOutcome(tenantId, dto.FullName, dto.Slug));
         _roleRepository.GetByMasterCodeAsync("tenant.admin").Returns(new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Admin", Scope = RoleScopeEnum.Tenant });
         _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, TestUserId).Returns((TenantUserRoleGrant?)null);
         _tenantUserRepository.GetByTenantAndUserAsync(tenantId, TestUserId, Arg.Any<CancellationToken>()).Returns((TenantUser?)null);
@@ -140,7 +145,10 @@ public class CreateTenantCommandHandlerTests
         var dto = CreateValidDto(assignAdmin: false);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
-        _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
+        _tenantCreationService.CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreationOutcome(tenantId, dto.FullName, dto.Slug));
 
         var result = await _handler.Handle(
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
@@ -157,7 +165,10 @@ public class CreateTenantCommandHandlerTests
         var dto = CreateValidDto(assignAdmin: true);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
-        _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
+        _tenantCreationService.CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreationOutcome(tenantId, dto.FullName, dto.Slug));
         _roleRepository.GetByMasterCodeAsync("tenant.admin").Returns(new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Admin", Scope = RoleScopeEnum.Tenant });
         _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, TestUserId)
             .Returns(new TenantUserRoleGrant { TenantId = tenantId, TenantUserId = Guid.NewGuid(), Tenant = null!, TenantUser = null!, Role = null!, RoleId = (int)RoleEnum.TenantAdmin });
@@ -176,7 +187,10 @@ public class CreateTenantCommandHandlerTests
         var dto = CreateValidDto(assignAdmin: true);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
-        _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
+        _tenantCreationService.CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreationOutcome(tenantId, dto.FullName, dto.Slug));
         _roleRepository.GetByMasterCodeAsync("tenant.admin").Returns((Role?)null);
         _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin).Returns((Role?)null);
 
@@ -196,4 +210,38 @@ public class CreateTenantCommandHandlerTests
             IsActive = false,
             AssignCurrentUserAsTenantAdmin = assignAdmin
         };
+
+    private static TenantCreationOutcome CreationOutcome(
+        Guid tenantId,
+        string fullName,
+        string slug)
+    {
+        TenantSettingsDocument branding =
+            TenantBrandingSettingsDocumentDefaults.Create(tenantId, fullName);
+        branding.Id = Guid.CreateVersion7();
+        return new TenantCreationOutcome(
+            new Tenant
+            {
+                Id = tenantId,
+                FullName = fullName,
+                Slug = slug,
+                TenantStatus = null!
+            },
+            branding);
+    }
+
+    private sealed class PassThroughSettingMutationLock : ISettingMutationLock
+    {
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
+    }
 }

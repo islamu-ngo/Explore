@@ -11,7 +11,7 @@ public sealed class OrganizerPaymentProviderAccountOperationConfiguration : IEnt
 {
     public void Configure(EntityTypeBuilder<OrganizerPaymentProviderAccountOperation> builder)
     {
-        builder.ToTable("organizer_payment_provider_account_operations", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_organizer_payment_provider_account_operations_status", "status_id BETWEEN 1 AND 5");
         });

@@ -27,7 +27,7 @@ public sealed class AdmissionScannerCapabilityRepository(ExploreDbContext dbCont
         await RelationalEntityRowFence.AcquireAsync<AdmissionTarget>(
             dbContext,
             capability.TenantId,
-            "id",
+            target => target.Id,
             capability.AdmissionTargetId,
             cancellationToken);
         AdmissionTarget? target = await dbContext.AdmissionTargets

@@ -31,14 +31,11 @@ public class EmailDispatchReceiptConfiguration : IEntityTypeConfiguration<EmailD
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.TenantId, e.PublishEventId })
-            .HasDatabaseName("ux_email_dispatch_receipts_tenant_publish_event")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.EmailDispatchOutboxId, e.Status })
-            .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
+        builder.HasIndex(e => new { e.EmailDispatchOutboxId, e.Status });
 
         builder.HasIndex(e => new { e.TenantId, e.EmailDispatchOutboxId })
-            .HasDatabaseName("ux_email_dispatch_receipts_tenant_outbox")
             .IsUnique();
     }
 }

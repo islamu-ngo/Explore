@@ -3,8 +3,33 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-26 Europe/Brussels
+Last Updated: 2026-08-27 Europe/Brussels
 
+## WORKSTREAM COMPLETE / SUCCESSOR SPLIT (2026-08-27 Europe/Brussels)
+
+### Current Outcome
+
+- Registration Data Collection is complete at Phase 21 with 132/132 owned implementation tasks checked.
+- This directory remains the historical authority for event forms/provider evidence, registration orders, payments/refunds, admission credentials/recovery, and online check-in.
+- No former Phase 22+ runtime work started here.
+- Two historical full-project verification boxes retain their unrelated-failure qualification; they were not rewritten as passes.
+
+### Successor
+
+- Plan: [`event-ticketing-lifecycle-plan.md`](../event-ticketing-lifecycle/event-ticketing-lifecycle-plan.md)
+- Context: [`event-ticketing-lifecycle-context.md`](../event-ticketing-lifecycle/event-ticketing-lifecycle-context.md)
+- Tasks: [`event-ticketing-lifecycle-tasks.md`](../event-ticketing-lifecycle/event-ticketing-lifecycle-tasks.md)
+- I-VSD: [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md)
+
+The successor owns access/purchase governance, participant completion/approval admission gates, transfer, fair-return waitlist, event add-ons, recovery/deployment truth, and the entire migrated deferred inventory.
+
+### Next Action
+
+Do not resume implementation in this workstream. Obtain the successor's fresh CTO review, then user approval of that exact revision, and begin successor Task 0.1 Red only after those gates.
+
+### Workspace Boundary
+
+The split changes planning ownership only. Preserve all runtime/generated artifacts and unrelated shared-worktree changes; never reset, revert, or infer new runtime verification.
 ## PHASE 21 COMPLETE (2026-08-26 Europe/Brussels)
 
 ### Current Outcome

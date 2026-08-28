@@ -3,6 +3,7 @@
 
 namespace Event.Domain.UnitTests.Settings;
 
+using System.Reflection;
 using System.Text.Json;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
@@ -309,6 +310,74 @@ public class SettingRegistryTests
 
         await Assert.That(definition).IsNotNull();
         await Assert.That(definition!.MaxScope).IsEqualTo(SettingScope.User);
+    }
+
+    [Test]
+    public async Task Registry_ReportingIntakeEnabledIsCanonicalTenantPolicy()
+    {
+        const string intakeEnabledKey = "event_reporting.intake_enabled";
+
+        await Assert.That(SettingRegistry.Contains(intakeEnabledKey)).IsTrue();
+
+        var definition = SettingRegistry.Get(intakeEnabledKey);
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.ValueType).IsEqualTo(SettingValueType.Boolean);
+        await Assert.That(definition.DefaultValue).IsEqualTo("true");
+        await Assert.That(definition.Category).IsEqualTo("EventReporting");
+        await Assert.That(definition.MinScope).IsEqualTo(SettingScope.Instance);
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(definition.IsLockable).IsTrue();
+        await Assert.That(definition.IsSensitive).IsFalse();
+    }
+
+    [Test]
+    public async Task Registry_CoordinatedMutationPolicyKeysRequireCoordinatedMutation()
+    {
+        var requiresCoordinatedMutation = typeof(SettingDefinition).GetProperty(
+            "RequiresCoordinatedMutation",
+            BindingFlags.Public | BindingFlags.Instance);
+
+        await Assert.That(requiresCoordinatedMutation).IsNotNull();
+        await Assert.That(requiresCoordinatedMutation!.PropertyType).IsEqualTo(typeof(bool));
+
+        var coordinatedPolicyKeys = new[]
+        {
+            "event_reporting.intake_enabled",
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+            GovernanceSettingKeys.Events.GroupSubmissionEnabled,
+            GovernanceSettingKeys.Events.RequireApproval,
+        };
+
+        foreach (var key in coordinatedPolicyKeys)
+        {
+            var definition = SettingRegistry.Get(key);
+            await Assert.That(definition).IsNotNull();
+            await Assert.That(requiresCoordinatedMutation.GetValue(definition)).IsEqualTo(true);
+        }
+    }
+
+    [Test]
+    public async Task Registry_ExternalReportingProviderKeysRemainRegisteredAndUncoordinated()
+    {
+        foreach (var reportingDefinition in ReportingSettingDefinitions.All)
+        {
+            var registeredDefinition = SettingRegistry.Get(reportingDefinition.Key);
+            await Assert.That(registeredDefinition).IsNotNull();
+            await Assert.That(registeredDefinition!.Category).IsEqualTo("Reporting");
+        }
+
+        var requiresCoordinatedMutation = typeof(SettingDefinition).GetProperty(
+            "RequiresCoordinatedMutation",
+            BindingFlags.Public | BindingFlags.Instance);
+
+        await Assert.That(requiresCoordinatedMutation).IsNotNull();
+
+        foreach (var reportingDefinition in ReportingSettingDefinitions.All)
+        {
+            var registeredDefinition = SettingRegistry.Get(reportingDefinition.Key);
+            await Assert.That(requiresCoordinatedMutation!.GetValue(registeredDefinition)).IsEqualTo(false);
+        }
     }
 
     [Test]

@@ -89,6 +89,8 @@ public sealed record EventListDto
 
     [JsonIgnore]
     public bool IsManagementView { get; set; }
+    [JsonIgnore]
+    public bool IsReportingIntakeEnabled { get; init; }
 
     // Tenant
     public Guid TenantId { get; init; }

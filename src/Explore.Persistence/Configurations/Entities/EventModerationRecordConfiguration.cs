@@ -13,8 +13,7 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
     public void Configure(EntityTypeBuilder<EventModerationRecord> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_event_moderation_records_tenant_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.ActionKind)
             .HasConversion<int>()
@@ -64,33 +63,26 @@ public class EventModerationRecordConfiguration : IEntityTypeConfiguration<Event
             .IsRequired(false);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.CreatedAt })
-            .HasDatabaseName("ix_event_moderation_records_tenant_event_created")
             .IsDescending(false, false, true);
 
         builder.HasIndex(e => new { e.TenantId, e.ActionKind, e.CreatedAt })
-            .HasDatabaseName("ix_event_moderation_records_tenant_action_created")
             .IsDescending(false, false, true);
 
         builder.HasIndex(e => new { e.TenantId, e.CorrelationId })
-            .HasDatabaseName("ix_event_moderation_records_tenant_correlation")
             .IsUnique()
             .HasFilter("correlation_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.SourceReportId })
-            .HasDatabaseName("ix_event_moderation_records_tenant_source_report")
             .HasFilter("source_report_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.SourceReportDecisionId })
-            .HasDatabaseName("ix_event_moderation_records_tenant_source_report_decision")
             .HasFilter("source_report_decision_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.SourceReportId, e.SourceReportDecisionId })
-            .HasDatabaseName("ux_event_moderation_records_tenant_source_report_decision_exact")
             .IsUnique()
             .HasFilter("source_report_id IS NOT NULL AND source_report_decision_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.SourceReportId, e.SourceReportDecisionId, e.Id })
-            .HasDatabaseName("ux_event_moderation_records_exact_receipt_fk")
             .IsUnique();
 
         builder.ToTable(t =>

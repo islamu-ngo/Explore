@@ -30,10 +30,8 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
         builder.Property(e => e.CorrelationId).HasMaxLength(200);
         builder.Property(e => e.RabbitMqLastPublishFailureCategory).HasMaxLength(100);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_email_dispatch_outbox_tenant_id");
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.NotificationIntentId })
-            .HasName("ak_email_dispatch_outbox_tenant_id_intent");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.NotificationIntentId });
         builder.HasAlternateKey(e => new
         {
             e.TenantId,
@@ -42,8 +40,7 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
             e.RecipientAddressSource
         })
             .HasName("ak_email_dispatch_outbox_tenant_id_intent_address_source");
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.PublishEventId })
-            .HasName("ak_email_dispatch_outbox_tenant_id_publish_event");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.PublishEventId });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -79,8 +76,7 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
             .HasForeignKey(e => e.ManagedTenantProvisioningOperationId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.Status, e.NextAttemptAt, e.CreatedAt })
-            .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
+        builder.HasIndex(e => new { e.Status, e.NextAttemptAt, e.CreatedAt });
 
         builder.HasIndex(e => new
         {
@@ -88,22 +84,17 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
             e.NextAttemptAt,
             e.RabbitMqLastPublishAttemptAt,
             e.CreatedAt
-        })
-            .HasDatabaseName("ix_email_dispatch_outbox_rabbitmq_publish");
+        });
 
         builder.HasIndex(e => new { e.TenantId, e.PublishEventId })
-            .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event")
             .IsUnique();
 
         builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId })
-            .HasDatabaseName("ux_email_dispatch_outbox_tenant_intent")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.Status, e.LastFailureAt })
-            .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
+        builder.HasIndex(e => new { e.TenantId, e.Status, e.LastFailureAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.ContentRedactedAt, e.Status, e.SentAt, e.LastFailureAt, e.CreatedAt })
-            .HasDatabaseName("ix_email_dispatch_outbox_retention");
+        builder.HasIndex(e => new { e.TenantId, e.ContentRedactedAt, e.Status, e.SentAt, e.LastFailureAt, e.CreatedAt });
 
         builder.ToTable(table =>
         {

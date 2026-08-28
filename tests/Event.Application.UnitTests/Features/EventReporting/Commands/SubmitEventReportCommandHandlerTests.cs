@@ -2,6 +2,7 @@
 // ABOUTME: Verifies validation, duplicate prevention, quotas, encrypted evidence, outbox, and transaction behavior.
 
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
@@ -38,6 +39,7 @@ public sealed class SubmitEventReportCommandHandlerTests
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
+    private readonly IEventReportingIntakeGuard _intakeGuard = Substitute.For<IEventReportingIntakeGuard>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IEventReportEvidenceProtector _evidenceProtector = Substitute.For<IEventReportEvidenceProtector>();
@@ -49,8 +51,16 @@ public sealed class SubmitEventReportCommandHandlerTests
 
     public SubmitEventReportCommandHandlerTests()
     {
+        _intakeGuard.ResolveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(EnabledIntakeDecision());
+        _eventRepository.IsPubliclyEligibleAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
         _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .ExecuteSerializableAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
@@ -86,6 +96,7 @@ public sealed class SubmitEventReportCommandHandlerTests
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<string>(),
+                Arg.Any<string?>(),
                 Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
             .Returns(false);
@@ -171,7 +182,171 @@ public sealed class SubmitEventReportCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenReportIsAccepted_WritesReportGraphAndOutboxInsideTransaction()
+    public async Task Handle_WhenIntakeIsDisabled_ReturnsIntakeFailureBeforeValidationOrReportOperations()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _intakeGuard.ResolveAsync(tenantId, CancellationToken.None).Returns(DisabledIntakeDecision());
+
+        var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid(), reasonCode: "unsupported"), CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.IntakeDisabled);
+        await _intakeGuard.Received(1).ResolveAsync(tenantId, CancellationToken.None);
+        await _privacyErasureStateRepository.DidNotReceive().GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await _actorRepository.DidNotReceive().GetActorByUserIdAndTenantId(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetUserWithDetails(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().ExistsByReporterAndEventAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().CountByReporterSinceAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().CountByReporterAndEventSinceAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        _evidenceProtector.DidNotReceive().Protect(Arg.Any<string>());
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().ExecuteSerializableAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().Create(Arg.Any<EventReport>());
+        await _targetRepository.DidNotReceive().Create(Arg.Any<EventReportTarget>());
+        await _evidenceRepository.DidNotReceive().Create(Arg.Any<EventReportEvidence>());
+        await _caseRepository.DidNotReceive().Create(Arg.Any<EventReportCase>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _notificationPreferenceResolver.DidNotReceive().ResolveAsync(
+            Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>());
+        await _recipientNotificationMaterializer.DidNotReceive().MaterializeInCurrentTransactionAsync(
+            Arg.Any<RecipientNotificationMaterialization>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments("Correction", "event_correction_suggestion")]
+    [Arguments("UnsafeExternalLink", "unsafe_external_link")]
+    [Arguments("LegalOrCopyright", "legal_or_copyright_complaint")]
+    public async Task Handle_RemedyChannelBypassesDisabledGeneralIntakeAndPersistsLocally(
+        string channelName,
+        string expectedSubcategory)
+    {
+        PropertyInfo? channelProperty = typeof(SubmitEventReportCommand)
+            .GetProperty("SubmissionChannel", BindingFlags.Public | BindingFlags.Instance);
+        await Assert.That(channelProperty).IsNotNull();
+        if (channelProperty is null)
+            return;
+
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Actor actor = CreateActor(tenantId, userId);
+        Explore.Domain.Event @event = CreateEvent(
+            tenantId,
+            actor.Id,
+            EventStatusEnum.Published);
+        var createdReports = new List<EventReport>();
+        var createdMessages = new List<OutboxMessage>();
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _intakeGuard.ResolveAsync(tenantId, CancellationToken.None)
+            .Returns(DisabledIntakeDecision());
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _actorRepository.GetActorByUserIdAndTenantId(
+                userId,
+                tenantId,
+                CancellationToken.None)
+            .Returns(actor);
+        _eventReportRepository.Create(Arg.Do<EventReport>(createdReports.Add))
+            .Returns(call => call.Arg<EventReport>());
+        _outboxRepository.Create(Arg.Do<OutboxMessage>(createdMessages.Add))
+            .Returns(call => call.Arg<OutboxMessage>());
+        SubmitEventReportCommand command = CreateCommand(@event.Id);
+        channelProperty.SetValue(
+            command,
+            Enum.Parse(channelProperty.PropertyType, channelName));
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            command,
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await _intakeGuard.DidNotReceive()
+            .ResolveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await Assert.That(createdReports).Count().IsEqualTo(1);
+        await Assert.That(createdReports[0].SubcategoryCode)
+            .IsEqualTo(expectedSubcategory);
+        await Assert.That(createdMessages).Count().IsEqualTo(1);
+    }
+
+    [Test]
+    [Arguments("event_correction_suggestion")]
+    [Arguments("unsafe_external_link")]
+    [Arguments("legal_or_copyright_complaint")]
+    public async Task Handle_GeneralChannelCannotSpoofReservedRemedySubcategory(
+        string reservedSubcategory)
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Actor actor = CreateActor(tenantId, userId);
+        Explore.Domain.Event @event = CreateEvent(
+            tenantId,
+            actor.Id,
+            EventStatusEnum.Published);
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _actorRepository.GetActorByUserIdAndTenantId(
+                userId,
+                tenantId,
+                CancellationToken.None)
+            .Returns(actor);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(@event.Id, subcategoryCode: reservedSubcategory),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo(
+                EventReportReasonCodePolicy.InvalidReasonCodeFailureCode);
+        await _eventReportRepository.DidNotReceive()
+            .Create(Arg.Any<EventReport>());
+    }
+
+    [Test]
+    public async Task Handle_WhenTenantIsEmpty_ReturnsTenantUnresolvedWithoutIntakeResolution()
+    {
+        _tenantContext.TenantId.Returns(Guid.Empty);
+
+        var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid()), CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.TenantUnresolved);
+        await _intakeGuard.DidNotReceive().ResolveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_NullRequestReturnsValidationFailure()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
+        var command = new SubmitEventReportCommand
+        {
+            Request = null!
+        };
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            command,
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo(EventReportFailureCodes.ValidationFailed);
+        await _intakeGuard.DidNotReceive()
+            .ResolveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenIntakeIsEnabled_WritesCanonicalLocalReportGraphAndOutboxInsideTransaction()
     {
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -182,11 +357,57 @@ public sealed class SubmitEventReportCommandHandlerTests
         var createdEvidence = new List<EventReportEvidence>();
         var createdCases = new List<EventReportCase>();
         var createdMessages = new List<OutboxMessage>();
+        bool duplicateReadInsideTransaction = false;
+        bool reporterQuotaReadInsideTransaction = false;
+        bool eventQuotaReadInsideTransaction = false;
 
         _tenantContext.TenantId.Returns(tenantId);
         _currentUserService.UserId.Returns(userId);
         _eventRepository.GetById(@event.Id).Returns(@event);
         _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId).Returns(actor);
+        _eventReportRepository.ExistsByReporterAndEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                duplicateReadInsideTransaction = _transactionActive;
+                return false;
+            });
+        _eventReportRepository.CountByReporterSinceAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                reporterQuotaReadInsideTransaction = _transactionActive;
+                return 0;
+            });
+        _eventReportRepository.CountByReporterAndEventSinceAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                eventQuotaReadInsideTransaction = _transactionActive;
+                return 0;
+            });
         _eventReportRepository.Create(Arg.Do<EventReport>(createdReports.Add))
             .Returns(call => call.Arg<EventReport>());
         _targetRepository.Create(Arg.Do<EventReportTarget>(createdTargets.Add))
@@ -211,6 +432,9 @@ public sealed class SubmitEventReportCommandHandlerTests
         await Assert.That(createdMessages).Count().IsEqualTo(1);
         await Assert.That(_receiptMaterializations).Count().IsEqualTo(1);
         await Assert.That(_receiptMaterializedInsideTransaction).IsTrue();
+        await Assert.That(duplicateReadInsideTransaction).IsTrue();
+        await Assert.That(reporterQuotaReadInsideTransaction).IsTrue();
+        await Assert.That(eventQuotaReadInsideTransaction).IsTrue();
 
         var report = createdReports.Single();
         await Assert.That(report.Id).IsEqualTo(result.Id);
@@ -298,12 +522,15 @@ public sealed class SubmitEventReportCommandHandlerTests
         await Assert.That(replay.Intent.DeduplicationKey).IsEqualTo(receipt.Intent.DeduplicationKey);
 
         await _unitOfWork.Received(1)
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+            .ExecuteSerializableAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+        await _intakeGuard.Received(1).ResolveAsync(tenantId, CancellationToken.None);
     }
 
     [Test]
     public async Task Handle_WhenReasonCodeIsInvalid_ReturnsValidationFailureBeforeLoadingEvent()
     {
+        _tenantContext.TenantId.Returns(Guid.NewGuid());
+
         var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid(), reasonCode: "unsupported"), CancellationToken.None);
 
         await Assert.That(result.IsSuccess).IsFalse();
@@ -339,6 +566,62 @@ public sealed class SubmitEventReportCommandHandlerTests
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _recipientNotificationMaterializer.DidNotReceive()
             .MaterializeInCurrentTransactionAsync(Arg.Any<RecipientNotificationMaterialization>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenFencedAndGeneralIntakeDisabled_ReturnsMaskedFence()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _intakeGuard.ResolveAsync(
+                tenantId,
+                CancellationToken.None)
+            .Returns(DisabledIntakeDecision());
+        _privacyErasureStateRepository.GetBySubjectAsync(
+                userId,
+                CancellationToken.None)
+            .Returns(CreateFencedSaga(userId));
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(Guid.CreateVersion7()),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("privacy_erasure_fenced");
+        await _intakeGuard.DidNotReceive()
+            .ResolveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenFenceAppearsDuringIntakeResolution_ReturnsMaskedFence()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _intakeGuard.ResolveAsync(
+                tenantId,
+                CancellationToken.None)
+            .Returns(DisabledIntakeDecision());
+        _privacyErasureStateRepository.GetBySubjectAsync(
+                userId,
+                Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(userId));
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(Guid.CreateVersion7()),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("privacy_erasure_fenced");
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(
+                userId,
+                Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -380,6 +663,7 @@ public sealed class SubmitEventReportCommandHandlerTests
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 "spam",
+                "organizer",
                 Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
             .Returns(true);
@@ -498,6 +782,85 @@ public sealed class SubmitEventReportCommandHandlerTests
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _unitOfWork.DidNotReceive()
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(EventStatusEnum.Published)]
+    [Arguments(EventStatusEnum.Draft)]
+    public async Task Handle_WhenEventIsNotPubliclyEligible_ReturnsNotFound(
+        EventStatusEnum status)
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Actor actor = CreateActor(tenantId, userId);
+        Explore.Domain.Event @event = CreateEvent(
+            tenantId,
+            actor.Id,
+            status);
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _eventRepository.IsPubliclyEligibleAsync(
+                tenantId,
+                @event.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _actorRepository.GetActorByUserIdAndTenantId(
+                userId,
+                tenantId,
+                CancellationToken.None)
+            .Returns(actor);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(@event.Id),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo(EventReportFailureCodes.EventNotFound);
+        await _eventReportRepository.DidNotReceive()
+            .Create(Arg.Any<EventReport>());
+    }
+
+    [Test]
+    public async Task Handle_WhenEligibilityChangesInsideTransaction_WritesNothing()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Actor actor = CreateActor(tenantId, userId);
+        Explore.Domain.Event @event = CreateEvent(
+            tenantId,
+            actor.Id,
+            EventStatusEnum.Published);
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _eventRepository.IsPubliclyEligibleAsync(
+                tenantId,
+                @event.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(true, false);
+        _actorRepository.GetActorByUserIdAndTenantId(
+                userId,
+                tenantId,
+                CancellationToken.None)
+            .Returns(actor);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(@event.Id),
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo(EventReportFailureCodes.EventNotFound);
+        await _eventRepository.Received(2).IsPubliclyEligibleAsync(
+            tenantId,
+            @event.Id,
+            Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive()
+            .Create(Arg.Any<EventReport>());
+        await _outboxRepository.DidNotReceive()
+            .Create(Arg.Any<OutboxMessage>());
     }
 
     [Test]
@@ -623,7 +986,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         await Assert.That(exception.Message).IsEqualTo("receipt graph failure");
         await _unitOfWork.Received(1)
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+            .ExecuteSerializableAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -672,12 +1035,25 @@ public sealed class SubmitEventReportCommandHandlerTests
             new ReportReceiptNotificationFactory(),
             _unitOfWork,
             _tenantContext,
+            _intakeGuard,
             _currentUserService,
             _privacyErasureStateRepository,
             _evidenceProtector,
             _metrics,
             Options.Create(_options));
     }
+
+    private static EventReportingIntakeDecision EnabledIntakeDecision() => new(
+        TenantResolved: true,
+        IntakeEnabled: true,
+        ReasonCode: "event_reporting_intake_enabled",
+        Message: string.Empty);
+
+    private static EventReportingIntakeDecision DisabledIntakeDecision() => new(
+        TenantResolved: true,
+        IntakeEnabled: false,
+        ReasonCode: EventReportFailureCodes.IntakeDisabled,
+        Message: string.Empty);
 
     private Explore.Domain.Event ConfigureAcceptedAuthenticatedReport(Guid tenantId, Guid userId, User user)
     {
@@ -706,7 +1082,10 @@ public sealed class SubmitEventReportCommandHandlerTests
         return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
-    private static SubmitEventReportCommand CreateCommand(Guid eventId, string reasonCode = "spam")
+    private static SubmitEventReportCommand CreateCommand(
+        Guid eventId,
+        string reasonCode = "spam",
+        string? subcategoryCode = "organizer")
     {
         return new SubmitEventReportCommand
         {
@@ -714,7 +1093,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             {
                 EventId = eventId,
                 ReasonCode = reasonCode,
-                SubcategoryCode = "organizer",
+                SubcategoryCode = subcategoryCode,
                 ReporterText = "Unsafe organizer behavior",
                 SeverityHint = EventReportSeverityHint.Critical,
                 ReportCaseUpdatesConsent = true,

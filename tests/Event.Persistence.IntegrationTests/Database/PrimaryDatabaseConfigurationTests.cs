@@ -8,6 +8,7 @@ using Explore.Secrets.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -577,9 +578,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         try
         {
-            await using (var context = new DbContext(new DbContextOptionsBuilder()
-                .UseSqlite(result.ConnectionString)
-                .Options))
+            var options = new DbContextOptionsBuilder();
+            options.EnableServiceProviderCaching(false);
+            options.UseSqlite(result.ConnectionString);
+            options.ConfigureWarnings(warnings =>
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+            await using (var context = new DbContext(options.Options))
             {
                 await SqliteDatabaseInitializer.InitializeAsync(context, CancellationToken.None);
             }

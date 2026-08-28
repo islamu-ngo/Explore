@@ -57,6 +57,7 @@ public interface IEventReportRepository : IGenericRepository<EventReport, Guid>
         string? reporterIpHash,
         string? reporterUserAgentHash,
         string reasonCode,
+        string? subcategoryCode,
         DateTime createdAfterUtc,
         CancellationToken cancellationToken);
 

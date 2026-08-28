@@ -12,7 +12,7 @@ public sealed class AtprotoRecordTenantPresentationConfiguration
 {
     public void Configure(EntityTypeBuilder<AtprotoRecordTenantPresentation> builder)
     {
-        builder.ToTable("atproto_record_tenant_presentations", table =>
+        builder.ToTable(table =>
             table.HasCheckConstraint(
                 "ck_atproto_record_tenant_presentations_source_version",
                 "source_version >= 0"));
@@ -25,7 +25,6 @@ public sealed class AtprotoRecordTenantPresentationConfiguration
             .WithMany()
             .HasForeignKey(value => value.AtprotoRecordId)
             .OnDelete(DeleteBehavior.Cascade);
-        builder.HasIndex(value => new { value.TenantId, value.IsVisible, value.EvaluatedAt })
-            .HasDatabaseName("ix_atproto_record_presentations_visible");
+        builder.HasIndex(value => new { value.TenantId, value.IsVisible, value.EvaluatedAt });
     }
 }

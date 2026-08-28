@@ -66,6 +66,8 @@ public sealed record EventDto
     public bool IsPubliclyEligible { get; set; }
     [JsonIgnore]
     public bool IsManagementView { get; set; }
+    [JsonIgnore]
+    public bool IsReportingIntakeEnabled { get; init; }
     public string? SourcePublisherName { get; init; }
     private IReadOnlyList<EventPublicActionDto>? _publicActions = ImmutableArray<EventPublicActionDto>.Empty;
 

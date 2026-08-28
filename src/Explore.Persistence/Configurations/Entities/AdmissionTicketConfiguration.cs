@@ -13,7 +13,7 @@ public sealed class AdmissionTicketConfiguration : IEntityTypeConfiguration<Admi
 {
     public void Configure(EntityTypeBuilder<AdmissionTicket> builder)
     {
-        builder.ToTable("admission_tickets", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_tickets_transfer_hops",
@@ -27,7 +27,7 @@ public sealed class AdmissionTicketConfiguration : IEntityTypeConfiguration<Admi
         builder.Ignore(ticket => ticket.IsActive);
         builder.HasAlternateKey(ticket => new { ticket.TenantId, ticket.Id });
         builder.HasIndex(ticket => new { ticket.TenantId, ticket.RegistrationTicketAssignmentId })
-            .HasDatabaseName("ux_admission_tickets_assignment").IsUnique();
+            .IsUnique();
         builder.HasOne<Tenant>().WithMany().HasForeignKey(ticket => ticket.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationOrder>().WithMany()
             .HasForeignKey(ticket => new { ticket.TenantId, ticket.EventId, ticket.RegistrationOrderId })
@@ -74,7 +74,7 @@ public sealed class AdmissionTicketCredentialConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<AdmissionTicketCredential> builder)
     {
-        builder.ToTable("admission_ticket_credentials", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_admission_ticket_credentials_versions", "credential_version > 0 AND lookup_key_version > 0");
         });
@@ -85,11 +85,11 @@ public sealed class AdmissionTicketCredentialConfiguration : IEntityTypeConfigur
             .HasComputedColumnSql("CASE WHEN admission_ticket_credential_status_id = 1 THEN 0 ELSE credential_version END", stored: true);
         builder.HasAlternateKey(credential => new { credential.TenantId, credential.Id });
         builder.HasIndex(credential => new { credential.TenantId, credential.AdmissionTicketId, credential.CredentialVersion })
-            .HasDatabaseName("ux_admission_ticket_credentials_version").IsUnique();
+            .IsUnique();
         builder.HasIndex("TenantId", "AdmissionTicketId", "ActiveUniquenessSlot")
-            .HasDatabaseName("ux_admission_ticket_credentials_active").IsUnique();
+            .IsUnique();
         builder.HasIndex(credential => new { credential.TenantId, credential.LookupKeyVersion, credential.LookupDigest })
-            .HasDatabaseName("ux_admission_ticket_credentials_digest").IsUnique();
+            .IsUnique();
         builder.HasOne(credential => credential.AdmissionTicketCredentialStatus).WithMany()
             .HasForeignKey(credential => credential.AdmissionTicketCredentialStatusId).OnDelete(DeleteBehavior.Restrict);
     }
@@ -99,7 +99,7 @@ public sealed class AdmissionDeliveryIntentConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<AdmissionDeliveryIntent> builder)
     {
-        builder.ToTable("admission_delivery_intents", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_admission_delivery_intents_protection_version", "protection_version > 0");
             table.HasCheckConstraint(
@@ -113,9 +113,8 @@ public sealed class AdmissionDeliveryIntentConfiguration : IEntityTypeConfigurat
         builder.Property(intent => intent.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(intent => new { intent.TenantId, intent.Id });
         builder.HasIndex(intent => new { intent.TenantId, intent.FinalizationEffectId, intent.RegistrationTicketAssignmentId })
-            .HasDatabaseName("ux_admission_delivery_intents_assignment").IsUnique();
-        builder.HasIndex(intent => new { intent.HandoffCompletedAt, intent.RoutedAt, intent.CreatedAt })
-            .HasDatabaseName("ix_admission_delivery_intents_pending");
+            .IsUnique();
+        builder.HasIndex(intent => new { intent.HandoffCompletedAt, intent.RoutedAt, intent.CreatedAt });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(intent => intent.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationFinalizationEffect>().WithMany()
             .HasForeignKey(intent => new { intent.TenantId, intent.FinalizationEffectId })
@@ -133,7 +132,6 @@ public sealed class AdmissionTicketStatusConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<AdmissionTicketStatus> builder)
     {
-        builder.ToTable("admission_ticket_statuses");
         builder.Property(value => value.MasterCode).HasMaxLength(40).IsRequired();
         builder.Property(value => value.FullName).HasMaxLength(100).IsRequired();
         builder.Property(value => value.Description).HasMaxLength(500);
@@ -145,7 +143,6 @@ public sealed class AdmissionTicketCredentialStatusConfiguration : IEntityTypeCo
 {
     public void Configure(EntityTypeBuilder<AdmissionTicketCredentialStatus> builder)
     {
-        builder.ToTable("admission_ticket_credential_statuses");
         builder.Property(value => value.MasterCode).HasMaxLength(40).IsRequired();
         builder.Property(value => value.FullName).HasMaxLength(100).IsRequired();
         builder.Property(value => value.Description).HasMaxLength(500);
@@ -157,7 +154,6 @@ public sealed class AdmissionTicketTransitionReasonConfiguration : IEntityTypeCo
 {
     public void Configure(EntityTypeBuilder<AdmissionTicketTransitionReason> builder)
     {
-        builder.ToTable("admission_ticket_transition_reasons");
         builder.Property(value => value.MasterCode).HasMaxLength(40).IsRequired();
         builder.Property(value => value.FullName).HasMaxLength(100).IsRequired();
         builder.Property(value => value.Description).HasMaxLength(500);

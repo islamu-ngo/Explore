@@ -24,13 +24,19 @@ public sealed class PaymentReconciliationPostgreSqlClaimTests(PostgreSqlContaine
     {
         await fixture.ResetAsync();
         var counter = new CommandCounter();
-        await using ExploreDbContext context = fixture.CreateDbContext(counter);
+        var baseline = new PersistenceQueryBaselineInterceptor();
+        await using ExploreDbContext context = fixture.CreateDbContext(counter, baseline);
         await SeedDueRowsWithoutParentFixturesAsync(context, 55);
         counter.Reset();
+        baseline.Reset();
         var repository = new RegistrationPaymentAttemptRepository(context);
 
+        var elapsed = Stopwatch.StartNew();
         var first = await repository.ClaimDueReconciliationsAsync(
             "postgres-command-proof", 50, Now, TimeSpan.FromMinutes(2), CancellationToken.None);
+        elapsed.Stop();
+        PersistenceQueryBaselineEvidence.Record(baseline
+            .Snapshot("payment_reconciliation_claim", first.Count, elapsed.Elapsed));
 
         await Assert.That(first.Count).IsEqualTo(50);
         await Assert.That(first.Select(claim => claim.AttemptCount).All(count => count == 1)).IsTrue();

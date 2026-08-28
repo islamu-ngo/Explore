@@ -11,7 +11,6 @@ public sealed class RegistrationFormConfiguration : IEntityTypeConfiguration<Reg
 {
     public void Configure(EntityTypeBuilder<RegistrationForm> builder)
     {
-        builder.ToTable("registration_forms");
         builder.Property(form => form.Id).ValueGeneratedNever();
         builder.Property(form => form.Namespace).IsRequired().HasMaxLength(100);
         builder.Property(form => form.Key).IsRequired().HasMaxLength(100);

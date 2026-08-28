@@ -13,7 +13,7 @@ public sealed class WebhookConsumerProviderBindingConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookConsumerProviderBinding> builder)
     {
-        builder.ToTable("webhook_consumer_provider_bindings", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_consumer_provider_bindings_concurrency_version_positive",
@@ -98,9 +98,7 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             binding.WebhookConsumerId,
             binding.ProviderKindId,
             binding.NormalizedEnvironment
-        })
-            .HasDatabaseName("ux_webhook_provider_bindings_consumer_provider_environment")
-            .IsUnique();
+        }).IsUnique();
 
         builder.HasIndex(binding => new
         {
@@ -108,7 +106,6 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             binding.NormalizedEnvironment,
             binding.NormalizedExternalApplicationId
         })
-            .HasDatabaseName("ux_webhook_provider_bindings_provider_environment_external_app")
             .IsUnique()
             .HasFilter("normalized_external_application_id IS NOT NULL");
 
@@ -119,7 +116,6 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             binding.NormalizedExternalApplicationId,
             binding.NormalizedApplicationUid
         })
-            .HasDatabaseName("ux_webhook_provider_bindings_provider_application_identity")
             .IsUnique()
             .HasFilter("normalized_external_application_id IS NOT NULL");
 
@@ -128,8 +124,6 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             binding.ProviderKindId,
             binding.NormalizedEnvironment,
             binding.NormalizedApplicationUid
-        })
-            .HasDatabaseName("ux_webhook_provider_bindings_provider_environment_application_uid")
-            .IsUnique();
+        }).IsUnique();
     }
 }

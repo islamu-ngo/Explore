@@ -101,9 +101,6 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                     b.HasKey("AuthoritySequence")
                         .HasName("pk_erasure_intents");
 
-                    b.HasAlternateKey("IntentId")
-                        .HasName("ak_erasure_intents_intent_id");
-
                     b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
                         .IsUnique()
                         .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");

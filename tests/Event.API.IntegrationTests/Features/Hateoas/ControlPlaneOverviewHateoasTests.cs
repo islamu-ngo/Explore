@@ -4,7 +4,9 @@
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
+using System.Text.Json;
 using Explore.Application.DTOs.ControlPlane;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
 using TUnit.Assertions;
@@ -65,5 +67,30 @@ public sealed class ControlPlaneOverviewHateoasTests
         await Assert.That(authorization.RouteName).IsEqualTo(RouteNames.GetInstanceAuthorizationProviderConfigurationStatus);
         await Assert.That(authorization.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(authorization.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+
+        await AssertExportLink(
+            links.Single(link => link.Rel == LinkRelations.ExportConfigurationOverrides),
+            ConfigurationManifestExportView.Overrides);
+        await AssertExportLink(
+            links.Single(link => link.Rel == LinkRelations.ExportConfigurationPortable),
+            ConfigurationManifestExportView.Portable);
+    }
+
+    private static async Task AssertExportLink(
+        Explore.Application.Hateoas.LinkDefinition link,
+        ConfigurationManifestExportView view)
+    {
+        JsonElement routeValues = JsonSerializer.SerializeToElement(link.RouteValues);
+
+        await Assert.That(link.RouteName).IsEqualTo(RouteNames.ExportConfigurationManifest);
+        await Assert.That(link.Method).IsEqualTo("GET");
+        await Assert.That(link.RequiresAuth).IsTrue();
+        await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+        await Assert.That(link.PermissionResourceId).IsEqualTo(ExportConfigurationManifestQuery.ResourceKey);
+        await Assert.That(link.PermissionFacts)
+            .IsEqualTo(new ConfigurationManifestExportAuthorizationFacts());
+        await Assert.That(routeValues.GetProperty("view").GetString()).IsEqualTo(view.ToString());
+        await Assert.That(routeValues.TryGetProperty("tenantId", out _)).IsFalse();
     }
 }

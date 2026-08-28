@@ -55,6 +55,7 @@ public sealed class ReleaseInputPolicyTests
         await Assert.That(result.IsValid).IsTrue();
         await Assert.That(result.Diagnostics).IsEmpty();
         await Assert.That(result.Fragments.Select(fragment => fragment.ChangeId)).Contains("CHG-2026-0010");
+        await Assert.That(result.Fragments.Select(fragment => fragment.ChangeId)).Contains("CHG-2026-0011");
     }
 
     [Test]

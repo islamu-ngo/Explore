@@ -18,7 +18,6 @@ public class RegistrationScopeConfiguration : IEntityTypeConfiguration<Registrat
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasIndex(e => e.MasterCode)
-            .HasDatabaseName("ix_registration_scopes_master_code")
             .IsUnique();
     }
 }

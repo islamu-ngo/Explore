@@ -12,7 +12,6 @@ public static class CandidateCommand
 {
     private const int MaximumGitOutputCharacters = 65_536;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
-    private static readonly Regex ChangeIdPattern = new("^Change-Id: (?<id>CHG-[0-9]{4}-[0-9]{4})$", RegexOptions.CultureInvariant | RegexOptions.Multiline, TimeSpan.FromMilliseconds(100));
     private static readonly Regex FullOidPattern = new("^(?:[0-9a-f]{40}|[0-9a-f]{64})$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
 
@@ -121,8 +120,15 @@ public static class CandidateCommand
                 return Reject(output, "candidate_terminal_commit_not_release_metadata_skip");
             }
 
+            ChangeIdRenameLoadResult renameResult = ChangeIdRenamePolicy.Load(root);
+            if (!renameResult.IsValid)
+            {
+                return Reject(output, renameResult.Diagnostics[0]);
+            }
+
             string[] linkedChangeIds = commitsThroughB
-                .SelectMany(commit => ChangeIdPattern.Matches(commit.Message).Select(match => match.Groups["id"].Value))
+                .Select(commit => ChangeIdRenamePolicy.Evaluate(commit, policy, renameResult.Renames).ChangeId)
+                .OfType<string>()
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
@@ -132,9 +138,27 @@ public static class CandidateCommand
                 return Reject(output, "candidate_fragment_missing");
             }
 
+            HashSet<string> rangeCommitOids = commitsThroughB
+                .Select(commit => commit.Oid)
+                .ToHashSet(StringComparer.Ordinal);
+            string[] releaseSourceDocuments =
+            [
+                .. fragments,
+                .. renameResult.Renames
+                    .Zip(renameResult.CanonicalDocuments)
+                    .Where(item => rangeCommitOids.Contains(item.First.CommitOid))
+                    .OrderBy(item => item.First.CommitOid, StringComparer.Ordinal)
+                    .Select(item => item.Second),
+            ];
             VerifiedBaseline? baseline = TryReadBaseline(root, descriptor);
             ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(releaseYaml, fragments, []);
-            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commitsThroughB, policy, verifiedBaselineRef: baseline?.Ref, verifiedBaselineOid: baseline?.TargetOid);
+            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(
+                input,
+                commitsThroughB,
+                policy,
+                verifiedBaselineRef: baseline?.Ref,
+                verifiedBaselineOid: baseline?.TargetOid,
+                changeIdRenames: renameResult.Renames);
             if (!context.IsValid || context.Context is null || context.Json is null)
             {
                 return Reject(output, "candidate_context_invalid");
@@ -166,7 +190,7 @@ public static class CandidateCommand
                 trusted.Bundle,
                 bundleDigests,
                 releaseYaml,
-                fragments,
+                releaseSourceDocuments,
                 summaryBytes,
                 committedContext,
                 committedNotes);
@@ -259,7 +283,7 @@ public static class CandidateCommand
         VerifiedTrustedBundle trusted,
         BundleDigests bundleDigests,
         string releaseYaml,
-        IReadOnlyList<string> fragments,
+        IReadOnlyList<string> releaseSourceDocuments,
         byte[] summaryBytes,
         byte[] contextBytes,
         byte[] notesBytes)
@@ -292,7 +316,7 @@ public static class CandidateCommand
             trustedBundleToolchainSha256 = trusted.ToolchainLockDigest,
             trustedBundleGitCliffSha256 = bundleDigests.GitCliffSha256,
             releaseDescriptorSha256 = Sha256(StrictUtf8.GetBytes(releaseYaml)),
-            releaseFragmentsSha256 = Sha256(StrictUtf8.GetBytes(string.Join("\n---\n", fragments))),
+            releaseFragmentsSha256 = Sha256(StrictUtf8.GetBytes(string.Join("\n---\n", releaseSourceDocuments))),
             releaseSummarySha256 = Sha256(summaryBytes),
             releaseContextSha256 = Sha256(contextBytes),
             releaseNotesSha256 = Sha256(notesBytes),

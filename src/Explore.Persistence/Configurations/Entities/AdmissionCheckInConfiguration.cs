@@ -11,7 +11,7 @@ public sealed class AdmissionTargetConfiguration : IEntityTypeConfiguration<Admi
 {
     public void Configure(EntityTypeBuilder<AdmissionTarget> builder)
     {
-        builder.ToTable("admission_targets", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_targets_operational_status",
@@ -35,7 +35,6 @@ public sealed class AdmissionTargetConfiguration : IEntityTypeConfiguration<Admi
                 target.AdmissionTargetTypeId,
                 target.ScopeId
             })
-            .HasDatabaseName("ux_admission_targets_scope")
             .IsUnique();
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(target => target.TenantId)
@@ -59,7 +58,7 @@ public sealed class AdmissionCheckInPolicyConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<AdmissionCheckInPolicy> builder)
     {
-        builder.ToTable("admission_check_in_policies", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_check_in_policies_window",
@@ -75,7 +74,6 @@ public sealed class AdmissionCheckInPolicyConfiguration : IEntityTypeConfigurati
         builder.Property(policy => policy.MaximumEntries).IsRequired();
         builder.HasAlternateKey(policy => new { policy.TenantId, policy.Id });
         builder.HasIndex(policy => new { policy.TenantId, policy.AdmissionTargetId })
-            .HasDatabaseName("ux_admission_check_in_policies_target")
             .IsUnique();
         builder.HasOne(policy => policy.Target).WithMany()
             .HasForeignKey(policy => new { policy.TenantId, policy.AdmissionTargetId })
@@ -88,7 +86,7 @@ public sealed class AdmissionCheckInEventConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<AdmissionCheckInEvent> builder)
     {
-        builder.ToTable("admission_check_in_events", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_admission_check_in_events_sequence", "sequence > 0");
             table.HasCheckConstraint(
@@ -120,7 +118,6 @@ public sealed class AdmissionCheckInEventConfiguration : IEntityTypeConfiguratio
                 value.AdmissionTargetId,
                 value.Sequence
             })
-            .HasDatabaseName("ux_admission_check_in_events_sequence")
             .IsUnique();
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(value => value.TenantId)
@@ -161,7 +158,7 @@ public sealed class AdmissionScannerCapabilityConfiguration
 {
     public void Configure(EntityTypeBuilder<AdmissionScannerCapability> builder)
     {
-        builder.ToTable("admission_scanner_capabilities", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_scanner_capabilities_key_version",
@@ -178,7 +175,6 @@ public sealed class AdmissionScannerCapabilityConfiguration
         builder.Property(capability => capability.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(capability => new { capability.TenantId, capability.Id });
         builder.HasIndex(capability => new { capability.TenantId, capability.IssueRequestId })
-            .HasDatabaseName("ux_admission_scanner_capabilities_issue_request")
             .IsUnique();
         builder.HasIndex(capability => new
             {
@@ -186,7 +182,6 @@ public sealed class AdmissionScannerCapabilityConfiguration
                 capability.LookupKeyVersion,
                 capability.LookupDigest
             })
-            .HasDatabaseName("ux_admission_scanner_capabilities_digest")
             .IsUnique();
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(capability => capability.TenantId)
@@ -201,8 +196,7 @@ public sealed class AdmissionScannerCapabilityConfiguration
         builder.HasOne<Actor>().WithMany()
             .HasForeignKey(capability => capability.RevokedByActorId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(capability => new { capability.TenantId, capability.AdmissionTargetId })
-            .HasDatabaseName("ix_admission_scanner_capabilities_target");
+        builder.HasIndex(capability => new { capability.TenantId, capability.AdmissionTargetId });
         builder.HasOne<AdmissionTarget>().WithMany()
             .HasForeignKey(capability => new
             {
@@ -219,7 +213,7 @@ public sealed class AdmissionCheckInStateConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<AdmissionCheckInState> builder)
     {
-        builder.ToTable("admission_check_in_states", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_check_in_states_counts",
@@ -234,7 +228,6 @@ public sealed class AdmissionCheckInStateConfiguration : IEntityTypeConfiguratio
                 state.AdmissionTicketId,
                 state.AdmissionTargetId
             })
-            .HasDatabaseName("ux_admission_check_in_states_ticket_target")
             .IsUnique();
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(state => state.TenantId)

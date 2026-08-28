@@ -12,14 +12,13 @@ public sealed class NotificationPreferenceCategoryConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<NotificationPreferenceCategory> builder)
     {
-        builder.ToTable("notification_preference_categories");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.DefaultPushEnabled).HasDefaultValue(false).IsRequired();
         builder.Property(e => e.SortOrder).IsRequired();
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_preference_categories_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -27,13 +26,12 @@ public sealed class NotificationPreferenceChannelConfiguration : IEntityTypeConf
 {
     public void Configure(EntityTypeBuilder<NotificationPreferenceChannel> builder)
     {
-        builder.ToTable("notification_preference_channels");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.SortOrder).IsRequired();
-        builder.HasIndex(e => e.MasterCode).IsUnique().HasDatabaseName("ux_notification_preference_channels_master_code");
+        builder.HasIndex(e => e.MasterCode).IsUnique();
     }
 }
 
@@ -41,7 +39,7 @@ public sealed class NotificationChannelPreferenceConfiguration : IEntityTypeConf
 {
     public void Configure(EntityTypeBuilder<NotificationChannelPreference> builder)
     {
-        builder.ToTable("notification_channel_preferences", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_notification_channel_preferences_scope_target", ScopeTargetCheckSql());
         });
@@ -88,26 +86,21 @@ public sealed class NotificationChannelPreferenceConfiguration : IEntityTypeConf
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.CategoryId, e.ChannelId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL")
-            .HasDatabaseName("ux_notification_channel_preferences_scope_default");
+            .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.UserId, e.CategoryId, e.ChannelId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND user_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_channel_preferences_user");
+            .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.OrganizationId, e.CategoryId, e.ChannelId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND organization_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_channel_preferences_organization");
+            .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.GroupId, e.CategoryId, e.ChannelId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND group_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_channel_preferences_group");
+            .HasFilter("is_deleted = false AND group_id IS NOT NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.CategoryId, e.ChannelId, e.ScopeId })
-            .HasDatabaseName("ix_notification_channel_preferences_resolver");
+        builder.HasIndex(e => new { e.TenantId, e.CategoryId, e.ChannelId, e.ScopeId });
     }
 
     internal static string ScopeTargetCheckSql()
@@ -124,7 +117,7 @@ public sealed class NotificationPreferenceProfileConfiguration : IEntityTypeConf
 {
     public void Configure(EntityTypeBuilder<NotificationPreferenceProfile> builder)
     {
-        builder.ToTable("notification_preference_profiles", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_notification_preference_profiles_scope_target", NotificationChannelPreferenceConfiguration.ScopeTargetCheckSql());
         });
@@ -161,23 +154,19 @@ public sealed class NotificationPreferenceProfileConfiguration : IEntityTypeConf
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL")
-            .HasDatabaseName("ux_notification_preference_profiles_scope_default");
+            .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.UserId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND user_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_preference_profiles_user");
+            .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.OrganizationId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND organization_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_preference_profiles_organization");
+            .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.ScopeId, e.GroupId })
             .IsUnique()
-            .HasFilter("is_deleted = false AND group_id IS NOT NULL")
-            .HasDatabaseName("ux_notification_preference_profiles_group");
+            .HasFilter("is_deleted = false AND group_id IS NOT NULL");
 
     }
 }

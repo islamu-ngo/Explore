@@ -12,7 +12,6 @@ public class UiThemeConfiguration : IEntityTypeConfiguration<UiTheme>
 {
     public void Configure(EntityTypeBuilder<UiTheme> builder)
     {
-        builder.ToTable("ui_themes");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

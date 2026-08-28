@@ -11,7 +11,6 @@ public sealed class RegistrationAttemptStatusConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<RegistrationAttemptStatus> builder)
     {
-        builder.ToTable("registration_attempt_statuses");
         builder.Property(status => status.Id).ValueGeneratedNever();
         builder.Property(status => status.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(status => status.FullName).IsRequired().HasMaxLength(200);

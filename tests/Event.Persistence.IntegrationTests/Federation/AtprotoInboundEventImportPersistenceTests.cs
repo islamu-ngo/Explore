@@ -681,7 +681,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
-    public async Task JetstreamApply_AcceptedInboundEventCreatesEventAndSessionWithMappedFieldsWithoutOutboundEcho()
+    public async Task JetstreamApply_SystemOwnedInboundPublicationMapsProducerStatusWithoutHumanPublicationOutboxes()
     {
         await fixture.ResetAsync();
         ImportScope scope = await SeedScopeAsync("atproto-import-create");
@@ -751,6 +751,10 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Published);
         await Assert.That(session.CreatedAt).IsEqualTo(sourceCreatedAt.UtcDateTime);
         await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.OutboxMessages.CountAsync(value =>
+            value.AggregateId == imported.Id &&
+            value.EventType == EventPublishedOutboxMessageFactory.EventPublishedNotificationFanoutRequestedEventType))
+            .IsEqualTo(0);
     }
 
     [Test]

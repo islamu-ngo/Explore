@@ -11,7 +11,6 @@ public sealed class LocationDisclosureAudienceConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<LocationDisclosureAudience> builder)
     {
-        builder.ToTable("location_disclosure_audiences");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

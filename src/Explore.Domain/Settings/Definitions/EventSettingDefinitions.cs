@@ -19,7 +19,10 @@ public static class EventSettingDefinitions
         DefaultValue: "true",
         Category: "Events",
         Description: "Whether tenant users are allowed to submit events",
-        MaxScope: SettingScope.Tenant);
+        MaxScope: SettingScope.Tenant)
+    {
+        RequiresCoordinatedMutation = true,
+    };
 
     public static readonly SettingDefinition RequireApproval = new(
         Key: "events.require_approval",
@@ -27,7 +30,10 @@ public static class EventSettingDefinitions
         DefaultValue: "false",
         Category: "Events",
         Description: "Whether events require admin approval before publishing",
-        MaxScope: SettingScope.Tenant);
+        MaxScope: SettingScope.Tenant)
+    {
+        RequiresCoordinatedMutation = true,
+    };
 
     public static readonly SettingDefinition OrganizationSubmissionEnabled = new(
         Key: "events.organization_submission_enabled",
@@ -35,7 +41,10 @@ public static class EventSettingDefinitions
         DefaultValue: "true",
         Category: "Events",
         Description: "Whether organizations are allowed to submit events",
-        MaxScope: SettingScope.Tenant);
+        MaxScope: SettingScope.Tenant)
+    {
+        RequiresCoordinatedMutation = true,
+    };
 
     public static readonly SettingDefinition GroupSubmissionEnabled = new(
         Key: "events.group_submission_enabled",
@@ -43,7 +52,10 @@ public static class EventSettingDefinitions
         DefaultValue: "true",
         Category: "Events",
         Description: "Whether groups are allowed to submit events",
-        MaxScope: SettingScope.Tenant);
+        MaxScope: SettingScope.Tenant)
+    {
+        RequiresCoordinatedMutation = true,
+    };
 
     public static readonly SettingDefinition CardClickOpensDetailPage = new(
         Key: "events.card_click_opens_detail_page",

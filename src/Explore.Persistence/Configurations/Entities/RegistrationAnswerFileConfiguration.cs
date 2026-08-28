@@ -12,7 +12,7 @@ public sealed class RegistrationAnswerFileConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<RegistrationAnswerFile> builder)
     {
-        builder.ToTable("registration_answer_files", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_answer_files_size_nonnegative", "size >= 0");
             table.HasCheckConstraint("ck_registration_answer_files_quarantine_state", "quarantine_state IN ('quarantined', 'released')");

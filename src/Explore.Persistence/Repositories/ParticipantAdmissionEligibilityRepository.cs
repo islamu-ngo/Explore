@@ -51,7 +51,7 @@ public sealed class ParticipantAdmissionEligibilityRepository(
             .AcquireAsync<RegistrationTicketAssignment>(
                 dbContext,
                 tenantId,
-                "id",
+                assignment => assignment.Id,
                 registrationTicketAssignmentId,
                 cancellationToken);
         return await dbContext
@@ -73,7 +73,7 @@ public sealed class ParticipantAdmissionEligibilityRepository(
             .AcquireAsync<RegistrationTicketAssignment>(
                 dbContext,
                 eligibility.TenantId,
-                "id",
+                assignment => assignment.Id,
                 eligibility.RegistrationTicketAssignmentId,
                 cancellationToken);
         await dbContext.ParticipantAdmissionEligibilities
@@ -107,7 +107,7 @@ public sealed class ParticipantAdmissionEligibilityRepository(
                 .AcquireAsync<RegistrationTicketAssignment>(
                     dbContext,
                     tenantId,
-                    "id",
+                    assignment => assignment.Id,
                     assignmentId,
                     cancellationToken);
         }
@@ -332,7 +332,7 @@ public sealed class ParticipantAdmissionEligibilityRepository(
             .AcquireAsync<AdmissionTicket>(
                 dbContext,
                 tenantId,
-                "id",
+                ticket => ticket.Id,
                 ticket.Id,
                 cancellationToken);
         await dbContext.Entry(ticket)

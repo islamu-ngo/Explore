@@ -4,12 +4,19 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
+using Explore.Application.Services;
+using Explore.Application.Settings;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -177,6 +184,115 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
     }
 
     [Test]
+    public async Task Create_PublishedWhenApprovalIsNotRequired_ReturnsCreatedAndPersistsPublicationSideEffects()
+    {
+        await _fixture.ResetDatabaseAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        TenantScenarioSeed.TenantScenarioResult tenantResult;
+        using (var arrangeScope = _fixture.Factory.Services.CreateScope())
+        {
+            var context = arrangeScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+            await SetRequireApprovalAsync(
+                arrangeScope.ServiceProvider,
+                tenantResult,
+                requireApproval: false,
+                timeout.Token);
+        }
+
+        var createRequest = CreatePublishedRequest("Approval Disabled Published Event");
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/api/event",
+            tenantResult.UserId);
+        request.Content = JsonContent.Create(createRequest);
+
+        var response = await _fixture.Client.SendAsync(request, timeout.Token);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>(timeout.Token);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.IsSuccess).IsTrue();
+
+        using var verifyScope = _fixture.Factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persistedEvent = await verifyContext.Events
+            .SingleAsync(value => value.Id == body.Id, timeout.Token);
+        var notificationOutboxCount = await verifyContext.OutboxMessages.CountAsync(
+            value => value.AggregateId == body.Id
+                && value.EventType == EventPublishedOutboxMessageFactory.EventPublishedNotificationFanoutRequestedEventType,
+            timeout.Token);
+
+        await Assert.That(persistedEvent.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
+        await Assert.That(notificationOutboxCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Create_PublishedByOrdinaryUserWhenApprovalIsRequired_RejectsBeforePublicationSideEffects()
+    {
+        await _fixture.ResetDatabaseAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        TenantScenarioSeed.TenantScenarioResult tenantResult;
+        using (var arrangeScope = _fixture.Factory.Services.CreateScope())
+        {
+            var context = arrangeScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+            await SetRequireApprovalAsync(
+                arrangeScope.ServiceProvider,
+                tenantResult,
+                requireApproval: true,
+                timeout.Token);
+        }
+
+        const string title = "Approval Required Rejected Published Event";
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/api/event",
+            tenantResult.UserId);
+        request.Headers.Accept.ParseAdd("application/problem+json");
+        request.Content = JsonContent.Create(CreatePublishedRequest(title));
+
+        var response = await _fixture.Client.SendAsync(request, timeout.Token);
+        var responseJson = await response.Content.ReadAsStringAsync(timeout.Token);
+        using var problemDocument = JsonDocument.Parse(responseJson);
+        var policyCode = problemDocument.RootElement.TryGetProperty("code", out var codeElement)
+            ? codeElement.GetString()
+            : null;
+
+        using var verifyScope = _fixture.Factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var eventCount = await verifyContext.Events.CountAsync(
+            value => value.TenantId == tenantResult.TenantId && value.Title == title,
+            timeout.Token);
+        var federationOutboxCount = await verifyContext.PdsSyncOutbox.CountAsync(
+            value => value.TenantId == tenantResult.TenantId
+                && value.SourceEntityType == "Event",
+            timeout.Token);
+        var notificationOutboxCount = await verifyContext.OutboxMessages.CountAsync(
+            value => value.EventType == EventPublishedOutboxMessageFactory.EventPublishedNotificationFanoutRequestedEventType,
+            timeout.Token);
+
+        var actual = new PublicationRejectionObservables(
+            response.StatusCode,
+            response.Content.Headers.ContentType?.MediaType,
+            policyCode,
+            eventCount,
+            federationOutboxCount,
+            notificationOutboxCount);
+        var expected = new PublicationRejectionObservables(
+            HttpStatusCode.BadRequest,
+            "application/problem+json",
+            "event_publish_approval_required",
+            EventCount: 0,
+            FederationOutboxCount: 0,
+            NotificationOutboxCount: 0);
+
+        await Assert.That(actual).IsEqualTo(expected);
+    }
+
+    [Test]
     public async Task Create_WithBlankTitle_ReturnsBadRequest()
     {
         await _fixture.ResetDatabaseAsync();
@@ -271,11 +387,80 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.OK);
     }
 
+    private static CreateEventDraftRequestDto CreatePublishedRequest(string title)
+    {
+        var sessionStart = DateTimeOffset.UtcNow.AddDays(7);
+        return new CreateEventDraftRequestDto
+        {
+            Title = title,
+            Description = "Valid publication request from an ordinary tenant user.",
+            EventTypeId = 1,
+            AudienceGenderId = 1,
+            AudienceAgeId = 1,
+            EventStatusId = (int)EventStatusEnum.Published,
+            ParticipationConfiguration = CreateParticipationConfiguration(),
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            Timezone = "UTC",
+            Sessions =
+            [
+                new CreateEventGraphSessionDto
+                {
+                    Title = $"{title} Session",
+                    StartTime = sessionStart,
+                    EndTime = sessionStart.AddHours(1)
+                }
+            ]
+        };
+    }
+
+    private static async Task SetRequireApprovalAsync(
+        IServiceProvider services,
+        TenantScenarioSeed.TenantScenarioResult tenant,
+        bool requireApproval,
+        CancellationToken cancellationToken)
+    {
+        var settingsResolver = services.GetRequiredService<IHierarchicalSettingsResolver>();
+        var unitOfWork = services.GetRequiredService<IUnitOfWork>();
+        var mutationBoundary = services.GetRequiredService<IPublicationPolicyMutationBoundary>();
+        PublicationPolicyMutationResult mutation = await unitOfWork.ExecuteInTransactionAsync(
+            token => mutationBoundary.ApplyTenantAsync(
+                new PublicationPolicyTenantMutationRequest(
+                    tenant.TenantId,
+                    tenant.ActorId,
+                    DateTime.UtcNow,
+                    [new PublicationPolicySettingMutation(
+                        GovernanceSettingKeys.Events.RequireApproval,
+                        PublicationPolicyMutationKind.Set,
+                        SettingValueSerializer.Serialize(requireApproval),
+                        tenant.TenantId,
+                        IsLocked: null)],
+                    PublicationPolicyLockedSystemBehavior.Reject),
+                token),
+            cancellationToken);
+        await Assert.That(mutation.Success).IsTrue().Because(mutation.Message);
+        settingsResolver.InvalidateCache(SettingScope.Tenant, tenant.TenantId);
+
+        var effectiveValue = await settingsResolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.Events.RequireApproval,
+            new SettingContext(TenantId: tenant.TenantId),
+            cancellationToken);
+        await Assert.That(effectiveValue).IsEqualTo(requireApproval);
+    }
+
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
     {
         ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
         AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
     };
+
+    private sealed record PublicationRejectionObservables(
+        HttpStatusCode StatusCode,
+        string? MediaType,
+        string? PolicyCode,
+        int EventCount,
+        int FederationOutboxCount,
+        int NotificationOutboxCount);
 
     [Test]
     public async Task Update_WithoutIfMatch_ReturnsBadRequest()

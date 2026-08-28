@@ -9,12 +9,11 @@ public sealed class EventLocationSchemaContractionTests
     /// <summary>Carrier configuration file and the constraint name it must declare.</summary>
     private static readonly (string ConfigurationFile, string ConstraintName)[] Carriers =
     [
-        ("EventSessionConfiguration.cs", "CK_EventSession_PhysicalLocationRequiresEventLocation"),
-        ("EventSessionGroupConfiguration.cs", "CK_EventSessionGroup_PhysicalLocationRequiresEventLocation"),
-        ("EventAgendaItemConfiguration.cs", "CK_EventAgendaItem_PhysicalLocationRequiresEventLocation"),
-        ("EventSessionAgendaItemConfiguration.cs", "CK_EventSessionAgendaItem_PhysicalLocationRequiresEventLocation")
+        ("EventSessionConfiguration.cs", "ck_event_session_physical_location_requires_event_location"),
+        ("EventSessionGroupConfiguration.cs", "ck_event_session_group_physical_location_requires_event_location"),
+        ("EventAgendaItemConfiguration.cs", "ck_event_agenda_item_physical_location_requires_event_location"),
+        ("EventSessionAgendaItemConfiguration.cs", "ck_event_session_agenda_item_physical_location_requires_event_location")
     ];
-
     /// <summary>Every provider must ship the contraction; a missing lane silently loses the guarantee.</summary>
     private static readonly (string Project, string MigrationsFolder)[] MigrationProjects =
     [
@@ -57,9 +56,7 @@ public sealed class EventLocationSchemaContractionTests
         foreach (string migration in migrations)
         {
             string candidate = await File.ReadAllTextAsync(migration);
-            if (Carriers.All(carrier => candidate.Contains(
-                    carrier.ConstraintName,
-                    StringComparison.Ordinal)))
+            if (CountOccurrences(candidate, ContractionSql) == Carriers.Length)
             {
                 matchingMigrations.Add((migration, candidate));
             }
@@ -68,23 +65,12 @@ public sealed class EventLocationSchemaContractionTests
         await Assert.That(matchingMigrations).HasCount(1);
 
         (string migrationPath, string source) = matchingMigrations[0];
-        foreach ((_, string constraintName) in Carriers)
-        {
-            await Assert.That(source).Contains(constraintName);
-        }
+        await Assert.That(CountOccurrences(source, ContractionSql)).IsEqualTo(Carriers.Length);
 
         string designerPath = migrationPath[..^".cs".Length] + ".Designer.cs";
         await Assert.That(File.Exists(designerPath)).IsTrue();
 
-        if (migrationPath.Contains("InitialApplication", StringComparison.Ordinal))
-        {
-            foreach ((_, string constraintName) in Carriers)
-            {
-                await Assert.That(source)
-                    .Contains($"table.CheckConstraint(\"{constraintName}\"");
-            }
-        }
-        else
+        if (!migrationPath.EndsWith("_Init.cs", StringComparison.Ordinal))
         {
             // An incremental contraction with no reverse is not reversible in development.
             await Assert.That(CountOccurrences(source, "AddCheckConstraint")).IsEqualTo(4);
@@ -107,9 +93,7 @@ public sealed class EventLocationSchemaContractionTests
             foreach (string migrationSource in migrationSources)
             {
                 string source = await File.ReadAllTextAsync(migrationSource);
-                if (Carriers.All(carrier => source.Contains(
-                        carrier.ConstraintName,
-                        StringComparison.Ordinal)))
+                if (CountOccurrences(source, ContractionSql) == Carriers.Length)
                 {
                     matchingSources.Add(migrationSource);
                 }

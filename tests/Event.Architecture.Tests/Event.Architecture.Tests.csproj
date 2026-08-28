@@ -16,10 +16,15 @@
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
     <ProjectReference Include="..\..\src\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.MariaDb\Explore.Persistence.Migrations.MariaDb.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.MySql\Explore.Persistence.Migrations.MySql.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.SqlServer\Explore.Persistence.Migrations.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.Sqlite\Explore.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\..\src\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
     <ProjectReference Include="..\..\eng\tools\Explore.GeneratedContracts\Explore.GeneratedContracts.csproj" />
+    <ProjectReference Include="..\..\eng\configuration-manifest-schema\src\ISLAMU.ConfigurationManifest.SchemaGenerator\ISLAMU.ConfigurationManifest.SchemaGenerator.csproj" />
   </ItemGroup>
 
 </Project>

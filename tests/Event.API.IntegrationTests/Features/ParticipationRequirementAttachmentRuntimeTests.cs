@@ -403,7 +403,7 @@ public sealed class ParticipationRequirementAttachmentRuntimeTests(
         await fixture.AssertDatabaseUniquenessAsync(
             requirementUnique,
             requirementUnique.RequirementId,
-            "ix_participation_requirement_attachments_participation_configu1");
+            standaloneQuestionnaire: false);
         await fixture.AssertNoRegistrationSideEffectsAsync(requirementUnique, expectedActiveAttachments: 1);
 
         AttachmentRuntimeScenario standaloneUnique = await fixture.SeedAsync(
@@ -430,7 +430,7 @@ public sealed class ParticipationRequirementAttachmentRuntimeTests(
         await fixture.AssertDatabaseUniquenessAsync(
             standaloneUnique,
             standaloneUnique.SecondaryRequirementId,
-            "ix_participation_requirement_attachments_participation_configu");
+            standaloneQuestionnaire: true);
         await fixture.AssertNoRegistrationSideEffectsAsync(standaloneUnique, expectedActiveAttachments: 1);
     }
 
@@ -787,15 +787,26 @@ public sealed class ParticipationRequirementAttachmentRuntimeFixture : IAsyncIni
     public async Task AssertDatabaseUniquenessAsync(
         AttachmentRuntimeScenario scenario,
         Guid requirementId,
-        string expectedConstraint)
+        bool standaloneQuestionnaire)
     {
         await using ExploreDbContext context = CreateDbContext();
+        string[] expectedProperties = standaloneQuestionnaire
+            ? [nameof(ParticipationRequirementAttachment.ParticipationConfigurationId),
+                nameof(ParticipationRequirementAttachment.IsStandaloneQuestionnaire)]
+            : [nameof(ParticipationRequirementAttachment.ParticipationConfigurationId),
+                nameof(ParticipationRequirementAttachment.RegistrationRequirementId)];
+        string expectedConstraint = context.Model
+            .FindEntityType(typeof(ParticipationRequirementAttachment))!
+            .GetIndexes()
+            .Single(index => index.IsUnique &&
+                index.Properties.Select(property => property.Name).SequenceEqual(expectedProperties))
+            .GetDatabaseName();
         await using var transaction = await context.Database.BeginTransactionAsync();
         PostgresException? violation = null;
         try
         {
             await context.Database.ExecuteSqlInterpolatedAsync($$"""
-                INSERT INTO participation_requirement_attachments (
+                INSERT INTO "islamu_event".participation_requirement_attachments (
                     id, tenant_id, event_id, participation_configuration_id,
                     registration_workflow_id, registration_requirement_id,
                     registration_form_id, registration_form_version_id,
@@ -808,7 +819,7 @@ public sealed class ParticipationRequirementAttachmentRuntimeFixture : IAsyncIni
                     is_standalone_questionnaire, created_at, created_by,
                     updated_at, updated_by, is_deleted, deleted_at, deleted_by,
                     {{Guid.CreateVersion7()}}
-                FROM participation_requirement_attachments
+                FROM "islamu_event".participation_requirement_attachments
                 WHERE participation_configuration_id = {{scenario.EventId}}
                     AND is_deleted = false
                 LIMIT 1

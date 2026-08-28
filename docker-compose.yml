@@ -301,8 +301,16 @@ services:
       dockerfile: src/Event.MigrationService/Dockerfile
     environment:
       <<: [*secrets-env, *database-env, *database-migrator-env, *privacy-erasure-migrator-env]
+      CONFIGURATION_MANIFEST_MODE: ${CONFIGURATION_MANIFEST_MODE:-Off}
+      CONFIGURATION_MANIFEST_PATH: ${CONFIGURATION_MANIFEST_PATH:-/etc/islamu-event/bootstrap/configuration-manifest.json}
     volumes:
       - privacy_erasure_authority_data:/app/data
+      - type: bind
+        source: ${CONFIGURATION_MANIFEST_HOST_DIRECTORY:-./deploy/bootstrap}
+        target: /etc/islamu-event/bootstrap
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
       privacy-erasure-authority-volume-init:
         condition: service_completed_successfully

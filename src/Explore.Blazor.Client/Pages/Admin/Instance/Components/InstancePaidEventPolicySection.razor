@@ -253,7 +253,8 @@
             AllowedCurrencyCodes = _resource.AllowedCurrencyCodes,
             DefaultCurrencyCode = _resource.DefaultCurrencyCode,
             RefundProtectionIds = _resource.RefundProtectionIds,
-            CurrencyRiskLimits = _resource.CurrencyRiskLimits?.Select(limit => new CurrencyRiskLimits2
+            CurrencyRiskLimits = _resource.CurrencyRiskLimits?.Select(limit =>
+                new PaidEventPolicyCurrencyRiskLimitDto
             {
                 CurrencyCode = limit.CurrencyCode,
                 PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor,

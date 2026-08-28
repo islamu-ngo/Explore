@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -13,8 +14,6 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
 {
     private const int MaximumBatchSize = 1000;
     private const string UniqueViolationSqlState = "23505";
-    private const string AttemptIdentityConstraintPrefix =
-        "ux_webhook_provider_publication_attempts_tenant_publication_att";
     private readonly ExploreDbContext _dbContext;
 
     public WebhookProviderPublicationRepository(ExploreDbContext dbContext)
@@ -224,7 +223,13 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
                 SqlState: UniqueViolationSqlState,
                 ConstraintName: { } constraintName
             } &&
-            constraintName.StartsWith(AttemptIdentityConstraintPrefix, StringComparison.Ordinal))
+            constraintName == RelationalConstraintDescriptorResolver
+                .UniqueIndex<WebhookProviderPublicationAttempt>(
+                    _dbContext,
+                    nameof(WebhookProviderPublicationAttempt.TenantId),
+                    nameof(WebhookProviderPublicationAttempt.WebhookProviderPublicationId),
+                    nameof(WebhookProviderPublicationAttempt.AttemptNumber))
+                .Name)
         {
             throw new WebhookProviderPublicationConcurrencyException(
                 "The provider publication was completed by another worker.",
@@ -283,13 +288,10 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
     {
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                ["webhook-provider-publication-claim"],
-                cancellationToken);
-        }
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            "webhook-provider-publication-claim",
+            cancellationToken);
 
         var query = _dbContext.WebhookProviderPublications
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)

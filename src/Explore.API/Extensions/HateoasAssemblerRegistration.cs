@@ -238,6 +238,7 @@ public static class HateoasAssemblerRegistration
         services.AddHalResourceWithAssembler<TenantPaidEventPolicyConfigurationDto, TenantPaidEventPolicyConfigurationLinkPolicy, TenantPaidEventPolicyConfigurationCollectionLinkPolicy, TenantPaidEventPolicyConfigurationResourceAssembler>();
         services.AddHalResource<SettingGroupResponseDto, AtprotoInstanceSettingGroupLinkPolicy, AtprotoInstanceSettingGroupCollectionLinkPolicy>();
         services.AddHalResourceWithAssembler<TenantStorageSettingsDto, TenantStorageSettingsLinkPolicy, TenantStorageSettingsCollectionLinkPolicy, TenantStorageSettingsResourceAssembler>();
+        services.AddHalResource<TenantReportingIntakePolicyDto, TenantReportingIntakePolicyLinkPolicy, TenantReportingIntakePolicyCollectionLinkPolicy>();
 
         // OrganizationReview (same DTO for detail and list)
         services.AddHalResourceWithAssembler<OrganizationReviewDto, OrganizationReviewDetailLinkPolicy, OrganizationReviewCollectionLinkPolicy, OrganizationReviewResourceAssembler>();

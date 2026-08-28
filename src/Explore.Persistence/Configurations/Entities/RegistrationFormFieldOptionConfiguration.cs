@@ -11,7 +11,6 @@ public sealed class RegistrationFormFieldOptionConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<RegistrationFormFieldOption> builder)
     {
-        builder.ToTable("registration_form_field_options");
         builder.Property(option => option.Id).ValueGeneratedNever();
         builder.Property(option => option.Key).IsRequired().HasMaxLength(100);
         builder.Property(option => option.Label).IsRequired().HasMaxLength(500);

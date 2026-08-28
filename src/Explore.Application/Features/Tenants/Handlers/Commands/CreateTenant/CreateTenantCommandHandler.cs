@@ -2,6 +2,7 @@
 // ABOUTME: Validates input, enforces slug uniqueness, and atomically creates tenant, branding, and role grants.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant.Validators;
 using Explore.Application.Features.Management;
@@ -10,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -21,9 +23,9 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
     private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
     private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
-    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
+    private readonly ITenantCreationService _tenantCreationService;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly ISettingMutationLock _mutationLock;
     private readonly TenantActivationCapacityPolicy _capacityPolicy;
 
@@ -32,9 +34,9 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
         ITenantUserRepository tenantUserRepository,
         IRoleRepository roleRepository,
-        ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
+        ITenantCreationService tenantCreationService,
+        ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
         ILogger<CreateTenantCommandHandler> logger,
-        IUnitOfWork unitOfWork,
         ISettingMutationLock mutationLock,
         TenantActivationCapacityPolicy capacityPolicy)
     {
@@ -42,9 +44,9 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
         _tenantUserRepository = tenantUserRepository;
         _roleRepository = roleRepository;
-        _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
+        _tenantCreationService = tenantCreationService;
+        _typedSettingsDocumentResolver = typedSettingsDocumentResolver;
         _logger = logger;
-        _unitOfWork = unitOfWork;
         _mutationLock = mutationLock;
         _capacityPolicy = capacityPolicy;
     }
@@ -72,9 +74,21 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
 
         var statusId = dto.IsActive ? (int)TenantStatusEnum.Active : (int)TenantStatusEnum.Provisioning;
         var assignAdmin = dto.AssignCurrentUserAsTenantAdmin && request.RequestingUserId.HasValue;
+        Guid plannedTenantId = Guid.CreateVersion7();
+        Guid plannedBrandingDocumentId = Guid.CreateVersion7();
+        DateTime occurredAt = DateTime.UtcNow;
+        TenantSettingsDocument defaultBranding =
+            TenantBrandingSettingsDocumentDefaults.Create(plannedTenantId, dto.FullName);
 
         async Task<BaseCommandResponse<Guid>> CreateAsync(CancellationToken ct)
         {
+            if (await _tenantRepository.GetTenantBySlug(dto.Slug) is not null)
+            {
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Tenant with this slug already exists"],
+                    "Tenant with this slug already exists");
+            }
+
             if (dto.IsActive)
             {
                 TenantActivationCapacityAssessment capacity = await _capacityPolicy.EvaluateAsync(
@@ -89,34 +103,54 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                 }
             }
 
-            var tenant = await _tenantRepository.Create(new Tenant
-            {
-                FullName = dto.FullName,
-                Slug = dto.Slug,
-                TenantStatusId = statusId,
-                TenantStatus = null!
-            });
-
-            await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(tenant.Id, dto.FullName, ct);
+            TenantCreationOutcome creation = await _tenantCreationService.CreateInCurrentTransactionAsync(
+                new TenantCreationRequest(
+                    plannedTenantId,
+                    plannedBrandingDocumentId,
+                    dto.FullName,
+                    dto.Slug,
+                    statusId,
+                    request.RequestingUserId,
+                    occurredAt,
+                    defaultBranding.DocumentKey,
+                    defaultBranding.SchemaVersion,
+                    defaultBranding.DefaultsVersion,
+                    defaultBranding.PayloadJson),
+                ct);
 
             if (assignAdmin)
             {
-                await AssignRequestingUserAsTenantAdminAsync(tenant.Id, request.RequestingUserId!.Value, ct);
+                await AssignRequestingUserAsTenantAdminAsync(
+                    creation.Tenant.Id,
+                    request.RequestingUserId!.Value,
+                    ct);
             }
 
             return BaseCommandResponse.Success(
-                tenant.Id,
+                creation.Tenant.Id,
                 assignAdmin
                     ? "Tenant created successfully. You have been assigned as tenant administrator."
                     : "Tenant created successfully.");
         }
 
-        return _capacityPolicy.IsEnforced
-            ? await _mutationLock.ExecuteAsync(
-                GovernanceSettingKeys.Deployment.Mode,
+        string slugLockKey = TenantMutationLockKeys.ForSlug(dto.Slug);
+        BaseCommandResponse<Guid> result = _capacityPolicy.IsEnforced
+            ? await _mutationLock.ExecuteManyAsync(
+                [GovernanceSettingKeys.Deployment.Mode, slugLockKey],
                 CreateAsync,
                 cancellationToken)
-            : await _unitOfWork.ExecuteInTransactionAsync(CreateAsync, cancellationToken);
+            : await _mutationLock.ExecuteAsync(
+                slugLockKey,
+                CreateAsync,
+                cancellationToken);
+        if (result.IsSuccess && result.Id is Guid tenantId)
+        {
+            _typedSettingsDocumentResolver.InvalidateTenantDocumentCache(
+                tenantId,
+                SettingsDocumentKeys.Tenant.Branding);
+        }
+
+        return result;
     }
 
     private async Task AssignRequestingUserAsTenantAdminAsync(Guid tenantId, Guid userId, CancellationToken ct)

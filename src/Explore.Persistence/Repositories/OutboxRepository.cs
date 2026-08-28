@@ -2,12 +2,15 @@
 // ABOUTME: Uses ExecuteUpdateAsync for atomic optimistic-lock transitions; mirrors PdsSyncOutboxRepository patterns.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxRepository
+public class OutboxRepository : GenericRepository<OutboxMessage, Guid>,
+    IOutboxRepository,
+    IConfigurationManifestEffectOutboxRepository
 {
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
     private readonly ExploreDbContext _dbContext;
@@ -51,6 +54,38 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
             .OrderBy(m => m.CreatedAt)
             .Take(batchSize)
             .ToListAsync(ct);
+    }
+
+    public Task<OutboxMessage?> GetByIdAsync(
+        Guid messageId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(messageId, Guid.Empty);
+        return _dbContext.OutboxMessages
+            .AsNoTracking()
+            .SingleOrDefaultAsync(message => message.Id == messageId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<OutboxMessage>> GetPendingManifestEffectsAsync(
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+        DateTime now = DateTime.UtcNow;
+        return await _dbContext.OutboxMessages
+            .AsNoTracking()
+            .Where(message =>
+                message.EventType
+                    == ConfigurationManifestEffectOutbox.EventType
+                && ((message.Status == OutboxMessageStatus.Pending
+                        && (message.NextRetryAt == null || message.NextRetryAt <= now))
+                    || (message.Status == OutboxMessageStatus.Processing
+                        && message.NextRetryAt != null
+                        && message.NextRetryAt <= now)))
+            .OrderBy(message => message.CreatedAt)
+            .ThenBy(message => message.Id)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<DateTime?> TryClaimForProcessing(

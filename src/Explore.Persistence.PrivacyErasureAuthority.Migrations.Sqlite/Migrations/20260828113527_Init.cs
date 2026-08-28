@@ -1,0 +1,76 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migrations
+{
+    /// <inheritdoc />
+    public partial class Init : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "ie_authority_counter",
+                columns: table => new
+                {
+                    singleton = table.Column<bool>(type: "INTEGER", nullable: false),
+                    last_sequence = table.Column<long>(type: "INTEGER", nullable: false),
+                    retained_floor_sequence = table.Column<long>(type: "INTEGER", nullable: false, defaultValue: 0L)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_authority_counter", x => x.singleton);
+                    table.CheckConstraint("ck_authority_counter_nonnegative", "last_sequence >= 0");
+                    table.CheckConstraint("ck_authority_counter_retained_floor", "retained_floor_sequence >= 0 AND retained_floor_sequence <= last_sequence");
+                    table.CheckConstraint("ck_authority_counter_singleton", "singleton = 1");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_erasure_intents",
+                columns: table => new
+                {
+                    authority_sequence = table.Column<long>(type: "INTEGER", nullable: false),
+                    intent_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    subject_kind = table.Column<short>(type: "INTEGER", nullable: false),
+                    subject_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    reason_code = table.Column<short>(type: "INTEGER", nullable: false),
+                    policy_version = table.Column<int>(type: "INTEGER", nullable: false),
+                    requested_at_utc = table.Column<long>(type: "INTEGER", nullable: false),
+                    recorded_at_utc = table.Column<long>(type: "INTEGER", nullable: false),
+                    retention_expires_at_utc = table.Column<long>(type: "INTEGER", nullable: false),
+                    is_legal_hold_pseudonymized = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_erasure_intents", x => x.authority_sequence);
+                    table.CheckConstraint("ck_erasure_intents_intent_uuid_v7", "is_legal_hold_pseudonymized = 1 OR substr(intent_id, 15, 1) = '7'");
+                    table.CheckConstraint("ck_erasure_intents_intent_variant", "lower(substr(intent_id, 20, 1)) IN ('8', '9', 'a', 'b')");
+                    table.CheckConstraint("ck_erasure_intents_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
+                    table.CheckConstraint("ck_erasure_intents_sequence", "authority_sequence > 0");
+                    table.CheckConstraint("ck_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
+                    table.CheckConstraint("ck_erasure_intents_subject_kind", "subject_kind = 1");
+                    table.CheckConstraint("ck_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_erasure_intents_intent_id_subject_kind_policy_version",
+                table: "ie_erasure_intents",
+                columns: new[] { "intent_id", "subject_kind", "policy_version" },
+                unique: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "ie_authority_counter");
+
+            migrationBuilder.DropTable(
+                name: "ie_erasure_intents");
+        }
+    }
+}

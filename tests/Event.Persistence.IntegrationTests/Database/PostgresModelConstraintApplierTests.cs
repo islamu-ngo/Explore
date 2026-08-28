@@ -6,6 +6,7 @@ using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -39,8 +40,11 @@ public sealed class PostgresModelConstraintApplierTests
             TlsMode = PrimaryDatabaseTlsMode.Disabled,
         };
         var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        optionsBuilder.EnableServiceProviderCaching(false);
         PrimaryDatabaseConnectionResult configured =
             PrimaryDatabaseProviderComposition.ConfigureApplication(optionsBuilder, options);
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         await using var context = new ExploreDbContext(optionsBuilder.Options);
         await context.Database.MigrateAsync();
 
@@ -60,7 +64,7 @@ public sealed class PostgresModelConstraintApplierTests
 
         var appliedMigrations = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
         await Assert.That(appliedMigrations).HasSingleItem();
-        await Assert.That(appliedMigrations[0]).EndsWith("_InitialPostgreSqlApplication");
+        await Assert.That(appliedMigrations[0]).EndsWith("_Init");
 
         await PostgresModelConstraintApplier.ApplyAsync(context);
 
@@ -72,7 +76,7 @@ public sealed class PostgresModelConstraintApplierTests
             JOIN pg_catalog.pg_namespace AS schema_entry ON schema_entry.oid = table_entry.relnamespace
             WHERE schema_entry.nspname = @schema
               AND table_entry.relname = 'event_sessions'
-              AND constraint_entry.conname = 'EX_EventSession_RoomNoOverlap'
+              AND constraint_entry.conname = 'ex_event_session_room_no_overlap'
               AND constraint_entry.contype = 'x'
             """,
             connection);
@@ -91,13 +95,13 @@ public sealed class PostgresModelConstraintApplierTests
             WHERE schema_entry.nspname = @schema
               AND table_entry.relname = 'event_sessions'
               AND constraint_entry.conname IN (
-                  'CK_EventSession_EndAfterStart',
-                  'CK_EventSession_EndTimeTypeState',
-                  'CK_EventSession_LocalStartMinuteRange',
-                  'CK_EventSession_LocalEndMinuteRange',
-                  'CK_EventSession_LocalStartMinuteMatchesTime',
-                  'CK_EventSession_LocalEndMinuteMatchesTime',
-                  'CK_EventSession_RoomRequiresLocation')
+                  'ck_event_session_end_after_start',
+                  'ck_event_session_end_time_type_state',
+                  'ck_event_session_local_start_minute_range',
+                  'ck_event_session_local_end_minute_range',
+                  'ck_event_session_local_start_minute_matches_time',
+                  'ck_event_session_local_end_minute_matches_time',
+                  'ck_event_session_room_requires_location')
               AND constraint_entry.contype = 'c'
             """,
             connection);

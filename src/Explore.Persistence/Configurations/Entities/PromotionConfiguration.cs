@@ -12,7 +12,6 @@ public sealed class PromotionDefinitionConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<PromotionDefinition> builder)
     {
-        builder.ToTable("promotion_definitions");
         builder.Property(definition => definition.Id).ValueGeneratedNever();
         builder.Property(definition => definition.DisplayLabel).IsRequired().HasMaxLength(200);
         builder.Property(definition => definition.ScopeMetadata)
@@ -41,7 +40,6 @@ public sealed class PromotionCodeConfiguration : IEntityTypeConfiguration<Promot
 {
     public void Configure(EntityTypeBuilder<PromotionCode> builder)
     {
-        builder.ToTable("promotion_codes");
         builder.Property(code => code.Id).ValueGeneratedNever();
         builder.Property(code => code.DisplayLabel).IsRequired().HasMaxLength(16);
         builder.Property(code => code.ScopeMetadata)
@@ -70,7 +68,7 @@ public sealed class PromotionReservationConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<PromotionReservation> builder)
     {
-        builder.ToTable("promotion_reservations", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_promotion_reservation_active_slot", "(promotion_reservation_status_id = 1 AND order_reservation_slot = '00000000-0000-0000-0000-000000000000') OR (promotion_reservation_status_id <> 1 AND order_reservation_slot = id)");
             table.HasCheckConstraint("ck_promotion_reservation_status_timestamps", "(promotion_reservation_status_id = 1 AND consumed_at_utc IS NULL AND released_at_utc IS NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 2 AND consumed_at_utc IS NOT NULL AND released_at_utc IS NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 3 AND consumed_at_utc IS NULL AND released_at_utc IS NOT NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 4 AND consumed_at_utc IS NULL AND released_at_utc IS NULL AND expired_at_utc IS NOT NULL)");

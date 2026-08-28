@@ -7,6 +7,7 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Events;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
@@ -66,16 +67,7 @@ public class PublishEventCommandHandlerTests
             .Returns(callInfo => callInfo.Arg<OutboxMessage>());
 
         _handler = new PublishEventCommandHandler(
-            _eventRepository,
-            _eventLocationRepository,
-            _outboxRepository,
-            _unitOfWork,
-            _cache,
-            _policyProvider,
-            new EventLifecycleReadinessEvaluator(),
-            _userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled(),
-            TimeProvider.System);
+            CreateExecutor(AtprotoPublicationPlannerTestFactory.Disabled()));
     }
 
     [Test]
@@ -118,6 +110,101 @@ public class PublishEventCommandHandlerTests
         await Assert.That(fanoutPayload.EventTitle).IsEqualTo(@event.Title);
         await Assert.That(fanoutPayload.SourceActorId).IsEqualTo(@event.ActorId);
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("TCM110ApprovalPolicyVertical")]
+    public async Task Handle_WhenEffectivePolicyRequiresApproval_RejectsBeforePublicationSideEffects()
+    {
+        var concurrencyStamp = Guid.CreateVersion7();
+        var @event = CreateReadyEvent(concurrencyStamp);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _policyProvider
+            .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateEventPublishPolicy() with { RequiresApproval = true });
+        var atprotoSettings = Substitute.For<IHierarchicalSettingsResolver>();
+        var handler = CreateHandler(CreateObservableAtprotoPlanner(atprotoSettings));
+
+        var result = await handler.Handle(new PublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        var actual = new ApprovalRejectionObservables(
+            result.IsSuccess,
+            result.FailureCode,
+            (EventStatusEnum)@event.EventStatusId,
+            @event.ConcurrencyStamp);
+        var expected = new ApprovalRejectionObservables(
+            Success: false,
+            FailureCode: "event_publish_approval_required",
+            EventStatusEnum.Draft,
+            concurrencyStamp);
+
+        await Assert.That(actual).IsEqualTo(expected);
+        await _unitOfWork.Received(1).ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await atprotoSettings.DidNotReceive().ResolveBatchAsync(
+            Arg.Any<IEnumerable<string>>(),
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("TCM110ApprovalPolicyVertical")]
+    public async Task Handle_WhenRetryObservesApprovalRequirement_RejectsFreshAttemptWithoutSecondPublication()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var outerEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var rolledBackAttemptEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var retryEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        _eventRepository.GetById(eventId).Returns(outerEvent, rolledBackAttemptEvent, retryEvent);
+        _policyProvider
+            .GetEffectivePolicyAsync(tenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(
+                CreateEventPublishPolicy() with { RequiresApproval = false },
+                CreateEventPublishPolicy() with { RequiresApproval = true });
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = eventId,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        var actual = new ApprovalRejectionObservables(
+            result.IsSuccess,
+            result.FailureCode,
+            (EventStatusEnum)retryEvent.EventStatusId,
+            retryEvent.ConcurrencyStamp);
+        var expected = new ApprovalRejectionObservables(
+            Success: false,
+            FailureCode: "event_publish_approval_required",
+            EventStatusEnum.Draft,
+            concurrencyStamp);
+
+        await Assert.That(actual).IsEqualTo(expected);
+        await _eventRepository.Received(1).Update(rolledBackAttemptEvent);
+        await _eventRepository.DidNotReceive().Update(retryEvent);
+        await _outboxRepository.Received(1).Create(Arg.Any<OutboxMessage>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -243,17 +330,7 @@ public class PublishEventCommandHandlerTests
             payloads,
             federationOutbox,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<AtprotoEventPublicationPlanner>.Instance);
-        var handler = new PublishEventCommandHandler(
-            _eventRepository,
-            _eventLocationRepository,
-            _outboxRepository,
-            _unitOfWork,
-            _cache,
-            _policyProvider,
-            new EventLifecycleReadinessEvaluator(),
-            _userContext,
-            planner,
-            TimeProvider.System);
+        var handler = new PublishEventCommandHandler(CreateExecutor(planner));
 
         var result = await handler.Handle(new PublishEventCommand
         {
@@ -469,6 +546,104 @@ public class PublishEventCommandHandlerTests
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
+    [Test]
+    public async Task ApprovalModeRejectsAStaleConcurrencyStampBeforeTransaction()
+    {
+        var @event = CreateReadyEvent(Guid.CreateVersion7());
+        _eventRepository.GetById(@event.Id).Returns(@event);
+
+        var result = await CreateApprovalHandler().Handle(new ApprovePublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
+        }, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventPublicationExecutor.ConcurrencyConflictCode);
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task ApprovalModeRetainsReadinessAndLocationPrivacyChecks()
+    {
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var @event = CreateReadyEvent(concurrencyStamp);
+        @event.FirstSessionStartUtc = null;
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _policyProvider
+            .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateEventPublishPolicy() with { RequiresApproval = true });
+
+        var result = await CreateApprovalHandler().Handle(new ApprovePublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventPublicationExecutor.ReadinessFailedCode);
+        await _eventLocationRepository.Received(1).GetByEventIdAsync(
+            @event.Id,
+            Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ApprovalModeRetryReevaluatesPolicyAndUsesStableOutboxIdentity()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var outerEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var rolledBackAttempt = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var retryAttempt = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        _eventRepository.GetById(eventId).Returns(outerEvent, rolledBackAttempt, retryAttempt);
+        _policyProvider
+            .GetEffectivePolicyAsync(tenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(
+                CreateEventPublishPolicy() with { RequiresApproval = true },
+                CreateEventPublishPolicy() with { RequiresApproval = true });
+        var messages = new List<OutboxMessage>();
+        _outboxRepository.Create(Arg.Any<OutboxMessage>()).Returns(call =>
+        {
+            OutboxMessage message = call.Arg<OutboxMessage>();
+            messages.Add(message);
+            return message;
+        });
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+
+        var result = await CreateApprovalHandler().Handle(new ApprovePublishEventCommand
+        {
+            Id = eventId,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await _policyProvider.Received(2).GetEffectivePolicyAsync(
+            tenantId,
+            ValidationProfile.EventPublish,
+            Arg.Any<CancellationToken>());
+        await _eventRepository.Received(1).Update(rolledBackAttempt);
+        await _eventRepository.Received(1).Update(retryAttempt);
+        await Assert.That(messages).Count().IsEqualTo(2);
+        await Assert.That(messages.Select(message => message.Id).Distinct()).Count().IsEqualTo(1);
+        await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+    }
+
     private static Explore.Domain.Event CreateReadyEvent(
         Guid concurrencyStamp,
         EventStatusEnum status = EventStatusEnum.Draft,
@@ -502,6 +677,40 @@ public class PublishEventCommandHandlerTests
         TenantStatus = null!
     };
 
+    private PublishEventCommandHandler CreateHandler(AtprotoEventPublicationPlanner planner) =>
+        new(CreateExecutor(planner));
+
+    private ApprovePublishEventCommandHandler CreateApprovalHandler() =>
+        new(CreateExecutor(AtprotoPublicationPlannerTestFactory.Disabled()));
+
+    private EventPublicationExecutor CreateExecutor(AtprotoEventPublicationPlanner planner) => new(
+        _eventRepository,
+        _eventLocationRepository,
+        _outboxRepository,
+        _unitOfWork,
+        _cache,
+        _policyProvider,
+        new EventLifecycleReadinessEvaluator(),
+        _userContext,
+        planner,
+        TimeProvider.System);
+
+    private AtprotoEventPublicationPlanner CreateObservableAtprotoPlanner(IHierarchicalSettingsResolver settings) => new(
+        new AtprotoEventGovernanceResolver(settings),
+        _eventRepository,
+        Substitute.For<IAtprotoRecordRepository>(),
+        Substitute.For<IUserAuthenticationTokenRepository>(),
+        Substitute.For<IUserExternalLoginRepository>(),
+        Substitute.For<IAtprotoPublicationPayloadBuilder>(),
+        Substitute.For<IPdsSyncOutboxRepository>(),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<AtprotoEventPublicationPlanner>.Instance);
+
+    private sealed record ApprovalRejectionObservables(
+        bool Success,
+        string? FailureCode,
+        EventStatusEnum Status,
+        Guid ConcurrencyStamp);
+
     private sealed class AtprotoPublicationGraphFactory(Explore.Domain.Event eventEntity)
     {
         public AtprotoEventPublicationEntityGraph Build() =>
@@ -522,7 +731,8 @@ public class PublishEventCommandHandlerTests
             EventFieldKey.ScheduleSessions,
             EventFieldKey.ScheduleFirstStart
         },
-        RequiredSessionFields = new HashSet<Enum>()
+        RequiredSessionFields = new HashSet<Enum>(),
+        RequiresApproval = false
     };
 
     private static EventLifecyclePolicy CreateCommunityPublishPolicy() => new()

@@ -418,6 +418,56 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
     }
 
     [Test]
+    public async Task ClaimAsyncCreatesReplacementWhenTerminalSlotWasAlreadyReleased()
+    {
+        DateTime requestedAt = UtcNow.AddSeconds(3);
+        PaymentAttempt latest = CreateTerminalAttempt(
+            PaymentAttemptStatusEnum.Failed);
+        _ = latest.TryReleaseActiveSlot(UtcNow.AddSeconds(2));
+        CheckoutDispatchEffect effect =
+            CheckoutDispatchEffect.Create(latest, UtcNow);
+        ConfigureCurrentReadiness(latest);
+        ConfigurePayableOrder();
+        _attempts.GetLatestByOrderAsync(
+                _tenantId,
+                _orderId,
+                Arg.Any<CancellationToken>())
+            .Returns((latest, effect));
+        _attempts.ClaimAsync(
+                Arg.Any<RegistrationPaymentAttemptClaim>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                RegistrationPaymentAttemptClaim claim =
+                    call.Arg<RegistrationPaymentAttemptClaim>();
+                return new RegistrationPaymentAttemptClaimOutcome(
+                    claim.Attempt,
+                    claim.DispatchEffect,
+                    true);
+            });
+
+        RegistrationPaymentAttemptClaimResult result =
+            await CreateService().ClaimAsync(
+                new(
+                    _tenantId,
+                    _orderId,
+                    requestedAt,
+                    latest.Id,
+                    latest.AcceptanceSnapshot),
+                CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Created).IsTrue();
+        await Assert.That(result.Attempt!.AcceptanceSnapshot)
+            .IsSameReferenceAs(latest.AcceptanceSnapshot);
+        await _attempts.DidNotReceiveWithAnyArgs()
+            .ReleaseActiveSlotAsync(default!, default, default);
+        await _attempts.Received(1).ClaimAsync(
+            Arg.Any<RegistrationPaymentAttemptClaim>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ClaimAsyncCreatesFreshAcceptedAttemptAfterTerminalSlotRelease()
     {
         PaymentAttempt latest = CreateTerminalAttempt(PaymentAttemptStatusEnum.Failed);
@@ -442,6 +492,8 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
         await Assert.That(result.Created).IsTrue();
         await Assert.That(result.Attempt!.Id).IsNotEqualTo(latest.Id);
         await Assert.That(result.Attempt.HasImmutableAcceptance).IsTrue();
+        await Assert.That(result.Attempt.AcceptanceSnapshot)
+            .IsSameReferenceAs(latest.AcceptanceSnapshot);
         await Assert.That(result.Attempt.ProviderIdempotencyKey).IsEqualTo($"checkout:{result.Attempt.Id:N}");
         await _attempts.Received(1).ReleaseActiveSlotAsync(latest, UtcNow, Arg.Any<CancellationToken>());
         await _attempts.Received(1).ClaimAsync(Arg.Any<RegistrationPaymentAttemptClaim>(), Arg.Any<CancellationToken>());

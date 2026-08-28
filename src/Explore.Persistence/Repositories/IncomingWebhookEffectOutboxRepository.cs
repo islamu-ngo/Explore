@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -13,8 +14,6 @@ namespace Explore.Persistence.Repositories;
 public sealed class IncomingWebhookEffectOutboxRepository(ExploreDbContext dbContext)
     : IIncomingWebhookEffectOutboxRepository
 {
-    private const string EffectReceiptIdentityIndexName = "ux_incoming_webhook_effect_receipts_identity";
-
     public Task<IncomingWebhookEffectOutbox?> GetByProviderIdentityAsync(
         Guid tenantId,
         string provider,
@@ -59,13 +58,10 @@ public sealed class IncomingWebhookEffectOutboxRepository(ExploreDbContext dbCon
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-            {
-                await dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    ["incoming-webhook-effect-claim"],
-                    cancellationToken);
-            }
+            _ = await RelationalNamedLock.AcquireTransactionAsync(
+                dbContext,
+                "incoming-webhook-effect-claim",
+                cancellationToken);
 
             var candidates = await dbContext.IncomingWebhookEffectOutboxes
                 .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
@@ -229,14 +225,21 @@ public sealed class IncomingWebhookEffectOutboxRepository(ExploreDbContext dbCon
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: EffectReceiptIdentityIndexName
-            })
+        catch (DbUpdateException exception) when (IsEffectReceiptIdentityViolation(exception))
         {
             throw new IncomingWebhookEffectReceiptConflictException(exception);
         }
     }
+
+    private bool IsEffectReceiptIdentityViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: { } constraintName
+        } &&
+        constraintName == RelationalConstraintDescriptorResolver.UniqueIndex<IncomingWebhookEffectReceipt>(
+            dbContext,
+            nameof(IncomingWebhookEffectReceipt.TenantId),
+            nameof(IncomingWebhookEffectReceipt.IncomingWebhookMessageId),
+            nameof(IncomingWebhookEffectReceipt.EffectKind)).Name;
 }

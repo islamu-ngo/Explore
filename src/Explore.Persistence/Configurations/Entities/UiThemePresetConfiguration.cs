@@ -13,7 +13,6 @@ public class UiThemePresetConfiguration : IEntityTypeConfiguration<UiThemePreset
 {
     public void Configure(EntityTypeBuilder<UiThemePreset> builder)
     {
-        builder.ToTable("ui_theme_presets");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

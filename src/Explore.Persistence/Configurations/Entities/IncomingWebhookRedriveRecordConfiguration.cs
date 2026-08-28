@@ -11,7 +11,7 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<IncomingWebhookRedriveRecord> builder)
     {
-        builder.ToTable("incoming_webhook_redrive_records", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_incoming_webhook_redrive_records_generation_order",
@@ -24,8 +24,7 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.ResultId).IsRequired();
         builder.Ignore(e => e.Result);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_incoming_webhook_redrive_records_tenant_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -42,8 +41,6 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
             e.TenantId,
             e.IncomingWebhookMessageId,
             e.TargetProcessingGeneration
-        })
-            .HasDatabaseName("ux_incoming_webhook_redrive_records_target_generation")
-            .IsUnique();
+        }).IsUnique();
     }
 }

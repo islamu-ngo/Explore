@@ -28,6 +28,8 @@ public class UpdateSettingCommandHandler
     private readonly IMediator _mediator;
     private readonly ILogger<UpdateSettingCommandHandler> _logger;
     private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyMutationBoundary;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UpdateSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -37,6 +39,8 @@ public class UpdateSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<UpdateSettingCommandHandler> logger,
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
+        IUnitOfWork unitOfWork,
         ICerbosConfigResolver? cerbosConfigResolver = null,
         ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
@@ -49,6 +53,8 @@ public class UpdateSettingCommandHandler
         _mediator = mediator;
         _logger = logger;
         _locationPrivacyMutations = locationPrivacyMutations;
+        _publicationPolicyMutationBoundary = publicationPolicyMutationBoundary;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -103,12 +109,15 @@ public class UpdateSettingCommandHandler
             return BaseCommandResponse.Validation<Guid>([authorityError], authorityError);
         }
 
+        bool isGuardedPublicationPolicyMutation = request.Scope is SettingScope.Tenant or SettingScope.Instance
+            && PublicationPolicySettingKeys.All.Contains(request.Key, StringComparer.Ordinal);
+
         // Check lock state
         var context = SettingCommandHelper.BuildSettingContext(
             request.Scope, _tenantContext, resolvedUserId);
         var resolved = await _resolver.ResolveWithMetadataAsync(request.Key, context, cancellationToken);
 
-        if (resolved is not null)
+        if (!isGuardedPublicationPolicyMutation && resolved is not null)
         {
             var (isBlocked, lockReason) = SettingCommandHelper.CheckLockState(resolved, request.Scope);
             if (isBlocked)
@@ -121,6 +130,65 @@ public class UpdateSettingCommandHandler
         var oldValue = resolved?.Value;
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
             request.Scope, _tenantContext, resolvedUserId);
+
+        if (isGuardedPublicationPolicyMutation)
+        {
+            DateTime occurredAtUtc = DateTime.UtcNow;
+            PublicationPolicyMutationResult mutationResult = await _unitOfWork.ExecuteInTransactionAsync(
+                token => request.Scope == SettingScope.Tenant
+                    ? _publicationPolicyMutationBoundary.ApplyTenantAsync(
+                        new PublicationPolicyTenantMutationRequest(
+                            _tenantContext.TenantId,
+                            actorId,
+                            occurredAtUtc,
+                            [new PublicationPolicySettingMutation(
+                                request.Key,
+                                PublicationPolicyMutationKind.Set,
+                                serializedValue,
+                                _tenantContext.TenantId,
+                                IsLocked: null)],
+                            PublicationPolicyLockedSystemBehavior.Reject),
+                        token)
+                    : _publicationPolicyMutationBoundary.ApplyInstanceAsync(
+                        new PublicationPolicyInstanceMutationRequest(
+                            actorId,
+                            occurredAtUtc,
+                            [new PublicationPolicySettingMutation(
+                                request.Key,
+                                PublicationPolicyMutationKind.Set,
+                                serializedValue,
+                                TenantId: null,
+                                IsLocked: resolved?.IsLocked ?? false)]),
+                        token),
+                cancellationToken);
+
+            if (!mutationResult.Success)
+            {
+                string failureCode = string.IsNullOrWhiteSpace(mutationResult.FailureCode)
+                    ? "event_reporting_intake_policy_invalid"
+                    : mutationResult.FailureCode;
+                string failureMessage = string.IsNullOrWhiteSpace(mutationResult.Message)
+                    ? PublicationPolicyMutationMessages.InvalidPolicy
+                    : mutationResult.Message;
+                return BaseCommandResponse.Failure<Guid>(failureCode, failureMessage);
+            }
+
+            if (mutationResult.DeferredNotifications.Length > 0)
+            {
+                _resolver.InvalidateCache(request.Scope, scopeId);
+                foreach (SettingChangedNotification notification in mutationResult.DeferredNotifications)
+                {
+                    await _mediator.Publish(notification, CancellationToken.None);
+                }
+            }
+
+            _logger.LogInformation(
+                "Setting updated: {SettingKey} at {Scope} scope. Actor: {ActorId}",
+                request.Key, request.Scope, actorId);
+            return BaseCommandResponse.Success(
+                scopeId,
+                $"Setting '{request.Key}' updated successfully.");
+        }
 
         // Write
         if (request.Scope == SettingScope.User)

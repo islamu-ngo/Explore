@@ -118,6 +118,10 @@ public sealed class CerbosProviderParityLaneTests : IDisposable
                 userId = ParityCorpus.UserId.ToString("D"),
             },
 
+            ParitySubject.EventOwner => EventRolePrincipalAttributes(tenant, "event.owner"),
+
+            ParitySubject.EventManager => EventRolePrincipalAttributes(tenant, "event.manager"),
+
             ParitySubject.InstanceAdmin => new
             {
                 isInstanceAdmin = true,
@@ -175,6 +179,23 @@ public sealed class CerbosProviderParityLaneTests : IDisposable
                 permissions
             }
         }
+    };
+
+    private static object EventRolePrincipalAttributes(string tenant, string role) => new
+    {
+        isInstanceAdmin = false,
+        tenantMemberships = new Dictionary<string, string>(),
+        orgMemberships = new Dictionary<string, string>(),
+        userId = ParityCorpus.UserId.ToString("D"),
+        eventAssignments = new Dictionary<string, object>
+        {
+            [ParityCorpus.EventId.ToString("D")] = new
+            {
+                tenantId = tenant,
+                roles = new[] { role },
+                permissions = new[] { "event:publish" },
+            }
+        },
     };
 
     /// <summary>

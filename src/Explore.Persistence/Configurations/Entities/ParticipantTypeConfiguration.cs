@@ -11,7 +11,6 @@ public sealed class ParticipantTypeConfiguration : IEntityTypeConfiguration<Part
 {
     public void Configure(EntityTypeBuilder<ParticipantType> builder)
     {
-        builder.ToTable("participant_types");
         builder.Property(type => type.Id).ValueGeneratedNever();
         builder.Property(type => type.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(type => type.FullName).IsRequired().HasMaxLength(100);

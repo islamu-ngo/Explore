@@ -1,6 +1,7 @@
 // ABOUTME: Proves PostgreSQL capacity locking prevents two ticket types from taking one shared last seat.
 // ABOUTME: Uses independent DbContexts and serializable transactions against the real registration-hold repository.
 
+using System.Diagnostics;
 using System.Text.Json;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
@@ -8,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
@@ -38,8 +40,15 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         await Assert.That(await ScalarAsync(
             "SELECT COUNT(*) FROM capacity_hold_policies WHERE (id, master_code) IN ((1, 'NO_HOLD_UNTIL_READY'), (2, 'TIMED_HOLD_ON_SELECTION'), (3, 'APPROVAL_NO_HOLD'), (4, 'WAITLIST_WHEN_FULL'))"))
             .IsEqualTo(4L);
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        string constraintName = context.Model.FindEntityType(typeof(EventCapacityPool))!
+            .GetForeignKeys()
+            .Single(foreignKey =>
+                foreignKey.PrincipalEntityType.ClrType == typeof(CapacityHoldPolicy))
+            .GetConstraintName()!;
         await Assert.That(await ScalarAsync(
-            "SELECT COUNT(*) FROM pg_constraint WHERE conname = 'fk_event_capacity_pools_capacity_hold_policies_capacity_hold_p' AND contype = 'f'"))
+            "SELECT COUNT(*) FROM pg_constraint WHERE conname = @constraint_name AND contype = 'f'",
+            ("constraint_name", constraintName)))
             .IsEqualTo(1L);
     }
 
@@ -207,10 +216,18 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             await inventory.SaveChangesAsync(CancellationToken.None);
         }
 
-        await using (ExploreDbContext expiryContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId)))
+        var baseline = new PersistenceQueryBaselineInterceptor();
+        await using (ExploreDbContext expiryContext = fixture.CreateTenantFilteredDbContext(
+                         new TestTenantContext(tenantId),
+                         baseline))
         {
             var inventory = new RegistrationInventoryRepository(expiryContext);
-            await Assert.That(await inventory.TryExpireDueHoldAsync(holdId, UtcNow, CancellationToken.None)).IsTrue();
+            var elapsed = Stopwatch.StartNew();
+            bool expired = await inventory.TryExpireDueHoldAsync(holdId, UtcNow, CancellationToken.None);
+            elapsed.Stop();
+            PersistenceQueryBaselineEvidence.Record(baseline
+                .Snapshot("inventory_expire_due_hold", expired ? 1 : 0, elapsed.Elapsed));
+            await Assert.That(expired).IsTrue();
         }
 
         await using ExploreDbContext verificationContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
@@ -671,12 +688,27 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         await using ExploreDbContext eventContext = CreateRetryingTenantContext(seed.TenantId);
         DomainEvent eventTarget = await eventContext.Events.AsNoTracking().SingleAsync(value => value.Id == seed.Order.EventId, timeout.Token);
         OrganizerPaymentProviderConnection connection = ReadyConnection(seed.TenantId, eventTarget.OrganizerActorId!.Value);
-        PaidEventPolicyVersion instancePolicy = PaidEventPolicyVersion.CreateDefaultInstance();
+        PaidEventPolicyVersion defaultPolicy = PaidEventPolicyVersion.CreateDefaultInstance();
+        PaidEventPolicyVersion instancePolicy = defaultPolicy.CreateRevision(
+            isPaymentsEnabled: true,
+            defaultPolicy.AllowedOrganizerKinds,
+            defaultPolicy.RequiresLocalVerification,
+            defaultPolicy.AllowedCurrencyCodes,
+            defaultPolicy.DefaultCurrencyCode,
+            defaultPolicy.RefundProtections,
+            defaultPolicy.CurrencyRiskLimits,
+            defaultPolicy.RequiresFirstPaidEventReview,
+            defaultPolicy.FarFutureReviewThresholdDays);
         RegistrationPaymentAttemptClaimResult[] results = await Task.WhenAll(
             RetryThroughServiceAsync(seed, eventTarget, connection, instancePolicy, timeout.Token),
             RetryThroughServiceAsync(seed, eventTarget, connection, instancePolicy, timeout.Token));
 
-        await Assert.That(results.All(value => value.Success && value.Attempt is not null)).IsTrue();
+        await Assert.That(results.All(value => value.Success && value.Attempt is not null))
+            .IsTrue()
+            .Because(string.Join(
+                " | ",
+                results.Select(value =>
+                    $"{value.FailureCode ?? "success"}:{value.Message}")));
         await Assert.That(results.Select(value => value.Attempt!.Id).Distinct().Count()).IsEqualTo(1);
         Guid secondAttemptId = results[0].Attempt!.Id;
         await using (ExploreDbContext terminalContext = CreateRetryingTenantContext(seed.TenantId))
@@ -692,7 +724,12 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             RetryThroughServiceAsync(seed, eventTarget, connection, instancePolicy, timeout.Token, secondAttemptId, UtcNow.AddSeconds(3)),
             RetryThroughServiceAsync(seed, eventTarget, connection, instancePolicy, timeout.Token, secondAttemptId, UtcNow.AddSeconds(3)));
 
-        await Assert.That(nextResults.All(value => value.Success && value.Attempt is not null)).IsTrue();
+        await Assert.That(nextResults.All(value => value.Success && value.Attempt is not null))
+            .IsTrue()
+            .Because(string.Join(
+                " | ",
+                nextResults.Select(value =>
+                    $"{value.FailureCode ?? "success"}:{value.Message}")));
         await Assert.That(nextResults.Select(value => value.Attempt!.Id).Distinct().Count()).IsEqualTo(1);
         await Assert.That(nextResults[0].Attempt!.Id).IsNotEqualTo(secondAttemptId);
         await using ExploreDbContext verification = CreateRetryingTenantContext(seed.TenantId);
@@ -719,7 +756,11 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
     {
         await using ExploreDbContext context = CreateRetryingTenantContext(seed.TenantId);
         var eventRepository = Substitute.For<IEventRepository>();
-        eventRepository.GetEventWithDetails(eventTarget.Id).Returns(eventTarget);
+        eventRepository.GetEventWithDetailsAsync(
+                eventTarget.Id,
+                seed.TenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(eventTarget);
         var connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
         connections.GetActiveByScopeAsync(
                 seed.TenantId,
@@ -747,8 +788,27 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             ReadyActivation(),
             CurrentAcceptance(),
             new EfCoreUnitOfWork(context));
+        RegistrationOrder currentOrder = await context.RegistrationOrders
+            .AsNoTracking()
+            .SingleAsync(value => value.Id == seed.OrderId, cancellationToken);
+        PaidOrderAcceptanceSnapshot acceptance = PaidAcceptanceTestFacts.Create(
+            currentOrder.TenantId,
+            currentOrder.Id,
+            currentOrder.EventId,
+            currentOrder.ConcurrencyStamp.ToString("N"),
+            instancePolicy.Id,
+            currentOrder.OrganizerDirectedTotalMinorSnapshot,
+            currentOrder.PlatformFeeTotalMinorSnapshot,
+            currentOrder.PlatformContributionTotalMinorSnapshot,
+            requestedAt ?? UtcNow.AddSeconds(1),
+            currentOrder.CurrencyCode);
         return await service.ClaimAsync(
-            new(seed.TenantId, seed.OrderId, requestedAt ?? UtcNow.AddSeconds(1), terminalAttemptId ?? seed.AttemptId),
+            new(
+                seed.TenantId,
+                seed.OrderId,
+                requestedAt ?? UtcNow.AddSeconds(1),
+                terminalAttemptId ?? seed.AttemptId,
+                acceptance),
             cancellationToken);
     }
 
@@ -815,10 +875,13 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         await using ExploreDbContext context = CreateRetryingTenantContext(seed.TenantId);
         var repository = new RegistrationPaymentAttemptRepository(context);
         var unitOfWork = new EfCoreUnitOfWork(context);
-        return await unitOfWork.ExecuteSerializableAsync(async token =>
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            RegistrationOrder order = await context.RegistrationOrders
-                .SingleAsync(value => value.Id == seed.OrderId, token);
+            var inventory = new RegistrationInventoryRepository(context);
+            RegistrationOrder order = (await inventory.GetOrderForUpdateWithLinesAsync(
+                seed.OrderId,
+                seed.TenantId,
+                token))!;
             PaymentAttempt attempt = CreatePaymentAttempt(
                 order,
                 PaymentAttemptStatusEnum.Created,
@@ -880,7 +943,13 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             definition.Publish(UtcNow.AddMinutes(-3));
             PromotionCode code = PromotionCode.Create(definition, "EXPIRY", scope);
             reservation = PromotionReservation.Reserve(Guid.CreateVersion7(), order, definition, code, UtcNow.AddMinutes(-2));
-            context.AddRange(definition, code, reservation);
+            var promotions = new PromotionManagementRepository(context);
+            await promotions.AddDefinitionAsync(definition, CancellationToken.None);
+            await promotions.AddPublishedCodeAsync(
+                code,
+                new PromotionCodeDigest(1, "expiry-promotion-digest"),
+                CancellationToken.None);
+            context.Add(reservation);
         }
 
         context.AddRange(order, hold, attempt, CheckoutDispatchEffect.Create(attempt, UtcNow.AddMinutes(-2)));
@@ -919,6 +988,17 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             attempt.MarkDispatchFailed(UtcNow.AddMinutes(-1), "req_failed");
         }
 
+        attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
+            order.TenantId,
+            order.Id,
+            order.EventId,
+            attempt.CompositionRevision,
+            Guid.CreateVersion7(),
+            order.OrganizerDirectedTotalMinorSnapshot,
+            order.PlatformFeeTotalMinorSnapshot,
+            order.PlatformContributionTotalMinorSnapshot,
+            UtcNow.AddMinutes(-2),
+            order.CurrencyCode));
         return attempt;
     }
 
@@ -1311,11 +1391,17 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         public override DateTimeOffset GetUtcNow() => now;
     }
 
-    private async Task<long> ScalarAsync(string sql)
+    private async Task<long> ScalarAsync(
+        string sql,
+        params (string Name, object Value)[] parameters)
     {
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
+        foreach ((string name, object value) in parameters)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
         return (long)(await command.ExecuteScalarAsync())!;
     }
 

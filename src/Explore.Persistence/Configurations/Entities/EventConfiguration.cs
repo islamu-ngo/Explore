@@ -140,40 +140,34 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // ===== Performance Indexes =====
 
         // Primary listing query: active published events per tenant
-        builder.HasIndex(e => new { e.TenantId, e.IsDeleted, e.EventStatusId })
-            .HasDatabaseName("ix_events_tenant_active_status");
+        builder.HasIndex(e => new { e.TenantId, e.IsDeleted, e.EventStatusId });
 
         // Organization event listing: events by org, sorted by date
         builder.HasIndex(e => new { e.TenantId, e.ActorId, e.CreatedAt })
-            .HasDatabaseName("ix_events_tenant_actor_created")
             .IsDescending(false, false, true);
 
         // Date range queries: upcoming/past events
-        builder.HasIndex(e => new { e.TenantId, e.FirstSessionDate, e.LastSessionDate })
-            .HasDatabaseName("ix_events_tenant_daterange");
+        builder.HasIndex(e => new { e.TenantId, e.FirstSessionDate, e.LastSessionDate });
 
         // Event type filtering
-        builder.HasIndex(e => new { e.TenantId, e.EventTypeId })
-            .HasDatabaseName("ix_events_tenant_eventtype");
+        builder.HasIndex(e => new { e.TenantId, e.EventTypeId });
 
         // Slug lookup (for URL-friendly event access)
-        builder.HasIndex(e => new { e.TenantId, e.Slug })
-            .HasDatabaseName("ix_events_tenant_slug");
+        builder.HasIndex(e => new { e.TenantId, e.Slug });
 
         builder.HasIndex(e => new { e.TenantId, e.PublicCode })
-            .IsUnique()
-            .HasDatabaseName("ix_events_tenant_public_code");
+            .IsUnique();
 
         builder.ToTable(t =>
         {
             t.HasCheckConstraint(
-                "CK_Event_SessionDateRange",
+                "ck_event_session_date_range",
                 "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
             t.HasCheckConstraint(
-                "CK_Event_SessionStartUtcRange",
+                "ck_event_session_start_utc_range",
                 "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
             t.HasCheckConstraint(
-                "CK_Event_TimeZoneIdNotBlank",
+                "ck_event_time_zone_id_not_blank",
                 "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
         });
 

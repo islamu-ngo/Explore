@@ -32,7 +32,6 @@ public class EventSessionLanguageConfiguration : IEntityTypeConfiguration<EventS
 
         // Unique constraint: one language per event session
         builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.LanguageId })
-            .IsUnique()
-            .HasDatabaseName("ix_eventsessionlanguages_session_language");
+            .IsUnique();
     }
 }

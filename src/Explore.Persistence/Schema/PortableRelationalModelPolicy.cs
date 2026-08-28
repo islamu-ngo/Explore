@@ -1,6 +1,8 @@
 // ABOUTME: Normalizes PostgreSQL-oriented relational annotations for the other supported database providers.
 // ABOUTME: Preserves PostgreSQL types while emitting portable defaults and constraint SQL for every provider.
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
@@ -72,14 +74,86 @@ internal static partial class PortableRelationalModelPolicy
             {
                 NormalizeSqlServerDeleteBehaviors(entityType);
             }
-            if (providerName == PostgreSqlProvider)
+            if (providerName != PostgreSqlProvider)
+            {
+                NormalizeCheckConstraints(entityType, providerName);
+                NormalizeIndexFilters(entityType, providerName);
+            }
+
+            NormalizeRelationalObjectNames(entityType, providerName);
+        }
+    }
+
+    private static void NormalizeRelationalObjectNames(
+        IMutableEntityType entityType,
+        string providerName)
+    {
+        string? tableName = entityType.GetTableName();
+        if (string.IsNullOrEmpty(tableName))
+        {
+            return;
+        }
+
+        var storeObject = StoreObjectIdentifier.Table(tableName, entityType.GetSchema());
+        int maximumIdentifierLength = providerName switch
+        {
+            PostgreSqlProvider => 63,
+            MySqlProvider => 64,
+            SqlServerProvider => 128,
+            _ => 128
+        };
+
+        foreach (IMutableIndex index in entityType.GetIndexes())
+        {
+            string columns = string.Join(
+                '_',
+                index.Properties.Select(property => property.GetColumnName(storeObject)));
+            string canonicalName = $"ix_{tableName}_{columns}".ToLowerInvariant();
+            index.SetDatabaseName(ShortenIdentifier(canonicalName, maximumIdentifierLength));
+        }
+
+        foreach (IMutableForeignKey foreignKey in entityType.GetForeignKeys())
+        {
+            string? principalTableName = foreignKey.PrincipalEntityType.GetTableName();
+            if (string.IsNullOrEmpty(principalTableName))
             {
                 continue;
             }
 
-            NormalizeCheckConstraints(entityType, providerName);
-            NormalizeIndexFilters(entityType, providerName);
+            string columns = string.Join(
+                '_',
+                foreignKey.Properties.Select(property => property.GetColumnName(storeObject)));
+            string canonicalName =
+                $"fk_{tableName}_{principalTableName}_{columns}".ToLowerInvariant();
+            foreignKey.SetConstraintName(
+                ShortenIdentifier(canonicalName, maximumIdentifierLength));
         }
+
+        foreach (IMutableCheckConstraint checkConstraint in entityType.GetCheckConstraints())
+        {
+            string? name = checkConstraint.Name;
+            if (!string.IsNullOrEmpty(name))
+            {
+                checkConstraint.Name = ShortenIdentifier(
+                    name.ToLowerInvariant(),
+                    maximumIdentifierLength);
+            }
+        }
+    }
+
+    private static string ShortenIdentifier(string name, int maximumLength)
+    {
+        if (name.Length <= maximumLength && !name.EndsWith('~'))
+        {
+            return name;
+        }
+
+        const int hashLength = 12;
+        string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name)))[..hashLength]
+            .ToLowerInvariant();
+        string stem = name.TrimEnd('~');
+        int stemLength = Math.Min(stem.Length, maximumLength - hashLength - 1);
+        return stem[..stemLength] + "_" + hash;
     }
 
     private static void NormalizeProperties(IMutableEntityType entityType, string providerName)

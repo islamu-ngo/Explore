@@ -83,6 +83,62 @@ Exact proximity discovery is **not implemented**. [ADR-013](adr/ADR-013-postgis-
 
 The proposed distance unit is an eligible future public `EventSession` occurrence: scheduled, published, non-deleted, tenant-matching, under a public published event, and attached to a location with an active governed point. Online-only, past, draft, private, moderated, unscheduled, deleted, or unapproved occurrences do not participate. PostgreSQL would select the minimum qualifying occurrence distance per event; no current entity, migration, or runtime query provides that capability.
 
+### Location Data Model & Three-Tier Hierarchy
+
+The platform isolates **physical venue master records** from **per-event disclosure rules** and **program schedules** through a three-tier architecture:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   Location (Venue)                     │
+│  - Physical place (e.g., "Grand Hall", "Community Ctr")│
+│  - Country, City, Timezone, Privacy State              │
+│  - Sub-rooms (LocationRooms)                           │
+│  - Coordinates & Address (LocationPii)                 │
+└──────────────────────────┬─────────────────────────────┘
+                           │ 1
+                           │
+                           │ 0..* (Reusable across events)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                    EventLocation                       │
+│  - Mediates (Event ⇄ Location) OR (Event ⇄ TBA)        │
+│  - Disclosure & Privacy Authority                      │
+│  - Field Flags: ShowCity, ShowStreet, ShowCoords...    │
+│  - Audience Gating: Public, RegisteredOnly, etc.       │
+│  - Timed Reveal: RevealFullDetailsFromUtc              │
+└──────────────────────────┬─────────────────────────────┘
+                           │ 1
+                           │
+                           │ 0..* (Scoped to the event's location)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│          EventSession / EventAgendaItem                │
+│  - References: EventLocationId (Canonical)             │
+│  - Optionally specifies a specific RoomId              │
+│  - Inherits disclosure rules & timed reveal            │
+└────────────────────────────────────────────────────────┘
+```
+
+#### 1. `Location` (Physical Venue Master Record)
+- Represents a physical venue (building, community hall, mosque, private residence).
+- Scoped by `TenantId` and reusable across multiple events.
+- Sensitive exact addresses and coordinates reside in `LocationPii`.
+- Physical sub-divisions (e.g. "Hall A", "Room 204") reside in `LocationRoom` (`ak_location_rooms_tenant_id_location_id_id`).
+- Governed by privacy states (`PublicVenue`, `PrivateHome`, `Erased`).
+
+#### 2. `EventLocation` (Per-Event Association & Disclosure Policy Authority)
+- Acts as the first-class link between an `Event` and a `Location` (or an explicit To-Be-Announced / TBA placeholder when `IsToBeAnnounced = true` and `LocationId = null`).
+- Controls what attendees and the general public can see:
+  - 7 Granular Visibility Flags: `ShowVenueName`, `ShowCity`, `ShowCountry`, `ShowRoomName`, `ShowStreetAddress`, `ShowPostcode`, `ShowCoordinates`.
+  - Audience Gating (`FullDetailsAudienceId`): Public, RegisteredOnly, TicketHoldersOnly, StaffOnly.
+  - Timed Address Reveal (`RevealFullDetailsFromUtc`): Allows organizers to keep exact addresses hidden until a specified date/time before the event.
+  - Full audit logging for policy modifications and privileged exact reads (`EventLocationDisclosureAudit`, `EventLocationExactReadAudit`).
+
+#### 3. `EventSession` & `EventAgendaItem` (Mediation Invariant)
+- Rather than pointing directly to an unmediated `LocationId`, sessions and agenda items reference `EventLocationId`.
+- This ensures session schedules cannot accidentally leak physical addresses, violate parent event privacy policies, or reference a physical venue in a different city from the event.
+- Enforced at the database level by check constraints (`ck_event_session_physical_location_requires_event_location`).
+
 ### Location Address Source, Visibility, And Promotion
 
 A `Location` keeps address origin and reuse scope as independent lookup-backed axes. Source is

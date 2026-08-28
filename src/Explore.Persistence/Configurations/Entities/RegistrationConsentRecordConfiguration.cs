@@ -20,7 +20,7 @@ public sealed class RegistrationConsentRecordConfiguration : IEntityTypeConfigur
             record.TenantId,
             record.Id,
         });
-        builder.ToTable("registration_consent_records", table =>
+        builder.ToTable(table =>
             table.HasCheckConstraint("ck_registration_consent_records_subject_shape", SubjectConstraint()));
         builder.Property(record => record.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(record => record.PurposeCode).HasMaxLength(100).IsRequired();
@@ -144,14 +144,14 @@ public sealed class RegistrationConsentRecordConfiguration : IEntityTypeConfigur
             record.RegistrationFormFieldId,
             record.AnswerSubjectTypeId,
             record.EffectiveSubjectIdentity
-        }).IsUnique().HasDatabaseName("ux_registration_consent_records_evidence");
+        }).IsUnique();
         builder.HasIndex(record => new
         {
             record.TenantId,
             record.AnswerSubjectTypeId,
             record.EffectiveSubjectIdentity,
             record.WithdrawnAt
-        }).HasDatabaseName("ix_registration_consent_records_subject");
+        });
     }
 
     private static void ConfigureComputedUuid(PropertyBuilder<Guid> property, string sql)

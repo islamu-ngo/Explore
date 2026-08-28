@@ -614,6 +614,47 @@ Checks:
 4. Verify `Storage:Local:RootPath` points to the restored local storage data, or that `S3Settings:*` values point to the restored bucket or compatible object store when S3-compatible mode is selected.
 5. If MigrationService already ran, do not manually edit provider-specific migration files, snapshots, or history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 
+## Configuration Manifest Startup Failed
+
+The owning process exits before traffic when an explicit manifest cannot be
+read, validated, or applied. In split topology inspect
+`event-migrationservice`; in Standalone inspect the combined host. Do not
+enable bootstrap on API replicas.
+
+| Stable code family | Check |
+|---|---|
+| `configuration_manifest_mode_invalid` | Use exact `Off`, `ValidateOnly`, or `Bootstrap` casing |
+| `configuration_manifest_path_invalid` | Supply an absolute path visible inside the owning process |
+| `configuration_manifest_file_missing` / `configuration_manifest_file_unreadable` | Confirm the read-only mount, non-root directory traversal, and file read permission |
+| `configuration_manifest_file_not_regular` / `configuration_manifest_file_symlink_not_allowed` | Mount one regular file; symlinks, directories, and device files are rejected |
+| `configuration_manifest_empty` / `configuration_manifest_too_large` | Supply non-empty JSON within the documented 4 MiB bound |
+| `configuration_manifest_json_*` / `configuration_manifest_duplicate_property` | Correct strict UTF-8 JSON and remove duplicate or unknown properties |
+| `configuration_manifest_instance_already_bootstrapped` | Restore the recorded instance section unchanged and use Day 2 administration for instance changes; reset only a disposable development instance |
+| `configuration_manifest_tenant_conflict` / `configuration_manifest_paid_policy_*` | Correct the new tenant section or current instance authority, then rerun the unchanged instance section |
+| contract, catalog, or preflight failure | Validate against the shipped schema, then correct unsupported keys, document versions, locks, or unsafe complete policy state |
+
+The diagnostic intentionally reports a digest prefix and stable code rather
+than the full path or values. Use `docker compose config` to confirm that only
+`event-migrationservice` has the manifest environment and read-only mount.
+After correcting a pre-commit failure, run `ValidateOnly`, then rerun the same
+topology owner. Existing tenants remain wholesale skips. A same-section rerun
+uses fresh Day 2 instance authority and never replays historical instance
+values. If an operation ID was already recorded as applied, do not delete audit
+rows; restart normally so pending outbox effects can be delivered.
+
+If the original source is lost, use the operation ID, manifest name, digest,
+and changed-key codes to locate the reviewed file in operator version control
+or backup; audit intentionally stores no values. After database restore, restore
+the matching manifest and bootstrap/audit state from the same recovery point
+before traffic. If failure evidence cannot be persisted, treat startup as
+failed and restore database availability. The complete state/action matrix is
+in [SELF_HOSTING.md](SELF_HOSTING.md#operator-stateaction-matrix).
+
+Set `CONFIGURATION_MANIFEST_MODE=Off` and recreate the owning process to
+disable future startup processing. This preserves applied data and audit
+evidence. Removing a convention file is a no-op only when no explicit path is
+configured.
+
 ## Local URLs
 
 - API: `https://localhost:7039`

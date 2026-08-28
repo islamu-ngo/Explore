@@ -401,25 +401,11 @@ public sealed class RefundAttemptRepository(ExploreDbContext dbContext) : IRefun
             await using var transaction = await dbContext.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
             try
             {
-                T result;
-                if (providerName == RelationalNamedLock.PostgreSqlProvider)
-                {
-                    await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                        SELECT id
-                        FROM payment_attempts
-                        WHERE tenant_id = {tenantId} AND id = {paymentAttemptId}
-                        FOR UPDATE
-                        """, cancellationToken);
-                    result = await operation(cancellationToken);
-                }
-                else
-                {
-                    await using IAsyncDisposable paymentLock = await RelationalNamedLock.AcquireTransactionAsync(
-                        dbContext,
-                        $"refund-capacity:{tenantId:N}:{paymentAttemptId:N}",
-                        cancellationToken);
-                    result = await operation(cancellationToken);
-                }
+                await using IAsyncDisposable paymentLock = await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    $"refund-capacity:{tenantId:N}:{paymentAttemptId:N}",
+                    cancellationToken);
+                T result = await operation(cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
                 return result;

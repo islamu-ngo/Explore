@@ -61,7 +61,41 @@ resources:
     attr:
       settingKey: "control-plane.tenants"
 
+  configuration_manifest_export:
+    kind: "islamuevent_instance_setting"
+    id: "instance.configuration-manifest.export"
+    attr:
+      configurationManifestExport: true
+
+  configuration_manifest_export_without_fact:
+    kind: "islamuevent_instance_setting"
+    id: "instance.configuration-manifest.export"
+    attr: {}
+
 tests:
+  - name: "Configuration manifest export requires instance admin and explicit export fact"
+    input:
+      principals: ["islamuevent_instance_admin", "islamuevent_tenant_admin"]
+      resources: ["configuration_manifest_export", "configuration_manifest_export_without_fact"]
+      actions: ["view"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "configuration_manifest_export"
+        actions:
+          view: EFFECT_ALLOW
+      - principal: "islamuevent_instance_admin"
+        resource: "configuration_manifest_export_without_fact"
+        actions:
+          view: EFFECT_DENY
+      - principal: "islamuevent_tenant_admin"
+        resource: "configuration_manifest_export"
+        actions:
+          view: EFFECT_DENY
+      - principal: "islamuevent_tenant_admin"
+        resource: "configuration_manifest_export_without_fact"
+        actions:
+          view: EFFECT_DENY
+
   - name: "Instance admin can fully manage instance storage settings"
     input:
       principals: ["islamuevent_instance_admin"]

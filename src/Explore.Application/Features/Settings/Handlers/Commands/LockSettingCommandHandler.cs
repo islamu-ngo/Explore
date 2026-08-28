@@ -5,9 +5,11 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain.Settings;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,9 @@ public class LockSettingCommandHandler
     private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<LockSettingCommandHandler> _logger;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyMutationBoundary;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ISettingMutationLock _mutationLock;
 
     public LockSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -30,6 +35,9 @@ public class LockSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<LockSettingCommandHandler> logger,
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
+        IUnitOfWork unitOfWork,
+        ISettingMutationLock mutationLock,
         ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
@@ -39,6 +47,9 @@ public class LockSettingCommandHandler
         _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
+        _publicationPolicyMutationBoundary = publicationPolicyMutationBoundary;
+        _unitOfWork = unitOfWork;
+        _mutationLock = mutationLock;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -77,8 +88,71 @@ public class LockSettingCommandHandler
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
             request.Scope, _tenantContext, _currentUserService);
 
-        await _resolver.LockAsync(
-            request.Key, request.Scope, scopeId, actorId, cancellationToken);
+        bool isGuardedPublicationPolicyMutation = PublicationPolicySettingKeys.All
+            .Contains(request.Key, StringComparer.Ordinal);
+        if (isGuardedPublicationPolicyMutation && request.Scope == SettingScope.Tenant)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                "setting_not_lockable",
+                $"Setting '{request.Key}' cannot be locked at Tenant scope.");
+        }
+
+        if (isGuardedPublicationPolicyMutation)
+        {
+            var context = SettingCommandHelper.BuildSettingContext(
+                request.Scope, _tenantContext, _currentUserService);
+            ResolvedSetting? resolved = await _resolver.ResolveWithMetadataAsync(
+                request.Key, context, cancellationToken);
+            string value = resolved?.Value ?? definition.DefaultValue;
+            DateTime occurredAtUtc = DateTime.UtcNow;
+            PublicationPolicyMutationResult mutationResult = await _unitOfWork.ExecuteInTransactionAsync(
+                token => _publicationPolicyMutationBoundary.ApplyInstanceAsync(
+                    new PublicationPolicyInstanceMutationRequest(
+                        actorId,
+                        occurredAtUtc,
+                        [new PublicationPolicySettingMutation(
+                            request.Key,
+                            PublicationPolicyMutationKind.Set,
+                            value,
+                            TenantId: null,
+                            IsLocked: true)]),
+                    token),
+                cancellationToken);
+            if (!mutationResult.Success)
+            {
+                string failureCode = string.IsNullOrWhiteSpace(mutationResult.FailureCode)
+                    ? "event_reporting_intake_policy_invalid"
+                    : mutationResult.FailureCode;
+                string failureMessage = string.IsNullOrWhiteSpace(mutationResult.Message)
+                    ? PublicationPolicyMutationMessages.InvalidPolicy
+                    : mutationResult.Message;
+                return BaseCommandResponse.Failure<Guid>(failureCode, failureMessage);
+            }
+
+            _resolver.InvalidateCache(request.Scope, scopeId);
+            foreach (SettingChangedNotification notification in mutationResult.DeferredNotifications)
+            {
+                await _mediator.Publish(notification, CancellationToken.None);
+            }
+
+            return BaseCommandResponse.Success(
+                scopeId,
+                $"Setting '{request.Key}' locked at {request.Scope} scope.");
+        }
+
+        await _mutationLock.ExecuteAsync(
+            request.Key,
+            async token =>
+            {
+                await _resolver.LockAsync(
+                    request.Key,
+                    request.Scope,
+                    scopeId,
+                    actorId,
+                    token);
+                return true;
+            },
+            cancellationToken);
 
         _resolver.InvalidateCache(request.Scope, scopeId);
         CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(

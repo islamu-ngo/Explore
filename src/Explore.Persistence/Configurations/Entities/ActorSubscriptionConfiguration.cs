@@ -12,7 +12,7 @@ public class ActorSubscriptionConfiguration : IEntityTypeConfiguration<ActorSubs
 {
     public void Configure(EntityTypeBuilder<ActorSubscription> builder)
     {
-        builder.ToTable("actor_subscriptions", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint(
                 "ck_actor_subscriptions_target_actor_type",
@@ -73,13 +73,10 @@ public class ActorSubscriptionConfiguration : IEntityTypeConfiguration<ActorSubs
 
         builder.HasIndex(e => new { e.TenantId, e.SubscriberTenantUserId, e.TargetActorId })
             .IsUnique()
-            .HasFilter("is_deleted = false")
-            .HasDatabaseName("ux_actor_subscriptions_active_row");
+            .HasFilter("is_deleted = false");
 
-        builder.HasIndex(e => new { e.TenantId, e.TargetActorId, e.StatusId, e.NotificationLevelId })
-            .HasDatabaseName("ix_actor_subscriptions_fanout_scan");
+        builder.HasIndex(e => new { e.TenantId, e.TargetActorId, e.StatusId, e.NotificationLevelId });
 
-        builder.HasIndex(e => new { e.TenantId, e.SubscriberUserId })
-            .HasDatabaseName("ix_actor_subscriptions_subscriber_user");
+        builder.HasIndex(e => new { e.TenantId, e.SubscriberUserId });
     }
 }

@@ -23,7 +23,29 @@ dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-
 
 ## Future governed release flow
 
-1. Before the first governed release only, meaning no governed stable SemVer release
+1. Create public change metadata and its commit footer together:
+
+   ```sh
+   dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+     create-change --target develop --type <type> --scope <scope> \
+     --title "<title>" --summary "<summary>"
+   ```
+
+   Install the local checks with `install-change-hooks --target develop`.
+   Existing hooks are preserved and chained. Immediately before merge or
+   conflict resolution, run:
+
+   ```sh
+   dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+     preflight-range --target develop --head HEAD
+   ```
+
+   If a committed feature footer collides, keep the commit immutable and run
+   `rename-change --commit <full-oid> --from <old-id> --reason "<reason>"`.
+   Review and commit the generated replacement fragment plus exact-commit
+   correction record, then rerun `preflight-range`. Do not amend, rebase, or
+   create a loose ID alias for this repair.
+2. Before the first governed release only, meaning no governed stable SemVer release
    tag is reachable from the candidate, an operator may activate one explicit
    `changelog-baseline-YYYY-MM-DD` lower-bound tag after Project Steward approval.
    The tag is created outside the verifier as an SSH-signed annotated tag targeting
@@ -41,32 +63,32 @@ dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-
    reviewed operator action. Do not use `v0.0.0` or any fake SemVer tag as a baseline,
    and do not treat the selected version number as proof that this is the first
    governed release.
-2. An operator selects the version-line **label** `v<major>.<minor>` the release
+3. An operator selects the version-line **label** `v<major>.<minor>` the release
    belongs to and prepares only `release.yaml` and `summary.md`; public high-impact
    facts are supplied through validated change fragments. The label classifies the
    release; it never names a branch and nothing derives a ref from it.
-3. The trusted bundle validates complete Git objects, policy, range, version,
+4. The trusted bundle validates complete Git objects, policy, range, version,
    impacts, and public inputs. It normalizes context and calls the promoted
    git-cliff renderer with the `VerifiedTrustedBundle` capability returned by
    successful bundle verification. Candidate jobs never pass raw config, lock,
    executable, or digest inputs into rendering. The renderer passes
    `--config <trusted>`, `--from-context <context>`, `--offline`, and `--no-exec`
    from an isolated non-Git working directory after rechecking bundle-owned bytes.
-4. The preparation command generates `release-notes.md` and creates the reviewed
+5. The preparation command generates `release-notes.md` and creates the reviewed
    preparation commit `B`. The message explicitly explains its release-metadata
    changelog skip so the generated note does not include itself.
-5. The authoritative bundle verifies candidate `B` and emits deterministic
+6. The authoritative bundle verifies candidate `B` and emits deterministic
    pre-tag candidate evidence from immutable objects only. Integrating `B` into the
    branch it was prepared on is a fast-forward-only compare-and-swap; that
    compare-and-swap is a precondition of the *push*, not part of verification. Any
    replacement of `B` requires regeneration and review because it is a new object.
-6. An authorized release operator creates an SSH-signed annotated tag targeting
+7. An authorized release operator creates an SSH-signed annotated tag targeting
    exactly `B`. Tag verification records signer, tag object ID, candidate digest,
    policy/tool hashes, and note/context hashes in final evidence.
-7. For the newest stable release only, protected `main` advances by normal
+8. For the newest stable release only, protected `main` advances by normal
    fast-forward to exactly `B`. Prereleases and older-line patches do not move
    `main` backwards.
-8. The provider adapter retains artifacts and may publish a derived enriched view,
+9. The provider adapter retains artifacts and may publish a derived enriched view,
    but it cannot alter canonical notes, identity, or approval.
 
 ### Provider adapter planning

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -10,12 +11,14 @@ namespace Explore.Persistence.Repositories;
 public sealed class AdmissionTargetMaterializationRepository(ExploreDbContext dbContext)
     : IAdmissionTargetMaterializationRepository
 {
+    private bool materializationFenceAcquired;
+
     public async Task<IReadOnlyList<EventSession>> ListScheduleSessionsForUpdateAsync(
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        await LockEventSessionsAsync(tenantId, eventId, cancellationToken);
+        await AcquireMaterializationFenceAsync(tenantId, eventId, cancellationToken);
         return await dbContext.EventSessions
             .Where(session =>
                 session.TenantId == tenantId &&
@@ -30,7 +33,7 @@ public sealed class AdmissionTargetMaterializationRepository(ExploreDbContext db
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        await LockAdmissionTargetsAsync(tenantId, eventId, cancellationToken);
+        await AcquireMaterializationFenceAsync(tenantId, eventId, cancellationToken);
         return await dbContext.AdmissionTargets
             .Where(target => target.TenantId == tenantId && target.EventId == eventId)
             .OrderBy(target => target.Id)
@@ -66,46 +69,27 @@ public sealed class AdmissionTargetMaterializationRepository(ExploreDbContext db
         await dbContext.AdmissionCheckInPolicies.AddRangeAsync(policies, cancellationToken);
     }
 
-    private async Task LockEventSessionsAsync(
+    private async Task AcquireMaterializationFenceAsync(
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        EnsurePostgresTransaction();
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        if (!dbContext.Database.IsRelational() || materializationFenceAcquired)
         {
-            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                SELECT id
-                FROM event_sessions
-                WHERE tenant_id = {tenantId} AND event_id = {eventId} AND is_deleted = false
-                FOR UPDATE
-                """, cancellationToken);
+            return;
         }
-    }
 
-    private async Task LockAdmissionTargetsAsync(
-        Guid tenantId,
-        Guid eventId,
-        CancellationToken cancellationToken)
-    {
-        EnsurePostgresTransaction();
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        if (dbContext.Database.CurrentTransaction is null)
         {
-            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                SELECT id
-                FROM admission_targets
-                WHERE tenant_id = {tenantId} AND event_id = {eventId}
-                FOR UPDATE
-                """, cancellationToken);
+            throw new InvalidOperationException(
+                "Admission target materialization fences require an active transaction.");
         }
-    }
 
-    private void EnsurePostgresTransaction()
-    {
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL" &&
-            dbContext.Database.CurrentTransaction is null)
-        {
-            throw new InvalidOperationException("Admission target materialization row locks require an active transaction.");
-        }
+        await using IAsyncDisposable materializationLock =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                dbContext,
+                $"admission-target-materialization:{tenantId:N}:{eventId:N}",
+                cancellationToken);
+        materializationFenceAcquired = true;
     }
 }

@@ -33,7 +33,7 @@ public sealed class AdmissionAuthorityRowFenceProviderTests(
         await RelationalEntityRowFence.AcquireAsync<RegistrationOrder>(
             first,
             tenantId,
-            "id",
+            order => order.Id,
             orderId,
             CancellationToken.None);
 
@@ -56,10 +56,73 @@ public sealed class AdmissionAuthorityRowFenceProviderTests(
         await RelationalEntityRowFence.AcquireAsync<RegistrationOrder>(
             released,
             tenantId,
-            "id",
+            order => order.Id,
             orderId,
             CancellationToken.None);
         await releasedTransaction.CommitAsync();
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task NamedLockLifecycleCoversContentionCommitRollbackCancellationAndDisposal(
+        PrimaryDatabaseProvider provider)
+    {
+        string resource = $"named-lock-lifecycle:{provider}:{Guid.CreateVersion7():N}";
+        await using ExploreDbContext owner = CreateContext(provider);
+        await using var ownerTransaction = await owner.Database.BeginTransactionAsync();
+        await using IAsyncDisposable transactionLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                owner,
+                resource,
+                CancellationToken.None);
+
+        await using (ExploreDbContext contender = CreateContext(provider))
+        await using (var contenderTransaction = await contender.Database.BeginTransactionAsync())
+        {
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(750));
+            Exception? blocked = await CaptureAsync(async () =>
+            {
+                await using IAsyncDisposable lease =
+                    await RelationalNamedLock.AcquireTransactionAsync(
+                        contender,
+                        resource,
+                        cancellation.Token);
+                return 0;
+            });
+            await Assert.That(blocked).IsNotNull();
+        }
+
+        await ownerTransaction.CommitAsync();
+
+        await using (ExploreDbContext rollbackOwner = CreateContext(provider))
+        await using (var rollbackTransaction = await rollbackOwner.Database.BeginTransactionAsync())
+        {
+            await using IAsyncDisposable lease =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    rollbackOwner,
+                    resource,
+                    CancellationToken.None);
+            await rollbackTransaction.RollbackAsync();
+        }
+
+        await using ExploreDbContext sessionOwner = CreateContext(provider);
+        IAsyncDisposable sessionLease = await RelationalNamedLock.AcquireSessionAsync(
+            sessionOwner,
+            resource,
+            CancellationToken.None);
+        await sessionLease.DisposeAsync();
+
+        await using ExploreDbContext verifier = CreateContext(provider);
+        await using var verificationTransaction = await verifier.Database.BeginTransactionAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using IAsyncDisposable verificationLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                verifier,
+                resource,
+                timeout.Token);
+        await verificationTransaction.CommitAsync(timeout.Token);
     }
 
     private ExploreDbContext CreateContext(PrimaryDatabaseProvider provider)

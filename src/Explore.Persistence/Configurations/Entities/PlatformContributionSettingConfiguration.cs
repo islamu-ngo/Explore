@@ -11,7 +11,6 @@ public sealed class PlatformContributionSettingConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<PlatformContributionSetting> builder)
     {
-        builder.ToTable("platform_contribution_settings");
         builder.Property(setting => setting.Id).ValueGeneratedNever();
         builder.Property(setting => setting.CreatedAt).IsRequired();
         builder.Property(setting => setting.Heading).IsRequired().HasMaxLength(200);

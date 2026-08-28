@@ -57,14 +57,13 @@ public sealed class EventLifecyclePolicyProvider : IEventLifecyclePolicyProvider
         }
 
         EventLifecyclePolicy basePolicy = BuildHardInvariantPolicy(effectiveProfile);
+        var tenantPolicy = await _tenantPolicySettingService.ReadEffectiveTenantSettingsAsync(tenantId.Value);
 
-        // Tenant composition hook: future work can merge tenant policy settings
-        // (e.g., stricter hosted-instance publication requirements) on top of the
-        // hard invariants. For now, we preserve the base policy and note the source.
-        // This keeps the central composition point wired without premature coupling.
-        _ = await _tenantPolicySettingService.ReadEffectiveTenantSettingsAsync(tenantId.Value);
-
-        return basePolicy with { Source = "tenant-aware" };
+        return basePolicy with
+        {
+            RequiresApproval = tenantPolicy.RequireEventApproval,
+            Source = "tenant-aware"
+        };
     }
 
     private static EventLifecyclePolicy BuildHardInvariantPolicy(ValidationProfile profile)

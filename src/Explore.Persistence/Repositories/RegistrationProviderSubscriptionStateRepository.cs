@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -108,10 +109,11 @@ public sealed class RegistrationProviderSubscriptionStateRepository(ExploreDbCon
         TimeSpan leaseDuration,
         CancellationToken cancellationToken)
     {
-        if (dbContext.Database.IsNpgsql())
-        {
-            await dbContext.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(hashtext({0}))", [lockName], cancellationToken);
-        }
+        await using IAsyncDisposable claimLock =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                dbContext,
+                lockName,
+                cancellationToken);
 
         IQueryable<RegistrationProviderSubscriptionState> claimable = dbContext.RegistrationProviderSubscriptionStates
             .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationProviderSubscriptionStateWorkerCrossTenantQueue)

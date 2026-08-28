@@ -174,6 +174,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     public async Task SetValueAsync(
         string key, string value, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         var definition = SettingRegistry.Get(key);
         if (definition is not null)
         {
@@ -242,6 +247,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     public async Task RemoveOverrideAsync(
         string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         switch (scope)
         {
             case SettingScope.Tenant:
@@ -289,6 +299,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     public async Task LockAsync(
         string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         switch (scope)
         {
             case SettingScope.Instance:
@@ -345,6 +360,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     public async Task UnlockAsync(
         string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
     {
+        if (PublicationPolicySettingKeys.All.Contains(key, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("Guarded publication-policy settings require coordinated mutation.");
+        }
+
         switch (scope)
         {
             case SettingScope.Instance:

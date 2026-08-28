@@ -40,14 +40,11 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
 
         // Unique MasterCode across all scopes
         builder.HasIndex(e => e.MasterCode)
-            .IsUnique()
-            .HasDatabaseName("ix_roles_mastercode");
+            .IsUnique();
 
-        builder.HasAlternateKey(e => new { e.Id, e.RoleScopeId })
-            .HasName("ak_roles_id_role_scope_id");
+        builder.HasAlternateKey(e => new { e.Id, e.RoleScopeId });
 
         // Fast lookup by scope (e.g., get all Organization roles)
-        builder.HasIndex(e => e.RoleScopeId)
-            .HasDatabaseName("ix_roles_role_scope_id");
+        builder.HasIndex(e => e.RoleScopeId);
     }
 }

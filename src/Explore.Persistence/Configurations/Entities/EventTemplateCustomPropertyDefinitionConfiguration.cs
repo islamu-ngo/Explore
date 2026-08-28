@@ -12,8 +12,6 @@ public class EventTemplateCustomPropertyDefinitionConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<EventTemplateCustomPropertyDefinition> builder)
     {
-        builder.ToTable("event_template_custom_property_definitions");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -77,10 +75,8 @@ public class EventTemplateCustomPropertyDefinitionConfiguration : IEntityTypeCon
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.EventTemplateId, e.Namespace, e.Key })
-            .HasDatabaseName("ix_etcpd_template_namespace_key")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.IsSearchable, e.IsFilterable })
-            .HasDatabaseName("ix_etcpd_tenant_search_filter");
+        builder.HasIndex(e => new { e.TenantId, e.IsSearchable, e.IsFilterable });
     }
 }

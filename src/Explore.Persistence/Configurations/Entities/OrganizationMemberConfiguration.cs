@@ -1,3 +1,6 @@
+// ABOUTME: Configures organization memberships and their tenant-safe relationships.
+// ABOUTME: Enforces one membership per organization and user through model metadata.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -40,12 +43,10 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
 
         // Unique constraint: one membership per user per org
         builder.HasIndex(m => new { m.OrganizationTenantId, m.UserId })
-            .IsUnique()
-            .HasDatabaseName("ix_orgmembers_org_user");
+            .IsUnique();
 
         // Find all orgs for a user (my organizations)
-        builder.HasIndex(m => m.UserId)
-            .HasDatabaseName("ix_orgmembers_user");
+        builder.HasIndex(m => m.UserId);
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

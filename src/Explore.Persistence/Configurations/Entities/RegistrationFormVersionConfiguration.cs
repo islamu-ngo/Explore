@@ -11,7 +11,7 @@ public sealed class RegistrationFormVersionConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<RegistrationFormVersion> builder)
     {
-        builder.ToTable("registration_form_versions", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_form_versions_schema_artifacts",
             "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR " +
             "(status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)"));

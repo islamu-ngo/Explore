@@ -11,8 +11,6 @@ public sealed class NotificationIntentConfiguration : IEntityTypeConfiguration<N
 {
     public void Configure(EntityTypeBuilder<NotificationIntent> builder)
     {
-        builder.ToTable("notification_intents");
-
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.TemplateKey).IsRequired().HasMaxLength(160);
         builder.Property(e => e.DeduplicationKey).IsRequired().HasMaxLength(300);
@@ -20,10 +18,8 @@ public sealed class NotificationIntentConfiguration : IEntityTypeConfiguration<N
         builder.Property(e => e.SafePayloadHash).HasMaxLength(128);
         builder.Property(e => e.CorrelationId).HasMaxLength(200);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_notification_intents_tenant_id");
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.RecipientUserId })
-            .HasName("ak_notification_intents_tenant_id_recipient");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.RecipientUserId });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -79,21 +75,16 @@ public sealed class NotificationIntentConfiguration : IEntityTypeConfiguration<N
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.DeduplicationKey })
-            .HasDatabaseName("ux_notification_intents_tenant_deduplication_key")
             .IsUnique()
             .HasFilter("is_deleted = false");
 
-        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_intents_tenant_status_created");
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.CreatedAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.CategoryId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_intents_tenant_category_created");
+        builder.HasIndex(e => new { e.TenantId, e.CategoryId, e.CreatedAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.OwnershipTypeId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_intents_tenant_owner_created");
+        builder.HasIndex(e => new { e.TenantId, e.OwnershipTypeId, e.CreatedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.FanoutOccurrenceId, e.RecipientUserId })
-            .HasDatabaseName("ux_notification_intents_tenant_occurrence_recipient")
             .IsUnique();
     }
 }
@@ -102,8 +93,6 @@ public sealed class NotificationDeliveryConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<NotificationDelivery> builder)
     {
-        builder.ToTable("notification_deliveries");
-
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.ProviderMessageId).HasMaxLength(500);
         builder.Property(e => e.ProviderStatus).HasMaxLength(100);
@@ -168,19 +157,15 @@ public sealed class NotificationDeliveryConfiguration : IEntityTypeConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId, e.ChannelId })
-            .HasDatabaseName("ux_notification_deliveries_tenant_intent_channel")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_deliveries_tenant_status_created");
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.CreatedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.EmailDispatchOutboxId })
-            .HasDatabaseName("ux_notification_deliveries_tenant_email_dispatch_outbox")
             .IsUnique()
             .HasFilter("email_dispatch_outbox_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.NotificationId })
-            .HasDatabaseName("ux_notification_deliveries_tenant_notification")
             .IsUnique()
             .HasFilter("notification_id IS NOT NULL");
 
@@ -198,8 +183,6 @@ public sealed class NotificationExternalDelegationConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<NotificationExternalDelegation> builder)
     {
-        builder.ToTable("notification_external_delegations");
-
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.TemplateKey).IsRequired().HasMaxLength(160);
         builder.Property(e => e.SafePayloadHash).HasMaxLength(128);
@@ -250,16 +233,12 @@ public sealed class NotificationExternalDelegationConfiguration : IEntityTypeCon
             .HasForeignKey(e => e.ReportDecisionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId })
-            .HasDatabaseName("ix_notification_external_delegations_tenant_intent");
+        builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId });
 
-        builder.HasIndex(e => new { e.TenantId, e.ProviderKindId, e.StatusId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_external_delegations_tenant_provider_status");
+        builder.HasIndex(e => new { e.TenantId, e.ProviderKindId, e.StatusId, e.CreatedAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.AccountAuthorityKindId, e.StatusId, e.CreatedAt })
-            .HasDatabaseName("ix_notification_external_delegations_tenant_account_authority_status");
+        builder.HasIndex(e => new { e.TenantId, e.AccountAuthorityKindId, e.StatusId, e.CreatedAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.ExternalCorrelationId })
-            .HasDatabaseName("ix_notification_external_delegations_tenant_external_correlation");
+        builder.HasIndex(e => new { e.TenantId, e.ExternalCorrelationId });
     }
 }

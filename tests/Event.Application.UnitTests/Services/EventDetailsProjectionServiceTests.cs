@@ -117,6 +117,8 @@ public sealed class EventDetailsProjectionServiceTests
                 FullName = categories[0].FullName
             }
         };
+        var expectedTagDtos = tagDtos.ToArray();
+        var expectedCategoryDtos = categoryDtos.ToArray();
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _mapper.Map<EventDto>(eventEntity).Returns(eventDto);
@@ -131,7 +133,13 @@ public sealed class EventDetailsProjectionServiceTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result.IsUnmoderationEligible).IsTrue();
-        await Assert.That(result.Tags).IsSameReferenceAs(tagDtos);
-        await Assert.That(result.Categories).IsSameReferenceAs(categoryDtos);
+        await Assert.That(result.Tags.SequenceEqual(expectedTagDtos)).IsTrue();
+        await Assert.That(result.Categories.SequenceEqual(expectedCategoryDtos)).IsTrue();
+
+        tagDtos.Clear();
+        categoryDtos.Clear();
+
+        await Assert.That(result.Tags.SequenceEqual(expectedTagDtos)).IsTrue();
+        await Assert.That(result.Categories.SequenceEqual(expectedCategoryDtos)).IsTrue();
     }
 }

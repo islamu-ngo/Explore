@@ -11,7 +11,7 @@ public sealed class RegistrationSubmissionRevisionConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<RegistrationSubmissionRevision> builder)
     {
-        builder.ToTable("registration_submission_revisions", table =>
+        builder.ToTable(table =>
             table.HasCheckConstraint("ck_registration_submission_revisions_number", "revision_number > 0"));
         builder.Property(revision => revision.Id).ValueGeneratedNever();
         builder.Property(revision => revision.ReceivedEvidenceHash)
@@ -23,7 +23,6 @@ public sealed class RegistrationSubmissionRevisionConfiguration : IEntityTypeCon
         builder.Property(revision => revision.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasOne<Tenant>().WithMany().HasForeignKey(revision => revision.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(revision => new { revision.TenantId, revision.RegistrationSubmissionId, revision.RevisionNumber })
-            .HasDatabaseName("ux_registration_submission_revisions_submission_revision_number")
             .IsUnique();
     }
 }

@@ -17,6 +17,10 @@ public interface ISystemSettingRepository
 
     Task<string?> UpsertAsync(SystemSetting setting, CancellationToken cancellationToken = default);
 
+    Task<string?> UpsertInCurrentTransactionAsync(
+        SystemSetting setting,
+        CancellationToken cancellationToken = default);
+
     Task<string?> UpsertLockAsync(SystemSetting setting, CancellationToken cancellationToken = default);
 
     /// <summary>

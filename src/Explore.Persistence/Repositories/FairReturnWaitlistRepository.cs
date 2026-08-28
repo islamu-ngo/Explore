@@ -1,8 +1,10 @@
 // ABOUTME: Serializes fair-return allocation, withdrawal, substitution, expiry, and finalization.
 // ABOUTME: Uses one canonical PostgreSQL fence while preserving immutable buyer commercial snapshots.
 
+using System.Linq.Expressions;
 using Explore.Application.Contracts.Waitlist;
 using Explore.Domain;
+using Explore.Domain.Interfaces;
 using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
@@ -215,6 +217,7 @@ public sealed class FairReturnWaitlistRepository(
             await FenceAsync<RegistrationOrderLine>(
                 entry.TenantId,
                 entry.RegistrationOrderLineId,
+                line => line.Id,
                 cancellationToken);
             EventWaitlistEntry? existing =
                 await dbContext.EventWaitlistEntries
@@ -707,7 +710,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<FairReturnSupplyPolicy>(
                 dbContext,
                 tenantId,
-                "id",
+                policy => policy.Id,
                 id,
                 cancellationToken);
         return await dbContext.FairReturnSupplyPolicies
@@ -764,7 +767,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<FairReturnSupplyUnit>(
                 dbContext,
                 tenantId,
-                "id",
+                supply => supply.Id,
                 supplyId.Value,
                 cancellationToken);
         return await dbContext.FairReturnSupplyUnits
@@ -811,6 +814,7 @@ public sealed class FairReturnWaitlistRepository(
         await FenceAsync<EventWaitlistEntry>(
             tenantId,
             entryId,
+            entry => entry.Id,
             cancellationToken);
         return await dbContext.EventWaitlistEntries
             .SingleOrDefaultAsync(value =>
@@ -832,7 +836,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<FairReturnSupplyUnit>(
                 dbContext,
                 tenantId,
-                "id",
+                supply => supply.Id,
                 id,
                 cancellationToken);
         return await dbContext.FairReturnSupplyUnits
@@ -867,7 +871,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<FairReturnSourceBinding>(
                 dbContext,
                 tenantId,
-                "id",
+                binding => binding.Id,
                 bindingId.Value,
                 cancellationToken);
         return await dbContext.FairReturnSourceBindings
@@ -904,7 +908,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<FairReturnSourceBinding>(
                 dbContext,
                 tenantId,
-                "id",
+                binding => binding.Id,
                 id,
                 cancellationToken);
         return await dbContext.FairReturnSourceBindings
@@ -943,7 +947,7 @@ public sealed class FairReturnWaitlistRepository(
                 .AcquireAsync<FairReturnSupplyUnit>(
                     dbContext,
                     tenantId,
-                    "id",
+                    supply => supply.Id,
                     candidateId,
                     cancellationToken);
             FairReturnSupplyUnit? candidate =
@@ -976,7 +980,7 @@ public sealed class FairReturnWaitlistRepository(
             .AcquireAsync<EventWaitlistOffer>(
                 dbContext,
                 tenantId,
-                "id",
+                offer => offer.Id,
                 id,
                 cancellationToken);
         return await dbContext.EventWaitlistOffers
@@ -1010,6 +1014,7 @@ public sealed class FairReturnWaitlistRepository(
         await FenceAsync<EventWaitlistEntry>(
             tenantId,
             id,
+            entry => entry.Id,
             cancellationToken);
         return await dbContext.EventWaitlistEntries
             .SingleOrDefaultAsync(
@@ -1030,6 +1035,7 @@ public sealed class FairReturnWaitlistRepository(
         await FenceAsync<FairReturnSupplyUnit>(
             tenantId,
             id,
+            supply => supply.Id,
             cancellationToken);
         return await dbContext.FairReturnSupplyUnits
             .SingleOrDefaultAsync(
@@ -1050,6 +1056,7 @@ public sealed class FairReturnWaitlistRepository(
         await FenceAsync<FairReturnSourceBinding>(
             tenantId,
             id,
+            binding => binding.Id,
             cancellationToken);
         return await dbContext.FairReturnSourceBindings
             .SingleOrDefaultAsync(
@@ -1064,12 +1071,13 @@ public sealed class FairReturnWaitlistRepository(
     private Task FenceAsync<TEntity>(
         Guid tenantId,
         Guid id,
+        Expression<Func<TEntity, Guid>> keyPropertyExpression,
         CancellationToken cancellationToken)
-        where TEntity : class =>
+        where TEntity : class, ITenantEntity =>
         RelationalEntityRowFence.AcquireAsync<TEntity>(
             dbContext,
             tenantId,
-            "id",
+            keyPropertyExpression,
             id,
             cancellationToken);
 

@@ -1,0 +1,76 @@
+/* ABOUTME: Scoped layout and state styling for the tenant reporting-intake policy card. */
+/* ABOUTME: Uses logical properties for RTL-safe administration layouts. */
+
+.reporting-intake {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-3);
+    margin-block-end: var(--isl-space-3);
+}
+
+.reporting-intake__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-2);
+}
+
+.reporting-intake__source {
+    flex: 0 0 auto;
+    padding-block: 0.25rem;
+    padding-inline: 0.625rem;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 999px;
+    color: var(--mud-palette-text-secondary);
+    font-size: var(--mud-typography-caption-size);
+    line-height: 1.25;
+}
+
+.reporting-intake__loading,
+.reporting-intake__authority {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-1);
+}
+
+.reporting-intake__control {
+    display: block;
+    min-block-size: 3rem;
+}
+
+.reporting-intake__switch {
+    min-block-size: var(--isl-target-min);
+}
+
+.reporting-intake__value {
+    margin-inline-start: var(--isl-space-2);
+    font-size: var(--mud-typography-body2-size);
+    font-weight: var(--mud-typography-body2-weight);
+}
+
+.reporting-intake__guidance {
+    max-inline-size: 72ch;
+}
+
+.reporting-intake__authority {
+    padding-block: var(--isl-space-1);
+    padding-inline: var(--isl-space-2);
+    border-inline-start: 3px solid var(--mud-palette-info);
+    color: var(--mud-palette-text-secondary);
+}
+
+.reporting-intake__authority--warning {
+    border-inline-start-color: var(--mud-palette-warning);
+    color: var(--mud-palette-warning-darken);
+}
+
+.reporting-intake__alert {
+    margin-block-start: var(--isl-space-1);
+}
+
+@media (max-width: 600px) {
+    .reporting-intake__heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

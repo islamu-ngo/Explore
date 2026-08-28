@@ -1,11 +1,14 @@
 // ABOUTME: PostgreSQL-backed tests for idempotency replay-cache persistence.
-// ABOUTME: Verifies expired-row cleanup is bounded and preserves live replay records.
+// ABOUTME: Verifies bounded cleanup and deterministically coordinated competing key claims.
 
+using System.Data.Common;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -47,8 +50,9 @@ public sealed class IdempotencyRepositoryTests(PostgreSqlContainerFixture fixtur
         var tenantId = Guid.CreateVersion7();
         var now = new DateTime(2026, 7, 30, 12, 0, 0, DateTimeKind.Utc);
 
-        await using var winnerContext = fixture.CreateDbContext();
-        await using var contenderContext = fixture.CreateDbContext();
+        await using var winnerContext = CreateNonRetryingContext();
+        var contenderGate = new IdempotencyInsertGate();
+        await using var contenderContext = CreateNonRetryingContext(contenderGate);
         var winnerRepository = new IdempotencyRepository(winnerContext);
         var contenderRepository = new IdempotencyRepository(contenderContext);
         await using var winnerTransaction = await winnerContext.Database.BeginTransactionAsync();
@@ -59,18 +63,31 @@ public sealed class IdempotencyRepositoryTests(PostgreSqlContainerFixture fixtur
         await Assert.That(winner.IsOwner).IsTrue();
 
         Task<IdempotencyClaim> contenderTask = contenderRepository.TryClaimAsync(contenderRecord);
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        await contenderGate.WaitUntilCommandReachedAsync();
         await Assert.That(contenderTask.IsCompleted).IsFalse();
 
+        contenderGate.Release();
         await winnerTransaction.CommitAsync();
         IdempotencyClaim contender = await contenderTask;
 
         await Assert.That(contender.IsOwner).IsFalse();
         await Assert.That(contender.Record.Id).IsEqualTo(winnerRecord.Id);
 
-        await using var verificationContext = fixture.CreateDbContext();
+        await using var verificationContext = CreateNonRetryingContext();
         await Assert.That(await verificationContext.IdempotencyRecords
             .CountAsync(record => record.Key == "contended-key" && record.TenantId == tenantId)).IsEqualTo(1);
+    }
+
+    private ExploreDbContext CreateNonRetryingContext(params IInterceptor[] interceptors)
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(fixture.ConnectionString)
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(interceptors)
+            .Options;
+        var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("Idempotency contention integration test.");
+        return context;
     }
 
     private static IdempotencyRecord NewRecord(string key, Guid tenantId, DateTime expiresAt) =>
@@ -106,4 +123,63 @@ public sealed class IdempotencyRepositoryTests(PostgreSqlContainerFixture fixtur
             CreatedAt = now,
             ExpiresAt = now.AddHours(24)
         };
+
+    private sealed class IdempotencyInsertGate : DbCommandInterceptor
+    {
+        private readonly TaskCompletionSource _commandReached =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _armed = 1;
+
+        public async Task WaitUntilCommandReachedAsync()
+        {
+            await _commandReached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        public void Release()
+        {
+            _release.TrySetResult();
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            await WaitIfArmedAsync(command, cancellationToken);
+
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            await WaitIfArmedAsync(command, cancellationToken);
+            return result;
+        }
+
+        private async Task WaitIfArmedAsync(
+            DbCommand command,
+            CancellationToken cancellationToken)
+        {
+            if (!command.CommandText.TrimStart().StartsWith(
+                    "INSERT",
+                    StringComparison.OrdinalIgnoreCase)
+                || !command.CommandText.Contains(
+                    "idempotency_records",
+                    StringComparison.OrdinalIgnoreCase)
+                || Interlocked.Exchange(ref _armed, 0) != 1)
+            {
+                return;
+            }
+
+            _commandReached.TrySetResult();
+            await _release.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+        }
+    }
 }

@@ -58,6 +58,7 @@ using Explore.Infrastructure.Services.Registration.Providers.SubmissionSinks;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
+using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Infrastructure.Webhooks;
 using Explore.Infrastructure.WebPush;
 using Explore.Infrastructure.Waitlist;
@@ -70,6 +71,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Explore.Application.Features.ConfigurationManifest.Ingestion;
 using Polly;
 
 namespace Explore.Infrastructure;
@@ -133,6 +135,8 @@ public static class InfrastructureServicesRegistration
                 IAddressSelectionProtector,
                 DisabledAddressSelectionProtector>();
         }
+
+        services.AddConfigurationManifestStartup(configuration);
 
         services.AddOptions<AtprotoInfrastructureOptions>()
             .Bind(configuration.GetSection(AtprotoInfrastructureOptions.SectionName));

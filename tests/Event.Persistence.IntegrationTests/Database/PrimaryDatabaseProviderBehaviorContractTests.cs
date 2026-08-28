@@ -8,13 +8,17 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Projections;
 using Explore.Persistence.Queries;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Assertions.Enums;
 using TUnit.Core;
@@ -43,9 +47,15 @@ public sealed class PrimaryDatabaseRuntimeSmokeTests
 public sealed class PrimaryDatabaseProviderBehaviorContractTests
 {
     [Test]
-    public async Task MigratedProviderSupportsSharedPersistenceBehavior()
+    public Task MigratedProviderSupportsSharedPersistenceBehavior()
     {
         var fixture = PrimaryDatabaseProviderBehaviorFixture.Create();
+        return AssertSharedPersistenceBehaviorAsync(fixture);
+    }
+
+    internal static async Task AssertSharedPersistenceBehaviorAsync(
+        PrimaryDatabaseProviderBehaviorFixture fixture)
+    {
         await fixture.PrepareAsync();
         var scope = await SeedTenantGraphAsync(fixture);
 
@@ -56,9 +66,15 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
     }
 
     [Test]
-    public async Task DataProtectionKeyRingSurvivesProviderRecreation()
+    public Task DataProtectionKeyRingSurvivesProviderRecreation()
     {
         var fixture = PrimaryDatabaseProviderBehaviorFixture.Create();
+        return AssertDataProtectionKeyRingSurvivesProviderRecreationAsync(fixture);
+    }
+
+    internal static async Task AssertDataProtectionKeyRingSurvivesProviderRecreationAsync(
+        PrimaryDatabaseProviderBehaviorFixture fixture)
+    {
         var applicationName = $"islamu-event-provider-contract-{Guid.CreateVersion7():N}";
         const string purpose = "provider-restart";
         const string payload = "authenticated-session-ticket";
@@ -88,9 +104,15 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
     }
 
     [Test]
-    public async Task MigratedProviderExecutesUnicodeAddressSuggestionContract()
+    public Task MigratedProviderExecutesUnicodeAddressSuggestionContract()
     {
         var fixture = PrimaryDatabaseProviderBehaviorFixture.Create();
+        return AssertUnicodeAddressSuggestionContractAsync(fixture);
+    }
+
+    internal static async Task AssertUnicodeAddressSuggestionContractAsync(
+        PrimaryDatabaseProviderBehaviorFixture fixture)
+    {
         await fixture.PrepareAsync();
         Guid tenantId = Guid.Parse("00000000-0000-0000-0000-000000009001");
         Guid actorId = Guid.Parse("00000000-0000-0000-0000-000000009002");
@@ -362,12 +384,35 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
             await Assert.That(await context.OutboxMessages.AnyAsync(message => message.Id == committedOutbox.Id)).IsTrue();
             await Assert.That(await context.SystemSettings.AnyAsync(setting => setting.SettingKey == rolledBackSettingKey)).IsFalse();
             await Assert.That(await context.OutboxMessages.AnyAsync(message => message.Id == rolledBackOutbox.Id)).IsFalse();
+        }
 
-            var repository = new OutboxRepository(context);
-            var claim = await repository.TryClaimForProcessing(committedOutbox.Id, DateTime.UtcNow);
-            await Assert.That(claim).IsNotNull();
-            await Assert.That(await repository.MarkAsCompleted(committedOutbox.Id, claim!.Value)).IsTrue();
-            await Assert.That(await repository.MarkAsCompleted(committedOutbox.Id, claim.Value)).IsFalse();
+        await using (var firstContext = fixture.CreateSystemContext())
+        await using (var secondContext = fixture.CreateSystemContext())
+        {
+            var firstRepository = new OutboxRepository(firstContext);
+            var secondRepository = new OutboxRepository(secondContext);
+            var claims = await Task.WhenAll(
+                firstRepository.TryClaimForProcessing(
+                    committedOutbox.Id,
+                    DateTime.UtcNow),
+                secondRepository.TryClaimForProcessing(
+                    committedOutbox.Id,
+                    DateTime.UtcNow));
+            await Assert.That(claims.Count(claim => claim is not null))
+                .IsEqualTo(1);
+            var owner = claims[0] is not null
+                ? firstRepository
+                : secondRepository;
+            var stale = claims[0] is not null
+                ? secondRepository
+                : firstRepository;
+            DateTime claim = claims.Single(value => value is not null)!.Value;
+            await Assert.That(
+                    await owner.MarkAsCompleted(committedOutbox.Id, claim))
+                .IsTrue();
+            await Assert.That(
+                    await stale.MarkAsCompleted(committedOutbox.Id, claim))
+                .IsFalse();
         }
 
         var tenantId = Guid.CreateVersion7();
@@ -505,5 +550,56 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
             Commands.Add(command.CommandText);
             return ValueTask.FromResult(result);
         }
+    }
+}
+
+[ClassDataSource<AdmissionAuthorityProviderFixture>(Shared = SharedType.PerClass)]
+[NotInParallel("PrimaryDatabaseProviderBehaviorContract")]
+public sealed class ContainerizedPrimaryDatabaseProviderBehaviorContractTests(
+    AdmissionAuthorityProviderFixture containerFixture)
+{
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task GeneratedInitialSupportsSharedRuntimeBehavior(
+        PrimaryDatabaseProvider provider)
+    {
+        PrimaryDatabaseConnectionOptions migratorOptions =
+            containerFixture.CreateOptions(provider, PrimaryDatabaseRole.Migrator);
+        await MigrateAsync(migratorOptions);
+
+        var fixture = PrimaryDatabaseProviderBehaviorFixture.Create(
+            containerFixture.CreateOptions(provider));
+        await PrimaryDatabaseProviderBehaviorContractTests
+            .AssertSharedPersistenceBehaviorAsync(fixture);
+        await PrimaryDatabaseProviderBehaviorContractTests
+            .AssertDataProtectionKeyRingSurvivesProviderRecreationAsync(fixture);
+        await PrimaryDatabaseProviderBehaviorContractTests
+            .AssertUnicodeAddressSuggestionContractAsync(fixture);
+    }
+
+    private static async Task MigrateAsync(
+        PrimaryDatabaseConnectionOptions databaseOptions)
+    {
+        var applicationOptions =
+            new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            applicationOptions,
+            databaseOptions);
+        await using (var context =
+                     new ExploreDbContext(applicationOptions.Options))
+        {
+            await context.GetService<IMigrator>().MigrateAsync();
+        }
+
+        var dataProtectionOptions =
+            new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        PrimaryDatabaseProviderComposition.ConfigureDataProtection(
+            dataProtectionOptions,
+            databaseOptions);
+        await using var dataProtectionContext =
+            new DataProtectionKeyContext(dataProtectionOptions.Options);
+        await dataProtectionContext.GetService<IMigrator>().MigrateAsync();
     }
 }

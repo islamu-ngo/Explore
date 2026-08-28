@@ -29,3 +29,47 @@
 
 - **Scope Creep in Delegated Handler Cleanup**: Never rename or mutate repository interfaces (e.g. `IGenericRepository`) or CQRS request signatures during handler cleanup tasks. Always enforce strict boundaries on contract modifications.
 - **Generic BackgroundService Timer Loops**: Hand-rolled timer loops in `BackgroundService` are banned for periodic sweeps. All periodic work belongs in Quartz.NET registered via `AddSweepJob<TJob>`.
+
+---
+
+[2026-08-26 Europe/Brussels] — Validate detached policy candidates before tracked revisions
+
+**Context**: While implementing the Tier-0 `ConfigurationManifest` paid-policy
+authority, adversarial review exercised tenant broadening against an existing
+active tenant policy.
+
+**Symptom / Observation**: A rejected broadening returned a validation failure,
+but `PaidEventPolicyVersion.CreateRevision` had already retired the
+repository-tracked active policy in
+`src/Explore.Application/Features/PaidEventPolicies/PaidEventPolicyMutationBoundary.cs:155`.
+A later save on the same scoped context could persist that retirement without a
+replacement.
+
+**Root Cause**: Domain revision creation is an intentional state transition on
+the current aggregate; using the resulting revision as the validation candidate
+therefore mutates tracked authority before all pure narrowing rules pass.
+
+**Resolution**: Build and validate a detached tenant candidate first, then call
+`CreateRevision` only after `PaidEventPolicyRules.ValidateTenantPolicy`
+succeeds. The regression
+`PaidEventPolicyMutationBoundaryTests.ReviseTenantInCurrentTransaction_BroadeningKeepsTrackedPolicyActive`
+now proves failure leaves the current policy active and performs no repository
+write. Verification:
+`dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*PaidEventPolicyMutationBoundaryTests/*" --no-progress --maximum-parallel-tests 1`
+(6/6 passed).
+
+**Why This Matters for Future Work**: Never use a state-transition method on a
+tracked aggregate to construct a candidate for validation. Validate a detached
+candidate first, then mutate only on the accepted path.
+
+**References**:
+- `src/Explore.Application/Features/PaidEventPolicies/PaidEventPolicyMutationBoundary.cs:155`
+- `tests/Event.Application.UnitTests/Features/PaidEventPolicies/PaidEventPolicyMutationBoundaryTests.cs:169`
+- `.agents/skills/criticality-guardrail/SKILL.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [ ] Candidate for skill update: `<skill name>`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [x] Stays in journal only (one-off debugging lesson)

@@ -11,7 +11,6 @@ public sealed class TicketTypeEntitlementConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<TicketTypeEntitlement> builder)
     {
-        builder.ToTable("ticket_type_entitlements");
         builder.Property(entitlement => entitlement.Id).ValueGeneratedNever();
         builder.Property(entitlement => entitlement.ScopeId)
             .HasComputedColumnSql(
@@ -25,7 +24,6 @@ public sealed class TicketTypeEntitlementConfiguration : IEntityTypeConfiguratio
                 entitlement.EntitlementScopeTypeId,
                 entitlement.ScopeId
             })
-            .HasDatabaseName("ux_ticket_type_entitlements_canonical_scope")
             .IsUnique();
         builder.HasOne<EventTicketType>().WithMany(ticketType => ticketType.Entitlements)
             .HasForeignKey(entitlement => new { entitlement.TenantId, entitlement.TicketTypeId })

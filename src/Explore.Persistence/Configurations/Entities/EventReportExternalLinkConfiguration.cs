@@ -58,7 +58,7 @@ public sealed class EventReportExternalLinkConfiguration : IEntityTypeConfigurat
             .HasFilter("provider_signal_id IS NOT NULL")
             .HasDatabaseName("ux_event_report_external_links_tenant_provider_target_signal");
 
-        builder.ToTable("event_report_external_links", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
             t.HasCheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");

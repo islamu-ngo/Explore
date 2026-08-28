@@ -4,7 +4,10 @@
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -21,7 +24,7 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
 
         await Assert.That(await context.Database.GetPendingMigrationsAsync()).IsEmpty();
         await Assert.That(await ReadCountAsync(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' " +
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() " +
             "AND table_name IN ('atproto_records', 'pds_sync_outbox', 'atproto_jetstream_consumer_states', " +
             "'atproto_jetstream_quarantines', 'atproto_record_tenant_presentations', 'atproto_outbound_record_ownerships')"))
             .IsEqualTo(6L);
@@ -30,9 +33,27 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
             "('ck_atproto_records_direction', 'ck_atproto_records_provenance', " +
             "'ck_pds_sync_outbox_operation', 'ck_pds_sync_outbox_status', 'ck_pds_sync_outbox_payload_shape')"))
             .IsEqualTo(5L);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+        string recordIdentityIndex = FindUniqueIndex(
+            model,
+            typeof(AtprotoRecord),
+            nameof(AtprotoRecord.Did),
+            nameof(AtprotoRecord.Collection),
+            nameof(AtprotoRecord.RecordKey));
+        string sourceVersionIndex = FindUniqueIndex(
+            model,
+            typeof(PdsSyncOutbox),
+            nameof(PdsSyncOutbox.TenantId),
+            nameof(PdsSyncOutbox.SourceEntityType),
+            nameof(PdsSyncOutbox.SourceEntityId),
+            nameof(PdsSyncOutbox.SourceVersion),
+            nameof(PdsSyncOutbox.Operation),
+            nameof(PdsSyncOutbox.PayloadHash));
         await Assert.That(await ReadCountAsync(
-            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' " +
-            "AND indexname IN ('ux_atproto_records_identity', 'ux_pds_sync_outbox_source_version')"))
+            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = current_schema() " +
+            "AND indexname IN (@record_identity, @source_version)",
+            ("record_identity", recordIdentityIndex),
+            ("source_version", sourceVersionIndex)))
              .IsEqualTo(2L);
     }
 
@@ -44,7 +65,7 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
 
         await Assert.That(await context.Database.GetPendingMigrationsAsync()).IsEmpty();
         await Assert.That(await ReadCountAsync(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' " +
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() " +
             "AND table_name IN ('atproto_identities', 'actor_merges', 'external_actor_subjects', " +
             "'organization_tenants', 'group_tenants', 'event_public_actions', 'event_provenance_types')"))
             .IsEqualTo(7L);
@@ -81,7 +102,7 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
 
         await Assert.That(() => context.SaveChangesAsync()).Throws<DbUpdateException>();
         await Assert.That(await ReadCountAsync(
-            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' " +
+            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = current_schema() " +
             "AND indexname = 'ix_user_external_logins_provider_provider_key'"))
             .IsEqualTo(1L);
     }
@@ -94,18 +115,36 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
         string[] available = context.Database.GetMigrations().ToArray();
         string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
 
-        await Assert.That(available.Length).IsEqualTo(2);
-        await Assert.That(available[0]).EndsWith("_init");
-        await Assert.That(available[1]).EndsWith("_WebhookOwnerTenantContainment");
+        await Assert.That(available).HasSingleItem();
+        await Assert.That(available[0]).EndsWith("_Init");
         await Assert.That(applied).IsEquivalentTo(available);
     }
 
-    private async Task<long> ReadCountAsync(string sql)
+    private async Task<long> ReadCountAsync(
+        string sql,
+        params (string Name, object Value)[] parameters)
     {
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
+        foreach ((string name, object value) in parameters)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
         return (long)(await command.ExecuteScalarAsync())!;
+    }
+
+    private static string FindUniqueIndex(
+        IModel model,
+        Type entityType,
+        params string[] propertyNames)
+    {
+        var entity = model.FindEntityType(entityType)
+            ?? throw new InvalidOperationException($"No EF metadata exists for {entityType.Name}.");
+        return entity.GetIndexes()
+            .Single(index => index.IsUnique &&
+                index.Properties.Select(property => property.Name).SequenceEqual(propertyNames))
+            .GetDatabaseName();
     }
 
     private static Tenant CreateTenant(string slug) => new()

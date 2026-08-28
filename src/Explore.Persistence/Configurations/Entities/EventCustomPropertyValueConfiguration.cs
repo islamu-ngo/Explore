@@ -12,8 +12,6 @@ public class EventCustomPropertyValueConfiguration : IEntityTypeConfiguration<Ev
 {
     public void Configure(EntityTypeBuilder<EventCustomPropertyValue> builder)
     {
-        builder.ToTable("event_custom_property_values");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -44,11 +42,9 @@ public class EventCustomPropertyValueConfiguration : IEntityTypeConfiguration<Ev
             .HasForeignKey(e => e.OptionId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId })
-            .HasDatabaseName("ix_ecpv_tenant_event");
+        builder.HasIndex(e => new { e.TenantId, e.EventId });
 
         builder.HasIndex(e => new { e.EventCustomPropertyDefinitionId, e.EventId, e.Ordinal })
-            .HasDatabaseName("ix_ecpv_definition_event_ordinal")
             .IsUnique();
     }
 }

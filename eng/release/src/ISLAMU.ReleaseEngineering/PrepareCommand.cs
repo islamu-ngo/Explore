@@ -9,7 +9,6 @@ namespace ISLAMU.ReleaseEngineering;
 public static class PrepareCommand
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
-    private static readonly Regex ChangeIdPattern = new("^Change-Id: (?<id>CHG-[0-9]{4}-[0-9]{4})$", RegexOptions.CultureInvariant | RegexOptions.Multiline, TimeSpan.FromMilliseconds(100));
 
     public static int Run(string[] args, TextWriter output, string repositoryRoot, string platform, TimeSpan timeout)
     {
@@ -58,8 +57,16 @@ public static class PrepareCommand
 
             ReleaseCommit[] commits = ReadGitRange(root, descriptor.PreviousPublishedTag, "HEAD");
             string[] rangeOids = commits.Select(commit => commit.Oid).ToArray();
+            ReleasePolicy policy = ReleasePolicy.LoadFromRepositoryRoot(root);
+            ChangeIdRenameLoadResult renameResult = ChangeIdRenamePolicy.Load(root);
+            if (!renameResult.IsValid)
+            {
+                return Reject(output, renameResult.Diagnostics[0]);
+            }
+
             string[] linkedChangeIds = commits
-                .SelectMany(commit => ChangeIdPattern.Matches(commit.Message).Select(match => match.Groups["id"].Value))
+                .Select(commit => ChangeIdRenamePolicy.Evaluate(commit, policy, renameResult.Renames).ChangeId)
+                .OfType<string>()
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
@@ -78,7 +85,13 @@ public static class PrepareCommand
 
             VerifiedBaseline? baseline = TryReadBaseline(root, descriptor);
             ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(releaseYaml, fragments, []);
-            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commits, ReleasePolicy.LoadFromRepositoryRoot(root), verifiedBaselineRef: baseline?.Ref, verifiedBaselineOid: baseline?.TargetOid);
+            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(
+                input,
+                commits,
+                policy,
+                verifiedBaselineRef: baseline?.Ref,
+                verifiedBaselineOid: baseline?.TargetOid,
+                changeIdRenames: renameResult.Renames);
             if (!context.IsValid || context.Json is null)
             {
                 return Reject(output, "prepare_context_invalid");

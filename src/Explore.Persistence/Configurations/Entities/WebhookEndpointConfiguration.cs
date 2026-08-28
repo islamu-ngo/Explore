@@ -12,7 +12,7 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
 {
     public void Configure(EntityTypeBuilder<WebhookEndpoint> builder)
     {
-        builder.ToTable("webhook_endpoints", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_endpoints_configuration_version",
@@ -65,31 +65,25 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
             .HasPrincipalKey(e => new { e.ConfigurationScopeId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasAlternateKey(e => new { e.ConfigurationScopeId, e.Id })
-            .HasName("ak_webhook_endpoints_configuration_scope_id");
+        builder.HasAlternateKey(e => new { e.ConfigurationScopeId, e.Id });
 
         builder.HasOne(e => e.StatusLookup)
             .WithMany()
             .HasForeignKey(e => e.StatusId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.StatusId })
-            .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
+        builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.StatusId });
 
         builder.HasIndex(e => new { e.InstanceId, e.ConsumerId, e.StatusId })
-            .HasDatabaseName("ix_webhook_endpoints_instance_consumer_status")
             .HasFilter("instance_id IS NOT NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.Id })
-            .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.Id });
 
         builder.HasIndex(e => new { e.TenantId, e.ProviderEndpointId })
-            .HasDatabaseName("ux_webhook_endpoints_tenant_provider_endpoint")
             .IsUnique()
             .HasFilter("tenant_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.InstanceId, e.ProviderEndpointId })
-            .HasDatabaseName("ux_webhook_endpoints_instance_provider_endpoint")
             .IsUnique()
             .HasFilter("instance_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
     }

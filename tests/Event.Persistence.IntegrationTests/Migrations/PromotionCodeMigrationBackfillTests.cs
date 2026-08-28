@@ -1,10 +1,11 @@
-// ABOUTME: Verifies provider migration SQL preserves historical registration money snapshots.
-// ABOUTME: Guards AddEventPromotionCodes generation across all supported primary database providers.
+// ABOUTME: Verifies generated initial migrations contain the final registration money snapshot schema.
+// ABOUTME: Guards the development rebaseline across every supported primary database provider.
 
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -13,7 +14,7 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 public sealed class PromotionCodeMigrationBackfillTests
 {
     [Test]
-    public async Task AddEventPromotionCodesScriptsBackfillHistoricalMoneySnapshotsForEveryProvider()
+    public async Task InitialApplicationScriptsCreateFinalMoneySnapshotColumnsForEveryProvider()
     {
         foreach (PrimaryDatabaseProvider provider in Enum.GetValues<PrimaryDatabaseProvider>())
         {
@@ -23,7 +24,6 @@ public sealed class PromotionCodeMigrationBackfillTests
                 toMigration: null,
                 options: MigrationsSqlGenerationOptions.Default);
 
-            await Assert.That(script).Contains("UPDATE");
             await Assert.That(script).Contains("pre_discount_organizer_directed_total_minor_snapshot");
             await Assert.That(script).Contains("post_discount_organizer_directed_total_minor_snapshot");
             await Assert.That(script).Contains("organizer_directed_total_minor_snapshot");
@@ -36,7 +36,10 @@ public sealed class PromotionCodeMigrationBackfillTests
     private static ExploreDbContext CreateContext(PrimaryDatabaseProvider provider)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(builder.Options);
     }
 
@@ -63,7 +66,7 @@ public sealed class PromotionCodeMigrationBackfillTests
             Host = "database.example.test",
             Database = "event_db",
             Username = "migration_user",
-            Password = "test-only-password",
+            Password = Guid.CreateVersion7().ToString("N"),
             TlsMode = PrimaryDatabaseTlsMode.Required,
             ServerFlavor = flavor,
             ServerVersion = flavor is null ? null : new Version(11, 4),

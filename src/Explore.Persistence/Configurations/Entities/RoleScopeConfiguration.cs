@@ -11,7 +11,6 @@ public class RoleScopeConfiguration : IEntityTypeConfiguration<RoleScope>
 {
     public void Configure(EntityTypeBuilder<RoleScope> builder)
     {
-        builder.ToTable("role_scopes");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(100);

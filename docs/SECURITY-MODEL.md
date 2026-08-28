@@ -820,6 +820,26 @@ Event moderation links follow the same rule. The active moderation affordances a
 
 Moderated events remain hidden from public discovery and exact public event URLs. Authorized management detail, actor-profile management lists, and moderation-history reads use the event `view-management` action. The moderation-history API and moderation telemetry are safe metadata surfaces only: they must not include original titles, descriptions, slugs, URLs, image identifiers, object keys, storage paths, bucket names, provider endpoints, raw provider errors, or arbitrary moderator free text.
 
+### Reporting Intake Governance
+
+Tenant reporting-intake reads expose an effective policy, including source,
+instance-lock state, publication-safety state, and HAL relations. Browser
+clients must require the server-authored `edit` relation before offering a
+mutation. They must not reproduce authorization from roles or claims and must
+not calculate whether publication policy makes disablement safe.
+
+The update command re-evaluates instance locks and publication safety on the
+server. This closes the time-of-check/time-of-use gap between rendering an
+editable control and submitting a change. The administration UI reloads the
+effective policy after both successful and rejected updates, maps 401 to a
+reauthentication instruction, maps 403 to an access-denied message, and never
+renders downstream response bodies.
+
+Disabling reporting intake does not disable external provider routing, delete
+existing reports, or suppress independent correction, legal, or copyright
+contact channels. Product copy must preserve that distinction without making
+legal or religious guarantees.
+
 Related authorization references:
 
 - [AUTHORIZATION.md](AUTHORIZATION.md) — provider model, resource checks, and fallback behavior.
@@ -867,3 +887,58 @@ The `missing_ok=true` form plus `NULLIF(..., '')` makes absent tenant context fa
 - System/admin reads: cross-tenant maintenance paths need explicit role/session design before real table policies are enabled.
 - Performance: RLS adds a predicate to every query. Indexes on `tenant_id` (already exist) mitigate this.
 - Migrations: Must run with a maintenance role that bypasses RLS intentionally.
+
+## Configuration-manifest trust boundary
+
+`ConfigurationManifest` is a startup-only instance administration input, not a
+browser authority document. Only the configured owning host reads the bounded
+regular file. The contract closes every object, resolves the current instance
+from trusted server context, and applies the instance section before tenant
+sections. A tenant entry cannot select another instance or write instance,
+provider, topology, secret, PII, or sovereign-payment state.
+
+`ValidateOnly` performs no writes. `Bootstrap` performs preflight before opening
+one serializable transaction, acquires canonical instance and tenant mutation
+locks, writes configuration plus value-free outcome evidence, and commits
+durable post-commit effects atomically. Existing tenant bootstrap results are
+wholesale skips; the feature is intentionally not a continuous desired-state
+reconciler. Failed validation, concurrency, persistence, or effect staging does
+not authorize partial state.
+
+Whole-instance export requires explicit instance/Control Plane authorization.
+The API resolves the current instance, emits at most 4 MiB, and excludes
+credentials, secret bindings, provider accounts, topology, personal data, and
+sovereign payment operations. Browser actions exist only when the control-plane
+overview emits the matching HAL relation; the authenticated BFF revalidates the
+relation and invokes a fixed generated API operation without exposing bearer
+tokens or following a browser-provided URL.
+
+## Configuration-manifest payment authority
+
+The paid-policy manifest extension is a Tier 0 financial boundary. It accepts
+one strict `tenant.paid_event_policy` document containing only non-secret
+tenant narrowing and an expected active instance-policy version. The validator
+closes the JSON object, rejects tenant IDs and unknown members, constructs the
+Domain policy, and proves it cannot broaden the instance ceiling before any
+write.
+
+CQRS and manifest mutations share `PaidEventPolicyMutationBoundary`.
+Authenticated commands enter a serializable transaction and acquire canonical
+instance/tenant named locks. Manifest bootstrap acquires those same keys in its
+outer transaction and calls the in-transaction path. A stale instance revision
+or tenant-policy collision fails as a concurrency conflict; tenant, settings,
+branding, policy, outbox, and audit state roll back together.
+
+The API returns typed authority facts for the active instance revision,
+inherited versus tenant-narrowed effective values, the manifest-compatible
+field taxonomy, and the sovereign-locked taxonomy. These facts are
+explanatory only. HAL `_links.edit` remains the sole browser action capability;
+the Blazor client never derives edit permission from authority facts, roles,
+claims, or local policy inspection.
+
+Operator identity, official status/origin, provider profiles and credentials,
+connected accounts, charge type, buyer acceptance/PII, sale control, provider
+handoff, reconciliation, disputes, liability, negative balances, and refund
+execution never enter the manifest payload. Export metadata names those
+boundaries but omits their values. Logs and telemetry must not record supplied
+manifest values, secrets, buyer data, or provider payloads.

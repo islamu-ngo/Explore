@@ -13,7 +13,7 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
 {
     public void Configure(EntityTypeBuilder<CustomPropertyDefinition> builder)
     {
-        builder.ToTable("custom_property_definitions", t =>
+        builder.ToTable(t =>
             t.HasCheckConstraint(
                 "ck_custom_property_definitions_shared_entity_type",
                 BuildSharedEntityTypeConstraint()));

@@ -25,7 +25,7 @@ public sealed class NotificationFanoutAudienceMigrationTests(
 
         await ResetSharedMigrationDatabaseAsync();
         await using var context = CreateDbContext();
-        await context.GetService<IMigrator>().MigrateAsync("20260801192258_init");
+        await context.Database.MigrateAsync();
 
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
         await connection.OpenAsync();

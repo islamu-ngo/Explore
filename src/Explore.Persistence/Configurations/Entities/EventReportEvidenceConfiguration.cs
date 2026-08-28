@@ -52,7 +52,7 @@ public sealed class EventReportEvidenceConfiguration : IEntityTypeConfiguration<
             .HasFilter("content_hash IS NOT NULL")
             .HasDatabaseName("ix_event_report_evidence_tenant_content_hash");
 
-        builder.ToTable("event_report_evidence", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_evidence_kind", "evidence_kind BETWEEN 1 AND 5");
             t.HasCheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");

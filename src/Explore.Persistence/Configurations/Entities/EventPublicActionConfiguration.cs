@@ -12,7 +12,6 @@ public sealed class EventPublicActionConfiguration : IEntityTypeConfiguration<Ev
 {
     public void Configure(EntityTypeBuilder<EventPublicAction> builder)
     {
-        builder.ToTable("event_public_actions");
         builder.Property(row => row.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(row => new { row.TenantId, row.Id });
         builder.Property(row => row.Url).IsRequired().HasMaxLength(2048);
@@ -42,7 +41,6 @@ public sealed class EventPublicActionConfiguration : IEntityTypeConfiguration<Ev
             .HasForeignKey(row => row.HealthStateId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(row => new { row.TenantId, row.EventId })
-            .HasDatabaseName("ix_event_public_actions_tenant_event");
+        builder.HasIndex(row => new { row.TenantId, row.EventId });
     }
 }

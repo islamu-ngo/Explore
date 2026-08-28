@@ -13,6 +13,7 @@ public static class BffEndpointExtensions
     public static WebApplication MapBffEndpoints(this WebApplication app)
     {
         app.MapManifestEndpoints();
+        app.MapConfigurationManifestEndpoints();
         app.MapPreferenceEndpoints();
         app.MapStorageEndpoints();
         app.MapSetupSecretEndpoints();

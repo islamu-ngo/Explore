@@ -3,16 +3,44 @@
 
 .tenant-paid-policy,
 .tenant-paid-policy__group,
-.tenant-paid-policy__summary {
+.tenant-paid-policy__summary,
+.tenant-paid-policy__authority {
     display: grid;
     gap: var(--isl-space-4);
 }
 
 .tenant-paid-policy__summary,
+.tenant-paid-policy__authority,
 .tenant-paid-policy__currency {
     padding: var(--isl-space-4);
     border: var(--isl-card-border);
     border-radius: var(--isl-radius-card);
+}
+
+.tenant-paid-policy__authority-heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tenant-paid-policy__source {
+    display: inline-flex;
+    min-block-size: var(--isl-target-min);
+    padding-inline: var(--isl-space-3);
+    align-items: center;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-full);
+    color: var(--mud-palette-text-secondary);
+    font-size: var(--mud-typography-caption-size);
+}
+
+.tenant-paid-policy__authority-fact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--isl-space-3);
+    align-items: start;
 }
 
 .tenant-paid-policy__currency {

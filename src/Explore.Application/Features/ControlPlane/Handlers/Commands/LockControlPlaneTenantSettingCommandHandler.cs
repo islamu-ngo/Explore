@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Settings;
 using MediatR;
@@ -40,6 +41,14 @@ public sealed class LockControlPlaneTenantSettingCommandHandler(
         if (invalidTarget is not null)
         {
             return invalidTarget;
+        }
+
+        if (PublicationPolicySettingKeys.All.Contains(request.Key, StringComparer.Ordinal))
+        {
+            return ControlPlaneTenantSettingSecurity.Failure(
+                request.TenantId,
+                "setting_not_lockable",
+                "The setting cannot be locked.");
         }
 
         if (!definition.IsLockable)

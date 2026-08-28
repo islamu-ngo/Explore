@@ -11,7 +11,7 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<RegistrationFormField> builder)
     {
-        builder.ToTable("registration_form_fields", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_registration_form_fields_consent_metadata",
             "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL " +
             "AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text)) > 0 AND length(btrim(consent_text_version)) > 0) OR " +

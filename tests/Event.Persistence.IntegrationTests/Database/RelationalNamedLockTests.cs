@@ -2,12 +2,14 @@
 // ABOUTME: Covers the provider-neutral lock boundary without claiming unexecuted server-engine behavior.
 
 using System.Data.Common;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Secrets.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using MySqlConnector;
 using Npgsql;
 using TUnit.Core;
@@ -44,7 +46,7 @@ public sealed class RelationalNamedLockTests
         await Assert.That(postgresSession.CommandText).IsEqualTo("SELECT pg_advisory_lock(@key)");
         await Assert.That(sqlServerTransaction.CommandText).Contains("@LockOwner = 'Transaction'");
         await Assert.That(sqlServerSession.CommandText).Contains("@LockOwner = 'Session'");
-        await Assert.That(mySql.CommandText).IsEqualTo("SELECT GET_LOCK(@resource, -1)");
+        await Assert.That(mySql.CommandText).IsEqualTo("SELECT GET_LOCK(@resource, 31536000)");
         await Assert.That(postgresRelease.CommandText).IsEqualTo("SELECT pg_advisory_unlock(@key)");
         await Assert.That(sqlServerRelease.CommandText).Contains("sys.sp_releaseapplock");
         await Assert.That(mySqlRelease.CommandText).IsEqualTo("SELECT RELEASE_LOCK(@resource)");
@@ -117,52 +119,167 @@ public sealed class RelationalNamedLockTests
 
         IAsyncDisposable firstLease = await firstLock.AcquireAsync(
             tenantId, userId, "pds", "did:plc:sqlite-lock", CancellationToken.None);
+        using var cancellation = new CancellationTokenSource();
         Task<IAsyncDisposable> waiting = secondLock.AcquireAsync(
-            tenantId, userId, "pds", "did:plc:sqlite-lock", CancellationToken.None);
+            tenantId, userId, "pds", "did:plc:sqlite-lock", cancellation.Token);
 
-        await Task.Delay(100);
-        await Assert.That(waiting.IsCompleted).IsFalse();
+        cancellation.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        {
+            await using IAsyncDisposable lease = await waiting;
+        });
         await firstLease.DisposeAsync();
-        await using IAsyncDisposable secondLease = await waiting.WaitAsync(TimeSpan.FromSeconds(2));
+        await using IAsyncDisposable secondLease = await secondLock.AcquireAsync(
+            tenantId,
+            userId,
+            "pds",
+            "did:plc:sqlite-lock",
+            CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
     }
 
     [Test]
-    public async Task SqliteSettingLock_SerializesConcurrentOperations()
+    public async Task SqliteManifestTransactionLock_HoldsProcessLeaseUntilCallerCommit()
     {
         await using ExploreDbContext firstContext = CreateSqliteContext();
         await using ExploreDbContext secondContext = CreateSqliteContext();
-        var firstLock = new RelationalSettingMutationLock(firstContext, new EfCoreUnitOfWork(firstContext));
-        var secondLock = new RelationalSettingMutationLock(secondContext, new EfCoreUnitOfWork(secondContext));
-        var firstEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        bool secondEntered = false;
+        string resource =
+            $"explore:setting-mutation:{ConfigurationManifestLockKeys.InstanceManifest}.{Guid.CreateVersion7():N}";
+        await using var firstTransaction =
+            await firstContext.Database.BeginTransactionAsync();
+        await using IAsyncDisposable firstLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                firstContext,
+                resource,
+                CancellationToken.None);
+        await using var secondTransaction =
+            await secondContext.Database.BeginTransactionAsync();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
 
-        Task first = firstLock.ExecuteAsync("governance.lock", async _ =>
-        {
-            firstEntered.SetResult();
-            await releaseFirst.Task;
-            return true;
-        });
-        await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        Task second = secondLock.ExecuteAsync("governance.lock", _ =>
-        {
-            secondEntered = true;
-            return Task.FromResult(true);
-        });
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            RelationalNamedLock.AcquireTransactionAsync(
+                secondContext,
+                resource,
+                cancellation.Token));
 
-        await Task.Delay(100);
-        await Assert.That(secondEntered).IsFalse();
-        releaseFirst.SetResult();
-        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(2));
-        await Assert.That(secondEntered).IsTrue();
+        await firstTransaction.CommitAsync();
+        await using IAsyncDisposable secondLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                    secondContext,
+                    resource,
+                    CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+        await secondTransaction.RollbackAsync();
+    }
+
+    [Test]
+    public async Task OrderedOuterLease_SkipsOverlappingInnerLockAndClearsScope()
+    {
+        await using ExploreDbContext firstContext = CreateSqliteContext();
+        await using ExploreDbContext blockerContext = CreateSqliteContext();
+        var unitOfWork = new EfCoreUnitOfWork(firstContext);
+        var mutationLock = new RelationalSettingMutationLock(
+            firstContext,
+            unitOfWork);
+        string key =
+            $"{ConfigurationManifestLockKeys.InstanceManifest}.{Guid.CreateVersion7():N}";
+
+        bool nestedEntered = await mutationLock.ExecuteOrderedGroupsAsync(
+                new[] { new[] { key } },
+                token => unitOfWork.ExecuteSerializableAsync(
+                    async _ =>
+                    {
+                        using var cancellation =
+                            new CancellationTokenSource();
+                        cancellation.Cancel();
+                        return await mutationLock.ExecuteManyAsync(
+                            [key],
+                            _ => Task.FromResult(true),
+                            cancellation.Token);
+                    },
+                    token))
+            .WaitAsync(TimeSpan.FromSeconds(2));
+        await Assert.That(nestedEntered).IsTrue();
+
+        using var outerCancellation = new CancellationTokenSource();
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            mutationLock.ExecuteOrderedGroupsAsync(
+                new[] { new[] { key } },
+                token => unitOfWork.ExecuteSerializableAsync<bool>(
+                    _ =>
+                    {
+                        outerCancellation.Cancel();
+                        return Task.FromCanceled<bool>(
+                            outerCancellation.Token);
+                    },
+                    token)));
+
+        string resource = $"explore:setting-mutation:{key}";
+        await using var blockerTransaction =
+            await blockerContext.Database.BeginTransactionAsync();
+        await using IAsyncDisposable blockerLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                    blockerContext,
+                    resource,
+                    CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+        await using var probeTransaction =
+            await firstContext.Database.BeginTransactionAsync();
+        using var probeCancellation = new CancellationTokenSource();
+        probeCancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            mutationLock.ExecuteManyAsync(
+                [key],
+                _ => Task.FromResult(true),
+                probeCancellation.Token));
+
+        await probeTransaction.RollbackAsync();
+        await blockerTransaction.RollbackAsync();
+    }
+
+    [Test]
+    public async Task SqliteSettingLock_ReleasesProcessLeaseAfterCancellationRollback()
+    {
+        await using ExploreDbContext firstContext = CreateSqliteContext();
+        await using ExploreDbContext secondContext = CreateSqliteContext();
+        var firstLock = new RelationalSettingMutationLock(
+            firstContext,
+            new EfCoreUnitOfWork(firstContext));
+        var secondLock = new RelationalSettingMutationLock(
+            secondContext,
+            new EfCoreUnitOfWork(secondContext));
+        using var cancellation = new CancellationTokenSource();
+
+        string key = $"governance.lock.{Guid.CreateVersion7():N}";
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            firstLock.ExecuteAsync<bool>(
+                key,
+                _ =>
+                {
+                    cancellation.Cancel();
+                    return Task.FromCanceled<bool>(cancellation.Token);
+                },
+                cancellation.Token));
+
+        bool entered = await secondLock.ExecuteAsync(
+                key,
+                _ => Task.FromResult(true))
+            .WaitAsync(TimeSpan.FromSeconds(2));
+        await Assert.That(entered).IsTrue();
     }
 
     private static ExploreDbContext CreateSqliteContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseSqlite("Data Source=:memory:")
-            .Options;
-        return new ExploreDbContext(options);
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
+        builder.UseSqlite("Data Source=:memory:");
+        builder.AddInterceptors(
+            SqliteNamedLockTransactionInterceptor.Instance,
+            SqliteProjectionLockTransactionInterceptor.Instance);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        return new ExploreDbContext(builder.Options);
     }
 
     private static PrimaryDatabaseConnectionOptions CreateOptions(PrimaryDatabaseProvider provider) => new()
@@ -179,7 +296,9 @@ public sealed class RelationalNamedLockTests
         },
         Database = provider == PrimaryDatabaseProvider.Sqlite ? "lock-tests.db" : "event",
         Username = provider == PrimaryDatabaseProvider.Sqlite ? null : "event",
-        Password = provider == PrimaryDatabaseProvider.Sqlite ? null : "password",
+        Password = provider == PrimaryDatabaseProvider.Sqlite
+            ? null
+            : Guid.CreateVersion7().ToString("N"),
         TlsMode = provider == PrimaryDatabaseProvider.Sqlite
             ? PrimaryDatabaseTlsMode.Prefer
             : PrimaryDatabaseTlsMode.Disabled,

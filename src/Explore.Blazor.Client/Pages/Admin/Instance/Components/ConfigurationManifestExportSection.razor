@@ -1,0 +1,248 @@
+@* ABOUTME: Instance administration section for whole-instance configuration-manifest downloads. *@
+@* ABOUTME: Loads server HAL capabilities before rendering any export affordance. *@
+
+@using Explore.Blazor.Client.Components.ControlPlane
+@using Explore.Blazor.Client.Contracts.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@implements IDisposable
+@inject IConfigurationManifestExportService ExportService
+@inject ITranslationService Translations
+@inject IAccessibilityFocusService FocusService
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncer
+@inject ILogger<ConfigurationManifestExportSection> Logger
+
+<MudPaper Class="configuration-manifest-export"
+          Outlined="true"
+          aria-labelledby="configuration-manifest-export-heading">
+    <div class="configuration-manifest-export__heading">
+        <MudText Id="configuration-manifest-export-heading"
+                 Typo="Typo.h6"
+                 HtmlTag="h2"
+                 dir="auto">
+            @T("instance.configurationManifest.heading", "Configuration manifest")
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" dir="auto">
+            @T(
+                "instance.configurationManifest.summary",
+                "Download configuration for the whole instance, including every active tenant.")
+        </MudText>
+    </div>
+
+    <ul class="configuration-manifest-export__guidance"
+        dir="auto"
+        aria-label="@T("instance.configurationManifest.guidanceLabel", "Export guidance")">
+        <li dir="auto">
+            @T(
+                "instance.configurationManifest.secrets",
+                "Secrets are omitted. Provider credentials, personal data, and payment operations are never exported.")
+        </li>
+        <li dir="auto">
+            @T(
+                "instance.configurationManifest.values",
+                "Overrides preserve explicit configured values; portable output flattens effective values for a clean deployment.")
+        </li>
+        <li dir="auto">
+            @T(
+                "instance.configurationManifest.notBackup",
+                "This file is bootstrap configuration, not a backup of events, registrations, users, payments, or operational history.")
+        </li>
+    </ul>
+
+    @if (_loading)
+    {
+        <div class="configuration-manifest-export__loading"
+             role="status"
+             aria-live="polite">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span dir="auto">@T("instance.configurationManifest.loading", "Checking export availability...")</span>
+        </div>
+    }
+    else
+    {
+        @if (CanExportOverrides || CanExportPortable)
+        {
+            <div class="configuration-manifest-export__actions"
+                 role="group"
+                 aria-label="@T("instance.configurationManifest.actionsLabel", "Configuration manifest downloads")">
+                @if (CanExportOverrides)
+                {
+                    <ControlPlaneActionButton AriaLabel="@T(
+                                                  "instance.configurationManifest.overrides.ariaLabel",
+                                                  "Download configuration overrides")"
+                                              StartIcon="@Icons.Material.Filled.Download"
+                                              Disabled="_downloading"
+                                              dir="auto"
+                                              OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Overrides))">
+                        @T("instance.configurationManifest.overrides.label", "Download overrides")
+                    </ControlPlaneActionButton>
+                }
+
+                @if (CanExportPortable)
+                {
+                    <ControlPlaneActionButton AriaLabel="@T(
+                                                  "instance.configurationManifest.portable.ariaLabel",
+                                                  "Download portable configuration")"
+                                              Variant="Variant.Outlined"
+                                              StartIcon="@Icons.Material.Filled.Download"
+                                              Disabled="_downloading"
+                                              dir="auto"
+                                              OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Portable))">
+                        @T("instance.configurationManifest.portable.label", "Download portable")
+                    </ControlPlaneActionButton>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="configuration-manifest-export__unavailable" dir="auto">
+                @T(
+                    "instance.configurationManifest.unavailable",
+                    "Export is unavailable because the server did not advertise a configuration-manifest capability.")
+            </p>
+        }
+    }
+
+    @if (_statusMessage is not null)
+    {
+        <div id="configuration-manifest-export-status"
+             class="configuration-manifest-export__status configuration-manifest-export__status--@(_statusIsError ? "error" : "success")"
+             role="@(_statusIsError ? "alert" : "status")"
+             dir="auto"
+             tabindex="-1">
+            @_statusMessage
+        </div>
+    }
+</MudPaper>
+
+@code {
+    private readonly CancellationTokenSource _disposal = new();
+    private HalResourceOfControlPlaneOverviewDto? _capabilities;
+    private bool _loading = true;
+    private bool _downloading;
+    private bool _statusIsError;
+    private string? _statusMessage;
+
+    private bool CanExportOverrides =>
+        ControlPlaneHal.HasLink(
+            _capabilities?._links,
+            ControlPlaneLinkRelations.ExportConfigurationOverrides);
+
+    private bool CanExportPortable =>
+        ControlPlaneHal.HasLink(
+            _capabilities?._links,
+            ControlPlaneLinkRelations.ExportConfigurationPortable);
+
+    private string T(string key, string fallback) =>
+        Translations.T(key, fallback);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Translations.OnLanguageChanged += OnLanguageChanged;
+        try
+        {
+            _capabilities = await ExportService.GetCapabilitiesAsync(_disposal.Token);
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                "Configuration-manifest capabilities could not be loaded. FailureType={FailureType}",
+                exception.GetType().Name);
+            _statusIsError = true;
+            _statusMessage = T(
+                "instance.configurationManifest.error.load",
+                "Configuration-manifest export availability could not be checked.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DownloadAsync(ConfigurationManifestExportView view)
+    {
+        if (_downloading || !HasCapability(view))
+        {
+            return;
+        }
+
+        _downloading = true;
+        _statusMessage = null;
+        try
+        {
+            ConfigurationManifestDownloadResult result =
+                await ExportService.DownloadAsync(view, _disposal.Token);
+            _capabilities = result.Capabilities;
+
+            if (!HasCapability(view))
+            {
+                await ShowFocusedErrorAsync(T(
+                    "instance.configurationManifest.error.capabilityChanged",
+                    "Export is no longer available. The download actions were removed."));
+                return;
+            }
+
+            if (!result.Started)
+            {
+                await ShowFocusedErrorAsync(T(
+                    "instance.configurationManifest.error.browser",
+                    "The browser could not start the configuration-manifest download."));
+                return;
+            }
+
+            _statusIsError = false;
+            _statusMessage = T(
+                "instance.configurationManifest.started",
+                "Configuration-manifest download started.");
+            await AccessibilityAnnouncer.AnnouncePoliteAsync(_statusMessage);
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                "Configuration-manifest download could not be started. FailureType={FailureType}",
+                exception.GetType().Name);
+            await ShowFocusedErrorAsync(T(
+                "instance.configurationManifest.error.download",
+                "The configuration manifest could not be downloaded. Try again."));
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+
+    private bool HasCapability(ConfigurationManifestExportView view) =>
+        view switch
+        {
+            ConfigurationManifestExportView.Overrides => CanExportOverrides,
+            ConfigurationManifestExportView.Portable => CanExportPortable,
+            _ => false
+        };
+
+    private async Task ShowFocusedErrorAsync(string message)
+    {
+        _statusIsError = true;
+        _statusMessage = message;
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync("configuration-manifest-export-status");
+    }
+
+    private void OnLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Translations.OnLanguageChanged -= OnLanguageChanged;
+        _disposal.Cancel();
+        _disposal.Dispose();
+    }
+}

@@ -1,3 +1,6 @@
+// ABOUTME: Configures global and tenant-owned event type lookup records.
+// ABOUTME: Enforces scoped master-code uniqueness through filtered indexes.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -29,13 +32,11 @@ public class EventTypeConfiguration : IEntityTypeConfiguration<EventType>
 
         // Global master-data codes (TenantId = NULL) must stay unique.
         builder.HasIndex(e => e.MasterCode)
-            .HasDatabaseName("ix_event_types_global_master_code")
             .IsUnique()
             .HasFilter("tenant_id IS NULL");
 
         // Tenant-specific custom codes must be unique per tenant.
         builder.HasIndex(e => new { e.TenantId, e.MasterCode })
-            .HasDatabaseName("ix_event_types_tenant_master_code")
             .IsUnique()
             .HasFilter("tenant_id IS NOT NULL");
     }

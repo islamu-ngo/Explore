@@ -26,6 +26,8 @@ public class HandlerValidatorPairingTests
         ["Explore.Application.Features.EventSessions.Handlers.Commands.ArchiveEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
         ["Explore.Application.Features.EventSessions.Handlers.Commands.CancelEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
         ["Explore.Application.Features.EventSessions.Handlers.Commands.CompleteEventSessionCommandHandler"] = "EventSessionLifecycleRequestDtoValidator is manually instantiated in the shared EventSessionLifecycleTransitionCommandHandlerBase.",
+        ["Explore.Application.Features.Events.Handlers.Commands.PublishEventCommandHandler"] = "PublishEventRequestDtoValidator is manually instantiated in the shared EventPublicationExecutor.",
+        ["Explore.Application.Features.Events.Handlers.Commands.ApprovePublishEventCommandHandler"] = "PublishEventRequestDtoValidator is manually instantiated in the shared EventPublicationExecutor.",
     };
 
     [Test]

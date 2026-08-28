@@ -11,7 +11,7 @@ public sealed class PaidCheckoutSaleControlConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<PaidCheckoutSaleControl> builder)
     {
-        builder.ToTable("paid_checkout_sale_controls", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_paid_checkout_sale_controls_version", "version > 0"));
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.ScopeKey).IsRequired().HasMaxLength(48);
@@ -36,7 +36,7 @@ public sealed class PaidCheckoutSaleControlAuditConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<PaidCheckoutSaleControlAudit> builder)
     {
-        builder.ToTable("paid_checkout_sale_control_audits", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_paid_checkout_sale_control_audits_sequence", "sequence > 0"));
         builder.HasKey(value => new { value.TenantId, value.PaidCheckoutSaleControlId, value.Sequence });
         builder.Property(value => value.ActionCode).IsRequired().HasMaxLength(32);
@@ -49,7 +49,7 @@ public sealed class PaidCheckoutReviewApprovalConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<PaidCheckoutReviewApproval> builder)
     {
-        builder.ToTable("paid_checkout_review_approvals", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_paid_checkout_review_approvals_trigger", "trigger_id IN (1, 2)");
             table.HasCheckConstraint("ck_paid_checkout_review_approvals_status", "status_code IN ('pending', 'approved', 'rejected')");

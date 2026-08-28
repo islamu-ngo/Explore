@@ -8,6 +8,7 @@ using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
@@ -94,12 +95,24 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
         if (request.Patch.LockTenantEventCardClickBehavior.HasValue)
             settings.EventPolicy.LockTenantEventCardClickBehavior = request.Patch.LockTenantEventCardClickBehavior.Value;
 
-        IReadOnlyList<SettingChangedNotification> notifications = [];
-        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        PublicationPolicyMutationResult result = await _unitOfWork.ExecuteInTransactionAsync(
+            ct => _service.ApplyEventPolicyPatchAsync(request.Patch, settings.EventPolicy, request.UserId, ct),
+            cancellationToken);
+        if (!result.Success)
         {
-            notifications = await _service.ApplyEventPolicyPatchAsync(request.Patch, settings.EventPolicy, request.UserId, ct);
-        }, cancellationToken);
-        foreach (SettingChangedNotification notification in notifications)
+            string failureCode = string.IsNullOrWhiteSpace(result.FailureCode)
+                ? "event_reporting_intake_policy_invalid"
+                : result.FailureCode;
+            string failureMessage = string.IsNullOrWhiteSpace(result.Message)
+                ? PublicationPolicyMutationMessages.InvalidPolicy
+                : result.Message;
+            return BaseCommandResponse.Failure<Guid>(
+                failureCode,
+                failureMessage,
+                [failureCode]);
+        }
+
+        foreach (SettingChangedNotification notification in result.DeferredNotifications)
             await _mediator.Publish(notification, cancellationToken);
         return BaseCommandResponse.Success(Guid.Empty, "Event policy updated successfully.");
     }
@@ -154,7 +167,7 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ISettingMutationLock _mutationLock;
     private readonly IMediator _mediator;
 
     public UpdateBrandingSettingsCommandHandler(
@@ -162,14 +175,14 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
         IInstanceGovernanceSettingService service,
         IDeploymentModeProvider deploymentModeProvider,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
-        IUnitOfWork unitOfWork,
+        ISettingMutationLock mutationLock,
         IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _deploymentModeProvider = deploymentModeProvider;
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
-        _unitOfWork = unitOfWork;
+        _mutationLock = mutationLock;
         _mediator = mediator;
     }
 
@@ -200,19 +213,29 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
             settings.Branding.LockTenantBrandCustomCssUrl = request.Patch.LockTenantBrandCustomCssUrl.Value;
 
         IReadOnlyList<SettingChangedNotification> notifications = [];
-        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
-        {
-            notifications = await _service.ApplyBrandingSettingsPatchAsync(request.Patch, settings.Branding, request.UserId, ct);
-
-            if (request.Patch.DefaultBrandDisplayName.HasValue
-                && await _deploymentModeProvider.IsSingleTenantAsync(ct))
+        await _mutationLock.ExecuteManyAsync(
+            TenantBrandingGovernanceMutationLockKeys.All,
+            async ct =>
             {
-                await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
-                    PlatformDefaults.DefaultTenantId,
-                    settings.Branding.DefaultBrandDisplayName,
+                notifications = await _service.ApplyBrandingSettingsPatchAsync(
+                    request.Patch,
+                    settings.Branding,
+                    request.UserId,
                     ct);
-            }
-        }, cancellationToken);
+
+                if (request.Patch.DefaultBrandDisplayName.HasValue
+                    && await _deploymentModeProvider.IsSingleTenantAsync(ct))
+                {
+                    await _tenantBrandingProvisioningService
+                        .EnsureTenantBrandingDocumentAsync(
+                            PlatformDefaults.DefaultTenantId,
+                            settings.Branding.DefaultBrandDisplayName,
+                            ct);
+                }
+
+                return true;
+            },
+            cancellationToken);
         foreach (SettingChangedNotification notification in notifications)
             await _mediator.Publish(notification, cancellationToken);
         return BaseCommandResponse.Success(Guid.Empty, "Branding settings updated successfully.");

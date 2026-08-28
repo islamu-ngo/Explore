@@ -11,7 +11,6 @@ public sealed class WebPushSubscriptionConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<WebPushSubscription> builder)
     {
-        builder.ToTable("web_push_subscriptions");
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.DeviceIdentifier).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Endpoint).HasMaxLength(2000).IsRequired();
@@ -51,7 +50,6 @@ public sealed class WebPushDispatchOutboxConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<WebPushDispatchOutbox> builder)
     {
-        builder.ToTable("web_push_dispatch_outbox");
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.PayloadJson).HasColumnType("jsonb").IsRequired();
         builder.Property(e => e.Status).IsRequired();

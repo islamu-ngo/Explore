@@ -13,6 +13,18 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_event.json
   rules:
+    - actions: ["approve-publish"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+        - islamuevent_tenant_admin
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.tenantId) &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)
+
     - actions: ["view", "view-management", "moderate-light", "moderate-heavy", "unmoderate"]
       effect: EFFECT_ALLOW
       derivedRoles:

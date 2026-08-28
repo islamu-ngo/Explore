@@ -49,20 +49,45 @@ public class EventActorResolver : IEventActorResolver
         Guid? groupId,
         CancellationToken cancellationToken)
     {
-        var userSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
-            "events.user_submission_enabled",
-            new SettingContext(TenantId: _tenantContext.TenantId),
-            cancellationToken);
+        var settingContext = new SettingContext(TenantId: _tenantContext.TenantId);
 
+        if (organizationId.HasValue)
+        {
+            var organizationSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
+                GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+                settingContext,
+                cancellationToken);
+
+            if (!organizationSubmissionEnabled)
+                return EventActorResult.Failure(
+                    "Organization event publishing is disabled for this tenant.",
+                    "Select a group or personal actor to publish this event.");
+
+            return await ResolveOrganizationActorAsync(organizationId.Value, currentUserId, cancellationToken);
+        }
+
+        if (groupId.HasValue)
+        {
+            var groupSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
+                GovernanceSettingKeys.Events.GroupSubmissionEnabled,
+                settingContext,
+                cancellationToken);
+
+            if (!groupSubmissionEnabled)
+                return EventActorResult.Failure(
+                    "Group event publishing is disabled for this tenant.",
+                    "Select an organization or personal actor to publish this event.");
+
+            return await ResolveGroupActorAsync(groupId.Value, currentUserId, cancellationToken);
+        }
+
+        var userSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            settingContext,
+            cancellationToken);
         var publishingPolicy = userSubmissionEnabled
             ? EventPublishingPolicyEnum.OrganizationGroupAndUserReported
             : EventPublishingPolicyEnum.OrganizationAndGroupOnly;
-
-        if (organizationId.HasValue)
-            return await ResolveOrganizationActorAsync(organizationId.Value, currentUserId, cancellationToken);
-
-        if (groupId.HasValue)
-            return await ResolveGroupActorAsync(groupId.Value, currentUserId, cancellationToken);
 
         return await ResolvePersonalActorAsync(currentUserId, publishingPolicy, cancellationToken);
     }

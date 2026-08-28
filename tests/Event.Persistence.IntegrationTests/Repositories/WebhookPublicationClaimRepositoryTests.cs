@@ -1,6 +1,7 @@
 // ABOUTME: PostgreSQL integration tests for atomic provider-publication claims and fenced completion.
 // ABOUTME: Verifies entity-returning claims, bounded concurrency, tenant isolation, and immutable uniqueness.
 
+using System.Diagnostics;
 using System.Text;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
@@ -25,8 +26,9 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
     public async Task ConcurrentDueClaims_ReturnEachEntityOnceAndHonorBatchLimit()
     {
         var scenario = await SeedAsync(publicationCount: 3);
-        await using var firstContext = fixture.CreateDbContext();
-        await using var secondContext = fixture.CreateDbContext();
+        var baseline = new PersistenceQueryBaselineInterceptor();
+        await using var firstContext = fixture.CreateDbContext(baseline);
+        await using var secondContext = fixture.CreateDbContext(baseline);
         var request = new WebhookProviderPublicationClaimRequest(
             BatchSize: 2,
             LeaseOwner: "publication-worker",
@@ -34,12 +36,16 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
             LeaseDuration: TimeSpan.FromMinutes(2),
             MaxAutomaticAttempts: 3);
 
+        var elapsed = Stopwatch.StartNew();
         var results = await Task.WhenAll(
             new WebhookProviderPublicationRepository(firstContext)
                 .ClaimDueAsync(request, CancellationToken.None),
             new WebhookProviderPublicationRepository(secondContext)
                 .ClaimDueAsync(request, CancellationToken.None));
+        elapsed.Stop();
         var claims = results.SelectMany(result => result).ToArray();
+        PersistenceQueryBaselineEvidence.Record(baseline
+            .Snapshot("webhook_concurrent_due_claims", claims.Length, elapsed.Elapsed));
 
         await Assert.That(results[0].Count).IsLessThanOrEqualTo(2);
         await Assert.That(results[1].Count).IsLessThanOrEqualTo(2);

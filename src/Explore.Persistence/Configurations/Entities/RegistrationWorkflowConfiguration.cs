@@ -11,7 +11,6 @@ public sealed class RegistrationWorkflowConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<RegistrationWorkflow> builder)
     {
-        builder.ToTable("registration_workflows");
         builder.Property(workflow => workflow.Id).ValueGeneratedNever();
         builder.Property(workflow => workflow.Purpose).IsRequired().HasMaxLength(100);
         builder.Property(workflow => workflow.CreatedAt).IsRequired();

@@ -1,3 +1,6 @@
+// ABOUTME: Configures event-series content, publication indexes, and actor ownership.
+// ABOUTME: Preserves tenant-scoped slug uniqueness and optimistic concurrency.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,8 +11,6 @@ public class EventSeriesConfiguration : IEntityTypeConfiguration<EventSeries>
 {
     public void Configure(EntityTypeBuilder<EventSeries> builder)
     {
-        builder.ToTable("event_series");
-
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Title).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Slug).HasMaxLength(200);

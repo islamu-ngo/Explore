@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,15 +13,6 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : IEventTicketCatalogRepository
 {
-    private static readonly string[] ConcurrentUniqueConstraints =
-    [
-        "ix_event_ticket_catalog_versions_tenant_id_event_id",
-        "ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu",
-        "ix_event_capacity_pools_tenant_id_event_id_name",
-        "ux_admission_targets_scope",
-        "ux_admission_check_in_policies_target"
-    ];
-
     public Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
         ManagementGraph()
             .Where(catalog => catalog.EventId == eventId
@@ -158,11 +150,38 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         "Ticketing data was modified by another request. Reload and retry.",
         innerException: exception);
 
-    private static bool IsConcurrentUniqueViolation(DbUpdateException exception)
+    private bool IsConcurrentUniqueViolation(DbUpdateException exception)
     {
         string details = exception.ToString();
-        return ConcurrentUniqueConstraints.Any(constraint =>
-            details.Contains(constraint, StringComparison.Ordinal));
+        RelationalConstraintDescriptor[] constraints =
+        [
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                dbContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId)),
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                dbContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId),
+                nameof(EventTicketCatalogVersion.VersionNumber)),
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventCapacityPool>(
+                dbContext,
+                nameof(EventCapacityPool.TenantId),
+                nameof(EventCapacityPool.EventId),
+                nameof(EventCapacityPool.Name)),
+            RelationalConstraintDescriptorResolver.UniqueIndex<AdmissionTarget>(
+                dbContext,
+                nameof(AdmissionTarget.TenantId),
+                nameof(AdmissionTarget.EventId),
+                nameof(AdmissionTarget.AdmissionTargetTypeId),
+                nameof(AdmissionTarget.ScopeId)),
+            RelationalConstraintDescriptorResolver.UniqueIndex<AdmissionCheckInPolicy>(
+                dbContext,
+                nameof(AdmissionCheckInPolicy.TenantId),
+                nameof(AdmissionCheckInPolicy.AdmissionTargetId))
+        ];
+        return constraints.Any(constraint =>
+            details.Contains(constraint.Name, StringComparison.Ordinal));
     }
 
     private IQueryable<EventTicketCatalogVersion> CatalogDetailsQuery() =>

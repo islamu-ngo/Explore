@@ -94,6 +94,23 @@ public sealed class PrivacyErasureIntent
         };
     }
 
+    public void PseudonymizeForLegalHold(Guid intentAuditToken, Guid subjectAuditToken)
+    {
+        if (intentAuditToken == Guid.Empty)
+        {
+            throw new ArgumentException("Intent audit token is required.", nameof(intentAuditToken));
+        }
+
+        if (subjectAuditToken == Guid.Empty)
+        {
+            throw new ArgumentException("Subject audit token is required.", nameof(subjectAuditToken));
+        }
+
+        IntentId = intentAuditToken;
+        SubjectId = subjectAuditToken;
+        IsLegalHoldPseudonymized = true;
+    }
+
     private static bool IsUuidVersion7(Guid value) =>
         value != Guid.Empty && value.Version == 7 && value.Variant is >= 8 and <= 11;
 

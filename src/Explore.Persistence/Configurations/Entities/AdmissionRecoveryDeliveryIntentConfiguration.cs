@@ -12,7 +12,7 @@ public sealed class AdmissionRecoveryDeliveryIntentConfiguration :
 {
     public void Configure(EntityTypeBuilder<AdmissionRecoveryDeliveryIntent> builder)
     {
-        builder.ToTable("admission_recovery_delivery_intents", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_admission_recovery_delivery_intents_versions",
@@ -37,10 +37,8 @@ public sealed class AdmissionRecoveryDeliveryIntentConfiguration :
                 value.Purpose,
                 value.CapabilityVersion
             })
-            .HasDatabaseName("ux_admission_recovery_delivery_intents_generation")
             .IsUnique();
-        builder.HasIndex(value => new { value.HandoffCompletedAt, value.RoutedAt, value.CreatedAt })
-            .HasDatabaseName("ix_admission_recovery_delivery_intents_pending");
+        builder.HasIndex(value => new { value.HandoffCompletedAt, value.RoutedAt, value.CreatedAt });
         builder.HasOne<Tenant>().WithMany()
             .HasForeignKey(value => value.TenantId)
             .OnDelete(DeleteBehavior.Restrict);

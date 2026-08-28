@@ -12,7 +12,7 @@ public sealed class EventContactShareConsentConfiguration : IEntityTypeConfigura
 {
     public void Configure(EntityTypeBuilder<EventContactShareConsent> builder)
     {
-        builder.ToTable("event_contact_share_consents", table => table.HasCheckConstraint(
+        builder.ToTable(table => table.HasCheckConstraint(
             "ck_event_contact_share_consents_subject_shape",
             "(CASE WHEN user_subject_id IS NULL THEN 0 ELSE 1 END + " +
             "CASE WHEN registration_purchaser_order_id IS NULL THEN 0 ELSE 1 END + " +

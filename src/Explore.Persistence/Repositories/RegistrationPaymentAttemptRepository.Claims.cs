@@ -91,31 +91,26 @@ public sealed partial class RegistrationPaymentAttemptRepository
 
         try
         {
+            if (dbContext.Database.CurrentTransaction is not null)
+            {
+                return await PersistClaimInCurrentTransactionAsync(
+                    claim,
+                    acceptanceAlreadyExists,
+                    cancellationToken);
+            }
+
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable, cancellationToken);
-                await using IAsyncDisposable cursorLock = await RelationalNamedLock.AcquireTransactionAsync(
-                    dbContext, $"payment-attempt-cursor:{claim.Attempt.TenantId:N}", cancellationToken);
-                long lastCursor = await dbContext.PaymentAttempts
-                    .Where(value => value.TenantId == claim.Attempt.TenantId)
-                    .MaxAsync(value => (long?)value.CampaignCursor, cancellationToken) ?? 0;
-                claim.Attempt.AssignCampaignCursor(checked(lastCursor + 1));
-                await dbContext.PaymentAttempts.AddAsync(claim.Attempt, cancellationToken);
-                await dbContext.CheckoutDispatchEffects.AddAsync(claim.DispatchEffect, cancellationToken);
-                if (acceptanceAlreadyExists)
-                {
-                    dbContext.Entry(persistedAcceptance!).State = EntityState.Unchanged;
-                    foreach (PaidOrderAcceptanceLine line in persistedAcceptance!.Lines)
-                    {
-                        dbContext.Entry(line).State = EntityState.Unchanged;
-                    }
-                }
-                await dbContext.SaveChangesAsync(cancellationToken);
+                RegistrationPaymentAttemptClaimOutcome outcome =
+                    await PersistClaimInCurrentTransactionAsync(
+                        claim,
+                        acceptanceAlreadyExists,
+                        cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
-                return new RegistrationPaymentAttemptClaimOutcome(
-                    claim.Attempt, claim.DispatchEffect, Created: true);
+                return outcome;
             });
         }
         catch (DbUpdateException)
@@ -139,6 +134,38 @@ public sealed partial class RegistrationPaymentAttemptRepository
 
             throw;
         }
+    }
+
+    private async Task<RegistrationPaymentAttemptClaimOutcome> PersistClaimInCurrentTransactionAsync(
+        RegistrationPaymentAttemptClaim claim,
+        bool acceptanceAlreadyExists,
+        CancellationToken cancellationToken)
+    {
+        await using IAsyncDisposable cursorLock = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            $"payment-attempt-cursor:{claim.Attempt.TenantId:N}",
+            cancellationToken);
+        long lastCursor = await dbContext.PaymentAttempts
+            .Where(value => value.TenantId == claim.Attempt.TenantId)
+            .MaxAsync(value => (long?)value.CampaignCursor, cancellationToken) ?? 0;
+        claim.Attempt.AssignCampaignCursor(checked(lastCursor + 1));
+        await dbContext.PaymentAttempts.AddAsync(claim.Attempt, cancellationToken);
+        await dbContext.CheckoutDispatchEffects.AddAsync(claim.DispatchEffect, cancellationToken);
+        if (acceptanceAlreadyExists)
+        {
+            PaidOrderAcceptanceSnapshot acceptance = claim.Attempt.AcceptanceSnapshot!;
+            dbContext.Entry(acceptance).State = EntityState.Unchanged;
+            foreach (PaidOrderAcceptanceLine line in acceptance.Lines)
+            {
+                dbContext.Entry(line).State = EntityState.Unchanged;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new RegistrationPaymentAttemptClaimOutcome(
+            claim.Attempt,
+            claim.DispatchEffect,
+            Created: true);
     }
 
     public async Task<bool> ReleaseActiveSlotAsync(PaymentAttempt attempt, DateTime releasedAt, CancellationToken cancellationToken)

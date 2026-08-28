@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
@@ -21,6 +22,9 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyBoundary =
+        Substitute.For<IPublicationPolicyMutationBoundary>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _actorUserId = Guid.NewGuid();
 
@@ -48,10 +52,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
                 calls.Add("value-only-mutation");
                 return Task.CompletedTask;
             });
-        var handler = new SetControlPlaneTenantSettingCommandHandler(
-            _tenantSettings,
-            _systemSettings,
-            mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler(mutationLock);
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -78,10 +79,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
                 calls.Add("system-recheck");
                 return true;
             });
-        var handler = new SetControlPlaneTenantSettingCommandHandler(
-            _tenantSettings,
-            _systemSettings,
-            mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler(mutationLock);
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -118,13 +116,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
                 calls.Add("publish");
                 return Task.CompletedTask;
             });
-        var handler = new SetControlPlaneTenantSettingCommandHandler(
-            _tenantSettings,
-            _systemSettings,
-            mutationLock,
-            _currentUserService,
-            _settingsResolver,
-            _mediator);
+        var handler = CreateSetHandler(mutationLock);
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -189,10 +181,7 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
         const string key = GovernanceSettingKeys.Email.SmtpHost;
         var mutationLock = new RecordingSettingMutationLock([], attempts: 2);
         _systemSettings.IsLocked(key, Arg.Any<CancellationToken>()).Returns(false);
-        var handler = new SetControlPlaneTenantSettingCommandHandler(
-            _tenantSettings,
-            _systemSettings,
-            mutationLock, _currentUserService, _settingsResolver, _mediator);
+        var handler = CreateSetHandler(mutationLock);
 
         var result = await handler.Handle(
             new SetControlPlaneTenantSettingCommand(_tenantId, key, "smtp.example.test"),
@@ -204,6 +193,17 @@ public sealed class ControlPlaneTenantSettingMutationRaceTests
         await _tenantSettings.DidNotReceiveWithAnyArgs()
             .UpsertManyForTenantAsync(default, default!, default);
     }
+
+    private SetControlPlaneTenantSettingCommandHandler CreateSetHandler(
+        ISettingMutationLock mutationLock) => new(
+        _tenantSettings,
+        _systemSettings,
+        mutationLock,
+        _currentUserService,
+        _settingsResolver,
+        _mediator,
+        _publicationPolicyBoundary,
+        _unitOfWork);
 
     private TenantSetting TenantSetting(string key, bool isLocked) => new()
     {

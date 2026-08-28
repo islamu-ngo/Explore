@@ -29,6 +29,7 @@ public sealed class EventLifecyclePolicyProviderTests
 
         await Assert.That(policy.Profile).IsEqualTo(ValidationProfile.EventPublish);
         await Assert.That(policy.Source).IsEqualTo("default");
+        await Assert.That(policy.RequiresApproval).IsFalse();
         await Assert.That(policy.RequiredEventFields).Contains(EventFieldKey.Title);
         await Assert.That(policy.RequiredEventFields).Contains(EventFieldKey.ScheduleSessions);
         await Assert.That(policy.RequiredSessionFields).IsEmpty();
@@ -54,13 +55,17 @@ public sealed class EventLifecyclePolicyProviderTests
     public async Task GetEffectivePolicyAsync_WhenTenantIsPresent_ReturnsTenantAwarePolicyAndPreservesHardInvariants()
     {
         var tenantId = Guid.NewGuid();
-        _tenantPolicySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _tenantPolicySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto
+        {
+            RequireEventApproval = true
+        });
         var provider = CreateProvider();
 
         var policy = await provider.GetEffectivePolicyAsync(tenantId, ValidationProfile.SessionPublish, CancellationToken.None);
 
         await Assert.That(policy.Profile).IsEqualTo(ValidationProfile.SessionPublish);
         await Assert.That(policy.Source).IsEqualTo("tenant-aware");
+        await Assert.That(policy.RequiresApproval).IsTrue();
         await Assert.That(policy.RequiredSessionFields).Contains(EventSessionFieldKey.ParentEventCompatibility);
         await Assert.That(policy.RequiredSessionFields).Contains(EventSessionFieldKey.ScheduleStart);
         await Assert.That(policy.RequiredEventFields).IsEmpty();

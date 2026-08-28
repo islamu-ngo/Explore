@@ -11,7 +11,7 @@ public sealed class EmailDispatchTenantControlConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<EmailDispatchTenantControl> builder)
     {
-        builder.ToTable("email_dispatch_tenant_controls", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_email_dispatch_tenant_controls_smtp_rate_pair",
@@ -32,10 +32,8 @@ public sealed class EmailDispatchTenantControlConfiguration : IEntityTypeConfigu
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => e.TenantId)
-            .IsUnique()
-            .HasDatabaseName("ux_email_dispatch_tenant_controls_tenant");
+            .IsUnique();
 
-        builder.HasIndex(e => new { e.IsPaused, e.UpdatedAt })
-            .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
+        builder.HasIndex(e => new { e.IsPaused, e.UpdatedAt });
     }
 }

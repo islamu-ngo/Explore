@@ -35,7 +35,11 @@ public static class CachingExtensions
 
             options.AddPolicy("EventDiscovery", builder => builder
                 .Expire(TimeSpan.FromSeconds(30))
-                .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
+                .SetVaryByHeader(
+                    TenantHeaderNames.TenantSlug,
+                    "Host",
+                    "Authorization",
+                    "Prefer")
                 .SetVaryByQuery("*")
                 .Tag("list-data")
                 .Tag("event-discovery"));

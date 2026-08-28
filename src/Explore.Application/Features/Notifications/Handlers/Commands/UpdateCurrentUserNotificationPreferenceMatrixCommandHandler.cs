@@ -19,6 +19,8 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
     ICurrentUserService currentUserService)
     : IRequestHandler<UpdateCurrentUserNotificationPreferenceMatrixCommand, BaseCommandResponse<Guid>>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
+
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateCurrentUserNotificationPreferenceMatrixCommand request,
         CancellationToken cancellationToken)
@@ -127,8 +129,8 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
         await privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null;
 
     private static BaseCommandResponse<Guid> FencedFailure() =>
-        BaseCommandResponse.Validation<Guid>(
-            ["Notification preference update failed."],
+        BaseCommandResponse.Failure<Guid>(
+            PrivacyErasureFencedFailureCode,
             "Notification preference update failed.");
 
     private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null) =>

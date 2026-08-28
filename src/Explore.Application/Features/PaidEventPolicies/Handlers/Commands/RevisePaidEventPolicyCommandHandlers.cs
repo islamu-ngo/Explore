@@ -1,123 +1,56 @@
-// ABOUTME: Handles immutable paid-event policy revisions for instance and tenant scopes.
-// ABOUTME: Applies tenant narrowing rules inside the serializable Application unit-of-work boundary.
+// ABOUTME: Adapts paid-event policy CQRS commands to the canonical mutation boundary.
+// ABOUTME: Keeps authorization requests separate from serializable policy mutation mechanics.
 
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.PaidEventPolicies.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using Explore.Domain.Services.Registration;
-using Explore.Domain.ValueObjects;
 using FluentValidation;
 using MediatR;
 
 namespace Explore.Application.Features.PaidEventPolicies.Handlers.Commands;
 
-public sealed class ReviseInstancePaidEventPolicyCommandHandler(IPaidEventPolicyRepository policies, IUnitOfWork unitOfWork)
+public sealed class ReviseInstancePaidEventPolicyCommandHandler(
+    IPaidEventPolicyMutationBoundary mutationBoundary)
     : IRequestHandler<ReviseInstancePaidEventPolicyCommand, BaseCommandResponse<Guid>>
 {
-    public async Task<BaseCommandResponse<Guid>> Handle(ReviseInstancePaidEventPolicyCommand request, CancellationToken cancellationToken) =>
-        await ReviseAsync(null, request.Policy, policies, unitOfWork, cancellationToken);
-
-    internal static async Task<BaseCommandResponse<Guid>> ReviseAsync(
-        Guid? tenantId,
-        RevisePaidEventPolicyDto request,
-        IPaidEventPolicyRepository policies,
-        IUnitOfWork unitOfWork,
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        ReviseInstancePaidEventPolicyCommand request,
         CancellationToken cancellationToken)
     {
-        try
+        var validation = await new RevisePaidEventPolicyCommandValidator()
+            .ValidateAsync(request.Policy, cancellationToken);
+        if (!validation.IsValid)
         {
-            var validation = await new RevisePaidEventPolicyCommandValidator().ValidateAsync(request, cancellationToken);
-            if (!validation.IsValid)
-            {
-                return Failure("paid_event_policy_validation_failed", validation.Errors[0].ErrorMessage);
-            }
-
-            Guid revisionId = await unitOfWork.ExecuteSerializableAsync(async token =>
-            {
-                PaidEventPolicyVersion? instancePolicy = await policies.GetActiveInstanceAsync(token);
-                if (instancePolicy is null || !instancePolicy.IsActive)
-                {
-                    throw new InvalidOperationException("Active instance paid-event policy is required.");
-                }
-
-                PaidEventPolicyVersion revision;
-                if (tenantId is { } tenant)
-                {
-                    PaidEventPolicyVersion? currentTenantPolicy = await policies.GetActiveTenantAsync(tenant, token);
-                    PaidEventPolicyVersion candidate = currentTenantPolicy is null
-                        ? CreateTenant(tenant, request)
-                        : CreateRevision(currentTenantPolicy, request);
-                    PaidEventPolicyRules.ValidateTenantPolicy(instancePolicy, candidate);
-                    revision = candidate;
-                }
-                else
-                {
-                    revision = CreateRevision(instancePolicy, request);
-                }
-
-                await policies.AddAsync(revision, token);
-                await policies.SaveChangesAsync(token);
-                return revision.Id;
-            }, cancellationToken);
-
-            return Success(revisionId, "Paid-event policy revised.");
+            return ValidationFailure(validation.Errors[0].ErrorMessage);
         }
-        catch (ArgumentException exception)
-        {
-            return Failure("paid_event_policy_validation_failed", exception.Message);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Failure("paid_event_policy_validation_failed", exception.Message);
-        }
+
+        PaidEventPolicyMutationResult result =
+            await mutationBoundary.ReviseInstanceAsync(
+                request.Policy,
+                cancellationToken);
+        return ToResponse(result);
     }
 
-    private static PaidEventPolicyVersion CreateTenant(Guid tenantId, RevisePaidEventPolicyDto request) => PaidEventPolicyVersion.CreateTenant(
-        tenantId,
-        request.IsPaymentsEnabled,
-        OrganizerKinds(request),
-        request.RequiresLocalVerification,
-        request.AllowedCurrencyCodes,
-        request.DefaultCurrencyCode,
-        RefundProtections(request),
-        RiskLimits(request),
-        request.RequiresFirstPaidEventReview,
-        request.FarFutureReviewThresholdDays);
+    internal static BaseCommandResponse<Guid> ToResponse(
+        PaidEventPolicyMutationResult result) => result.Success
+            ? BaseCommandResponse.Success(
+                result.PolicyVersionId
+                    ?? throw new InvalidOperationException(
+                        "A successful paid-event policy mutation requires a revision identity."),
+                result.Message)
+            : BaseCommandResponse.Failure<Guid>(
+                result.FailureCode
+                    ?? PaidEventPolicyMutationFailureCodes.ValidationFailed,
+                result.Message,
+                result.Errors);
 
-    private static PaidEventPolicyVersion CreateRevision(PaidEventPolicyVersion current, RevisePaidEventPolicyDto request) => current.CreateRevision(
-        request.IsPaymentsEnabled,
-        OrganizerKinds(request),
-        request.RequiresLocalVerification,
-        request.AllowedCurrencyCodes,
-        request.DefaultCurrencyCode,
-        RefundProtections(request),
-        RiskLimits(request),
-        request.RequiresFirstPaidEventReview,
-        request.FarFutureReviewThresholdDays);
-
-    private static IEnumerable<ActorTypeEnum> OrganizerKinds(RevisePaidEventPolicyDto request) =>
-        request.AllowedOrganizerKindIds.Select(id => (ActorTypeEnum)id);
-
-    private static IEnumerable<PaidEventRefundProtection> RefundProtections(RevisePaidEventPolicyDto request) =>
-        request.RefundProtectionIds.Select(id => (PaidEventRefundProtection)id);
-
-    private static IEnumerable<PaidEventPolicyCurrencyRiskLimit> RiskLimits(RevisePaidEventPolicyDto request) =>
-        request.CurrencyRiskLimits.Select(limit => PaidEventPolicyCurrencyRiskLimit.Create(
-            limit.CurrencyCode,
-            limit.PerEventSalesCeilingMinor,
-            limit.PerEventSalesCountCeiling,
-            limit.RollingOrganizerSalesCeilingMinor,
-            limit.RollingOrganizerSalesCountCeiling,
-            limit.RollingOrganizerWindowDays,
-            limit.HighValueReviewThresholdMinor));
-
-    private static BaseCommandResponse<Guid> Success(Guid id, string message) => BaseCommandResponse.Success(id, message);
-
-    private static BaseCommandResponse<Guid> Failure(string code, string message) =>
-        BaseCommandResponse.Failure<Guid>(code, "Paid-event policy is invalid.", [message]);
+    internal static BaseCommandResponse<Guid> ValidationFailure(string error) =>
+        BaseCommandResponse.Failure<Guid>(
+            PaidEventPolicyMutationFailureCodes.ValidationFailed,
+            "Paid-event policy is invalid.",
+            [error]);
 }
 
 public sealed class RevisePaidEventPolicyCommandValidator : AbstractValidator<RevisePaidEventPolicyDto>
@@ -154,11 +87,33 @@ internal sealed class PaidEventPolicyCurrencyRiskLimitDtoValidator : AbstractVal
     }
 }
 
-public sealed class ReviseTenantPaidEventPolicyCommandHandler(IPaidEventPolicyRepository policies, IUnitOfWork unitOfWork)
+public sealed class ReviseTenantPaidEventPolicyCommandHandler(
+    IPaidEventPolicyMutationBoundary mutationBoundary)
     : IRequestHandler<ReviseTenantPaidEventPolicyCommand, BaseCommandResponse<Guid>>
 {
-    public async Task<BaseCommandResponse<Guid>> Handle(ReviseTenantPaidEventPolicyCommand request, CancellationToken cancellationToken) =>
-        request.TenantId == Guid.Empty
-            ? BaseCommandResponse.Failure<Guid>("paid_event_policy_validation_failed", "Paid-event policy is invalid.", ["Tenant is required."])
-            : await ReviseInstancePaidEventPolicyCommandHandler.ReviseAsync(request.TenantId, request.Policy, policies, unitOfWork, cancellationToken);
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        ReviseTenantPaidEventPolicyCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (request.TenantId == Guid.Empty)
+        {
+            return ReviseInstancePaidEventPolicyCommandHandler.ValidationFailure(
+                "Tenant is required.");
+        }
+
+        var validation = await new RevisePaidEventPolicyCommandValidator()
+            .ValidateAsync(request.Policy, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ReviseInstancePaidEventPolicyCommandHandler.ValidationFailure(
+                validation.Errors[0].ErrorMessage);
+        }
+
+        return ReviseInstancePaidEventPolicyCommandHandler.ToResponse(
+            await mutationBoundary.ReviseTenantAsync(
+                new TenantPaidEventPolicyMutationInput(
+                    request.TenantId,
+                    request.Policy),
+                cancellationToken));
+    }
 }

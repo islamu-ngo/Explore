@@ -11,7 +11,6 @@ public sealed class RegistrationSubmissionIssueConfiguration : IEntityTypeConfig
 {
     public void Configure(EntityTypeBuilder<RegistrationSubmissionIssue> builder)
     {
-        builder.ToTable("registration_submission_issues");
         builder.Property(issue => issue.Id).ValueGeneratedNever();
         builder.Property(issue => issue.Code).HasMaxLength(100).IsRequired();
         builder.Property(issue => issue.CreatedAt).IsRequired();

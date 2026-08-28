@@ -3,6 +3,8 @@
 
 using Event.MigrationService.Extensions;
 using Explore.Application.Configuration;
+using Explore.Application.Features.ConfigurationManifest.Application;
+using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
@@ -28,8 +30,14 @@ public class Program
         //builder.Services.AddOpenTelemetry()
         //  .WithTracing(tracing => tracing.AddSource(Worker.ActivitySourceName));
 
-        builder.Services.AddDbContext<ExploreDbContext>(options =>
+        builder.Services.AddPooledDbContextFactory<ExploreDbContext>(options =>
             PrimaryDatabaseProviderComposition.ConfigureApplication(options, runtimeDatabaseOptions));
+        builder.Services.AddScoped(provider =>
+            provider.GetRequiredService<IDbContextFactory<ExploreDbContext>>().CreateDbContext());
+        builder.Services.AddConfigurationManifestPersistence();
+        builder.Services.AddConfigurationManifestStartup(
+            builder.Configuration,
+            ConfigurationManifestEffectDeliveryMode.DeferredToRuntime);
 
         builder.Services.AddDbContext<DataProtectionKeyContext>(options =>
             PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, runtimeDatabaseOptions));

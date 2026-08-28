@@ -43,18 +43,14 @@ public class EventRoleAssignmentConfiguration : IEntityTypeConfiguration<EventRo
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.UserId, e.RoleId })
-            .HasDatabaseName("ix_event_role_assignments_unique_pending_active")
             .IsUnique()
             .HasFilter("status IN (1, 2)");
 
-        builder.HasIndex(e => new { e.TenantId, e.UserId, e.EventId, e.Status })
-            .HasDatabaseName("ix_event_role_assignments_tenant_user_event_status");
+        builder.HasIndex(e => new { e.TenantId, e.UserId, e.EventId, e.Status });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.UserId, e.Status })
-            .HasDatabaseName("ix_event_role_assignments_tenant_event_user_status");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.UserId, e.Status });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.RoleId, e.Status })
-            .HasDatabaseName("ix_event_role_assignments_tenant_event_role_status");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.RoleId, e.Status });
 
         builder.ToTable(t => t.HasCheckConstraint(
             "ck_event_role_assignments_validity_window",

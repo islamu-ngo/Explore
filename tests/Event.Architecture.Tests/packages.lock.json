@@ -1224,6 +1224,34 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       },
+      "explore.persistence.migrations.mariadb": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Persistence": "[1.0.0, )",
+          "Microting.EntityFrameworkCore.MySql": "[10.0.10, )"
+        }
+      },
+      "explore.persistence.migrations.mysql": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Persistence": "[1.0.0, )",
+          "Microting.EntityFrameworkCore.MySql": "[10.0.10, )"
+        }
+      },
+      "explore.persistence.migrations.sqlite": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Persistence": "[1.0.0, )",
+          "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.10, )"
+        }
+      },
+      "explore.persistence.migrations.sqlserver": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Persistence": "[1.0.0, )",
+          "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.10, )"
+        }
+      },
       "explore.secrets": {
         "type": "Project",
         "dependencies": {
@@ -1251,6 +1279,12 @@
           "OpenTelemetry.Instrumentation.AspNetCore": "[1.17.0, )",
           "OpenTelemetry.Instrumentation.Http": "[1.17.0, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.17.0, )"
+        }
+      },
+      "islamu.configurationmanifest.schemagenerator": {
+        "type": "Project",
+        "dependencies": {
+          "Explore.Application": "[1.0.0, )"
         }
       },
       "Asp.Versioning.Mvc": {

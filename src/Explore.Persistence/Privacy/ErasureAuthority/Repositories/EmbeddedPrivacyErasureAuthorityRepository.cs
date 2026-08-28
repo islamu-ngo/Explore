@@ -5,7 +5,6 @@ using System.Data;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
-using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -16,10 +15,10 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
     TimeProvider timeProvider,
     IOptions<PrivacyErasureOptions> options,
     EmbeddedPrivacyErasureAuthorityStorage? storage = null)
-    : IPrivacyErasureAuthority, IPrivacyErasureAuthorityMaintenance, IDisposable
+    : IPrivacyErasureAuthority, IPrivacyErasureAuthorityMaintenance
 {
     public const int MaximumReadBatchSize = 500;
-    private readonly SemaphoreSlim _writerLock = new(1, 1);
+    private static readonly SemaphoreSlim WriterLock = new(1, 1);
 
     public async Task<PrivacyErasureAuthorityState> GetStateAsync(
         CancellationToken cancellationToken = default)
@@ -46,7 +45,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         {
             await storage.EnsureReadyAsync(cancellationToken);
         }
-        await _writerLock.WaitAsync(cancellationToken);
+        await WriterLock.WaitAsync(cancellationToken);
         try
         {
             await using EmbeddedPrivacyErasureAuthorityDbContext db =
@@ -63,10 +62,13 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
                 return existing;
             }
 
-            await db.Database.ExecuteSqlRawAsync(
-                $"INSERT INTO {RelationalModelNamespace.Prefix}authority_counter (singleton, last_sequence) VALUES (1, 0) ON CONFLICT(singleton) DO NOTHING;",
-                cancellationToken);
-            PrivacyErasureCounter counter = await db.AuthorityCounters.SingleAsync(cancellationToken);
+            PrivacyErasureCounter? counter = await db.AuthorityCounters
+                .SingleOrDefaultAsync(cancellationToken);
+            if (counter is null)
+            {
+                counter = PrivacyErasureCounter.Start();
+                db.AuthorityCounters.Add(counter);
+            }
             long sequence = counter.AllocateNext();
             DateTime recordedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
             var fact = PrivacyErasureIntent.Record(
@@ -87,7 +89,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         }
         finally
         {
-            _writerLock.Release();
+            WriterLock.Release();
         }
     }
 
@@ -131,7 +133,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         ArgumentNullException.ThrowIfNull(request);
         EnsureCutoffIsNotInFuture(request);
         await EnsureStorageReadyAsync(cancellationToken);
-        await _writerLock.WaitAsync(cancellationToken);
+        await WriterLock.WaitAsync(cancellationToken);
         try
         {
             await using EmbeddedPrivacyErasureAuthorityDbContext db =
@@ -163,7 +165,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         }
         finally
         {
-            _writerLock.Release();
+            WriterLock.Release();
         }
     }
 
@@ -174,7 +176,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         ArgumentNullException.ThrowIfNull(request);
         EnsureCutoffIsNotInFuture(request);
         await EnsureStorageReadyAsync(cancellationToken);
-        await _writerLock.WaitAsync(cancellationToken);
+        await WriterLock.WaitAsync(cancellationToken);
         try
         {
             await using EmbeddedPrivacyErasureAuthorityDbContext db =
@@ -213,14 +215,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
                     {
                         Guid intentAuditToken = Guid.NewGuid();
                         Guid subjectAuditToken = Guid.NewGuid();
-                        db.Entry(candidate).State = EntityState.Detached;
-                        string sql = "UPDATE " + RelationalModelNamespace.Prefix
-                            + "erasure_intents SET intent_id = {0}, subject_id = {1}, "
-                            + "is_legal_hold_pseudonymized = 1 WHERE authority_sequence = {2}";
-                        await db.Database.ExecuteSqlRawAsync(
-                            sql,
-                            [intentAuditToken, subjectAuditToken, candidate.AuthoritySequence],
-                            cancellationToken);
+                        candidate.PseudonymizeForLegalHold(intentAuditToken, subjectAuditToken);
                         pseudonymized++;
                     }
 
@@ -253,11 +248,9 @@ public sealed class EmbeddedPrivacyErasureAuthorityRepository(
         }
         finally
         {
-            _writerLock.Release();
+            WriterLock.Release();
         }
     }
-
-    public void Dispose() => _writerLock.Dispose();
 
     private async Task EnsureStorageReadyAsync(CancellationToken cancellationToken)
     {

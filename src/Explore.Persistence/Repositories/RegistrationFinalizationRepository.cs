@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,13 +36,11 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (dbContext.Database.IsNpgsql())
-            {
-                await dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    [$"registration-finalization:{fulfillment.TenantId:D}:{fulfillment.RegistrationOrderId:D}"],
+            await using IAsyncDisposable finalizationLock =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    $"registration-finalization:{fulfillment.TenantId:D}:{fulfillment.RegistrationOrderId:D}",
                     cancellationToken);
-            }
 
             bool exists = await dbContext.RegistrationRequirementFulfillments.AnyAsync(value =>
                 value.TenantId == fulfillment.TenantId &&
@@ -99,13 +98,11 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (dbContext.Database.IsNpgsql())
-            {
-                await dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    [$"registration-finalization:{attempt.TenantId:D}:{attempt.RegistrationOrderId:D}"],
+            await using IAsyncDisposable finalizationLock =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    $"registration-finalization:{attempt.TenantId:D}:{attempt.RegistrationOrderId:D}",
                     cancellationToken);
-            }
 
             RegistrationAttempt? trackedAttempt = await dbContext.RegistrationAttempts.SingleOrDefaultAsync(value =>
                 value.TenantId == attempt.TenantId && value.Id == attempt.Id,
@@ -244,12 +241,11 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (dbContext.Database.IsNpgsql())
-            {
-                await dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    ["registration-finalization-claim"], cancellationToken);
-            }
+            await using IAsyncDisposable claimLock =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    "registration-finalization-claim",
+                    cancellationToken);
 
             List<RegistrationFinalizationEffect> effects = await dbContext.RegistrationFinalizationEffects
                 .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFinalizationWorkerCrossTenantQueue)

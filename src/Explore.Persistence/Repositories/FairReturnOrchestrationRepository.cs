@@ -1,10 +1,12 @@
 // ABOUTME: Persists and fairly claims durable fair-return payment observation and refund triggers.
 // ABOUTME: Uses one canonical fence, retry-safe transactions, stable leases, and atomic outbox creation.
 
+using System.Linq.Expressions;
 using Explore.Application.Contracts.Waitlist;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Interfaces;
 using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +32,7 @@ public sealed class FairReturnOrchestrationRepository(
             await FenceAsync<FairReturnSourceBinding>(
                 intent.TenantId,
                 intent.FairReturnSourceBindingId,
+                binding => binding.Id,
                 cancellationToken);
             WaitlistPaymentIntent? existing =
                 await dbContext.WaitlistPaymentIntents
@@ -168,6 +171,7 @@ public sealed class FairReturnOrchestrationRepository(
                         FairReturnOrchestrationEffect>(
                             snapshot.TenantId,
                             snapshot.Id,
+                            effect => effect.Id,
                             cancellationToken);
                     FairReturnOrchestrationEffect?
                         effect =
@@ -450,6 +454,7 @@ public sealed class FairReturnOrchestrationRepository(
         await FenceAsync<WaitlistPaymentIntent>(
             claim.TenantId,
             claim.WaitlistPaymentIntentId,
+            intent => intent.Id,
             cancellationToken);
         WaitlistPaymentIntent? intent =
             await dbContext.WaitlistPaymentIntents
@@ -470,6 +475,7 @@ public sealed class FairReturnOrchestrationRepository(
             FairReturnOrchestrationEffect>(
                 claim.TenantId,
                 claim.EffectId,
+                effect => effect.Id,
                 cancellationToken);
         return await dbContext
             .FairReturnOrchestrationEffects
@@ -565,12 +571,13 @@ public sealed class FairReturnOrchestrationRepository(
     private Task FenceAsync<TEntity>(
         Guid tenantId,
         Guid id,
+        Expression<Func<TEntity, Guid>> keyPropertyExpression,
         CancellationToken cancellationToken)
-        where TEntity : class =>
+        where TEntity : class, ITenantEntity =>
         RelationalEntityRowFence.AcquireAsync<TEntity>(
             dbContext,
             tenantId,
-            "id",
+            keyPropertyExpression,
             id,
             cancellationToken);
 }

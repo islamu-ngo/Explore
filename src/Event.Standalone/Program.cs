@@ -8,6 +8,7 @@ using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
+using Explore.Infrastructure.ConfigurationManifest;
 using Event.Standalone.Hosting;
 using Event.Standalone.Middleware;
 using System.Runtime.Loader;
@@ -26,7 +27,9 @@ if (!builder.Environment.IsEnvironment("Testing"))
     }
 }
 
-var apiHost = builder.AddApiHostServices(() => shutdownState.IsShuttingDown);
+var apiHost = builder.AddApiHostServices(
+    () => shutdownState.IsShuttingDown,
+    ownsDevelopmentMigrations: false);
 builder.AddBlazorHostServices(hostProfile, shutdownState);
 builder.Services.AddCombinedApiBridge();
 builder.AddStandaloneSchedulerDashboard();
@@ -43,20 +46,26 @@ if (primaryDatabase.Provider == PrimaryDatabaseProvider.Sqlite &&
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-    if (app.Environment.IsEnvironment("Testing"))
-    {
-        await SqliteDatabaseInitializer.InitializeAsync(database, shutdownCts.Token);
-    }
-    else
-    {
-        await ExploreDatabaseMigrator.MigrateAndSeedAsync(
-            database,
-            app.Environment,
-            app.Configuration,
-            PrimaryDatabaseConfiguration.BindMigrator(app.Configuration),
-            app.Logger,
-            shutdownCts.Token);
-    }
+    var startupSequence = scope.ServiceProvider
+        .GetRequiredService<IConfigurationManifestPostMigrationSequence>();
+    await startupSequence.RunAsync(
+        async cancellationToken =>
+        {
+            if (app.Environment.IsEnvironment("Testing"))
+            {
+                await SqliteDatabaseInitializer.InitializeAsync(database, cancellationToken);
+                return;
+            }
+
+            await ExploreDatabaseMigrator.MigrateAndSeedAsync(
+                database,
+                app.Environment,
+                app.Configuration,
+                PrimaryDatabaseConfiguration.BindMigrator(app.Configuration),
+                app.Logger,
+                cancellationToken);
+        },
+        shutdownCts.Token);
 }
 
 await app.RunApiHostStartupAsync(

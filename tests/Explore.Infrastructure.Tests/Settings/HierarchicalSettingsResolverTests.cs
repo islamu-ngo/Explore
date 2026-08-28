@@ -76,6 +76,33 @@ public class HierarchicalSettingsResolverTests : IDisposable
             CancellationToken cancellationToken = default) => operation(cancellationToken);
     }
 
+    private sealed class RejectingSettingMutationLock : ISettingMutationLock
+    {
+        internal static readonly RejectingSettingMutationLock Instance = new();
+
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            throw new MutationLockReachedException();
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            throw new MutationLockReachedException();
+    }
+
+    private sealed class MutationLockReachedException : Exception;
+
+    public enum GuardedResolverMutation
+    {
+        Set,
+        Remove,
+        Lock,
+        Unlock
+    }
+
     // --- Basic resolution ---
 
     [Test]
@@ -521,6 +548,52 @@ public class HierarchicalSettingsResolverTests : IDisposable
     }
 
     // --- SetValue scope validation ---
+
+    [Test]
+    [Arguments(GuardedResolverMutation.Set)]
+    [Arguments(GuardedResolverMutation.Remove)]
+    [Arguments(GuardedResolverMutation.Lock)]
+    [Arguments(GuardedResolverMutation.Unlock)]
+    public async Task GuardedMutationsRejectBeforeLockOrRepositoryMutationCalls(
+        GuardedResolverMutation mutation)
+    {
+        var resolver = new HierarchicalSettingsResolver(
+            _systemRepo,
+            _tenantRepo,
+            _orgRepo,
+            _groupRepo,
+            _groupTenantRepo,
+            _userPrefRepo,
+            _tenantContext,
+            RejectingSettingMutationLock.Instance,
+            _cache,
+            _logger);
+        string guardedKey = PublicationPolicySettingKeys.All[0];
+        Guid tenantId = Guid.NewGuid();
+        Guid actorId = Guid.NewGuid();
+        Func<Task> guardedMutation = mutation switch
+        {
+            GuardedResolverMutation.Set => () => resolver.SetValueAsync(
+                guardedKey, "true", SettingScope.Tenant, tenantId, actorId),
+            GuardedResolverMutation.Remove => () => resolver.RemoveOverrideAsync(
+                guardedKey, SettingScope.Tenant, tenantId, actorId),
+            GuardedResolverMutation.Lock => () => resolver.LockAsync(
+                guardedKey, SettingScope.Tenant, tenantId, actorId),
+            GuardedResolverMutation.Unlock => () => resolver.UnlockAsync(
+                guardedKey, SettingScope.Tenant, tenantId, actorId),
+            _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(guardedMutation);
+        await _systemRepo.DidNotReceive().IsLocked(guardedKey, Arg.Any<CancellationToken>());
+        await _systemRepo.DidNotReceive().GetByKey(guardedKey, Arg.Any<CancellationToken>());
+        await _systemRepo.DidNotReceive().UpsertAsync(Arg.Any<SystemSetting>(), Arg.Any<CancellationToken>());
+        await _tenantRepo.DidNotReceive().SetValueAsync(
+            tenantId, guardedKey, Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+        await _tenantRepo.DidNotReceive().RemoveOverrideAsync(tenantId, guardedKey, Arg.Any<CancellationToken>());
+        await _tenantRepo.DidNotReceive().LockAsync(tenantId, guardedKey, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _tenantRepo.DidNotReceive().UnlockAsync(tenantId, guardedKey, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
 
     [Test]
     public async Task SetValueAsync_ThrowsWhenScopeOutOfRange()

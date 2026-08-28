@@ -28,6 +28,8 @@ public class ResetSettingCommandHandler
     private readonly IMediator _mediator;
     private readonly ILogger<ResetSettingCommandHandler> _logger;
     private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
+    private readonly IPublicationPolicyMutationBoundary _publicationPolicyMutationBoundary;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ResetSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -37,6 +39,8 @@ public class ResetSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<ResetSettingCommandHandler> logger,
+        IPublicationPolicyMutationBoundary publicationPolicyMutationBoundary,
+        IUnitOfWork unitOfWork,
         ICerbosConfigResolver? cerbosConfigResolver = null,
         ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
@@ -49,6 +53,8 @@ public class ResetSettingCommandHandler
         _mediator = mediator;
         _logger = logger;
         _locationPrivacyMutations = locationPrivacyMutations;
+        _publicationPolicyMutationBoundary = publicationPolicyMutationBoundary;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -69,6 +75,12 @@ public class ResetSettingCommandHandler
             return BaseCommandResponse.Validation<Guid>([message], message);
         }
 
+        if (request.Scope < definition.MinScope || request.Scope > definition.MaxScope)
+        {
+            string message = $"Setting '{request.Key}' cannot be reset at {request.Scope} scope.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
+        }
+
         // Authorization
         var (authorized, authError) = await SettingCommandHelper.CheckAuthorizationAsync(
             request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
@@ -86,6 +98,51 @@ public class ResetSettingCommandHandler
 
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
             request.Scope, _tenantContext, _currentUserService);
+
+        bool isGuardedPublicationPolicyMutation = request.Scope == SettingScope.Tenant
+            && PublicationPolicySettingKeys.All.Contains(request.Key, StringComparer.Ordinal);
+        if (isGuardedPublicationPolicyMutation)
+        {
+            DateTime occurredAtUtc = DateTime.UtcNow;
+            PublicationPolicyMutationResult mutationResult = await _unitOfWork.ExecuteInTransactionAsync(
+                token => _publicationPolicyMutationBoundary.ApplyTenantAsync(
+                    new PublicationPolicyTenantMutationRequest(
+                        _tenantContext.TenantId,
+                        actorId,
+                        occurredAtUtc,
+                        [new PublicationPolicySettingMutation(
+                            request.Key,
+                            PublicationPolicyMutationKind.Remove,
+                            JsonValue: null,
+                            _tenantContext.TenantId,
+                            IsLocked: null)],
+                        PublicationPolicyLockedSystemBehavior.RemoveOverride),
+                    token),
+                cancellationToken);
+            if (!mutationResult.Success)
+            {
+                string failureCode = string.IsNullOrWhiteSpace(mutationResult.FailureCode)
+                    ? "event_reporting_intake_policy_invalid"
+                    : mutationResult.FailureCode;
+                string failureMessage = string.IsNullOrWhiteSpace(mutationResult.Message)
+                    ? PublicationPolicyMutationMessages.InvalidPolicy
+                    : mutationResult.Message;
+                return BaseCommandResponse.Failure<Guid>(failureCode, failureMessage);
+            }
+
+            _resolver.InvalidateCache(request.Scope, scopeId);
+            foreach (SettingChangedNotification notification in mutationResult.DeferredNotifications)
+            {
+                await _mediator.Publish(notification, CancellationToken.None);
+            }
+
+            _logger.LogInformation(
+                "Setting reset: {SettingKey} at {Scope} scope. Actor: {ActorId}",
+                request.Key, request.Scope, actorId);
+            return BaseCommandResponse.Success(
+                scopeId,
+                $"Setting '{request.Key}' reset to inherited value.");
+        }
 
         // Remove override
         if (request.Scope == SettingScope.User)

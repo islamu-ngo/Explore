@@ -31,6 +31,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, restart-based credential rotation | No |
 | `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, provider migrations | PostgreSQL plus the real-engine provider matrix |
+| `Event.Persistence.MutationTests` | Persistence | Fast linked contracts for provider capability, physical naming, conflict classification, and metadata resolution | No |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
 | `Explore.Blazor.IntegrationTests` | BFF | Middleware pipeline, auth endpoints, delegating handlers | No |
 | `Explore.Blazor.Client.Tests` | UI | Component rendering, service behavior | No |
@@ -339,6 +340,62 @@ When debugging failures, generate detailed reports:
 ```bash
 dotnet test --project <ProjectPath> --configuration Release -- --report-trx --report-trx-filename results.trx
 ```
+
+## Persistence Hardening Verification
+
+Run provider classes separately. Combining long-lived container classes in one
+tree filter can bypass the intended TUnit isolation and obscure which engine
+failed.
+
+```bash
+# Fast model/decision lane
+dotnet test --project tests/Event.Persistence.MutationTests/Event.Persistence.MutationTests.csproj \
+  --configuration Release -- --minimum-expected-tests 111
+
+# SQL Server, MariaDB, and MySQL generated-initial/runtime behavior
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj \
+  --configuration Release --no-build -- \
+  --treenode-filter "/*/*/*ContainerizedPrimaryDatabaseProviderBehaviorContractTests/*" \
+  --minimum-expected-tests 3
+
+# Real row fences and transaction/session named locks
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj \
+  --configuration Release --no-build -- \
+  --treenode-filter "/*/*/*AdmissionAuthorityRowFenceProviderTests/*" \
+  --minimum-expected-tests 6
+```
+
+The PostgreSQL performance lane sets
+`PERSISTENCE_QUERY_BASELINE_OUTPUT` to a temporary file and executes these
+classes one at a time:
+
+- `EmailDispatchOutboxTransitionRepositoryTests`
+- `NotificationFanoutOccurrenceRepositoryTests`
+- `RegistrationInventoryHoldConcurrencyTests`
+- `WebhookPublicationClaimRepositoryTests`
+- `PaymentReconciliationPostgreSqlClaimTests`
+
+Each recorded line contains only operation code, command count, maximum
+projection/parameter count, duration, elapsed time, and cardinality. SQL,
+parameter values, connection strings, and entity identifiers are never
+retained.
+
+The critical mutation lane uses Stryker 4.16.0 and the checked-in bounded
+configuration:
+
+```bash
+dotnet tool install dotnet-stryker \
+  --tool-path /tmp/islamu-event-stryker \
+  --version 4.16.0
+
+(cd tests/Event.Persistence.MutationTests && \
+  /tmp/islamu-event-stryker/dotnet-stryker \
+    --config-file stryker-config.persistence.yaml)
+```
+
+The configured break threshold is 86%. Migrations, generated artifacts,
+provider SQL primitives, exception prose, and unrelated repositories are
+outside this mutation slice.
 
 ## Architecture Tests
 

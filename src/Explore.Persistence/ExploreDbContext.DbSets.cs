@@ -60,6 +60,8 @@ public partial class ExploreDbContext
     public DbSet<ExternalBinding> ExternalBindings { get; set; }
     public DbSet<ManagedControlPlaneRegistration> ManagedControlPlaneRegistrations { get; set; }
     public DbSet<ManagedTenantProvisioningOperation> ManagedTenantProvisioningOperations { get; set; }
+    public DbSet<ConfigurationManifestOperation> ConfigurationManifestOperations { get; set; }
+    public DbSet<ConfigurationManifestTenantResult> ConfigurationManifestTenantResults { get; set; }
 
     // ===== Authorization (RBAC) =====
     public DbSet<Role> Roles { get; set; }

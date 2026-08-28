@@ -12,7 +12,7 @@ public sealed class EventLocationConfiguration : IEntityTypeConfiguration<EventL
 {
     public void Configure(EntityTypeBuilder<EventLocation> builder)
     {
-        builder.ToTable("event_locations", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_event_locations_physical_or_tba",
@@ -55,14 +55,11 @@ public sealed class EventLocationConfiguration : IEntityTypeConfiguration<EventL
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(item => new { item.TenantId, item.EventId, item.LocationId })
-            .HasDatabaseName("ux_event_locations_active_physical")
             .IsUnique()
             .HasFilter("is_deleted = false AND is_to_be_announced = false AND location_id IS NOT NULL");
         builder.HasIndex(item => new { item.TenantId, item.EventId })
-            .HasDatabaseName("ux_event_locations_active_tba")
             .IsUnique()
             .HasFilter("is_deleted = false AND is_to_be_announced = true");
-        builder.HasIndex(item => new { item.TenantId, item.EventId, item.IsDeleted })
-            .HasDatabaseName("ix_event_locations_tenant_event_active");
+        builder.HasIndex(item => new { item.TenantId, item.EventId, item.IsDeleted });
     }
 }

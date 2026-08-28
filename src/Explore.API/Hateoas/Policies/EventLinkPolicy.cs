@@ -175,18 +175,21 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "GET",
                 "Event report options");
 
-            yield return new LinkDefinition(
-                LinkRelations.ReportEvent,
-                RouteNames.SubmitEventReport,
-                null,
-                "POST",
-                "Report event",
-                RequiresAuth: true)
-                .AdvertisedWhenAnonymous();
+            if (dto.IsReportingIntakeEnabled)
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.ReportEvent,
+                    RouteNames.SubmitEventReport,
+                    null,
+                    "POST",
+                    "Report event",
+                    RequiresAuth: true)
+                    .AdvertisedWhenAnonymous();
+            }
 
             yield return new LinkDefinition(
                 LinkRelations.SuggestCorrection,
-                RouteNames.SubmitEventReport,
+                RouteNames.SubmitEventCorrection,
                 null,
                 HttpMethods.Post,
                 "Suggest a correction",
@@ -195,10 +198,19 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
             yield return new LinkDefinition(
                 LinkRelations.ReportExternalLink,
-                RouteNames.SubmitEventReport,
+                RouteNames.SubmitUnsafeExternalLinkReport,
                 null,
                 HttpMethods.Post,
                 "Report an unsafe external link",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportLegalOrCopyright,
+                RouteNames.SubmitLegalOrCopyrightComplaint,
+                null,
+                HttpMethods.Post,
+                "Report a legal or copyright concern",
                 RequiresAuth: true)
                 .AdvertisedWhenAnonymous();
 
@@ -779,12 +791,42 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
                 "GET",
                 "Event report options");
 
+            if (dto.IsReportingIntakeEnabled)
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.ReportEvent,
+                    RouteNames.SubmitEventReport,
+                    null,
+                    "POST",
+                    "Report event",
+                    RequiresAuth: true)
+                    .AdvertisedWhenAnonymous();
+            }
+
             yield return new LinkDefinition(
-                LinkRelations.ReportEvent,
-                RouteNames.SubmitEventReport,
+                LinkRelations.SuggestCorrection,
+                RouteNames.SubmitEventCorrection,
                 null,
-                "POST",
-                "Report event",
+                HttpMethods.Post,
+                "Suggest a correction",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportExternalLink,
+                RouteNames.SubmitUnsafeExternalLinkReport,
+                null,
+                HttpMethods.Post,
+                "Report an unsafe external link",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportLegalOrCopyright,
+                RouteNames.SubmitLegalOrCopyrightComplaint,
+                null,
+                HttpMethods.Post,
+                "Report a legal or copyright concern",
                 RequiresAuth: true)
                 .AdvertisedWhenAnonymous();
         }

@@ -82,6 +82,19 @@ Pull requests that touch security/auth, migration/data/rollback, configuration/s
 
 Use `Not applicable` only when the change has no release-impact category. If the check flags a category, update the PR body and link the relevant documentation or release-note evidence before requesting release approval.
 
+## Change-Id Preflight
+
+- [ ] Public change metadata was created with `create-change`, which emitted
+  one collision-resistant fragment ID and its exact commit footer together.
+- [ ] Local `pre-commit` and `commit-msg` checks are installed through
+  `install-change-hooks --target develop` or equivalent CI checks enforce the
+  same commands.
+- [ ] `preflight-range --target develop --head <feature-head>` passes before
+  merge conflict resolution begins.
+- [ ] Any immutable-footer correction has one reviewed
+  `docs/releases/change-id-renames/<full-commit-oid>.yaml` record and generated
+  replacement fragment; no amend, rebase, force-push, or loose alias was used.
+
 ## Release Metadata
 
 - [ ] Version/tag is selected.
@@ -130,6 +143,9 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Namespace evidence proves PostgreSQL/SQL Server use the configured schema with clean unprefixed table names, while SQLite/MariaDB/MySQL force `ie_` for application and history tables.
 - [ ] Quartz scheduler-schema ownership remains in the API as idempotent DDL (no EF Core migration, no second `DbContext`); every provider release lane proves the `QRTZ_` tables are created and that re-running startup is non-destructive.
 - [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive. Do not claim below-floor compaction or DR rehearsal coverage, or any RPO/RTO number, until it is shipped and linked in evidence.
+- [ ] Every changed primary provider passes generated application and Data Protection apply/rollback/reapply, pending-model, runtime behavior, and lock contracts.
+- [ ] A five-provider migration rebaseline records every generated initial ID and states explicitly whether existing databases require recreation; removed development histories are never stamped as already applied.
+- [ ] Persistence evidence records bounded query shape, a critical owned mutation score above 85%, and zero-sensitive logs/reports.
 - [ ] Data-protection/key storage impact is documented if changed.
 - [ ] Seed data or lookup table changes are documented.
 - [ ] Rollback strategy is documented in release notes.
@@ -157,6 +173,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 ## CI/CD Evidence Contract
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
+- [ ] `schemas/configuration-manifest-v1alpha1.schema.json` passes the generator `--check` command, is staged with release contract assets, and its exact SHA-256 is included in durable release evidence.
 - [ ] Intentional breaking API contract changes include a matching `docs/API_CHANGELOG.md` entry with affected route/schema/client method, old/new behavior, affected clients, migration guidance, release target, and retained OpenAPI / advisory `oasdiff` evidence links when available.
 - [ ] Container image digest, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
@@ -170,6 +187,7 @@ Expected artifact names:
 - `test-results-fast`
 - `test-results-integration`
 - `openapi-contract-guard`
+- `configuration-manifest-v1alpha1.schema.json`
 - `security-test-evidence`
 - `cerbos-policy-evidence`
 - `cerbos-policy-publish-evidence`

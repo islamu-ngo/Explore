@@ -176,6 +176,7 @@ public static class SeedIds
     public static readonly Guid SystemSettingGroupSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000551");
     public static readonly Guid SystemSettingOrgSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000552");
     public static readonly Guid SystemSettingGroupSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000553");
+    public static readonly Guid SystemSettingEventReportingIntakeEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000554");
 
     // ===== System Settings — Localization / TMS =====
     public static readonly Guid SystemSettingLocalizationDefaultLanguageId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000560");

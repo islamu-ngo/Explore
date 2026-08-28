@@ -39,7 +39,7 @@ public sealed class EventReportTargetConfiguration : IEntityTypeConfiguration<Ev
         builder.HasIndex(e => new { e.TenantId, e.TargetKind, e.TargetId })
             .HasDatabaseName("ix_event_report_targets_tenant_target");
 
-        builder.ToTable("event_report_targets", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_targets_target_kind", "target_kind BETWEEN 1 AND 6");
             t.HasCheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");

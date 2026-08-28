@@ -1,5 +1,5 @@
 // ABOUTME: Configures the actor_pii extension table with strict 1:1 PK/FK to actors.
-// Stores removable actor-identifying fields separately from the core actor record.
+// ABOUTME: Stores removable actor-identifying fields separately from the core actor record.
 
 namespace Explore.Persistence.Configurations.Entities;
 
@@ -11,8 +11,6 @@ public class ActorPiiConfiguration : IEntityTypeConfiguration<ActorPii>
 {
     public void Configure(EntityTypeBuilder<ActorPii> builder)
     {
-        builder.ToTable("actor_pii");
-
         builder.HasKey(e => e.ActorId);
 
         builder.Property(e => e.DisplayName)

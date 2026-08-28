@@ -1,22 +1,26 @@
 @* ABOUTME: Sidebar layout component for Tenant Admin Settings. *@
-@* ABOUTME: Provides Google-style sidebar navigation for tenant-level policy, domain, and branding settings. *@
+@* ABOUTME: Provides sidebar navigation for tenant policy, domain, branding, and other Day 2 settings. *@
 
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using Explore.Blazor.Client.Pages.User.Components
 
+@implements IDisposable
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject ITenantBrandingSettingsAdminService TenantBrandingSettingsAdminService
 @inject ITenantStorageSettingsAdminService TenantStorageSettingsAdminService
+@inject ITranslationService Translations
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
+@inject ILogger<TenantAdminSettingsLayout> Logger
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -30,8 +34,12 @@
             </div>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
                 @(_isSingleTenantMode
-                    ? "Manage policies, domains, branding, organization approvals, and lookup tables"
-                    : "Manage tenant policies, domains, branding, organization approvals, and lookup tables")
+                    ? T(
+                        "tenant.admin.summary.singleTenant",
+                        "Manage policies, domains, branding, organization approvals, and lookup tables")
+                    : T(
+                        "tenant.admin.summary.multiTenant",
+                        "Manage tenant policies, domains, branding, organization approvals, and lookup tables"))
             </MudText>
             @if (_isInstanceAdmin && !_isSingleTenantMode)
             {
@@ -471,6 +479,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Translations.OnLanguageChanged += HandleLanguageChanged;
         var tenantStatus = await TenantOnboardingService.GetStatusAsync();
         _canEdit = tenantStatus?.HasHalLink("manage-tenant-settings") == true;
         _tenantId = tenantStatus?.TenantId ?? Guid.Empty;
@@ -730,5 +739,19 @@
     private string GetNavItemClass(string section)
     {
         return _currentSection == section ? "settings-nav-active" : "";
+    }
+
+    private string T(string key, string fallback) =>
+        Translations.T(key, fallback);
+
+    private void HandleLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Translations.OnLanguageChanged -= HandleLanguageChanged;
     }
 }

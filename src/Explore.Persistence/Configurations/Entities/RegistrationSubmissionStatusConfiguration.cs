@@ -11,7 +11,6 @@ public sealed class RegistrationSubmissionStatusConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<RegistrationSubmissionStatus> builder)
     {
-        builder.ToTable("registration_submission_statuses");
         builder.Property(status => status.Id).ValueGeneratedNever();
         builder.Property(status => status.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(status => status.FullName).IsRequired().HasMaxLength(200);

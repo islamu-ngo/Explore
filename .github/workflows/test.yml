@@ -47,6 +47,7 @@ jobs:
 
           is_build_test_ignored() {
             case "$1" in
+              schemas/configuration-manifest-v1alpha1.schema.json) return 1 ;;
               .agents/*|.claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
               _bmad/*|_bmad-output/*) return 0 ;;
               docs/*|schemas/*|assets/*|dev/*|event/*) return 0 ;;
@@ -185,6 +186,9 @@ jobs:
                   run_arch="true"
                   ;;
                 tests/Event.Architecture.Tests/*)
+                  run_arch="true"
+                  ;;
+                schemas/configuration-manifest-v1alpha1.schema.json|eng/configuration-manifest-schema/*)
                   run_arch="true"
                   ;;
                 src/*)

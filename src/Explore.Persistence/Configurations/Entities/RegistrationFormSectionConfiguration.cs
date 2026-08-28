@@ -11,7 +11,6 @@ public sealed class RegistrationFormSectionConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<RegistrationFormSection> builder)
     {
-        builder.ToTable("registration_form_sections");
         builder.Property(section => section.Id).ValueGeneratedNever();
         builder.Property(section => section.Title).IsRequired().HasMaxLength(200);
         builder.Property(section => section.CreatedAt).IsRequired();

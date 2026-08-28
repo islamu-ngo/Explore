@@ -12,7 +12,6 @@ public class CustomPropertyValueConfiguration : IEntityTypeConfiguration<CustomP
 {
     public void Configure(EntityTypeBuilder<CustomPropertyValue> builder)
     {
-        builder.ToTable("custom_property_values");
 
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();

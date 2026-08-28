@@ -12,7 +12,7 @@ public sealed class TenantSettingsDocumentConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<TenantSettingsDocument> builder)
     {
-        builder.ToTable("tenant_settings_documents", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_tenant_settings_documents_schema_version_positive", "schema_version > 0");
             t.HasCheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");

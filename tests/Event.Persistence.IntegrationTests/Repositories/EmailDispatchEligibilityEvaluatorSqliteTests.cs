@@ -7,6 +7,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Schema.ProviderPrimitives;
 using Explore.Persistence.Seed;
 using Explore.Persistence.Services;
 using Microsoft.Data.Sqlite;
@@ -26,7 +27,7 @@ public sealed class EmailDispatchEligibilityEvaluatorSqliteTests
         string providerName,
         string expectedSql)
     {
-        await Assert.That(EmailDispatchEligibilityEvaluator.SelectDatabaseUtcNowSql(providerName))
+        await Assert.That(RelationalDatabaseClock.SelectUtcNowSql(providerName))
             .IsEqualTo(expectedSql);
     }
 
@@ -122,6 +123,58 @@ public sealed class EmailDispatchEligibilityEvaluatorSqliteTests
         }
     }
 
+    [Test]
+    public async Task SmtpRateAuthorityUsesDatabaseClockInsteadOfApplicationEvaluationTime()
+    {
+        string databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"email-dispatch-database-clock-{Guid.CreateVersion7():N}.db");
+        try
+        {
+            await CreateDatabaseAsync(databasePath);
+            SeededDispatch dispatch;
+            await using (ExploreDbContext seedContext = CreateContext(databasePath))
+            {
+                dispatch = await SeedProcessingDispatchAsync(seedContext, "database-clock");
+            }
+
+            DateTime applicationTime = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime beforeDatabaseRead = DateTime.UtcNow.AddSeconds(-2);
+            await using (ExploreDbContext evaluationContext = CreateContext(databasePath))
+            {
+                EmailDispatchEligibilityResult result =
+                    await CreateEvaluator(evaluationContext).EvaluateAndBeginProviderHandoffAsync(
+                        new EmailDispatchEligibilityRequest(
+                            dispatch.TenantId,
+                            dispatch.OutboxId,
+                            dispatch.LeaseToken,
+                            AttemptNumber: 0,
+                            GlobalSmtpRateLimitPerMinute: 60,
+                            TenantSmtpRateLimitPerMinute: 60,
+                            ConsumerId: "database-clock-worker",
+                            EvaluatedAt: applicationTime),
+                        CancellationToken.None);
+                await Assert.That(result.Outcome)
+                    .IsEqualTo(EmailDispatchEligibilityOutcome.Eligible);
+            }
+
+            DateTime afterDatabaseRead = DateTime.UtcNow.AddSeconds(2);
+            await using ExploreDbContext assertContext = CreateContext(databasePath);
+            EmailDispatchProcessorState processor =
+                await assertContext.EmailDispatchProcessorStates.AsNoTracking().SingleAsync();
+            await Assert.That(processor.UpdatedAt).IsNotEqualTo(applicationTime);
+            await Assert.That(processor.UpdatedAt).IsGreaterThanOrEqualTo(beforeDatabaseRead);
+            await Assert.That(processor.UpdatedAt).IsLessThanOrEqualTo(afterDatabaseRead);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+            File.Delete(databasePath + "-shm");
+            File.Delete(databasePath + "-wal");
+        }
+    }
+
     private static async Task CreateDatabaseAsync(string databasePath)
     {
         await using ExploreDbContext context = CreateContext(databasePath);
@@ -141,6 +194,9 @@ public sealed class EmailDispatchEligibilityEvaluatorSqliteTests
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
+            .AddInterceptors(
+                SqliteNamedLockTransactionInterceptor.Instance,
+                SqliteProjectionLockTransactionInterceptor.Instance)
             .Options;
         return new ExploreDbContext(options);
     }

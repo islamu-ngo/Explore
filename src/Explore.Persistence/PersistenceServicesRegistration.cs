@@ -84,16 +84,6 @@ public static class PersistenceServicesRegistration
                     options.AddInterceptors(PostgresTenantSessionInterceptor.Instance);
                 }
 
-                if (runtimeDatabase.Provider is PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql)
-                {
-                    options.AddInterceptors(MySqlNamedLockTransactionInterceptor.Instance);
-                }
-
-                if (runtimeDatabase.Provider == PrimaryDatabaseProvider.Sqlite)
-                {
-                    options.AddInterceptors(SqliteProjectionLockTransactionInterceptor.Instance);
-                }
-
                 var runtimeEnvironmentName = environmentName
                                              ?? configuration["ASPNETCORE_ENVIRONMENT"]
                                              ?? configuration["DOTNET_ENVIRONMENT"];
@@ -125,6 +115,7 @@ public static class PersistenceServicesRegistration
         // Unit of Work (wraps EF Core transactions)
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
         services.AddScoped<ISettingMutationLock, RelationalSettingMutationLock>();
+        services.AddScoped<ICoordinatedSettingMutationStore, CoordinatedSettingMutationRepository>();
         services.AddScoped<IAtprotoSessionRefreshLock, RelationalAtprotoSessionRefreshLock>();
 
         services.AddScoped<IGenericRepository<EventReportDecision, Guid>, GenericRepository<EventReportDecision, Guid>>();
@@ -187,6 +178,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IExternalApiKeyRepository, ExternalApiKeyRepository>();
         services.AddScoped<IManagedControlPlaneRegistrationRepository, ManagedControlPlaneRegistrationRepository>();
         services.AddScoped<IManagedTenantProvisioningOperationRepository, ManagedTenantProvisioningOperationRepository>();
+        services.AddScoped<IConfigurationManifestOperationRepository, ConfigurationManifestOperationRepository>();
+        services.AddScoped<IConfigurationManifestFailureRecorder, ConfigurationManifestFailureRepository>();
         services.AddScoped<IExternalApiKeyQuotaRepository, ExternalApiKeyQuotaRepository>();
         services.AddScoped<IUserNotificationPreferenceRepository, UserNotificationPreferenceRepository>();
         services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
@@ -483,6 +476,7 @@ public static class PersistenceServicesRegistration
 
         // Generic Outbox Repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IConfigurationManifestEffectOutboxRepository, OutboxRepository>();
         services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
         services.AddScoped<IEmailDispatchEligibilityEvaluator, EmailDispatchEligibilityEvaluator>();
         services.AddScoped<IWebPushDispatchOutboxRepository, WebPushDispatchOutboxRepository>();

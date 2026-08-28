@@ -4,6 +4,7 @@
 using Explore.API.Hosting;
 using Explore.API.Scheduling;
 using Explore.API.Extensions;
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
@@ -19,6 +20,7 @@ using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
+[NotInParallel(SchedulerProofConstraints.LiveScheduler)]
 public sealed class QuartzSchedulerCompositionTests
 {
     [Test]
@@ -308,6 +310,8 @@ public sealed class QuartzSchedulerCompositionTests
 
         IScheduledDeadlineDispatcher dispatcher = scope.ServiceProvider.GetRequiredService<IScheduledDeadlineDispatcher>();
         await Assert.That(dispatcher).IsTypeOf<NoOpScheduledDeadlineDispatcher>();
+        await Assert.That(provider.GetServices<IHostedService>())
+            .DoesNotContain(service => service is QuartzOwnedRecurringJobReconciler);
     }
 
     private static JobKey[] MigratedQueueKeys() =>
@@ -342,7 +346,7 @@ public sealed class QuartzSchedulerCompositionTests
         var environment = Substitute.For<IWebHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var services = new ServiceCollection();
-        services.AddLogging();
+        services.AddSchedulerProofLogging();
         services.AddScoped<IScheduledDeadlineDispatcher, NoOpScheduledDeadlineDispatcher>();
         services.AddSingleton(Substitute.For<ISchedulerJobTelemetry>());
         services.AddApiQuartzScheduler(configuration, environment, enabled: true, useQuartzEmailDispatch: false);

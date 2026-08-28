@@ -17,7 +17,6 @@ public class ActorSubscriptionStatusConfiguration : IEntityTypeConfiguration<Act
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasIndex(e => e.MasterCode)
-            .IsUnique()
-            .HasDatabaseName("ux_actor_subscription_statuses_master_code");
+            .IsUnique();
     }
 }

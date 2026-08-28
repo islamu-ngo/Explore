@@ -12,7 +12,6 @@ public class CustomPropertyOptionConfiguration : IEntityTypeConfiguration<Custom
 {
     public void Configure(EntityTypeBuilder<CustomPropertyOption> builder)
     {
-        builder.ToTable("custom_property_options");
 
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();

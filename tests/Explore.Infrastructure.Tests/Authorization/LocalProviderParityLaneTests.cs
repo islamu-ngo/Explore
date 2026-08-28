@@ -8,7 +8,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.Settings;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Authorization.ParityCorpus;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -70,6 +70,49 @@ public sealed class LocalProviderParityLaneTests
         await WriteReportAsync(diagnostics);
 
         await Assert.That(mismatches).IsEmpty();
+    }
+
+    [Test]
+    public async Task LocalLane_OrdinaryPublishAuthorityRemainsCharacterized()
+    {
+        var publishScenarios = ParityCorpus.For(ParityLane.Local)
+            .Where(scenario => scenario.Action == AuthorizationActions.Events.Publish)
+            .ToArray();
+
+        await Assert.That(publishScenarios).IsNotEmpty();
+        foreach (var scenario in publishScenarios)
+        {
+            var decision = await CreateService(scenario.Subject).AuthorizeAsync(new AuthorizationRequest(
+                scenario.ResourceKind,
+                ParityCorpus.EventId.ToString("D"),
+                scenario.Action,
+                Facts: scenario.Facts));
+
+            await Assert.That(decision.IsAllowed).IsEqualTo(scenario.ExpectedAllowed)
+                .Because(scenario.Rationale);
+        }
+    }
+
+    [Test]
+    public async Task ConfigurationManifestExport_RequiresInstanceAdminAndExplicitExportFact()
+    {
+        var authorizedRequest = new AuthorizationRequest(
+            ResourceKinds.InstanceSetting,
+            ExportConfigurationManifestQuery.ResourceKey,
+            AuthorizationActions.InstanceSettings.View,
+            Facts: new ConfigurationManifestExportAuthorizationFacts());
+        var missingFactRequest = authorizedRequest with { Facts = null };
+
+        AuthorizationDecision instanceAdmin =
+            await CreateService(ParitySubject.InstanceAdmin).AuthorizeAsync(authorizedRequest);
+        AuthorizationDecision tenantAdmin =
+            await CreateService(ParitySubject.TenantAdmin).AuthorizeAsync(authorizedRequest);
+        AuthorizationDecision missingFact =
+            await CreateService(ParitySubject.InstanceAdmin).AuthorizeAsync(missingFactRequest);
+
+        await Assert.That(instanceAdmin.IsAllowed).IsTrue();
+        await Assert.That(tenantAdmin.IsAllowed).IsFalse();
+        await Assert.That(missingFact.IsAllowed).IsFalse();
     }
 
     /// <summary>
@@ -216,9 +259,9 @@ public sealed class LocalProviderParityLaneTests
         var machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
         var organizationMembers = Substitute.For<IOrganizationMemberRepository>();
         var groupMembers = Substitute.For<IGroupMemberRepository>();
+        var eventAuthority = new ParityEventAuthoritySnapshotService(subject);
         var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         var tenantContext = Substitute.For<ITenantContext>();
-        var eventAuthority = Substitute.For<IEventAuthoritySnapshotService>();
 
         tenantContext.TenantId.Returns(ParityCorpus.TenantId);
         machinePrincipalAccessor.IsMachineCaller.Returns(false);
@@ -230,7 +273,6 @@ public sealed class LocalProviderParityLaneTests
         adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         adminContext.UserId.Returns(ParityCorpus.UserId);
-        ConfigureEventAuthority(eventAuthority, [], []);
 
         switch (subject)
         {
@@ -255,6 +297,10 @@ public sealed class LocalProviderParityLaneTests
                     .Returns([ParityCorpus.OrganizationId]);
                 break;
 
+            case ParitySubject.EventOwner:
+            case ParitySubject.EventManager:
+                break;
+
             case ParitySubject.InstanceAdmin:
                 adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
                 break;
@@ -270,21 +316,8 @@ public sealed class LocalProviderParityLaneTests
                 break;
 
             case ParitySubject.EventOwnerWithoutAdmissionPermission:
-                ConfigureEventAuthority(eventAuthority, ["event.owner"], []);
-                break;
-
             case ParitySubject.AdmissionViewer:
-                ConfigureEventAuthority(
-                    eventAuthority,
-                    ["event.check_in_staff"],
-                    [PermissionCodes.EventCheckInView]);
-                break;
-
             case ParitySubject.AdmissionManager:
-                ConfigureEventAuthority(
-                    eventAuthority,
-                    ["event.check_in_staff"],
-                    [PermissionCodes.EventCheckInManage]);
                 break;
 
             default:
@@ -300,31 +333,6 @@ public sealed class LocalProviderParityLaneTests
             settingsResolver,
             tenantContext,
             Substitute.For<ILogger<FallbackAuthorizationService>>());
-    }
-
-    private static void ConfigureEventAuthority(
-        IEventAuthoritySnapshotService service,
-        string[] roleCodes,
-        string[] permissionCodes)
-    {
-        var roleSet = roleCodes.ToHashSet(StringComparer.Ordinal);
-        var permissionSet = permissionCodes.ToHashSet(StringComparer.Ordinal);
-        service.GetForUserAndEventsAsync(
-                ParityCorpus.TenantId,
-                ParityCorpus.UserId,
-                Arg.Any<IReadOnlyCollection<Guid>>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new EventAuthoritySnapshot(
-                ParityCorpus.TenantId,
-                ParityCorpus.UserId,
-                new Dictionary<Guid, EventAuthorityForUser>
-                {
-                    [ParityCorpus.EventId] = new(
-                        roleSet,
-                        permissionSet,
-                        roleSet.Contains("event.owner"),
-                        roleSet.Contains("event.manager"))
-                }));
     }
 
     private static string Outcome(bool allowed) => allowed ? "allow" : "deny";
@@ -355,6 +363,68 @@ public sealed class LocalProviderParityLaneTests
         }
 
         return directory?.FullName;
+    }
+
+    private sealed class ParityEventAuthoritySnapshotService(ParitySubject subject) : IEventAuthoritySnapshotService
+    {
+        public Task<EventAuthoritySnapshot> GetForUserAndEventsAsync(
+            Guid tenantId,
+            Guid userId,
+            IReadOnlyCollection<Guid> eventIds,
+            CancellationToken cancellationToken)
+        {
+            var events = new Dictionary<Guid, EventAuthorityForUser>();
+            var authority = subject switch
+            {
+                ParitySubject.EventOwner => CreateAuthority(
+                    "event.owner",
+                    [PermissionCodes.EventPublish, PermissionCodes.EventRegistrationManage],
+                    isOwner: true,
+                    isManager: true),
+                ParitySubject.EventManager => CreateAuthority(
+                    "event.manager",
+                    [PermissionCodes.EventPublish, PermissionCodes.EventRegistrationManage],
+                    isOwner: false,
+                    isManager: true),
+                ParitySubject.EventOwnerWithoutAdmissionPermission => CreateAuthority(
+                    "event.owner",
+                    [],
+                    isOwner: true,
+                    isManager: false),
+                ParitySubject.AdmissionViewer => CreateAuthority(
+                    "event.check_in_staff",
+                    [PermissionCodes.EventCheckInView],
+                    isOwner: false,
+                    isManager: false),
+                ParitySubject.AdmissionManager => CreateAuthority(
+                    "event.check_in_staff",
+                    [PermissionCodes.EventCheckInManage],
+                    isOwner: false,
+                    isManager: false),
+                _ => null
+            };
+
+            if (authority is not null)
+            {
+                foreach (var eventId in eventIds)
+                {
+                    events[eventId] = authority;
+                }
+            }
+
+            return Task.FromResult(new EventAuthoritySnapshot(tenantId, userId, events));
+        }
+
+        private static EventAuthorityForUser CreateAuthority(
+            string roleCode,
+            string[] permissionCodes,
+            bool isOwner,
+            bool isManager) =>
+            new(
+                new HashSet<string>(StringComparer.Ordinal) { roleCode },
+                permissionCodes.ToHashSet(StringComparer.Ordinal),
+                isOwner,
+                isManager);
     }
 }
 

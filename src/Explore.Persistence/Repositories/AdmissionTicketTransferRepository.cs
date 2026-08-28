@@ -635,21 +635,21 @@ public sealed class AdmissionTicketTransferRepository(
             .AcquireAsync<RegistrationTicketAssignment>(
                 dbContext,
                 tenantId,
-                "id",
+                assignment => assignment.Id,
                 identity.RegistrationTicketAssignmentId,
                 cancellationToken);
         await RelationalEntityRowFence
             .AcquireAsync<ParticipantAdmissionEligibility>(
                 dbContext,
                 tenantId,
-                "registration_ticket_assignment_id",
+                eligibility => eligibility.RegistrationTicketAssignmentId,
                 identity.RegistrationTicketAssignmentId,
                 cancellationToken);
         await RelationalEntityRowFence
             .AcquireAsync<AdmissionTicket>(
                 dbContext,
                 tenantId,
-                "id",
+                ticket => ticket.Id,
                 admissionTicketId,
                 cancellationToken);
 
@@ -721,7 +721,7 @@ public sealed class AdmissionTicketTransferRepository(
                 .AcquireAsync<AdmissionTicketTransfer>(
                     dbContext,
                     tenantId,
-                    "id",
+                    candidate => candidate.Id,
                     transfer.Id,
                     cancellationToken);
             await dbContext.Entry(transfer)
@@ -806,7 +806,7 @@ public sealed class AdmissionTicketTransferRepository(
                 .AcquireAsync<AdmissionRecoveryCapability>(
                     dbContext,
                     tenantId,
-                    "id",
+                    capability => capability.Id,
                     capabilityId,
                     cancellationToken);
         }

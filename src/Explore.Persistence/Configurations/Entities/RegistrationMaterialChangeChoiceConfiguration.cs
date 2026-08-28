@@ -12,7 +12,6 @@ public sealed class RegistrationMaterialChangeChoiceConfiguration
 {
     public void Configure(EntityTypeBuilder<RegistrationMaterialChangeChoice> builder)
     {
-        builder.ToTable("registration_material_change_choices");
         builder.HasKey(value => value.Id);
         builder.HasAlternateKey(value => new { value.TenantId, value.Id });
         builder.Property(value => value.Status).HasConversion<int>();

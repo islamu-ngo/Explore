@@ -17,7 +17,6 @@ public static class MainCommand
     private const int MaximumReleaseDirectories = 1_024;
     private static readonly Regex FullOidPattern = new("^(?:[0-9a-f]{40}|[0-9a-f]{64})$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex StableVersionPattern = new("^(?<major>0|[1-9][0-9]*)\\.(?<minor>0|[1-9][0-9]*)\\.(?<patch>0|[1-9][0-9]*)$", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(100));
-    private static readonly Regex ChangeIdPattern = new("^CHG-[0-9]{4}-[0-9]{4}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     public static int Run(string[] args, TextWriter output, string repositoryRoot, TimeSpan timeout)
     {
@@ -186,7 +185,7 @@ public static class MainCommand
 
             foreach (JsonElement change in changes.EnumerateArray())
             {
-                if (!TryString(change, "changeId", out string changeId) || !ChangeIdPattern.IsMatch(changeId) ||
+                if (!TryString(change, "changeId", out string changeId) || !ChangeIdPolicy.IsValid(changeId) ||
                     !TryString(change, "oid", out string oid) || !FullOidPattern.IsMatch(oid) ||
                     !change.TryGetProperty("backport", out JsonElement backport) || backport.ValueKind is not JsonValueKind.True ||
                     !TryString(change, "backportOf", out string backportOf) || !FullOidPattern.IsMatch(backportOf))

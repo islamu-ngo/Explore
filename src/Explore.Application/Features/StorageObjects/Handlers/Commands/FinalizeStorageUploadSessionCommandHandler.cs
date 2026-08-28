@@ -574,8 +574,8 @@ public class FinalizeStorageUploadSessionCommandHandler
     }
 
     private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
-        BaseCommandResponse.Validation<StorageUploadSessionDto>(
-            ["Upload finalization failed."],
+        BaseCommandResponse.Failure<StorageUploadSessionDto>(
+            PrivacyErasureFencedFailureCode,
             "Upload finalization failed.");
 
     private bool IsAccessibleSession(StorageUploadSession? session, Guid tenantId)

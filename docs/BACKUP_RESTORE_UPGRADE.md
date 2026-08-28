@@ -6,7 +6,7 @@ ABOUTME: Grounds release operations in provider-native database tools, authority
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-09
+> **Last Verified:** 2026-08-28
 > **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `PrivacyErasureStartupGate.cs`, `PrivacyErasureReplayService.cs`, `GlobalLocationPrivacyErasureTests.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
@@ -186,6 +186,30 @@ instructions.
 
 ## Upgrade Procedure
 
+### Pre-v1 rebaseline boundary
+
+The current five application migration chains were regenerated as one initial
+per provider during development. A database carrying a removed development
+application history has no supported incremental path to these initials.
+Before using the target build:
+
+1. Confirm the database is disposable development state. If it contains data
+   that must survive, stop and restore/export through a separately reviewed
+   transition; do not stamp the migration history.
+2. Back up Data Protection and privacy-erasure authority independently.
+3. Recreate only the application database selected by
+   `Database__Provider`.
+4. Run `Event.MigrationService` twice. The first run applies and seeds; the
+   second proves idempotency and no pending provider migration work.
+5. Verify the effective namespace: configured schema for PostgreSQL/SQL Server,
+   `ie_` tables for SQLite/MariaDB/MySQL.
+6. Verify Data Protection and retained authority still use their independent
+   history and recovery point.
+
+This reset policy is development-only. It must never be presented as a
+production in-place upgrade or as permission to discard encryption keys,
+erasure authority, backups, or audit evidence.
+
 1. Read `RELEASE_CHECKLIST.md` and the release notes for migration, config, security, and rollback changes.
 2. Take and verify backups before pulling or building new images.
 3. Pull or build the target images.
@@ -253,6 +277,7 @@ restored PII is not a recovery path.
 | Destructive or non-reversible migration ran | Restore database/object-storage backups and then revert images. |
 | Storage reconciliation mutations ran against the wrong object store | Stop write traffic, disable destructive reconciliation flags, restore database and object-storage backups from the same manifest, then restart with dry-run reconciliation. |
 | Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. Rotation is restart-based today; do not claim live reload. |
+| Removed pre-v1 development application history is present | Keep the service offline; recreate only disposable application state or perform a separately reviewed export/restore transition. Never stamp the new initial as already applied. |
 
 If release notes do not explicitly state that a rollback is image-only safe, assume a database restore is required.
 

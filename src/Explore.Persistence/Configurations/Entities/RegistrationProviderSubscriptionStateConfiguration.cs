@@ -11,7 +11,7 @@ public sealed class RegistrationProviderSubscriptionStateConfiguration : IEntity
 {
     public void Configure(EntityTypeBuilder<RegistrationProviderSubscriptionState> builder)
     {
-        builder.ToTable("registration_provider_subscription_states", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_provider_subscription_states_generation", "processing_generation >= 0");
             table.HasCheckConstraint("ck_registration_provider_subscription_states_failure_counts", "renewal_failure_count >= 0 AND sweep_failure_count >= 0");
@@ -33,11 +33,8 @@ public sealed class RegistrationProviderSubscriptionStateConfiguration : IEntity
             .HasPrincipalKey(binding => new { binding.TenantId, binding.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.RegistrationProviderBindingId, value.ProviderEventType })
-            .HasDatabaseName("ux_registration_provider_subscription_states_binding_event")
             .IsUnique();
-        builder.HasIndex(value => new { value.WatchExpiresAt, value.LeaseExpiresAt })
-            .HasDatabaseName("ix_registration_provider_subscription_states_renewal_poll");
-        builder.HasIndex(value => new { value.PendingNotificationAt, value.NextSweepAttemptAt, value.LeaseExpiresAt })
-            .HasDatabaseName("ix_registration_provider_subscription_states_sweep_poll");
+        builder.HasIndex(value => new { value.WatchExpiresAt, value.LeaseExpiresAt });
+        builder.HasIndex(value => new { value.PendingNotificationAt, value.NextSweepAttemptAt, value.LeaseExpiresAt });
     }
 }

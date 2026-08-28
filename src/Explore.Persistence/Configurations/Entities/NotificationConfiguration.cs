@@ -29,8 +29,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .HasDefaultValueSql("NOW()")
             .IsRequired();
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_notifications_tenant_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.NotificationIntent)
             .WithMany()
@@ -81,39 +80,31 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 
         // Unread notifications per user (most common query)
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.IsRead, e.CreatedAt })
-            .HasDatabaseName("ix_notifications_tenant_user_unread")
             .IsDescending(false, false, false, true);
 
         // Partial index: only unread notifications — fast unread count and listing
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt })
-            .HasDatabaseName("ix_notifications_unread_by_user")
             .IsDescending(false, false, true)
             .HasFilter("is_read = false AND is_deleted = false");
 
         // Notification type queries
-        builder.HasIndex(e => new { e.TenantId, e.NotificationTypeId })
-            .HasDatabaseName("ix_notifications_tenant_type");
+        builder.HasIndex(e => new { e.TenantId, e.NotificationTypeId });
 
         // Scope-based filtering (e.g., "show only org notifications")
-        builder.HasIndex(e => new { e.UserId, e.NotificationScopeId, e.IsRead })
-            .HasDatabaseName("ix_notifications_user_scope");
+        builder.HasIndex(e => new { e.UserId, e.NotificationScopeId, e.IsRead });
 
         // Archived notifications for inbox filtering
         builder.HasIndex(e => new { e.UserId, e.IsArchived, e.CreatedAt })
-            .HasDatabaseName("ix_notifications_user_archived")
             .IsDescending(false, false, true);
 
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.DeduplicationKey })
-            .IsUnique()
-            .HasDatabaseName("ux_notifications_tenant_user_deduplication_key");
+            .IsUnique();
 
         builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId })
             .IsUnique()
-            .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false")
-            .HasDatabaseName("ux_notifications_tenant_notification_intent");
+            .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false");
 
         builder.HasIndex(e => new { e.TenantId, e.Id, e.NotificationIntentId })
-            .IsUnique()
-            .HasDatabaseName("ux_notifications_tenant_id_intent_link");
+            .IsUnique();
     }
 }

@@ -12,7 +12,6 @@ public class TenantUserRoleGrantConfiguration : IEntityTypeConfiguration<TenantU
 {
     public void Configure(EntityTypeBuilder<TenantUserRoleGrant> builder)
     {
-        builder.ToTable("tenant_user_role_grants");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
@@ -51,10 +50,8 @@ public class TenantUserRoleGrantConfiguration : IEntityTypeConfiguration<TenantU
 
         builder.HasIndex(e => new { e.TenantId, e.TenantUserId, e.RoleId })
             .IsUnique()
-            .HasFilter("revoked_at IS NULL")
-            .HasDatabaseName("ix_tenant_user_role_grants_active_tenant_user_role");
+            .HasFilter("revoked_at IS NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.RoleId })
-            .HasDatabaseName("ix_tenant_user_role_grants_tenant_role");
+        builder.HasIndex(e => new { e.TenantId, e.RoleId });
     }
 }

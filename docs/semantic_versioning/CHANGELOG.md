@@ -12,7 +12,7 @@ ABOUTME: v0.1.0 implemented scope mirrors API WORK ITEMS.md and v1.0.0 planned s
 > Future governed releases will follow [Semantic Versioning 2.0.0](https://semver.org/)
 > after explicit steward approval and signed-tag activation.
 
-**Last Updated:** 2026-03-27
+**Last Updated:** 2026-08-28
 
 ---
 
@@ -28,6 +28,7 @@ Planning/history notes for features merged to `develop` branch, not yet released
 - **Actor appearance** — BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId fields. `AppearanceStyleBuilder` for inline CSS generation with overlay effects.
 - **Analytics relay rate limiting** — dedicated `AnalyticsRelay` rate limit policy for `POST /api/a/t`.
 - **Authorization parity tests** — architecture tests ensuring resource kinds map to Cerbos policies with fallback cases.
+- **EF Core persistence hardening** — provider-neutral repository boundaries, metadata-owned physical identifiers, isolated lock/queue primitives, and generated initial migration histories for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL. This pre-v1 rebaseline requires recreation of databases using the removed development application histories; Data Protection and retained privacy-erasure authority histories remain independent. No public API contract changed.
 
 ---
 

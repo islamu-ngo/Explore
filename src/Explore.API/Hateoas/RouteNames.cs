@@ -238,6 +238,7 @@ public static class RouteNames
     public const string CreateEvent = "CreateEvent";
     public const string ImportEvent = "ImportEvent";
     public const string PublishEvent = "PublishEvent";
+    public const string ApprovePublishEvent = "ApprovePublishEvent";
     public const string ModerateEventLight = "ModerateEventLight";
     public const string ModerateEventHeavy = "ModerateEventHeavy";
     public const string UnmoderateEvent = "UnmoderateEvent";
@@ -267,6 +268,11 @@ public static class RouteNames
 
     public const string GetEventReportOptions = "GetEventReportOptions";
     public const string SubmitEventReport = "SubmitEventReport";
+    public const string SubmitEventCorrection = "SubmitEventCorrection";
+    public const string SubmitUnsafeExternalLinkReport =
+        "SubmitUnsafeExternalLinkReport";
+    public const string SubmitLegalOrCopyrightComplaint =
+        "SubmitLegalOrCopyrightComplaint";
     public const string GetMyEventReports = "GetMyEventReports";
     public const string GetMyEventReport = "GetMyEventReport";
     public const string UpdateMyEventReportCommunicationConsent = "UpdateMyEventReportCommunicationConsent";
@@ -651,6 +657,8 @@ public static class RouteNames
     public const string TestTenantStorageConnection = "TestTenantStorageConnection";
     public const string GetTenantPaidEventPolicySettings = "GetTenantPaidEventPolicySettings";
     public const string UpdateTenantPaidEventPolicySettings = "UpdateTenantPaidEventPolicySettings";
+    public const string GetTenantReportingIntakePolicy = "GetTenantReportingIntakePolicy";
+    public const string UpdateTenantReportingIntakePolicy = "UpdateTenantReportingIntakePolicy";
 
     #endregion
 
@@ -1146,6 +1154,13 @@ public static class RouteNames
     public const string GetTenantOnboardingPolicySettings = "GetTenantOnboardingPolicySettings";
     public const string CompleteTenantOnboarding = "CompleteTenantOnboarding";
     public const string SaveTenantOnboardingStepProgress = "SaveTenantOnboardingStepProgress";
+
+    #endregion
+
+    #region Configuration Manifest Routes
+
+    public const string ExportConfigurationManifest =
+        "ExportConfigurationManifest";
 
     #endregion
 }

@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
@@ -43,7 +44,8 @@ public sealed class CompositeOutboxMessageDispatcher(
     BusinessMetrics businessMetrics,
     TimeProvider timeProvider,
     IMediator mediator,
-    ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
+    ILogger<CompositeOutboxMessageDispatcher> logger,
+    IConfigurationManifestEffectDispatcher configurationManifestEffectDispatcher) : IOutboxMessageDispatcher
 {
     public async Task DispatchAsync(OutboxMessage message, CancellationToken ct = default)
     {
@@ -77,6 +79,12 @@ public sealed class CompositeOutboxMessageDispatcher(
 
             case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:
                 await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
+                return;
+
+            case ConfigurationManifestEffectOutbox.EventType:
+                await configurationManifestEffectDispatcher.DispatchAsync(
+                    message.AggregateId,
+                    ct);
                 return;
 
             case RegistrationOrderOutboxMessageFactory.RejectedEventType:
@@ -256,6 +264,12 @@ public sealed class CompositeOutboxMessageDispatcher(
     {
         switch (message.EventType)
         {
+            case ConfigurationManifestEffectOutbox.EventType:
+                await configurationManifestEffectDispatcher.DispatchAsync(
+                    message.AggregateId,
+                    ct);
+                return;
+
             case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
                 await mediator.Send(
                     new ReconcileManagedTenantProvisioningDeadLetterCommand(message.AggregateId, message.Id),

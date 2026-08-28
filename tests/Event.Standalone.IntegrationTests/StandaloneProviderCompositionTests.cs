@@ -33,6 +33,9 @@ public sealed class StandaloneProviderCompositionTests
         await Assert.That(File.Exists(Path.Combine(repositoryRoot, "docker-compose.standalone.yml"))).IsFalse();
         await Assert.That(dockerfile).Contains("EXPOSE 8080");
         await Assert.That(dockerfile).Contains("USER $APP_UID");
+        await Assert.That(dockerfile).Contains("/etc/islamu-event/bootstrap");
+        await Assert.That(dockerfile).Contains(
+            "/app/schemas/configuration-manifest-v1alpha1.schema.json");
         await Assert.That(dockerfile).Contains("ENTRYPOINT [\"./Event.Standalone\"]");
     }
 
@@ -54,7 +57,7 @@ public sealed class StandaloneProviderCompositionTests
     [Test]
     public async Task StandaloneEnvironmentAllowsHttpMetadataForLocalKeycloak()
     {
-        var environment = await File.ReadAllTextAsync(Path.Combine(FindRepositoryRoot(), ".env"));
+        var environment = await File.ReadAllTextAsync(Path.Combine(FindRepositoryRoot(), ".env.example"));
 
         await Assert.That(environment).Contains("KEYCLOAK_ENDPOINT=http://keycloak.localhost:8080");
         await Assert.That(environment).Contains("Keycloak__RequireHttpsMetadata=false");
@@ -195,7 +198,9 @@ public sealed class StandaloneProviderCompositionTests
     private static ServiceProvider ComposeStandalonePersistence(string databasePath) =>
         ComposePersistence(new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(
-                Path.GetDirectoryName(typeof(StandaloneHostMarker).Assembly.Location)!,
+                FindRepositoryRoot(),
+                "src",
+                "Event.Standalone",
                 "appsettings.json"), optional: false)
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Database:Database"] = databasePath })
             .Build());

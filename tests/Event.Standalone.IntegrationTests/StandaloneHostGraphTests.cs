@@ -87,6 +87,20 @@ public sealed class StandaloneHostGraphTests
     }
 
     [Test]
+    public async Task TenantManifestStartupCompletesBeforeTheHostAcceptsTraffic()
+    {
+        var startup = new ConfigurationManifestStartupProbe();
+        await using var factory = new StandaloneWebApplicationFactory(
+            startupRunner: startup);
+
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/alive");
+
+        await Assert.That(startup.RunCount).IsEqualTo(1);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
     public async Task UnknownApiRouteStaysInApiPipeline()
     {
         await using var factory = new StandaloneWebApplicationFactory();

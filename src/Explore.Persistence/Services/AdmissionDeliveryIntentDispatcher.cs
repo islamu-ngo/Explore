@@ -84,10 +84,10 @@ public sealed class AdmissionDeliveryIntentDispatcher(
         catch (Exception exception)
         {
             logger.LogError(
-                exception,
-                "Admission delivery failed for tenant {TenantId}, intent {DeliveryIntentId}; protected handoff remains pending",
+                "Admission delivery failed for tenant {TenantId}, intent {DeliveryIntentId}; protected handoff remains pending. Failure type: {FailureType}",
                 intent.TenantId,
-                intent.Id);
+                intent.Id,
+                exception.GetType().Name);
             return Pending(AdmissionDeliveryFailure.RouteUnavailable);
         }
     }

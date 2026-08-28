@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -33,23 +34,12 @@ public class EventDayRepository : GenericRepository<EventDay, Guid>, IEventDayRe
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            if (_dbContext.Database.CurrentTransaction is null)
-            {
-                throw new InvalidOperationException("Event-day row locks require an active transaction.");
-            }
-
-            await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                SELECT id
-                FROM event_days
-                WHERE id = {eventDayId}
-                  AND event_id = {eventId}
-                  AND tenant_id = {tenantId}
-                  AND is_deleted = false
-                FOR UPDATE
-                """, cancellationToken);
-        }
+        await RelationalEntityRowFence.AcquireAsync<EventDay>(
+            _dbContext,
+            tenantId,
+            day => day.Id,
+            eventDayId,
+            cancellationToken);
 
         return await _dbContext.EventDays.FirstOrDefaultAsync(
             day => day.Id == eventDayId && day.EventId == eventId && day.TenantId == tenantId,

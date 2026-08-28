@@ -1,6 +1,7 @@
-// ABOUTME: Proves inventory-hold expiry remains atomic through aggregate-owned transitions.
-// ABOUTME: Executes concurrent expiry against file-backed SQLite with one deterministic winner.
+// ABOUTME: Proves inventory hold transitions use provider metadata and aggregate-owned portable mutations.
+// ABOUTME: Executes provider mapping plus contended expiry, consume, and release paths against SQLite.
 
+using Event.Persistence.IntegrationTests.Database;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
@@ -20,6 +21,43 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 public sealed class RegistrationInventoryHoldPortabilityTests
 {
     private static readonly DateTime UtcNow = new(2026, 8, 2, 12, 0, 0, DateTimeKind.Utc);
+
+    [Test]
+    [Arguments("PostgreSql", "islamu_event.registration_inventory_holds", "islamu_event.registration_orders")]
+    [Arguments("Sqlite", "\"ie_registration_inventory_holds\"", "\"ie_registration_orders\"")]
+    [Arguments("SqlServer", "[islamu_event].[registration_inventory_holds]", "[islamu_event].[registration_orders]")]
+    [Arguments("MariaDb", "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
+    [Arguments("MySql", "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
+    public async Task ProviderModel_UsesMappedDelimitedIdentifiers(
+        string provider,
+        string expectedHolds,
+        string expectedOrders)
+    {
+        await using ExploreDbContext context = CreateProviderContext(provider);
+        ISqlGenerationHelper sql = context.GetService<ISqlGenerationHelper>();
+        IEntityType hold = context.Model.FindEntityType(typeof(RegistrationInventoryHold))!;
+        IEntityType order = context.Model.FindEntityType(typeof(RegistrationOrder))!;
+        string holds = sql.DelimitIdentifier(hold.GetTableName()!, hold.GetSchema());
+        string orders = sql.DelimitIdentifier(order.GetTableName()!, order.GetSchema());
+
+        await Assert.That(holds).IsEqualTo(expectedHolds);
+        await Assert.That(orders).IsEqualTo(expectedOrders);
+    }
+
+    [Test]
+    public async Task InventoryTransitions_UseNoProviderSpecificSqlCommand()
+    {
+        string source = await File.ReadAllTextAsync(Path.Combine(
+            GetRepositoryRoot(),
+            "src",
+            "Explore.Persistence",
+            "Repositories",
+            "RegistrationInventoryRepository.cs"));
+
+        await Assert.That(source).DoesNotContain("BuildPostgreSqlHoldExpiryCommand");
+        await Assert.That(source).DoesNotContain("ExecuteSqlRawAsync");
+        await Assert.That(source).DoesNotContain("UPDATE registration_inventory_holds");
+    }
 
     [Test]
     public async Task FileBackedSqlite_ConcurrentExpiryHasOneWinnerAndReleasesCapacity()
@@ -60,6 +98,76 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         }
     }
 
+    [Test]
+    public async Task FileBackedSqlite_ConcurrentConsumeHasOneWinnerAndPreservesAllocation()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"registration-hold-consume-{Guid.NewGuid():N}.db");
+        try
+        {
+            (Guid tenantId, _, Guid holdId, Guid poolId) = await SeedSqliteAsync(
+                databasePath,
+                UtcNow.AddMinutes(5));
+
+            bool[] results = await Task.WhenAll(
+                ConsumeAsync(databasePath, holdId),
+                ConsumeAsync(databasePath, holdId));
+
+            await Assert.That(results.Count(result => result)).IsEqualTo(1);
+            await using ExploreDbContext verification = CreateSqliteContext(databasePath, tenantId);
+            RegistrationInventoryHold persisted = await verification.RegistrationInventoryHolds
+                .AsNoTracking()
+                .SingleAsync(hold => hold.Id == holdId);
+            var repository = new RegistrationInventoryRepository(verification);
+            await Assert.That(persisted.RegistrationInventoryHoldStatusId)
+                .IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Consumed);
+            await Assert.That(persisted.ConsumedAt).IsEqualTo(UtcNow);
+            await Assert.That(await repository.GetAllocatedQuantityAsync(poolId, tenantId, CancellationToken.None))
+                .IsEqualTo(1);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+            File.Delete(databasePath + "-shm");
+            File.Delete(databasePath + "-wal");
+        }
+    }
+
+    [Test]
+    public async Task FileBackedSqlite_ConcurrentReleaseHasOneWinnerAndReleasesAllocation()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"registration-hold-release-{Guid.NewGuid():N}.db");
+        try
+        {
+            (Guid tenantId, _, Guid holdId, Guid poolId) = await SeedSqliteAsync(
+                databasePath,
+                UtcNow.AddMinutes(5));
+
+            bool[] results = await Task.WhenAll(
+                ReleaseAsync(databasePath, holdId),
+                ReleaseAsync(databasePath, holdId));
+
+            await Assert.That(results.Count(result => result)).IsEqualTo(1);
+            await using ExploreDbContext verification = CreateSqliteContext(databasePath, tenantId);
+            RegistrationInventoryHold persisted = await verification.RegistrationInventoryHolds
+                .AsNoTracking()
+                .SingleAsync(hold => hold.Id == holdId);
+            var repository = new RegistrationInventoryRepository(verification);
+            await Assert.That(persisted.RegistrationInventoryHoldStatusId)
+                .IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Released);
+            await Assert.That(persisted.ReleasedAt).IsEqualTo(UtcNow);
+            await Assert.That(await repository.GetAllocatedQuantityAsync(poolId, tenantId, CancellationToken.None))
+                .IsEqualTo(0);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+            File.Delete(databasePath + "-shm");
+            File.Delete(databasePath + "-wal");
+        }
+    }
+
     private static async Task<bool> ExpireAsync(string databasePath, Guid holdId)
     {
         await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
@@ -67,8 +175,27 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         return await repository.TryExpireDueHoldAsync(holdId, UtcNow, CancellationToken.None);
     }
 
+    private static async Task<bool> ConsumeAsync(string databasePath, Guid holdId)
+    {
+        await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
+        return await new RegistrationInventoryRepository(context)
+            .TryConsumeActiveHoldAsync(holdId, UtcNow, CancellationToken.None);
+    }
+
+    private static async Task<bool> ReleaseAsync(string databasePath, Guid holdId)
+    {
+        await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
+        return await new RegistrationInventoryRepository(context)
+            .TryReleaseActiveHoldAsync(
+                holdId,
+                RegistrationInventoryHoldStatusEnum.Released,
+                UtcNow,
+                CancellationToken.None);
+    }
+
     private static async Task<(Guid TenantId, Guid OrderId, Guid HoldId, Guid PoolId)> SeedSqliteAsync(
-        string databasePath)
+        string databasePath,
+        DateTime? expiresAt = null)
     {
         await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
         await context.Database.EnsureCreatedAsync();
@@ -196,7 +323,7 @@ public sealed class RegistrationInventoryHoldPortabilityTests
             tenant.Id,
             quantity: 1,
             UtcNow.AddMinutes(-20),
-            UtcNow.AddMinutes(-5));
+            expiresAt ?? UtcNow.AddMinutes(-5));
         context.AddRange(order, hold);
         await context.SaveChangesAsync();
 
@@ -220,6 +347,21 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         {
             TenantContext = tenantId.HasValue ? new TestTenantContext(tenantId.Value) : null,
         };
+    }
+
+    private static ExploreDbContext CreateProviderContext(string provider)
+        => ExploreDbContextModelProviderTests.CreateContext(provider);
+
+    private static string GetRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "global.json")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate repository root.");
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

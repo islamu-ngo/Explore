@@ -11,7 +11,6 @@ public sealed class EventTicketCatalogVersionConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<EventTicketCatalogVersion> builder)
     {
-        builder.ToTable("event_ticket_catalog_versions");
         builder.Property(catalog => catalog.Id).ValueGeneratedNever();
         builder.Property(catalog => catalog.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.Property(catalog => catalog.MerchantDisclosureText).HasMaxLength(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);

@@ -12,7 +12,7 @@ public sealed class WebhookLocalTargetSnapshotConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookLocalTargetSnapshot> builder)
     {
-        builder.ToTable("webhook_local_target_snapshots", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_webhook_local_targets_endpoint_version", "endpoint_configuration_version > 0");
             table.HasCheckConstraint("ck_webhook_local_targets_credential_version", "credential_version > 0");
@@ -31,8 +31,7 @@ public sealed class WebhookLocalTargetSnapshotConfiguration
         builder.Property(target => target.ConcurrencyVersion).IsRequired().IsConcurrencyToken();
         builder.Ignore(target => target.DeliveryStatus);
 
-        builder.HasAlternateKey(target => new { target.TenantId, target.Id })
-            .HasName("ak_webhook_local_target_snapshots_tenant_id_id");
+        builder.HasAlternateKey(target => new { target.TenantId, target.Id });
 
         builder.HasOne(target => target.Tenant)
             .WithMany()
@@ -58,11 +57,8 @@ public sealed class WebhookLocalTargetSnapshotConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(target => new { target.TenantId, target.DeliveryPlanSnapshotId, target.WebhookEndpointId })
-            .HasDatabaseName("ux_webhook_local_targets_tenant_plan_endpoint")
             .IsUnique();
-        builder.HasIndex(target => new { target.TenantId, target.DeliveryStatusId, target.NextActionAtUtc, target.ProcessingLeaseExpiresAtUtc })
-            .HasDatabaseName("ix_webhook_local_targets_tenant_claim_due");
-        builder.HasIndex(target => new { target.TenantId, target.WebhookMessageId })
-            .HasDatabaseName("ix_webhook_local_targets_tenant_message");
+        builder.HasIndex(target => new { target.TenantId, target.DeliveryStatusId, target.NextActionAtUtc, target.ProcessingLeaseExpiresAtUtc });
+        builder.HasIndex(target => new { target.TenantId, target.WebhookMessageId });
     }
 }

@@ -105,7 +105,6 @@ public static class ReleaseInputPolicy
     private static readonly Regex LinePattern = new("^v[0-9]+\\.[0-9]+$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex TagPattern = new("^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:alpha|beta|rc)\\.[0-9]+)?$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex BaselineRefPattern = new("^changelog-baseline-[0-9]{4}-[0-9]{2}-[0-9]{2}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-    private static readonly Regex ChangeIdPattern = new("^CHG-[0-9]{4}-[0-9]{4}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex FullOidPattern = new("^(?:[0-9a-f]{40}|[0-9a-f]{64})$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex GroupPattern = new("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex SecretPattern = new("(?:-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----|\\bBearer\\s+[A-Za-z0-9._~+/=-]{16,}|\\b(?:gh[pousr]_|github_pat_|glpat-|xox[baprs]-)[A-Za-z0-9_-]{8,}|\\b(?:password|passwd|client_secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\\s*[:=]\\s*\\S+)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
@@ -246,7 +245,7 @@ public static class ReleaseInputPolicy
                 : [];
             Dictionary<string, FragmentImpact> impacts = Impacts(root, diagnosticId, diagnostics);
 
-            if (!ChangeIdPattern.IsMatch(changeId))
+            if (!ChangeIdPolicy.IsValid(changeId))
             {
                 diagnostics.Add($"fragment_malformed_change_id:{diagnosticId}");
             }
@@ -263,7 +262,7 @@ public static class ReleaseInputPolicy
 
             foreach (string superseded in supersedes)
             {
-                if (!ChangeIdPattern.IsMatch(superseded))
+                if (!ChangeIdPolicy.IsValid(superseded))
                 {
                     diagnostics.Add($"fragment_malformed_supersedes:{diagnosticId}");
                     break;

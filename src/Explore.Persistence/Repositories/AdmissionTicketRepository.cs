@@ -57,20 +57,20 @@ public sealed class AdmissionTicketRepository(ExploreDbContext dbContext) :
             .AcquireAsync<RegistrationTicketAssignment>(
                 dbContext,
                 tenantId,
-                "id",
+                assignment => assignment.Id,
                 assignmentId.Value,
                 cancellationToken);
         await RelationalEntityRowFence
             .AcquireAsync<ParticipantAdmissionEligibility>(
                 dbContext,
                 tenantId,
-                "registration_ticket_assignment_id",
+                eligibility => eligibility.RegistrationTicketAssignmentId,
                 assignmentId.Value,
                 cancellationToken);
         await RelationalEntityRowFence.AcquireAsync<AdmissionTicket>(
             dbContext,
             tenantId,
-            "id",
+            ticket => ticket.Id,
             admissionTicketId,
             cancellationToken);
         return await dbContext.AdmissionTickets

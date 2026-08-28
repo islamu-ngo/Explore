@@ -8,9 +8,12 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
@@ -319,7 +322,6 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
 
 public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer, IAsyncDisposable
 {
-    private const string ExpandMigration = "20260801192258_init";
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine")
         .WithDatabase("tenant_membership_removal_test")
         .WithUsername("postgres")
@@ -330,31 +332,8 @@ public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer
         await _container.StartAsync();
 
         await using var context = CreateSeedContext();
-        await context.Database.MigrateAsync(ExpandMigration);
-        context.Set<TenantStatus>().Add(new TenantStatus
-        {
-            Id = (int)TenantStatusEnum.Active,
-            MasterCode = "ACTIVE",
-            FullName = "Active",
-            IsActiveState = true,
-        });
-        context.Set<RoleScope>().Add(new RoleScope
-        {
-            Id = (int)RoleScopeEnum.Tenant,
-            MasterCode = "TENANT",
-            FullName = "Tenant",
-        });
-        context.Set<Role>().Add(new Role
-        {
-            Id = (int)RoleEnum.TenantMember,
-            MasterCode = "TENANT_MEMBER",
-            FullName = "Tenant Member",
-            RoleScopeId = (int)RoleScopeEnum.Tenant,
-            RoleScope = null!,
-            IsSystem = true,
-        });
-        await context.SaveChangesAsync();
-        await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, CancellationToken.None);
+        await context.Database.MigrateAsync();
+        await LookupTableSeeder.SeedAsync(context);
     }
 
     public async ValueTask DisposeAsync()
@@ -381,12 +360,25 @@ public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer
 
     private ExploreDbContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+        var connection = new NpgsqlConnectionStringBuilder(_container.GetConnectionString());
+        var database = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = connection.Host,
+            Port = connection.Port,
+            Database = connection.Database,
+            Schema = RelationalModelNamespace.DefaultSchema,
+            Username = connection.Username,
+            Password = connection.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
+        PrimaryDatabaseProviderComposition.ConfigureApplication(builder, database);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        return new ExploreDbContext(builder.Options);
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

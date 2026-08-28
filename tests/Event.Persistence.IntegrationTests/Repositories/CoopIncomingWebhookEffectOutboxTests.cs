@@ -498,7 +498,7 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
             await using var context = new ExploreDbContext(options);
             var migrator = context.GetService<IMigrator>();
 
-            await migrator.MigrateAsync("20260801192258_init");
+            await migrator.MigrateAsync();
             await Assert.That(await EffectPointerTableExistsAsync(context)).IsTrue();
         }
         finally

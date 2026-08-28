@@ -5,6 +5,7 @@ using System.Data.Common;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Persistence.Database;
+using Explore.Persistence.Database.ProviderPrimitives;
 using Explore.Persistence;
 using Explore.Persistence.Projections;
 using Explore.Persistence.Repositories;
@@ -158,7 +159,7 @@ public sealed class PrimaryPersistencePortabilityTests
             ? RelationalNamedLock.SqlServerProvider
             : RelationalNamedLock.MySqlProvider;
 
-        await using DbCommand command = ProjectionInfrastructure.CreateServerTryAcquireCommand(
+        await using DbCommand command = RelationalProjectionLock.CreateServerTryAcquireCommand(
             connection,
             transaction: null,
             providerName,

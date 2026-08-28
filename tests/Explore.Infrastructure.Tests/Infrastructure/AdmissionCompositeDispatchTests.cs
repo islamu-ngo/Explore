@@ -1,5 +1,5 @@
 // ABOUTME: Exercises admission delivery through the real production intent dispatcher and composite outbox route.
-// ABOUTME: Proves typed cancellation/failure boundaries, protected pending state, and acknowledged ciphertext retirement.
+// ABOUTME: Proves protected delivery state and rejects sensitive persistence diagnostics on downstream failure.
 
 using System.Diagnostics.Metrics;
 using System.Text.Json;
@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Models;
 using Explore.Application.Services;
@@ -26,6 +27,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -112,6 +114,67 @@ public sealed class AdmissionCompositeDispatchTests
         await Assert.That(pending.ProtectedCredential).IsEmpty();
     }
 
+    [Test]
+    public async Task FailedAdmissionDispatch_EmitsZeroSensitivePersistenceEvidence()
+    {
+        string sentinel = Guid.CreateVersion7().ToString("N");
+        string parameterValue = $"SQL-PARAMETER-{sentinel}";
+        string connectionSecret = $"CONNECTION-SECRET-{sentinel}";
+        string pii = $"private-attendee-{sentinel}@example.test";
+        string tenantPayload = $"TENANT-PAYLOAD-{sentinel}";
+        string providerBody = $"PROVIDER-BODY-{sentinel}";
+        string providerFault =
+            $"parameter={parameterValue}; connection=Host=db.internal;Password={connectionSecret}; " +
+            $"pii={pii}; tenant_payload={tenantPayload}; provider_body={providerBody}";
+
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite(connection)
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using var context = new ExploreDbContext(options);
+        Guid tenantId = Guid.CreateVersion7();
+        context.TenantContext = new AdmissionTenantContext(tenantId);
+        await context.Database.EnsureCreatedAsync();
+        await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
+        DateTime now = new(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var protectedMaterial = new AdmissionDeliveryEnvelopeProtector(
+                new EphemeralDataProtectionProvider())
+            .Protect(new AdmissionCredentialDeliveryEnvelope(pii, "protected-bearer"));
+        var intent = new AdmissionDeliveryIntent(
+            Guid.CreateVersion7(),
+            tenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            protectedMaterial.Ciphertext,
+            protectedMaterial.ProtectionVersion,
+            now);
+        context.AdmissionDeliveryIntents.Add(intent);
+        await context.SaveChangesAsync();
+
+        var downstream = Substitute.For<IOutboxMessageDispatcher>();
+        downstream.DispatchAsync(Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException(providerFault)));
+        var logger = new CaptureLogger<AdmissionDeliveryIntentDispatcher>();
+        var dispatcher = new AdmissionDeliveryIntentDispatcher(context, downstream, logger);
+
+        AdmissionDeliveryDispatchResult result = await dispatcher.DispatchAsync(
+            new AdmissionDeliveryDispatchRequest(intent.Id),
+            CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(new AdmissionDeliveryDispatchResult(
+            AdmissionDeliveryOutcome.RecoverablePending,
+            AdmissionDeliveryFailure.RouteUnavailable));
+        string observable = string.Join('|', logger.Entries.Select(entry => entry.Observable));
+        foreach (string forbidden in
+                 new[] { parameterValue, connectionSecret, pii, tenantPayload, providerBody })
+        {
+            await Assert.That(observable).DoesNotContain(forbidden);
+        }
+    }
+
     private static CompositeOutboxMessageDispatcher CreateComposite(
         IAdmissionCredentialDeliveryOutboxHandler admissionHandler)
     {
@@ -151,7 +214,8 @@ public sealed class AdmissionCompositeDispatchTests
             CreateMetrics(),
             TimeProvider.System,
             Substitute.For<IMediator>(),
-            NullLogger<CompositeOutboxMessageDispatcher>.Instance);
+            NullLogger<CompositeOutboxMessageDispatcher>.Instance,
+            Substitute.For<IConfigurationManifestEffectDispatcher>());
     }
 
     private static NotificationFanoutOccurrenceHandoffService CreateNotificationHandoff()
@@ -176,6 +240,41 @@ public sealed class AdmissionCompositeDispatchTests
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
+
+    private sealed class CaptureLogger<T> : ILogger<T>
+    {
+        public List<CapturedLog> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            var properties = state as IEnumerable<KeyValuePair<string, object?>> ?? [];
+            Entries.Add(new CapturedLog(
+                formatter(state, exception),
+                properties.ToDictionary(property => property.Key, property => property.Value),
+                exception));
+        }
+    }
+
+    private sealed record CapturedLog(
+        string Message,
+        IReadOnlyDictionary<string, object?> State,
+        Exception? Exception)
+    {
+        public string Observable => string.Join('|',
+            Message,
+            string.Join('|', State.Keys),
+            string.Join('|', State.Values.Select(value => value?.ToString() ?? string.Empty)),
+            Exception?.ToString() ?? string.Empty);
     }
 
     private sealed class MinimalHybridCache : HybridCache

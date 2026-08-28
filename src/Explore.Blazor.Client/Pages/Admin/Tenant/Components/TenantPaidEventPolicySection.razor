@@ -2,11 +2,13 @@
 @* ABOUTME: Hides unsupported choices and validates every narrowing before dispatching generated commands. *@
 
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies
 @using Explore.Blazor.Client.Pages.Admin.Components
 @implements IDisposable
 @inject IPaidEventPolicyService PolicyService
+@inject ITranslationService Translations
 @inject IAccessibilityAnnouncerService Announcer
 
 <section class="tenant-paid-policy" aria-labelledby="tenant-paid-policy-title" data-testid="tenant-paid-policy-section">
@@ -37,6 +39,77 @@
                       role="@(_saved ? "status" : "alert")"
                       data-testid="tenant-paid-policy-message">@_message</MudAlert>
         }
+
+        <aside class="tenant-paid-policy__authority"
+               aria-labelledby="tenant-paid-policy-authority-title"
+               data-testid="tenant-paid-policy-authority">
+            <div class="tenant-paid-policy__authority-heading">
+                <MudText Id="tenant-paid-policy-authority-title"
+                         Typo="Typo.subtitle1"
+                         HtmlTag="h3">
+                    @T(
+                        "tenant.paidEvents.authority.heading",
+                        "Payment policy authority")
+                </MudText>
+                <span class="tenant-paid-policy__source"
+                      data-testid="tenant-paid-policy-authority-source"
+                      data-source="@(_configuration.Authority?.EffectiveValuesInherited == true
+                          ? "inherited"
+                          : "tenant-narrowing")">
+                    @(_configuration.Authority?.EffectiveValuesInherited == true
+                        ? T(
+                            "tenant.paidEvents.authority.inherited",
+                            "Inherited from instance")
+                        : T(
+                            "tenant.paidEvents.authority.tenant",
+                            "Tenant narrowing"))
+                </span>
+            </div>
+
+            <section class="tenant-paid-policy__authority-fact"
+                     data-testid="tenant-paid-policy-manifest-facts"
+                     aria-labelledby="tenant-paid-policy-manifest-title">
+                <MudIcon Icon="@Icons.Material.Filled.Description"
+                         Size="Size.Small"
+                         aria-hidden="true" />
+                <div>
+                    <MudText Id="tenant-paid-policy-manifest-title"
+                             Typo="Typo.subtitle2"
+                             HtmlTag="h4">
+                        @T(
+                            "tenant.paidEvents.authority.manifestTitle",
+                            "Manifest-compatible policy")
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        @T(
+                            "tenant.paidEvents.authority.manifestDescription",
+                            "The tenant section of a configuration manifest may narrow payment availability, eligible organizers, local verification, currencies, risk ceilings, refund protection floors, and review thresholds.")
+                    </MudText>
+                </div>
+            </section>
+
+            <section class="tenant-paid-policy__authority-fact"
+                     data-testid="tenant-paid-policy-sovereign-facts"
+                     aria-labelledby="tenant-paid-policy-sovereign-title">
+                <MudIcon Icon="@Icons.Material.Filled.Lock"
+                         Size="Size.Small"
+                         aria-hidden="true" />
+                <div>
+                    <MudText Id="tenant-paid-policy-sovereign-title"
+                             Typo="Typo.subtitle2"
+                             HtmlTag="h4">
+                        @T(
+                            "tenant.paidEvents.authority.sovereignTitle",
+                            "Platform-owned boundaries")
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        @T(
+                            "tenant.paidEvents.authority.sovereignDescription",
+                            "Provider accounts and credentials, operator and official status, charge type, buyer acceptance, sale control, provider handoff, reconciliation, disputes, liability, and refund execution stay outside configuration manifests.")
+                    </MudText>
+                </div>
+            </section>
+        </aside>
 
         <div class="tenant-paid-policy__summary" data-testid="tenant-paid-policy-ceiling-summary">
             <MudText Typo="Typo.subtitle2" HtmlTag="h3">Instance ceiling</MudText>
@@ -87,7 +160,8 @@
             @foreach (string currencyCode in _model.AllowedCurrencyCodes)
             {
                 PaidEventPolicyCurrencyRiskLimitEditModel limit = RiskLimit(currencyCode);
-                CurrencyRiskLimits2? ceilingLimit = CeilingRiskLimit(currencyCode);
+                PaidEventPolicyCurrencyRiskLimitDto? ceilingLimit =
+                    CeilingRiskLimit(currencyCode);
                 <div class="tenant-paid-policy__currency" data-testid="tenant-paid-policy-currency-row">
                     <MudText Typo="Typo.subtitle2">@currencyCode</MudText>
                     <MudNumericField T="long?" @bind-Value="limit.PerEventSalesCeilingMinor" Label="Per-event ceiling (minor units)" Min="0" Max="ceilingLimit?.PerEventSalesCeilingMinor" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
@@ -165,6 +239,11 @@
     private bool _disposed;
     private string? _message;
     private bool CanEdit => _configuration?._links?.ContainsKey("edit") == true;
+
+    protected override void OnInitialized()
+    {
+        Translations.OnLanguageChanged += HandleLanguageChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -282,7 +361,8 @@
         HalResourceOfTenantPaidEventPolicyConfigurationDto configuration = await PolicyService.GetTenantAsync(TenantId, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (configuration.ActiveInstanceCeiling is null
-            || configuration.EffectivePolicy is null)
+            || configuration.EffectivePolicy is null
+            || configuration.Authority is null)
         {
             throw new InvalidOperationException("Incomplete tenant paid-event policy configuration.");
         }
@@ -340,7 +420,8 @@
             selectedCodes.Add(currencyCode);
             if (_model.CurrencyRiskLimits.All(limit => limit.CurrencyCode != currencyCode))
             {
-                CurrencyRiskLimits2? ceiling = CeilingRiskLimit(currencyCode);
+                PaidEventPolicyCurrencyRiskLimitDto? ceiling =
+                    CeilingRiskLimit(currencyCode);
                 _model.CurrencyRiskLimits.Add(new PaidEventPolicyCurrencyRiskLimitEditModel
                 {
                     CurrencyCode = currencyCode,
@@ -371,7 +452,7 @@
         {
             return existing;
         }
-        CurrencyRiskLimits2? ceiling = CeilingRiskLimit(currencyCode);
+        PaidEventPolicyCurrencyRiskLimitDto? ceiling = CeilingRiskLimit(currencyCode);
         var created = new PaidEventPolicyCurrencyRiskLimitEditModel
         {
             CurrencyCode = currencyCode,
@@ -383,7 +464,7 @@
         return created;
     }
 
-    private CurrencyRiskLimits2? CeilingRiskLimit(string currencyCode) =>
+    private PaidEventPolicyCurrencyRiskLimitDto? CeilingRiskLimit(string currencyCode) =>
         _ceiling?.CurrencyRiskLimits?.SingleOrDefault(limit => limit.CurrencyCode == currencyCode);
 
     private static string YesNo(bool? value) => value == true ? "Enabled" : "Disabled";
@@ -395,6 +476,15 @@
         _ => option.Label
     };
 
+    private string T(string key, string fallback) =>
+        Translations.T(key, fallback);
+
+    private void HandleLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -402,6 +492,7 @@
             return;
         }
         _disposed = true;
+        Translations.OnLanguageChanged -= HandleLanguageChanged;
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
     }

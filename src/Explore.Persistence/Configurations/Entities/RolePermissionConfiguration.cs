@@ -29,11 +29,9 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             .HasDefaultValueSql("NOW()");
 
         // Fast lookup: all permissions for a role
-        builder.HasIndex(rp => rp.RoleId)
-            .HasDatabaseName("ix_rolepermissions_role");
+        builder.HasIndex(rp => rp.RoleId);
 
         // Fast lookup: all roles with a specific permission
-        builder.HasIndex(rp => rp.PermissionId)
-            .HasDatabaseName("ix_rolepermissions_permission");
+        builder.HasIndex(rp => rp.PermissionId);
     }
 }

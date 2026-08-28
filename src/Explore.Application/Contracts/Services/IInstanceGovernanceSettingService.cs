@@ -3,6 +3,7 @@
 
 using Explore.Application.DTOs.Instance;
 using Explore.Application.Notifications;
+using Explore.Application.Settings;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -30,8 +31,11 @@ public interface IInstanceGovernanceSettingService
         Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task ApplyEventPolicyAsync(EventPolicyDto eventPolicy, Guid? actorUserId);
-    Task<IReadOnlyList<SettingChangedNotification>> ApplyEventPolicyPatchAsync(
+    Task<PublicationPolicyMutationResult> ApplyEventPolicyAsync(
+        EventPolicyDto eventPolicy,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
+    Task<PublicationPolicyMutationResult> ApplyEventPolicyPatchAsync(
         PatchEventPolicyDto patch,
         EventPolicyDto eventPolicy,
         Guid? actorUserId,

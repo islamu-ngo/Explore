@@ -26,6 +26,15 @@ public sealed class SubmitEventReportCommandValidator : AbstractValidator<Submit
                 .MaximumLength(EventReportReasonCodePolicy.MaxSubcategoryCodeLength)
                 .When(command => !string.IsNullOrWhiteSpace(command.Request.SubcategoryCode));
 
+            RuleFor(command => command)
+                .Must(command =>
+                    command.SubmissionChannel
+                        != EventReportSubmissionChannel.General
+                    || !EventReportReasonCodePolicy.IsReservedRemedySubcategory(
+                        command.Request.SubcategoryCode))
+                .WithMessage(
+                    "Reserved remedy subcategories require their dedicated submission route.");
+
             RuleFor(command => command.Request.ReporterText)
                 .NotEmpty()
                 .MaximumLength(Math.Max(1, options.MaxReporterTextLength));

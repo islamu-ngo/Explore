@@ -11,7 +11,7 @@ public sealed class WebhookRetentionHoldConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookRetentionHold> builder)
     {
-        builder.ToTable("webhook_retention_holds", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_retention_holds_expiry",
@@ -28,8 +28,7 @@ public sealed class WebhookRetentionHoldConfiguration : IEntityTypeConfiguration
             .IsRequired();
         builder.Ignore(hold => hold.SubjectKind);
 
-        builder.HasAlternateKey(hold => new { hold.TenantId, hold.Id })
-            .HasName("ak_webhook_retention_holds_tenant_id_id");
+        builder.HasAlternateKey(hold => new { hold.TenantId, hold.Id });
         builder.HasOne(hold => hold.Tenant)
             .WithMany()
             .HasForeignKey(hold => hold.TenantId)
@@ -46,7 +45,6 @@ public sealed class WebhookRetentionHoldConfiguration : IEntityTypeConfiguration
             hold.SubjectId,
             hold.ReleasedAt,
             hold.ExpiresAt
-        })
-            .HasDatabaseName("ix_webhook_retention_holds_tenant_subject_active");
+        });
     }
 }

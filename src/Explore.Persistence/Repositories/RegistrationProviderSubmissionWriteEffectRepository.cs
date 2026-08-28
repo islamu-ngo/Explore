@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,12 +30,11 @@ public sealed class RegistrationProviderSubmissionWriteEffectRepository(ExploreD
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (dbContext.Database.IsNpgsql())
-            {
-                await dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    ["registration-provider-submission-write-claim"], cancellationToken);
-            }
+            await using IAsyncDisposable claimLock =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    "registration-provider-submission-write-claim",
+                    cancellationToken);
 
             List<RegistrationProviderSubmissionWriteEffect> rows = await dbContext.RegistrationProviderSubmissionWriteEffects
                 .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationProviderSubmissionWriteWorkerCrossTenantQueue)

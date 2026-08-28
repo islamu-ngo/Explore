@@ -49,5 +49,7 @@ ENV SETUP_SECRET_FILE=/app/data/setup-secret
 EXPOSE 8080
 COPY --from=build /app/publish .
 COPY --chown=$APP_UID:$APP_UID --from=build /app/data /app/data
+COPY --chown=$APP_UID:$APP_UID --from=build /src/deploy/bootstrap/README.md /etc/islamu-event/bootstrap/README.md
+COPY --chown=$APP_UID:$APP_UID --from=build /src/schemas/configuration-manifest-v1alpha1.schema.json /app/schemas/configuration-manifest-v1alpha1.schema.json
 USER $APP_UID
 ENTRYPOINT ["./Event.Standalone"]

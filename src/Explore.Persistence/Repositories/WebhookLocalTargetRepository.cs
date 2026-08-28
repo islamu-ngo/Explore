@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -364,13 +365,13 @@ public sealed class WebhookLocalTargetRepository(ExploreDbContext dbContext)
         return selected;
     }
 
-    private Task AcquireClaimLockAsync(CancellationToken cancellationToken) =>
-        dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL"
-            ? dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                ["webhook-local-target-claim"],
-                cancellationToken)
-            : Task.CompletedTask;
+    private async Task AcquireClaimLockAsync(CancellationToken cancellationToken)
+    {
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            "webhook-local-target-claim",
+            cancellationToken);
+    }
 
     private static string Truncate(string value, int maximumLength) =>
         value.Length <= maximumLength ? value : value[..maximumLength];

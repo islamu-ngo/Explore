@@ -23,7 +23,7 @@ public sealed class ExternalActorClassificationMigrationTests(PostgreSqlContaine
             .IsEqualTo(1L);
         await Assert.That(await ScalarAsync(
             "SELECT COUNT(*) FROM \"__EFMigrationsHistory\""))
-            .IsEqualTo(2L);
+            .IsEqualTo(1L);
     }
 
     [Test]

@@ -26,6 +26,7 @@ Reconciliation claims at most 50 rows in stable `next_attempt_at/created_at/id` 
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
 | Prepare, attest, tag, or re-verify a governed release | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | You are running `prepare`, `verify-candidate`, `verify-tag`, `verify-main`, `verify-baseline`, opening or deleting a maintenance line, or checking an existing release from its tag alone. |
+| Prevent or repair Change-Id collisions | [Release Engineering](../eng/release/README.md#collision-proof-change-workflow) | You are creating a public change, preflighting a feature range, installing commit hooks, or binding an immutable colliding footer to a replacement fragment. |
 | Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
 ## Admission Check-In Operations (Phase 21)
@@ -401,33 +402,32 @@ source and visibility lookups and conservatively classifies retained pre-governa
 remain excluded from local suggestions until an authorized operator reviews and promotes an exact row.
 Promotion never infers provider/manual provenance, creator, organization, address, or coordinates.
 
-SQLite, SQL Server, MariaDB, and MySQL are development-only rebaselines with no historical upgrade
-compatibility. Their single initial migration represents the complete current model; it does not
-backfill or reinterpret older rows because no retained or deployed database is authorized for those
-chains.
+All five application providers are development-only rebaselines with no
+historical upgrade compatibility. Each single initial migration represents the
+complete current model; it does not backfill or reinterpret older rows.
 
 | Provider | Migration head | History contract |
 |---|---|---|
-| PostgreSQL | `20260826183441_AddAdmissionCheckInAndLocationAddressGovernance` | Retained incremental upgrade history reconciled over the shared semantic-value predecessor |
-| SQLite | `20260826181008_InitialApplication` | Development rebaseline; database recreation required |
-| SQL Server | `20260826181024_InitialApplication` | Development rebaseline; database recreation required |
-| MariaDB | `20260826181039_InitialApplication` | Development rebaseline; database recreation required |
-| MySQL | `20260826181054_InitialApplication` | Development rebaseline; database recreation required |
+| PostgreSQL | `20260828035010_InitialApplication` | Development rebaseline; database recreation required |
+| SQLite | `20260828040252_InitialApplication` | Development rebaseline; database recreation required |
+| SQL Server | `20260828040310_InitialApplication` | Development rebaseline; database recreation required |
+| MariaDB | `20260828040320_InitialApplication` | Development rebaseline; database recreation required |
+| MySQL | `20260828040329_InitialApplication` | Development rebaseline; database recreation required |
 
 A deployment applies only its selected provider assembly through `Event.MigrationService`; never apply
 multiple provider chains to one database or hand-edit a migration, designer, or snapshot.
 
 ### Mandatory development reset
 
-Every existing SQLite, SQL Server, MariaDB, or MySQL development database must be discarded and
+Every existing application development database must be discarded and
 recreated from its new `InitialApplication` migration. Do not point a rebaselined assembly at an old
 database or synthesize migration-history rows. Run `Event.MigrationService` twice against the recreated
 database and require both runs to exit zero; the second run is the idempotency check.
 
-For PostgreSQL, preserve the database and incremental history. Do not delete a shared PostgreSQL volume
-unless losing every database in that server and rotating generated credentials is intended. If an
-unapplied development migration is wrong, fix the model or generation source and use EF CLI to remove
-and regenerate only the affected provider artifact. Never patch generated output.
+Do not delete an entire shared server volume when only the application
+database requires recreation. If an unapplied development migration is wrong,
+fix the model or generation source and use EF CLI to remove and regenerate
+only the affected provider artifact. Never patch generated output.
 
 ### Retained PostgreSQL data
 
@@ -446,6 +446,45 @@ replicas, then verify quarantined rows remain absent and an explicitly approved 
 inside its tenant.
 
 ## API Startup Behavior
+
+### Configuration-manifest bootstrap runbook
+
+Configuration bootstrap is owned by the process that owns application startup:
+the API in split deployments and the Standalone host in combined deployments.
+`Event.MigrationService` must complete the generated provider migrations first.
+The owning host then reads
+`CONFIGURATION_MANIFEST_PATH` only when
+`CONFIGURATION_MANIFEST_MODE` is `ValidateOnly` or `Bootstrap`.
+
+Use this sequence:
+
+1. Validate the file against
+   `schemas/configuration-manifest-v1alpha1.schema.json` and mount it read-only
+   at `/etc/islamu-event/bootstrap/configuration-manifest.json`.
+2. Run `ValidateOnly`. It performs bounded file, UTF-8 JSON, contract, catalog,
+   complete-state, authority, and paid-policy narrowing checks without writes.
+3. Run MigrationService, then start the owning host with `Bootstrap`.
+4. Confirm the instance-section digest, operation audit, per-tenant results,
+   and durable effect state. Instance state is applied before tenants inside
+   one serializable lock-ordered transaction.
+5. Disable bootstrap or remove the mounted file after success. A repeated file
+   is not desired-state reconciliation: an already-applied instance section
+   must match its digest, existing tenant results are wholesale skips, and only
+   absent tenants may be added under the unchanged instance section.
+
+On any validation, concurrency, or persistence failure, fix the source and run
+`ValidateOnly` again; do not patch audit or result rows. Because this is a
+development breaking cutover, databases containing the removed unapplied
+tenant-shaped bootstrap model must be reset or recreated before rehearsal
+rather than migrated through compatibility aliases. See
+`docs/TROUBLESHOOTING.md` for digest mismatch, unsafe path, oversize file,
+provider availability, and durable-effect recovery codes.
+
+Instance administrators may export an Overrides or Portable view from the
+control plane. Export is capped at 4 MiB and intentionally omits secrets,
+credentials, topology, PII, payment execution, and application data. Treat it
+as bootstrap configuration, not as a database, secret, or disaster-recovery
+backup.
 
 In deployed environments, `Event.MigrationService` owns the primary application
 and Data Protection schemas. It binds `Database:Migrator`, selects the closed
@@ -489,6 +528,348 @@ projects listed above. Use the matching design-time factory, remove only an
 unapplied development migration with `dotnet ef migrations remove`, then
 regenerate with `dotnet ef migrations add`. Never patch generated migration,
 designer, or snapshot files.
+
+### Full development migration reset and regeneration
+
+Run these commands from the repository root. They use the current `src/`
+project paths and cover every generated catalog:
+
+- five `ExploreDbContext` application catalogs;
+- five `DataProtectionKeyContext` catalogs;
+- external PostgreSQL, co-located PostgreSQL, and embedded SQLite
+  privacy-erasure authority catalogs.
+
+This procedure is development-only. Confirm the corresponding databases have
+been deleted or are disposable before removing migration history. Do not use
+it after a migration has shipped or been applied to retained data.
+
+The EF CLI process must receive the same secret-backed configuration as the
+migrator role. Starting the `local-core` Aspire profile does **not** inject its
+child-process environment into a separate terminal. Launch the shell or each
+command through the repository's Infisical-backed environment first. The
+commands below deliberately override only provider-selection and non-secret
+design-time fields; they never embed usernames, passwords, hosts, or connection
+strings.
+
+Define the project paths once:
+
+```bash
+PERSISTENCE=src/Explore.Persistence/Explore.Persistence.csproj
+
+APP_SQLITE=src/Explore.Persistence.Migrations.Sqlite/Explore.Persistence.Migrations.Sqlite.csproj
+APP_SQLSERVER=src/Explore.Persistence.Migrations.SqlServer/Explore.Persistence.Migrations.SqlServer.csproj
+APP_MARIADB=src/Explore.Persistence.Migrations.MariaDb/Explore.Persistence.Migrations.MariaDb.csproj
+APP_MYSQL=src/Explore.Persistence.Migrations.MySql/Explore.Persistence.Migrations.MySql.csproj
+
+DP_SQLITE=src/Explore.Persistence.DataProtection.Migrations.Sqlite/Explore.Persistence.DataProtection.Migrations.Sqlite.csproj
+DP_SQLSERVER=src/Explore.Persistence.DataProtection.Migrations.SqlServer/Explore.Persistence.DataProtection.Migrations.SqlServer.csproj
+DP_MARIADB=src/Explore.Persistence.DataProtection.Migrations.MariaDb/Explore.Persistence.DataProtection.Migrations.MariaDb.csproj
+DP_MYSQL=src/Explore.Persistence.DataProtection.Migrations.MySql/Explore.Persistence.DataProtection.Migrations.MySql.csproj
+
+AUTHORITY_SQLITE=src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj
+
+# SQLite rejects server-only fields. This array masks any PostgreSQL values
+# inherited from the Infisical-backed shell while preserving other variables.
+SQLITE_DESIGN_TIME_ENV=(
+  "Database__Provider=Sqlite"
+  "Database__Migrator__Database=$PWD/.artifacts/islamu-event-migrations.db"
+  "Database__Host="
+  "Database__Port="
+  "Database__Username="
+  "Database__Password="
+  "Database__TlsMode=Prefer"
+  "Database__TrustServerCertificate=false"
+  "Database__ServerFlavor="
+  "Database__ServerVersion="
+  "Database__Migrator__Host="
+  "Database__Migrator__Port="
+  "Database__Migrator__Username="
+  "Database__Migrator__Password="
+  "Database__Migrator__TlsMode=Prefer"
+  "Database__Migrator__TrustServerCertificate=false"
+  "Database__Migrator__ServerFlavor="
+  "Database__Migrator__ServerVersion="
+  "DATABASE_PROVIDER=Sqlite"
+  "DATABASE_NAME=$PWD/.artifacts/islamu-event-migrations.db"
+  "DATABASE_HOST="
+  "DATABASE_PORT="
+  "DATABASE_USERNAME="
+  "DATABASE_PASSWORD="
+  "DATABASE_TLS_MODE=Prefer"
+  "DATABASE_TRUST_SERVER_CERTIFICATE=false"
+  "DATABASE_SERVER_VERSION="
+  "DATABASE_MIGRATOR_HOST="
+  "DATABASE_MIGRATOR_PORT="
+  "DATABASE_MIGRATOR_USERNAME="
+  "DATABASE_MIGRATOR_PASSWORD="
+  "DATABASE_MIGRATOR_TLSMODE=Prefer"
+  "DATABASE_MIGRATOR_TRUSTSERVERCERTIFICATE=false"
+  "DATABASE_MIGRATOR_SERVERFLAVOR="
+  "DATABASE_MIGRATOR_SERVERVERSION="
+)
+```
+
+#### Remove the current generated histories
+
+`dotnet ef migrations remove --force` removes only the latest migration and
+updates its snapshot. The clean development baseline has one `Init` migration
+per catalog, so run each command once. A dedicated provider project must be its
+own startup project while its existing snapshot is removed; otherwise EF can
+load the context but fail to discover that provider's snapshot. Stop
+immediately on an unexpected error; do not hand-delete a designer or snapshot
+to work around it.
+
+Application catalogs:
+
+```bash
+env Database__Provider=PostgreSql \
+  dotnet ef migrations remove --force \
+  --context ExploreDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE"
+
+env "${SQLITE_DESIGN_TIME_ENV[@]}" \
+  dotnet ef migrations remove --force \
+  --context ExploreDbContext \
+  --project "$APP_SQLITE" \
+  --startup-project "$APP_SQLITE"
+
+env Database__Provider=SqlServer Database__Port=1433 \
+  dotnet ef migrations remove --force \
+  --context ExploreDbContext \
+  --project "$APP_SQLSERVER" \
+  --startup-project "$APP_SQLSERVER"
+
+env Database__Provider=MariaDb Database__Port=3306 \
+  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
+  dotnet ef migrations remove --force \
+  --context ExploreDbContext \
+  --project "$APP_MARIADB" \
+  --startup-project "$APP_MARIADB"
+
+env Database__Provider=MySql Database__Port=3306 \
+  Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
+  dotnet ef migrations remove --force \
+  --context ExploreDbContext \
+  --project "$APP_MYSQL" \
+  --startup-project "$APP_MYSQL"
+```
+
+Data Protection catalogs:
+
+```bash
+env Database__Provider=PostgreSql \
+  dotnet ef migrations remove --force \
+  --context DataProtectionKeyContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE"
+
+env "${SQLITE_DESIGN_TIME_ENV[@]}" \
+  dotnet ef migrations remove --force \
+  --context DataProtectionKeyContext \
+  --project "$DP_SQLITE" \
+  --startup-project "$DP_SQLITE"
+
+env Database__Provider=SqlServer Database__Port=1433 \
+  dotnet ef migrations remove --force \
+  --context DataProtectionKeyContext \
+  --project "$DP_SQLSERVER" \
+  --startup-project "$DP_SQLSERVER"
+
+env Database__Provider=MariaDb Database__Port=3306 \
+  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
+  dotnet ef migrations remove --force \
+  --context DataProtectionKeyContext \
+  --project "$DP_MARIADB" \
+  --startup-project "$DP_MARIADB"
+
+env Database__Provider=MySql Database__Port=3306 \
+  Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
+  dotnet ef migrations remove --force \
+  --context DataProtectionKeyContext \
+  --project "$DP_MYSQL" \
+  --startup-project "$DP_MYSQL"
+```
+
+Retained privacy-erasure authority catalogs:
+
+```bash
+dotnet ef migrations remove --force \
+  --context PrivacyErasureAuthorityDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE"
+
+env Database__Provider=PostgreSql \
+  dotnet ef migrations remove --force \
+  --context CoLocatedPrivacyErasureAuthorityDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE"
+
+env PrivacyErasureAuthorityEmbedded__Path="$PWD/.artifacts/privacy-erasure-authority-migrations.db" \
+  dotnet ef migrations remove --force \
+  --context EmbeddedPrivacyErasureAuthorityDbContext \
+  --project "$AUTHORITY_SQLITE" \
+  --startup-project "$AUTHORITY_SQLITE"
+```
+
+#### Generate one clean initial migration per catalog
+
+After every snapshot has been removed, clean the design-time output and stage
+each now-empty dedicated migrations assembly beside the `Explore.Persistence`
+startup assembly. This prevents a stale pre-reset snapshot DLL from producing
+an empty or differential migration. The add commands use `--no-build` so every
+catalog compares its current model against the deliberately empty staged
+assembly:
+
+```bash
+dotnet clean "$PERSISTENCE" --configuration Debug --verbosity quiet
+
+MIGRATION_PROJECTS=(
+  "$APP_SQLITE"
+  "$APP_SQLSERVER"
+  "$APP_MARIADB"
+  "$APP_MYSQL"
+  "$DP_SQLITE"
+  "$DP_SQLSERVER"
+  "$DP_MARIADB"
+  "$DP_MYSQL"
+  "$AUTHORITY_SQLITE"
+)
+
+for project in "${MIGRATION_PROJECTS[@]}"; do
+  dotnet clean "$project" --configuration Debug --verbosity quiet
+  dotnet build "$project" \
+    --configuration Debug \
+    --verbosity quiet \
+    --output src/Explore.Persistence/bin/Debug/net10.0
+done
+```
+
+Application catalogs:
+
+```bash
+env Database__Provider=PostgreSql \
+  dotnet ef migrations add Init \
+  --context ExploreDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env "${SQLITE_DESIGN_TIME_ENV[@]}" \
+  dotnet ef migrations add Init \
+  --context ExploreDbContext \
+  --project "$APP_SQLITE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=SqlServer Database__Port=1433 \
+  dotnet ef migrations add Init \
+  --context ExploreDbContext \
+  --project "$APP_SQLSERVER" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=MariaDb Database__Port=3306 \
+  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
+  dotnet ef migrations add Init \
+  --context ExploreDbContext \
+  --project "$APP_MARIADB" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=MySql Database__Port=3306 \
+  Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
+  dotnet ef migrations add Init \
+  --context ExploreDbContext \
+  --project "$APP_MYSQL" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+```
+
+Data Protection catalogs:
+
+```bash
+env Database__Provider=PostgreSql \
+  dotnet ef migrations add Init \
+  --context DataProtectionKeyContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations/DataProtection \
+  --no-build
+
+env "${SQLITE_DESIGN_TIME_ENV[@]}" \
+  dotnet ef migrations add Init \
+  --context DataProtectionKeyContext \
+  --project "$DP_SQLITE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=SqlServer Database__Port=1433 \
+  dotnet ef migrations add Init \
+  --context DataProtectionKeyContext \
+  --project "$DP_SQLSERVER" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=MariaDb Database__Port=3306 \
+  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
+  dotnet ef migrations add Init \
+  --context DataProtectionKeyContext \
+  --project "$DP_MARIADB" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+
+env Database__Provider=MySql Database__Port=3306 \
+  Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
+  dotnet ef migrations add Init \
+  --context DataProtectionKeyContext \
+  --project "$DP_MYSQL" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+```
+
+Retained privacy-erasure authority catalogs:
+
+```bash
+dotnet ef migrations add Init \
+  --context PrivacyErasureAuthorityDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations/PrivacyErasureAuthority \
+  --no-build
+
+env Database__Provider=PostgreSql \
+  dotnet ef migrations add Init \
+  --context CoLocatedPrivacyErasureAuthorityDbContext \
+  --project "$PERSISTENCE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations/CoLocatedPrivacyErasureAuthority \
+  --no-build
+
+env PrivacyErasureAuthorityEmbedded__Path="$PWD/.artifacts/privacy-erasure-authority-migrations.db" \
+  dotnet ef migrations add Init \
+  --context EmbeddedPrivacyErasureAuthorityDbContext \
+  --project "$AUTHORITY_SQLITE" \
+  --startup-project "$PERSISTENCE" \
+  --output-dir Migrations \
+  --no-build
+```
+
+After generation, inspect every generated `Up`, `Down`, designer, and snapshot
+without editing them. Then run the migration ownership/model tests, apply each
+catalog to an empty database, roll it back to `0`, reapply it, and require no
+pending model changes. Run the selected provider's `Event.MigrationService`
+twice against the recreated database; the second successful run proves
+idempotency.
 
 Data Protection key persistence is launch-critical for the Blazor BFF. `Explore.Blazor`
 stores authentication cookies, setup-secret cookies, antiforgery state, and other
@@ -938,7 +1319,40 @@ Operator sequence:
 3. Use HAL `poll` for reconciliation, `manual-import` for bounded storage/source metadata, and item `retry`/`resolve` only when the queue resource emits them. Retry requires retained effect identity and current processing generation; receipt conflicts and event/binding mismatches fail closed.
 4. For browser embeds, verify the connection approved origin. The BFF emits a per-route CSP `frame-src` for the descriptor origin and rejects arbitrary iframe input; iframe navigation is display-only, so use status polling for completion.
 
-PostgreSQL retains its Phase 9 initial migration `20260810001244_InitialPostgreSqlApplication` and subsequent incremental history. The development-only provider chains are rebaselined at SQLite `20260826054219_InitialApplication`, SQL Server `20260826065615_InitialApplication`, MariaDB `20260826065711_InitialApplication`, and MySQL `20260826065808_InitialApplication`; existing development databases for those providers must be recreated. These are generated artifacts and must never be patched by hand.
+### Development Application Migration Rebaseline
+
+All development application-provider chains are rebaselined at PostgreSQL
+`20260828035010_InitialApplication`, SQLite
+`20260828040252_InitialApplication`, SQL Server
+`20260828040310_InitialApplication`, MariaDB
+`20260828040320_InitialApplication`, and MySQL
+`20260828040329_InitialApplication`. Existing development application
+databases must be recreated; incremental upgrade from the former development
+chains is intentionally unsupported. Data Protection and retained
+privacy-erasure authority keep their independent histories and must not be
+reset with the application catalog. All migration and snapshot files are
+generated artifacts and must never be patched by hand.
+
+Verify a provider change through the generated lifecycle before starting an
+application host:
+
+1. Apply the provider's application initial to an empty database.
+2. Roll back to zero only in the generated development lifecycle lane.
+3. Reapply the initial and run `has-pending-model-changes`.
+4. Repeat the independent Data Protection lifecycle.
+5. For PostgreSQL retained authority, verify the standalone and co-located
+   generated histories independently; SQLite embedded authority has its own
+   history.
+6. Run the real provider behavior and lock contracts documented in
+   [TESTING.md](TESTING.md#persistence-hardening-verification).
+
+If apply, rollback, or pending-model verification fails, preserve the generated
+SQL and provider logs without credentials or parameter values. Fix the entity,
+configuration, provider primitive, or migration generator; then regenerate the
+unapplied development initial. Never repair a generated migration or model
+snapshot manually. Recreate only the disposable application database selected
+for the development lane—do not delete Data Protection or retained-authority
+catalogs as collateral recovery.
 
 ### Promotion Code Operations
 
@@ -1914,3 +2328,47 @@ The governance report surfaces Layer 3 custom property definitions that may be c
 | `ConsiderLayer1Promotion` | `IsModerationRelevant` AND (`IsSearchable` or `IsFilterable`) AND used by ≥30% of tenant's events |
 
 Review quarterly. Promotion is an operational decision, not an automated action.
+
+## Configuration-manifest paid-policy operations
+
+Before deploying a manifest containing `instance.paid_event_policy` or
+`tenant.paid_event_policy`:
+
+1. review the current instance paid-event policy through the authorized
+   administration API and decide whether the manifest is the first bootstrap
+   or a same-section rerun after Day 2 changes;
+2. include only fields admitted by the governed typed documents; tenant policy
+   must narrow the instance policy and callers never provide revision authority;
+3. do not add
+   provider, operator, buyer, refund-execution, or sale-control data;
+4. validate against
+   `schemas/configuration-manifest-v1alpha1.schema.json`;
+5. mount the immutable file through the documented manifest path and run the
+   one-shot migration/startup owner;
+6. verify the scope-qualified operation audit and the instance/tenant
+   paid-policy HAL resources
+   before admitting traffic.
+
+The startup transaction acquires the manifest lock, sorted instance-resource
+locks, then sorted tenant/resource locks. It replays preflight against current
+authority inside the serializable transaction. First bootstrap applies the
+instance policy before tenant narrowing and records the resulting revision;
+same-section reruns never reapply historical instance policy and bind new
+tenants to the fresh active revision. A concurrent revision, policy collision,
+invalid narrowing, or later audit/outbox write rolls back instance settings,
+policy, tenant creation, tenant settings/documents, and operation evidence
+together.
+
+Do not retry by deleting payment, sale-control, checkout, or reconciliation
+rows. Correct an invalid narrowing and rerun the unchanged instance section. A
+changed post-bootstrap instance section fails closed and must be handled
+through authenticated Day 2 administration or a complete disposable-
+development reset. An already-created tenant is skipped wholesale; subsequent
+policy changes use authenticated paid-policy administration. Provider handoff
+and stop/review workflows remain independent runtime authorities and are never
+replayed from a manifest.
+
+Operational logs and metrics may record stable failure codes, operation IDs,
+tenant IDs, lock outcomes, and revision numbers. Never record manifest payloads,
+provider credentials, buyer acceptance data, payment references, email
+addresses, or other PII.

@@ -11,7 +11,6 @@ public sealed class EventOrganizerClaimStatusConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<EventOrganizerClaimStatus> builder)
     {
-        builder.ToTable("event_organizer_claim_statuses");
         builder.Property(row => row.Id).ValueGeneratedNever();
         builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
         builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);

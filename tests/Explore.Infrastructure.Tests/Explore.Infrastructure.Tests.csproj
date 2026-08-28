@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Explore.Atproto.Transport\Explore.Atproto.Transport.csproj" />
+    <ProjectReference Include="..\..\src\Event.MigrationService\Event.MigrationService.csproj"
+                      Aliases="migrationservice" />
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
   </ItemGroup>

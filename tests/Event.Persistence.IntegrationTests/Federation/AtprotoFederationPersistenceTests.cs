@@ -27,22 +27,30 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     {
         await fixture.ResetAsync();
         await using ExploreDbContext context = fixture.CreateDbContext();
-        string[] modelIndexProperties = context.Model.FindEntityType(typeof(PdsSyncOutbox))!
+        var sourceVersionIndex = context.Model.FindEntityType(typeof(PdsSyncOutbox))!
             .GetIndexes()
-            .Single(index => index.GetDatabaseName() == "ux_pds_sync_outbox_source_version")
+            .Single(index => index.IsUnique && index.Properties
+                .Select(property => property.Name)
+                .SequenceEqual([
+                    nameof(PdsSyncOutbox.TenantId),
+                    nameof(PdsSyncOutbox.SourceEntityType),
+                    nameof(PdsSyncOutbox.SourceEntityId),
+                    nameof(PdsSyncOutbox.SourceVersion),
+                    nameof(PdsSyncOutbox.Operation),
+                    nameof(PdsSyncOutbox.PayloadHash)
+                ]));
+        string[] modelIndexProperties = sourceVersionIndex
             .Properties
             .Select(property => property.Name)
             .ToArray();
-        string? modelFilter = context.Model.FindEntityType(typeof(PdsSyncOutbox))!
-            .GetIndexes()
-            .Single(index => index.GetDatabaseName() == "ux_pds_sync_outbox_source_version")
-            .GetFilter();
+        string modelIndexName = sourceVersionIndex.GetDatabaseName();
+        string? modelFilter = sourceVersionIndex.GetFilter();
         await context.Database.OpenConnectionAsync();
         await using DbCommand columnCommand = context.Database.GetDbConnection().CreateCommand();
         columnCommand.CommandText = """
             SELECT character_maximum_length
             FROM information_schema.columns
-            WHERE table_schema = 'public'
+            WHERE table_schema = current_schema()
               AND table_name = 'pds_sync_outbox'
               AND column_name = 'depends_on_cid'
             """;
@@ -51,10 +59,14 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         indexCommand.CommandText = """
             SELECT indexdef
             FROM pg_indexes
-            WHERE schemaname = 'public'
+            WHERE schemaname = current_schema()
               AND tablename = 'pds_sync_outbox'
-              AND indexname = 'ux_pds_sync_outbox_source_version'
+              AND indexname = @index_name
             """;
+        DbParameter indexNameParameter = indexCommand.CreateParameter();
+        indexNameParameter.ParameterName = "index_name";
+        indexNameParameter.Value = modelIndexName;
+        indexCommand.Parameters.Add(indexNameParameter);
         string indexDefinition = (string)(await indexCommand.ExecuteScalarAsync()
             ?? throw new InvalidOperationException("PDS source-attempt index was not created."));
 

@@ -1,18 +1,29 @@
 // ABOUTME: Verifies the shared Explore EF Core model builds for every supported primary provider.
 // ABOUTME: Asserts configurable schema or fixed-prefix naming and PostgreSQL-only model defenses.
 
+using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
+using MySqlConnector;
+using Npgsql;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Database;
 
 public sealed class ExploreDbContextModelProviderTests
 {
+    private static readonly Regex LiteralTableMappingPattern = new(
+        @"ToTable\(\s*""",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     [Test]
     [Arguments("PostgreSql")]
     [Arguments("Sqlite")]
@@ -115,6 +126,225 @@ public sealed class ExploreDbContextModelProviderTests
         var annotations = model.GetEntityTypes().SelectMany(entityType => entityType.GetAnnotations()).ToArray();
         await Assert.That(annotations.Any(annotation => annotation.Name.StartsWith("Explore:PostgresExclusionConstraint:", StringComparison.Ordinal)))
             .IsEqualTo(provider == "PostgreSql");
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task FinalizedRelationalNamingMatrixUsesProviderNamespaceAndCanonicalNames(
+        string provider)
+    {
+        const string configuredSchema = "operator_matrix";
+        using var context = CreateContext(provider, configuredSchema);
+        var model = context.GetService<IDesignTimeModel>().Model;
+        bool usesSchema = provider is "PostgreSql" or "SqlServer";
+        var violations = new List<string>();
+
+        foreach (var table in model.GetRelationalModel().Tables)
+        {
+            string logicalTableName = usesSchema
+                ? table.Name
+                : table.Name.StartsWith("ie_", StringComparison.Ordinal)
+                    ? table.Name["ie_".Length..]
+                    : table.Name;
+            if (!IsCanonicalSnakeCase(logicalTableName))
+            {
+                violations.Add($"{provider}:{table.Name}: non-canonical table name");
+            }
+            if (usesSchema && !string.Equals(table.Schema, configuredSchema, StringComparison.Ordinal))
+            {
+                violations.Add($"{provider}:{table.Name}: expected schema {configuredSchema}");
+            }
+            if (!usesSchema &&
+                (!string.IsNullOrEmpty(table.Schema) ||
+                 !table.Name.StartsWith("ie_", StringComparison.Ordinal)))
+            {
+                violations.Add($"{provider}:{table.Name}: expected schema-free ie_ namespace");
+            }
+
+            foreach (var column in table.Columns)
+            {
+                if (!IsCanonicalSnakeCase(column.Name))
+                {
+                    violations.Add($"{provider}:{table.Name}.{column.Name}: non-canonical column name");
+                }
+            }
+            foreach (var constraint in table.UniqueConstraints)
+            {
+                string prefix = ReferenceEquals(table.PrimaryKey, constraint) ? "pk_" : "ak_";
+                if (!constraint.Name.StartsWith(prefix, StringComparison.Ordinal) ||
+                    !IsCanonicalSnakeCase(constraint.Name))
+                {
+                    violations.Add($"{provider}:{table.Name}.{constraint.Name}: non-canonical key name");
+                }
+            }
+            foreach (var index in table.Indexes)
+            {
+                if (!index.Name.StartsWith("ix_", StringComparison.Ordinal) ||
+                    !IsCanonicalSnakeCase(index.Name))
+                {
+                    violations.Add($"{provider}:{table.Name}.{index.Name}: non-canonical index name");
+                }
+            }
+            foreach (var foreignKey in table.ForeignKeyConstraints)
+            {
+                if (!foreignKey.Name.StartsWith("fk_", StringComparison.Ordinal) ||
+                    !IsCanonicalSnakeCase(foreignKey.Name))
+                {
+                    violations.Add($"{provider}:{table.Name}.{foreignKey.Name}: non-canonical foreign key name");
+                }
+            }
+            foreach (var check in table.CheckConstraints)
+            {
+                if (!check.Name.StartsWith("ck_", StringComparison.Ordinal) ||
+                    !IsCanonicalSnakeCase(check.Name))
+                {
+                    violations.Add($"{provider}:{table.Name}.{check.Name}: non-canonical check name");
+                }
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("the finalized relational model must be schema-configurable and canonically named");
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task ThemeAndPolicyOwnedValuesKeepSemanticFlattenedColumnPrefixes(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+        var violations = new List<string>();
+
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UiTheme),
+            nameof(Explore.Domain.UiTheme.LightPalette),
+            "light",
+            violations);
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UiTheme),
+            nameof(Explore.Domain.UiTheme.DarkPalette),
+            "dark",
+            violations);
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UiThemePreset),
+            nameof(Explore.Domain.UiThemePreset.LightPalette),
+            "light",
+            violations);
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UiThemePreset),
+            nameof(Explore.Domain.UiThemePreset.DarkPalette),
+            "dark",
+            violations);
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UserAppearanceProfile),
+            nameof(Explore.Domain.UserAppearanceProfile.LightPaletteSnapshot),
+            "light_snapshot",
+            violations);
+        AddPaletteColumnViolations(
+            model,
+            typeof(Explore.Domain.UserAppearanceProfile),
+            nameof(Explore.Domain.UserAppearanceProfile.DarkPaletteSnapshot),
+            "dark_snapshot",
+            violations);
+
+        AddRenderPolicySlotColumnViolations(
+            model,
+            typeof(Explore.Domain.Policies.InstancePolicySet),
+            violations);
+        AddRenderPolicySlotColumnViolations(
+            model,
+            typeof(Explore.Domain.Policies.TenantPolicySet),
+            violations);
+
+        await Assert.That(violations).IsEmpty()
+            .Because("owned theme and policy values need stable semantic prefixes across providers");
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task ConstraintDescriptorsResolveFromEachFinalizedProviderModel(string provider)
+    {
+        using var context = CreateContext(provider);
+        RelationalConstraintDescriptor[] descriptors =
+        [
+            RelationalConstraintDescriptorResolver.PrimaryKey<Explore.Domain.NotificationIntent>(context),
+            RelationalConstraintDescriptorResolver.UniqueIndex<Explore.Domain.IncomingWebhookEffectReceipt>(
+                context,
+                nameof(Explore.Domain.IncomingWebhookEffectReceipt.TenantId),
+                nameof(Explore.Domain.IncomingWebhookEffectReceipt.IncomingWebhookMessageId),
+                nameof(Explore.Domain.IncomingWebhookEffectReceipt.EffectKind)),
+            RelationalConstraintDescriptorResolver.UniqueIndex<Explore.Domain.WebPushDispatchOutbox>(
+                context,
+                nameof(Explore.Domain.WebPushDispatchOutbox.TenantId),
+                nameof(Explore.Domain.WebPushDispatchOutbox.NotificationId),
+                nameof(Explore.Domain.WebPushDispatchOutbox.SubscriptionId))
+        ];
+
+        int maximumIdentifierLength = provider switch
+        {
+            "PostgreSql" => 63,
+            "MariaDb" or "MySql" => 64,
+            "SqlServer" => 128,
+            _ => int.MaxValue
+        };
+        await Assert.That(descriptors.Select(descriptor => descriptor.Name).Distinct()).Count()
+            .IsEqualTo(descriptors.Length);
+        await Assert.That(descriptors.All(descriptor =>
+            descriptor.Name.Length <= maximumIdentifierLength &&
+            IsCanonicalSnakeCase(descriptor.Name))).IsTrue();
+        await Assert.That(descriptors.SelectMany(descriptor => descriptor.QualifiedColumns).All(column =>
+            !string.IsNullOrWhiteSpace(column) &&
+            (provider is "PostgreSql" or "SqlServer" ||
+             column.StartsWith("ie_", StringComparison.Ordinal)))).IsTrue();
+
+        if (provider == "PostgreSql")
+        {
+            await Assert.That(
+                RelationalConstraintDescriptorResolver.ExclusionConstraint<Explore.Domain.EventSession>(context))
+                .IsNotEmpty();
+        }
+    }
+
+    [Test]
+    public async Task FinalizedMappingSourceContainsNoLiteralTableNames()
+    {
+        string persistenceRoot = Path.Combine(GetRepositoryRoot(), "src", "Explore.Persistence");
+        var violations = new List<string>();
+        foreach (string path in Directory.GetFiles(persistenceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            string relativePath = Path.GetRelativePath(GetRepositoryRoot(), path)
+                .Replace(Path.DirectorySeparatorChar, '/');
+            if (relativePath.Contains("/Migrations/", StringComparison.Ordinal) ||
+                relativePath.Contains("/bin/", StringComparison.Ordinal) ||
+                relativePath.Contains("/obj/", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            string source = await File.ReadAllTextAsync(path);
+            violations.AddRange(LiteralTableMappingPattern.Matches(source).Select(match =>
+                $"{relativePath}:{source[..match.Index].Count(character => character == '\n') + 1}"));
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("snake-case conventions and the provider namespace own every table name");
     }
 
     [Test]
@@ -425,24 +655,34 @@ public sealed class ExploreDbContextModelProviderTests
     }
 
     [Test]
-    public async Task PostgreSqlPromotionMigrationBackfillsHistoricalSnapshotColumns()
+    public async Task PostgreSqlRebaselinedInitialContainsCurrentPromotionSnapshots()
     {
-        const string migrationPath = "src/Explore.Persistence/Migrations/20260815062551_AddEventPromotionCodes.cs";
-        string source = await File.ReadAllTextAsync(Path.Combine(GetRepositoryRoot(), migrationPath));
+        string[] migrationPaths = Directory.GetFiles(
+            Path.Combine(GetRepositoryRoot(), "src/Explore.Persistence/Migrations"),
+            "*_Init.cs",
+            SearchOption.TopDirectoryOnly);
+        await Assert.That(migrationPaths).HasSingleItem();
+        string source = await File.ReadAllTextAsync(migrationPaths[0]);
 
         await AssertPromotionSnapshotColumnsAsync(source);
-        await Assert.That(source).Contains("migrationBuilder.Sql");
+        await Assert.That(source).DoesNotContain("migrationBuilder.Sql");
+        await Assert.That(source).DoesNotContain("migrationBuilder.UpdateData");
     }
 
     [Test]
-    [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations/20260826054219_InitialApplication.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations/20260826065615_InitialApplication.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations/20260826065711_InitialApplication.cs")]
-    [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations/20260826065808_InitialApplication.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations")]
+    [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations")]
+    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations")]
+    [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations")]
     public async Task RebaselinedInitialContainsCurrentPromotionSnapshotsWithoutHistoricalBackfill(
-        string migrationPath)
+        string migrationDirectory)
     {
-        string source = await File.ReadAllTextAsync(Path.Combine(GetRepositoryRoot(), migrationPath));
+        string[] migrationPaths = Directory.GetFiles(
+            Path.Combine(GetRepositoryRoot(), migrationDirectory),
+            "*_Init.cs",
+            SearchOption.TopDirectoryOnly);
+        await Assert.That(migrationPaths).HasSingleItem();
+        string source = await File.ReadAllTextAsync(migrationPaths[0]);
 
         await AssertPromotionSnapshotColumnsAsync(source);
         await Assert.That(source).DoesNotContain("migrationBuilder.Sql");
@@ -516,33 +756,125 @@ public sealed class ExploreDbContextModelProviderTests
         }
     }
 
-    private static ExploreDbContext CreateContext(string provider)
+    internal static ExploreDbContext CreateContext(string provider, string? modelSchema = null)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
         switch (provider)
         {
             case "PostgreSql":
-                builder.UseNpgsql("Host=localhost;Database=model;Username=model;Password=model");
+                builder.UseNpgsql(new NpgsqlConnectionStringBuilder
+                {
+                    Host = "localhost",
+                    Database = "model",
+                    Username = "model",
+                    Password = TestPassword()
+                }.ConnectionString);
                 break;
             case "Sqlite":
-                builder.UseSqlite("Data Source=:memory:");
+                builder.UseSqlite(new SqliteConnectionStringBuilder
+                {
+                    DataSource = ":memory:"
+                }.ConnectionString);
                 break;
             case "SqlServer":
-                builder.UseSqlServer("Server=localhost;Database=model;User Id=model;Password=model;TrustServerCertificate=True");
+                builder.UseSqlServer(new SqlConnectionStringBuilder
+                {
+                    DataSource = "localhost",
+                    InitialCatalog = "model",
+                    UserID = "model",
+                    Password = TestPassword(),
+                    TrustServerCertificate = true
+                }.ConnectionString);
                 break;
             case "MariaDb":
-                builder.UseMySql("Server=localhost;Database=model;User=model;Password=model", new MariaDbServerVersion(new Version(10, 11)));
+                builder.UseMySql(MySqlConnectionString(), new MariaDbServerVersion(new Version(10, 11)));
                 break;
             case "MySql":
-                builder.UseMySql("Server=localhost;Database=model;User=model;Password=model", new MySqlServerVersion(new Version(8, 0)));
+                builder.UseMySql(MySqlConnectionString(), new MySqlServerVersion(new Version(8, 0)));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(provider), provider, null);
         }
 
+        if (modelSchema is not null)
+        {
+            ((IDbContextOptionsBuilderInfrastructure)builder).AddOrUpdateExtension(
+                new RelationalNamespaceOptionsExtension(modelSchema, modelSchema));
+        }
         builder.UseSnakeCaseNamingConvention();
         return new ExploreDbContext(builder.Options);
     }
+
+    private static string MySqlConnectionString() =>
+        new MySqlConnectionStringBuilder
+        {
+            Server = "localhost",
+            Database = "model",
+            UserID = "model",
+            Password = TestPassword()
+        }.ConnectionString;
+
+    private static string TestPassword() =>
+        Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+
+    private static void AddPaletteColumnViolations(
+        IModel model,
+        Type ownerType,
+        string navigationName,
+        string prefix,
+        ICollection<string> violations)
+    {
+        IEntityType owner = model.FindEntityType(ownerType)!;
+        IEntityType palette = owner.FindNavigation(navigationName)!.TargetEntityType;
+        StoreObjectIdentifier table = StoreObjectIdentifier.Create(palette, StoreObjectType.Table)!.Value;
+
+        foreach (var propertyInfo in typeof(Explore.Domain.ValueObjects.UiThemePalette).GetProperties())
+        {
+            string suffix = Regex.Replace(
+                    propertyInfo.Name,
+                    "([a-z0-9])([A-Z])",
+                    "$1_$2",
+                    RegexOptions.CultureInvariant)
+                .ToLowerInvariant();
+            string expected = $"{prefix}_{suffix}";
+            string? actual = palette.FindProperty(propertyInfo.Name)!.GetColumnName(table);
+            if (!string.Equals(actual, expected, StringComparison.Ordinal))
+            {
+                violations.Add($"{ownerType.Name}.{navigationName}.{propertyInfo.Name}: expected {expected}, got {actual}");
+            }
+        }
+    }
+
+    private static void AddRenderPolicySlotColumnViolations(
+        IModel model,
+        Type ownerType,
+        ICollection<string> violations)
+    {
+        IEntityType owner = model.FindEntityType(ownerType)!;
+        IEntityType renderPolicy = owner.FindNavigation("RenderPolicy")!.TargetEntityType;
+        IEntityType slot = renderPolicy.FindNavigation("DisallowInteractiveServerOnOnboarding")!.TargetEntityType;
+        StoreObjectIdentifier table = StoreObjectIdentifier.Create(slot, StoreObjectType.Table)!.Value;
+        var expectedColumns = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["LocalValue"] = "render_policy_disallow_interactive_onboarding_local_value",
+            ["OverrideMode"] = "render_policy_disallow_interactive_onboarding_override_mode"
+        };
+
+        foreach ((string propertyName, string expected) in expectedColumns)
+        {
+            string? actual = slot.FindProperty(propertyName)!.GetColumnName(table);
+            if (!string.Equals(actual, expected, StringComparison.Ordinal))
+            {
+                violations.Add($"{ownerType.Name}.RenderPolicy.{propertyName}: expected {expected}, got {actual}");
+            }
+        }
+    }
+
+    private static bool IsCanonicalSnakeCase(string name) =>
+        name.Length > 0 &&
+        name[0] is >= 'a' and <= 'z' &&
+        name.All(character =>
+            character is >= 'a' and <= 'z' or >= '0' and <= '9' or '_');
 
     private static string GetRepositoryRoot()
     {

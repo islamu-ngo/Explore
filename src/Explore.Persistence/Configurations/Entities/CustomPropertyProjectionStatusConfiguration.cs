@@ -11,7 +11,6 @@ public class CustomPropertyProjectionStatusConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<CustomPropertyProjectionStatus> builder)
     {
-        builder.ToTable("custom_property_projection_status");
 
         builder.HasKey(e => new { e.ProjectionName, e.ProjectionVersion, e.TenantId });
 

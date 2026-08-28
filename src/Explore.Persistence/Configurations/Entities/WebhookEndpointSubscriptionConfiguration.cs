@@ -12,7 +12,7 @@ public class WebhookEndpointSubscriptionConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<WebhookEndpointSubscription> builder)
     {
-        builder.ToTable("webhook_endpoint_subscriptions", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_webhook_endpoint_subscriptions_configuration_scope",
@@ -54,20 +54,16 @@ public class WebhookEndpointSubscriptionConfiguration : IEntityTypeConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.EventTypeId })
-            .HasDatabaseName("ux_webhook_endpoint_subscriptions_endpoint_event_type")
             .IsUnique()
             .HasFilter("tenant_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.InstanceId, e.EndpointId, e.EventTypeId })
-            .HasDatabaseName("ux_webhook_endpoint_subscriptions_instance_endpoint_event_type")
             .IsUnique()
             .HasFilter("instance_id IS NOT NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.EventTypeId, e.IsEnabled })
-            .HasDatabaseName("ix_webhook_endpoint_subscriptions_tenant_event_type");
+        builder.HasIndex(e => new { e.TenantId, e.EventTypeId, e.IsEnabled });
 
         builder.HasIndex(e => new { e.InstanceId, e.EventTypeId, e.IsEnabled })
-            .HasDatabaseName("ix_webhook_endpoint_subscriptions_instance_event_type")
             .HasFilter("instance_id IS NOT NULL");
     }
 }

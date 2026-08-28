@@ -281,7 +281,18 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         if (publishOnCreate)
         {
-            EventLifecyclePolicy policy = await _lifecyclePolicyProvider.GetEffectivePolicyAsync(eventEntity.TenantId, ValidationProfile.EventPublish, cancellationToken);
+            EventLifecyclePolicy policy = await _lifecyclePolicyProvider.GetEffectivePolicyAsync(
+                eventEntity.TenantId,
+                ValidationProfile.EventPublish,
+                cancellationToken);
+            if (policy.RequiresApproval)
+            {
+                return BaseCommandResponse.Failure<Guid>(
+                    EventPublicationExecutor.ApprovalRequiredCode,
+                    "Event creation failed because approval is required before publication.",
+                    ["This event cannot be published directly because tenant approval is required."]);
+            }
+
             LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, policy.Profile, policy);
             if (!readiness.IsReady)
             {

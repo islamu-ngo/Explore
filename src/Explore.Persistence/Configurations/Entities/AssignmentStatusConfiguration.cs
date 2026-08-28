@@ -11,7 +11,6 @@ public sealed class AssignmentStatusConfiguration : IEntityTypeConfiguration<Ass
 {
     public void Configure(EntityTypeBuilder<AssignmentStatus> builder)
     {
-        builder.ToTable("assignment_statuses");
         builder.Property(status => status.Id).ValueGeneratedNever();
         builder.Property(status => status.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(status => status.FullName).IsRequired().HasMaxLength(100);

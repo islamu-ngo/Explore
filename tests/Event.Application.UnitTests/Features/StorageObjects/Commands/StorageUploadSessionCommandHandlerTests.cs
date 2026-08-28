@@ -171,7 +171,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 
         await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
-        await Assert.That(result.Errors).IsEmpty();
+        await Assert.That(result.Errors).IsNull();
         await _privacyErasureStateRepository.Received(2)
             .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>());
         await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
@@ -210,7 +210,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 
         await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
-        await Assert.That(result.Errors).IsEmpty();
+        await Assert.That(result.Errors).IsNull();
         await _privacyErasureStateRepository.Received(2)
             .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().ExecuteSerializableAsync(
@@ -801,7 +801,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 
         await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Upload finalization failed.");
-        await Assert.That(result.Errors).IsEmpty();
+        await Assert.That(result.Errors).IsNull();
         await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
         await _provider.Received(1).WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
         await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());

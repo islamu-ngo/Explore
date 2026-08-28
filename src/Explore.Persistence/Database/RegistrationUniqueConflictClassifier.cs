@@ -1,6 +1,7 @@
 // ABOUTME: Identifies only expected registration identity races from supported database providers.
 // ABOUTME: Keeps provider exception details inside Persistence while rejecting unrelated constraints.
 
+using Explore.Domain;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -19,45 +20,37 @@ internal static class RegistrationUniqueConflictClassifier
     private const int SqlServerUniqueConstraintViolation = 2627;
     private const int MySqlDuplicateEntry = 1062;
 
-    private static readonly string[] SubmissionIdentityConstraints =
-    [
-        "ux_registration_submissions_native_identity",
-        "ux_registration_submissions_provider_identity",
-    ];
+    internal static bool IsSubmissionIdentityConflict(
+        ExploreDbContext context,
+        DbUpdateException exception) =>
+        IsExpectedConflict(
+            exception,
+            [
+                RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+                    context,
+                    nameof(RegistrationSubmission.TenantId),
+                    nameof(RegistrationSubmission.RegistrationAttemptId),
+                    nameof(RegistrationSubmission.BusinessDeduplicationKey)),
+                RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+                    context,
+                    nameof(RegistrationSubmission.TenantId),
+                    nameof(RegistrationSubmission.RegistrationProviderBindingId),
+                    nameof(RegistrationSubmission.ProviderSubmissionId),
+                    nameof(RegistrationSubmission.ProviderResponseRevision))
+            ]);
 
-    private static readonly string[] RevisionIdentityConstraints =
-    ["ux_registration_submission_revisions_submission_revision_number"];
-
-    private static readonly string[][] SubmissionIdentitySqliteColumns =
-    [
-        [
-            "ie_registration_submissions.tenant_id",
-            "ie_registration_submissions.registration_attempt_id",
-            "ie_registration_submissions.business_deduplication_key",
-        ],
-        [
-            "ie_registration_submissions.tenant_id",
-            "ie_registration_submissions.registration_provider_binding_id",
-            "ie_registration_submissions.provider_submission_id",
-            "ie_registration_submissions.provider_response_revision",
-        ],
-    ];
-
-    private static readonly string[][] RevisionIdentitySqliteColumns =
-    [
-        [
-            "ie_registration_submission_revisions.tenant_id",
-            "ie_registration_submission_revisions.registration_submission_id",
-            "ie_registration_submission_revisions.revision_number",
-        ],
-    ];
-
-
-    internal static bool IsSubmissionIdentityConflict(DbUpdateException exception) =>
-        IsExpectedConflict(exception, SubmissionIdentityConstraints, SubmissionIdentitySqliteColumns);
-
-    internal static bool IsRevisionIdentityConflict(DbUpdateException exception) =>
-        IsExpectedConflict(exception, RevisionIdentityConstraints, RevisionIdentitySqliteColumns);
+    internal static bool IsRevisionIdentityConflict(
+        ExploreDbContext context,
+        DbUpdateException exception) =>
+        IsExpectedConflict(
+            exception,
+            [
+                RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmissionRevision>(
+                    context,
+                    nameof(RegistrationSubmissionRevision.TenantId),
+                    nameof(RegistrationSubmissionRevision.RegistrationSubmissionId),
+                    nameof(RegistrationSubmissionRevision.RevisionNumber))
+            ]);
 
     internal static bool IsProviderUniqueConflict(DbUpdateException exception)
     {
@@ -80,18 +73,21 @@ internal static class RegistrationUniqueConflictClassifier
     }
 
     internal static bool IsMySqlDuplicate(int number, string physicalKeyName) =>
-        number == MySqlDuplicateEntry && !string.IsNullOrWhiteSpace(physicalKeyName);
+        RegistrationUniqueConflictMessageParser.IsMySqlDuplicate(
+            number,
+            physicalKeyName);
 
     private static bool IsExpectedConflict(
         DbUpdateException exception,
-        string[] expectedConstraints,
-        string[][] expectedSqliteColumnSets)
+        IReadOnlyList<RelationalConstraintDescriptor> expectedConstraints)
     {
         for (Exception? current = exception.InnerException; current is not null; current = current.InnerException)
         {
             if (current is PostgresException postgres &&
                 postgres.SqlState == UniqueViolationSqlState &&
-                MatchesConstraint(postgres.ConstraintName, expectedConstraints))
+                RegistrationUniqueConflictMessageParser.MatchesConstraint(
+                    postgres.ConstraintName,
+                    expectedConstraints.Select(constraint => constraint.Name)))
             {
                 return true;
             }
@@ -99,21 +95,27 @@ internal static class RegistrationUniqueConflictClassifier
             if (current is SqliteException sqlite &&
                 sqlite.SqliteErrorCode == SqliteConstraint &&
                 sqlite.SqliteExtendedErrorCode is SqliteConstraintPrimaryKey or SqliteConstraintUnique &&
-                MatchesSqliteColumns(sqlite.Message, expectedSqliteColumnSets))
+                RegistrationUniqueConflictMessageParser.MatchesSqliteColumns(
+                    sqlite.Message,
+                    expectedConstraints.Select(constraint => constraint.QualifiedColumns)))
             {
                 return true;
             }
 
             if (current is SqlException sqlServer &&
                 sqlServer.Number is SqlServerUniqueIndexViolation or SqlServerUniqueConstraintViolation &&
-                MatchesQuotedConstraint(sqlServer.Message, expectedConstraints))
+                RegistrationUniqueConflictMessageParser.MatchesQuotedConstraint(
+                    sqlServer.Message,
+                    expectedConstraints.Select(constraint => constraint.Name)))
             {
                 return true;
             }
 
             if (current is MySqlException mySql &&
                 mySql.Number == MySqlDuplicateEntry &&
-                MatchesQuotedConstraint(mySql.Message, expectedConstraints))
+                RegistrationUniqueConflictMessageParser.MatchesQuotedConstraint(
+                    mySql.Message,
+                    expectedConstraints.Select(constraint => constraint.Name)))
             {
                 return true;
             }
@@ -122,47 +124,17 @@ internal static class RegistrationUniqueConflictClassifier
         return false;
     }
 
-    private static bool MatchesConstraint(string? actual, IEnumerable<string> expected) =>
-        actual is not null && expected.Any(candidate => string.Equals(
-            NormalizeConstraintIdentifier(actual), NormalizeConstraintIdentifier(candidate), StringComparison.Ordinal));
+    internal static bool MatchesQuotedConstraint(
+        string message,
+        IEnumerable<string> expected) =>
+        RegistrationUniqueConflictMessageParser.MatchesQuotedConstraint(
+            message,
+            expected);
 
-    private static bool MatchesQuotedConstraint(string message, IEnumerable<string> expected) =>
-        message.Split(['\'', '`', '"', '[', ']'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(actual => MatchesConstraint(actual, expected));
-
-    private static bool MatchesSqliteColumns(string message, IEnumerable<string[]> expectedColumnSets)
-    {
-        const string prefix = "UNIQUE constraint failed:";
-        int prefixIndex = message.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
-        if (prefixIndex < 0)
-        {
-            return false;
-        }
-
-        string columns = message[(prefixIndex + prefix.Length)..].Trim().TrimEnd('.', '\'', '"');
-        string[] actualColumns = columns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(NormalizeSqliteColumn)
-            .ToArray();
-
-        return expectedColumnSets.Any(expectedColumns =>
-        {
-            var expected = new HashSet<string>(expectedColumns.Select(NormalizeSqliteColumn), StringComparer.Ordinal);
-            return actualColumns.Length == expected.Count && expected.SetEquals(actualColumns);
-        });
-    }
-
-    private static string NormalizeConstraintIdentifier(string identifier)
-    {
-        string normalized = NormalizeSqliteColumn(identifier);
-        int qualifier = normalized.LastIndexOf('.');
-        return qualifier < 0 ? normalized : normalized[(qualifier + 1)..];
-    }
-
-    private static string NormalizeSqliteColumn(string identifier)
-    {
-        string normalized = identifier.Trim().ToLowerInvariant();
-        return normalized.All(character => char.IsAsciiLetterOrDigit(character) || character is '_' or '.')
-            ? normalized
-            : string.Empty;
-    }
+    internal static bool MatchesSqliteColumns(
+        string message,
+        IEnumerable<IReadOnlyList<string>> expectedColumnSets) =>
+        RegistrationUniqueConflictMessageParser.MatchesSqliteColumns(
+            message,
+            expectedColumnSets);
 }

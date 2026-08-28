@@ -16,7 +16,8 @@ internal static class PaidAcceptanceTestFacts
         long organizerAmountMinor,
         long platformFeeMinor,
         long platformContributionMinor,
-        DateTime acceptedAt) => PaidOrderAcceptanceSnapshot.Create(
+        DateTime acceptedAt,
+        string currencyCode = "EUR") => PaidOrderAcceptanceSnapshot.Create(
             Guid.CreateVersion7(),
             tenantId,
             tenantId,
@@ -45,7 +46,7 @@ internal static class PaidAcceptanceTestFacts
                 new DateTimeOffset(acceptedAt.AddDays(10)),
                 new DateTimeOffset(acceptedAt.AddDays(10).AddHours(3)),
                 "Europe/Brussels"),
-            "EUR",
+            currencyCode,
             organizerAmountMinor,
             platformFeeMinor,
             platformContributionMinor,

@@ -43,6 +43,10 @@ public sealed class AuthorizationSurfaceGuardrailTests
     private static readonly InventoryEntry[] NamedMediatRExceptions =
     [
         new(
+            "Explore.Application.Features.ConfigurationManifest.Requests.Commands.ApplyConfigurationManifestCommand",
+            "host-local-bootstrap",
+            "Dispatched only by ConfigurationManifestStartupRunner through IConfigurationManifestApplier inside the trusted deployment boundary; no controller or route sends it, no user principal exists at startup, and its authority is the operator-owned manifest file mounted read-only into the bootstrap host."),
+        new(
             "Explore.Application.Features.Integrations.Listmonk.Requests.Commands.ResolveIntegrationSyncAmbiguityCommand",
             "handler-contained-admin",
             "Tenant administrator authorization is enforced inside ResolveIntegrationSyncAmbiguityCommandHandler before repository mutation."),

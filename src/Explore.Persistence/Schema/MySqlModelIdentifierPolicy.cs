@@ -33,7 +33,7 @@ internal static class MySqlModelIdentifierPolicy
             foreach (var key in entityType.GetKeys())
             {
                 var name = key.GetName();
-                var prefix = key.IsPrimaryKey() ? "PK" : "AK";
+                var prefix = key.IsPrimaryKey() ? "pk" : "ak";
                 var conventionName = $"{prefix}_{table}_{GetColumns(key.Properties, storeObject)}";
                 if (RequiresShortening(conventionName) || RequiresShortening(name))
                 {
@@ -44,7 +44,7 @@ internal static class MySqlModelIdentifierPolicy
             foreach (var index in entityType.GetIndexes())
             {
                 var name = index.GetDatabaseName();
-                var conventionName = $"IX_{table}_{GetColumns(index.Properties, storeObject)}";
+                var conventionName = $"ix_{table}_{GetColumns(index.Properties, storeObject)}";
                 if (RequiresShortening(conventionName) || RequiresShortening(name))
                 {
                     index.SetDatabaseName(Shorten(RequiresShortening(conventionName) ? conventionName : name!));
@@ -55,7 +55,7 @@ internal static class MySqlModelIdentifierPolicy
             {
                 var name = foreignKey.GetConstraintName();
                 var principalTable = foreignKey.PrincipalEntityType.GetTableName()!;
-                var conventionName = $"FK_{table}_{principalTable}_{GetColumns(foreignKey.Properties, storeObject)}";
+                var conventionName = $"fk_{table}_{principalTable}_{GetColumns(foreignKey.Properties, storeObject)}";
                 if (RequiresShortening(conventionName) || RequiresShortening(name))
                 {
                     foreignKey.SetConstraintName(Shorten(RequiresShortening(conventionName) ? conventionName : name!));
@@ -72,7 +72,8 @@ internal static class MySqlModelIdentifierPolicy
 
     private static string Shorten(string name)
     {
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name)))[..HashLength];
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name)))[..HashLength]
+            .ToLowerInvariant();
         return name[..(MaxIdentifierLength - HashLength - 1)] + "_" + hash;
     }
 }

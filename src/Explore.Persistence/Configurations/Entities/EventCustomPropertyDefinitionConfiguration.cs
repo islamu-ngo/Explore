@@ -12,8 +12,6 @@ public class EventCustomPropertyDefinitionConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<EventCustomPropertyDefinition> builder)
     {
-        builder.ToTable("event_custom_property_definitions");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -95,10 +93,8 @@ public class EventCustomPropertyDefinitionConfiguration : IEntityTypeConfigurati
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.EventId, e.Namespace, e.Key })
-            .HasDatabaseName("ix_ecpd_event_namespace_key")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.IsSearchable, e.IsFilterable })
-            .HasDatabaseName("ix_ecpd_tenant_event_search_filter");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.IsSearchable, e.IsFilterable });
     }
 }

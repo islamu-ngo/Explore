@@ -12,7 +12,6 @@ public sealed class EventOrganizerClaimConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<EventOrganizerClaim> builder)
     {
-        builder.ToTable("event_organizer_claims");
         builder.Property(row => row.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(row => new { row.TenantId, row.Id });
         builder.Property(row => row.EvidenceType).IsRequired().HasMaxLength(100);

@@ -11,7 +11,6 @@ public sealed class RegistrationParticipantPiiConfiguration : IEntityTypeConfigu
 {
     public void Configure(EntityTypeBuilder<RegistrationParticipantPii> builder)
     {
-        builder.ToTable("registration_participant_pii");
         builder.HasKey(pii => pii.RegistrationParticipantId);
         builder.HasAlternateKey(pii => new { pii.TenantId, pii.RegistrationParticipantId });
         builder.Property(pii => pii.DisplayName).HasMaxLength(200);

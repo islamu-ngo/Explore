@@ -342,7 +342,41 @@ Create an incoming webhook verifier and handler in `src/Explore.Infrastructure/P
 
 ---
 
-## 10. Related Documentation & Decisions
+## 10. Configuration Manifest Tenant Payment Boundary
+
+Tenant bootstrap may declare only the provider-neutral narrowing document
+`tenant.paid_event_policy`. The document is pinned to the active
+`instancePolicyVersion`, validated with `PaidEventPolicyRules`, and applied
+through the canonical serializable `PaidEventPolicyMutationBoundary` in the
+same transaction as tenant creation and manifest audit.
+
+Allowed values narrow payment enablement, organizer kinds, local verification,
+currencies/default currency, refund-protection floors, integer minor-unit and
+count risk ceilings, rolling windows, and review thresholds. The manifest
+cannot select a provider, supply credentials, name connected accounts, choose
+charge ownership, establish operator or official status, accept buyer terms,
+execute refunds, control stop/review state, hand work to a provider, or alter
+reconciliation. Those authorities remain in the Phase 18C chain:
+
+1. active instance policy;
+2. valid tenant narrowing;
+3. persisted sale-control/review state;
+4. server-authored acceptance;
+5. freshness validation;
+6. provider handoff and reconciliation.
+
+Both regular policy revisions and manifest bootstrap acquire the same
+instance/tenant named locks. A stale instance version or concurrently created
+tenant policy returns a retryable conflict and rolls back the entire manifest
+transaction. Work already handed to a provider is immutable and is never
+rewritten by configuration import.
+
+Exports include no payment secrets or PII. `Overrides` emits only an active
+tenant narrowing; `Portable` flattens the active safe policy while explicitly
+marking sovereign values omitted and locked. Neither export claims refund,
+liability, dispute, or provider behavior.
+
+## 11. Related Documentation & Decisions
 
 - [ADR-022: Paid Event Commerce And Stripe Connect](adr/ADR-022-paid-event-commerce-and-stripe-connect.md)
 - [ADR-024: External Business Integrations And Protected Payout Boundaries](adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md)

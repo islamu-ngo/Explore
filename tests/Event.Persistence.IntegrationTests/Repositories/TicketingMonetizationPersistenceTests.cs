@@ -8,6 +8,7 @@ using Explore.Domain;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
@@ -377,7 +378,7 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     [Test]
-    public async Task PaidEventPolicyRepository_HonorsTenantIsolationForTenantVersions()
+    public async Task PaidEventPolicyRepository_UsesExactTenantPredicateAcrossAmbientTenantContext()
     {
         string databaseName = $"paid-policy-tenant-isolation-{Guid.NewGuid():N}";
         var root = new InMemoryDatabaseRoot();
@@ -394,8 +395,74 @@ public sealed class TicketingMonetizationPersistenceTests
         await using ExploreDbContext context = CreateNamedInMemoryContext(databaseName, root, tenantA);
         var repository = new PaidEventPolicyRepository(context);
 
-        await Assert.That(await repository.GetActiveTenantAsync(tenantA, CancellationToken.None)).IsNotNull();
-        await Assert.That(await repository.GetActiveTenantAsync(tenantB, CancellationToken.None)).IsNull();
+        PaidEventPolicyVersion? policyA = await repository.GetActiveTenantAsync(
+            tenantA,
+            CancellationToken.None);
+        PaidEventPolicyVersion? policyB = await repository.GetActiveTenantAsync(
+            tenantB,
+            CancellationToken.None);
+
+        await Assert.That(policyA?.TenantId).IsEqualTo(tenantA);
+        await Assert.That(policyB?.TenantId).IsEqualTo(tenantB);
+    }
+
+    [Test]
+    public async Task PaidEventPolicyRepository_ListsBoundedActiveTenantPagesWithoutTracking()
+    {
+        string databaseName = $"paid-policy-active-pages-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantA = Guid.Parse("0199464e-e388-7f56-9281-cefabd6a5671");
+        Guid tenantB = Guid.Parse("0199464e-e388-7f56-9281-cefabd6a5672");
+        PaidEventPolicyVersion retiredTenantPolicy = CreateTenantPaidPolicy(tenantA);
+        PaidEventPolicyVersion activeTenantRevision = retiredTenantPolicy.CreateRevision(
+            retiredTenantPolicy.IsPaymentsEnabled,
+            retiredTenantPolicy.AllowedOrganizerKinds,
+            retiredTenantPolicy.RequiresLocalVerification,
+            retiredTenantPolicy.AllowedCurrencyCodes,
+            retiredTenantPolicy.DefaultCurrencyCode,
+            retiredTenantPolicy.RefundProtections,
+            retiredTenantPolicy.CurrencyRiskLimits,
+            retiredTenantPolicy.RequiresFirstPaidEventReview,
+            retiredTenantPolicy.FarFutureReviewThresholdDays);
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds active paid-policy page rows.");
+            seed.Set<PaidEventPolicyVersion>().AddRange(
+                PaidEventPolicyVersion.CreateDefaultInstance(),
+                retiredTenantPolicy,
+                activeTenantRevision,
+                CreateTenantPaidPolicy(tenantB));
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context =
+            CreateNamedInMemoryContext(databaseName, root, tenantA);
+        var repository = new PaidEventPolicyRepository(context);
+
+        PaidEventPolicyVersion[] firstPage = await repository.ListActiveTenantsAsync(
+            offset: 0,
+            limit: 1,
+            CancellationToken.None);
+        PaidEventPolicyVersion[] secondPage = await repository.ListActiveTenantsAsync(
+            offset: 1,
+            limit: 1,
+            CancellationToken.None);
+
+        await Assert.That(firstPage.Length).IsEqualTo(1);
+        await Assert.That(secondPage.Length).IsEqualTo(1);
+        await Assert.That(firstPage.Concat(secondPage).Select(policy => policy.TenantId))
+            .IsEquivalentTo(new Guid?[] { tenantA, tenantB });
+        await Assert.That(firstPage.Concat(secondPage).All(policy => policy.IsActive))
+            .IsTrue();
+        await Assert.That(firstPage.Concat(secondPage).All(policy => policy.AllowedCurrencyCodes.Count > 0))
+            .IsTrue();
+        await Assert.That(context.ChangeTracker.Entries()).IsEmpty();
+        await Assert.That(() => (Task)repository.ListActiveTenantsAsync(
+                offset: 0,
+                limit: IPaidEventPolicyRepository.MaximumActiveTenantPolicyPageSize + 1,
+                CancellationToken.None))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
@@ -957,28 +1024,45 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     [Test]
-    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id")]
-    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu")]
-    [Arguments("ix_event_capacity_pools_tenant_id_event_id_name")]
-    public async Task TicketRepository_TranslatesRecognizedUniqueRaces(string constraintName)
+    public async Task TicketRepository_TranslatesMetadataResolvedUniqueRaces()
     {
-        await using var context = CreateInMemoryContext(
-            "ticketing-unique-translation",
-            new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
-        var repository = new EventTicketCatalogRepository(context);
+        await using ExploreDbContext modelContext = CreateSqliteContext();
+        string[] constraintNames =
+        [
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                modelContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId)).Name,
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                modelContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId),
+                nameof(EventTicketCatalogVersion.VersionNumber)).Name,
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventCapacityPool>(
+                modelContext,
+                nameof(EventCapacityPool.TenantId),
+                nameof(EventCapacityPool.EventId),
+                nameof(EventCapacityPool.Name)).Name
+        ];
 
-        ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
-            () => repository.SaveChangesAsync(CancellationToken.None));
+        foreach (string constraintName in constraintNames)
+        {
+            await using ExploreDbContext context = CreateSqliteContext(
+                new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
+            var repository = new EventTicketCatalogRepository(context);
 
-        await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+            ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
+                () => repository.SaveChangesAsync(CancellationToken.None));
+
+            await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        }
     }
 
     [Test]
     public async Task TicketRepository_LeavesUnrecognizedUniqueFailuresUntranslated()
     {
         DbUpdateException expected = CreateUniqueViolation("ix_unrelated_constraint");
-        await using var context = CreateInMemoryContext(
-            "ticketing-unrelated-translation",
+        await using ExploreDbContext context = CreateSqliteContext(
             new ThrowingSaveChangesInterceptor(() => expected));
         var repository = new EventTicketCatalogRepository(context);
 
@@ -1038,6 +1122,19 @@ public sealed class TicketingMonetizationPersistenceTests
         }
 
         return new(optionsBuilder.Options);
+    }
+
+    private static ExploreDbContext CreateSqliteContext(SaveChangesInterceptor? interceptor = null)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite("Data Source=:memory:")
+            .UseSnakeCaseNamingConvention();
+        if (interceptor is not null)
+        {
+            optionsBuilder.AddInterceptors(interceptor);
+        }
+
+        return new ExploreDbContext(optionsBuilder.Options);
     }
 
     private static TicketingTestDbContext CreateNamedInMemoryContext(string databaseName, InMemoryDatabaseRoot databaseRoot, Guid? tenantId = null)

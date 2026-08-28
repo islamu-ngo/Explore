@@ -5,10 +5,8 @@ using System.Data;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Persistence.Privacy.ErasureAuthority.Repositories;
@@ -38,16 +36,17 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.ReadCommitted,
             cancellationToken);
-        string counterTable = GetCounterTable();
-        string initializeCounterSql = "INSERT INTO " + counterTable +
-            " (singleton, last_sequence) VALUES (true, 0) ON CONFLICT(singleton) DO NOTHING;";
-        await dbContext.Database.ExecuteSqlRawAsync(initializeCounterSql, cancellationToken);
-
-        string lockCounterSql = "SELECT * FROM " + counterTable + " FOR UPDATE";
-        PrivacyErasureCounter counter = await dbContext.AuthorityCounters
-            .FromSqlRaw(lockCounterSql)
-            .SingleAsync(cancellationToken);
-        await dbContext.Entry(counter).ReloadAsync(cancellationToken);
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            "privacy-erasure-authority-counter",
+            cancellationToken);
+        PrivacyErasureCounter? counter = await dbContext.AuthorityCounters
+            .SingleOrDefaultAsync(cancellationToken);
+        if (counter is null)
+        {
+            counter = PrivacyErasureCounter.Start();
+            dbContext.AuthorityCounters.Add(counter);
+        }
         PrivacyErasureIntent? existing = await dbContext.ErasureIntents
             .SingleOrDefaultAsync(item => item.IntentId == intent.IntentId, cancellationToken);
         if (existing is not null)
@@ -142,8 +141,11 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.ReadCommitted,
             cancellationToken);
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            "privacy-erasure-authority-counter",
+            cancellationToken);
         PrivacyErasureCounter? counter = await dbContext.AuthorityCounters
-            .FromSqlRaw("SELECT * FROM " + GetCounterTable() + " FOR UPDATE")
             .SingleOrDefaultAsync(cancellationToken);
         if (counter is null)
         {
@@ -153,8 +155,6 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
                 0,
                 new PrivacyErasureAuthorityState(0, 0));
         }
-        await dbContext.Entry(counter).ReloadAsync(cancellationToken);
-
         List<PrivacyErasureIntent> candidates = await LoadMaintenanceCandidatesAsync(
             counter.RetainedFloorSequence,
             request.BatchSize,
@@ -177,14 +177,7 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
                 {
                     Guid intentAuditToken = Guid.NewGuid();
                     Guid subjectAuditToken = Guid.NewGuid();
-                    dbContext.Entry(candidate).State = EntityState.Detached;
-                    string sql = "UPDATE " + GetIntentTable()
-                        + " SET intent_id = {0}, subject_id = {1}, "
-                        + "is_legal_hold_pseudonymized = true WHERE authority_sequence = {2}";
-                    await dbContext.Database.ExecuteSqlRawAsync(
-                        sql,
-                        [intentAuditToken, subjectAuditToken, candidate.AuthoritySequence],
-                        cancellationToken);
+                    candidate.PseudonymizeForLegalHold(intentAuditToken, subjectAuditToken);
                     pseudonymized++;
                 }
 
@@ -214,26 +207,12 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
         return new PrivacyErasureCompactionResult(deleted, pseudonymized, counter.GetState());
     }
 
-    private string GetCounterTable()
-    {
-        IEntityType entityType = dbContext.Model.FindEntityType(typeof(PrivacyErasureCounter))!;
-        ISqlGenerationHelper sql = dbContext.GetService<ISqlGenerationHelper>();
-        return sql.DelimitIdentifier(entityType.GetTableName()!, entityType.GetSchema());
-    }
-
     private void EnsureCutoffIsNotInFuture(PrivacyErasureRetentionRequest request)
     {
         if (request.AsOfUtc > timeProvider.GetUtcNow().UtcDateTime)
         {
             throw new ArgumentOutOfRangeException(nameof(request));
         }
-    }
-
-    private string GetIntentTable()
-    {
-        IEntityType entityType = dbContext.Model.FindEntityType(typeof(PrivacyErasureIntent))!;
-        ISqlGenerationHelper sql = dbContext.GetService<ISqlGenerationHelper>();
-        return sql.DelimitIdentifier(entityType.GetTableName()!, entityType.GetSchema());
     }
 
     private Task<List<PrivacyErasureIntent>> LoadMaintenanceCandidatesAsync(

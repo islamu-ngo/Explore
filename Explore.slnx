@@ -37,6 +37,9 @@
   <Folder Name="/src/">
     <Project Path="src/Event.Wire.Contracts/Event.Wire.Contracts.csproj" />
   </Folder>
+  <Folder Name="/Tooling/Configuration Manifest/">
+    <Project Path="eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
@@ -49,6 +52,7 @@
     <Project Path="tests/Event.Benchmarks/Event.Benchmarks.csproj" />
     <Project Path="tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj" />
     <Project Path="tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj" />
+    <Project Path="tests/Event.Persistence.MutationTests/Event.Persistence.MutationTests.csproj" />
     <Project Path="tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj" />
     <Project Path="tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" />
     <Project Path="tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj" />

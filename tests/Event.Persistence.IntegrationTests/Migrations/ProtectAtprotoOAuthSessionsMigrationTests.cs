@@ -6,6 +6,8 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -21,13 +23,21 @@ public sealed class AtprotoOAuthSessionBaselineTests(PostgreSqlContainerFixture 
         await using var context = fixture.CreateDbContext();
 
         await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains("20260801192258_init");
+            .Contains(migration => migration.EndsWith("_Init", StringComparison.Ordinal));
         string[] constraintNames = await ReadConstraintNamesAsync();
         await Assert.That(constraintNames).Contains("ck_user_authentication_tokens_ciphertext_not_empty");
         await Assert.That(constraintNames).Contains("ck_user_authentication_tokens_envelope_version");
         await Assert.That(constraintNames).Contains("ck_user_authentication_tokens_required_text");
-        await Assert.That(await IndexExistsAsync(
-            "ux_user_authentication_tokens_tenant_provider_subject_did")).IsTrue();
+        string subjectIndex = context.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(UserAuthenticationToken))!
+            .GetIndexes()
+            .Single(index => index.IsUnique &&
+                index.Properties.Select(property => property.Name).SequenceEqual(
+                    [nameof(UserAuthenticationToken.TenantId),
+                        nameof(UserAuthenticationToken.Provider),
+                        nameof(UserAuthenticationToken.SubjectDid)]))
+            .GetDatabaseName();
+        await Assert.That(await IndexExistsAsync(subjectIndex)).IsTrue();
     }
 
     [Test]
@@ -120,7 +130,7 @@ public sealed class AtprotoOAuthSessionBaselineTests(PostgreSqlContainerFixture 
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(
-            "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = @name)",
+            "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = @name)",
             connection);
         command.Parameters.AddWithValue("name", indexName);
         return (bool)(await command.ExecuteScalarAsync())!;

@@ -59,7 +59,7 @@ public sealed class EventReportSignalConfiguration : IEntityTypeConfiguration<Ev
             .IsUnique()
             .HasDatabaseName("ux_event_report_signals_tenant_provider_target_correlation");
 
-        builder.ToTable("event_report_signals", t =>
+        builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
             t.HasCheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");

@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.PaidEventPolicies;
+using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Features.PaidEventPolicies.Handlers.Commands;
 using Explore.Application.Features.PaidEventPolicies.Handlers.Queries;
 using Explore.Application.Features.PaidEventPolicies.Requests.Commands;
@@ -62,6 +63,16 @@ public sealed class PaidEventPolicyHandlersTests
         await Assert.That(result.ActiveInstanceCeiling.Id).IsEqualTo(result.EffectivePolicy.Id);
         await Assert.That(result.EffectivePolicy.TenantId).IsNull();
         await Assert.That(result.EffectivePolicy.AllowedCurrencyCodes.Single()).IsEqualTo("USD");
+        await Assert.That(result.Authority.EffectiveValuesInherited).IsTrue();
+        await Assert.That(result.Authority.HasTenantNarrowing).IsFalse();
+        await Assert.That(result.Authority.InstancePolicyVersion)
+            .IsEqualTo(instancePolicy.VersionNumber);
+        await Assert.That(result.Authority.ManifestOwnedFields)
+            .Contains("allowedCurrencyCodes");
+        await Assert.That(result.Authority.SovereignLockedFields)
+            .Contains("providerCredentials");
+        await Assert.That(result.Authority.SovereignLockedFields)
+            .Contains("saleControl");
     }
 
     [Test]
@@ -100,6 +111,10 @@ public sealed class PaidEventPolicyHandlersTests
         await Assert.That(result.EffectivePolicy.TenantId).IsEqualTo(_tenantId);
         await Assert.That(result.EffectivePolicy.AllowedCurrencyCodes.Single()).IsEqualTo("EUR");
         await Assert.That(result.EffectivePolicy.RequiresFirstPaidEventReview).IsTrue();
+        await Assert.That(result.Authority.EffectiveValuesInherited).IsFalse();
+        await Assert.That(result.Authority.HasTenantNarrowing).IsTrue();
+        await Assert.That(result.Authority.InstancePolicyVersion)
+            .IsEqualTo(instancePolicy.VersionNumber);
     }
 
     [Test]
@@ -112,6 +127,33 @@ public sealed class PaidEventPolicyHandlersTests
 
         await Assert.That(result).IsNull();
         await _policies.DidNotReceive().GetActiveTenantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetTenantConfiguration_WhenRepositoryReturnsAnotherTenant_FailsClosed()
+    {
+        _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+        _policies.GetActiveTenantAsync(_tenantId, Arg.Any<CancellationToken>())
+            .Returns(PaidEventPolicyVersion.CreateTenant(
+                Guid.CreateVersion7(),
+                isPaymentsEnabled: false,
+                allowedOrganizerKinds: [ActorTypeEnum.Organization],
+                requiresLocalVerification: false,
+                allowedCurrencyCodes: ["USD"],
+                defaultCurrencyCode: "USD",
+                refundProtections: RefundProtections(),
+                currencyRiskLimits: [],
+                requiresFirstPaidEventReview: false,
+                farFutureReviewThresholdDays: null));
+
+        TenantPaidEventPolicyConfigurationDto? result =
+            await new GetTenantPaidEventPolicyConfigurationQueryHandler(_policies)
+                .Handle(
+                    new GetTenantPaidEventPolicyConfigurationQuery(_tenantId),
+                    CancellationToken.None);
+
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -142,6 +184,31 @@ public sealed class PaidEventPolicyHandlersTests
     }
 
     [Test]
+    public async Task GetTenant_WhenRepositoryReturnsAnotherTenant_FailsClosed()
+    {
+        _policies.GetActiveTenantAsync(_tenantId, Arg.Any<CancellationToken>())
+            .Returns(PaidEventPolicyVersion.CreateTenant(
+                Guid.CreateVersion7(),
+                isPaymentsEnabled: false,
+                allowedOrganizerKinds: [ActorTypeEnum.Organization],
+                requiresLocalVerification: false,
+                allowedCurrencyCodes: ["USD"],
+                defaultCurrencyCode: "USD",
+                refundProtections: RefundProtections(),
+                currencyRiskLimits: [],
+                requiresFirstPaidEventReview: false,
+                farFutureReviewThresholdDays: null));
+
+        PaidEventPolicyDto? result =
+            await new GetTenantPaidEventPolicyQueryHandler(_policies)
+                .Handle(
+                    new GetTenantPaidEventPolicyQuery(_tenantId),
+                    CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
     public async Task ReviseTenant_WhenTenantAddsInstanceCurrency_ReturnsValidationFailureWithoutSave()
     {
         PaidEventPolicyVersion instancePolicy = PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(
@@ -157,7 +224,8 @@ public sealed class PaidEventPolicyHandlersTests
         _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
         var unitOfWork = new RecordingUnitOfWork();
 
-        var result = await new ReviseTenantPaidEventPolicyCommandHandler(_policies, unitOfWork).Handle(
+        var result = await new ReviseTenantPaidEventPolicyCommandHandler(
+            Boundary(unitOfWork)).Handle(
             new ReviseTenantPaidEventPolicyCommand(_tenantId, CreateRevisionDto(allowedCurrencyCodes: ["USD", "EUR"])),
             CancellationToken.None);
 
@@ -174,7 +242,8 @@ public sealed class PaidEventPolicyHandlersTests
         _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
         var unitOfWork = new RecordingUnitOfWork();
 
-        var result = await new ReviseInstancePaidEventPolicyCommandHandler(_policies, unitOfWork).Handle(
+        var result = await new ReviseInstancePaidEventPolicyCommandHandler(
+            Boundary(unitOfWork)).Handle(
             new ReviseInstancePaidEventPolicyCommand(CreateRevisionDto()),
             CancellationToken.None);
 
@@ -199,6 +268,9 @@ public sealed class PaidEventPolicyHandlersTests
 
     private static PaidEventRefundProtection[] RefundProtections() => Enum.GetValues<PaidEventRefundProtection>();
 
+    private PaidEventPolicyMutationBoundary Boundary(IUnitOfWork unitOfWork) =>
+        new(_policies, unitOfWork, new ImmediateSettingMutationLock());
+
     private sealed class RecordingUnitOfWork : IUnitOfWork
     {
         public int SerializableBoundaries { get; private set; }
@@ -212,5 +284,20 @@ public sealed class PaidEventPolicyHandlersTests
             SerializableBoundaries++;
             return await operation(ct);
         }
+    }
+
+    private sealed class ImmediateSettingMutationLock : ISettingMutationLock
+    {
+        public Task<T> ExecuteAsync<T>(
+            string canonicalSettingKey,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
+
+        public Task<T> ExecuteManyAsync<T>(
+            IEnumerable<string> canonicalSettingKeys,
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
     }
 }

@@ -12,8 +12,6 @@ public class EventSessionCustomPropertyOptionConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<EventSessionCustomPropertyOption> builder)
     {
-        builder.ToTable("event_session_custom_property_options");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -42,20 +40,18 @@ public class EventSessionCustomPropertyOptionConfiguration : IEntityTypeConfigur
         builder.HasOne(e => e.ParentOption)
             .WithMany(e => e.ChildOptions)
             .HasForeignKey(e => e.ParentOptionId)
-            .HasConstraintName("fk_escpo_parent_option")
+            .HasConstraintName("fk_event_session_custom_property_options_parent")
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(e => e.Definition)
             .WithMany(e => e.Options)
             .HasForeignKey(e => e.EventSessionCustomPropertyDefinitionId)
-            .HasConstraintName("fk_escpo_definition")
+            .HasConstraintName("fk_event_session_custom_property_options_definition")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(e => new { e.EventSessionCustomPropertyDefinitionId, e.SortOrder })
-            .HasDatabaseName("ix_escpo_definition_sort");
+        builder.HasIndex(e => new { e.EventSessionCustomPropertyDefinitionId, e.SortOrder });
 
         builder.HasIndex(e => new { e.EventSessionCustomPropertyDefinitionId, e.Namespace, e.Key })
-            .HasDatabaseName("ix_escpo_definition_namespace_key")
             .IsUnique();
     }
 }

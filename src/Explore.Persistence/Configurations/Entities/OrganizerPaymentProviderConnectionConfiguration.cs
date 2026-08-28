@@ -11,7 +11,7 @@ public sealed class OrganizerPaymentProviderConnectionConfiguration : IEntityTyp
 {
     public void Configure(EntityTypeBuilder<OrganizerPaymentProviderConnection> builder)
     {
-        builder.ToTable("organizer_payment_provider_connections", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_organizer_payment_provider_connections_status", "status_id BETWEEN 1 AND 5");
             table.HasCheckConstraint("ck_organizer_payment_provider_connections_charge_capability", "charge_capability_state_id BETWEEN 0 AND 3");
@@ -67,7 +67,6 @@ public sealed class OrganizerPaymentProviderConnectionSupportedCurrencyConfigura
 {
     public void Configure(EntityTypeBuilder<OrganizerPaymentProviderConnectionSupportedCurrency> builder)
     {
-        builder.ToTable("organizer_payment_provider_connection_supported_currencies");
         builder.HasKey(row => new { row.TenantId, row.OrganizerPaymentProviderConnectionId, row.Ordinal });
         builder.Property(row => row.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.HasIndex(row => new { row.TenantId, row.OrganizerPaymentProviderConnectionId, row.CurrencyCode }).IsUnique();

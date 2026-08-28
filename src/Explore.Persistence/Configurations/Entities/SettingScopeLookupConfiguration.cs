@@ -11,7 +11,6 @@ public class SettingScopeLookupConfiguration : IEntityTypeConfiguration<SettingS
 {
     public void Configure(EntityTypeBuilder<SettingScopeLookup> builder)
     {
-        builder.ToTable("setting_scopes");
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.MasterCode).IsRequired().HasMaxLength(50);
         builder.Property(e => e.FullName).IsRequired().HasMaxLength(100);

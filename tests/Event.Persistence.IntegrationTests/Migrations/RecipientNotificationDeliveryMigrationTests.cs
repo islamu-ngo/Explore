@@ -26,7 +26,7 @@ public sealed class RecipientNotificationDeliveryMigrationTests(
 
         await ResetSharedMigrationDatabaseAsync();
         await using var context = CreateDbContext();
-        await context.GetService<IMigrator>().MigrateAsync("20260801192258_init");
+        await context.Database.MigrateAsync();
         await Assert.That(HasPendingModelChanges(context)).IsFalse();
 
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);

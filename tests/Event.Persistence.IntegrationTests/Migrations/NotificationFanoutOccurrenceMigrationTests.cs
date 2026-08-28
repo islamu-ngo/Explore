@@ -27,7 +27,7 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
 
         try
         {
-            await migrator.MigrateAsync("20260801192258_init");
+            await migrator.MigrateAsync();
             await Assert.That(ReadPendingModelOperations(context)).IsEmpty();
             await AssertSchemaAsync(expected: true);
         }

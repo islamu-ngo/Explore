@@ -19,6 +19,7 @@ public sealed class AdmissionRecoveryPersistenceContractTests
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connection)
+            .UseSnakeCaseNamingConvention()
             .Options;
         await using var context = new ExploreDbContext(options);
 
@@ -26,12 +27,6 @@ public sealed class AdmissionRecoveryPersistenceContractTests
         IEntityType? delivery = context.Model.FindEntityType(typeof(AdmissionRecoveryDeliveryIntent));
         IEntityType? requestIntent = context.Model.FindEntityType(typeof(AdmissionRecoveryRequestIntent));
         string[] propertyNames = entity?.GetProperties().Select(property => property.Name).ToArray() ?? [];
-        string[] indexNames = entity?.GetIndexes()
-            .Select(index => index.GetDatabaseName())
-            .Where(name => name is not null)
-            .Cast<string>()
-            .ToArray() ?? [];
-
         await Assert.That(entity).IsNotNull();
         await Assert.That(entity!.GetTableName()).IsEqualTo("ie_admission_recovery_capabilities");
         await Assert.That(entity.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
@@ -41,39 +36,51 @@ public sealed class AdmissionRecoveryPersistenceContractTests
             .GetTypeMapping().Converter!.ProviderClrType).IsEqualTo(typeof(byte[]));
         await Assert.That(entity.FindProperty(nameof(AdmissionRecoveryCapability.LocatorDigest))!
             .GetTypeMapping().Converter!.ProviderClrType).IsEqualTo(typeof(byte[]));
-        await Assert.That(indexNames).Contains("ux_admission_recovery_capabilities_digest");
-        await Assert.That(indexNames).Contains("ux_admission_recovery_capabilities_generation");
-        await Assert.That(indexNames).Contains("ux_admission_recovery_capabilities_active");
-        IIndex generation = entity.GetIndexes().Single(index =>
-            index.GetDatabaseName() == "ux_admission_recovery_capabilities_generation");
-        IIndex active = entity.GetIndexes().Single(index =>
-            index.GetDatabaseName() == "ux_admission_recovery_capabilities_active");
-        await Assert.That(generation.Properties.Select(property => property.Name))
-            .IsEquivalentTo(
-                ["TenantId", "AdmissionTicketId", "Purpose", "CapabilityVersion"]);
-        await Assert.That(active.Properties.Select(property => property.Name))
-            .IsEquivalentTo(
-                ["TenantId", "AdmissionTicketId", "Purpose", "ActiveUniquenessSlot"]);
+        IIndex digest = FindIndex(
+            entity,
+            "TenantId",
+            "LookupKeyVersion",
+            "LookupDigest");
+        IIndex generation = FindIndex(
+            entity,
+            "TenantId",
+            "AdmissionTicketId",
+            "Purpose",
+            "CapabilityVersion");
+        IIndex active = FindIndex(
+            entity,
+            "TenantId",
+            "AdmissionTicketId",
+            "Purpose",
+            "ActiveUniquenessSlot");
+        IIndex locator = FindIndex(
+            entity,
+            "TenantId",
+            "LookupKeyVersion",
+            "LocatorDigest");
+        await Assert.That(digest.IsUnique).IsTrue();
+        await Assert.That(generation.IsUnique).IsTrue();
+        await Assert.That(active.IsUnique).IsTrue();
+        await Assert.That(locator.IsUnique).IsTrue();
         await Assert.That(propertyNames.Intersect(
             new[] { "Capability", "Email", "NormalizedIdentity", "Recipient", "AdmissionCredential" },
             StringComparer.OrdinalIgnoreCase)).IsEmpty();
-        await Assert.That(indexNames).Contains("ux_admission_recovery_capabilities_locator");
-
         string[] deliveryPropertyNames = delivery?.GetProperties()
             .Select(property => property.Name)
-            .ToArray() ?? [];
-        string[] deliveryIndexNames = delivery?.GetIndexes()
-            .Select(index => index.GetDatabaseName())
-            .Where(name => name is not null)
-            .Cast<string>()
             .ToArray() ?? [];
         await Assert.That(delivery).IsNotNull();
         await Assert.That(delivery!.GetTableName())
             .IsEqualTo("ie_admission_recovery_delivery_intents");
         await Assert.That(delivery.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
         await Assert.That(delivery.FindProperty("ConcurrencyStamp")!.IsConcurrencyToken).IsTrue();
-        await Assert.That(deliveryIndexNames)
-            .Contains("ux_admission_recovery_delivery_intents_generation");
+        IIndex deliveryGeneration = FindIndex(
+            delivery,
+            "TenantId",
+            "RecoveryRequestId",
+            "AdmissionTicketId",
+            "Purpose",
+            "CapabilityVersion");
+        await Assert.That(deliveryGeneration.IsUnique).IsTrue();
         await Assert.That(deliveryPropertyNames.Intersect(
             new[] { "Capability", "Email", "NormalizedIdentity", "Recipient", "AdmissionCredential" },
             StringComparer.OrdinalIgnoreCase)).IsEmpty();
@@ -86,4 +93,8 @@ public sealed class AdmissionRecoveryPersistenceContractTests
             new[] { "Email", "NormalizedIdentity", "Recipient", "Capability", "Digest", "Credential" },
             StringComparer.OrdinalIgnoreCase)).IsEmpty();
     }
+
+    private static IIndex FindIndex(IEntityType entityType, params string[] propertyNames) =>
+        entityType.GetIndexes().Single(index =>
+            index.Properties.Select(property => property.Name).SequenceEqual(propertyNames));
 }

@@ -439,6 +439,7 @@ internal static class CommandResponseResultMapper
             EventReportFailureCodes.DecisionNotFound => StatusCodes.Status404NotFound,
             EventReportFailureCodes.EventMismatch => StatusCodes.Status404NotFound,
             EventReportFailureCodes.Duplicate => StatusCodes.Status409Conflict,
+            EventReportFailureCodes.IntakeDisabled => StatusCodes.Status409Conflict,
             EventReportFailureCodes.EventInvalidStatus => StatusCodes.Status409Conflict,
             EventReportFailureCodes.CaseConcurrencyConflict => StatusCodes.Status409Conflict,
             EventReportFailureCodes.CaseInvalidStatus => StatusCodes.Status409Conflict,

@@ -31,7 +31,6 @@ public class EventCategoriesConfiguration : IEntityTypeConfiguration<EventCatego
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.CategoryId })
-            .HasDatabaseName("ix_event_categories_tenant_event_category")
             .IsUnique();
     }
 }

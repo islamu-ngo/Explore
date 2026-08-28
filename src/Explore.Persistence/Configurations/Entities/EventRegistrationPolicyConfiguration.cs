@@ -18,7 +18,6 @@ public class EventRegistrationPolicyConfiguration : IEntityTypeConfiguration<Eve
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasIndex(e => e.MasterCode)
-            .HasDatabaseName("ix_event_registration_policies_master_code")
             .IsUnique();
     }
 }

@@ -11,7 +11,7 @@ public sealed class RegistrationFinalizationEffectConfiguration : IEntityTypeCon
 {
     public void Configure(EntityTypeBuilder<RegistrationFinalizationEffect> builder)
     {
-        builder.ToTable("registration_finalization_effects", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_registration_finalization_effects_attempt_count", "attempt_count >= 0");
             table.HasCheckConstraint("ck_registration_finalization_effects_processing_fence", "processing_fence >= 0");
@@ -35,8 +35,7 @@ public sealed class RegistrationFinalizationEffectConfiguration : IEntityTypeCon
             .HasPrincipalKey(order => new { order.TenantId, order.EventId, order.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(value => new { value.TenantId, value.RegistrationOrderId })
-            .HasDatabaseName("ux_registration_finalization_effects_order").IsUnique();
-        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt })
-            .HasDatabaseName("ix_registration_finalization_effects_worker_poll");
+            .IsUnique();
+        builder.HasIndex(value => new { value.Status, value.NextAttemptAt, value.CreatedAt });
     }
 }

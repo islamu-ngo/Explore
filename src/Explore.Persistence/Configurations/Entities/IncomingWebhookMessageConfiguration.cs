@@ -11,7 +11,7 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
 {
     public void Configure(EntityTypeBuilder<IncomingWebhookMessage> builder)
     {
-        builder.ToTable("incoming_webhook_messages", table =>
+        builder.ToTable(table =>
         {
             table.HasCheckConstraint(
                 "ck_incoming_webhook_messages_payload_hash",
@@ -65,8 +65,7 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.Property(e => e.SettlementSourceId);
         builder.Ignore(e => e.SettlementSource);
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_incoming_webhook_messages_tenant_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -114,32 +113,24 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.Navigation(e => e.RedriveRecords).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderMessageId })
-            .HasDatabaseName("ux_incoming_webhook_messages_tenant_provider_message")
             .IsUnique();
 
         builder.HasIndex(e => new { e.TenantId, e.WebhookConsumerProviderBindingId, e.ReceivedAt })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_binding_received")
             .HasFilter("webhook_consumer_provider_binding_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.IdempotencyKey })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_provider_idempotency")
             .HasFilter("idempotency_key IS NOT NULL")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.NextAttemptAt, e.ProcessingLeaseExpiresAt })
-            .HasDatabaseName("ix_incoming_webhook_messages_claim_due");
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.NextAttemptAt, e.ProcessingLeaseExpiresAt });
 
-        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.ReceivedAt })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_status_received");
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.ReceivedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.PayloadRetentionUntil, e.ReplayWindowUntil })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_payload_retention")
             .HasFilter("payload_bytes IS NOT NULL");
 
-        builder.HasIndex(e => new { e.TenantId, e.ProcessingAttemptRetentionUntil })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_attempt_retention");
+        builder.HasIndex(e => new { e.TenantId, e.ProcessingAttemptRetentionUntil });
 
-        builder.HasIndex(e => new { e.TenantId, e.DeadLetterEvidenceRetentionUntil })
-            .HasDatabaseName("ix_incoming_webhook_messages_tenant_dead_letter_retention");
+        builder.HasIndex(e => new { e.TenantId, e.DeadLetterEvidenceRetentionUntil });
     }
 }

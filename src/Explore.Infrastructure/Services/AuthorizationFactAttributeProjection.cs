@@ -2,7 +2,6 @@
 // ABOUTME: This is the only place a policy attribute name exists; Application never authors provider dictionaries.
 
 using Explore.Application.Authorization;
-using Explore.Domain;
 
 namespace Explore.Infrastructure.Services;
 
@@ -19,6 +18,10 @@ public static class AuthorizationFactAttributeProjection
     public static Dictionary<string, object>? ToAttributes(IAuthorizationFacts? facts) => facts switch
     {
         InstanceScopedAuthorizationFacts => [],
+        ConfigurationManifestExportAuthorizationFacts => new(StringComparer.Ordinal)
+        {
+            ["configurationManifestExport"] = true
+        },
         PreCreateAuthorizationFacts value => PreCreate(value),
         TenantScopedAuthorizationFacts value => TenantScoped(value),
         TenantSettingAuthorizationFacts value => TenantSetting(value),

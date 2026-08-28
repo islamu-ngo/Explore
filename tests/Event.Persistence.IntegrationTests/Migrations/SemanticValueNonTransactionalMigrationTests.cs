@@ -1,5 +1,5 @@
-// ABOUTME: Proves semantic constraints cannot partially install on non-transactional DDL providers.
-// ABOUTME: Exercises malformed legacy data, zero-mutation failure, explicit repair, and retry on MariaDB and MySQL.
+// ABOUTME: Proves generated initials install semantic constraints on non-transactional DDL providers.
+// ABOUTME: Exercises fresh application and idempotent reapplication on MariaDB and MySQL.
 
 #nullable enable
 
@@ -22,55 +22,22 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 public sealed class SemanticValueNonTransactionalMigrationTests(
     SemanticValueNonTransactionalProviderFixture fixture)
 {
-    private const string MigrationSuffix = "PersistSemanticValueConstraints";
     private static readonly string[] ConstraintNames =
     [
-        "CK_EventAgendaItem_LocalDateRange",
-        "CK_EventSession_LocalDateRange",
-        "CK_EventTicketType_MoneyNonnegative",
-        "CK_LocationPii_CoordinateShape"
+        "ck_event_agenda_item_local_date_range",
+        "ck_event_session_local_date_range",
+        "ck_event_ticket_type_money_nonnegative",
+        "ck_location_pii_coordinate_shape"
     ];
 
     [Test]
     [Arguments(PrimaryDatabaseProvider.MariaDb)]
     [Arguments(PrimaryDatabaseProvider.MySql)]
-    public async Task MalformedLegacyMoney_FailsBeforeDdlAndIsRetryable(
+    public async Task InitialMigration_AppliesSemanticConstraintsExactlyOnce(
         PrimaryDatabaseProvider provider)
     {
         await using ExploreDbContext context = CreateContext(
             fixture.CreateOptions(provider));
-        SemanticMigrationCatalog catalog = FindSemanticMigration(context);
-        await CreatePreSemanticDatabaseAsync(context, catalog);
-        Guid ticketId = Guid.CreateVersion7();
-        await ExecuteAsync(
-            context,
-            """
-            INSERT INTO ie_event_ticket_types (id, fixed_price_minor)
-            VALUES (@ticket_id, -1)
-            """,
-            ("ticket_id", ticketId));
-
-        InvalidOperationException? exception = await Assert.That(async () =>
-                await ExploreDatabaseMigrator.MigrateAsync(
-                    context,
-                    new ConfigurationManager()))
-            .Throws<InvalidOperationException>();
-        await Assert.That(exception!.Message)
-            .Contains("semantic value", StringComparison.OrdinalIgnoreCase);
-        await Assert.That(await CountSemanticConstraintsAsync(context))
-            .IsEqualTo(0);
-        await Assert.That((await context.Database.GetAppliedMigrationsAsync())
-                .Contains(catalog.MigrationId, StringComparer.Ordinal))
-            .IsFalse();
-
-        await ExecuteAsync(
-            context,
-            """
-            UPDATE ie_event_ticket_types
-            SET fixed_price_minor = 0
-            WHERE id = @ticket_id
-            """,
-            ("ticket_id", ticketId));
 
         await ExploreDatabaseMigrator.MigrateAsync(
             context,
@@ -78,12 +45,32 @@ public sealed class SemanticValueNonTransactionalMigrationTests(
 
         await Assert.That(await CountSemanticConstraintsAsync(context))
             .IsEqualTo(ConstraintNames.Length);
-        await Assert.That((await context.Database.GetAppliedMigrationsAsync())
-                .Count(id => string.Equals(
-                    id,
-                    catalog.MigrationId,
-                    StringComparison.Ordinal)))
-            .IsEqualTo(1);
+        string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+        await Assert.That(applied).HasSingleItem();
+        await Assert.That(applied[0]).EndsWith("_Init");
+
+        await ExploreDatabaseMigrator.MigrateAsync(
+            context,
+            new ConfigurationManager());
+
+        await Assert.That(await CountSemanticConstraintsAsync(context))
+            .IsEqualTo(ConstraintNames.Length);
+        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
+            .IsEquivalentTo(applied);
+
+        await context.GetService<IMigrator>().MigrateAsync(Migration.InitialDatabase);
+        await Assert.That(await CountSemanticConstraintsAsync(context)).IsEqualTo(0);
+
+        await ExploreDatabaseMigrator.MigrateAsync(
+            context,
+            new ConfigurationManager());
+        await Assert.That(await CountSemanticConstraintsAsync(context))
+            .IsEqualTo(ConstraintNames.Length);
+        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
+            .IsEquivalentTo(applied);
+
+        await SqliteApplicationInitialLifecycleTests.AssertDataProtectionLifecycleAsync(
+            fixture.CreateOptions(provider));
     }
 
     private static ExploreDbContext CreateContext(
@@ -92,77 +79,6 @@ public sealed class SemanticValueNonTransactionalMigrationTests(
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
         return new ExploreDbContext(builder.Options);
-    }
-
-    private static SemanticMigrationCatalog FindSemanticMigration(
-        ExploreDbContext context)
-    {
-        string[] migrations = context.GetService<IMigrationsAssembly>()
-            .Migrations
-            .Keys
-            .ToArray();
-        int semanticIndex = Array.FindIndex(
-            migrations,
-            id => id.EndsWith(MigrationSuffix, StringComparison.Ordinal));
-        if (semanticIndex <= 0)
-        {
-            throw new InvalidOperationException(
-                "The semantic migration requires generated predecessors.");
-        }
-
-        return new SemanticMigrationCatalog(
-            migrations[semanticIndex],
-            migrations[..semanticIndex]);
-    }
-
-    private static async Task CreatePreSemanticDatabaseAsync(
-        ExploreDbContext context,
-        SemanticMigrationCatalog catalog)
-    {
-        await ExecuteAsync(
-            context,
-            """
-            CREATE TABLE ie_event_ticket_types (
-                id char(36) NOT NULL PRIMARY KEY,
-                fixed_price_minor bigint NULL,
-                minimum_price_minor bigint NULL,
-                suggested_price_minor bigint NULL);
-            """);
-        await ExecuteAsync(
-            context,
-            """
-            CREATE TABLE ie_location_pii (
-                location_id char(36) NOT NULL PRIMARY KEY,
-                latitude double NULL,
-                longitude double NULL);
-            """);
-        await ExecuteAsync(
-            context,
-            """
-            CREATE TABLE ie_event_agenda_items (
-                id char(36) NOT NULL PRIMARY KEY,
-                local_start_date date NULL,
-                local_end_date date NULL);
-            """);
-        await ExecuteAsync(
-            context,
-            """
-            CREATE TABLE ie_event_sessions (
-                id char(36) NOT NULL PRIMARY KEY,
-                local_start_date date NULL,
-                local_end_date date NULL);
-            """);
-
-        IHistoryRepository history =
-            context.GetService<IHistoryRepository>();
-        await ExecuteAsync(context, history.GetCreateScript());
-        foreach (string migrationId in catalog.PreviousMigrationIds)
-        {
-            await ExecuteAsync(
-                context,
-                history.GetInsertScript(
-                    new HistoryRow(migrationId, ProductInfo.GetVersion())));
-        }
     }
 
     private static async Task<int> CountSemanticConstraintsAsync(
@@ -175,10 +91,10 @@ public sealed class SemanticValueNonTransactionalMigrationTests(
             FROM information_schema.table_constraints
             WHERE constraint_schema = DATABASE()
               AND constraint_name IN (
-                  'CK_EventAgendaItem_LocalDateRange',
-                  'CK_EventSession_LocalDateRange',
-                  'CK_EventTicketType_MoneyNonnegative',
-                  'CK_LocationPii_CoordinateShape')
+                  'ck_event_agenda_item_local_date_range',
+                  'ck_event_session_local_date_range',
+                  'ck_event_ticket_type_money_nonnegative',
+                  'ck_location_pii_coordinate_shape')
             """);
         return Convert.ToInt32(
             result,
@@ -230,8 +146,4 @@ public sealed class SemanticValueNonTransactionalMigrationTests(
             await connection.OpenAsync();
         }
     }
-
-    private sealed record SemanticMigrationCatalog(
-        string MigrationId,
-        string[] PreviousMigrationIds);
 }

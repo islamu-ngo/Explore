@@ -21,13 +21,13 @@ public sealed class SplitEventReportConsentMigrationTests(
     {
         await ResetSharedMigrationDatabaseAsync();
         await using var context = CreateDbContext();
-        await context.GetService<IMigrator>().MigrateAsync("20260801192258_init");
+        await context.Database.MigrateAsync();
 
         string[] columns = await context.Database.SqlQueryRaw<string>(
                 """
                 SELECT column_name AS "Value"
                 FROM information_schema.columns
-                WHERE table_schema = 'public'
+                WHERE table_schema = 'islamu_event'
                   AND table_name = 'event_reports'
                   AND column_name IN (
                       'report_case_updates_consent',

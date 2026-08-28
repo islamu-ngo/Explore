@@ -115,7 +115,7 @@ public sealed class SemanticValueScalarPersistenceModelTests
     {
         using var context = CreateContext(provider);
         await AssertConstraint(RequiredEntity<EventTicketType>(context.GetService<IDesignTimeModel>().Model),
-            "CK_EventTicketType_MoneyNonnegative",
+            "ck_event_ticket_type_money_nonnegative",
             "fixed_price_minor >= 0", "minimum_price_minor >= 0", "suggested_price_minor >= 0");
     }
 
@@ -129,7 +129,7 @@ public sealed class SemanticValueScalarPersistenceModelTests
     {
         using var context = CreateContext(provider);
         await AssertConstraint(RequiredEntity<LocationPii>(context.GetService<IDesignTimeModel>().Model),
-            "CK_LocationPii_CoordinateShape",
+            "ck_location_pii_coordinate_shape",
             "latitude IS NULL AND longitude IS NULL", "latitude BETWEEN -90 AND 90", "longitude BETWEEN -180 AND 180");
     }
 
@@ -143,7 +143,7 @@ public sealed class SemanticValueScalarPersistenceModelTests
     {
         using var context = CreateContext(provider);
         await AssertConstraint(RequiredEntity<EventAgendaItem>(context.GetService<IDesignTimeModel>().Model),
-            "CK_EventAgendaItem_LocalDateRange", "local_end_date >= local_start_date");
+            "ck_event_agenda_item_local_date_range", "local_end_date >= local_start_date");
     }
 
     [Test]
@@ -156,7 +156,7 @@ public sealed class SemanticValueScalarPersistenceModelTests
     {
         using var context = CreateContext(provider);
         await AssertConstraint(RequiredEntity<EventSession>(context.GetService<IDesignTimeModel>().Model),
-            "CK_EventSession_LocalDateRange", "local_end_date IS NULL", "local_end_date >= local_start_date");
+            "ck_event_session_local_date_range", "local_end_date IS NULL", "local_end_date >= local_start_date");
     }
 
     private static async Task AssertLeaf(

@@ -3,6 +3,8 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
+using Explore.Persistence.Database.ProviderPrimitives;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -137,26 +139,10 @@ public sealed class WebhookBulkReplayRepository(ExploreDbContext dbContext)
     }
 
     public Task<WebhookBulkReplayOperation?> GetNextQueuedForUpdateAsync(
-        CancellationToken cancellationToken)
-    {
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            return dbContext.WebhookBulkReplayOperations
-                .FromSqlRaw(
-                    "SELECT * FROM webhook_bulk_replay_operations " +
-                    "WHERE status_id = {0} ORDER BY queued_at, id FOR UPDATE SKIP LOCKED LIMIT 1",
-                    (int)WebhookBulkReplayStatus.Queued)
-                .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
-                .SingleOrDefaultAsync(cancellationToken);
-        }
-
-        return dbContext.WebhookBulkReplayOperations
-            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
-            .Where(operation => operation.StatusId == (int)WebhookBulkReplayStatus.Queued)
-            .OrderBy(operation => operation.QueuedAt)
-            .ThenBy(operation => operation.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        RelationalSkipLockedQuery.LoadNextWebhookBulkReplayAsync(
+            dbContext,
+            cancellationToken);
 
     public async Task<int> ScheduleEligibleLocalTargetsAsync(
         WebhookBulkReplayOperation operation,
@@ -293,16 +279,16 @@ public sealed class WebhookBulkReplayRepository(ExploreDbContext dbContext)
         return TenantRows(dbContext.WebhookBulkReplayOperations, tenantId);
     }
 
-    private Task AcquireTenantLockAsync(
+    private async Task AcquireTenantLockAsync(
         string purpose,
         Guid tenantId,
-        CancellationToken cancellationToken) =>
-        dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL"
-            ? dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                [$"webhook-bulk-replay-{purpose}:{tenantId:D}"],
-                cancellationToken)
-            : Task.CompletedTask;
+        CancellationToken cancellationToken)
+    {
+        _ = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            $"webhook-bulk-replay-{purpose}:{tenantId:D}",
+            cancellationToken);
+    }
 
     private static IQueryable<TEntity> TenantRows<TEntity>(DbSet<TEntity> set, Guid tenantId)
         where TEntity : class =>

@@ -458,6 +458,7 @@ public static class LinkRelations
     public const string Document = "document";
     public const string SuggestCorrection = "suggest-correction";
     public const string ReportExternalLink = "report-external-link";
+    public const string ReportLegalOrCopyright = "report-legal-or-copyright";
 
     public const string UpdateCommunicationConsent = "update-communication-consent";
 
@@ -538,6 +539,16 @@ public static class LinkRelations
     /// Action link for rejecting an AI-proposed action without side effects.
     /// </summary>
     public const string RejectAction = "reject-action";
+
+    /// <summary>
+    /// Downloads instance and tenant overrides as one current-instance manifest.
+    /// </summary>
+    public const string ExportConfigurationOverrides = "export-configuration-overrides";
+
+    /// <summary>
+    /// Downloads flattened effective instance and tenant values as a portable manifest.
+    /// </summary>
+    public const string ExportConfigurationPortable = "export-configuration-portable";
 
     #endregion
 

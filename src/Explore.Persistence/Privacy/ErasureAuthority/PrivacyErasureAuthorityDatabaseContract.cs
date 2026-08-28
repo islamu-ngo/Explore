@@ -6,6 +6,8 @@ namespace Explore.Persistence.Privacy.ErasureAuthority;
 public static class PrivacyErasureAuthorityDatabaseContract
 {
     public const string SchemaName = "privacy_erasure_authority";
+    public const string CounterTable = "authority_counter";
+    public const string RollbackGuardView = "retained_evidence_rollback_guard";
     public const string OwnerRole = "privacy_erasure_authority_owner";
     public const string MigratorRole = "privacy_erasure_authority_migrator";
     public const string RuntimeRole = "privacy_erasure_authority_runtime";
@@ -458,6 +460,21 @@ public static class PrivacyErasureAuthorityDatabaseContract
         """;
 
     public static string RetentionLifecycleMigrationSql { get; } = $"""
+        DO $contract$
+        BEGIN
+            IF to_regclass('{SchemaName}.{RollbackGuardView}') IS NULL THEN
+                EXECUTE 'CREATE VIEW {SchemaName}.{RollbackGuardView} AS
+                    SELECT authority_sequence
+                    FROM {SchemaName}.erasure_intents
+                    WHERE false';
+                EXECUTE 'ALTER VIEW {SchemaName}.{RollbackGuardView}
+                    OWNER TO {OwnerRole}';
+            END IF;
+        END
+        $contract$;
+        REVOKE ALL ON {SchemaName}.{RollbackGuardView}
+            FROM PUBLIC, {RuntimeRole}, {MigratorRole};
+
         CREATE OR REPLACE FUNCTION {SchemaName}.reject_erasure_intent_mutation()
         RETURNS trigger
         LANGUAGE plpgsql

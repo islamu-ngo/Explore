@@ -1,0 +1,326 @@
+@* ABOUTME: Tenant administration card for the effective reporting-intake policy. *@
+@* ABOUTME: Uses server HAL affordances and publication-safety state for every mutation decision. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Reporting
+@implements IDisposable
+@inject ITenantReportingIntakePolicyService PolicyService
+@inject ITranslationService Translations
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncer
+@inject ILogger<TenantReportingIntakePolicySection> Logger
+
+<MudPaper Class="reporting-intake" Outlined="true">
+    <div class="reporting-intake__heading">
+        <div>
+            <MudText Typo="Typo.h6">@T("tenant.reportingIntake.heading", "Reporting intake")</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @T(
+                    "tenant.reportingIntake.summary",
+                    "Control whether people can report published content to this tenant.")
+            </MudText>
+        </div>
+
+        @if (_policy is not null)
+        {
+            <span class="reporting-intake__source">@SourceLabel</span>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="reporting-intake__loading" role="status" aria-live="polite">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span>@T("tenant.reportingIntake.loading", "Loading reporting intake policy...")</span>
+        </div>
+    }
+    else if (_policy is not null)
+    {
+        <div class="reporting-intake__control">
+            <MudSwitch T="bool?"
+                       @key="_policyVersion"
+                       Class="reporting-intake__switch"
+                       Value="@_policy.Enabled"
+                       ValueChanged="OnEnabledChangedAsync"
+                       Color="Color.Primary"
+                       Disabled="@(!CanToggle)"
+                       aria-describedby="@DescriptionIds"
+                       AriaLabel="@T("tenant.reportingIntake.toggle", "Accept reports about published content")">
+                <span>@T("tenant.reportingIntake.toggle", "Accept reports about published content")</span>
+                <span class="reporting-intake__value">
+                    @(_policy.Enabled == true
+                        ? T("tenant.reportingIntake.enabled", "Enabled")
+                        : T("tenant.reportingIntake.disabled", "Disabled"))
+                </span>
+            </MudSwitch>
+        </div>
+
+        <MudText Id="reporting-intake-distinction"
+                 Class="reporting-intake__guidance"
+                 Typo="Typo.body2">
+            @T(
+                "tenant.reportingIntake.providerDistinction",
+                "External reporting providers are configured separately. Turning off intake stops new reports at this tenant; it does not disable an external provider or delete existing reports.")
+        </MudText>
+        <MudText Id="reporting-intake-contacts"
+                 Class="reporting-intake__guidance"
+                 Typo="Typo.body2">
+            @T(
+                "tenant.reportingIntake.independentContacts",
+                "Correction, legal, and copyright requests remain available through the tenant's published contact channels, even when reporting intake is disabled.")
+        </MudText>
+
+        @if (_policy.IsLockedByInstance == true)
+        {
+            <div id="reporting-intake-authority"
+                 class="reporting-intake__authority"
+                role="status">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                <span>
+                    @T(
+                        "tenant.reportingIntake.instanceLocked",
+                        "Locked by the instance. Tenant administrators cannot override this policy.")
+                </span>
+            </div>
+        }
+        else if (!HasEditAffordance)
+        {
+            <div id="reporting-intake-authority"
+                 class="reporting-intake__authority"
+                role="status">
+                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
+                <span>
+                    @T(
+                        "tenant.reportingIntake.readOnly",
+                        "This policy is read-only for your current access.")
+                </span>
+            </div>
+        }
+        else if (_policy.Enabled == true && _policy.CanDisable != true)
+        {
+            <div id="reporting-intake-authority"
+                 class="reporting-intake__authority reporting-intake__authority--warning"
+                 role="status">
+                <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" />
+                <span>@DisableReason</span>
+            </div>
+        }
+    }
+
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Class="reporting-intake__alert"
+                  Severity="Severity.Error"
+                  Dense="true"
+                  role="alert">
+            @_errorMessage
+        </MudAlert>
+    }
+</MudPaper>
+
+@code {
+    private const int UnauthorizedStatusCode = 401;
+    private const int ForbiddenStatusCode = 403;
+
+    private readonly CancellationTokenSource _disposal = new();
+    private HalResourceOfTenantReportingIntakePolicyDto? _policy;
+    private bool _isLoading = true;
+    private bool _isUpdating;
+    private int _policyVersion;
+    private string? _errorMessage;
+
+    private bool HasEditAffordance =>
+        _policy?._links?.ContainsKey("edit") == true;
+
+    private bool CanToggle =>
+        !_isUpdating
+        && _policy is not null
+        && _policy.IsLockedByInstance != true
+        && HasEditAffordance
+        && (_policy.Enabled != true || _policy.CanDisable == true);
+
+    private string DisableReason =>
+        string.IsNullOrWhiteSpace(_policy?.Reason)
+            ? T(
+                "tenant.reportingIntake.disableBlocked",
+                "Reporting intake cannot be disabled while the effective publication policy requires it.")
+            : _policy.Reason;
+
+    private string SourceLabel =>
+        _policy?.Source switch
+        {
+            SettingSource.SystemDefault => T("tenant.reportingIntake.source.systemDefault", "System default"),
+            SettingSource.TenantOverride => T("tenant.reportingIntake.source.tenantOverride", "Tenant override"),
+            SettingSource.SystemLocked => T("tenant.reportingIntake.source.systemLocked", "System locked"),
+            SettingSource.TenantLocked => T("tenant.reportingIntake.source.tenantLocked", "Tenant locked"),
+            _ => T("tenant.reportingIntake.source.effective", "Effective policy")
+        };
+
+    private string DescriptionIds =>
+        _policy?.IsLockedByInstance == true
+        || !HasEditAffordance
+        || (_policy?.Enabled == true && _policy.CanDisable != true)
+            ? "reporting-intake-distinction reporting-intake-contacts reporting-intake-authority"
+            : "reporting-intake-distinction reporting-intake-contacts";
+
+    private string LoadErrorMessage =>
+        T(
+            "tenant.reportingIntake.error.load",
+            "The reporting intake policy could not be loaded. Try again.");
+
+    private string UpdateErrorMessage =>
+        T(
+            "tenant.reportingIntake.error.update",
+            "The reporting intake policy could not be updated. Your previous setting remains in effect.");
+
+    private string RefreshErrorMessage =>
+        T(
+            "tenant.reportingIntake.error.refresh",
+            "The policy was updated, but its current state could not be refreshed. Reload the page.");
+
+    private string SessionExpiredMessage =>
+        T(
+            "tenant.reportingIntake.error.sessionExpired",
+            "Your session has expired. Sign in again to manage reporting intake.");
+
+    private string AccessDeniedMessage =>
+        T(
+            "tenant.reportingIntake.error.accessDenied",
+            "You no longer have permission to manage reporting intake.");
+
+    private string T(string key, string fallback) => Translations.T(key, fallback);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Translations.OnLanguageChanged += HandleLanguageChanged;
+        await LoadPolicyAsync(announceFailure: true);
+    }
+
+    private void HandleLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnEnabledChangedAsync(bool? enabled)
+    {
+        if (!CanToggle || enabled is not bool requestedValue)
+        {
+            return;
+        }
+
+        _isUpdating = true;
+        _errorMessage = null;
+
+        try
+        {
+            await PolicyService.UpdateAsync(requestedValue, _disposal.Token);
+
+            if (!await LoadPolicyAsync(announceFailure: false))
+            {
+                _errorMessage = RefreshErrorMessage;
+                await AccessibilityAnnouncer.AnnounceAssertiveAsync(RefreshErrorMessage);
+                return;
+            }
+
+            string successMessage = T(
+                "tenant.reportingIntake.updated",
+                "Reporting intake policy updated.");
+            await AccessibilityAnnouncer.AnnouncePoliteAsync(successMessage);
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (ApiException exception) when (exception.StatusCode == UnauthorizedStatusCode)
+        {
+            await RecoverFromRejectedUpdateAsync(SessionExpiredMessage);
+        }
+        catch (ApiException exception) when (exception.StatusCode == ForbiddenStatusCode)
+        {
+            await RecoverFromRejectedUpdateAsync(AccessDeniedMessage);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                "Tenant reporting intake update failed with {FailureType}.",
+                exception.GetType().Name);
+            await LoadPolicyAsync(announceFailure: false);
+            _errorMessage = UpdateErrorMessage;
+            await AccessibilityAnnouncer.AnnounceAssertiveAsync(UpdateErrorMessage);
+        }
+        finally
+        {
+            _isUpdating = false;
+        }
+    }
+
+    private async Task RecoverFromRejectedUpdateAsync(string message)
+    {
+        await LoadPolicyAsync(announceFailure: false);
+        _errorMessage = message;
+        await AccessibilityAnnouncer.AnnounceAssertiveAsync(message);
+    }
+
+    private async Task<bool> LoadPolicyAsync(bool announceFailure)
+    {
+        _isLoading = true;
+
+        try
+        {
+            _policy = await PolicyService.GetAsync(_disposal.Token);
+            _policyVersion++;
+            _errorMessage = null;
+            return true;
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (ApiException exception) when (exception.StatusCode == UnauthorizedStatusCode)
+        {
+            await HandleLoadFailureAsync(SessionExpiredMessage, announceFailure);
+            return false;
+        }
+        catch (ApiException exception) when (exception.StatusCode == ForbiddenStatusCode)
+        {
+            await HandleLoadFailureAsync(AccessDeniedMessage, announceFailure);
+            return false;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                "Tenant reporting intake load failed with {FailureType}.",
+                exception.GetType().Name);
+            _policy = null;
+            _errorMessage = LoadErrorMessage;
+            if (announceFailure)
+            {
+                await AccessibilityAnnouncer.AnnounceAssertiveAsync(LoadErrorMessage);
+            }
+
+            return false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleLoadFailureAsync(string message, bool announceFailure)
+    {
+        _policy = null;
+        _errorMessage = message;
+        if (announceFailure)
+        {
+            await AccessibilityAnnouncer.AnnounceAssertiveAsync(message);
+        }
+    }
+
+    public void Dispose()
+    {
+        Translations.OnLanguageChanged -= HandleLanguageChanged;
+        _disposal.Cancel();
+        _disposal.Dispose();
+    }
+}

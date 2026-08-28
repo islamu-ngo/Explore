@@ -11,7 +11,6 @@ public sealed class RegistrationFormTemplateConfiguration : IEntityTypeConfigura
 {
     public void Configure(EntityTypeBuilder<RegistrationFormTemplate> builder)
     {
-        builder.ToTable("registration_form_templates");
         builder.Property(template => template.Id).ValueGeneratedNever();
         builder.Property(template => template.Name).IsRequired().HasMaxLength(200);
         builder.Property(template => template.Description).IsRequired().HasMaxLength(1000);

@@ -325,7 +325,17 @@ public sealed class AiAssistantDbBackedApiFixture : RealRuntimeApiFixture
     private sealed class FixedAiSettingsResolver(AiAssistantSettingGroup settings) : IHierarchicalSettingsResolver
     {
         public Task<T?> ResolveAsync<T>(string key, SettingContext context, CancellationToken ct = default)
-            => Task.FromResult(default(T));
+        {
+            if (typeof(T) == typeof(bool)
+                && key is GovernanceSettingKeys.Events.UserSubmissionEnabled
+                    or GovernanceSettingKeys.Events.OrganizationSubmissionEnabled
+                    or GovernanceSettingKeys.Events.GroupSubmissionEnabled)
+            {
+                return Task.FromResult((T?)(object)true);
+            }
+
+            return Task.FromResult(default(T));
+        }
 
         public Task<ResolvedSetting?> ResolveWithMetadataAsync(string key, SettingContext context, CancellationToken ct = default)
             => Task.FromResult<ResolvedSetting?>(null);

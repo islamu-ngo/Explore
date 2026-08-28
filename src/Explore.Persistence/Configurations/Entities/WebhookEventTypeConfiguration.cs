@@ -11,8 +11,6 @@ public class WebhookEventTypeConfiguration : IEntityTypeConfiguration<WebhookEve
 {
     public void Configure(EntityTypeBuilder<WebhookEventType> builder)
     {
-        builder.ToTable("webhook_event_types");
-
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
         builder.Property(e => e.GroupName).HasMaxLength(100).IsRequired();
@@ -24,10 +22,8 @@ public class WebhookEventTypeConfiguration : IEntityTypeConfiguration<WebhookEve
         builder.Property(e => e.PayloadRetentionDays).HasDefaultValue(14);
 
         builder.HasIndex(e => e.Name)
-            .HasDatabaseName("ux_webhook_event_types_name")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.GroupName, e.IsEnabled, e.IsPublic })
-            .HasDatabaseName("ix_webhook_event_types_group_enabled_public");
+        builder.HasIndex(e => new { e.GroupName, e.IsEnabled, e.IsPublic });
     }
 }

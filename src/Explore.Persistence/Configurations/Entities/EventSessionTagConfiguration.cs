@@ -32,7 +32,6 @@ public class EventSessionTagConfiguration : IEntityTypeConfiguration<EventSessio
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.TagId })
-            .HasDatabaseName("ix_event_session_tags_tenant_session_tag")
             .IsUnique();
     }
 }

@@ -31,7 +31,6 @@ public class EventTagsConfiguration : IEntityTypeConfiguration<EventTags>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.TagId })
-            .HasDatabaseName("ix_event_tags_tenant_event_tag")
             .IsUnique();
     }
 }

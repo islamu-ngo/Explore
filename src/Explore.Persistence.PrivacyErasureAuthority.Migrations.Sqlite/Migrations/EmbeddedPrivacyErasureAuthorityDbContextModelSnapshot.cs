@@ -93,9 +93,6 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                     b.HasKey("AuthoritySequence")
                         .HasName("pk_ie_erasure_intents");
 
-                    b.HasAlternateKey("IntentId")
-                        .HasName("ak_ie_erasure_intents_intent_id");
-
                     b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
                         .IsUnique()
                         .HasDatabaseName("ix_ie_erasure_intents_intent_id_subject_kind_policy_version");

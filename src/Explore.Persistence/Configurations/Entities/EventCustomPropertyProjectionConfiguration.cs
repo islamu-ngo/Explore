@@ -12,8 +12,6 @@ public class EventCustomPropertyProjectionConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<EventCustomPropertyProjection> builder)
     {
-        builder.ToTable("event_custom_property_projections");
-
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
@@ -71,16 +69,12 @@ public class EventCustomPropertyProjectionConfiguration : IEntityTypeConfigurati
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(e => e.EventCustomPropertyValueId)
-            .HasDatabaseName("ix_ecpp_value")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.Namespace, e.Key, e.NormalizedValue })
-            .HasDatabaseName("ix_ecpp_tenant_namespace_key_normalized");
+        builder.HasIndex(e => new { e.TenantId, e.Namespace, e.Key, e.NormalizedValue });
 
-        builder.HasIndex(e => new { e.TenantId, e.ExposureLevel })
-            .HasDatabaseName("ix_ecpp_tenant_exposure");
+        builder.HasIndex(e => new { e.TenantId, e.ExposureLevel });
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.Namespace, e.Key, e.Ordinal })
-            .HasDatabaseName("ix_ecpp_tenant_event_namespace_key_ordinal");
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.Namespace, e.Key, e.Ordinal });
     }
 }

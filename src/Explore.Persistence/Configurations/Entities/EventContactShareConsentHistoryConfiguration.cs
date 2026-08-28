@@ -11,7 +11,6 @@ public sealed class EventContactShareConsentHistoryConfiguration : IEntityTypeCo
 {
     public void Configure(EntityTypeBuilder<EventContactShareConsentHistory> builder)
     {
-        builder.ToTable("event_contact_share_consent_history");
         builder.Property(history => history.Id).ValueGeneratedNever();
         builder.Property(history => history.PurposeCodeSnapshot).IsRequired().HasMaxLength(100);
         builder.Property(history => history.EmailSnapshot).IsRequired().HasMaxLength(320);

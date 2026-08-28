@@ -5,6 +5,7 @@ using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -204,23 +205,14 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             return [];
         }
 
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        foreach (Guid capacityPoolId in orderedIds)
         {
-            if (dbContext.Database.CurrentTransaction is null)
-            {
-                throw new InvalidOperationException("Capacity-pool row locks require an active unit-of-work transaction.");
-            }
-
-            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                SELECT id
-                FROM event_capacity_pools
-                WHERE tenant_id = {tenantId}
-                  AND event_id = {eventId}
-                  AND id = ANY({orderedIds})
-                  AND is_deleted = false
-                ORDER BY id
-                FOR UPDATE
-                """, cancellationToken);
+            await RelationalEntityRowFence.AcquireAsync<EventCapacityPool>(
+                dbContext,
+                tenantId,
+                pool => pool.Id,
+                capacityPoolId,
+                cancellationToken);
         }
 
         return await dbContext.EventCapacityPools
@@ -355,17 +347,20 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> TryExpireDueHoldAsync(Guid holdId, DateTime utcNow, CancellationToken cancellationToken)
+    public Task<bool> TryExpireDueHoldAsync(
+        Guid holdId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
     {
         EnsureUtc(utcNow);
 
         if (dbContext.Database.CurrentTransaction is not null)
         {
-            return await TryExpireDueHoldCoreAsync(holdId, utcNow, cancellationToken);
+            return TryExpireDueHoldCoreAsync(holdId, utcNow, cancellationToken);
         }
 
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async token =>
+        return strategy.ExecuteAsync(async token =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(
                 IsolationLevel.Serializable,
@@ -467,17 +462,19 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
     public async Task<bool> TryConsumeActiveHoldAsync(Guid holdId, DateTime utcNow, CancellationToken cancellationToken)
     {
         EnsureUtc(utcNow);
-        int affected = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            UPDATE registration_inventory_holds
-            SET registration_inventory_hold_status_id = {(int)RegistrationInventoryHoldStatusEnum.Consumed},
-                consumed_at = {utcNow},
-                updated_at = {utcNow},
-                concurrency_stamp = {Guid.CreateVersion7()}
-            WHERE id = {holdId}
-              AND registration_inventory_hold_status_id = {(int)RegistrationInventoryHoldStatusEnum.Active}
-              AND expires_at > {utcNow}
-              AND is_deleted = false
-            """, cancellationToken);
+        int affected = await dbContext.RegistrationInventoryHolds
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .Where(hold => hold.Id == holdId
+                && hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active
+                && hold.ExpiresAt > utcNow
+                && !hold.IsDeleted)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(
+                    hold => hold.RegistrationInventoryHoldStatusId,
+                    (int)RegistrationInventoryHoldStatusEnum.Consumed)
+                .SetProperty(hold => hold.ConsumedAt, utcNow)
+                .SetProperty(hold => hold.UpdatedAt, utcNow)
+                .SetProperty(hold => hold.ConcurrencyStamp, Guid.CreateVersion7()), cancellationToken);
         return affected == 1;
     }
 
@@ -512,16 +509,16 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         }
 
         EnsureUtc(utcNow);
-        int affected = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            UPDATE registration_inventory_holds
-            SET registration_inventory_hold_status_id = {(int)outcome},
-                released_at = {utcNow},
-                updated_at = {utcNow},
-                concurrency_stamp = {Guid.CreateVersion7()}
-            WHERE id = {holdId}
-              AND registration_inventory_hold_status_id = {(int)RegistrationInventoryHoldStatusEnum.Active}
-              AND is_deleted = false
-            """, cancellationToken);
+        int affected = await dbContext.RegistrationInventoryHolds
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .Where(hold => hold.Id == holdId
+                && hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active
+                && !hold.IsDeleted)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(hold => hold.RegistrationInventoryHoldStatusId, (int)outcome)
+                .SetProperty(hold => hold.ReleasedAt, utcNow)
+                .SetProperty(hold => hold.UpdatedAt, utcNow)
+                .SetProperty(hold => hold.ConcurrencyStamp, Guid.CreateVersion7()), cancellationToken);
         return affected == 1;
     }
 
@@ -547,6 +544,64 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
                 .SetProperty(hold => hold.ReleasedAt, utcNow)
                 .SetProperty(hold => hold.UpdatedAt, utcNow)
                 .SetProperty(hold => hold.ConcurrencyStamp, Guid.CreateVersion7()), cancellationToken);
+    }
+
+    public async Task<bool> TryTransitionOrderAsync(
+        Guid orderId,
+        Guid tenantId,
+        RegistrationOrderStatusEnum expectedStatus,
+        RegistrationOrderStatusEnum desiredStatus,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        EnsureUtc(utcNow);
+        if (!RegistrationOrderRules.CanTransition(expectedStatus, desiredStatus))
+        {
+            throw new InvalidOperationException($"Registration order cannot transition from {expectedStatus} to {desiredStatus}.");
+        }
+
+        int affected = await dbContext.RegistrationOrders
+            .Where(order => order.Id == orderId
+                && order.TenantId == tenantId
+                && order.RegistrationOrderStatusId == (int)expectedStatus)
+            .ExecuteUpdateAsync(setters =>
+            {
+                setters.SetProperty(order => order.RegistrationOrderStatusId, (int)desiredStatus);
+                setters.SetProperty(order => order.UpdatedAt, utcNow);
+                setters.SetProperty(order => order.ConcurrencyStamp, Guid.CreateVersion7());
+
+                if (desiredStatus is RegistrationOrderStatusEnum.AwaitingPayment or RegistrationOrderStatusEnum.AwaitingApproval or RegistrationOrderStatusEnum.Confirmed)
+                {
+                    setters.SetProperty(order => order.SubmittedAt, order => order.SubmittedAt ?? utcNow);
+                }
+
+                if (desiredStatus == RegistrationOrderStatusEnum.Confirmed)
+                {
+                    setters.SetProperty(order => order.ConfirmedAt, utcNow);
+                }
+                else if (desiredStatus == RegistrationOrderStatusEnum.Rejected)
+                {
+                    setters.SetProperty(order => order.RejectedAt, utcNow);
+                }
+                else if (desiredStatus == RegistrationOrderStatusEnum.Cancelled)
+                {
+                    setters.SetProperty(order => order.CancelledAt, utcNow);
+                }
+            }, cancellationToken);
+        if (affected == 1)
+        {
+            var trackedOrder =
+                dbContext.ChangeTracker.Entries<RegistrationOrder>()
+                    .SingleOrDefault(entry =>
+                        entry.Entity.Id == orderId &&
+                        entry.Entity.TenantId == tenantId);
+            if (trackedOrder is not null)
+            {
+                await trackedOrder.ReloadAsync(cancellationToken);
+            }
+        }
+
+        return affected == 1;
     }
 
     public async Task AddEventRegistrationsAsync(

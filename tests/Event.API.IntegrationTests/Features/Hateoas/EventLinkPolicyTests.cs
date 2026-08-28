@@ -427,7 +427,10 @@ public sealed class EventLinkPolicyTests
             Guid.NewGuid(),
             status: EventStatusEnum.Published,
             statusName: "Published",
-            statusCode: "PUBLISHED");
+            statusCode: "PUBLISHED") with
+        {
+            IsReportingIntakeEnabled = true
+        };
 
         var links = new EventDetailLinkPolicy()
             .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))

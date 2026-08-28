@@ -14,6 +14,7 @@ using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.Settings;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Application.Models;
 using Explore.Application.Models.PublicExperience;
@@ -45,6 +46,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(CustomPropertyProjectionScopeType),
         typeof(CustomPropertyProjectionState),
         typeof(CustomPropertyFilterOperator),
+        typeof(ConfigurationManifestExportView),
         typeof(DeclineBehavior),
         typeof(EmailDispatchUnknownReconciliationOutcome),
         typeof(EntityTypeName),
