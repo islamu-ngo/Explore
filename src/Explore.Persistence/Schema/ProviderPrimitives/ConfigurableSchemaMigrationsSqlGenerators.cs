@@ -59,10 +59,20 @@ internal sealed class ConfigurableSqliteMigrationsSqlGenerator(
         IReadOnlyList<MigrationOperation> operations,
         Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
         MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
-        => ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
-            base.Generate(operations, model, options),
-            operations,
+    {
+        IReadOnlyList<MigrationOperation> executableOperations =
+            ConfigurableSchemaMigrationOperations.RemoveRedundantForeignKeyDrops(operations);
+        IReadOnlyList<MigrationCommand> commands =
+            base.Generate(executableOperations, model, options);
+        commands = ConfigurableSchemaMigrationOperations.WrapSqliteTableDrops(
+            commands,
+            executableOperations,
             Dependencies);
+        return ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
+            commands,
+            executableOperations,
+            Dependencies);
+    }
 }
 
 internal sealed class ConfigurableMySqlMigrationsSqlGenerator(
@@ -83,6 +93,61 @@ internal sealed class ConfigurableMySqlMigrationsSqlGenerator(
 
 internal static class ConfigurableSchemaMigrationOperations
 {
+    public static IReadOnlyList<MigrationOperation> RemoveRedundantForeignKeyDrops(
+        IReadOnlyList<MigrationOperation> operations)
+    {
+        HashSet<(string? Schema, string Table)> droppedTables = operations
+            .OfType<DropTableOperation>()
+            .Select(operation => (operation.Schema, operation.Name))
+            .ToHashSet();
+        if (droppedTables.Count == 0)
+        {
+            return operations;
+        }
+
+        return operations
+            .Where(operation => operation is not DropForeignKeyOperation foreignKey
+                || !droppedTables.Contains((foreignKey.Schema, foreignKey.Table)))
+            .ToArray();
+    }
+
+    public static IReadOnlyList<MigrationCommand> WrapSqliteTableDrops(
+        IReadOnlyList<MigrationCommand> commands,
+        IReadOnlyList<MigrationOperation> operations,
+        MigrationsSqlGeneratorDependencies dependencies)
+    {
+        if (!operations.Any(operation => operation is DropTableOperation))
+        {
+            return commands;
+        }
+
+        var wrapped = new List<MigrationCommand>(commands.Count + 2)
+        {
+            CreateSqlitePragmaCommand(
+                "PRAGMA foreign_keys = OFF;",
+                dependencies)
+        };
+        wrapped.AddRange(commands);
+        wrapped.Add(CreateSqlitePragmaCommand(
+            "PRAGMA foreign_keys = ON;",
+            dependencies));
+        return wrapped;
+    }
+
+    private static MigrationCommand CreateSqlitePragmaCommand(
+        string sql,
+        MigrationsSqlGeneratorDependencies dependencies)
+    {
+        var relationalCommand = dependencies.CommandBuilderFactory.Create()
+            .Append(sql)
+            .Build();
+        return new MigrationCommand(
+            relationalCommand,
+            dependencies.CurrentContext.Context,
+            dependencies.Logger,
+            transactionSuppressed: true);
+    }
+
     public static void Rewrite(IReadOnlyList<MigrationOperation> operations, Microsoft.EntityFrameworkCore.DbContext context)
     {
         var configuredSchema = GetConfiguredSchema(context);

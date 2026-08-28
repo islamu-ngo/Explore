@@ -256,7 +256,7 @@ internal static class RelationalNamedLock
             SqlServerProvider => transactionOwner
                 ? "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource = @resource, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = -1; SELECT @result;"
                 : "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource = @resource, @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = -1; SELECT @result;",
-            MySqlProvider => "SELECT GET_LOCK(@resource, -1)",
+            MySqlProvider => "SELECT GET_LOCK(@resource, 31536000)",
             _ => throw new InvalidOperationException($"Unsupported relational lock provider '{providerName}'."),
         };
         AddParameter(

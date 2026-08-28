@@ -92,9 +92,6 @@ public static class ExploreDatabaseMigrator
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        await SemanticValueConstraintMigrationPreflight.ValidateAsync(
-            db,
-            cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
     }
 
@@ -123,15 +120,9 @@ public static class ExploreDatabaseMigrator
                 PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql,
                 cancellationToken);
             await externalAuthorityDb.Database.MigrateAsync(cancellationToken);
-            await using var lifecycleTransaction = await externalAuthorityDb.Database
-                .BeginTransactionAsync(cancellationToken);
-            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
-                PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql,
+            await ApplyExternalPrivacyErasureAuthorityContractAsync(
+                externalAuthorityDb,
                 cancellationToken);
-            await externalAuthorityDb.Database.ExecuteSqlRawAsync(
-                PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql,
-                cancellationToken);
-            await lifecycleTransaction.CommitAsync(cancellationToken);
             logger.LogInformation(
                 "Database migration operation {Operation} completed.",
                 "AuthorityExternalDatabasePostgreSql");
@@ -185,5 +176,28 @@ public static class ExploreDatabaseMigrator
         logger.LogInformation(
             "Database migration operation {Operation} completed.",
             "AuthorityEmbeddedSqlite");
+    }
+
+    public static async Task ApplyExternalPrivacyErasureAuthorityContractAsync(
+        PrivacyErasureAuthorityDbContext authorityDatabase,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(authorityDatabase);
+
+        await using var lifecycleTransaction = await authorityDatabase.Database
+            .BeginTransactionAsync(cancellationToken);
+        await authorityDatabase.Database.ExecuteSqlRawAsync(
+            PrivacyErasureAuthorityDatabaseContract.AuthorityObjectsSql,
+            cancellationToken);
+        await authorityDatabase.Database.ExecuteSqlRawAsync(
+            PrivacyErasureAuthorityDatabaseContract.MigrationSql,
+            cancellationToken);
+        await authorityDatabase.Database.ExecuteSqlRawAsync(
+            PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql,
+            cancellationToken);
+        await authorityDatabase.Database.ExecuteSqlRawAsync(
+            PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql,
+            cancellationToken);
+        await lifecycleTransaction.CommitAsync(cancellationToken);
     }
 }
