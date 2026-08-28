@@ -10,6 +10,7 @@ using Explore.Persistence.Seed;
 using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
@@ -394,29 +395,35 @@ public sealed class GeneratedInitMigrationBehaviorTests(
 
     private ExploreDbContext CreateExploreContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 
     private DataProtectionKeyContext CreateDataProtectionContext()
     {
-        var options = new DbContextOptionsBuilder<DataProtectionKeyContext>()
+        var builder = new DbContextOptionsBuilder<DataProtectionKeyContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .Options;
-        return new DataProtectionKeyContext(options);
+            .ConfigureWarnings(warnings =>
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        builder.EnableServiceProviderCaching(false);
+        return new DataProtectionKeyContext(builder.Options);
     }
 
     private PrivacyErasureAuthorityDbContext CreateAuthorityContext()
     {
-        var options = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+        var builder = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .Options;
-        return new PrivacyErasureAuthorityDbContext(options);
+            .ConfigureWarnings(warnings =>
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        builder.EnableServiceProviderCaching(false);
+        return new PrivacyErasureAuthorityDbContext(builder.Options);
     }
 
     private static string[] MigrationIds(DbContext context) =>

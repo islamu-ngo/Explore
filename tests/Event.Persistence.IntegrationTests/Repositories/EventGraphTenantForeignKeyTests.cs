@@ -76,25 +76,28 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         var locationA = await SeedLocationAsync(context, scope.TenantId, "Room Event Location A");
         var locationB = await SeedLocationAsync(context, scope.TenantId, "Room Event Location B");
         var foreignRoom = await SeedLocationRoomAsync(context, scope.TenantId, locationB.Id, "Foreign Room");
+        var eventLocationA = EventLocation.CreatePhysical(
+            scope.TenantId, @event.EventId, locationA.Id, scope.UserId, DateTime.UtcNow);
+        context.EventLocations.Add(eventLocationA);
+        await context.SaveChangesAsync();
 
-        context.EventSessions.Add(new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             EventId = @event.EventId,
             Event = null!,
-            LocationId = locationA.Id,
-            Location = null,
-            RoomId = foreignRoom.Id,
-            Room = null,
             TenantId = scope.TenantId,
             Tenant = null!,
             Title = "Cross Location Room Session",
             StartTime = DateTimeOffset.UtcNow,
             EndTime = DateTimeOffset.UtcNow.AddHours(1),
             ConcurrencyStamp = Guid.NewGuid()
-        });
+        };
+        session.AssignEventLocation(eventLocationA);
+        session.RoomId = foreignRoom.Id;
+        context.EventSessions.Add(session);
 
-        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await context.SaveChangesAsync());
     }
 
     [Test]

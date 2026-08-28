@@ -130,14 +130,18 @@ public sealed class EventLocationBackfillTests(RecipientDeliveryMigrationContain
 
     private static ExploreDbContext CreateContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(
                 connectionString,
                 postgres => postgres.MigrationsAssembly(typeof(Task4MigrationProbe).Assembly.FullName))
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new Task4MigrationProbeContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new Task4MigrationProbeContext(builder.Options);
     }
 
     private static Task<bool> ProbeTableExistsAsync(ExploreDbContext context)

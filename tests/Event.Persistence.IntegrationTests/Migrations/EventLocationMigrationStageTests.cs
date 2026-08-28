@@ -118,11 +118,15 @@ public sealed class EventLocationMigrationStageTests(RecipientDeliveryMigrationC
 
     private static ExploreDbContext CreateContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(connectionString)
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 }

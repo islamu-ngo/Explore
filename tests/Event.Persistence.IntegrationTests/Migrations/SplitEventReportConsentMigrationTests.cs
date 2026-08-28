@@ -45,12 +45,16 @@ public sealed class SplitEventReportConsentMigrationTests(
 
     private ExploreDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 
     private Task ResetSharedMigrationDatabaseAsync() => fixture.ResetAsync();

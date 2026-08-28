@@ -47,12 +47,16 @@ public sealed class RecipientNotificationDeliveryMigrationTests(
 
     private ExploreDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 
     private Task ResetSharedMigrationDatabaseAsync() => fixture.ResetAsync();
@@ -97,7 +101,7 @@ public sealed class RecipientNotificationDeliveryMigrationTests(
             """
             SELECT is_nullable = 'NO'
             FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = @table AND column_name = @column
+            WHERE table_schema = current_schema() AND table_name = @table AND column_name = @column
             """,
             connection);
         command.Parameters.AddWithValue("table", table);

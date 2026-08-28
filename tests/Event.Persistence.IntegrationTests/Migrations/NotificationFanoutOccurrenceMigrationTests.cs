@@ -41,12 +41,16 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
 
     private ExploreDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 
     private static string[] ReadPendingModelOperations(ExploreDbContext context)
@@ -89,12 +93,12 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
         await Assert.That(await ExistsAsync(connection, """
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_name = 'notification_fanout_occurrences')
+                WHERE table_schema = current_schema() AND table_name = 'notification_fanout_occurrences')
             """)).IsEqualTo(expected);
         await Assert.That(await ExistsAsync(connection, """
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = 'notification_intents'
+                WHERE table_schema = current_schema() AND table_name = 'notification_intents'
                   AND column_name = 'fanout_occurrence_id')
             """)).IsEqualTo(expected);
 
@@ -111,7 +115,7 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
         await Assert.That(await ExistsAsync(connection, """
             SELECT EXISTS (
                 SELECT 1 FROM pg_indexes
-                WHERE schemaname = 'public'
+                WHERE schemaname = current_schema()
                   AND indexname = 'ux_notification_intents_tenant_occurrence_recipient')
             """)).IsTrue();
     }

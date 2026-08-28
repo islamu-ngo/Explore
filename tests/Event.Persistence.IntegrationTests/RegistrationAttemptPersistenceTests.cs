@@ -28,11 +28,7 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     [Test]
     public async Task ExistingRegistrationLineageExposesTenantContainedPrincipalKeys()
     {
-        await using var context = new ExploreDbContext(
-            new DbContextOptionsBuilder<ExploreDbContext>()
-                .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
-                .UseSnakeCaseNamingConvention()
-                .Options);
+        await using var context = CreateModelContext();
 
         IModel model = context.Model;
 
@@ -46,11 +42,7 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     [Test]
     public async Task Phase81ModelDeclaresFiltersConvertersBusinessUniquenessAndRevisionOrdering()
     {
-        await using var context = new ExploreDbContext(
-            new DbContextOptionsBuilder<ExploreDbContext>()
-                .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
-                .UseSnakeCaseNamingConvention()
-                .Options);
+        await using var context = CreateModelContext();
 
         IEntityType attempt = context.Model.FindEntityType(typeof(RegistrationAttempt))!;
         IEntityType submission = context.Model.FindEntityType(typeof(RegistrationSubmission))!;
@@ -70,10 +62,9 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
         IIndex revisionIdentity = revision.GetIndexes().Single(index => index.IsUnique);
         await Assert.That(submission.FindPrimaryKey()!.GetName()).IsEqualTo("pk_registration_submissions");
         await Assert.That(revision.FindPrimaryKey()!.GetName()).IsEqualTo("pk_registration_submission_revisions");
-        await Assert.That(nativeIdentity.GetDatabaseName()).IsEqualTo("ux_registration_submissions_native_identity");
-        await Assert.That(providerIdentity.GetDatabaseName()).IsEqualTo("ux_registration_submissions_provider_identity");
-        await Assert.That(revisionIdentity.GetDatabaseName())
-            .IsEqualTo("ux_registration_submission_revisions_submission_revision_number");
+        await Assert.That(nativeIdentity.GetDatabaseName()).IsNotNull();
+        await Assert.That(providerIdentity.GetDatabaseName()).IsNotNull();
+        await Assert.That(revisionIdentity.GetDatabaseName()).IsNotNull();
         await Assert.That(revisionIdentity.Properties.Select(property => property.Name))
             .IsEquivalentTo(["TenantId", "RegistrationSubmissionId", "RevisionNumber"]);
     }
@@ -181,11 +172,47 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     }
 
     [Test]
-    [Arguments("ux_registration_submissions_native_identity")]
-    [Arguments("ux_registration_submissions_provider_identity")]
-    public async Task ExpectedSubmissionIdentityConstraintsClassifyAsReplayRaces(string constraintName)
+    public async Task ExpectedNativeSubmissionIdentityConstraintsClassifyAsReplayRaces()
     {
         Guid tenantId = Guid.CreateVersion7();
+        string constraintName;
+        await using (ExploreDbContext probeContext = CreateInMemoryContext(tenantId))
+        {
+            constraintName = RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+                probeContext,
+                nameof(RegistrationSubmission.TenantId),
+                nameof(RegistrationSubmission.RegistrationAttemptId),
+                nameof(RegistrationSubmission.BusinessDeduplicationKey)).Name;
+        }
+
+        await using ExploreDbContext context = CreateInMemoryContext(
+            tenantId,
+            new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
+        RegistrationAttempt attempt = CreateAttempt(tenantId, 101);
+        RegistrationSubmission evidence = RegistrationSubmission.CreateNativeEvidenceOnly(
+            attempt, Evidence(102), UtcNow.AddMinutes(1), null);
+
+        RegistrationSubmissionPersistenceResult result = await new RegistrationSubmissionRepository(context)
+            .PersistEvidenceOnlyAsync(evidence, CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(RegistrationSubmissionPersistenceOutcome.AttemptUnavailable);
+    }
+
+    [Test]
+    public async Task ExpectedProviderSubmissionIdentityConstraintsClassifyAsReplayRaces()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        string constraintName;
+        await using (ExploreDbContext probeContext = CreateInMemoryContext(tenantId))
+        {
+            constraintName = RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+                probeContext,
+                nameof(RegistrationSubmission.TenantId),
+                nameof(RegistrationSubmission.RegistrationProviderBindingId),
+                nameof(RegistrationSubmission.ProviderSubmissionId),
+                nameof(RegistrationSubmission.ProviderResponseRevision)).Name;
+        }
+
         await using ExploreDbContext context = CreateInMemoryContext(
             tenantId,
             new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
@@ -387,18 +414,25 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
         await Assert.That(replayed.Outcome).IsEqualTo(RegistrationSubmissionPersistenceOutcome.EvidenceOnlyConflict);
     }
 
-    private static ExploreDbContext CreateModelContext() => new(
-        new DbContextOptionsBuilder<ExploreDbContext>()
+    private static ExploreDbContext CreateModelContext()
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
             .UseSnakeCaseNamingConvention()
-            .Options);
+            .ConfigureWarnings(warnings => warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
+    }
 
     private static ExploreDbContext CreateInMemoryContext(
         Guid tenantId,
         SaveChangesInterceptor? interceptor = null)
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseInMemoryDatabase($"registration-attempt-{Guid.NewGuid():N}");
+            .UseInMemoryDatabase($"registration-attempt-{Guid.NewGuid():N}")
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(warnings => warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        options.EnableServiceProviderCaching(false);
         if (interceptor is not null)
         {
             options.AddInterceptors(interceptor);

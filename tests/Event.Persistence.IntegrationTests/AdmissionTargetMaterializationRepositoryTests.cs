@@ -29,7 +29,7 @@ public sealed class AdmissionTargetMaterializationRepositoryTests
 
         await using (ExploreDbContext seed = CreateContext(options, tenantId))
         {
-            seed.EventSessions.Add(new EventSession
+            seed.EventSessions.Add(new EventSession(EventSessionStatusEnum.Draft)
             {
                 Id = Guid.CreateVersion7(),
                 TenantId = tenantId,
@@ -39,7 +39,7 @@ public sealed class AdmissionTargetMaterializationRepositoryTests
                 StartTime = new DateTimeOffset(2026, 10, 1, 13, 0, 0, TimeSpan.Zero),
                 EndTime = new DateTimeOffset(2026, 10, 1, 16, 0, 0, TimeSpan.Zero)
             });
-            seed.EventSessions.Add(new EventSession
+            seed.EventSessions.Add(new EventSession(EventSessionStatusEnum.Draft)
             {
                 Id = Guid.CreateVersion7(),
                 TenantId = Guid.CreateVersion7(),

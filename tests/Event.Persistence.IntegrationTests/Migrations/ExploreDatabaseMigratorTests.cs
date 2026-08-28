@@ -226,14 +226,18 @@ public sealed class ExploreDatabaseMigratorTests(RecipientDeliveryMigrationConta
 
     private static ExploreDbContext CreateContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(
                 connectionString,
                 postgres => postgres.MigrationsAssembly(typeof(Task4MigrationProbe).Assembly.FullName))
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new Task4MigrationProbeContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new Task4MigrationProbeContext(builder.Options);
     }
 
     private static PrimaryDatabaseConnectionOptions PostgresOptions(
@@ -281,7 +285,10 @@ public sealed class ExploreDatabaseMigratorTests(RecipientDeliveryMigrationConta
         PrimaryDatabaseConnectionOptions database)
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>();
+        options.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureApplication(options, database);
+        options.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(options.Options);
     }
 

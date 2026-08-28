@@ -8,6 +8,7 @@ using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using TUnit.Core;
@@ -242,7 +243,10 @@ public sealed class SemanticValueScalarPersistenceModelTests
     private static ExploreDbContext CreateContext(PrimaryDatabaseProvider provider)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(builder.Options);
     }
 

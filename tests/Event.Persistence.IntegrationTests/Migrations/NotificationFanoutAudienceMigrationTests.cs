@@ -45,12 +45,16 @@ public sealed class NotificationFanoutAudienceMigrationTests(
 
     private ExploreDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        return new ExploreDbContext(options);
+            .ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            });
+        builder.EnableServiceProviderCaching(false);
+        return new ExploreDbContext(builder.Options);
     }
 
     private Task ResetSharedMigrationDatabaseAsync() => fixture.ResetAsync();
@@ -64,7 +68,7 @@ public sealed class NotificationFanoutAudienceMigrationTests(
             """
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = @table AND column_name = @name)
+                WHERE table_schema = current_schema() AND table_name = @table AND column_name = @name)
             """,
             table,
             column);
@@ -79,7 +83,7 @@ public sealed class NotificationFanoutAudienceMigrationTests(
     private static Task<bool> IndexExistsAsync(NpgsqlConnection connection, string index) =>
         ExistsAsync(
             connection,
-            "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = @name)",
+            "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = @name)",
             string.Empty,
             index);
 
@@ -101,7 +105,7 @@ public sealed class NotificationFanoutAudienceMigrationTests(
         string expected)
     {
         await using var command = new NpgsqlCommand(
-            "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = @name",
+            "SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = @name",
             connection);
         command.Parameters.AddWithValue("name", index);
         string definition = (string)(await command.ExecuteScalarAsync())!;

@@ -14,10 +14,13 @@ public sealed class LookupRelationshipUniquenessMigrationTests
     [Test]
     public async Task Model_DeclaresTenantQualifiedRelationshipIndexesAsUnique()
     {
-        await using var context = new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql("Host=localhost;Database=lookup_relationship_model;Username=unused;Password=unused")
             .UseSnakeCaseNamingConvention()
-            .Options);
+            .ConfigureWarnings(warnings =>
+                warnings.Log(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ManyServiceProvidersCreatedWarning));
+        builder.EnableServiceProviderCaching(false);
+        await using var context = new ExploreDbContext(builder.Options);
         IModel model = context.GetService<IDesignTimeModel>().Model;
 
         await AssertUniqueIndexAsync<TagTypeTags>(model, ["TenantId", "TagId", "TagTypeId"]);
