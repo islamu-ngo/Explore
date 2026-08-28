@@ -203,7 +203,7 @@ public sealed class AdmissionCheckInPersistenceRedTests
     }
 
     [Test]
-    public async Task MySqlFamilyMigrationsBackfillCanonicalScopeBeforeUniqueIndex()
+    public async Task MySqlFamilyInitialMigrationsCreateCanonicalScopeBeforeUniqueIndex()
     {
         DirectoryInfo? root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Explore.slnx")))
@@ -221,22 +221,20 @@ public sealed class AdmissionCheckInPersistenceRedTests
             string directory = Path.Combine(root!.FullName, "src", project, "Migrations");
             string migration = Directory.GetFiles(
                     directory,
-                    "*_AddAdmissionCheckInPersistence.cs",
+                    "*_Init.cs",
                     SearchOption.TopDirectoryOnly)
                 .Single(path => !path.EndsWith(".Designer.cs", StringComparison.Ordinal));
             string source = await File.ReadAllTextAsync(migration);
-            int addScope = source.IndexOf("name: \"scope_id\"", StringComparison.Ordinal);
-            int backfill = source.IndexOf(
-                "SET scope_id = COALESCE(event_session_id, event_day_id, target_event_id)",
-                StringComparison.Ordinal);
+            int addScope = source.IndexOf("scope_id = table.Column", StringComparison.Ordinal);
             int canonicalIndex = source.IndexOf(
                 "columns: new[] { \"tenant_id\", \"ticket_type_id\", \"target_event_id\", " +
                 "\"entitlement_scope_type_id\", \"scope_id\" }",
                 StringComparison.Ordinal);
 
             await Assert.That(addScope).IsGreaterThanOrEqualTo(0);
-            await Assert.That(backfill).IsGreaterThan(addScope);
-            await Assert.That(canonicalIndex).IsGreaterThan(backfill);
+            await Assert.That(canonicalIndex).IsGreaterThan(addScope);
+            await Assert.That(source)
+                .DoesNotContain("SET scope_id = COALESCE(event_session_id, event_day_id, target_event_id)");
         }
     }
 

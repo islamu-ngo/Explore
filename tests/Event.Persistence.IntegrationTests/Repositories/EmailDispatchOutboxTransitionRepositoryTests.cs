@@ -2,6 +2,7 @@
 // ABOUTME: Verifies durable state-machine changes that future RabbitMQ consumers and admin actions reuse.
 
 using System.Data.Common;
+using System.Diagnostics;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
@@ -597,7 +598,8 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
     public async Task ClaimPendingBatchUsesTenantRoundsAndPrioritizesRequiredWork()
     {
         await fixture.ResetAsync();
-        await using var context = fixture.CreateDbContext();
+        var baseline = new PersistenceQueryBaselineInterceptor();
+        await using var context = fixture.CreateDbContext(baseline);
         var now = DateTime.UtcNow;
         var tenantA = await SeedTenantAsync(context, "fair-a");
         var tenantB = await SeedTenantAsync(context, "fair-b");
@@ -621,10 +623,15 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         requiredDelivery.DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired;
         await context.SaveChangesAsync();
 
+        baseline.Reset();
         var repository = new EmailDispatchOutboxRepository(context);
+        var elapsed = Stopwatch.StartNew();
         var batch = await repository.ClaimPendingBatchAsync(
             CreateBatchClaimRequest(now, batchSize: 3, maxRowsPerTenant: 1),
             CancellationToken.None);
+        elapsed.Stop();
+        PersistenceQueryBaselineEvidence.Record(baseline
+            .Snapshot("email_claim_pending_batch", batch.Count, elapsed.Elapsed));
 
         await Assert.That(batch.Select(row => row.TenantId).Distinct().Count()).IsEqualTo(3);
         await Assert.That(batch.Count(row => row.TenantId == tenantA.Id)).IsEqualTo(1);

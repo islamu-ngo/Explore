@@ -41,6 +41,28 @@ public sealed class PrivacyErasureContractTests
     }
 
     [Test]
+    public async Task PrivacyErasureIntent_LegalHoldPseudonymizationPreservesAuthorityEvidence()
+    {
+        PrivacyErasureIntent intent = CreateIntent(17, policyVersion: 3);
+        Guid originalSubjectId = intent.SubjectId;
+        Guid intentAuditToken = Guid.NewGuid();
+        Guid subjectAuditToken = Guid.NewGuid();
+
+        intent.PseudonymizeForLegalHold(intentAuditToken, subjectAuditToken);
+
+        await Assert.That(intent.IntentId).IsEqualTo(intentAuditToken);
+        await Assert.That(intent.SubjectId).IsEqualTo(subjectAuditToken);
+        await Assert.That(intent.SubjectId).IsNotEqualTo(originalSubjectId);
+        await Assert.That(intent.IsLegalHoldPseudonymized).IsTrue();
+        await Assert.That(intent.AuthoritySequence).IsEqualTo(17);
+        await Assert.That(intent.PolicyVersion).IsEqualTo(3);
+        await Assert.That(() => intent.PseudonymizeForLegalHold(Guid.Empty, subjectAuditToken))
+            .Throws<ArgumentException>();
+        await Assert.That(() => intent.PseudonymizeForLegalHold(intentAuditToken, Guid.Empty))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
     public async Task PrivacyErasureIntent_RejectsMalformedIdentityKindReasonSequenceAndPolicy()
     {
         await Assert.That(() => CreateIntent(1, intentId: Guid.Empty)).Throws<ArgumentException>();

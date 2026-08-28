@@ -23,31 +23,31 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 public sealed class SemanticValueConstraintMigrationTests(
     RecipientDeliveryMigrationContainerFixture fixture)
 {
-    private const string MigrationSuffix = "PersistSemanticValueConstraints";
+    private const string MigrationSuffix = "Init";
     private const string ProviderTablePrefix = "ie_";
 
     private static readonly string[] ExpectedConstraintIdentities =
     [
-        "event_agenda_items.CK_EventAgendaItem_LocalDateRange",
-        "event_sessions.CK_EventSession_LocalDateRange",
-        "event_ticket_types.CK_EventTicketType_MoneyNonnegative",
-        "location_pii.CK_LocationPii_CoordinateShape"
+        "event_agenda_items.ck_event_agenda_item_local_date_range",
+        "event_sessions.ck_event_session_local_date_range",
+        "event_ticket_types.ck_event_ticket_type_money_nonnegative",
+        "location_pii.ck_location_pii_coordinate_shape"
     ];
 
     private static readonly IReadOnlyDictionary<string, string> ExpectedConstraintSqlByIdentity =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["event_agenda_items.CK_EventAgendaItem_LocalDateRange"] =
+            ["event_agenda_items.ck_event_agenda_item_local_date_range"] =
                 "local_end_date >= local_start_date",
-            ["event_sessions.CK_EventSession_LocalDateRange"] =
+            ["event_sessions.ck_event_session_local_date_range"] =
                 "local_end_date IS NULL OR local_start_date IS NULL OR local_end_date >= local_start_date",
-            ["event_ticket_types.CK_EventTicketType_MoneyNonnegative"] =
+            ["event_ticket_types.ck_event_ticket_type_money_nonnegative"] =
                 """
                 (fixed_price_minor IS NULL OR fixed_price_minor >= 0)
                 AND (minimum_price_minor IS NULL OR minimum_price_minor >= 0)
                 AND (suggested_price_minor IS NULL OR suggested_price_minor >= 0)
                 """,
-            ["location_pii.CK_LocationPii_CoordinateShape"] =
+            ["location_pii.ck_location_pii_coordinate_shape"] =
                 """
                 (latitude IS NULL AND longitude IS NULL)
                 OR (latitude IS NOT NULL AND longitude IS NOT NULL
@@ -77,37 +77,23 @@ public sealed class SemanticValueConstraintMigrationTests(
     [Arguments(PrimaryDatabaseProvider.SqlServer)]
     [Arguments(PrimaryDatabaseProvider.MariaDb)]
     [Arguments(PrimaryDatabaseProvider.MySql)]
-    public async Task NonSemanticMigrations_DoNotOwnSemanticValueConstraints(
+    public async Task GeneratedCatalog_HasOneInitialOwningEverySemanticConstraint(
         PrimaryDatabaseProvider provider)
     {
         await using ExploreDbContext context = CreateCatalogContext(provider);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
         string providerName = context.Database.ProviderName
             ?? throw new InvalidOperationException("The migration catalog has no provider name.");
-        string[] violations = assembly.Migrations
-            .Where(entry => !entry.Key.EndsWith(MigrationSuffix, StringComparison.Ordinal))
-            .Select(entry => new
-            {
-                entry.Key,
-                Migration = assembly.CreateMigration(entry.Value, providerName)
-            })
-            .SelectMany(entry => entry.Migration.UpOperations
-                .Concat(entry.Migration.DownOperations)
-                .Select(operation => new { entry.Key, Operation = operation }))
-            .Select(entry => entry.Operation switch
-            {
-                AddCheckConstraintOperation add =>
-                    (entry.Key, Identity: ConstraintIdentity(add.Table, add.Name)),
-                DropCheckConstraintOperation drop =>
-                    (entry.Key, Identity: ConstraintIdentity(drop.Table, drop.Name)),
-                _ => (entry.Key, Identity: string.Empty)
-            })
-            .Where(entry => ExpectedConstraintSqlByIdentity.ContainsKey(entry.Identity))
-            .Select(entry => $"{entry.Key}:{entry.Identity}")
+        KeyValuePair<string, System.Reflection.TypeInfo> migrationEntry =
+            assembly.Migrations.Single();
+        await Assert.That(migrationEntry.Key).EndsWith($"_{MigrationSuffix}");
+        Migration migration = assembly.CreateMigration(migrationEntry.Value, providerName);
+
+        string[] identities = SemanticChecks(migration)
+            .Select(operation => ConstraintIdentity(operation.Table, operation.Name))
             .Order(StringComparer.Ordinal)
             .ToArray();
-
-        await Assert.That(violations).IsEmpty();
+        await Assert.That(identities.SequenceEqual(ExpectedConstraintIdentities)).IsTrue();
     }
 
     [Test]
@@ -123,12 +109,8 @@ public sealed class SemanticValueConstraintMigrationTests(
         SemanticMigrationCatalog catalog = await FindSemanticMigrationAsync(context);
         Migration migration = catalog.Migration;
 
-        await Assert.That(migration.UpOperations.Count).IsEqualTo(ExpectedConstraintIdentities.Length);
-        await Assert.That(migration.UpOperations.All(operation => operation is AddCheckConstraintOperation))
-            .IsTrue();
-        AddCheckConstraintOperation[] addChecks = migration.UpOperations
-            .OfType<AddCheckConstraintOperation>()
-            .ToArray();
+        AddCheckConstraintOperation[] addChecks = SemanticChecks(migration);
+        await Assert.That(addChecks.Length).IsEqualTo(ExpectedConstraintIdentities.Length);
         await Assert.That(addChecks.All(operation => !string.IsNullOrWhiteSpace(operation.Sql))).IsTrue();
         string? expectedSchema = provider is PrimaryDatabaseProvider.PostgreSql
             or PrimaryDatabaseProvider.SqlServer
@@ -152,20 +134,17 @@ public sealed class SemanticValueConstraintMigrationTests(
                 .IsEqualTo(NormalizeSql(expectedSql!));
         }
 
-        await Assert.That(migration.DownOperations.Count).IsEqualTo(ExpectedConstraintIdentities.Length);
-        await Assert.That(migration.DownOperations.All(operation => operation is DropCheckConstraintOperation))
-            .IsTrue();
-        DropCheckConstraintOperation[] dropChecks = migration.DownOperations
-            .OfType<DropCheckConstraintOperation>()
-            .ToArray();
-        await Assert.That(dropChecks.All(operation =>
-                string.Equals(operation.Schema, expectedSchema, StringComparison.Ordinal)))
-            .IsTrue();
-        string[] downIdentities = dropChecks
-            .Select(operation => ConstraintIdentity(operation.Table, operation.Name))
+        string[] semanticTables = ExpectedConstraintIdentities
+            .Select(identity => identity.Split('.')[0])
             .Order(StringComparer.Ordinal)
             .ToArray();
-        await Assert.That(downIdentities.SequenceEqual(ExpectedConstraintIdentities)).IsTrue();
+        string[] droppedSemanticTables = migration.DownOperations
+            .OfType<DropTableOperation>()
+            .Select(operation => NormalizeTableName(operation.Name))
+            .Where(table => semanticTables.Contains(table, StringComparer.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        await Assert.That(droppedSemanticTables.SequenceEqual(semanticTables)).IsTrue();
 
         string script = context.GetService<IMigrator>().GenerateScript(
             fromMigration: catalog.PreviousMigrationId,
@@ -182,7 +161,7 @@ public sealed class SemanticValueConstraintMigrationTests(
     }
 
     [Test]
-    public async Task PostgreSqlLifecycle_PreservesValidRowsAcrossUpDownAndRepeatedReapply()
+    public async Task PostgreSqlInitial_AppliesRollsBackAndReappliesIdempotently()
     {
         await using ExploreDbContext context = CreatePostgreSqlContext();
         SemanticMigrationCatalog catalog = await FindSemanticMigrationAsync(context);
@@ -191,32 +170,23 @@ public sealed class SemanticValueConstraintMigrationTests(
         await fixture.ResetAsync();
         try
         {
-            await migrator.MigrateAsync(catalog.PreviousMigrationId);
+            await migrator.MigrateAsync(catalog.MigrationId);
             await LookupTableSeeder.SeedAsync(context);
             Guid tenantId = await SeedValidScalarRowsAsync();
-            await Assert.That(await ReadScalarCardinalityAsync(tenantId))
-                .IsEqualTo("2:2:1:2");
             string baselineFingerprint = await ReadScalarFingerprintAsync(tenantId);
-            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
-
-            await migrator.MigrateAsync(catalog.MigrationId);
-            string upgradedFingerprint = await ReadScalarFingerprintAsync(tenantId);
-            await Assert.That(upgradedFingerprint).IsEqualTo(baselineFingerprint);
-            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
-
-            await migrator.MigrateAsync(catalog.PreviousMigrationId);
-            string rolledBackFingerprint = await ReadScalarFingerprintAsync(tenantId);
-            await Assert.That(rolledBackFingerprint).IsEqualTo(baselineFingerprint);
-            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
-
-            await migrator.MigrateAsync(catalog.MigrationId);
-            string reappliedFingerprint = await ReadScalarFingerprintAsync(tenantId);
-            await Assert.That(reappliedFingerprint).IsEqualTo(baselineFingerprint);
             await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
 
             await migrator.MigrateAsync(catalog.MigrationId);
-            string retriedFingerprint = await ReadScalarFingerprintAsync(tenantId);
-            await Assert.That(retriedFingerprint).IsEqualTo(baselineFingerprint);
+            await Assert.That(await ReadScalarFingerprintAsync(tenantId))
+                .IsEqualTo(baselineFingerprint);
+            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
+            await Assert.That((await context.Database.GetAppliedMigrationsAsync())
+                    .Count(migration => migration == catalog.MigrationId))
+                .IsEqualTo(1);
+
+            await migrator.MigrateAsync(Migration.InitialDatabase);
+            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
+            await migrator.MigrateAsync(catalog.MigrationId);
             await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
             await Assert.That((await context.Database.GetAppliedMigrationsAsync())
                     .Count(migration => migration == catalog.MigrationId))
@@ -229,11 +199,11 @@ public sealed class SemanticValueConstraintMigrationTests(
     }
 
     [Test]
-    [Arguments(LegacyViolation.NegativeTicketAmount, "CK_EventTicketType_MoneyNonnegative")]
-    [Arguments(LegacyViolation.PartialCoordinate, "CK_LocationPii_CoordinateShape")]
-    [Arguments(LegacyViolation.ReversedAgendaDates, "CK_EventAgendaItem_LocalDateRange")]
-    [Arguments(LegacyViolation.ReversedSessionDates, "CK_EventSession_LocalDateRange")]
-    public async Task PostgreSqlUpgrade_WithMalformedLegacyRow_FailsWithoutMutationAndIsRetryable(
+    [Arguments(LegacyViolation.NegativeTicketAmount, "ck_event_ticket_type_money_nonnegative")]
+    [Arguments(LegacyViolation.PartialCoordinate, "ck_location_pii_coordinate_shape")]
+    [Arguments(LegacyViolation.ReversedAgendaDates, "ck_event_agenda_item_local_date_range")]
+    [Arguments(LegacyViolation.ReversedSessionDates, "ck_event_session_local_date_range")]
+    public async Task PostgreSqlInitialConstraint_RejectsMalformedMutationWithoutDurableChange(
         LegacyViolation violation,
         string expectedConstraint)
     {
@@ -244,22 +214,22 @@ public sealed class SemanticValueConstraintMigrationTests(
         await fixture.ResetAsync();
         try
         {
-            await migrator.MigrateAsync(catalog.PreviousMigrationId);
+            await migrator.MigrateAsync(catalog.MigrationId);
             await LookupTableSeeder.SeedAsync(context);
             Guid tenantId = await SeedValidScalarRowsAsync();
-            await ExecuteAsync(LegacyMutationSql(violation), ("tenant_id", tenantId));
-            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(1);
 
             PostgresException? exception = await Assert.That(
-                    async () => await migrator.MigrateAsync(catalog.MigrationId))
+                    async () => await ExecuteAsync(
+                        LegacyMutationSql(violation),
+                        ("tenant_id", tenantId)))
                 .Throws<PostgresException>();
             await Assert.That(exception!.SqlState).IsEqualTo(PostgresErrorCodes.CheckViolation);
             await Assert.That(exception.ConstraintName).IsEqualTo(expectedConstraint);
-            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(1);
-            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(0);
+            await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(0);
+            await Assert.That(await CountSemanticConstraintsAsync()).IsEqualTo(4);
             await Assert.That((await context.Database.GetAppliedMigrationsAsync())
                     .Contains(catalog.MigrationId, StringComparer.Ordinal))
-                .IsFalse();
+                .IsTrue();
 
             await ExecuteAsync(LegacyRepairSql(violation), ("tenant_id", tenantId));
             await Assert.That(await CountLegacyViolationsAsync(tenantId, violation)).IsEqualTo(0);
@@ -276,7 +246,7 @@ public sealed class SemanticValueConstraintMigrationTests(
     }
 
     [Test]
-    public async Task PostgreSqlMalformedCoordinateUpgrade_EmitsZeroPiiDiagnostics()
+    public async Task PostgreSqlMalformedCoordinateMutation_EmitsZeroPiiDiagnostics()
     {
         const string sentinelAddress = "MIGRATION-PII-ADDRESS-Q7V4";
         const string sentinelPostcode = "MIGRATION-PII-POSTCODE-X9K2";
@@ -289,26 +259,25 @@ public sealed class SemanticValueConstraintMigrationTests(
         await fixture.ResetAsync();
         try
         {
-            await migrator.MigrateAsync(catalog.PreviousMigrationId);
+            await migrator.MigrateAsync(catalog.MigrationId);
             await LookupTableSeeder.SeedAsync(context);
             Guid tenantId = await SeedValidScalarRowsAsync();
             Guid locationId = await ReadPairedLocationIdAsync(tenantId);
-            await ExecuteAsync(
-                """
-                UPDATE islamu_event.location_pii
-                SET address = @address,
-                    postcode = @postcode,
-                    latitude = @latitude,
-                    longitude = NULL
-                WHERE location_id = @location_id
-                """,
-                ("address", sentinelAddress),
-                ("postcode", sentinelPostcode),
-                ("latitude", sentinelLatitude),
-                ("location_id", locationId));
 
             PostgresException? exception = await Assert.That(
-                    async () => await migrator.MigrateAsync(catalog.MigrationId))
+                    async () => await ExecuteAsync(
+                        """
+                        UPDATE islamu_event.location_pii
+                        SET address = @address,
+                            postcode = @postcode,
+                            latitude = @latitude,
+                            longitude = NULL
+                        WHERE location_id = @location_id
+                        """,
+                        ("address", sentinelAddress),
+                        ("postcode", sentinelPostcode),
+                        ("latitude", sentinelLatitude),
+                        ("location_id", locationId)))
                 .Throws<PostgresException>();
             string[] forbidden =
             [
@@ -351,7 +320,7 @@ public sealed class SemanticValueConstraintMigrationTests(
         KeyValuePair<string, System.Reflection.TypeInfo> match = matches.Single();
         string[] migrationIds = assembly.Migrations.Keys.Order(StringComparer.Ordinal).ToArray();
         int migrationIndex = Array.IndexOf(migrationIds, match.Key);
-        await Assert.That(migrationIndex).IsGreaterThan(0);
+        await Assert.That(migrationIndex).IsEqualTo(0);
 
         Migration migration = assembly.CreateMigration(
             match.Value,
@@ -359,9 +328,17 @@ public sealed class SemanticValueConstraintMigrationTests(
                 ?? throw new InvalidOperationException("The migration catalog has no provider name."));
         return new SemanticMigrationCatalog(
             match.Key,
-            migrationIds[migrationIndex - 1],
+            Migration.InitialDatabase,
             migration);
     }
+
+    private static AddCheckConstraintOperation[] SemanticChecks(Migration migration) =>
+        migration.UpOperations
+            .OfType<CreateTableOperation>()
+            .SelectMany(operation => operation.CheckConstraints)
+            .Where(operation => ExpectedConstraintSqlByIdentity.ContainsKey(
+                ConstraintIdentity(operation.Table, operation.Name)))
+            .ToArray();
 
     private static async Task AssertProviderScriptPreservesStorageAsync(string script)
     {

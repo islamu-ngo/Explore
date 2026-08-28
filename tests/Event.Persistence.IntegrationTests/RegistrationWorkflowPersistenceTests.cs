@@ -162,7 +162,8 @@ public sealed class RegistrationWorkflowPersistenceTests
     {
         await using ExploreDbContext context = CreateModelContext();
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single(migration => migration.Key.Contains("InitialPostgreSqlApplication", StringComparison.Ordinal));
+        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single(
+            migration => migration.Key.EndsWith("_Init", StringComparison.Ordinal));
         Migration migration = assembly.CreateMigration(item.Value, context.Database.ProviderName!);
         string[] taskTables =
         [

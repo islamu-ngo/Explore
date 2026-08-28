@@ -9,6 +9,7 @@ using Explore.Secrets.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using MySqlConnector;
 using Npgsql;
 using TUnit.Core;
@@ -45,7 +46,7 @@ public sealed class RelationalNamedLockTests
         await Assert.That(postgresSession.CommandText).IsEqualTo("SELECT pg_advisory_lock(@key)");
         await Assert.That(sqlServerTransaction.CommandText).Contains("@LockOwner = 'Transaction'");
         await Assert.That(sqlServerSession.CommandText).Contains("@LockOwner = 'Session'");
-        await Assert.That(mySql.CommandText).IsEqualTo("SELECT GET_LOCK(@resource, -1)");
+        await Assert.That(mySql.CommandText).IsEqualTo("SELECT GET_LOCK(@resource, 31536000)");
         await Assert.That(postgresRelease.CommandText).IsEqualTo("SELECT pg_advisory_unlock(@key)");
         await Assert.That(sqlServerRelease.CommandText).Contains("sys.sp_releaseapplock");
         await Assert.That(mySqlRelease.CommandText).IsEqualTo("SELECT RELEASE_LOCK(@resource)");
@@ -270,13 +271,15 @@ public sealed class RelationalNamedLockTests
 
     private static ExploreDbContext CreateSqliteContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseSqlite("Data Source=:memory:")
-            .AddInterceptors(
-                SqliteNamedLockTransactionInterceptor.Instance,
-                SqliteProjectionLockTransactionInterceptor.Instance)
-            .Options;
-        return new ExploreDbContext(options);
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
+        builder.UseSqlite("Data Source=:memory:");
+        builder.AddInterceptors(
+            SqliteNamedLockTransactionInterceptor.Instance,
+            SqliteProjectionLockTransactionInterceptor.Instance);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        return new ExploreDbContext(builder.Options);
     }
 
     private static PrimaryDatabaseConnectionOptions CreateOptions(PrimaryDatabaseProvider provider) => new()

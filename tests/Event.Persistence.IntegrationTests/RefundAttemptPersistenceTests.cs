@@ -8,6 +8,7 @@ using Explore.Domain;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -371,6 +372,9 @@ public sealed class RefundAttemptPersistenceTests
         new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connection)
             .UseSnakeCaseNamingConvention()
+            .AddInterceptors(
+                SqliteNamedLockTransactionInterceptor.Instance,
+                SqliteProjectionLockTransactionInterceptor.Instance)
             .Options;
 
     private static async Task<ExploreDbContext> CreateContextAsync()

@@ -13,6 +13,7 @@ using Explore.Persistence.Seed;
 using Explore.Secrets.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -25,7 +26,6 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 [NotInParallel("PersistenceDb")]
 public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerFixture fixture)
 {
-    private const string GovernanceMigrationSuffix = "LocationAddressGovernance";
     private static readonly Guid TenantId = Id(1);
     private static readonly Guid ForeignTenantId = Id(2);
     private static readonly Guid LocationId = Id(3);
@@ -34,33 +34,18 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
     private static readonly Guid ActorId = Id(6);
 
     [Test]
-    [Arguments("PostgreSql", "20260826183441_AddAdmissionCheckInAndLocationAddressGovernance", true)]
-    [Arguments("Sqlite", "20260826181008_InitialApplication", false)]
-    [Arguments("SqlServer", "20260826181024_InitialApplication", false)]
-    [Arguments("MariaDb", "20260826181039_InitialApplication", false)]
-    [Arguments("MySql", "20260826181054_InitialApplication", false)]
-    public async Task ProviderMigrationTopologyMatchesRetainedOrDevelopmentRebaselineContract(
-        string provider,
-        string expectedHead,
-        bool supportsRetainedUpgrade)
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task ProviderMigrationTopologyMatchesDevelopmentRebaselineContract(string provider)
     {
         await using ExploreDbContext context = CreateModelContext(provider);
         string[] migrations = context.Database.GetMigrations().ToArray();
 
-        await Assert.That(migrations[^1]).IsEqualTo(expectedHead);
-        if (supportsRetainedUpgrade)
-        {
-            await Assert.That(migrations.Count(migration =>
-                migration.EndsWith(GovernanceMigrationSuffix, StringComparison.Ordinal))).IsEqualTo(1);
-            await Assert.That(migrations.Length).IsGreaterThan(1);
-        }
-        else
-        {
-            await Assert.That(migrations).HasSingleItem();
-            await Assert.That(migrations[0]).EndsWith("_InitialApplication");
-            await Assert.That(migrations.Any(migration =>
-                migration.EndsWith(GovernanceMigrationSuffix, StringComparison.Ordinal))).IsFalse();
-        }
+        await Assert.That(migrations).HasSingleItem();
+        await Assert.That(migrations[0]).EndsWith("_Init");
         await Assert.That(HasPendingModelChanges(context)).IsFalse();
     }
 
@@ -143,26 +128,17 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
     }
 
     [Test]
-    public async Task PostgreSqlUpgradeBackfillsLegacyRowAndEnforcesEveryCombination()
+    public async Task PostgreSqlInitialInstallsGovernanceDefaultsAndEnforcesEveryCombination()
     {
         string databaseName = $"address_governance_{Guid.CreateVersion7():N}";
         await CreatePostgreSqlDatabaseAsync(databaseName);
         PrimaryDatabaseConnectionOptions database = PostgreSqlOptions(databaseName);
         try
         {
-            await using ExploreDbContext discoveryContext = CreateApplicationContext(database);
-            MigrationBoundary boundary = RequiredBoundary(discoveryContext);
-            IModel predecessorModel = RequiredTargetModel(discoveryContext, boundary.Predecessor);
-
-            await using (ExploreDbContext predecessorContext = CreateApplicationContext(database, predecessorModel))
-            {
-                await CreatePredecessorSchemaAndHistoryAsync(predecessorContext, boundary);
-                await InsertLegacyGraphAsync(predecessorContext);
-            }
-
             await using ExploreDbContext context = CreateApplicationContext(database);
-            await context.GetService<IMigrator>().MigrateAsync(boundary.Head);
+            await context.Database.MigrateAsync();
             await LookupTableSeeder.SeedAsync(context);
+            await InsertLegacyGraphAsync(context);
 
             await AssertObservableStateAsync(context);
             await SeedOrganizationsAsync(context);
@@ -221,23 +197,6 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
             .IsEqualTo(1);
     }
 
-    private static MigrationBoundary RequiredBoundary(ExploreDbContext context)
-    {
-        string[] migrations = context.Database.GetMigrations().ToArray();
-        string[] governance = migrations.Where(migration =>
-            migration.EndsWith(GovernanceMigrationSuffix, StringComparison.Ordinal)).ToArray();
-        if (governance.Length != 1)
-        {
-            throw new InvalidOperationException($"Expected exactly one {GovernanceMigrationSuffix} migration; found {governance.Length}.");
-        }
-        int index = Array.IndexOf(migrations, governance[0]);
-        if (index < 1 || index != migrations.Length - 1)
-        {
-            throw new InvalidOperationException("Address governance migration must be the new head over a discovered predecessor.");
-        }
-        return new MigrationBoundary(migrations, migrations[index - 1], governance[0], migrations[^1]);
-    }
-
     private static bool HasPendingModelChanges(ExploreDbContext context)
     {
         IMigrationsAssembly migrationsAssembly = context.GetService<IMigrationsAssembly>();
@@ -248,36 +207,6 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
         IModel initialized = context.GetService<IModelRuntimeInitializer>()
             .Initialize(snapshot, designTime: true, validationLogger: null);
         return differ.HasDifferences(initialized.GetRelationalModel(), runtime.GetRelationalModel());
-    }
-
-    private static IModel RequiredTargetModel(ExploreDbContext context, string migrationId)
-    {
-        IMigrationsAssembly migrationsAssembly = context.GetService<IMigrationsAssembly>();
-        if (!migrationsAssembly.Migrations.TryGetValue(migrationId, out var migrationType))
-        {
-            throw new InvalidOperationException($"Migration '{migrationId}' is missing from the provider assembly.");
-        }
-
-        string provider = context.Database.ProviderName
-            ?? throw new InvalidOperationException("The active database provider is missing.");
-        IModel targetModel = migrationsAssembly.CreateMigration(migrationType, provider).TargetModel;
-        return context.GetService<IModelRuntimeInitializer>()
-            .Initialize(targetModel, designTime: true, validationLogger: null);
-    }
-
-    private static async Task CreatePredecessorSchemaAndHistoryAsync(
-        ExploreDbContext context,
-        MigrationBoundary boundary)
-    {
-        await context.Database.EnsureCreatedAsync();
-
-        IHistoryRepository history = context.GetService<IHistoryRepository>();
-        await history.CreateAsync();
-        foreach (string migrationId in boundary.Migrations.Take(boundary.Migrations.Length - 1))
-        {
-            await context.Database.ExecuteSqlRawAsync(
-                history.GetInsertScript(new HistoryRow(migrationId, ProductInfo.GetVersion())));
-        }
     }
 
     private static async Task InsertLegacyGraphAsync(ExploreDbContext context)
@@ -530,7 +459,10 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
         IModel? model = null)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, database);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         if (model is not null)
         {
             builder.UseModel(model);
@@ -541,6 +473,7 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
     private static ExploreDbContext CreateModelContext(string provider)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
         switch (provider)
         {
             case "PostgreSql":
@@ -562,6 +495,8 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
                 throw new ArgumentOutOfRangeException(nameof(provider), provider, null);
         }
         builder.UseSnakeCaseNamingConvention();
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(builder.Options);
     }
 
@@ -575,5 +510,4 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
 
     private static Guid Id(int suffix) => Guid.Parse($"019b0000-0002-7000-8000-{suffix:000000000000}");
 
-    private sealed record MigrationBoundary(string[] Migrations, string Predecessor, string Governance, string Head);
 }

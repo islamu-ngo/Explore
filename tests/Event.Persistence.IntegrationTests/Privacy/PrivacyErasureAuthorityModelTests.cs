@@ -43,7 +43,7 @@ public sealed class PrivacyErasureAuthorityModelTests
             .IsEquivalentTo([
                 "authority_sequence", "intent_id", "policy_version", "reason_code",
                 "recorded_at_utc", "requested_at_utc", "retention_expires_at_utc",
-                "subject_id", "subject_kind"
+                "subject_id", "subject_kind", "is_legal_hold_pseudonymized"
             ]);
         await Assert.That(intent.GetCheckConstraints().Select(check => check.Sql))
             .Contains(sql => sql == "subject_kind = 1");
@@ -192,7 +192,13 @@ public sealed class PrivacyErasureAuthorityModelTests
                 method.DeclaringType == typeof(EfCorePrivacyErasureAuthorityRepository))
             .Select(method => method.Name)
             .Distinct())
-            .IsEquivalentTo(["AppendAsync", "ReadAfterAsync"]);
+            .IsEquivalentTo([
+                "AppendAsync",
+                "ReadAfterAsync",
+                "GetStateAsync",
+                "EvaluateRetentionAsync",
+                "CompactExpiredIntentsAsync"
+            ]);
     }
 
     [Test]

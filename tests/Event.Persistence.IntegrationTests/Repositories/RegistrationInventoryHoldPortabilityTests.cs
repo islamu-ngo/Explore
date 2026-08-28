@@ -1,13 +1,13 @@
-// ABOUTME: Proves inventory-hold expiry uses provider metadata and a portable atomic fallback.
-// ABOUTME: Executes concurrent expiry against file-backed SQLite and gates all supported provider routes.
+// ABOUTME: Proves inventory hold transitions use provider metadata and portable conditional mutations.
+// ABOUTME: Executes contended expiry, consume, and release paths against file-backed SQLite.
 
+using Event.Persistence.IntegrationTests.Database;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
-using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
 using Microsoft.Data.Sqlite;
@@ -26,14 +26,13 @@ public sealed class RegistrationInventoryHoldPortabilityTests
     private static readonly DateTime UtcNow = new(2026, 8, 2, 12, 0, 0, DateTimeKind.Utc);
 
     [Test]
-    [Arguments("PostgreSql", true, "islamu_event.registration_inventory_holds", "islamu_event.registration_orders")]
-    [Arguments("Sqlite", false, "\"ie_registration_inventory_holds\"", "\"ie_registration_orders\"")]
-    [Arguments("SqlServer", false, "[islamu_event].[registration_inventory_holds]", "[islamu_event].[registration_orders]")]
-    [Arguments("MariaDb", false, "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
-    [Arguments("MySql", false, "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
-    public async Task ProviderRoute_UsesMappedDelimitedIdentifiers(
+    [Arguments("PostgreSql", "islamu_event.registration_inventory_holds", "islamu_event.registration_orders")]
+    [Arguments("Sqlite", "\"ie_registration_inventory_holds\"", "\"ie_registration_orders\"")]
+    [Arguments("SqlServer", "[islamu_event].[registration_inventory_holds]", "[islamu_event].[registration_orders]")]
+    [Arguments("MariaDb", "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
+    [Arguments("MySql", "`ie_registration_inventory_holds`", "`ie_registration_orders`")]
+    public async Task ProviderModel_UsesMappedDelimitedIdentifiers(
         string provider,
-        bool usesPostgreSqlCommand,
         string expectedHolds,
         string expectedOrders)
     {
@@ -44,23 +43,23 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         string holds = sql.DelimitIdentifier(hold.GetTableName()!, hold.GetSchema());
         string orders = sql.DelimitIdentifier(order.GetTableName()!, order.GetSchema());
 
-        await Assert.That(context.Database.ProviderName == RelationalNamedLock.PostgreSqlProvider)
-            .IsEqualTo(usesPostgreSqlCommand);
         await Assert.That(holds).IsEqualTo(expectedHolds);
         await Assert.That(orders).IsEqualTo(expectedOrders);
     }
 
     [Test]
-    public async Task PostgreSqlCommand_UsesMappedIdentifiersAndParameterizedAtomicCte()
+    public async Task InventoryTransitions_UseNoProviderSpecificSqlCommand()
     {
-        await using ExploreDbContext context = CreateProviderContext("PostgreSql");
-        string command = RegistrationInventoryRepository.BuildPostgreSqlHoldExpiryCommand(context);
+        string source = await File.ReadAllTextAsync(Path.Combine(
+            GetRepositoryRoot(),
+            "src",
+            "Explore.Persistence",
+            "Repositories",
+            "RegistrationInventoryRepository.cs"));
 
-        await Assert.That(command).Contains("UPDATE islamu_event.registration_inventory_holds");
-        await Assert.That(command).Contains("RETURNING tenant_id, registration_order_id");
-        await Assert.That(command).Contains("UPDATE islamu_event.registration_orders AS registration_order");
-        await Assert.That(command).Contains("ANY({7})");
-        await Assert.That(command).DoesNotContain("UPDATE registration_inventory_holds");
+        await Assert.That(source).DoesNotContain("BuildPostgreSqlHoldExpiryCommand");
+        await Assert.That(source).DoesNotContain("ExecuteSqlRawAsync");
+        await Assert.That(source).DoesNotContain("UPDATE registration_inventory_holds");
     }
 
     [Test]
@@ -102,6 +101,76 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         }
     }
 
+    [Test]
+    public async Task FileBackedSqlite_ConcurrentConsumeHasOneWinnerAndPreservesAllocation()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"registration-hold-consume-{Guid.NewGuid():N}.db");
+        try
+        {
+            (Guid tenantId, _, Guid holdId, Guid poolId) = await SeedSqliteAsync(
+                databasePath,
+                UtcNow.AddMinutes(5));
+
+            bool[] results = await Task.WhenAll(
+                ConsumeAsync(databasePath, holdId),
+                ConsumeAsync(databasePath, holdId));
+
+            await Assert.That(results.Count(result => result)).IsEqualTo(1);
+            await using ExploreDbContext verification = CreateSqliteContext(databasePath, tenantId);
+            RegistrationInventoryHold persisted = await verification.RegistrationInventoryHolds
+                .AsNoTracking()
+                .SingleAsync(hold => hold.Id == holdId);
+            var repository = new RegistrationInventoryRepository(verification);
+            await Assert.That(persisted.RegistrationInventoryHoldStatusId)
+                .IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Consumed);
+            await Assert.That(persisted.ConsumedAt).IsEqualTo(UtcNow);
+            await Assert.That(await repository.GetAllocatedQuantityAsync(poolId, tenantId, CancellationToken.None))
+                .IsEqualTo(1);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+            File.Delete(databasePath + "-shm");
+            File.Delete(databasePath + "-wal");
+        }
+    }
+
+    [Test]
+    public async Task FileBackedSqlite_ConcurrentReleaseHasOneWinnerAndReleasesAllocation()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"registration-hold-release-{Guid.NewGuid():N}.db");
+        try
+        {
+            (Guid tenantId, _, Guid holdId, Guid poolId) = await SeedSqliteAsync(
+                databasePath,
+                UtcNow.AddMinutes(5));
+
+            bool[] results = await Task.WhenAll(
+                ReleaseAsync(databasePath, holdId),
+                ReleaseAsync(databasePath, holdId));
+
+            await Assert.That(results.Count(result => result)).IsEqualTo(1);
+            await using ExploreDbContext verification = CreateSqliteContext(databasePath, tenantId);
+            RegistrationInventoryHold persisted = await verification.RegistrationInventoryHolds
+                .AsNoTracking()
+                .SingleAsync(hold => hold.Id == holdId);
+            var repository = new RegistrationInventoryRepository(verification);
+            await Assert.That(persisted.RegistrationInventoryHoldStatusId)
+                .IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Released);
+            await Assert.That(persisted.ReleasedAt).IsEqualTo(UtcNow);
+            await Assert.That(await repository.GetAllocatedQuantityAsync(poolId, tenantId, CancellationToken.None))
+                .IsEqualTo(0);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+            File.Delete(databasePath + "-shm");
+            File.Delete(databasePath + "-wal");
+        }
+    }
+
     private static async Task<bool> ExpireAsync(string databasePath, Guid holdId)
     {
         await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
@@ -109,8 +178,27 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         return await repository.TryExpireDueHoldAsync(holdId, UtcNow, CancellationToken.None);
     }
 
+    private static async Task<bool> ConsumeAsync(string databasePath, Guid holdId)
+    {
+        await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
+        return await new RegistrationInventoryRepository(context)
+            .TryConsumeActiveHoldAsync(holdId, UtcNow, CancellationToken.None);
+    }
+
+    private static async Task<bool> ReleaseAsync(string databasePath, Guid holdId)
+    {
+        await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
+        return await new RegistrationInventoryRepository(context)
+            .TryReleaseActiveHoldAsync(
+                holdId,
+                RegistrationInventoryHoldStatusEnum.Released,
+                UtcNow,
+                CancellationToken.None);
+    }
+
     private static async Task<(Guid TenantId, Guid OrderId, Guid HoldId, Guid PoolId)> SeedSqliteAsync(
-        string databasePath)
+        string databasePath,
+        DateTime? expiresAt = null)
     {
         await using ExploreDbContext context = CreateSqliteContext(databasePath, tenantId: null);
         await context.Database.EnsureCreatedAsync();
@@ -238,7 +326,7 @@ public sealed class RegistrationInventoryHoldPortabilityTests
             tenant.Id,
             quantity: 1,
             UtcNow.AddMinutes(-20),
-            UtcNow.AddMinutes(-5));
+            expiresAt ?? UtcNow.AddMinutes(-5));
         context.AddRange(order, hold);
         await context.SaveChangesAsync();
 
@@ -265,35 +353,18 @@ public sealed class RegistrationInventoryHoldPortabilityTests
     }
 
     private static ExploreDbContext CreateProviderContext(string provider)
+        => ExploreDbContextModelProviderTests.CreateContext(provider);
+
+    private static string GetRepositoryRoot()
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
-        switch (provider)
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "global.json")))
         {
-            case "PostgreSql":
-                builder.UseNpgsql("Host=localhost;Database=model;Username=model;Password=model");
-                break;
-            case "Sqlite":
-                builder.UseSqlite("Data Source=:memory:");
-                break;
-            case "SqlServer":
-                builder.UseSqlServer("Server=localhost;Database=model;User Id=model;Password=model;TrustServerCertificate=True");
-                break;
-            case "MariaDb":
-                builder.UseMySql(
-                    "Server=localhost;Database=model;User=model;Password=model",
-                    new MariaDbServerVersion(new Version(11, 4)));
-                break;
-            case "MySql":
-                builder.UseMySql(
-                    "Server=localhost;Database=model;User=model;Password=model",
-                    new MySqlServerVersion(new Version(8, 4)));
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(provider), provider, null);
+            directory = directory.Parent;
         }
 
-        builder.UseSnakeCaseNamingConvention();
-        return new ExploreDbContext(builder.Options);
+        return directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate repository root.");
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

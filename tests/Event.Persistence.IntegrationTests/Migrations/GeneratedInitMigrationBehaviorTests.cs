@@ -7,6 +7,7 @@ using Explore.Persistence;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -25,21 +26,21 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     RecipientDeliveryMigrationContainerFixture fixture)
 {
     [Test]
-    public async Task GeneratedCatalogs_ContainApplicationChainDataProtectionInitAndRetainedAuthorityChain()
+    public async Task GeneratedCatalogs_ContainExactlyOneInitPerPostgreSqlContext()
     {
         await using ExploreDbContext explore = CreateExploreContext();
         await using DataProtectionKeyContext dataProtection = CreateDataProtectionContext();
         await using PrivacyErasureAuthorityDbContext authority = CreateAuthorityContext();
 
         string[] exploreMigrations = MigrationIds(explore);
-        await Assert.That(exploreMigrations.Length).IsEqualTo(2);
-        await Assert.That(MigrationIds(dataProtection)).HasSingleItem();
-        await Assert.That(MigrationIds(authority).Length).IsEqualTo(2);
-        await Assert.That(exploreMigrations[0]).EndsWith("_init");
-        await Assert.That(exploreMigrations[1]).EndsWith("_WebhookOwnerTenantContainment");
-        await Assert.That(MigrationIds(dataProtection)[0]).EndsWith("_init");
-        await Assert.That(MigrationIds(authority)[0]).EndsWith("_init");
-        await Assert.That(MigrationIds(authority)[1]).EndsWith("_AddFiniteAuthorityRetention");
+        string[] dataProtectionMigrations = MigrationIds(dataProtection);
+        string[] authorityMigrations = MigrationIds(authority);
+        await Assert.That(exploreMigrations).HasSingleItem();
+        await Assert.That(dataProtectionMigrations).HasSingleItem();
+        await Assert.That(authorityMigrations).HasSingleItem();
+        await Assert.That(exploreMigrations[0]).EndsWith("_Init");
+        await Assert.That(dataProtectionMigrations[0]).EndsWith("_Init");
+        await Assert.That(authorityMigrations[0]).EndsWith("_Init");
 
         Migration dataProtectionInit = InitMigration(dataProtection);
         CreateTableOperation table = dataProtectionInit.UpOperations
@@ -48,7 +49,28 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         await Assert.That(table.Name).IsEqualTo("data_protection_keys");
         await Assert.That(table.Columns.Select(column => column.Name))
             .IsEquivalentTo(["id", "friendly_name", "xml"]);
-        await Assert.That(dataProtectionInit.UpOperations.Count).IsEqualTo(1);
+        await Assert.That(dataProtectionInit.UpOperations.Count).IsEqualTo(2);
+        await Assert.That(dataProtectionInit.UpOperations.OfType<EnsureSchemaOperation>().Single().Name)
+            .IsEqualTo("islamu_event");
+    }
+
+    [Test]
+    public async Task DataProtectionInitial_AppliesRollsBackAndReapplies()
+    {
+        await ResetDatabaseAsync();
+        var connection = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
+        await SqliteApplicationInitialLifecycleTests.AssertDataProtectionLifecycleAsync(
+            new PrimaryDatabaseConnectionOptions
+            {
+                Role = PrimaryDatabaseRole.Migrator,
+                Provider = PrimaryDatabaseProvider.PostgreSql,
+                Host = connection.Host,
+                Port = connection.Port,
+                Database = connection.Database,
+                Username = connection.Username,
+                Password = connection.Password,
+                TlsMode = PrimaryDatabaseTlsMode.Disabled
+            });
     }
 
     [Test]
@@ -68,14 +90,14 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             await Assert.That(await ScalarIntAsync(
                 """
                 SELECT
-                    (SELECT count(*) FROM location_kinds
+                    (SELECT count(*) FROM islamu_event.location_kinds
                      WHERE (id, master_code) IN (
                          (1, 'UNCLASSIFIED'), (2, 'COMMERCIAL_VENUE'),
                          (3, 'PUBLIC_SPACE'), (4, 'COMMUNITY_VENUE'), (5, 'PRIVATE_HOME')))
-                  + (SELECT count(*) FROM location_privacy_states
+                  + (SELECT count(*) FROM islamu_event.location_privacy_states
                      WHERE (id, master_code) IN (
                          (1, 'NOT_PROVIDED'), (2, 'ACTIVE'), (3, 'ERASED')))
-                  + (SELECT count(*) FROM location_disclosure_audiences
+                  + (SELECT count(*) FROM islamu_event.location_disclosure_audiences
                      WHERE (id, master_code) IN (
                          (1, 'NEVER'), (2, 'ANY_CURRENT_REGISTRANT'),
                          (3, 'CONFIRMED_PARTICIPANT')))
@@ -145,8 +167,8 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 """
                 SELECT count(*)::integer
                 FROM pg_catalog.pg_constraint
-                WHERE conname = 'EX_EventSession_RoomNoOverlap'
-                  AND conrelid = 'event_sessions'::regclass
+                WHERE conname = 'ex_event_session_room_no_overlap'
+                  AND conrelid = 'islamu_event.event_sessions'::regclass
                 """)).IsEqualTo(1);
 
             await migrator.MigrateAsync(Migration.InitialDatabase);
@@ -176,10 +198,10 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             await migrator.MigrateAsync(MigrationIds(context)[^1]);
 
             await Assert.That(await ScalarIntAsync(
-                "SELECT count(*)::integer FROM location_kinds")).IsEqualTo(0);
+                "SELECT count(*)::integer FROM islamu_event.location_kinds")).IsEqualTo(0);
             await LookupTableSeeder.SeedAsync(context);
             await Assert.That(await ScalarIntAsync(
-                "SELECT count(*)::integer FROM location_kinds")).IsGreaterThanOrEqualTo(5);
+                "SELECT count(*)::integer FROM islamu_event.location_kinds")).IsGreaterThanOrEqualTo(5);
         }
         finally
         {
@@ -195,10 +217,15 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         {
             await using PrivacyErasureAuthorityDbContext context = CreateAuthorityContext();
             IMigrator migrator = context.GetService<IMigrator>();
-            string migrationId = MigrationIds(context).First();
+            string migrationId = MigrationIds(context).Last();
 
             await migrator.MigrateAsync(migrationId);
+            await migrator.MigrateAsync(Migration.InitialDatabase);
             await migrator.MigrateAsync(migrationId);
+            await context.Database.ExecuteSqlRawAsync(
+                PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql);
+            await ExploreDatabaseMigrator.ApplyExternalPrivacyErasureAuthorityContractAsync(context);
+            await ExploreDatabaseMigrator.ApplyExternalPrivacyErasureAuthorityContractAsync(context);
 
             await Assert.That(await ScalarIntAsync(
                 """
@@ -230,7 +257,9 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 WHERE grantee = 'privacy_erasure_authority_runtime'
                   AND routine_schema = 'privacy_erasure_authority'
                   AND privilege_type = 'EXECUTE'
-                  AND routine_name IN ('append_erasure_intent', 'read_erasure_intents_after')
+                  AND routine_name IN (
+                      'append_erasure_intent_with_retention',
+                      'read_erasure_intents_after')
                 """)).IsEqualTo(2);
             await Assert.That(await ScalarIntAsync(
                 """
@@ -239,9 +268,6 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 WHERE grantee = 'privacy_erasure_authority_runtime'
                   AND table_schema = 'privacy_erasure_authority'
                 """)).IsEqualTo(0);
-
-            await migrator.MigrateAsync(Migration.InitialDatabase);
-            await migrator.MigrateAsync(migrationId);
 
             await ScalarLongAsync(
                 """
@@ -254,7 +280,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 () => migrator.MigrateAsync(Migration.InitialDatabase)))!;
             PostgresException postgres = FindPostgresException(rollback)
                 ?? throw new InvalidOperationException("Expected a PostgreSQL rollback guard.", rollback);
-            await Assert.That(postgres.SqlState).IsEqualTo(PostgresErrorCodes.ObjectNotInPrerequisiteState);
+            await Assert.That(postgres.SqlState).IsEqualTo(PostgresErrorCodes.DependentObjectsStillExist);
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM privacy_erasure_authority.erasure_intents"))
                 .IsEqualTo(1);
@@ -302,7 +328,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             await context.GetService<IMigrator>().MigrateAsync(MigrationIds(context)[^1]);
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM information_schema.tables WHERE table_schema = 'privacy_erasure_authority'"))
-                .IsEqualTo(2);
+                .IsEqualTo(0);
             await Assert.That(await ScalarIntAsync(
                 """
                 SELECT count(*)::integer
@@ -319,6 +345,10 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 ApplicationName = "authority-migrator-canary"
             };
             var applicationTarget = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
+            string applicationRuntimeUsername = applicationTarget.Username + "_runtime";
+            string applicationMigratorUsername = applicationTarget.Username + "_migrator";
+            string authorityRuntimeUsername = authorityTarget.Username + "_runtime";
+            string authorityMigratorUsername = authorityTarget.Username + "_migrator";
             IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
@@ -327,11 +357,21 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                     ["Database:Host"] = applicationTarget.Host,
                     ["Database:Port"] = applicationTarget.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["Database:Database"] = applicationTarget.Database,
-                    ["Database:Runtime:Username"] = applicationTarget.Username,
+                    ["Database:Runtime:Username"] = applicationRuntimeUsername,
                     ["Database:Runtime:Password"] = applicationTarget.Password,
-                    ["Database:Migrator:Username"] = applicationTarget.Username,
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Migrator:Username"] = applicationMigratorUsername,
                     ["Database:Migrator:Password"] = applicationTarget.Password,
-                    ["ConnectionStrings:PrivacyErasureAuthority"] = authorityTarget.ConnectionString
+                    ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+                    ["PrivacyErasureAuthorityDatabase:Host"] = authorityTarget.Host,
+                    ["PrivacyErasureAuthorityDatabase:Port"] = authorityTarget.Port.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    ["PrivacyErasureAuthorityDatabase:Database"] = authorityTarget.Database,
+                    ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+                    ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = authorityRuntimeUsername,
+                    ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = authorityTarget.Password,
+                    ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = authorityMigratorUsername,
+                    ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = authorityTarget.Password
                 }).Build();
             var services = new ServiceCollection();
 
@@ -385,8 +425,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     private static Migration InitMigration(DbContext context)
     {
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations
-            .Single(entry => entry.Key.EndsWith("_init", StringComparison.Ordinal));
+        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single();
         return assembly.CreateMigration(item.Value, context.Database.ProviderName!);
     }
 

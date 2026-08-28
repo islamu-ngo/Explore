@@ -14,6 +14,9 @@
     <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.Sqlite\Explore.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.SqlServer\Explore.Persistence.Migrations.SqlServer.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence.DataProtection.Migrations.Sqlite\Explore.Persistence.DataProtection.Migrations.Sqlite.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.DataProtection.Migrations.SqlServer\Explore.Persistence.DataProtection.Migrations.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.DataProtection.Migrations.MariaDb\Explore.Persistence.DataProtection.Migrations.MariaDb.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.DataProtection.Migrations.MySql\Explore.Persistence.DataProtection.Migrations.MySql.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite\Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>

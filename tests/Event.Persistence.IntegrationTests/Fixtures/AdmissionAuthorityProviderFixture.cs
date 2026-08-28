@@ -37,7 +37,8 @@ public sealed class AdmissionAuthorityProviderFixture
     }
 
     public PrimaryDatabaseConnectionOptions CreateOptions(
-        PrimaryDatabaseProvider provider)
+        PrimaryDatabaseProvider provider,
+        PrimaryDatabaseRole role = PrimaryDatabaseRole.Runtime)
     {
         IContainer container = provider switch
         {
@@ -52,7 +53,7 @@ public sealed class AdmissionAuthorityProviderFixture
 
         return new PrimaryDatabaseConnectionOptions
         {
-            Role = PrimaryDatabaseRole.Runtime,
+            Role = role,
             Provider = provider,
             Host = container.Hostname,
             Port = container.GetMappedPublicPort(

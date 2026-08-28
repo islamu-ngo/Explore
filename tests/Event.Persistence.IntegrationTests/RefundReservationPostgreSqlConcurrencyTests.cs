@@ -6,6 +6,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -90,6 +91,85 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
     {
         await using ExploreDbContext context = await CreateContextAsync(connectionString, ensureCreated: false);
         return await new RefundAttemptRepository(context).ReserveAsync(attempt, cancellationToken);
+    }
+
+    [Test]
+    public async Task PostgreSqlNamedLockLifecycleCoversContentionCommitRollbackCancellationAndDisposal()
+    {
+        string resource = $"named-lock-lifecycle:postgres:{Guid.CreateVersion7():N}";
+        await using ExploreDbContext owner =
+            await CreateContextAsync(fixture.ConnectionString, ensureCreated: false);
+        await using var ownerTransaction = await owner.Database.BeginTransactionAsync();
+        await using IAsyncDisposable transactionLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                owner,
+                resource,
+                CancellationToken.None);
+
+        await using (ExploreDbContext contender =
+                     await CreateContextAsync(fixture.ConnectionString, ensureCreated: false))
+        await using (var contenderTransaction = await contender.Database.BeginTransactionAsync())
+        {
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(750));
+            Exception? blocked = await CaptureNamedLockFailureAsync(
+                contender,
+                resource,
+                cancellation.Token);
+            await Assert.That(blocked).IsNotNull();
+        }
+
+        await ownerTransaction.CommitAsync();
+
+        await using (ExploreDbContext rollbackOwner =
+                     await CreateContextAsync(fixture.ConnectionString, ensureCreated: false))
+        await using (var rollbackTransaction = await rollbackOwner.Database.BeginTransactionAsync())
+        {
+            await using IAsyncDisposable lease =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    rollbackOwner,
+                    resource,
+                    CancellationToken.None);
+            await rollbackTransaction.RollbackAsync();
+        }
+
+        await using ExploreDbContext sessionOwner =
+            await CreateContextAsync(fixture.ConnectionString, ensureCreated: false);
+        IAsyncDisposable sessionLease = await RelationalNamedLock.AcquireSessionAsync(
+            sessionOwner,
+            resource,
+            CancellationToken.None);
+        await sessionLease.DisposeAsync();
+
+        await using ExploreDbContext verifier =
+            await CreateContextAsync(fixture.ConnectionString, ensureCreated: false);
+        await using var verificationTransaction = await verifier.Database.BeginTransactionAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using IAsyncDisposable verificationLease =
+            await RelationalNamedLock.AcquireTransactionAsync(
+                verifier,
+                resource,
+                timeout.Token);
+        await verificationTransaction.CommitAsync(timeout.Token);
+    }
+
+    private static async Task<Exception?> CaptureNamedLockFailureAsync(
+        ExploreDbContext context,
+        string resource,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using IAsyncDisposable lease =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    context,
+                    resource,
+                    cancellationToken);
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
     }
 
     private static async Task<ExploreDbContext> CreateContextAsync(string connectionString, bool ensureCreated = true)

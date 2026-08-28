@@ -24,7 +24,7 @@ namespace Event.Persistence.IntegrationTests.Privacy;
 [Category("EventLocationPrivacy")]
 public sealed class SemanticCoordinatePersistenceTests(RecipientDeliveryMigrationContainerFixture fixture)
 {
-    private const string CoordinateCheck = "CK_LocationPii_CoordinateShape";
+    private const string CoordinateCheck = "ck_location_pii_coordinate_shape";
 
     [Test]
     public async Task ExactAndAbsentCoordinates_RoundTripThroughLocationPiiWithTenantVisibility()

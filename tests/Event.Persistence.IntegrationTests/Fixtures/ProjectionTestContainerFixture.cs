@@ -1,22 +1,24 @@
-// ABOUTME: Minimal PostgreSQL container fixture for projection updater tests.
-// ABOUTME: Uses EnsureCreatedAsync so tests run against the current EF model without depending on migration-file drift.
+// ABOUTME: PostgreSQL container fixture for projection and event-location repository tests.
+// ABOUTME: Uses the current EF model plus canonical lookup seeding without migration-history coupling.
 
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Domain;
-using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
+using Explore.Persistence.Schema;
+using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using TUnit.Core.Interfaces;
 
 namespace Event.Persistence.IntegrationTests.Fixtures;
 
 /// <summary>
-/// Lightweight container fixture scoped to projection integration tests. Does not run the
-/// full LookupTableSeeder, does not rely on migration files, and constructs schema directly
-/// from the current model via <see cref="DatabaseFacade.EnsureCreatedAsync"/>.
-/// Projection tests seed their own minimal tenant/event graph and do not need platform lookups.
+/// Lightweight container fixture scoped to projection integration tests. It does not rely on
+/// migration files, constructs schema directly from the current model via
+/// <see cref="DatabaseFacade.EnsureCreatedAsync"/>, and repairs canonical lookup rows before use.
 /// </summary>
 public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposable
 {
@@ -40,27 +42,7 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
 
         await using var context = CreateDbContextInternal();
         await context.Database.EnsureCreatedAsync();
-        await SeedMinimalLookupsAsync(context);
-    }
-
-    private static async Task SeedMinimalLookupsAsync(ExploreDbContext context)
-    {
-        // Only the FK targets required by projection tests to build a minimal tenant/event graph.
-        context.Set<ActorType>().Add(new ActorType { Id = 1, MasterCode = "USER", FullName = "User" });
-        context.Set<TenantStatus>().AddRange(
-            new TenantStatus { Id = 1, MasterCode = "PENDING", FullName = "Pending" },
-            new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active" });
-        context.Set<EventStatus>().Add(new EventStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
-        context.Set<EventProvenanceType>().Add(new EventProvenanceType
-        {
-            Id = (int)EventProvenanceTypeEnum.OrganizerCreated,
-            MasterCode = "ORGANIZER_CREATED",
-            FullName = "Organizer created"
-        });
-        context.Set<EventSessionStatus>().Add(new EventSessionStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
-        context.Set<EventFormat>().Add(new EventFormat { Id = 1, MasterCode = "LOCAL", FullName = "Local" });
-        context.Set<VisibilityType>().Add(new VisibilityType { Id = 1, MasterCode = "PUBLIC", FullName = "Public" });
-        await context.SaveChangesAsync();
+        await LookupTableSeeder.SeedAsync(context);
     }
 
     public async ValueTask DisposeAsync()
@@ -85,12 +67,24 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
 
     private ExploreDbContext CreateDbContextInternal()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-
-        return new ExploreDbContext(options);
+        var connection = new NpgsqlConnectionStringBuilder(_container.GetConnectionString());
+        var database = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = connection.Host,
+            Port = connection.Port,
+            Database = connection.Database,
+            Schema = RelationalModelNamespace.DefaultSchema,
+            Username = connection.Username,
+            Password = connection.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
+        PrimaryDatabaseProviderComposition.ConfigureApplication(builder, database);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        return new ExploreDbContext(builder.Options);
     }
 }

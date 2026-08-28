@@ -1,10 +1,14 @@
-// ABOUTME: PostgreSQL acceptance for the ELP-230C contraction of unmediated physical venue references.
-// ABOUTME: Proves every carrier rejects a raw LocationId without an EventLocationId, and rolls back cleanly.
+// ABOUTME: PostgreSQL acceptance for the generated initial schema's mediated physical venue references.
+// ABOUTME: Proves every carrier rejects raw LocationId use and the development baseline rolls back cleanly.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Domain;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -16,15 +20,17 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 [Property("Category", "EventLocationPrivacy")]
 public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigrationContainerFixture fixture)
 {
-    private const string MigrationSuffix = "ContractEventLocationPhysicalReferences";
+    private const string MigrationSuffix = "Init";
 
-    /// <summary>Carrier table and the constraint that mediates its physical venue reference.</summary>
-    private static readonly (string Table, string Constraint)[] Carriers =
+    private const string ContractionSql = "location_id IS NULL OR event_location_id IS NOT NULL";
+
+    /// <summary>Carrier types whose finalized relational metadata owns the physical constraint identity.</summary>
+    private static readonly Type[] Carriers =
     [
-        ("event_sessions", "CK_EventSession_PhysicalLocationRequiresEventLocation"),
-        ("event_session_groups", "CK_EventSessionGroup_PhysicalLocationRequiresEventLocation"),
-        ("event_agenda_items", "CK_EventAgendaItem_PhysicalLocationRequiresEventLocation"),
-        ("event_session_agenda_items", "CK_EventSessionAgendaItem_PhysicalLocationRequiresEventLocation")
+        typeof(EventSession),
+        typeof(EventSessionGroup),
+        typeof(EventAgendaItem),
+        typeof(EventSessionAgendaItem)
     ];
 
     [Test]
@@ -43,10 +49,11 @@ public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigr
     [Test]
     public async Task EveryCarrierCarriesTheMediationConstraintAfterMigration()
     {
-        await WithMigratedDatabaseAsync(async (_, connectionString) =>
+        await WithMigratedDatabaseAsync(async (context, connectionString) =>
         {
-            foreach ((string table, string constraint) in Carriers)
+            foreach (Type carrier in Carriers)
             {
+                (string table, string constraint) = GetPhysicalConstraint(context, carrier);
                 bool exists = await ConstraintExistsAsync(connectionString, table, constraint);
                 await Assert.That(exists).IsTrue();
             }
@@ -56,10 +63,11 @@ public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigr
     [Test]
     public async Task ZeroGapHolds_NoExistingRowReferencesAPhysicalVenueWithoutAnEventLocation()
     {
-        await WithMigratedDatabaseAsync(async (_, connectionString) =>
+        await WithMigratedDatabaseAsync(async (context, connectionString) =>
         {
-            foreach ((string table, string _) in Carriers)
+            foreach (Type carrier in Carriers)
             {
+                (string table, _) = GetPhysicalConstraint(context, carrier);
                 long orphans = await ScalarAsync(
                     connectionString,
                     $"""
@@ -81,22 +89,23 @@ public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigr
             int contractionIndex = Array.FindIndex(
                 migrations,
                 migration => migration.EndsWith(MigrationSuffix, StringComparison.Ordinal));
-            await Assert.That(contractionIndex).IsGreaterThan(0);
+            await Assert.That(contractionIndex).IsEqualTo(0);
 
-            string previous = migrations[contractionIndex - 1];
             await context.Database
                 .GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>()
-                .MigrateAsync(previous);
+                .MigrateAsync("0");
 
-            foreach ((string table, string constraint) in Carriers)
+            foreach (Type carrier in Carriers)
             {
+                (string table, string constraint) = GetPhysicalConstraint(context, carrier);
                 await Assert.That(await ConstraintExistsAsync(connectionString, table, constraint)).IsFalse();
             }
 
             // Re-applying restores the guarantee, so a rollback is never a one-way door.
             await context.Database.MigrateAsync();
-            foreach ((string table, string constraint) in Carriers)
+            foreach (Type carrier in Carriers)
             {
+                (string table, string constraint) = GetPhysicalConstraint(context, carrier);
                 await Assert.That(await ConstraintExistsAsync(connectionString, table, constraint)).IsTrue();
             }
         });
@@ -139,6 +148,20 @@ public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigr
         return count == 1;
     }
 
+    private static (string Table, string Constraint) GetPhysicalConstraint(
+        ExploreDbContext context,
+        Type carrier)
+    {
+        var model = context
+            .GetService<Microsoft.EntityFrameworkCore.Metadata.IDesignTimeModel>()
+            .Model;
+        var entityType = model.FindEntityType(carrier)
+            ?? throw new InvalidOperationException($"No EF metadata exists for {carrier.Name}.");
+        var constraint = entityType.GetCheckConstraints()
+            .Single(candidate => string.Equals(candidate.Sql, ContractionSql, StringComparison.Ordinal));
+        return (entityType.GetTableName()!, constraint.Name);
+    }
+
     private static async Task<long> ScalarAsync(string connectionString, string sql)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -149,12 +172,25 @@ public sealed class EventLocationContractionMigrationTests(RecipientDeliveryMigr
 
     private ExploreDbContext CreateContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
-                "__EFMigrationsHistory",
-                "islamu_event"))
-            .Options;
-        return new ExploreDbContext(options);
+        var connection = new NpgsqlConnectionStringBuilder(connectionString);
+        var options = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Migrator,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = connection.Host,
+            Port = connection.Port,
+            Database = connection.Database,
+            Schema = RelationalModelNamespace.DefaultSchema,
+            Username = connection.Username,
+            Password = connection.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
+        PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        return new ExploreDbContext(builder.Options);
     }
 
     private async Task<string> CreateDatabaseAsync(string databaseName)

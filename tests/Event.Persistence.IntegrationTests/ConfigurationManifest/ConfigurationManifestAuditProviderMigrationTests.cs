@@ -37,8 +37,8 @@ public sealed class ConfigurationManifestAuditProviderMigrationTests
                 ? string.Empty
                 : "ie_";
 
-        await Assert.That(migrations[^1])
-            .EndsWith("_AddConfigurationManifestAtomicBootstrapAudit");
+        await Assert.That(migrations).HasSingleItem();
+        await Assert.That(migrations[0]).EndsWith("_Init");
         await Assert.That(context.Database.HasPendingModelChanges()).IsFalse();
         await Assert.That(operation.GetTableName())
             .IsEqualTo($"{expectedPrefix}configuration_manifest_operations");

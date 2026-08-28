@@ -37,6 +37,13 @@ internal sealed class PrimaryDatabaseProviderBehaviorFixture
             PrimaryDatabaseConfiguration.BindRuntime(configuration));
     }
 
+    public static PrimaryDatabaseProviderBehaviorFixture Create(
+        PrimaryDatabaseConnectionOptions databaseOptions)
+    {
+        ArgumentNullException.ThrowIfNull(databaseOptions);
+        return new PrimaryDatabaseProviderBehaviorFixture(databaseOptions);
+    }
+
     public ExploreDbContext CreateSystemContext(params IInterceptor[] interceptors)
     {
         var context = CreateContext(interceptors);
@@ -66,7 +73,12 @@ internal sealed class PrimaryDatabaseProviderBehaviorFixture
     {
         var services = new ServiceCollection();
         services.AddDbContext<DataProtectionKeyContext>(options =>
-            PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, _databaseOptions));
+        {
+            options.EnableServiceProviderCaching(false);
+            PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, _databaseOptions);
+            options.ConfigureWarnings(warnings =>
+                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        });
         services
             .AddDataProtection()
             .SetApplicationName(applicationName)
@@ -78,14 +90,20 @@ internal sealed class PrimaryDatabaseProviderBehaviorFixture
     public DataProtectionKeyContext CreateDataProtectionContext()
     {
         var builder = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        builder.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureDataProtection(builder, _databaseOptions);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new DataProtectionKeyContext(builder.Options);
     }
 
     private ExploreDbContext CreateContext(params IInterceptor[] interceptors)
     {
         var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        builder.EnableServiceProviderCaching(false);
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, _databaseOptions);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         if (interceptors.Length > 0)
         {
             builder.AddInterceptors(interceptors);

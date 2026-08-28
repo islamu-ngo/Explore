@@ -10,6 +10,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -237,20 +238,32 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     }
 
     [Test]
-    [Arguments("ux_registration_submission_revisions_submission_revision_number")]
-    public async Task ExpectedRevisionIdentityConstraintsAreWhitelisted(string constraintName)
+    public async Task ExpectedRevisionIdentityConstraintIsResolvedFromMetadata()
     {
+        await using ExploreDbContext context = CreateModelContext();
+        string constraintName = RelationalConstraintDescriptorResolver
+            .UniqueIndex<RegistrationSubmissionRevision>(
+                context,
+                nameof(RegistrationSubmissionRevision.TenantId),
+                nameof(RegistrationSubmissionRevision.RegistrationSubmissionId),
+                nameof(RegistrationSubmissionRevision.RevisionNumber))
+            .Name;
         await Assert.That(RegistrationSubmissionRepository.IsRevisionIdentityUniqueViolation(
+            context,
             CreateUniqueViolation(constraintName))).IsTrue();
     }
 
     [Test]
     public async Task RevisionPrimaryKeyViolationPropagatesOriginalException()
     {
-        DbUpdateException expected = CreateUniqueViolation("pk_registration_submission_revisions");
+        await using ExploreDbContext context = CreateModelContext();
+        string primaryKey = RelationalConstraintDescriptorResolver
+            .PrimaryKey<RegistrationSubmissionRevision>(context)
+            .Name;
+        DbUpdateException expected = CreateUniqueViolation(primaryKey);
 
         DbUpdateException actual = (await Assert.ThrowsAsync<DbUpdateException>(() =>
-            ApplyRevisionUniqueFilterAsync(expected)))!;
+            ApplyRevisionUniqueFilterAsync(context, expected)))!;
 
         await Assert.That(actual).IsSameReferenceAs(expected);
     }
@@ -258,10 +271,11 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     [Test]
     public async Task UnrelatedUniqueConstraintIsExcludedFromEveryReplayWhitelist()
     {
+        await using ExploreDbContext context = CreateModelContext();
         DbUpdateException unrelated = CreateUniqueViolation("ux_unrelated_registration_constraint");
 
-        await Assert.That(RegistrationSubmissionRepository.IsSubmissionIdentityUniqueViolation(unrelated)).IsFalse();
-        await Assert.That(RegistrationSubmissionRepository.IsRevisionIdentityUniqueViolation(unrelated)).IsFalse();
+        await Assert.That(RegistrationSubmissionRepository.IsSubmissionIdentityUniqueViolation(context, unrelated)).IsFalse();
+        await Assert.That(RegistrationSubmissionRepository.IsRevisionIdentityUniqueViolation(context, unrelated)).IsFalse();
     }
 
     [Test]
@@ -423,14 +437,16 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
             PostgresErrorCodes.UniqueViolation,
             constraintName: constraintName));
 
-    private static Task ApplyRevisionUniqueFilterAsync(DbUpdateException exception)
+    private static Task ApplyRevisionUniqueFilterAsync(
+        ExploreDbContext context,
+        DbUpdateException exception)
     {
         try
         {
             throw exception;
         }
         catch (DbUpdateException candidate) when (
-            RegistrationSubmissionRepository.IsRevisionIdentityUniqueViolation(candidate))
+            RegistrationSubmissionRepository.IsRevisionIdentityUniqueViolation(context, candidate))
         {
             return Task.CompletedTask;
         }

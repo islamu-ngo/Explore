@@ -1,6 +1,7 @@
 // ABOUTME: Verifies topology-specific privacy-erasure authority composition and connection validation.
 // ABOUTME: Proves EmbeddedSqlite is the default while malformed external provider settings fail closed.
 
+using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
@@ -11,15 +12,19 @@ using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 using Explore.Secrets.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Testcontainers.PostgreSql;
 
 namespace Event.Persistence.IntegrationTests.Privacy;
 
-public sealed class PrivacyErasureAuthorityCompositionValidationTests
+[ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("RecipientDeliveryMigrationDb")]
+public sealed class PrivacyErasureAuthorityCompositionValidationTests(
+    RecipientDeliveryMigrationContainerFixture fixture)
 {
     [Test]
     public async Task DefaultComposition_RegistersEmbeddedAuthorityWithoutExternalDatabase()
@@ -101,27 +106,27 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     [Timeout(240_000)]
     public async Task CoLocatedPostgresTopology_MigratesAndAppendsInPrimarySchema()
     {
-        await using var database = new PostgreSqlBuilder("postgres:18-alpine")
-            .WithDatabase("event")
-            .WithUsername("postgres")
-            .WithPassword("postgres")
-            .Build();
-        await database.StartAsync();
+        await fixture.ResetAsync();
 
         const string schema = "custom_event";
         var migratorOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
             migratorOptions,
-            CreatePostgresOptions(database.GetConnectionString(), PrimaryDatabaseRole.Migrator, schema));
+            CreatePostgresOptions(fixture.ConnectionString, PrimaryDatabaseRole.Migrator, schema));
         await using (var migrator = new CoLocatedPrivacyErasureAuthorityDbContext(migratorOptions.Options))
         {
-            await migrator.Database.MigrateAsync();
+            string migration = migrator.Database.GetMigrations().Single();
+            IMigrator migrationRunner = migrator.GetService<IMigrator>();
+            await migrationRunner.MigrateAsync(migration);
+            await migrationRunner.MigrateAsync(Migration.InitialDatabase);
+            await migrationRunner.MigrateAsync(migration);
+            await migrationRunner.MigrateAsync(migration);
         }
 
         var runtimeOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
             runtimeOptions,
-            CreatePostgresOptions(database.GetConnectionString(), PrimaryDatabaseRole.Runtime, schema));
+            CreatePostgresOptions(fixture.ConnectionString, PrimaryDatabaseRole.Runtime, schema));
         await using var context = new CoLocatedPrivacyErasureAuthorityDbContext(runtimeOptions.Options);
         var authority = new CoLocatedPostgresPrivacyErasureAuthorityRepository(
             context,
@@ -228,7 +233,12 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
                 .GetRequiredService<IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>>();
             await using EmbeddedPrivacyErasureAuthorityDbContext context =
                 await factory.CreateDbContextAsync();
-            await context.Database.MigrateAsync();
+            string migration = context.Database.GetMigrations().Single();
+            IMigrator migrationRunner = context.GetService<IMigrator>();
+            await migrationRunner.MigrateAsync(migration);
+            await migrationRunner.MigrateAsync(Migration.InitialDatabase);
+            await migrationRunner.MigrateAsync(migration);
+            await migrationRunner.MigrateAsync(migration);
             string dataSource = new SqliteConnectionStringBuilder(
                 context.Database.GetConnectionString()).DataSource;
             var request = PrivacyErasureRequest.Create(

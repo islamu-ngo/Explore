@@ -1,6 +1,7 @@
 // ABOUTME: Proves payment-attempt active-slot and checkout-dispatch effect persistence semantics.
 // ABOUTME: Uses SQLite for deterministic duplicate, tenant isolation, terminal release, and lease-fence checks.
 
+using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Payments;
@@ -9,9 +10,11 @@ using Explore.Domain;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
 using NSubstitute;
 using TUnit.Assertions;
@@ -145,6 +148,225 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
 
             await Assert.That(results.Sum(result => result.Count)).IsEqualTo(1);
             await Assert.That(results.SelectMany(result => result).Select(claim => claim.EffectId).Distinct()).Count().IsEqualTo(1);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentClaimAsyncCreatesOneAttemptAndOneDispatchEffect()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"payment-attempt-race-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using (ExploreDbContext setup = await CreateFileContextAsync(databasePath))
+            {
+            }
+
+            await using ExploreDbContext firstContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            await using ExploreDbContext secondContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            var firstRepository = new RegistrationPaymentAttemptRepository(firstContext);
+            var secondRepository = new RegistrationPaymentAttemptRepository(secondContext);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Task<RegistrationPaymentAttemptClaimOutcome> firstTask = ClaimAfterReleaseAsync(
+                firstRepository,
+                Claim(TenantId, OrderId, "composition-claim-race"),
+                release.Task);
+            Task<RegistrationPaymentAttemptClaimOutcome> secondTask = ClaimAfterReleaseAsync(
+                secondRepository,
+                Claim(TenantId, OrderId, "composition-claim-race"),
+                release.Task);
+            release.SetResult();
+            RegistrationPaymentAttemptClaimOutcome[] outcomes =
+                await Task.WhenAll(firstTask, secondTask);
+
+            await Assert.That(outcomes.Count(outcome => outcome.Created)).IsEqualTo(1);
+            await Assert.That(outcomes.Select(outcome => outcome.Attempt.Id).Distinct()).Count().IsEqualTo(1);
+            await Assert.That(outcomes.Select(outcome => outcome.DispatchEffect.Id).Distinct()).Count().IsEqualTo(1);
+            await using ExploreDbContext verification =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            await Assert.That(await verification.PaymentAttempts.CountAsync()).IsEqualTo(1);
+            await Assert.That(await verification.CheckoutDispatchEffects.CountAsync()).IsEqualTo(1);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentReconciliationClaimsHaveOneFencedWinner()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"payment-reconciliation-race-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using (ExploreDbContext seed = await CreateFileContextAsync(databasePath))
+            {
+                var repository = new RegistrationPaymentAttemptRepository(seed);
+                RegistrationPaymentAttemptClaimOutcome outcome = await repository.ClaimAsync(
+                    Claim(TenantId, OrderId, "composition-reconciliation-race"),
+                    CancellationToken.None);
+                outcome.Attempt.MarkRequiresAction("cs_reconciliation_race", UtcNow, null);
+                await repository.SaveChangesAsync(CancellationToken.None);
+                await repository.EnsureReconciliationDueAsync(
+                    outcome.Attempt,
+                    null,
+                    UtcNow,
+                    CancellationToken.None);
+            }
+
+            await using ExploreDbContext firstContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            await using ExploreDbContext secondContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            var firstRepository = new RegistrationPaymentAttemptRepository(firstContext);
+            var secondRepository = new RegistrationPaymentAttemptRepository(secondContext);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Task<IReadOnlyList<PaymentReconciliationClaim>> firstTask =
+                ClaimReconciliationAfterReleaseAsync(firstRepository, "worker-a", release.Task);
+            Task<IReadOnlyList<PaymentReconciliationClaim>> secondTask =
+                ClaimReconciliationAfterReleaseAsync(secondRepository, "worker-b", release.Task);
+            release.SetResult();
+            IReadOnlyList<PaymentReconciliationClaim>[] claims =
+                await Task.WhenAll(firstTask, secondTask);
+
+            await Assert.That(claims.Sum(result => result.Count)).IsEqualTo(1);
+            await using ExploreDbContext verification =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            PaymentReconciliationEffect effect =
+                await verification.PaymentReconciliationEffects.AsNoTracking().SingleAsync();
+            await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.Processing);
+            await Assert.That(effect.ProcessingFence).IsEqualTo(1);
+            await Assert.That(effect.AttemptCount).IsEqualTo(1);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentSingleItemWorkersDrainDueReconciliationsWithoutStarvationOrDuplicates()
+    {
+        const int workerCount = 4;
+        string databasePath = Path.Combine(Path.GetTempPath(), $"payment-starvation-race-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using (ExploreDbContext seed = await CreateFileContextAsync(databasePath))
+            {
+                var repository = new RegistrationPaymentAttemptRepository(seed);
+                for (var index = 0; index < workerCount; index++)
+                {
+                    RegistrationPaymentAttemptClaimOutcome outcome = await repository.ClaimAsync(
+                        Claim(
+                            TenantId,
+                            Guid.CreateVersion7(),
+                            $"composition-starvation-{index}"),
+                        CancellationToken.None);
+                    outcome.Attempt.MarkRequiresAction(
+                        $"cs_starvation_{index}",
+                        UtcNow,
+                        null);
+                    await repository.SaveChangesAsync(CancellationToken.None);
+                    await repository.EnsureReconciliationDueAsync(
+                        outcome.Attempt,
+                        null,
+                        UtcNow.AddTicks(index - workerCount),
+                        CancellationToken.None);
+                }
+            }
+
+            var barrier = new ReconciliationUpdateBarrier(workerCount);
+            await using ExploreDbContext first =
+                await CreateFileContextAsync(databasePath, ensureCreated: false, barrier);
+            await using ExploreDbContext second =
+                await CreateFileContextAsync(databasePath, ensureCreated: false, barrier);
+            await using ExploreDbContext third =
+                await CreateFileContextAsync(databasePath, ensureCreated: false, barrier);
+            await using ExploreDbContext fourth =
+                await CreateFileContextAsync(databasePath, ensureCreated: false, barrier);
+            ExploreDbContext[] contexts = [first, second, third, fourth];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Task<IReadOnlyList<PaymentReconciliationClaim>>[] workers = contexts
+                .Select((context, index) => ClaimAfterReleaseAsync(
+                    new RegistrationPaymentAttemptRepository(context),
+                    $"starvation-worker-{index}",
+                    release.Task,
+                    timeout.Token))
+                .ToArray();
+            release.SetResult();
+            await barrier.AllArrived.WaitAsync(timeout.Token);
+            barrier.Release();
+            IReadOnlyList<PaymentReconciliationClaim>[] results =
+                await Task.WhenAll(workers);
+
+            PaymentReconciliationClaim[] claims = results.SelectMany(result => result).ToArray();
+            await Assert.That(results.All(result => result.Count == 1)).IsTrue();
+            await Assert.That(claims.Length).IsEqualTo(workerCount);
+            await Assert.That(claims.Select(claim => claim.EffectId).Distinct()).Count()
+                .IsEqualTo(workerCount);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentCheckoutCompletionCreatesOneReconciliationEffect()
+    {
+        string databasePath = Path.Combine(Path.GetTempPath(), $"payment-completion-race-{Guid.NewGuid():N}.db");
+        try
+        {
+            CheckoutDispatchClaim claim;
+            await using (ExploreDbContext seed = await CreateFileContextAsync(databasePath))
+            {
+                var repository = new RegistrationPaymentAttemptRepository(seed);
+                _ = await repository.ClaimAsync(
+                    Claim(TenantId, OrderId, "composition-completion-race"),
+                    CancellationToken.None);
+                claim = (await repository.ClaimDueDispatchEffectsAsync(
+                    "seed-worker",
+                    1,
+                    UtcNow,
+                    TimeSpan.FromMinutes(1),
+                    CancellationToken.None)).Single();
+            }
+
+            await using ExploreDbContext firstContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            await using ExploreDbContext secondContext =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            var firstRepository = new RegistrationPaymentAttemptRepository(firstContext);
+            var secondRepository = new RegistrationPaymentAttemptRepository(secondContext);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Task<bool> firstTask = CompleteDispatchAfterReleaseAsync(
+                firstRepository,
+                claim,
+                release.Task);
+            Task<bool> secondTask = CompleteDispatchAfterReleaseAsync(
+                secondRepository,
+                claim,
+                release.Task);
+            release.SetResult();
+            bool[] completed = await Task.WhenAll(firstTask, secondTask);
+
+            await Assert.That(completed.Count(result => result)).IsEqualTo(1);
+            await using ExploreDbContext verification =
+                await CreateFileContextAsync(databasePath, ensureCreated: false);
+            await Assert.That(await verification.PaymentReconciliationEffects.CountAsync()).IsEqualTo(1);
+            CheckoutDispatchEffect effect =
+                await verification.CheckoutDispatchEffects.AsNoTracking().SingleAsync();
+            await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.Completed);
         }
         finally
         {
@@ -952,6 +1174,58 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         await Assert.That(await context.PaymentSucceededObservations.CountAsync()).IsEqualTo(0);
     }
 
+    private static async Task<RegistrationPaymentAttemptClaimOutcome> ClaimAfterReleaseAsync(
+        RegistrationPaymentAttemptRepository repository,
+        RegistrationPaymentAttemptClaim claim,
+        Task release)
+    {
+        await release;
+        return await repository.ClaimAsync(claim, CancellationToken.None);
+    }
+
+    private static async Task<IReadOnlyList<PaymentReconciliationClaim>> ClaimReconciliationAfterReleaseAsync(
+        RegistrationPaymentAttemptRepository repository,
+        string leaseOwner,
+        Task release)
+    {
+        await release;
+        return await repository.ClaimDueReconciliationsAsync(
+            leaseOwner,
+            1,
+            UtcNow,
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None);
+    }
+
+    private static async Task<IReadOnlyList<PaymentReconciliationClaim>> ClaimAfterReleaseAsync(
+        RegistrationPaymentAttemptRepository repository,
+        string leaseOwner,
+        Task release,
+        CancellationToken cancellationToken)
+    {
+        await release.WaitAsync(cancellationToken);
+        return await repository.ClaimDueReconciliationsAsync(
+            leaseOwner,
+            1,
+            UtcNow,
+            TimeSpan.FromMinutes(1),
+            cancellationToken);
+    }
+
+    private static async Task<bool> CompleteDispatchAfterReleaseAsync(
+        RegistrationPaymentAttemptRepository repository,
+        CheckoutDispatchClaim claim,
+        Task release)
+    {
+        await release;
+        return await repository.CompleteCheckoutDispatchAsync(
+            claim,
+            "cs_completion_race",
+            null,
+            UtcNow.AddSeconds(1),
+            CancellationToken.None);
+    }
+
     private static RegistrationPaymentAttemptClaim Claim(
         Guid tenantId,
         Guid orderId,
@@ -1051,6 +1325,9 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite("Data Source=:memory:")
             .UseSnakeCaseNamingConvention()
+            .AddInterceptors(
+                SqliteNamedLockTransactionInterceptor.Instance,
+                SqliteProjectionLockTransactionInterceptor.Instance)
             .Options;
         var context = new ExploreDbContext(options);
         context.EnableTenantFilterBypass("Phase 18.2 SQLite persistence test setup.");
@@ -1060,13 +1337,23 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         return context;
     }
 
-    private static async Task<ExploreDbContext> CreateFileContextAsync(string databasePath, bool ensureCreated = true)
+    private static async Task<ExploreDbContext> CreateFileContextAsync(
+        string databasePath,
+        bool ensureCreated = true,
+        IInterceptor? interceptor = null)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = databasePath }.ToString())
             .UseSnakeCaseNamingConvention()
-            .Options;
-        var context = new ExploreDbContext(options);
+            .AddInterceptors(
+                SqliteNamedLockTransactionInterceptor.Instance,
+                SqliteProjectionLockTransactionInterceptor.Instance);
+        if (interceptor is not null)
+        {
+            builder.AddInterceptors(interceptor);
+        }
+
+        var context = new ExploreDbContext(builder.Options);
         context.EnableTenantFilterBypass("Phase 18.2 SQLite persistence race test setup.");
         await context.Database.OpenConnectionAsync();
         await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
@@ -1076,6 +1363,43 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
         }
 
         return context;
+    }
+
+    private sealed class ReconciliationUpdateBarrier(int participantCount)
+        : DbCommandInterceptor
+    {
+        private readonly TaskCompletionSource allArrived =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int arrivals;
+
+        public Task AllArrived => allArrived.Task;
+
+        public void Release() => release.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) &&
+                command.CommandText.Contains(
+                    "payment_reconciliation_effects",
+                    StringComparison.OrdinalIgnoreCase) &&
+                Interlocked.Increment(ref arrivals) <= participantCount)
+            {
+                if (Volatile.Read(ref arrivals) == participantCount)
+                {
+                    allArrived.TrySetResult();
+                }
+
+                await release.Task.WaitAsync(cancellationToken);
+            }
+
+            return result;
+        }
     }
 
     private sealed class MutableTimeProvider(DateTime now) : TimeProvider

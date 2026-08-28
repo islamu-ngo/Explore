@@ -10,6 +10,7 @@ using Explore.Persistence.Security;
 using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +30,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         PrimaryDatabaseProvider provider,
         string expectedOptionsExtension)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = CreateTestOptionsBuilder<ExploreDbContext>();
 
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
 
@@ -52,6 +53,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
             BuildConfiguration(provider),
             skipLookupCacheInitializer: true,
             environmentName: "Production");
+        services.AddDbContext<ExploreDbContext>(ConfigureTestOptions);
         using var serviceProvider = services.BuildServiceProvider();
 
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
@@ -70,8 +72,8 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         PrimaryDatabaseProvider provider,
         string expectedOptionsExtension)
     {
-        var application = new DbContextOptionsBuilder<ExploreDbContext>();
-        var dataProtection = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        var application = CreateTestOptionsBuilder<ExploreDbContext>();
+        var dataProtection = CreateTestOptionsBuilder<DataProtectionKeyContext>();
         PrimaryDatabaseConnectionOptions options = CreateOptions(provider);
 
         PrimaryDatabaseProviderComposition.ConfigureApplication(application, options);
@@ -93,6 +95,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
             new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
             skipLookupCacheInitializer: true,
             environmentName: "Production");
+        services.AddDbContext<ExploreDbContext>(ConfigureTestOptions);
         using var serviceProvider = services.BuildServiceProvider();
 
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
@@ -117,6 +120,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
             BuildConfiguration(provider),
             skipLookupCacheInitializer: true,
             environmentName: "Production");
+        services.AddDbContext<ExploreDbContext>(ConfigureTestOptions);
         using var serviceProvider = services.BuildServiceProvider();
 
         await Assert.That(services.Single(service => service.ServiceType == typeof(ISettingMutationLock))
@@ -159,7 +163,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         bool expectsMySqlInterceptor,
         bool expectsSqliteInterceptors)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = CreateTestOptionsBuilder<ExploreDbContext>();
 
         PrimaryDatabaseProviderComposition.ConfigureApplication(
             builder,
@@ -185,7 +189,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         PrimaryDatabaseProvider provider,
         string expectedServerVersionType)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = CreateTestOptionsBuilder<ExploreDbContext>();
 
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
 
@@ -273,7 +277,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         string? expectedSchema,
         string? expectedPrefix)
     {
-        var builder = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        var builder = CreateTestOptionsBuilder<DataProtectionKeyContext>();
         PrimaryDatabaseProviderComposition.ConfigureDataProtection(builder, CreateOptions(provider));
         using var context = new DataProtectionKeyContext(builder.Options);
 
@@ -298,6 +302,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     {
         var services = new ServiceCollection();
         services.AddExploreDataProtection(BuildConfiguration(provider));
+        services.AddDbContext<DataProtectionKeyContext>(ConfigureTestOptions);
         using var serviceProvider = services.BuildServiceProvider();
 
         using var context = serviceProvider.GetRequiredService<DataProtectionKeyContext>();
@@ -306,14 +311,15 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     }
 
     [Test]
-    public async Task DesignTimeFactories_ProjectDiscretePostgresMigratorSettings()
+    public async Task DesignTimeFactories_UseStructuredPostgresMigratorSettings()
     {
         var values = new Dictionary<string, string?>
         {
-            ["Postgresql:Host"] = "pg.example.test",
-            ["Postgresql:Database"] = "event_db",
-            ["Postgresql:Username"] = "migrator",
-            ["Postgresql:Password"] = "factory-secret",
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Migrator:Username"] = "migrator",
+            ["Database:Migrator:Password"] = Guid.CreateVersion7().ToString("N"),
         };
 
         using var application = new ExploreDbContextFactory().CreateDbContext(
@@ -386,7 +392,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
                 Host = "database.example.test",
                 Database = "event_db",
                 Username = "event_user",
-                Password = "composition-secret",
+                Password = Guid.CreateVersion7().ToString("N"),
                 TlsMode = PrimaryDatabaseTlsMode.Required,
                 ServerFlavor = provider switch
                 {
@@ -401,4 +407,19 @@ public sealed class PrimaryDatabaseProviderCompositionTests
                     _ => null,
                 },
             };
+
+    private static DbContextOptionsBuilder<TContext> CreateTestOptionsBuilder<TContext>()
+        where TContext : DbContext
+    {
+        var builder = new DbContextOptionsBuilder<TContext>();
+        ConfigureTestOptions(builder);
+        return builder;
+    }
+
+    private static void ConfigureTestOptions(DbContextOptionsBuilder builder)
+    {
+        builder.EnableServiceProviderCaching(false);
+        builder.ConfigureWarnings(warnings =>
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+    }
 }

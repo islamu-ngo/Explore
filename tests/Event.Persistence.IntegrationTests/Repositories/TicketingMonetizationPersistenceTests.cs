@@ -8,6 +8,7 @@ using Explore.Domain;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
@@ -1023,28 +1024,45 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     [Test]
-    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id")]
-    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu")]
-    [Arguments("ix_event_capacity_pools_tenant_id_event_id_name")]
-    public async Task TicketRepository_TranslatesRecognizedUniqueRaces(string constraintName)
+    public async Task TicketRepository_TranslatesMetadataResolvedUniqueRaces()
     {
-        await using var context = CreateInMemoryContext(
-            "ticketing-unique-translation",
-            new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
-        var repository = new EventTicketCatalogRepository(context);
+        await using ExploreDbContext modelContext = CreateSqliteContext();
+        string[] constraintNames =
+        [
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                modelContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId)).Name,
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventTicketCatalogVersion>(
+                modelContext,
+                nameof(EventTicketCatalogVersion.TenantId),
+                nameof(EventTicketCatalogVersion.EventId),
+                nameof(EventTicketCatalogVersion.VersionNumber)).Name,
+            RelationalConstraintDescriptorResolver.UniqueIndex<EventCapacityPool>(
+                modelContext,
+                nameof(EventCapacityPool.TenantId),
+                nameof(EventCapacityPool.EventId),
+                nameof(EventCapacityPool.Name)).Name
+        ];
 
-        ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
-            () => repository.SaveChangesAsync(CancellationToken.None));
+        foreach (string constraintName in constraintNames)
+        {
+            await using ExploreDbContext context = CreateSqliteContext(
+                new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
+            var repository = new EventTicketCatalogRepository(context);
 
-        await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+            ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
+                () => repository.SaveChangesAsync(CancellationToken.None));
+
+            await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        }
     }
 
     [Test]
     public async Task TicketRepository_LeavesUnrecognizedUniqueFailuresUntranslated()
     {
         DbUpdateException expected = CreateUniqueViolation("ix_unrelated_constraint");
-        await using var context = CreateInMemoryContext(
-            "ticketing-unrelated-translation",
+        await using ExploreDbContext context = CreateSqliteContext(
             new ThrowingSaveChangesInterceptor(() => expected));
         var repository = new EventTicketCatalogRepository(context);
 
@@ -1104,6 +1122,19 @@ public sealed class TicketingMonetizationPersistenceTests
         }
 
         return new(optionsBuilder.Options);
+    }
+
+    private static ExploreDbContext CreateSqliteContext(SaveChangesInterceptor? interceptor = null)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite("Data Source=:memory:")
+            .UseSnakeCaseNamingConvention();
+        if (interceptor is not null)
+        {
+            optionsBuilder.AddInterceptors(interceptor);
+        }
+
+        return new ExploreDbContext(optionsBuilder.Options);
     }
 
     private static TicketingTestDbContext CreateNamedInMemoryContext(string databaseName, InMemoryDatabaseRoot databaseRoot, Guid? tenantId = null)

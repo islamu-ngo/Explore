@@ -393,6 +393,9 @@ public sealed class EmailDispatchRepositoriesSqliteTests
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
+            .AddInterceptors(
+                SqliteNamedLockTransactionInterceptor.Instance,
+                SqliteProjectionLockTransactionInterceptor.Instance)
             .Options;
         return new ExploreDbContext(options);
     }

@@ -1,6 +1,7 @@
 // ABOUTME: Verifies tenant-safe immutable fanout occurrence persistence and PII-free outbox pointers.
 // ABOUTME: Covers wrong-tenant relationships, recipient deduplication, and transaction rollback.
 
+using System.Diagnostics;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
@@ -323,7 +324,8 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
     public async Task CreateAndLoad_PersistsOccurrenceAndTenantScopedPointer()
     {
         await fixture.ResetAsync();
-        await using var context = fixture.CreateDbContext();
+        var baseline = new PersistenceQueryBaselineInterceptor();
+        await using var context = fixture.CreateDbContext(baseline);
         Scenario scenario = await CreateScenarioAsync(context, "occurrence-load");
         var occurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
         OutboxMessage pointer = NotificationFanoutOccurrenceOutboxMessageFactory.Create(occurrence);
@@ -337,9 +339,14 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             await outboxRepository.Create(pointer);
         });
 
+        baseline.Reset();
         var contract = NotificationFanoutOccurrenceOutboxMessageFactory.DeserializePointer(pointer.Payload!);
+        var elapsed = Stopwatch.StartNew();
         var loaded = await repository.GetByPointerAsync(contract);
         var wrongTenant = await repository.GetByPointerAsync(contract with { TenantId = Guid.CreateVersion7() });
+        elapsed.Stop();
+        PersistenceQueryBaselineEvidence.Record(baseline
+            .Snapshot("notification_occurrence_pointer_reads", loaded is null ? 0 : 1, elapsed.Elapsed));
 
         await Assert.That(loaded).IsNotNull();
         await Assert.That(loaded!.SafeAfterSnapshotJson).Contains("09:00:00Z");

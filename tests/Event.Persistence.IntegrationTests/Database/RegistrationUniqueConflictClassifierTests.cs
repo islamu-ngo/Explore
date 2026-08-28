@@ -1,6 +1,8 @@
 // ABOUTME: Verifies provider-specific registration unique-race classification stays narrowly scoped.
 // ABOUTME: Uses SQLite's real file-backed unique messages because its errors omit index names.
 
+using Explore.Domain;
+using Explore.Persistence;
 using Explore.Persistence.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -13,30 +15,40 @@ namespace Event.Persistence.IntegrationTests.Database;
 public sealed class RegistrationUniqueConflictClassifierTests
 {
     [Test]
-    [Arguments("ux_registration_submissions_native_identity")]
-    [Arguments("ux_registration_submissions_provider_identity")]
-    public async Task PostgresExpectedSubmissionConstraint_IsClassified(string constraintName)
+    public async Task PostgresExpectedSubmissionConstraints_AreClassifiedFromMetadata()
     {
-        await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
-            new DbUpdateException("Expected unique race.", CreatePostgresUniqueViolation(constraintName)))).IsTrue();
+        await using ExploreDbContext context = CreateContext("PostgreSql");
+        RelationalConstraintDescriptor[] constraints = SubmissionConstraints(context);
+
+        foreach (RelationalConstraintDescriptor constraint in constraints)
+        {
+            await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+                context,
+                new DbUpdateException(
+                    "Expected unique race.",
+                    CreatePostgresUniqueViolation(constraint.Name)))).IsTrue();
+        }
     }
 
     [Test]
     public async Task PostgresWrongStateAndConstraint_AreNotClassified()
     {
+        await using ExploreDbContext context = CreateContext("PostgreSql");
+        string expectedConstraint = SubmissionConstraints(context)[0].Name;
         DbUpdateException check = new("Check violation.", new PostgresException(
             "check constraint failed", "ERROR", "ERROR", PostgresErrorCodes.CheckViolation,
-            constraintName: "ux_registration_submissions_native_identity"));
+            constraintName: expectedConstraint));
         DbUpdateException unrelated = new("Unrelated unique violation.", CreatePostgresUniqueViolation(
             "ux_unrelated_registration_constraint"));
 
-        await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(check)).IsFalse();
-        await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(unrelated)).IsFalse();
+        await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(context, check)).IsFalse();
+        await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(context, unrelated)).IsFalse();
     }
 
     [Test]
     public async Task SqliteFileBackedExpectedSubmissionAndRevisionDuplicates_AreClassified()
     {
+        await using ExploreDbContext context = CreateContext("Sqlite");
         string databasePath = Path.Combine(Path.GetTempPath(), $"registration-unique-{Guid.NewGuid():N}.db");
         try
         {
@@ -81,10 +93,13 @@ public sealed class RegistrationUniqueConflictClassifierTests
             await Assert.That(native.Message).Contains(
                 "UNIQUE constraint failed: ie_registration_submissions.tenant_id, ie_registration_submissions.registration_attempt_id, ie_registration_submissions.business_deduplication_key");
             await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+                context,
                 new DbUpdateException("SQLite duplicate.", native))).IsTrue();
             await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+                context,
                 new DbUpdateException("SQLite duplicate.", provider))).IsTrue();
             await Assert.That(RegistrationUniqueConflictClassifier.IsRevisionIdentityConflict(
+                context,
                 new DbUpdateException("SQLite duplicate.", revision))).IsTrue();
         }
         finally
@@ -96,6 +111,7 @@ public sealed class RegistrationUniqueConflictClassifierTests
     [Test]
     public async Task SqliteWrongColumnsAndCheckCode_AreNotClassified()
     {
+        await using ExploreDbContext context = CreateContext("Sqlite");
         SqliteException wrongColumns = new(
             "SQLite Error 19: 'UNIQUE constraint failed: ie_registration_submissions.tenant_id, ie_registration_submissions.http_idempotency_key_hash'.",
             19,
@@ -110,10 +126,13 @@ public sealed class RegistrationUniqueConflictClassifierTests
             275);
 
         await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+            context,
             new DbUpdateException("SQLite duplicate.", wrongColumns))).IsFalse();
         await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+            context,
             new DbUpdateException("SQLite duplicate.", wrongTable))).IsFalse();
         await Assert.That(RegistrationUniqueConflictClassifier.IsSubmissionIdentityConflict(
+            context,
             new DbUpdateException("SQLite check.", check))).IsFalse();
     }
 
@@ -129,6 +148,24 @@ public sealed class RegistrationUniqueConflictClassifierTests
     private static PostgresException CreatePostgresUniqueViolation(string constraintName) => new(
         "duplicate key value violates unique constraint", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation,
         constraintName: constraintName);
+
+    private static RelationalConstraintDescriptor[] SubmissionConstraints(ExploreDbContext context) =>
+    [
+        RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+            context,
+            nameof(RegistrationSubmission.TenantId),
+            nameof(RegistrationSubmission.RegistrationAttemptId),
+            nameof(RegistrationSubmission.BusinessDeduplicationKey)),
+        RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationSubmission>(
+            context,
+            nameof(RegistrationSubmission.TenantId),
+            nameof(RegistrationSubmission.RegistrationProviderBindingId),
+            nameof(RegistrationSubmission.ProviderSubmissionId),
+            nameof(RegistrationSubmission.ProviderResponseRevision))
+    ];
+
+    private static ExploreDbContext CreateContext(string provider)
+        => ExploreDbContextModelProviderTests.CreateContext(provider);
 
     private static async Task ExecuteAsync(SqliteConnection connection, string sql)
     {
