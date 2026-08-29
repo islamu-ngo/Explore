@@ -8,6 +8,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
 
@@ -390,6 +391,24 @@ public sealed class RefundAttemptRepository(ExploreDbContext dbContext) : IRefun
         Func<CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken)
     {
+        if (dbContext.Database.CurrentTransaction is not null)
+        {
+            if (dbContext.Database.CurrentTransaction
+                    .GetDbTransaction()
+                    .IsolationLevel != IsolationLevel.Serializable)
+            {
+                throw new InvalidOperationException(
+                    "Ambient refund reservation requires a serializable transaction.");
+            }
+
+            await using IAsyncDisposable ambientLock =
+                await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    $"refund-capacity:{tenantId:N}:{paymentAttemptId:N}",
+                    cancellationToken);
+            return await operation(cancellationToken);
+        }
+
         string providerName = dbContext.Database.ProviderName
             ?? throw new InvalidOperationException("Refund persistence requires a relational database provider.");
         IsolationLevel isolationLevel = providerName == RelationalNamedLock.PostgreSqlProvider

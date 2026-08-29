@@ -1,0 +1,54 @@
+/* ABOUTME: Styles the organizer add-on editor with logical spacing and responsive form grouping. */
+/* ABOUTME: Preserves RTL, narrow-layout, zoom, focus, and touch-target behavior. */
+
+.add-on-editor {
+    display: grid;
+    gap: 1.5rem;
+    max-inline-size: 60rem;
+    margin-inline: auto;
+    padding-block: 1.5rem;
+    padding-inline: 1rem;
+}
+
+.add-on-editor section {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.add-on-editor__form {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 2fr);
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.add-on-editor__form input,
+.add-on-editor__form textarea,
+.add-on-editor button {
+    min-block-size: 2.75rem;
+    padding-inline: 0.75rem;
+}
+
+.add-on-editor__form textarea {
+    min-block-size: 6rem;
+}
+
+.add-on-editor__items {
+    display: grid;
+    gap: 0.75rem;
+    padding-inline-start: 1.25rem;
+}
+
+.add-on-editor__items li,
+.add-on-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+@media (max-width: 40rem) {
+    .add-on-editor__form {
+        grid-template-columns: 1fr;
+    }
+}

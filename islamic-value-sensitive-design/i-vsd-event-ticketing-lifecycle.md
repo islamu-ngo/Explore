@@ -3,7 +3,7 @@
 
 # I-VSD Event Ticketing Lifecycle Planning Review
 
-Last Updated: 2026-08-27
+Last Updated: 2026-08-29
 
 ## Review Metadata
 
@@ -13,10 +13,10 @@ Last Updated: 2026-08-27
 - Report kind: implementation-planning review
 - Report status: current
 - Disposition: plan-aligned
-- Evidence cutoff: 2026-08-27
+- Evidence cutoff: 2026-08-29
 - Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `84bcd73f5d603fcd24f1a4cf9aaeef5e7f041a36e8459b83b173582ea25e24fa`; tasks SHA-256 `0373aa09e4555fda371e073eee17ab7b0bb8ebfeaa4c9c5591268f7813b5397b`
-- Revalidation result: every accepted finding and mitigation is mapped to the rewritten S1-S7/WB-1 behavior and Tasks 1.1-9.4; no provider-responsibility contradiction remains
+- Reviewed input revision: plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`; tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
+- Revalidation result: every accepted finding and mitigation remains mapped to S1-S7/WB-1 and Tasks 1.1-9.4; the Phase 7 add-on interpretation below makes catalog cardinality, optionality, commerce, fulfillment, refund, and admission boundaries explicit without widening protected payout or specialist-system scope
 - Refresh trigger: any material change to access/ceiling authority, participant consent, transfer/resale, waitlist/refund priority, add-on admission separation, recovery/key custody, monetization/payout, or mapped scenarios/tasks
 - Supersedes: future-work mappings F6–F13 in `i-vsd-registration-data-collection.md`; that report remains authoritative for completed registration/forms/commerce/admission findings F1–F5
 
@@ -97,10 +97,91 @@ Qualified Sunni scholarly authority owns religious-legal conclusions. Legal, pro
 - Principle and domain: transparency, freedom from coercion, bounded provider responsibility; commerce and fulfillment
 - Stakeholders: buyers, attendees, organizers, fulfillment staff
 - Provider-controlled decision: optionality, price/refund/fulfillment disclosure, inventory, admission separation, specialist-system boundary
-- Evidence: predecessor finding F8; ADR-024; no event-add-on implementation found
-- Validation level: repository and design evidence; buyer/operator validation missing
+- Evidence: predecessor finding F8; ADR-022/024; R5/S5-A/B/C and Tasks 7.1-7.6; prospective Phase 7 RED/GREEN persistence, API, BFF, and component evidence dated 2026-08-29
+- Validation level: implemented repository/API/BFF/component contracts and real PostgreSQL concurrency evidence; production buyer/operator validation missing
 - Mitigation: `IVSD-M005`
 - Owner / next validation: Phase 7 / Tasks 7.1-7.6
+
+#### Phase 7 Add-On Model Interpretation
+
+The approved product model is an event-owned **catalog containing zero or more add-on items**, not one event-level add-on scalar. An organizer may offer multiple independently governed items, and a buyer may explicitly select zero, one, or several distinct items. Where the catalog item permits quantity, one selected item may produce a quantity greater than one. No item is preselected or required as a condition of admission.
+
+The following provider-controlled boundaries are mandatory:
+
+1. **Catalog and organizer authority**
+   - Every catalog item is tenant- and event-qualified and has its own UUIDv7 identity, immutable commercial lineage, currency, integer-minor-unit price, availability, inventory facts, and active/retired sales state.
+   - Organizers may change or retire future-sale catalog facts only through authorized server actions. A later edit never rewrites a purchased line, prior disclosure, merchant, currency, price, refund basis, or fulfillment promise.
+   - The implementation supports a collection of organizer-defined items. The exact organizer catalog-management routes and UI remain a Phase 7 design/acceptance detail and must not be silently omitted from a claim that organizers can manage add-ons.
+
+2. **Buyer choice and anti-manipulation**
+   - A mixed registration order may contain ticket lines and separate add-on lines, but the UI must expose each add-on as an affirmative opt-in with its unit price, quantity, subtotal, fulfillment expectation, and refund treatment before provider handoff.
+   - No prechecked selection, hidden bundle, misleading scarcity timer, obstructive decline path, or required add-on disguised as optional is permitted.
+   - Browser affordances come only from HAL links. Server authorization, inventory, price, and lifecycle rules remain authoritative even if a browser fabricates a request.
+
+3. **Immutable line and money truth**
+   - Each selected add-on becomes a separate immutable order-line snapshot carrying the catalog lineage and buyer-visible commercial facts accepted at checkout.
+   - Money uses checked `long` minor units only. Unit multiplication, line addition, order aggregation, and refund allocation must fail before persistence, inventory mutation, outbox creation, or provider effects when they overflow.
+   - Expected totals are independently testable literal values. Every valid refund allocation is non-negative and sums exactly to the captured or refunded add-on amount; no rounding remainder may disappear or be manufactured.
+
+4. **Independent inventory and one-winner allocation**
+   - Add-on inventory is not ticket capacity. Concurrent buyers contending for the last unit must produce exactly one winner under tenant-qualified database authority, with complete loser rollback and no oversell.
+   - An add-on inventory loss, cancellation, or release never consumes, creates, releases, or reallocates admission capacity.
+
+5. **Independent fulfillment and replay**
+   - Add-on fulfillment has durable, idempotent state separate from payment, registration completion, ticket issuance, and check-in.
+   - Duplicate or restarted fulfillment work returns or converges on the existing outcome; it cannot deliver twice or manufacture completion from a browser/provider return.
+   - Fulfillment modes, variants, bundles, scheduling, and whether inventory may be explicitly unlimited are not yet specified. They remain unavailable until modeled and reviewed rather than being inferred from generic catalog fields.
+
+6. **Line-specific cancellation and refund**
+   - Cancelling or partially refunding an add-on operates on the add-on line and its captured value. It never cancels the ticket, revokes an admission credential, changes participant readiness, or changes ticket ownership.
+   - Refund requests use durable idempotency and truthful provider reconciliation. Requested or pending is never displayed as succeeded.
+   - Marketing, bookkeeping, accounting, tax determination, and legal invoice or credit-note issuance remain external specialist-system responsibilities.
+
+7. **Admission separation ratchet**
+   - Add-on purchase, inventory, fulfillment, cancellation, and refund code must have no transition path that creates, revokes, rotates, or otherwise alters `AdmissionTicket`, admission credentials, check-in history, participant readiness, or ticket capacity.
+   - Architecture and persistence tests must make this a forward-only ratchet, not a convention enforced only by review.
+
+The currently approved R5 scenario guarantees optional add-ons in the original mixed ticket checkout. It does **not yet decide** whether Phase 7 also permits post-purchase add-on orders or add-on-only checkout. The bounded recommendation is original-checkout selection only until a later decision explicitly owns the additional payment, cancellation, capability, and recovery lifecycle.
+
+#### Implemented Phase 7 State — 2026-08-29
+
+- Organizers receive a HAL-gated editor and authenticated, idempotent API/BFF
+  actions to create a versioned catalog, add multiple finite items, publish a
+  draft, retire a published version, and preserve historical purchased lines.
+- Buyers receive a semantic, localized, RTL-safe selector in which every
+  quantity starts at zero. No add-on is checked, required, bundled, or framed
+  as a condition of admission.
+- Checked minor-unit arithmetic snapshots each selected line. A real
+  PostgreSQL test proves exactly one winner for the final item, complete loser
+  rollback, partial allocation conservation, replay convergence, tenant
+  isolation, and no admission-row mutation.
+- The public API discloses unit price, quantity, line total, add-on total,
+  grand total, fulfillment facts, refund facts, and availability without
+  exposing tenant/user/participant identity or admission state. It publishes a
+  neutral maximum selectable quantity so buyers are not forced into
+  trial-and-error requests.
+- Phase 7 creates no new platform-fee authority. It preserves the order's
+  already-pinned fee while add-on value remains organizer-directed; charging a
+  platform fee on add-ons requires a later explicit policy and I-VSD decision.
+- A local partial-refund allocation is published only as
+  `allocated_pending_provider`. It is never labeled refunded or succeeded
+  before the existing payment-provider reconciliation authority confirms that
+  result, and it does not release stock for resale while provider truth is
+  pending.
+- Provider failure reopens refundable quantity. Provider confirmation releases
+  stock atomically or persists
+  `provider_confirmed_inventory_release_pending` for recovery; provider truth
+  is never rolled back to pending because local stock repair failed.
+- The add-on allocation, canonical provider-neutral refund attempt, and
+  identifiers-only dispatch outbox commit in one serializable transaction.
+  Provider dispatch/reconciliation then synchronizes terminal truth back to
+  the add-on allocation idempotently.
+- The reserve request carries the exact catalog ID disclosed to the buyer. The
+  server pins that still-published tenant/event catalog to the order and
+  rejects catalog replacement instead of silently substituting later offers.
+- The API and BFF expose original-checkout selection only. Post-purchase and
+  add-on-only ordering, bundles, variants, scheduled fulfillment, and
+  explicitly unlimited stock remain unavailable.
 
 ### IVSD-F006 — Recovery Must Restore Authority Without Resurrecting Or Duplicating Harm
 
@@ -147,7 +228,7 @@ Publish stable order/tie-breakers, prioritize compatible released supply before 
 
 ### IVSD-M005 — Bound Add-Ons To The Event Transaction
 
-Make add-ons opt-in with separate immutable price/refund/fulfillment facts, independent inventory/fulfillment, one merchant/currency, and no admission or specialist-business-system authority.
+Model one tenant/event-qualified catalog with multiple independently selectable items and immutable purchased-line snapshots. Make every selection opt-in, disclose literal unit/quantity/subtotal/refund/fulfillment facts, use checked integer minor units, and prove one-winner inventory with loser rollback. Keep fulfillment and line-specific refund durable and replay-safe, use one pinned merchant/currency, conserve every allocation exactly, and ratchet add-on code away from admission, credential, participant-readiness, and ticket-capacity mutation. Do not imply post-purchase or add-on-only checkout, variants, bundles, unlimited inventory, or organizer-management completeness until those surfaces are explicitly modeled and validated.
 
 ### IVSD-M006 — Treat Keys, Fences, And Cursors As Restore-Critical State
 
@@ -188,6 +269,8 @@ Rejected alternatives:
 - Stakeholder review with purchasers, participants, guardians, organizers, waitlisted users, accessibility users, staff, and self-hosters
 - Privacy/security review of recipient contact, capabilities, key custody, retention/export, and restore
 - Accessibility review of registration, approval, transfer, queue, status/countdown, add-on, and support-desk experiences
+- Buyer and organizer validation of the multiple-item catalog, opt-in defaults, quantity controls, decline path, price/refund/fulfillment disclosure, and catalog-management workflow
+- Product decision and threat-model review for original-checkout-only versus post-purchase or add-on-only ordering; later purchase paths require their own payment, capability, cancellation, idempotency, and recovery authority
 - Legal/consumer review of refund/reallocation terms and supported jurisdictions
 - Staffed operator ownership and service levels for queue, refund, fraud, accessibility, provider, and restore incidents
 - Real backup/restore and provider deployment evidence
@@ -205,8 +288,8 @@ Without evidence, the affected surface remains disabled/narrowed and no certific
 ## Evidence Reviewed
 
 - Source-packet manifest SHA-256 `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Successor plan SHA-256 `84bcd73f5d603fcd24f1a4cf9aaeef5e7f041a36e8459b83b173582ea25e24fa`
-- Successor tasks SHA-256 `0373aa09e4555fda371e073eee17ab7b0bb8ebfeaa4c9c5591268f7813b5397b`
+- Successor plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`
+- Successor tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
 - `i-vsd-registration-data-collection.md` SHA-256 `d7723403e6d8b1a70854599a3c4812091290cf505bea7ea0a4558a5e6532d237`
 - `i-vsd-paid-event-payments-consultation.md` SHA-256 `44e90e5ccb88ba7e98503f0f1b98c00b7bdfaf85d623aff8f7ff882a2a90cb36`
 - Predecessor plan SHA-256 `42ef4342117d07097a06dd2d22c4892a5f18d67f73a0082950dc3811d355494a`
@@ -214,11 +297,12 @@ Without evidence, the affected surface remains disabled/narrowed and no certific
 - Predecessor clean-room handoff SHA-256 `035d7d706169cb0a2b1ff1da8ee35709f8112c361d7b07073588faee2f8f2843`
 - ADR-016 through ADR-018 and ADR-022 through ADR-024
 - Repository graph blast radius, current aggregate/middleware/scheduler paths, and bounded test inventory dated 2026-08-27
+- Bounded 2026-08-28 `src`/`tests` filename search confirming no current add-on implementation and the Phase 7 R5/S5-A/B/C task contracts
 - Official Microsoft, OWASP, W3C, EU, EDPB, and Stripe documentation recorded in the clean-room evidence
 
 ## Missing Evidence
 
-No production stakeholder studies, incident history, legal opinion, qualified scholarly decision, live Stripe account/control evidence, independent accessibility/privacy/security audit, or real restore exercise was available.
+No production stakeholder studies, incident history, legal opinion, qualified scholarly decision, live Stripe account/control evidence, independent accessibility/privacy/security audit, or real restore exercise was available. No implemented add-on catalog, organizer-management workflow, buyer-selection surface, fulfillment mode, or post-purchase/add-on-only lifecycle exists to validate. Exact product decisions for post-purchase ordering, add-on-only checkout, variants/bundles, fulfillment modes, and explicitly unlimited inventory remain open.
 
 ## Context Inventory
 
@@ -234,7 +318,15 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 - Transfer succeeds concurrently with old-credential check-in or inherits another adult's consent.
 - One released ticket is offered to both waitlist and public inventory, or refund precedes replacement payment truth.
 - Seller withdrawal cancels/reprices/restarts the buyer despite substitute exact-type supply, or frees the only reserved ticket while provider payment is still ambiguous.
-- Add-on refund or fulfillment mutates admission authority.
+- The data model permits only one add-on per event, forcing unrelated optional products into one mutable record.
+- An add-on is preselected, bundled into a ticket price, or required through a manipulative decline path.
+- A later catalog edit rewrites a purchased line's price, currency, merchant, refund basis, or fulfillment promise.
+- Concurrent buyers oversell the final add-on unit, or the loser leaves a partial order line/effect.
+- Checked multiplication or aggregation overflows after inventory, persistence, or provider work has already begun.
+- Partial-refund allocations do not sum exactly to the refunded add-on amount.
+- Duplicate fulfillment or refund replay delivers/refunds twice.
+- Add-on refund, inventory, or fulfillment mutates admission authority, participant readiness, credentials, check-in history, or ticket capacity.
+- A post-purchase or add-on-only flow is introduced without its own payment, capability, cancellation, idempotency, and recovery contract.
 - Restore omits keys/fences/cursors and revives authority or duplicates effects.
 - A disabled payout idea leaks into configuration, HAL, generated clients, or marketing language.
 
@@ -243,9 +335,11 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 - Workstream: `event-ticketing-lifecycle`
 - Status: current
 - Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `84bcd73f5d603fcd24f1a4cf9aaeef5e7f041a36e8459b83b173582ea25e24fa`; tasks SHA-256 `0373aa09e4555fda371e073eee17ab7b0bb8ebfeaa4c9c5591268f7813b5397b`
+- Reviewed input revision: plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`; tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
 - Findings and mitigations: `IVSD-F001`→`IVSD-M001`, `IVSD-F002`→`IVSD-M002`, `IVSD-F003`→`IVSD-M003`, `IVSD-F004`→`IVSD-M004`, `IVSD-F005`→`IVSD-M005`, `IVSD-F006`→`IVSD-M006`, `IVSD-F007`→`IVSD-M007`
 - Required plan mappings: F001/M001→S1-A/B/C→Tasks 1.1-2.6; F002/M002→S2-A/B/C→Tasks 3.1-4.6; F003/M003→S3-A/B/C→Tasks 5.1-5.6; F004/M004→S4-A/B/C/D/E/F and WB-1→Tasks 6.1-6.8 and 8.1-8.4; F005/M005→S5-A/B/C→Tasks 7.1-7.6; F006/M006→S6-A/B/C and WB-1→Tasks 8.1-9.4; F007/M007→S7-A→Tasks 9.1-9.4
+- Phase 7 interpretation: one event-owned multi-item catalog; explicit zero-or-more buyer selection; immutable add-on lines; checked minor-unit totals; tenant-qualified one-winner inventory; durable replay-safe fulfillment/refund; exact refund conservation; and a hard no-admission-mutation ratchet
+- Open Phase 7 product decision: original-checkout-only versus post-purchase/add-on-only ordering. Until decided, planning and implementation remain bounded to optional selection in the original mixed ticket checkout.
 - Escalations required before: production claims or enabling the affected capability; protected delayed payout before any separate planning approval or implementation
 - Refresh triggers: material change to access/ceiling defaults, participant/guardian consent, transfer/resale, waitlist/refund priority, add-on admission boundary, recovery/key custody, monetization/payout, provider capability, or mapped tasks/scenarios
 
@@ -258,3 +352,5 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 | 2026-08-27 | current | current / plan-aligned | User resolved seller-withdrawal concurrency: buyer-transparent exact-type rebinding or private conflict until authoritative release | S4-C/S4-D; Tasks 5.1–5.3 |
 | 2026-08-27 | current / plan-aligned | stale / changes-required | Exact successor revision was unbound; CTO hardening changed access guarantees, recovery behavior, scenarios, and task mappings | Finalize triad, record exact revisions in context/CTO, then revalidate independently |
 | 2026-08-27 | stale / changes-required | current / plan-aligned | Independent planning-mode revalidation mapped the hardened access, recovery, scenario, and task contracts | Plan `84bcd73f...`; tasks `0373aa09...`; S1-S7/WB-1 |
+| 2026-08-28 | current / plan-aligned | current / plan-aligned | User required the full Phase 7 add-on model to be durable I-VSD evidence before implementation | Expanded IVSD-F005/M005; plan `3e1d8d0f...`; tasks `d395d927...` |
+| 2026-08-29 | current / plan-aligned | current / plan-aligned | Phase 7 implemented the bounded catalog, optional selection, inventory, fulfillment, refund-allocation, HAL, BFF, and accessible UI contract | Prospective Task 7.1/7.3/7.5 RED plus Task 7.2/7.4/7.6 GREEN evidence |

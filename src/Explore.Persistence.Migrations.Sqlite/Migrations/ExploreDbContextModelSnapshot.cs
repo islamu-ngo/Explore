@@ -5328,6 +5328,468 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.UseTptMappingStrategy();
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventAddOnCatalogVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_add_on_catalog_version_id");
+
+                    b.Property<string>("FulfillmentDisclosure")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fulfillment_disclosure");
+
+                    b.Property<int>("InventoryCapacity")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("inventory_capacity");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("RefundDisclosure")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("refund_disclosure");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("UnitPriceMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_price_minor");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_add_on_catalog_items");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_catalog_items_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .HasName("ak_event_add_on_catalog_items_tenant_id_event_add_on_catalog_version_id_id");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_items_tenant_id_event_add_on_catalog_version_id_id");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_items_tenant_id_event_add_on_catalog_version_id_name");
+
+                    b.ToTable("ie_event_add_on_catalog_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_catalog_items_capacity", "inventory_capacity > 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_catalog_items_money", "unit_price_minor >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("published_at");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("retired_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_add_on_catalog_versions");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_catalog_versions_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_event_add_on_catalog_versions_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_versions_tenant_id_event_id")
+                        .HasFilter("published_at IS NOT NULL AND retired_at IS NULL AND is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_versions_tenant_id_event_id_version_number");
+
+                    b.ToTable("ie_event_add_on_catalog_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_catalog_versions_lifecycle", "retired_at IS NULL OR (published_at IS NOT NULL AND retired_at >= published_at)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnFulfillment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("FulfilledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fulfilled_at");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operation_id");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_add_on_fulfillments");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_fulfillments_tenant_id_id");
+
+                    b.HasIndex("TenantId", "OperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_operation_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_registration_order_add_on_line_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_event_id_registration_order_id_registration_order_add_on_line_id");
+
+                    b.ToTable("ie_event_add_on_fulfillments", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnInventoryAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveUniquenessSlot")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventAddOnCatalogItemId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_add_on_catalog_item_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operation_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_at");
+
+                    b.Property<int>("ReleasedQuantity")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("released_quantity");
+
+                    b.Property<DateTime>("ReservedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("reserved_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_add_on_inventory_allocations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_inventory_allocations_tenant_id_id");
+
+                    b.HasIndex("TenantId", "OperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_operation_id");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogItemId", "ReleasedAt")
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_event_add_on_catalog_item_id_released_at");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_registration_order_add_on_line_id_active_uniqueness_slot")
+                        .HasFilter("active_uniqueness_slot IS NOT NULL");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_event_id_registration_order_id_registration_order_add_on_line_id");
+
+                    b.ToTable("ie_event_add_on_inventory_allocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_inventory_allocations_quantity", "quantity > 0 AND released_quantity >= 0 AND released_quantity <= quantity");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnRefundAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AllocatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("allocated_at");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency_code");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("failed_at");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RefundOperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("refund_operation_id");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_add_on_refund_allocations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_refund_allocations_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RefundOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_refund_operation_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_registration_order_add_on_line_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_event_id_registration_order_id_registration_order_add_on_line_id");
+
+                    b.ToTable("ie_event_add_on_refund_allocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_money", "amount_minor >= 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_status", "status >= 1 AND status <= 4");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -18868,6 +19330,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("AcceptanceTemplateIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("acceptance_template_identifier");
+
+                    b.Property<string>("AcceptanceTemplateText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("acceptance_template_text");
+
                     b.Property<DateTime>("AcceptedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("accepted_at");
@@ -18901,6 +19375,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("TEXT")
                         .HasColumnName("composition_revision");
+
+                    b.Property<string>("ConnectPlatformId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connect_platform_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
@@ -18946,6 +19426,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("event_time_zone_id");
 
+                    b.Property<string>("ExternalAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("external_account_id");
+
                     b.Property<Guid>("InstancePolicyVersionId")
                         .HasColumnType("TEXT")
                         .HasColumnName("instance_policy_version_id");
@@ -18953,6 +19439,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Property<bool>("IsOfficialInstance")
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_official_instance");
+
+                    b.Property<string>("MerchantCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("merchant_country_code");
 
                     b.Property<string>("MerchantDisclosureText")
                         .IsRequired()
@@ -18976,6 +19468,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("operator_id");
 
+                    b.Property<string>("OperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operator_kind_code");
+
+                    b.Property<string>("OperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operator_legal_name");
+
                     b.Property<string>("OperatorLegalNoticeUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -18994,6 +19498,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("operator_region_code");
 
+                    b.Property<string>("OperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operator_registration_identifier");
+
                     b.Property<string>("OperatorTermsUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -19006,9 +19515,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("operator_website_url");
 
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("organizer_actor_id");
+
                     b.Property<long>("OrganizerAmountMinor")
                         .HasColumnType("INTEGER")
                         .HasColumnName("organizer_amount_minor");
+
+                    b.Property<Guid>("OrganizerPaymentProviderConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("organizer_payment_provider_connection_id");
 
                     b.Property<long>("PlatformContributionMinor")
                         .HasColumnType("INTEGER")
@@ -19085,6 +19602,67 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("TEXT")
                         .HasColumnName("support_contact");
+
+                    b.Property<string>("TenantDirectoryOperatorCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_country_code");
+
+                    b.Property<Guid>("TenantDirectoryOperatorDocumentId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_document_id");
+
+                    b.Property<string>("TenantDirectoryOperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_kind_code");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_legal_name");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalNoticeUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_legal_notice_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPrivacyUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_privacy_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_public_contact_email");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_public_name");
+
+                    b.Property<string>("TenantDirectoryOperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_registration_identifier");
+
+                    b.Property<Guid>("TenantDirectoryOperatorRevisionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_revision_id");
+
+                    b.Property<string>("TenantDirectoryOperatorTermsUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_directory_operator_terms_url");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("TEXT")
@@ -23995,6 +24573,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("active_promotion_reservation_id");
 
+                    b.Property<Guid?>("AddOnCatalogVersionIdSnapshot")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("add_on_catalog_version_id_snapshot");
+
+                    b.Property<long>("AddOnTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("add_on_total_minor_snapshot");
+
                     b.Property<Guid?>("AppliedPromotionCodeIdSnapshot")
                         .HasColumnType("TEXT")
                         .HasColumnName("applied_promotion_code_id_snapshot");
@@ -24174,6 +24760,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
                         .HasDatabaseName("ix_registration_orders_tenant_id_ticket_catalog_version_id");
 
+                    b.HasIndex("TenantId", "EventId", "AddOnCatalogVersionIdSnapshot")
+                        .HasDatabaseName("ix_registration_orders_tenant_id_event_id_add_on_catalog_version_id_snapshot");
+
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
                         .HasDatabaseName("ix_registration_orders_tenant_id_event_id_registration_order_status_id");
 
@@ -24183,6 +24772,116 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             t.Property("ParticipationConfigurationVersionSnapshot")
                                 .HasColumnName("registration_order_participation_configuration_version_snapshot");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderAddOnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency_code_snapshot");
+
+                    b.Property<Guid>("EventAddOnCatalogItemId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_add_on_catalog_item_id");
+
+                    b.Property<Guid>("EventAddOnCatalogVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_add_on_catalog_version_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("FulfillmentDisclosureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fulfillment_disclosure_snapshot");
+
+                    b.Property<long>("LineTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_total_minor_snapshot");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name_snapshot");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("RefundDisclosureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("refund_disclosure_snapshot");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("UnitPriceMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_price_minor_snapshot");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_order_add_on_lines");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_order_add_on_lines_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .HasName("ak_registration_order_add_on_lines_tenant_id_event_id_registration_order_id_id");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "EventAddOnCatalogItemId")
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_event_add_on_catalog_version_id_event_add_on_catalog_item_id");
+
+                    b.HasIndex("TenantId", "EventId", "EventAddOnCatalogVersionId")
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_event_id_event_add_on_catalog_version_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "EventAddOnCatalogItemId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_registration_order_id_event_add_on_catalog_item_id");
+
+                    b.ToTable("ie_registration_order_add_on_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_order_add_on_lines_money", "unit_price_minor_snapshot >= 0 AND line_total_minor_snapshot >= 0");
+
+                            t.HasCheckConstraint("ck_registration_order_add_on_lines_quantity", "quantity > 0");
                         });
                 });
 
@@ -35588,6 +36287,112 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("VisibilityType");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogItem", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_items_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "EventAddOnCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_items_event_add_on_catalog_versions_tenant_id_event_add_on_catalog_version_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_versions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_versions_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnFulfillment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_fulfillments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_fulfillments_registration_order_add_on_lines_tenant_id_event_id_registration_order_id_registration__2813f39d06a6");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnInventoryAllocation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventAddOnCatalogItemId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_event_add_on_catalog_items_tenant_id_event_add_on_catalog_item_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_registration_order_add_on_lines_tenant_id_event_id_registration_order_id_regi_5156e1858f3f");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnRefundAllocation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RefundAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundOperationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_refund_attempts_tenant_id_refund_operation_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_registration_order_add_on_lines_tenant_id_event_id_registration_order_id_registr_d4eabd70ae6e");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
                 {
                     b.HasOne("Explore.Domain.ScheduleItemKind", "Kind")
@@ -42754,6 +43559,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_registration_orders_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
 
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "AddOnCatalogVersionIdSnapshot")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registration_orders_event_add_on_catalog_versions_tenant_id_event_id_add_on_catalog_version_id_snapshot");
+
                     b.OwnsOne("Explore.Domain.RegistrationParticipationSnapshot", "ParticipationSnapshot", b1 =>
                         {
                             b1.Property<Guid>("RegistrationOrderId")
@@ -42795,6 +43607,40 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsRequired();
 
                     b.Navigation("RegistrationOrderStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderAddOnLine", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventAddOnCatalogVersionId", "EventAddOnCatalogItemId")
+                        .HasPrincipalKey("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_event_add_on_catalog_items_tenant_id_event_add_on_catalog_version_id_event_add_o_ae0eaf0b7f25");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "EventAddOnCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_event_add_on_catalog_versions_tenant_id_event_id_event_add_on_catalog_version_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany("AddOnLines")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_registration_orders_tenant_id_event_id_registration_order_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderLine", b =>
@@ -45844,6 +46690,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("TicketCatalogVersions");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
                 {
                     b.Navigation("Items");
@@ -46084,6 +46935,8 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
                 {
+                    b.Navigation("AddOnLines");
+
                     b.Navigation("Lines");
 
                     b.Navigation("Participants");

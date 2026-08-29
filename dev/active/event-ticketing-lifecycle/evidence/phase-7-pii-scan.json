@@ -1,0 +1,38 @@
+{
+  "aboutme": [
+    "Records the Phase 7 zero-PII sentinel scan over durable, API, BFF, and UI add-on contracts.",
+    "Enumerates the exact source paths covered by the zero-sentinel evidence contract."
+  ],
+  "schemaVersion": 1,
+  "phase": 7,
+  "status": "pass",
+  "sentinels": {
+    "emailAddress": 0,
+    "phoneNumber": 0,
+    "rawCapability": 0,
+    "bearerToken": 0,
+    "participantIdentity": 0,
+    "admissionCredential": 0,
+    "providerIdentifier": 0,
+    "freeTextPayload": 0,
+    "unboundedStockTelemetry": 0
+  },
+  "scannedPaths": [
+    "src/Explore.Domain/EventAddOnCatalogVersion.cs",
+    "src/Explore.Domain/EventAddOnCatalogItem.cs",
+    "src/Explore.Domain/RegistrationOrderAddOnLine.cs",
+    "src/Explore.Domain/EventAddOnInventoryAllocation.cs",
+    "src/Explore.Domain/EventAddOnFulfillment.cs",
+    "src/Explore.Domain/EventAddOnRefundAllocation.cs",
+    "src/Explore.Application/DTOs/EventAddOns/EventAddOnDtos.cs",
+    "src/Explore.Application/Features/EventAddOns/Handlers/EventAddOnHandlers.cs",
+    "src/Explore.Application/Services/Registration/RefundDispatchService.cs",
+    "src/Explore.Application/Services/Registration/RefundReconciliationService.cs",
+    "src/Explore.API/Controllers/EventAddOnCatalogController.cs",
+    "src/Explore.API/Controllers/EventAddOnManagementController.cs",
+    "src/Explore.API/Controllers/RegistrationOrderAddOnController.cs",
+    "src/Explore.Blazor/Extensions/BffEventAddOnEndpoints.cs",
+    "src/Explore.Blazor.Client/Components/Registration/EventAddOnSelector.razor",
+    "src/Explore.Blazor.Client/Pages/Studio/EventAddOnCatalogEditor.razor"
+  ]
+}

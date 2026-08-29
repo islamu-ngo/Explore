@@ -3,7 +3,7 @@
 
 # Event Ticketing Lifecycle Clean-Room Evidence
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-29 Europe/Brussels
 
 ## Provenance
 
@@ -43,6 +43,8 @@ The 2026-08-27 hardening review retrieved these official documents directly:
 | [EF Core transactions](https://learn.microsoft.com/en-us/ef/core/saving/transactions) | transaction ownership, execution strategies, and savepoints must be composed deliberately |
 | [PostgreSQL explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html) | explicit locks need bounded scope and consistent acquisition order |
 | [PostgreSQL transaction isolation](https://www.postgresql.org/docs/current/transaction-iso.html) | serializable executions can abort and must be safe to retry |
+| [Npgsql concurrency tokens](https://www.npgsql.org/efcore/modeling/concurrency.html) | PostgreSQL exposes database-managed concurrency metadata, but Phase 7 retains the repository's provider-portable application-managed concurrency contract rather than introducing a provider-specific model |
+| [C# checked and unchecked statements](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/checked-and-unchecked) | integral overflow outside a checked operation can wrap; every add-on multiplication, aggregation, and narrowing conversion must therefore use the existing explicit checked minor-unit authority |
 | [OWASP Transaction Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html) | authorization is server-side, operation-specific, and resistant to request manipulation |
 | [ASP.NET Core Data Protection key management](https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/implementation/key-management?view=aspnetcore-10.0) | retained key availability and rotation are part of restore correctness |
 
@@ -51,6 +53,20 @@ WCAG 2.2/status-message constraints remain sourced through repository-canonical 
 Context7 was not registered in the review session and configured web-search providers returned no results. The reviewer therefore used direct official-document retrieval and records that limitation instead of claiming Context7/web-search evidence.
 
 No external code, snippet, schema, SQL, migration, test, comment, asset, or expressive organization may enter implementation context.
+
+## Phase 7 Source-Free Implementation Handoff
+
+The 2026-08-29 Phase 7 research refresh retains only these functional facts:
+
+- one event-owned add-on catalog contains zero or more independently selectable items;
+- add-on price multiplication and order/refund aggregation use the existing `MinorUnitMath` checked `long` authority and fail before persistence or effects;
+- inventory contention uses short transaction-scoped locks in the repository's canonical order, and retry-safe transactions must converge after serialization failure;
+- optimistic lifecycle conflicts remain explicit outcomes; a concurrent write is never silently overwritten;
+- add-on inventory, fulfillment, and refund state is tenant-qualified, durable, and idempotent;
+- add-on transitions have no authority over ticket capacity, participant readiness, credentials, admission, or check-in;
+- no new dependency, provider-specific concurrency model, external schema, or third-party implementation structure is selected.
+
+Implementation naming, aggregate decomposition, relationships, lock keys, tests, and control flow remain independently designed from repository-native ticketing, persistence, and I-VSD boundaries.
 
 ## AFC / SSO / Dependency Decision
 

@@ -157,6 +157,8 @@ public partial class ExploreDbContext
     public DbSet<EventSessionTag> EventSessionTags { get; set; }
     public DbSet<EventTicketCatalogVersion> EventTicketCatalogVersions { get; set; }
     public DbSet<EventTicketType> EventTicketTypes { get; set; }
+    public DbSet<EventAddOnCatalogVersion> EventAddOnCatalogVersions { get; set; }
+    public DbSet<EventAddOnCatalogItem> EventAddOnCatalogItems { get; set; }
     public DbSet<TicketTypeEntitlement> TicketTypeEntitlements { get; set; }
     public DbSet<EventCapacityPool> EventCapacityPools { get; set; }
     public DbSet<RegistrationOrder> RegistrationOrders { get; set; }
@@ -164,6 +166,10 @@ public partial class ExploreDbContext
     public DbSet<TicketPurchaseAuthorityUsage> TicketPurchaseAuthorityUsages { get; set; }
     public DbSet<TicketPurchaseOperation> TicketPurchaseOperations { get; set; }
     public DbSet<RegistrationOrderLine> RegistrationOrderLines { get; set; }
+    public DbSet<RegistrationOrderAddOnLine> RegistrationOrderAddOnLines { get; set; }
+    public DbSet<EventAddOnInventoryAllocation> EventAddOnInventoryAllocations { get; set; }
+    public DbSet<EventAddOnFulfillment> EventAddOnFulfillments { get; set; }
+    public DbSet<EventAddOnRefundAllocation> EventAddOnRefundAllocations { get; set; }
     public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
     public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
     public DbSet<PromotionDefinition> PromotionDefinitions { get; set; }

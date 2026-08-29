@@ -1,0 +1,444 @@
+@* ABOUTME: Renders optional event add-ons with exact server-owned price and lifecycle facts. *@
+@* ABOUTME: Uses HAL-only actions, localized semantic controls, live status, and deterministic focus. *@
+@using System.Globalization
+@using System.Text.Json
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Helpers
+@inject IEventAddOnService AddOns
+@inject ITranslationService Translation
+@inject IAccessibilityFocusService Focus
+@implements IDisposable
+
+<section class="event-add-ons"
+         data-testid="event-add-ons"
+         aria-labelledby="@TitleId"
+         aria-busy="@_isBusy">
+    <h3 id="@TitleId"
+        class="event-add-ons__title">
+        @Text("add_on_title", "Optional add-ons")
+    </h3>
+
+    @if (_isLoading)
+    {
+        <p>@Text("add_on_loading", "Loading optional add-ons")</p>
+    }
+    else if (_catalog?.Items is { Count: > 0 } catalogItems)
+    {
+        <form @onsubmit="ReserveAsync"
+              @onsubmit:preventDefault>
+            <fieldset class="event-add-ons__choices"
+                      aria-describedby="@OptionalDescriptionId"
+                      disabled="@_isBusy">
+                <legend>@Text("add_on_choose_legend", "Choose any add-ons you want")</legend>
+                <p id="@OptionalDescriptionId"
+                   class="event-add-ons__optional">
+                    @Text(
+                        "add_on_optional",
+                        "Every add-on is optional. Leave all quantities at zero to continue without one.")
+                </p>
+
+                @foreach (EventAddOnCatalogItemDto item in catalogItems)
+                {
+                    SelectionState state = Selection(item.Id);
+                    string inputId = $"event-add-on-{item.Id:N}";
+                    string descriptionId = $"{inputId}-description";
+                    <article class="event-add-ons__item">
+                        <div class="event-add-ons__item-heading">
+                            <input id="@inputId"
+                                   type="checkbox"
+                                   checked="@state.IsSelected"
+                                   disabled="@(_isBusy || !item.IsAvailable)"
+                                   aria-describedby="@descriptionId"
+                                   @onchange="args => Toggle(
+                                       item.Id,
+                                       item.MaximumSelectableQuantity,
+                                       args)" />
+                            <label for="@inputId">@item.Name</label>
+                            <span class="event-add-ons__price">
+                                @RegistrationOrderMoneyFormatter.Format(
+                                    item.UnitPriceMinor,
+                                    item.CurrencyCode)
+                            </span>
+                            <span>
+                                @(item.IsAvailable
+                                    ? Text("add_on_available", "Available")
+                                    : Text("add_on_unavailable", "Unavailable"))
+                            </span>
+                            @if (item.IsAvailable)
+                            {
+                                <span>
+                                    @Text("add_on_available_quantity", "Available quantity"):
+                                    @item.MaximumSelectableQuantity
+                                </span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                        {
+                            <p>@item.Description</p>
+                        }
+                        <div id="@descriptionId"
+                             class="event-add-ons__disclosures">
+                            <p>
+                                <strong>@Text("add_on_fulfillment", "Fulfillment"):</strong>
+                                @item.FulfillmentDisclosure
+                            </p>
+                            <p>
+                                <strong>@Text("add_on_refund", "Refund"):</strong>
+                                @item.RefundDisclosure
+                            </p>
+                        </div>
+                        <label for="@($"{inputId}-quantity")">
+                            @Text("add_on_quantity", "Quantity")
+                        </label>
+                        <input id="@($"{inputId}-quantity")"
+                               type="number"
+                               min="0"
+                               max="@item.MaximumSelectableQuantity"
+                               step="1"
+                               value="@state.Quantity.ToString(CultureInfo.InvariantCulture)"
+                               disabled="@(!state.IsSelected || !item.IsAvailable)"
+                               aria-describedby="@descriptionId"
+                               @onchange="args => ChangeQuantity(
+                                   item.Id,
+                                   item.MaximumSelectableQuantity,
+                                   args)" />
+                    </article>
+                }
+            </fieldset>
+
+            @if (CanReserve)
+            {
+                <button type="submit"
+                        class="event-add-ons__submit"
+                        disabled="@_isBusy">
+                    @Text("add_on_reserve", "Reserve selected add-ons")
+                </button>
+            }
+        </form>
+    }
+
+    @if (_order?.Lines is { Count: > 0 })
+    {
+        <section class="event-add-ons__confirmed"
+                 aria-labelledby="@ConfirmedTitleId">
+            <h4 id="@ConfirmedTitleId">
+                @Text("add_on_confirmed_title", "Selected add-ons")
+            </h4>
+            <p>
+                @Text("add_on_total", "Add-on total"):
+                @RegistrationOrderMoneyFormatter.Format(
+                    _order.AddOnTotalMinor,
+                    _order.CurrencyCode)
+            </p>
+            <ul>
+                @foreach (RegistrationOrderAddOnLineDto line in _order.Lines)
+                {
+                    <li class="event-add-ons__confirmed-line">
+                        <span>@line.Name × @line.Quantity</span>
+                        <span>
+                            @RegistrationOrderMoneyFormatter.Format(
+                                line.LineTotalMinor,
+                                line.CurrencyCode)
+                        </span>
+                        <span>@StateText(line.FulfillmentStatusCode)</span>
+                        @if (line.MaximumRefundableQuantity > 0)
+                        {
+                            <span>
+                                @Text(
+                                    "add_on_maximum_refundable_quantity",
+                                    "Maximum refundable quantity"):
+                                @line.MaximumRefundableQuantity
+                            </span>
+                        }
+                        @if (HasLineRelation(line.Id, FulfillRelation))
+                        {
+                            <button type="button"
+                                    disabled="@_isBusy"
+                                    @onclick="() => FulfillAsync(line.Id)">
+                                @Text("add_on_mark_fulfilled", "Mark fulfilled")
+                            </button>
+                        }
+                        @if (HasLineRelation(line.Id, RefundRelation))
+                        {
+                            <button type="button"
+                                    disabled="@_isBusy"
+                                    @onclick="() => RefundAsync(line.Id)">
+                                @Text(
+                                    "add_on_allocate_refund_one",
+                                    "Prepare refund for one")
+                            </button>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    <p id="@OutcomeId"
+       class="event-add-ons__outcome"
+       role="status"
+       aria-live="polite"
+       tabindex="-1">
+        @_outcome
+    </p>
+</section>
+
+@code {
+    private const string LinksProperty = "_links";
+    private const string ReserveRelation = "reserve-event-add-ons";
+    private const string FulfillRelation = "fulfill-event-add-on";
+    private const string RefundRelation = "refund-event-add-on";
+    private const string TitleId = "event-add-ons-title";
+    private const string OptionalDescriptionId = "event-add-ons-optional";
+    private const string ConfirmedTitleId = "event-add-ons-confirmed-title";
+    private const string OutcomeId = "event-add-ons-outcome";
+
+    [Parameter, EditorRequired]
+    public Guid EventId { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid RegistrationOrderId { get; set; }
+
+    [Parameter]
+    public string? Capability { get; set; }
+
+    private HalResourceOfEventAddOnCatalogDto? _catalog;
+    private HalResourceOfRegistrationOrderAddOnSummaryDto? _order;
+    private readonly Dictionary<Guid, SelectionState> _selections = [];
+    private CancellationTokenSource? _operation;
+    private bool _isLoading;
+    private bool _isBusy;
+    private string _outcome = string.Empty;
+
+    private bool CanReserve =>
+        RelationHref(ReserveRelation) is not null &&
+        _catalog?.Id is not null &&
+        _selections.Values.Any(state => state.Quantity > 0);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = new CancellationTokenSource();
+        if (EventId == Guid.Empty || RegistrationOrderId == Guid.Empty)
+        {
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            Task<HalResourceOfEventAddOnCatalogDto?> catalog =
+                AddOns.GetCatalogAsync(EventId, _operation.Token);
+            Task<HalResourceOfRegistrationOrderAddOnSummaryDto?> order =
+                AddOns.GetOrderAsync(
+                    EventId,
+                    RegistrationOrderId,
+                    Capability,
+                    _operation.Token);
+            await Task.WhenAll(catalog, order);
+            _catalog = await catalog;
+            _order = await order;
+            _selections.Clear();
+            foreach (EventAddOnCatalogItemDto item in _catalog?.Items ?? [])
+            {
+                _selections[item.Id] = new SelectionState
+                {
+                    Quantity = 0,
+                };
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private SelectionState Selection(Guid itemId) =>
+        _selections.GetValueOrDefault(itemId) ?? new SelectionState();
+
+    private void Toggle(
+        Guid itemId,
+        int maximumSelectableQuantity,
+        ChangeEventArgs args)
+    {
+        SelectionState state = Selection(itemId);
+        state.IsSelected = args.Value is true ||
+                           string.Equals(
+                               args.Value?.ToString(),
+                               "true",
+                               StringComparison.OrdinalIgnoreCase);
+        state.Quantity = state.IsSelected
+            ? Math.Clamp(Math.Max(1, state.Quantity), 0, maximumSelectableQuantity)
+            : 0;
+        _selections[itemId] = state;
+    }
+
+    private void ChangeQuantity(
+        Guid itemId,
+        int maximumSelectableQuantity,
+        ChangeEventArgs args)
+    {
+        SelectionState state = Selection(itemId);
+        state.Quantity = int.TryParse(
+            args.Value?.ToString(),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out int quantity)
+            ? Math.Clamp(quantity, 0, maximumSelectableQuantity)
+            : 0;
+        state.IsSelected = state.Quantity > 0;
+        _selections[itemId] = state;
+    }
+
+    private async Task ReserveAsync()
+    {
+        string? actionHref = RelationHref(ReserveRelation);
+        if (actionHref is null)
+        {
+            return;
+        }
+
+        EventAddOnSelectionRequest[] selections = _selections
+            .Where(entry => entry.Value.Quantity > 0)
+            .Select(entry => new EventAddOnSelectionRequest
+            {
+                CatalogItemId = entry.Key,
+                Quantity = entry.Value.Quantity,
+            })
+            .ToArray();
+        await MutateAsync(
+            token => AddOns.ReserveAsync(
+                actionHref,
+                _catalog!.Id!.Value,
+                selections,
+                Guid.CreateVersion7(),
+                token));
+    }
+
+    private Task FulfillAsync(Guid lineId)
+    {
+        string? actionHref = LineRelationHref(lineId, FulfillRelation);
+        return actionHref is null
+            ? Task.CompletedTask
+            : MutateAsync(
+                token => AddOns.FulfillAsync(
+                    actionHref,
+                    Guid.CreateVersion7(),
+                    token));
+    }
+
+    private Task RefundAsync(Guid lineId)
+    {
+        string? actionHref = LineRelationHref(lineId, RefundRelation);
+        return actionHref is null
+            ? Task.CompletedTask
+            : MutateAsync(
+                token => AddOns.RefundAsync(
+                    actionHref,
+                    quantity: 1,
+                    Guid.CreateVersion7(),
+                    token));
+    }
+
+    private async Task MutateAsync(
+        Func<CancellationToken, Task<
+            HalResourceOfRegistrationOrderAddOnSummaryDto?>> mutate)
+    {
+        if (_isBusy || _operation is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _outcome = string.Empty;
+        try
+        {
+            HalResourceOfRegistrationOrderAddOnSummaryDto? updated =
+                await mutate(_operation.Token);
+            if (updated is not null)
+            {
+                _order = updated;
+                _outcome = Text("add_on_action_succeeded", "Updated");
+            }
+            else
+            {
+                _outcome = Text("add_on_action_unavailable", "Unavailable");
+            }
+
+            await Focus.FocusAsync($"#{OutcomeId}");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private string? RelationHref(string relation) =>
+        _order?._links is { } links &&
+        links.TryGetValue(relation, out HalLink? link)
+            ? link.Href
+            : null;
+
+    private bool HasLineRelation(Guid lineId, string relation) =>
+        LineRelationHref(lineId, relation) is not null;
+
+    private string? LineRelationHref(Guid lineId, string relation)
+    {
+        if (_order?._embedded is not JsonElement embedded ||
+            embedded.ValueKind != JsonValueKind.Object ||
+            !embedded.TryGetProperty("add-ons", out JsonElement lines) ||
+            lines.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (JsonElement line in lines.EnumerateArray())
+        {
+            if (!line.TryGetProperty("id", out JsonElement id) ||
+                !Guid.TryParse(id.GetString(), out Guid candidate) ||
+                candidate != lineId ||
+                !line.TryGetProperty(LinksProperty, out JsonElement links) ||
+                links.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            return links.TryGetProperty(relation, out JsonElement link) &&
+                   link.TryGetProperty("href", out JsonElement href)
+                ? href.GetString()
+                : null;
+        }
+
+        return null;
+    }
+
+    private string StateText(string? code) =>
+        Text(
+            $"add_on_state_{code?.ToLowerInvariant() ?? "pending"}",
+            code ?? "pending");
+
+    private string Text(string key, string fallback) =>
+        Translation.T(key, fallback);
+
+    public void Dispose()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    private sealed class SelectionState
+    {
+        public bool IsSelected { get; set; }
+        public int Quantity { get; set; }
+    }
+}

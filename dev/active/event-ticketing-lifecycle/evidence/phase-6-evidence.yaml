@@ -1,0 +1,50 @@
+# ABOUTME: Machine-readable closeout evidence manifest for ticketing lifecycle Phase 6.
+# ABOUTME: Binds fair-return mutation, privacy, review, docs, source, UI, and generated artifacts.
+
+schema_version: 1
+phase: 6
+status: pass
+sentinel_pii_scan: pass
+pii_scan:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-6-pii-scan.json
+mutation_reports:
+  - project: Explore.Domain
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-6/domain/reports/mutation-report.json
+    minimum_score_exclusive: 85
+  - project: Explore.Application
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-6/application/reports/mutation-report.json
+    minimum_score_exclusive: 85
+  - project: Explore.Infrastructure
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-6/infrastructure/reports/mutation-report.json
+    minimum_score_exclusive: 85
+mad_review:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-6-mad-review.yaml
+  required_decision: pass
+documentation:
+  - docs/PAYMENTS.md
+  - docs/OPERATIONS.md
+source_evidence:
+  - src/Explore.Domain/FairReturnWaitlist.cs
+  - src/Explore.Application/Features/Waitlist/Handlers/Commands/FairReturnWaitlistCommandHandlers.cs
+  - src/Explore.Application/Features/Waitlist/Handlers/Queries/GetFairReturnWaitlistQueryHandler.cs
+  - src/Explore.Infrastructure/Waitlist/FairReturnOrchestrationDrainService.cs
+  - src/Explore.Persistence/Repositories/FairReturnWaitlistRepository.cs
+  - src/Explore.Persistence/Repositories/FairReturnOrchestrationRepository.cs
+  - src/Explore.API/Controllers/FairReturnWaitlistController.cs
+  - src/Explore.Blazor/Extensions/BffFairReturnWaitlistEndpoints.cs
+  - src/Explore.Blazor.Client/Components/Waitlist/FairReturnWaitlistPanel.razor
+comments:
+  - src/Explore.Domain/FairReturnWaitlist.cs
+  - src/Explore.Application/Features/Waitlist/Handlers/Commands/FairReturnWaitlistCommandHandlers.cs
+  - src/Explore.Infrastructure/Waitlist/FairReturnOrchestrationDrainService.cs
+  - src/Explore.Blazor/Extensions/BffFairReturnWaitlistEndpoints.cs
+evidence_artifacts:
+  - dev/active/event-ticketing-lifecycle/evidence/phase-6-pii-scan.json
+  - dev/active/event-ticketing-lifecycle/evidence/phase-6-mad-review.yaml
+  - tests/Event.Domain.Waitlist.MutationTests/stryker-config.json
+  - tests/Event.Application.Waitlist.MutationTests/stryker-config.json
+  - tests/Event.Infrastructure.Waitlist.MutationTests/stryker-config.json
+  - tests/Event.Infrastructure.Waitlist.MutationTests/MutationTarget/Event.Infrastructure.Waitlist.MutationTarget.csproj
+generated_artifacts:
+  - schemas/openapi_islamu-event.json
+  - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs

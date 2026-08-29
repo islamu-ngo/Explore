@@ -5349,6 +5349,468 @@ namespace Explore.Persistence.Migrations
                     b.UseTptMappingStrategy();
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventAddOnCatalogVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_add_on_catalog_version_id");
+
+                    b.Property<string>("FulfillmentDisclosure")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("fulfillment_disclosure");
+
+                    b.Property<int>("InventoryCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("inventory_capacity");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("RefundDisclosure")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_disclosure");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("UnitPriceMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_price_minor");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_add_on_catalog_items");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_catalog_items_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .HasName("ak_event_add_on_catalog_items_tenant_id_event_add_on_catalog_v");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_items_tenant_id_event_add__6d3e111c4bdb");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_items_tenant_id_event_add__e543c3654bf5");
+
+                    b.ToTable("event_add_on_catalog_items", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_catalog_items_capacity", "inventory_capacity > 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_catalog_items_money", "unit_price_minor >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_add_on_catalog_versions");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_catalog_versions_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_event_add_on_catalog_versions_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_versions_tenant_id_event_id")
+                        .HasFilter("published_at IS NOT NULL AND retired_at IS NULL AND is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_catalog_versions_tenant_id_event_i_3556814e7d6f");
+
+                    b.ToTable("event_add_on_catalog_versions", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_catalog_versions_lifecycle", "retired_at IS NULL OR (published_at IS NOT NULL AND retired_at >= published_at)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnFulfillment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("FulfilledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fulfilled_at");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_add_on_fulfillments");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_fulfillments_tenant_id_id");
+
+                    b.HasIndex("TenantId", "OperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_operation_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_registratio_4150fe62e0b9");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_fulfillments_tenant_id_event_id_re_a7719da4e6f0");
+
+                    b.ToTable("event_add_on_fulfillments", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnInventoryAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveUniquenessSlot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventAddOnCatalogItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_add_on_catalog_item_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("released_at");
+
+                    b.Property<int>("ReleasedQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("released_quantity");
+
+                    b.Property<DateTime>("ReservedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reserved_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_add_on_inventory_allocations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_inventory_allocations_tenant_id_id");
+
+                    b.HasIndex("TenantId", "OperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_operation_id");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogItemId", "ReleasedAt")
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_ev_9ecd2159c75c");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_re_082fc5bdfba1")
+                        .HasFilter("active_uniqueness_slot IS NOT NULL");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_inventory_allocations_tenant_id_ev_9f46fefbca69");
+
+                    b.ToTable("event_add_on_inventory_allocations", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_inventory_allocations_quantity", "quantity > 0 AND released_quantity >= 0 AND released_quantity <= quantity");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnRefundAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AllocatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("allocated_at");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RefundOperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_operation_id");
+
+                    b.Property<Guid>("RegistrationOrderAddOnLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_add_on_line_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_add_on_refund_allocations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_add_on_refund_allocations_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RefundOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_refun_3640ba335ffd");
+
+                    b.HasIndex("TenantId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_regis_d1bd41ade4aa");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasDatabaseName("ix_event_add_on_refund_allocations_tenant_id_event_4c0019c5b904");
+
+                    b.ToTable("event_add_on_refund_allocations", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_money", "amount_minor >= 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_event_add_on_refund_allocations_status", "status >= 1 AND status <= 4");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -18932,6 +19394,18 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AcceptanceTemplateIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("acceptance_template_identifier");
+
+                    b.Property<string>("AcceptanceTemplateText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("acceptance_template_text");
+
                     b.Property<DateTime>("AcceptedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("accepted_at");
@@ -18965,6 +19439,12 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")
                         .HasColumnName("composition_revision");
+
+                    b.Property<string>("ConnectPlatformId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("connect_platform_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -19010,6 +19490,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("event_time_zone_id");
 
+                    b.Property<string>("ExternalAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_account_id");
+
                     b.Property<Guid>("InstancePolicyVersionId")
                         .HasColumnType("uuid")
                         .HasColumnName("instance_policy_version_id");
@@ -19017,6 +19503,12 @@ namespace Explore.Persistence.Migrations
                     b.Property<bool>("IsOfficialInstance")
                         .HasColumnType("boolean")
                         .HasColumnName("is_official_instance");
+
+                    b.Property<string>("MerchantCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("merchant_country_code");
 
                     b.Property<string>("MerchantDisclosureText")
                         .IsRequired()
@@ -19040,6 +19532,18 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("operator_id");
 
+                    b.Property<string>("OperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("operator_kind_code");
+
+                    b.Property<string>("OperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("operator_legal_name");
+
                     b.Property<string>("OperatorLegalNoticeUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -19058,6 +19562,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(8)")
                         .HasColumnName("operator_region_code");
 
+                    b.Property<string>("OperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("operator_registration_identifier");
+
                     b.Property<string>("OperatorTermsUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -19070,9 +19579,17 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("operator_website_url");
 
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_actor_id");
+
                     b.Property<long>("OrganizerAmountMinor")
                         .HasColumnType("bigint")
                         .HasColumnName("organizer_amount_minor");
+
+                    b.Property<Guid>("OrganizerPaymentProviderConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_payment_provider_connection_id");
 
                     b.Property<long>("PlatformContributionMinor")
                         .HasColumnType("bigint")
@@ -19149,6 +19666,67 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("support_contact");
+
+                    b.Property<string>("TenantDirectoryOperatorCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("tenant_directory_operator_country_code");
+
+                    b.Property<Guid>("TenantDirectoryOperatorDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_directory_operator_document_id");
+
+                    b.Property<string>("TenantDirectoryOperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("tenant_directory_operator_kind_code");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("tenant_directory_operator_legal_name");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalNoticeUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tenant_directory_operator_legal_notice_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPrivacyUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tenant_directory_operator_privacy_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("tenant_directory_operator_public_contact_email");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("tenant_directory_operator_public_name");
+
+                    b.Property<string>("TenantDirectoryOperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("tenant_directory_operator_registration_identifier");
+
+                    b.Property<Guid>("TenantDirectoryOperatorRevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_directory_operator_revision_id");
+
+                    b.Property<string>("TenantDirectoryOperatorTermsUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tenant_directory_operator_terms_url");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -24074,6 +24652,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("active_promotion_reservation_id");
 
+                    b.Property<Guid?>("AddOnCatalogVersionIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("add_on_catalog_version_id_snapshot");
+
+                    b.Property<long>("AddOnTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("add_on_total_minor_snapshot");
+
                     b.Property<Guid?>("AppliedPromotionCodeIdSnapshot")
                         .HasColumnType("uuid")
                         .HasColumnName("applied_promotion_code_id_snapshot");
@@ -24253,6 +24839,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
                         .HasDatabaseName("ix_registration_orders_tenant_id_ticket_catalog_version_id");
 
+                    b.HasIndex("TenantId", "EventId", "AddOnCatalogVersionIdSnapshot")
+                        .HasDatabaseName("ix_registration_orders_tenant_id_event_id_add_on_c_cf0612fdfefe");
+
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
                         .HasDatabaseName("ix_registration_orders_tenant_id_event_id_registra_cded29d4be44");
 
@@ -24262,6 +24851,116 @@ namespace Explore.Persistence.Migrations
 
                             t.Property("ParticipationConfigurationVersionSnapshot")
                                 .HasColumnName("registration_order_participation_configuration_version_snapshot");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderAddOnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code_snapshot");
+
+                    b.Property<Guid>("EventAddOnCatalogItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_add_on_catalog_item_id");
+
+                    b.Property<Guid>("EventAddOnCatalogVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_add_on_catalog_version_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("FulfillmentDisclosureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("fulfillment_disclosure_snapshot");
+
+                    b.Property<long>("LineTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_total_minor_snapshot");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_snapshot");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("RefundDisclosureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_disclosure_snapshot");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("UnitPriceMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_price_minor_snapshot");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_order_add_on_lines");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_order_add_on_lines_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .HasName("ak_registration_order_add_on_lines_tenant_id_event_id_registra");
+
+                    b.HasIndex("TenantId", "EventAddOnCatalogVersionId", "EventAddOnCatalogItemId")
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_event_0951264746c6");
+
+                    b.HasIndex("TenantId", "EventId", "EventAddOnCatalogVersionId")
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_event_f35e0c6b3098");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "EventAddOnCatalogItemId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_order_add_on_lines_tenant_id_regis_3b00b6a9833d");
+
+                    b.ToTable("registration_order_add_on_lines", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_order_add_on_lines_money", "unit_price_minor_snapshot >= 0 AND line_total_minor_snapshot >= 0");
+
+                            t.HasCheckConstraint("ck_registration_order_add_on_lines_quantity", "quantity > 0");
                         });
                 });
 
@@ -35687,6 +36386,112 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("VisibilityType");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogItem", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_items_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany("Items")
+                        .HasForeignKey("TenantId", "EventAddOnCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_items_event_add_on_catalog_7db562500dd9");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_versions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_catalog_versions_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnFulfillment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_fulfillments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_fulfillments_registration_order_ad_2813f39d06a6");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnInventoryAllocation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventAddOnCatalogItemId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_event_add_on_07ef1f96be5e");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_inventory_allocations_registration_5156e1858f3f");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAddOnRefundAllocation", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RefundAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RefundOperationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_refund_attempts_548356fb8132");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderAddOnLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationOrderAddOnLineId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_add_on_refund_allocations_registration_or_d4eabd70ae6e");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
                 {
                     b.HasOne("Explore.Domain.ScheduleItemKind", "Kind")
@@ -42850,6 +43655,13 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_registration_orders_event_ticket_catalog_versio_49ab8f01c969");
 
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "AddOnCatalogVersionIdSnapshot")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registration_orders_event_add_on_catalog_versio_ba65b666098e");
+
                     b.OwnsOne("Explore.Domain.RegistrationParticipationSnapshot", "ParticipationSnapshot", b1 =>
                         {
                             b1.Property<Guid>("RegistrationOrderId")
@@ -42891,6 +43703,40 @@ namespace Explore.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("RegistrationOrderStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderAddOnLine", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventAddOnCatalogVersionId", "EventAddOnCatalogItemId")
+                        .HasPrincipalKey("TenantId", "EventAddOnCatalogVersionId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_event_add_on_ca_ae0eaf0b7f25");
+
+                    b.HasOne("Explore.Domain.EventAddOnCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "EventAddOnCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_event_add_on_ca_2b385efb0610");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany("AddOnLines")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_add_on_lines_registration_or_1ada18040939");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderLine", b =>
@@ -45940,6 +46786,11 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("TicketCatalogVersions");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventAddOnCatalogVersion", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
                 {
                     b.Navigation("Items");
@@ -46180,6 +47031,8 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
                 {
+                    b.Navigation("AddOnLines");
+
                     b.Navigation("Lines");
 
                     b.Navigation("Participants");

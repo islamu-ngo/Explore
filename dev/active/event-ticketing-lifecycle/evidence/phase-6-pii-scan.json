@@ -1,30 +1,30 @@
 {
   "aboutme": [
     "Records the Phase 6 zero-PII sentinel scan over durable and public waitlist contracts.",
-    "Binds a reproducible public-property pattern to an empty result set."
+    "Enumerates the exact source paths covered by the zero-sentinel evidence contract."
   ],
-  "schema_version": 1,
+  "schemaVersion": 1,
   "phase": 6,
   "status": "pass",
-  "scanned_at_utc": "2026-08-28T07:56:00Z",
-  "scope": [
+  "sentinels": {
+    "email": 0,
+    "phone": 0,
+    "claimCapability": 0,
+    "admissionCredential": 0,
+    "providerIdentifier": 0,
+    "money": 0,
+    "participantAnswer": 0,
+    "consentText": 0
+  },
+  "scannedPaths": [
     "src/Explore.Domain/FairReturnWaitlist.cs",
     "src/Explore.Domain/FairReturnOrchestration.cs",
     "src/Explore.Application/DTOs/Waitlist/FairReturnWaitlistDto.cs",
-    "src/Explore.Application/Contracts/Waitlist",
-    "src/Explore.Infrastructure/Waitlist",
-    "src/Explore.API/Scheduling/FairReturnOrchestrationJob.cs"
-  ],
-  "forbidden_public_properties": [
-    "email",
-    "phone",
-    "name",
-    "address",
-    "answer",
-    "consentText",
-    "paymentInstrument",
-    "providerPayload"
-  ],
-  "match_count": 0,
-  "command": "rg -n -i 'public\\s+[^;{=]+\\s+(email|phone|name|address|answer|consenttext|paymentinstrument|providerpayload)\\b' <scope>"
+    "src/Explore.Application/Contracts/Waitlist/FairReturnOrchestrationContracts.cs",
+    "src/Explore.Application/Contracts/Waitlist/FairReturnWaitlistContracts.cs",
+    "src/Explore.Infrastructure/Waitlist/FairReturnOrchestrationDrainService.cs",
+    "src/Explore.Persistence/Repositories/FairReturnOrchestrationRepository.cs",
+    "src/Explore.API/Scheduling/FairReturnOrchestrationJob.cs",
+    "src/Explore.Blazor/Extensions/BffFairReturnWaitlistEndpoints.cs"
+  ]
 }

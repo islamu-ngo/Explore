@@ -53,7 +53,7 @@ Post-merge task audit:
 - historical RED-before-GREEN assertion-failure transcripts are not retained and must not be fabricated retrospectively;
 - Phase 0, 1, 3, and 5 retain partial critical evidence, but some exact mutation-report paths and focused command transcripts are absent;
 - Phase 2 and 4 retain implemented/tested surfaces without phase evidence manifests; and
-- Phase 6 additionally lacks its evidence manifest, three mutation reports, and deterministic scale transcripts.
+- Phase 6 recoverable evidence is closed: deterministic scale transcripts, all three scoped mutation reports, the PII/MAD artifacts, and the evidence manifest are retained and contract-validated.
 
 ### IN PROGRESS
 
@@ -64,9 +64,9 @@ Post-merge task audit:
 ### NEXT
 
 1. Decide the governance disposition for unrecoverable historical RED transcripts; do not recreate fake RED evidence against merged code.
-2. Retain the missing exact task command/report evidence, beginning with the Phase 6 manifest, mutation reports, and scale results.
+2. Retain the approved revision-bound chronology exception for Tasks 1.3, 2.5, 3.3, and 4.3; fourteen other RED tasks have recovered original assertion failures.
 3. Resolve the inherited architecture baseline separately; do not misclassify its 12 failures as ticketing regressions.
-4. Begin Phase 7 / Task 7.1 RED only after the merged Phase 0–6 ledger is honestly reconciled.
+4. Begin Phase 7 / Task 7.1 with prospective assertion-failing persistence and money tests.
 
 ### BLOCKERS
 
@@ -198,7 +198,7 @@ Out of scope:
 
 ## Current Known Risks / Unknowns
 
-- Phase 6 evidence may be overclaimed if Task 6.8 is checked without the missing mutation-summary/evidence manifest.
+- Phase 6 chronology may be overclaimed if Task 6.8 is checked as historically RED-proven; recoverable nonchronology evidence is now closed.
 - A provider/payment path may acquire rows outside the canonical lock order and recreate WB-1.
 - Recovery may be tested as object-level serialization rather than a real clean-storage restore.
 - UI/HAL may reconstruct lifecycle decisions rather than consume domain-authoritative facts.
@@ -209,10 +209,10 @@ Out of scope:
 
 ### Handoff — 2026-08-28 Europe/Brussels
 
-**Current workstream:** purchase governance, readiness, transfer, and fair-return lifecycle merged into `develop`; Phase 6 closeout and Phases 7–9 remain.
+**Current workstream:** purchase governance, readiness, transfer, and fair-return lifecycle merged into `develop`; Phase 6 evidence and the four-task chronology disposition are closed, and Task 7.1 prospective RED is active.
 
 **Next owner:** implementation agent continuing from `develop`.
 
-**Do not do next:** recreate deleted ticketing branches/worktrees, weaken the privacy-erasure startup gate, mark Phase 6 complete without retained evidence, touch unrelated dirty persistence files, or implement protected payout.
+**Do not do next:** recreate deleted ticketing branches/worktrees, weaken the privacy-erasure startup gate, claim historical RED chronology as proven, touch unrelated dirty files, or implement protected payout.
 
-**Required first evidence:** retain the complete Task 6.8 mutation/evidence artifacts and pass the focused evidence contract before starting Task 7.1 RED.
+**Required first approval:** satisfied on 2026-08-28 for the one-time revision-bound `historical RED chronology unproven` disposition covering Tasks 1.3, 2.5, 3.3, and 4.3 only.

@@ -1,0 +1,90 @@
+# ABOUTME: Machine-readable closeout evidence manifest for ticketing lifecycle Phase 7.
+# ABOUTME: Binds add-on mutation, privacy, review, docs, sources, tests, and generated artifacts.
+
+schema_version: 1
+phase: 7
+status: pass
+sentinel_pii_scan: pass
+pii_scan:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-7-pii-scan.json
+mutation_reports:
+  - project: Explore.Domain
+    path: dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-summary.json
+    minimum_score_exclusive: 85
+mad_review:
+  path: dev/active/event-ticketing-lifecycle/evidence/phase-7-mad-review.yaml
+  required_decision: pass
+documentation:
+  - docs/PAYMENTS.md
+  - docs/OPERATIONS.md
+  - islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md
+source_evidence:
+  - src/Explore.Domain/EventAddOnCatalogVersion.cs
+  - src/Explore.Domain/EventAddOnCatalogItem.cs
+  - src/Explore.Domain/RegistrationOrderAddOnLine.cs
+  - src/Explore.Domain/EventAddOnInventoryAllocation.cs
+  - src/Explore.Domain/EventAddOnFulfillment.cs
+  - src/Explore.Domain/EventAddOnRefundAllocation.cs
+  - src/Explore.Domain/EventAddOnResults.cs
+  - src/Explore.Application/Features/EventAddOns/Handlers/EventAddOnHandlers.cs
+  - src/Explore.Application/Services/Registration/RefundDispatchService.cs
+  - src/Explore.Application/Services/Registration/RefundReconciliationService.cs
+  - src/Explore.Persistence/Repositories/EventAddOnRepository.cs
+  - src/Explore.Persistence/Repositories/RefundAttemptRepository.cs
+  - src/Explore.API/Controllers/EventAddOnCatalogController.cs
+  - src/Explore.API/Controllers/EventAddOnManagementController.cs
+  - src/Explore.API/Controllers/RegistrationOrderAddOnController.cs
+  - src/Explore.Blazor/Extensions/BffEventAddOnEndpoints.cs
+  - src/Explore.Blazor.Client/Components/Registration/EventAddOnSelector.razor
+  - src/Explore.Blazor.Client/Pages/Studio/EventAddOnCatalogEditor.razor
+  - tests/Event.Persistence.IntegrationTests/EventAddOnPersistenceTests.cs
+  - tests/Event.API.IntegrationTests/EventAddOnApiTests.cs
+  - tests/Explore.Blazor.IntegrationTests/EventAddOnBffTests.cs
+  - tests/Explore.Blazor.Client.Tests/EventAddOnComponentTests.cs
+comments:
+  - src/Explore.Domain/EventAddOnCatalogVersion.cs
+  - src/Explore.Domain/EventAddOnRefundAllocation.cs
+  - src/Explore.Persistence/Repositories/EventAddOnRepository.cs
+  - src/Explore.Application/Features/EventAddOns/Handlers/EventAddOnHandlers.cs
+  - src/Explore.API/Controllers/RegistrationOrderAddOnController.cs
+  - src/Explore.Blazor/Extensions/BffEventAddOnEndpoints.cs
+evidence_artifacts:
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.1-red.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.2-green.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.3-red.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.4-green.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.5-red.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-scope.yaml
+generated_artifacts:
+  - schemas/openapi_islamu-event.json
+  - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs
+  - src/Explore.Persistence/Migrations/20260829113014_AddEventAddOns.cs
+  - src/Explore.Persistence/Migrations/20260829124156_PinEventAddOnCatalog.cs
+  - src/Explore.Persistence/Migrations/20260829125859_TrackEventAddOnRefundProviderState.cs
+  - src/Explore.Persistence/Migrations/20260829131234_SupportEventAddOnRefundReleaseRecovery.cs
+  - src/Explore.Persistence/Migrations/20260829133631_BindEventAddOnRefundAttempt.cs
+  - src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829112740_AddEventAddOns.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829124222_PinEventAddOnCatalog.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829125935_TrackEventAddOnRefundProviderState.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829131301_SupportEventAddOnRefundReleaseRecovery.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829133659_BindEventAddOnRefundAttempt.cs
+  - src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829112801_AddEventAddOns.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829124245_PinEventAddOnCatalog.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829125955_TrackEventAddOnRefundProviderState.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829131322_SupportEventAddOnRefundReleaseRecovery.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829133723_BindEventAddOnRefundAttempt.cs
+  - src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829112822_AddEventAddOns.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829124308_PinEventAddOnCatalog.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829130017_TrackEventAddOnRefundProviderState.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829131345_SupportEventAddOnRefundReleaseRecovery.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829133746_BindEventAddOnRefundAttempt.cs
+  - src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260829112846_AddEventAddOns.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260829124329_PinEventAddOnCatalog.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260829130037_TrackEventAddOnRefundProviderState.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260829131406_SupportEventAddOnRefundReleaseRecovery.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/20260829133808_BindEventAddOnRefundAttempt.cs
+  - src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs

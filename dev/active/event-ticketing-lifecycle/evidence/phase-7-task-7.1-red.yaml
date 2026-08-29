@@ -1,0 +1,74 @@
+# ABOUTME: Retains prospective Task 7.1 assertion-level RED evidence before add-on production edits.
+# ABOUTME: Binds the command, source revision, baseline, failure shape, and chronology claim.
+
+schema_version: 1
+workstream: event-ticketing-lifecycle
+phase: 7
+task: "7.1"
+branch: develop
+captured_at: "2026-08-29T13:15:27+02:00"
+
+baseline:
+  command: >-
+    dotnet test --project
+    tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+    --configuration Release --verbosity quiet --
+    --treenode-filter
+    "/*/*/*RegistrationInventoryHoldConcurrencyTests/PostgreSqlCatalog_ContainsCapacityHoldPolicySeedsAndCapacityPoolForeignKey"
+    --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+  exit_code: 0
+  total: 1
+  succeeded: 1
+  failed: 0
+  duration: "54s 586ms"
+  conclusion: >-
+    The production-faithful PostgreSQL fixture, generated migration set,
+    lookup seeding, and existing inventory baseline were green before the
+    Task 7.1 test file was created.
+
+red:
+  command: >-
+    dotnet test --project
+    tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+    --configuration Release --verbosity quiet --
+    --treenode-filter "/*/*/*EventAddOnPersistenceTests/*"
+    --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+  source:
+    path: tests/Event.Persistence.IntegrationTests/EventAddOnPersistenceTests.cs
+    sha256: 7e536b4108275a18e5463fd68e1bc41e3ce94e35ee9d0ad946d11cd16423b204
+  exit_code: 2
+  total: 8
+  succeeded: 0
+  failed: 8
+  duration: "52s 983ms"
+  intended_assertion:
+    type: TUnit.Assertions.AssertionException
+    message: >-
+      Expected to not be null, because Phase 7 product RED requires
+      Explore.Domain.EventAddOnCatalogVersion but received null
+    source_line: 478
+  rejected_failure_classes:
+    build_or_compile_failure: false
+    test_discovery_failure: false
+    fixture_or_environment_failure: false
+    timeout_or_timing_failure: false
+    pending_model_changes_failure: false
+
+covered_contracts:
+  - optional zero-or-more buyer selections
+  - independently calculated literal line and order totals
+  - checked Int64 overflow before effects
+  - tenant-qualified catalog and order-line lineage
+  - real PostgreSQL one-winner inventory contention
+  - exact partial-refund conservation
+  - durable fulfillment replay
+  - cross-tenant fail-closed reads
+  - no admission, credential, readiness, capacity, or check-in mutation
+
+chronology:
+  production_add_on_types_present_during_red: false
+  production_add_on_repository_present_during_red: false
+  production_edit_authorized_after_this_record: true
+  claim: >-
+    This is prospective RED-before-GREEN evidence for Task 7.1. It does not
+    reconstruct or relabel any historical Phase 0-6 chronology.

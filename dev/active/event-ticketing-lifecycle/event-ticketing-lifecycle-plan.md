@@ -10,7 +10,7 @@ Last Updated: 2026-08-28 Europe/Brussels
 - **Original request:** move all unimplemented Registration Data Collection Phase 22+ work into a successor workstream.
 - **Hardening request:** strengthen architecture, conventions, maintainability, technical-debt remediation, code comments, and durable `docs/` ownership without backward-compatibility constraints.
 - **Task directory:** `dev/active/event-ticketing-lifecycle/`
-- **Planning status:** Approved implementation scope partially delivered and merged into `develop`. Phases 0–5 and Phase 6 Tasks 6.1–6.7 are implemented; Phase 6 evidence closeout plus Phases 7–9 remain open.
+- **Planning status:** Approved implementation scope partially delivered and merged into `develop`. Phases 0–6 and the narrow chronology disposition are closed; Phase 7 prospective RED is authorized and Phases 7–9 remain to implement.
 - **Execution-ledger status:** implementation presence is recorded separately from task completion. No Phase 0–6 task checkbox is closed without its exact acceptance evidence; historical RED chronology is currently unproven.
 - **Change classification:** Behavioral Delta.
 - **Matched intent:** `registration-data-collection`.
@@ -71,7 +71,7 @@ The implementation uses project-native Clean Architecture, CQRS/MediatR, EF Core
 
 - Phase 0 consolidated touched lifecycle authority behind semantic aggregate rules and capability-specific coordinators; architecture ratchets now protect those seams.
 - Purchase, readiness, transfer, and fair-return behavior is merged with tenant-scoped persistence, HAL/BFF/generated-client boundaries, and critical evidence for Phases 0, 1, 3, and 5.
-- All Phase 0–6 task checkboxes remain evidence-open under the ledger's exact acceptance contract; Task 6.8 additionally lacks the complete Phase 6 mutation/evidence manifest required by this plan.
+- Original assertion-failing RED runs are recovered for 14 of 18 Phase 0–6 RED tasks. Tasks 1.3, 2.5, 3.3, and 4.3 have the explicitly approved `historical RED chronology unproven` exception; Task 6.8 has its complete Phase 6 mutation/evidence manifest and focused contract pass.
 - The post-merge task audit found no retained pre-GREEN assertion-failure transcript for the Phase 0–6 RED tasks and incomplete exact command/report artifacts for multiple GREEN/closeout tasks. Current passing regression tests must not be relabeled as historical RED evidence.
 - Full `Event.Architecture.Tests`, `Event.API.IntegrationTests`, and `Event.Persistence.IntegrationTests` phase-closeout evidence is not recorded as green. Ticketing-focused selectors passed, while the architecture project retained 12 inherited non-ticketing failures.
 - Event-bound add-ons, recovery/operator controls, the deployment capability matrix, and final release convergence remain unimplemented.
@@ -92,7 +92,7 @@ The source register is in the clean-room evidence packet. No third-party code, s
 
 ### 2.4 Remaining Unknowns That Must Be Resolved Inside Named Tasks
 
-- Phase 6 closeout must determine and retain the missing mutation-summary/evidence artifacts without reopening already merged lifecycle behavior.
+- Phase 6 closeout retained the scoped mutation reports and evidence manifest without reopening already merged lifecycle behavior.
 - Add-on, recovery, and deployment-boundary tasks still require their bounded pre-edit discovery; their owning layers and behavioral contracts remain fixed here.
 - Deployment-specific legal, scholarly, provider, accessibility, privacy, security, and operator evidence may disable or narrow release; it cannot widen scope.
 - Protected delayed payout remains outside this workstream regardless of implementation progress.

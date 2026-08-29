@@ -1,0 +1,343 @@
+@* ABOUTME: Lets authorized organizers create, populate, publish, and retire event add-on catalogs. *@
+@* ABOUTME: Renders every action only from HAL and keeps money, inventory, and lifecycle server-authoritative. *@
+@page "/studio/events/{EventId:guid}/add-ons"
+@rendermode InteractiveAuto
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject IEventAddOnService AddOns
+@inject ITranslationService Translation
+@inject IAccessibilityFocusService Focus
+@implements IDisposable
+
+<PageTitle>@Text("add_on_management_title", "Manage event add-ons")</PageTitle>
+
+<main class="add-on-editor"
+      aria-labelledby="add-on-editor-title"
+      aria-busy="@_isBusy">
+    <header>
+        <h1 id="add-on-editor-title">
+            @Text("add_on_management_title", "Manage event add-ons")
+        </h1>
+        <p>
+            @Text(
+                "add_on_management_intro",
+                "Create a list of independently priced, limited, and fulfilled optional items.")
+        </p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p>@Text("add_on_loading", "Loading optional add-ons")</p>
+    }
+    else if (_resource is null)
+    {
+        <p>@Text("add_on_management_unavailable", "Add-on management is unavailable.")</p>
+    }
+    else
+    {
+        @if (HasRelation(CreateDraftRelation))
+        {
+            <section aria-labelledby="add-on-create-title">
+                <h2 id="add-on-create-title">
+                    @Text("add_on_create_catalog", "Create add-on catalog")
+                </h2>
+                <label for="add-on-currency">
+                    @Text("add_on_currency", "Currency code")
+                </label>
+                <input id="add-on-currency"
+                       maxlength="3"
+                       autocomplete="off"
+                       @bind="_currencyCode" />
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="CreateDraftAsync">
+                    @Text("add_on_create_draft", "Create draft")
+                </button>
+            </section>
+        }
+
+        @if (HasRelation(AddItemRelation))
+        {
+            <section aria-labelledby="add-on-item-title">
+                <h2 id="add-on-item-title">
+                    @Text("add_on_add_item", "Add catalog item")
+                </h2>
+                <div class="add-on-editor__form">
+                    <label for="add-on-name">@Text("add_on_name", "Name")</label>
+                    <input id="add-on-name" maxlength="200" @bind="_draft.Name" />
+
+                    <label for="add-on-description">
+                        @Text("add_on_description", "Description")
+                    </label>
+                    <textarea id="add-on-description"
+                              maxlength="2000"
+                              @bind="_draft.Description"></textarea>
+
+                    <label for="add-on-price">
+                        @Text("add_on_price_minor", "Unit price in minor units")
+                    </label>
+                    <input id="add-on-price"
+                           type="number"
+                           min="0"
+                           @bind="_draft.UnitPriceMinor" />
+
+                    <label for="add-on-capacity">
+                        @Text("add_on_capacity", "Available quantity")
+                    </label>
+                    <input id="add-on-capacity"
+                           type="number"
+                           min="1"
+                           @bind="_draft.InventoryCapacity" />
+
+                    <label for="add-on-fulfillment">
+                        @Text("add_on_fulfillment", "Fulfillment")
+                    </label>
+                    <textarea id="add-on-fulfillment"
+                              maxlength="2000"
+                              @bind="_draft.FulfillmentDisclosure"></textarea>
+
+                    <label for="add-on-refund">
+                        @Text("add_on_refund", "Refund")
+                    </label>
+                    <textarea id="add-on-refund"
+                              maxlength="2000"
+                              @bind="_draft.RefundDisclosure"></textarea>
+                </div>
+                <button type="button"
+                        disabled="@(_isBusy || !_draft.IsComplete)"
+                        @onclick="AddItemAsync">
+                    @Text("add_on_add_item", "Add catalog item")
+                </button>
+            </section>
+        }
+
+        @if (_resource.Items is { Count: > 0 } items)
+        {
+            <section aria-labelledby="add-on-items-title">
+                <h2 id="add-on-items-title">@Text("add_on_items", "Catalog items")</h2>
+                <ul class="add-on-editor__items">
+                    @foreach (EventAddOnCatalogItemDto item in items)
+                    {
+                        <li>
+                            <strong>@item.Name</strong>
+                            <span>@item.UnitPriceMinor @item.CurrencyCode</span>
+                            <span>
+                                @(item.IsAvailable
+                                    ? Text("add_on_available", "Available")
+                                    : Text("add_on_unavailable", "Unavailable"))
+                            </span>
+                            <span>
+                                @Text("add_on_available_quantity", "Available quantity"):
+                                @item.MaximumSelectableQuantity
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <div class="add-on-editor__actions">
+            @if (HasRelation(PublishRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="PublishAsync">
+                    @Text("add_on_publish", "Publish catalog")
+                </button>
+            }
+            @if (HasRelation(RetireRelation))
+            {
+                <button type="button"
+                        disabled="@_isBusy"
+                        @onclick="RetireAsync">
+                    @Text("add_on_retire", "Retire catalog")
+                </button>
+            }
+        </div>
+    }
+
+    <p id="add-on-editor-outcome"
+       role="status"
+       aria-live="polite"
+       tabindex="-1">
+        @_outcome
+    </p>
+</main>
+
+@code {
+    private const string CreateDraftRelation = "create-event-add-on-catalog-draft";
+    private const string AddItemRelation = "add-event-add-on-catalog-item";
+    private const string PublishRelation = "publish-event-add-on-catalog";
+    private const string RetireRelation = "retire-event-add-on-catalog";
+
+    [Parameter, EditorRequired]
+    public Guid EventId { get; set; }
+
+    private HalResourceOfEventAddOnCatalogDto? _resource;
+    private CancellationTokenSource? _operation;
+    private CatalogItemDraft _draft = new();
+    private string _currencyCode = "EUR";
+    private string _outcome = string.Empty;
+    private bool _isLoading;
+    private bool _isBusy;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        _operation = new CancellationTokenSource();
+        _isLoading = true;
+        try
+        {
+            _resource = await AddOns.GetManagementAsync(
+                EventId,
+                _operation.Token);
+            if (!string.IsNullOrWhiteSpace(_resource?.CurrencyCode))
+            {
+                _currencyCode = _resource.CurrencyCode;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Task CreateDraftAsync() =>
+        MutateRelationAsync(
+            CreateDraftRelation,
+            (href, token) => AddOns.CreateDraftAsync(
+                href,
+                _currencyCode,
+                Guid.CreateVersion7(),
+                token));
+
+    private Task AddItemAsync() =>
+        MutateRelationAsync(
+            AddItemRelation,
+            (href, token) => AddOns.AddItemAsync(
+                href,
+                new ManageEventAddOnCatalogItemRequest
+                {
+                    Name = _draft.Name,
+                    Description = _draft.Description,
+                    UnitPriceMinor = _draft.UnitPriceMinor,
+                    InventoryCapacity = _draft.InventoryCapacity,
+                    FulfillmentDisclosure = _draft.FulfillmentDisclosure,
+                    RefundDisclosure = _draft.RefundDisclosure,
+                },
+                Guid.CreateVersion7(),
+                token),
+            clearDraft: true);
+
+    private Task PublishAsync() =>
+        MutateRelationAsync(
+            PublishRelation,
+            (href, token) => AddOns.PublishAsync(
+                href,
+                Guid.CreateVersion7(),
+                token));
+
+    private Task RetireAsync() =>
+        MutateRelationAsync(
+            RetireRelation,
+            (href, token) => AddOns.RetireAsync(
+                href,
+                Guid.CreateVersion7(),
+                token));
+
+    private Task MutateRelationAsync(
+        string relation,
+        Func<string, CancellationToken,
+            Task<HalResourceOfEventAddOnCatalogDto?>> mutate,
+        bool clearDraft = false)
+    {
+        string? href = RelationHref(relation);
+        return href is null
+            ? Task.CompletedTask
+            : MutateAsync(
+                token => mutate(href, token),
+                clearDraft);
+    }
+
+    private async Task MutateAsync(
+        Func<CancellationToken, Task<HalResourceOfEventAddOnCatalogDto?>> mutate,
+        bool clearDraft = false)
+    {
+        if (_isBusy || _operation is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _outcome = string.Empty;
+        try
+        {
+            HalResourceOfEventAddOnCatalogDto? updated =
+                await mutate(_operation.Token);
+            if (updated is not null)
+            {
+                _resource = updated;
+                if (clearDraft)
+                {
+                    _draft = new CatalogItemDraft();
+                }
+
+                _outcome = Text("add_on_action_succeeded", "Updated");
+            }
+            else
+            {
+                _outcome = Text("add_on_action_unavailable", "Unavailable");
+            }
+
+            await Focus.FocusAsync("#add-on-editor-outcome");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private bool HasRelation(string relation) =>
+        RelationHref(relation) is not null;
+
+    private string? RelationHref(string relation) =>
+        _resource?._links is { } links &&
+        links.TryGetValue(relation, out HalLink? link)
+            ? link.Href
+            : null;
+
+    private string Text(string key, string fallback) =>
+        Translation.T(key, fallback);
+
+    public void Dispose()
+    {
+        _operation?.Cancel();
+        _operation?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    private sealed class CatalogItemDraft
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public long UnitPriceMinor { get; set; }
+        public int InventoryCapacity { get; set; } = 1;
+        public string FulfillmentDisclosure { get; set; } = string.Empty;
+        public string RefundDisclosure { get; set; } = string.Empty;
+
+        public bool IsComplete =>
+            !string.IsNullOrWhiteSpace(Name) &&
+            UnitPriceMinor >= 0 &&
+            InventoryCapacity > 0 &&
+            !string.IsNullOrWhiteSpace(FulfillmentDisclosure) &&
+            !string.IsNullOrWhiteSpace(RefundDisclosure);
+    }
+}

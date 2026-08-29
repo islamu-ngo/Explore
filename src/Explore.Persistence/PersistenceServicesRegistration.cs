@@ -218,6 +218,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IParticipationRequirementAttachmentRepository, ParticipationRequirementAttachmentRepository>();
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
+        services.AddScoped<IEventAddOnRepository, EventAddOnRepository>();
         services.AddScoped<IPromotionManagementRepository, PromotionManagementRepository>();
         services.AddScoped<IPromotionRedemptionRepository, PromotionRedemptionRepository>();
         services.AddScoped<IRegistrationParticipantRepository, RegistrationParticipantRepository>();

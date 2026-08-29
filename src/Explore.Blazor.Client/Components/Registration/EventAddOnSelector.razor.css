@@ -1,0 +1,88 @@
+/* ABOUTME: Styles the optional add-on selector with logical spacing and clear grouped facts. */
+/* ABOUTME: Preserves RTL, zoom, narrow-layout, focus, and touch-target behavior. */
+
+.event-add-ons {
+    display: grid;
+    gap: 1rem;
+    padding-inline: 1rem;
+}
+
+.event-add-ons__title,
+.event-add-ons__outcome {
+    margin-block: 0;
+    margin-inline: 0;
+}
+
+.event-add-ons__choices {
+    display: grid;
+    gap: 1rem;
+    padding-block: 1rem;
+    padding-inline: 1rem;
+}
+
+.event-add-ons__optional {
+    margin-block: 0;
+}
+
+.event-add-ons__item {
+    display: grid;
+    gap: 0.5rem;
+    min-inline-size: 0;
+    padding-block: 0.75rem;
+    border-block-end: 1px solid var(--mud-palette-lines-default);
+}
+
+.event-add-ons__item-heading,
+.event-add-ons__confirmed-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.event-add-ons__item-heading label {
+    font-weight: 600;
+}
+
+.event-add-ons__price {
+    margin-inline-start: auto;
+}
+
+.event-add-ons__disclosures {
+    display: grid;
+    gap: 0.25rem;
+    padding-inline-start: 1.75rem;
+}
+
+.event-add-ons__disclosures p {
+    margin-block: 0;
+}
+
+.event-add-ons input,
+.event-add-ons button {
+    min-block-size: 2.75rem;
+}
+
+.event-add-ons input[type="number"] {
+    inline-size: min(100%, 8rem);
+    padding-inline: 0.75rem;
+}
+
+.event-add-ons__submit {
+    margin-block-start: 1rem;
+    padding-inline: 1rem;
+}
+
+.event-add-ons__confirmed ul {
+    display: grid;
+    gap: 0.75rem;
+    padding-inline-start: 1.25rem;
+}
+
+.event-add-ons__confirmed-line {
+    justify-content: space-between;
+}
+
+.event-add-ons__outcome:empty {
+    display: none;
+}

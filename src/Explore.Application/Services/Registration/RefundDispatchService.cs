@@ -11,7 +11,8 @@ namespace Explore.Application.Services.Registration;
 public sealed class RefundDispatchService(
     IRefundAttemptRepository repository,
     IRefundCreator creator,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IEventAddOnRepository? addOns = null)
 {
     public async Task<RefundAttempt?> DispatchAsync(
         Guid tenantId,
@@ -48,6 +49,7 @@ public sealed class RefundDispatchService(
         }
 
         await repository.SaveChangesAsync(cancellationToken);
+        await ResolveAddOnAllocationAsync(attempt, cancellationToken);
         return attempt;
     }
 
@@ -66,4 +68,28 @@ public sealed class RefundDispatchService(
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         return now >= attempt.LastObservedAt ? now : attempt.LastObservedAt;
     }
+
+    private Task<EventAddOnRefundAllocation?> ResolveAddOnAllocationAsync(
+        RefundAttempt attempt,
+        CancellationToken cancellationToken) =>
+        addOns is null
+            ? Task.FromResult<EventAddOnRefundAllocation?>(null)
+            : attempt.Status switch
+            {
+                RefundAttemptStatusEnum.Succeeded =>
+                    addOns.ResolveRefundAsync(
+                        attempt.TenantId,
+                        attempt.Id,
+                        providerSucceeded: true,
+                        attempt.LastObservedAt,
+                        cancellationToken),
+                RefundAttemptStatusEnum.Failed or RefundAttemptStatusEnum.Cancelled =>
+                    addOns.ResolveRefundAsync(
+                        attempt.TenantId,
+                        attempt.Id,
+                        providerSucceeded: false,
+                        attempt.LastObservedAt,
+                        cancellationToken),
+                _ => Task.FromResult<EventAddOnRefundAllocation?>(null),
+            };
 }
